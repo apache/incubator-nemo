@@ -11,9 +11,23 @@
     <el-table
       class="job-table"
       empty-text="No data"
-      border
       :data="jobTableData">
       <el-table-column label="Job ID" prop="jobId"/>
+      <el-table-column label="">
+        <template slot-scope="scope">
+          <el-button
+          @click="selectJobId(scope.row.jobId)"
+          round
+          type="primary">
+            Select
+          </el-button>
+          <el-button
+          @click="deleteJobId(scope.row.jobId)"
+          circle
+          type="danger"
+          icon="el-icon-delete"/>
+        </template>
+      </el-table-column>
     </el-table>
 
     <el-dialog
@@ -75,16 +89,7 @@ export default {
   data() {
     return {
       // job id -> job data object
-      jobs: {
-        'job-1': {
-          ws: undefined,
-          endpoint: '',
-          dag: undefined,
-          metricLookupMap: {},
-          metricDataSet: undefined,
-          completed: false,
-        }
-      },
+      jobs: {},
 
       selectedJobId: '',
 
@@ -116,7 +121,7 @@ export default {
 
       fileReader.onerror = event => {
         this.uploading = true;
-        throw new Error('error when uploading file');
+        this.notifyError('File upload failed');
       };
 
       this.uploading = true;
@@ -130,36 +135,70 @@ export default {
       });
     },
 
-    selectJobId(jobId) {
+    async selectJobId(jobId) {
+      if (jobId === this.selectedJobId) {
+        return;
+      }
+
       this.selectedJobId = jobId;
       const job = this.jobs[jobId];
       this.$eventBus.$emit('job-id-select', {
-        jobId: jobId,
+        jobId,
         metricLookupMap: job.metricLookupMap,
         metricDataSet: job.metricDataSet,
       });
+
+      await this.$nextTick();
+
+      if (job.dag) {
+        this.$eventBus.$emit('dag', {
+          dag: job.dag,
+          jobId,
+          init: true,
+          states: job.dagStageState,
+        });
+      }
+    },
+
+    deleteJobId(jobId) {
+      // TODO: delete job
     },
 
     handleWebSocketAdd() {
       this.addJobFromWebSocketEndpoint(this.wsEndpointInput);
       this.wsEndpointInput = '';
+      this.addJobDialogVisible = false;
     },
 
     _newJob(jobId) {
-      let newJobEntry = {
+      Vue.set(this.jobs, jobId, {
         ws: undefined,
         endpoint: '',
+        fileName: '',
         dag: undefined,
         metricLookupMap: {},
         metricDataSet: new DataSet([]),
+        dagStageState: {},
         completed: false,
-      };
-
-      Vue.set(this.jobs, jobId, newJobEntry);
+      });
     },
 
-    addJobFromFile(fileName, content) {
+    async addJobFromFile(fileName, content) {
+      let parsedData;
+      try {
+        parsedData = JSON.parse(content);
+      } catch (e) {
+        this.notifyError('Invalid JSON file');
+        return;
+      }
 
+      const jobId = uuid();
+      this._newJob(jobId);
+      this.jobs[jobId].fileName = fileName;
+
+      this.selectJobId(jobId);
+      await this.$nextTick();
+      this.processMetric(parsedData, jobId);
     },
 
     addJobFromWebSocketEndpoint(endpoint) {
@@ -196,19 +235,12 @@ export default {
       const job = this.jobs[jobId];
 
       if (job.ws && job.ws.readyState !== WebSocket.CLOSED) {
-        // this.closeWebSocket();
-        // is this really correct?
         return;
       }
 
       job.ws = new WebSocket(job.endpoint);
 
       job.ws.onopen = () => {
-        // clear metric
-        /*
-        this.metricDataSet.clear();
-        this.selectedMetricId = '';
-        */
         job.wsStatus = 'opened';
       };
 
@@ -246,10 +278,10 @@ export default {
       } else {
         // the first big metric chunk
         Object.keys(metric).forEach(metricType => {
-          Object.values(metric[metricType]).forEach(async data => {
+          Object.values(metric[metricType]).forEach(async chunk => {
             await this.processIndividualMetric({
               metricType: metricType,
-              data: data,
+              data: chunk.data,
             }, jobId);
           });
         });
@@ -263,43 +295,76 @@ export default {
       // overwrite item object with received data
       Object.assign(newItem, data);
 
-      // if data contains `dag`, it will send to DAG component
-      // TODO: support multi job with job identifier
-      // maybe can use self-generated UUIDv4?
+      data.stateTransitionEvents
+        .filter(event => event.prevState != null)
+        .forEach(event => {
+          const { prevState, newState, timestamp } = event;
+
+          let metricObj = {
+            jobId,
+            metricId: data.id,
+            metricType,
+            prevState,
+            newState,
+          };
+
+          this.$eventBus.$emit('state-change-event', metricObj);
+          this._cacheStageState(metricObj);
+
+          if (metricType === 'JobMetric') {
+            // READY -> EXECUTING -> COMPLETE / FAILED
+            switch (prevState) {
+              case STATE.READY:
+                newItem.start = new Date(timestamp);
+                break;
+            }
+            switch (newState) {
+              case STATE.COMPLETE:
+              case STATE.FAILED:
+                newItem.end = new Date(timestamp);
+                break;
+            }
+          } else if (metricType === 'StageMetric') {
+            // INCOMPLETE -> COMPLETE
+            switch (newState) {
+              case STATE.COMPLETE:
+              case STATE.FAILED:
+                // Stage does not have READY, so it cannot be
+                // represented as a range of timeline.
+                // So the only needed field is `start`.
+                newItem.start = new Date(timestamp);
+                break;
+            }
+          } else if (metricType === 'TaskMetric') {
+            // READY -> EXECUTING -> (SHOULD_RETRY) -> COMPLETE / FAILED
+            switch (prevState) {
+              case STATE.READY:
+                newItem.start = new Date(timestamp);
+                break;
+            }
+
+            switch (newState) {
+              case STATE.COMPLETE:
+              case STATE.FAILED:
+                newItem.end = new Date(timestamp);
+                break;
+            }
+          }
+
+          newItem.content = data.id;
+        });
+
+      // if data contains `dag`, it will send it to DAG component
       if (data.dag) {
         job.dag = data.dag;
         this.$eventBus.$emit('dag', {
           dag: data.dag,
           jobId: jobId,
+          init: false,
+          states: job.dagStageState,
         });
         this.buildMetricLookupMapWithDAG(jobId);
       }
-
-      data.stateTransitionEvents
-        .filter(event => event.prevState != null)
-        .forEach(event => {
-          if (event.prevState === STATE.INCOMPLETE) {
-            // Stage does not have READY, so it cannot be represented as
-            // a range of timeline. So the only needed field is `start`.
-            this.$eventBus.$emit('stage-event', {
-              jobId: jobId,
-              stageId: data.id,
-              state: STATE.COMPLETE,
-            });
-            newItem.start = new Date(event.timestamp);
-            newItem.content = data.id + ' COMPLETE';
-          } else if (event.prevState === STATE.READY) {
-            newItem.start = new Date(event.timestamp);
-            newItem.content = data.id;
-          } else if (event.newState === STATE.COMPLETE) {
-            if (newItem.start) {
-              newItem.end = new Date(event.timestamp);
-            } else {
-              newItem.start = new Date(event.timestamp);
-            }
-            newItem.content = data.id;
-          }
-        });
 
       let prevItem = job.metricDataSet.get(newItem.id);
       if (!prevItem) {
@@ -325,6 +390,15 @@ export default {
           this.fitTimeline(jobId);
         }
       }
+    },
+
+    _cacheStageState({ jobId, metricId, metricType, newState }) {
+      if (metricType !== 'StageMetric') {
+        return;
+      }
+
+      const job = this.jobs[jobId];
+      job.dagStageState[metricId] = newState;
     },
 
     fitTimeline(jobId) {

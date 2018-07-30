@@ -208,7 +208,7 @@ export default {
       });
 
       // new dag event
-      this.$eventBus.$on('dag', async ({ dag, jobId }) => {
+      this.$eventBus.$on('dag', async ({ dag, jobId, init, states }) => {
         if (jobId !== this.selectedJobId) {
           return;
         }
@@ -216,31 +216,43 @@ export default {
         if (this.tabIndex === MY_TAB_INDEX) {
           await this.resizeCanvas(false);
         }
+
+        if (init) {
+          this.initializeVariables();
+        }
+
         this.setUpCanvasEventHandler();
         this.dag = dag;
         this.drawDAG();
+        await this.$nextTick();
         await this.fitCanvas();
+        this.setStates(states);
         this.canvas.viewportTransform[4] = this.lastViewportX;
         this.canvas.viewportTransform[5] = this.lastViewportY;
         this.firstDagRender = true;
       });
 
       // stage state transition event
-      this.$eventBus.$on('stage-event', ({ stageId, state, jobId }) => {
+      this.$eventBus.$on('state-change-event', event => {
+        const { jobId, metricId, metricType, newState } = event;
+        if (metricType !== 'StageMetric') {
+          return;
+        }
+
         if (jobId !== this.selectedJobId) {
           return;
         }
 
-        if (!stageId || !(stageId in this.stageObjects)) {
+        if (!metricId || !(metricId in this.stageObjects)) {
           return;
         }
 
-        const stage = this.stageObjects[stageId];
+        const stage = this.stageObjects[metricId];
 
-        if (state === STATE.COMPLETE) {
+        if (newState === STATE.COMPLETE) {
           stage.set('fill', SUCCESS_COLOR);
           this.canvas.renderAll();
-        } else if (state === STATE.FAILED) {
+        } else if (newState === STATE.FAILED) {
           stage.set('fill', DANGER_COLOR);
           this.canvas.renderAll();
         }
@@ -325,6 +337,24 @@ export default {
     getInnerIrDag(stageId) {
       return this.dag.vertices.find(v => v.id === stageId).properties.irDag;
     },
+
+    setStates(states) {
+      Object.keys(states).forEach(stageId => {
+        const stage = this.stageObjects[stageId];
+        const state = states[stageId];
+
+        if (stage && state) {
+          if (state === STATE.COMPLETE) {
+            stage.set('fill', SUCCESS_COLOR);
+            this.canvas.renderAll();
+          } else if (state === STATE.FAILED) {
+            stage.set('fill', DANGER_COLOR);
+            this.canvas.renderAll();
+          }
+        }
+      });
+    },
+
 
     drawDAG() {
       // clear objects in canvas without resetting background

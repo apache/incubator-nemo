@@ -2,7 +2,6 @@
   <div>
     <timeline
       ref="timeline"
-      :items="metric"
       :groups="groups"
       :options="options">
     </timeline>
@@ -16,10 +15,11 @@ const FIT_THROTTLE_INTERVAL = 500;
 const REDRAW_DELAY = 300;
 
 export default {
-  props: ['selectedJobId', 'metric', 'groups', 'metricLookupMap'],
+  props: ['selectedJobId', 'groups', 'metricLookupMap'],
 
   beforeMount() {
-    this.$eventBus.$on('redraw-timeline', () => {
+    this.$eventBus.$on('redraw-timeline', async () => {
+      await this.$nextTick();
       setTimeout(this.redrawTimeline, REDRAW_DELAY);
     });
 

@@ -16,7 +16,7 @@
       <el-table-column
         v-for="col in columnArray"
         sortable
-        :sort-method="(a, b) => sortFunc(a, b, col)"
+        :sort-method="(a, b) => _sortFunc(a, b, col)"
         :label="col"
         :key="col"
         :prop="col"/>
@@ -55,7 +55,7 @@ export default {
   props: ['metricLookupMap'],
 
   methods: {
-    sortFunc(_a, _b, column) {
+    _sortFunc(_a, _b, column) {
       let a = _a[column], b = _b[column];
       if (a === 'N/A') {
         return -1;

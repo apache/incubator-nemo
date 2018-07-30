@@ -1,44 +1,23 @@
 <template>
   <div>
-    <!--
-    <el-card class="checkbox-container">
+    <el-card class="status-header">
       <el-row>
         <el-col class="upper-card-col" :span="8" :xs="24">
           <el-row type="flex" justify="center">
-              <el-checkbox
-                :span="12"
-                @change="autoReconnectChanged"
-                v-model="autoReconnect">Auto reconnect</el-checkbox>
-          </el-row>
-        </el-col>
-        <el-col class="upper-card-col" :span="8" :xs="24">
-          <el-row type="flex" justify="center">
             <div :span="12">
-              Status: {{ _wsStatusText(wsStatus) }}
-              <i v-if="wsStatus === 'closed'" class="el-icon-loading"/>
+              Current job: {{ selectedJobId }}
             </div>
-          </el-row>
-        </el-col>
-        <el-col class="upeer-card-col" :span="8" :xs="24">
-          <el-row type="flex" justify="center">
-            <el-button
-              :span="12"
-              type="primary"
-              round
-              :disabled="buttonDisabled"
-              @click="prepareWebSocket">Connect</el-button>
           </el-row>
         </el-col>
       </el-row>
     </el-card>
-    -->
     <el-card>
       <el-tabs @tab-click="handleTabClick">
         <el-tab-pane>
           <template slot="label">
             Jobs <i class="el-icon-tickets"/>
           </template>
-          <job-view></job-view>
+          <job-view/>
         </el-tab-pane>
         <el-tab-pane>
           <template slot="label">
@@ -49,7 +28,6 @@
               <metric-timeline
                 ref="metricTimeline"
                 :selectedJobId="selectedJobId"
-                :metric="metricDataSet"
                 :groups="groupDataSet"/>
             </el-col>
             <el-col :span="subColSpan">
@@ -125,7 +103,6 @@ export default {
   data() {
     return {
       // timeline dataset
-      metricDataSet: new DataSet([]),
       groupDataSet: new DataSet([]),
 
       // selected metric id
@@ -174,7 +151,6 @@ export default {
       this.$eventBus.$on('job-id-select', data => {
         this.$eventBus.$emit('set-timeline-items', data.metricDataSet);
         this.selectedJobId = data.jobId;
-        this.metricDataSet = data.metricDataSet;
         this.metricLookupMap = data.metricLookupMap;
         this.selectedMetricId = '';
       });
@@ -250,7 +226,7 @@ export default {
 }
 </script>
 <style>
-.checkbox-container {
+.status-header {
   margin-bottom: 15px;
 }
 
