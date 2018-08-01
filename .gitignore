@@ -10,4 +10,4 @@ npm-debug.log
 # Nuxt generate
 dist
 
-*.json
+/assets/*.json

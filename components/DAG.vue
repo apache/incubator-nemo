@@ -69,11 +69,11 @@ export default {
       lastYCoord: 0,
       lastViewportX: 0,
       lastViewportY: 0,
+      fitCanvasNextTime: true,
 
       resizeDebounceTimer: undefined,
 
       dag: undefined,
-      firstDagRender: false,
 
       stageGraph: undefined,
       verticesGraph: {},
@@ -131,13 +131,10 @@ export default {
     },
 
     initializeVariables() {
-      this.isDragging = false;
       this.lastXCoord = 0;
       this.lastYCoord = 0;
       this.lastViewportX = 0;
       this.lastViewportY = 0;
-      this.resizeDebounceTimer = undefined;
-      this.firstDagRender = false;
       this.stageGraph = undefined;
       this.verticesGraph = {};
       this.vertexObjects = {};
@@ -155,6 +152,7 @@ export default {
           clearTimeout(this.resizeDebounceTimer);
         }
 
+        // TODO: maybe infinitely unresovling promise came out
         this.resizeDebounceTimer = setTimeout(() => {
           if (this.$refs.canvasContainer) {
             let w = this.$refs.canvasContainer.offsetWidth;
@@ -180,19 +178,24 @@ export default {
       });
 
       this.$eventBus.$on('rerender-dag', async () => {
+        // wait for tab pane render
+        await this.$nextTick();
+        await this.resizeCanvas(false);
+
+        if (this.fitCanvasNextTime) {
+          this.fitCanvasNextTime = false;
+          await this.fitCanvas();
+        }
+
         if (!this.dag) {
           return;
         }
 
-        if (this.firstDagRender) {
-          this.firstDagRender = false;
-          await this.resizeCanvas(true);
-        } else {
-          await this.resizeCanvas(false);
-        }
         this.canvas.viewportTransform[4] = this.lastViewportX;
         this.canvas.viewportTransform[5] = this.lastViewportY;
         this.canvas.calcOffset();
+        await this.$nextTick();
+        this.canvas.renderAll();
       });
 
       this.$eventBus.$on('metric-select-done', () => {
@@ -205,6 +208,12 @@ export default {
         if (this.tabIndex === MY_TAB_INDEX) {
           this.resizeCanvas(false);
         }
+      });
+
+      this.$eventBus.$on('clear-dag', () => {
+        this.initializeVariables();
+        this.fitCanvasNextTime = true;
+        this.dag = null;
       });
 
       // new dag event
@@ -221,15 +230,14 @@ export default {
           this.initializeVariables();
         }
 
+        this.fitCanvasNextTime = true;
+
         this.setUpCanvasEventHandler();
         this.dag = dag;
         this.drawDAG();
-        await this.$nextTick();
-        await this.fitCanvas();
         this.setStates(states);
         this.canvas.viewportTransform[4] = this.lastViewportX;
         this.canvas.viewportTransform[5] = this.lastViewportY;
-        this.firstDagRender = true;
       });
 
       // stage state transition event

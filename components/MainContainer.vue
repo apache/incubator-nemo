@@ -5,7 +5,7 @@
         <el-col class="upper-card-col" :span="8" :xs="24">
           <el-row type="flex" justify="center">
             <div :span="12">
-              Current job: {{ selectedJobId }}
+              Current job: {{ selectedJobId ? selectedJobId : "Not selected" }}
             </div>
           </el-row>
         </el-col>
@@ -152,6 +152,13 @@ export default {
         this.$eventBus.$emit('set-timeline-items', data.metricDataSet);
         this.selectedJobId = data.jobId;
         this.metricLookupMap = data.metricLookupMap;
+        this.selectedMetricId = '';
+      });
+
+      this.$eventBus.$on('job-id-deselect', () => {
+        this.$eventBus.$emit('set-timeline-items', new DataSet([]));
+        this.selectedJobId = '';
+        this.metricLookupMap = {};
         this.selectedMetricId = '';
       });
 

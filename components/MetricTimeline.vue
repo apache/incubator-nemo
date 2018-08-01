@@ -10,9 +10,9 @@
 
 <script>
 import { DataSet } from 'vue2vis';
+import Vue from 'vue';
 
 const FIT_THROTTLE_INTERVAL = 500;
-const REDRAW_DELAY = 300;
 
 export default {
   props: ['selectedJobId', 'groups', 'metricLookupMap'],
@@ -20,7 +20,7 @@ export default {
   beforeMount() {
     this.$eventBus.$on('redraw-timeline', async () => {
       await this.$nextTick();
-      setTimeout(this.redrawTimeline, REDRAW_DELAY);
+      this.redrawTimeline();
     });
 
     this.$eventBus.$on('fit-timeline', (jobId) => {
@@ -64,6 +64,7 @@ export default {
   data() {
     return {
       options: {
+        onInitialDrawComplete: this.fitTimeline,
         start: Date.now(),
         end: Date.now(),
       },

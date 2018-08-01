@@ -82,10 +82,12 @@ import uuid from 'uuid/v4';
 import { DataSet } from 'vue2vis';
 import { STATE } from '~/assets/constants';
 
+function _isDone(status) {
+  return status === 'COMPLETE' ||
+    status === 'FAILED';
+}
+
 export default {
-  // TODO: manage multiple WebSocket object
-  // and also multiple endpoints
-  // TODO: upload json dump file
   data() {
     return {
       // job id -> job data object
@@ -136,7 +138,7 @@ export default {
     },
 
     async selectJobId(jobId) {
-      if (jobId === this.selectedJobId) {
+      if (!(jobId in this.jobs) || jobId === this.selectedJobId) {
         return;
       }
 
@@ -161,7 +163,17 @@ export default {
     },
 
     deleteJobId(jobId) {
-      // TODO: delete job
+      if (this.selectedJobId === jobId) {
+        this.$eventBus.$emit('job-id-deselect');
+        this.$eventBus.$emit('clear-dag');
+      }
+      const job = this.jobs[jobId];
+
+      if (job.ws) {
+        ws.close();
+      }
+
+      Vue.delete(this.jobs, jobId);
     },
 
     handleWebSocketAdd() {
@@ -179,7 +191,7 @@ export default {
         metricLookupMap: {},
         metricDataSet: new DataSet([]),
         dagStageState: {},
-        completed: false,
+        status: '',
       });
     },
 
@@ -206,7 +218,7 @@ export default {
       endpoint = endpoint.trim();
 
       Object.keys(this.jobs)
-        .filter(k => !this.jobs[k].completed)
+        .filter(k => _isDone(!this.jobs[k].status))
         .forEach(k => {
           if (this.jobs[k].endpoint === endpoint) {
             alreadyExistsError = true;
@@ -320,7 +332,9 @@ export default {
             }
             switch (newState) {
               case STATE.COMPLETE:
+                job.status = 'COMPLETE';
               case STATE.FAILED:
+                job.status = 'FAILED';
                 newItem.end = new Date(timestamp);
                 break;
             }
