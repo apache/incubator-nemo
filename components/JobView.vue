@@ -12,20 +12,38 @@
       class="job-table"
       empty-text="No data"
       :data="jobTableData">
-      <el-table-column label="Job ID" prop="jobId"/>
-      <el-table-column label="">
+      <el-table-column label="From">
+        <template slot-scope="scope">
+          {{ _getFrom(scope.row.jobId) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="Status">
+        <template slot-scope="scope">
+          <el-tag :type="_fromJobStatusToType(scope.row.status)">
+            {{ scope.row.status }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="Operations">
         <template slot-scope="scope">
           <el-button
-          @click="selectJobId(scope.row.jobId)"
-          round
-          type="primary">
+            @click="selectJobId(scope.row.jobId)"
+            round
+            type="primary">
             Select
           </el-button>
           <el-button
-          @click="deleteJobId(scope.row.jobId)"
-          circle
-          type="danger"
-          icon="el-icon-delete"/>
+            @click="deleteJobId(scope.row.jobId)"
+            circle
+            type="danger"
+            icon="el-icon-delete"/>
+          <el-button
+            v-if="_isWebSocketJob(scope.row.jobId)"
+            @click="prepareWebSocket(scope.row.jobId)"
+            :disabled="_reconnectDisabled(scope.row.status)"
+            circle
+            type="info"
+            :icon="_reconnectIconType(scope.row.status)"/>
         </template>
       </el-table-column>
     </el-table>
@@ -82,9 +100,17 @@ import uuid from 'uuid/v4';
 import { DataSet } from 'vue2vis';
 import { STATE } from '~/assets/constants';
 
+const JOB_STATUS = {
+  NOT_CONNECTED: 'NOT CONNECTED',
+  CONNECTING: 'CONNECTING',
+  RUNNING: 'RUNNING',
+  COMPLETE: 'COMPLETE',
+  FAILED: 'FAILED',
+};
+
 function _isDone(status) {
-  return status === 'COMPLETE' ||
-    status === 'FAILED';
+  return status === JOB_STATUS.COMPLETE ||
+    status === JOB_STATUS.FAILED;
 }
 
 export default {
@@ -107,6 +133,7 @@ export default {
     jobTableData() {
       return Object.keys(this.jobs).map(jobId => ({
         jobId: jobId,
+        status: this.jobs[jobId].status,
       }));
     },
   },
@@ -137,6 +164,50 @@ export default {
       });
     },
 
+    _getFrom(jobId) {
+      const job = this.jobs[jobId];
+      return job.endpoint ? job.endpoint : job.fileName;
+    },
+
+    _isWebSocketJob(jobId) {
+      return this.jobs[jobId].endpoint ? true : false;
+    },
+
+    _fromJobStatusToType(status) {
+      switch (status) {
+        case JOB_STATUS.RUNNING:
+          return 'primary';
+        case JOB_STATUS.COMPLETE:
+          return 'success';
+        case JOB_STATUS.FAILED:
+          return 'danger';
+        default:
+          return 'info';
+      }
+    },
+
+    _reconnectDisabled(status) {
+      switch (status) {
+        case JOB_STATUS.NOT_CONNECTED:
+          return false;
+        case JOB_STATUS.CONNECTING:
+          return true;
+        default:
+          return true;
+      }
+    },
+
+    _reconnectIconType(status) {
+      switch (status) {
+        case JOB_STATUS.NOT_CONNECTED:
+          return 'el-icon-refresh';
+        case JOB_STATUS.CONNECTING:
+          return 'el-icon-loading';
+        default:
+          return 'el-icon-refresh';
+      }
+    },
+
     async selectJobId(jobId) {
       if (!(jobId in this.jobs) || jobId === this.selectedJobId) {
         return;
@@ -146,6 +217,7 @@ export default {
       const job = this.jobs[jobId];
       this.$eventBus.$emit('job-id-select', {
         jobId,
+        jobFrom: this._getFrom(jobId),
         metricLookupMap: job.metricLookupMap,
         metricDataSet: job.metricDataSet,
       });
@@ -207,8 +279,9 @@ export default {
       const jobId = uuid();
       this._newJob(jobId);
       this.jobs[jobId].fileName = fileName;
-
+      this.jobs[jobId].status = JOB_STATUS.RUNNING;
       this.selectJobId(jobId);
+
       await this.$nextTick();
       this.processMetric(parsedData, jobId);
     },
@@ -233,8 +306,9 @@ export default {
 
       const jobId = uuid();
       this._newJob(jobId);
-      this.selectJobId(jobId);
       this.jobs[jobId].endpoint = endpoint;
+      this.jobs[jobId].status = JOB_STATUS.NOT_CONNECTED;
+      this.selectJobId(jobId);
 
       this.prepareWebSocket(jobId);
     },
@@ -251,9 +325,10 @@ export default {
       }
 
       job.ws = new WebSocket(job.endpoint);
+      job.status = JOB_STATUS.CONNECTING;
 
       job.ws.onopen = () => {
-        job.wsStatus = 'opened';
+        job.status = JOB_STATUS.RUNNING;
       };
 
       job.ws.onmessage = (event) => {
@@ -261,7 +336,7 @@ export default {
         try {
           parsedData = JSON.parse(event.data);
         } catch (e) {
-          console.warn('Non-JSON data received - ' + jobId);
+          console.warn('Non-JSON data received: ' + jobId);
           return;
         }
 
@@ -270,9 +345,11 @@ export default {
       };
 
       job.ws.onclose = () => {
-        job.wsStatus = 'closed';
         if (job.ws) {
           job.ws = undefined;
+          if (job.status === JOB_STATUS.CONNECTING) {
+            job.status = JOB_STATUS.NOT_CONNECTED;
+          }
         }
       };
 
@@ -332,9 +409,11 @@ export default {
             }
             switch (newState) {
               case STATE.COMPLETE:
-                job.status = 'COMPLETE';
+                job.status = JOB_STATUS.COMPLETE;
+                newItem.end = new Date(timestamp);
+                break;
               case STATE.FAILED:
-                job.status = 'FAILED';
+                job.status = JOB_STATUS.FAILED;
                 newItem.end = new Date(timestamp);
                 break;
             }

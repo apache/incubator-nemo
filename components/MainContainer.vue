@@ -5,7 +5,7 @@
         <el-col class="upper-card-col" :span="8" :xs="24">
           <el-row type="flex" justify="center">
             <div :span="12">
-              Current job: {{ selectedJobId ? selectedJobId : "Not selected" }}
+              Selected job: {{ jobFrom ? jobFrom : "Not selected" }}
             </div>
           </el-row>
         </el-col>
@@ -109,6 +109,8 @@ export default {
       selectedMetricId: '',
       // selected job id
       selectedJobId: '',
+      // endpoint or file name of job
+      jobFrom: '',
 
       metricLookupMap: {}, // metricId -> data
 
@@ -151,6 +153,7 @@ export default {
       this.$eventBus.$on('job-id-select', data => {
         this.$eventBus.$emit('set-timeline-items', data.metricDataSet);
         this.selectedJobId = data.jobId;
+        this.jobFrom = data.jobFrom;
         this.metricLookupMap = data.metricLookupMap;
         this.selectedMetricId = '';
       });
@@ -158,6 +161,7 @@ export default {
       this.$eventBus.$on('job-id-deselect', () => {
         this.$eventBus.$emit('set-timeline-items', new DataSet([]));
         this.selectedJobId = '';
+        this.jobFrom = '';
         this.metricLookupMap = {};
         this.selectedMetricId = '';
       });
