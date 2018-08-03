@@ -19,7 +19,7 @@
     "fabric": "^2.3.3",
     "nuxt": "^1.0.0",
     "uuid": "^3.3.2",
-    "vue2vis": "0.0.13"
+    "vue2vis": "git://github.com/alexcode/vue2vis.git#f528a56"
   },
   "devDependencies": {
     "babel-eslint": "^8.2.1",
