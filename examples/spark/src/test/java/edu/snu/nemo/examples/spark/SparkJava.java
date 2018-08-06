@@ -38,7 +38,7 @@ public final class SparkJava {
   private static final int TIMEOUT = 180000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
-  private static final String executorResourceFileName = fileBasePath + "spark_sample_executor_resources.json";
+  private static final String executorResourceFileName = fileBasePath + "spark_test_executor_resources.json";
 
   @Before
   public void setUp() {
@@ -60,7 +60,7 @@ public final class SparkJava {
 
   @Test(timeout = TIMEOUT)
   public void testSparkSQLUserDefinedTypedAggregation() throws Exception {
-    final String inputFileName = "sample_input_employees.json";
+    final String inputFileName = "test_input_employees.json";
     final String inputFilePath = fileBasePath + inputFileName;
 
     JobLauncher.main(builder
@@ -73,7 +73,7 @@ public final class SparkJava {
 
   @Test(timeout = TIMEOUT)
   public void testSparkSQLUserDefinedUntypedAggregation() throws Exception {
-    final String inputFileName = "sample_input_employees.json";
+    final String inputFileName = "test_input_employees.json";
     final String inputFilePath = fileBasePath + inputFileName;
 
     JobLauncher.main(builder
@@ -86,8 +86,8 @@ public final class SparkJava {
 
   @Test(timeout = TIMEOUT)
   public void testSparkSQLExample() throws Exception {
-    final String peopleJson = "sample_input_people.json";
-    final String peopleTxt = "sample_input_people.txt";
+    final String peopleJson = "test_input_people.json";
+    final String peopleTxt = "test_input_people.txt";
     final String inputFileJson = fileBasePath + peopleJson;
     final String inputFileTxt = fileBasePath + peopleTxt;
 

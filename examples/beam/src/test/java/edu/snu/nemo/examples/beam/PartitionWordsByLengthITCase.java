@@ -36,10 +36,10 @@ public final class PartitionWordsByLengthITCase {
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
-  private static final String inputFileName = "sample_input_tag";
-  private static final String outputFileName = "sample_output_tag";
-  private static final String testResourceFileName = "test_output_tag";
-  private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
+  private static final String inputFileName = "test_input_tag";
+  private static final String outputFileName = "test_output_tag";
+  private static final String expectedOutputFileName = "expected_output_tag";
+  private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
@@ -54,9 +54,9 @@ public final class PartitionWordsByLengthITCase {
   @After
   public void tearDown() throws Exception {
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_short", testResourceFileName + "_short");
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_long", testResourceFileName + "_long");
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_very_long", testResourceFileName + "_very_long");
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_short", expectedOutputFileName + "_short");
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_long", expectedOutputFileName + "_long");
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_very_long", expectedOutputFileName + "_very_long");
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }

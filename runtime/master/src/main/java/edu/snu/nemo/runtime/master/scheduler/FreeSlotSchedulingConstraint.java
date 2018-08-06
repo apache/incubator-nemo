@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
@@ -25,7 +25,7 @@ import javax.inject.Inject;
 /**
  * This policy finds executor that has free slot for a Task.
  */
-@AssociatedProperty(ExecutorSlotComplianceProperty.class)
+@AssociatedProperty(ResourceSlotProperty.class)
 public final class FreeSlotSchedulingConstraint implements SchedulingConstraint {
 
   @Inject
@@ -34,7 +34,7 @@ public final class FreeSlotSchedulingConstraint implements SchedulingConstraint 
 
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    if (!task.getPropertyValue(ExecutorSlotComplianceProperty.class).orElse(false)) {
+    if (!task.getPropertyValue(ResourceSlotProperty.class).orElse(false)) {
       return true;
     }
 

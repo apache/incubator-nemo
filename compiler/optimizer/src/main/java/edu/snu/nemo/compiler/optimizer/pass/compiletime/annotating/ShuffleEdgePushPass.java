@@ -17,9 +17,9 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 
 import java.util.Collections;
 import java.util.List;
@@ -33,7 +33,7 @@ public final class ShuffleEdgePushPass extends AnnotatingPass {
    * Default constructor.
    */
   public ShuffleEdgePushPass() {
-    super(DataFlowModelProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
+    super(DataFlowProperty.class, Collections.singleton(CommunicationPatternProperty.class));
   }
 
   @Override
@@ -42,9 +42,9 @@ public final class ShuffleEdgePushPass extends AnnotatingPass {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
-          if (edge.getPropertyValue(DataCommunicationPatternProperty.class).get()
-              .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
+          if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+              .equals(CommunicationPatternProperty.Value.Shuffle)) {
+            edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
           }
         });
       }

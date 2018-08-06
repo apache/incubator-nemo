@@ -17,17 +17,12 @@ package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalTagOutputProperty;
-import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.common.test.EmptyComponents;
+import edu.snu.nemo.common.ir.vertex.executionproperty.*;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -80,7 +75,7 @@ public final class StagePartitionerTest {
     final IRVertex v1 = newVertex(5, 0, Collections.emptyList());
     dagBuilder.addVertex(v0);
     dagBuilder.addVertex(v1);
-    dagBuilder.connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v0, v1));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, v0, v1));
     final Map<IRVertex, Integer> partitioning = stagePartitioner.apply(dagBuilder.buildWithoutSourceSinkCheck());
     assertEquals(0, (int) partitioning.get(v0));
     assertEquals(0, (int) partitioning.get(v1));
@@ -96,7 +91,7 @@ public final class StagePartitionerTest {
     final IRVertex v1 = newVertex(1, 0, Collections.emptyList());
     dagBuilder.addVertex(v0);
     dagBuilder.addVertex(v1);
-    dagBuilder.connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v0, v1));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, v0, v1));
     final Map<IRVertex, Integer> partitioning = stagePartitioner.apply(dagBuilder.buildWithoutSourceSinkCheck());
     assertNotEquals(partitioning.get(v0), partitioning.get(v1));
   }
@@ -111,7 +106,7 @@ public final class StagePartitionerTest {
     final IRVertex v1 = newVertex(1, 1, Collections.emptyList());
     dagBuilder.addVertex(v0);
     dagBuilder.addVertex(v1);
-    dagBuilder.connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v0, v1));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, v0, v1));
     final Map<IRVertex, Integer> partitioning = stagePartitioner.apply(dagBuilder.buildWithoutSourceSinkCheck());
     assertNotEquals(partitioning.get(v0), partitioning.get(v1));
   }
@@ -126,7 +121,7 @@ public final class StagePartitionerTest {
     final IRVertex v1 = newVertex(1, 0, Collections.emptyList());
     dagBuilder.addVertex(v0);
     dagBuilder.addVertex(v1);
-    dagBuilder.connectVertices(new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v0, v1));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, v0, v1));
     final Map<IRVertex, Integer> partitioning = stagePartitioner.apply(dagBuilder.buildWithoutSourceSinkCheck());
     assertNotEquals(partitioning.get(v0), partitioning.get(v1));
   }
@@ -138,11 +133,11 @@ public final class StagePartitionerTest {
   public void testSplitByOtherProperty() {
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     final IRVertex v0 = newVertex(1, 0,
-        Arrays.asList(ExecutorPlacementProperty.of(ExecutorPlacementProperty.RESERVED)));
+        Arrays.asList(ResourcePriorityProperty.of(ResourcePriorityProperty.RESERVED)));
     final IRVertex v1 = newVertex(1, 0, Collections.emptyList());
     dagBuilder.addVertex(v0);
     dagBuilder.addVertex(v1);
-    dagBuilder.connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v0, v1));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, v0, v1));
     final Map<IRVertex, Integer> partitioning = stagePartitioner.apply(dagBuilder.buildWithoutSourceSinkCheck());
     assertNotEquals(partitioning.get(v0), partitioning.get(v1));
   }
@@ -158,7 +153,7 @@ public final class StagePartitionerTest {
     final IRVertex v1 = newVertex(1, 0, Collections.emptyList());
     dagBuilder.addVertex(v0);
     dagBuilder.addVertex(v1);
-    dagBuilder.connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v0, v1));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, v0, v1));
     final Map<IRVertex, Integer> partitioning = stagePartitioner.apply(dagBuilder.buildWithoutSourceSinkCheck());
     assertEquals(0, (int) partitioning.get(v0));
     assertEquals(0, (int) partitioning.get(v1));
@@ -176,8 +171,8 @@ public final class StagePartitionerTest {
     dagBuilder.addVertex(v0);
     dagBuilder.addVertex(v1);
     dagBuilder.addVertex(v2);
-    dagBuilder.connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v0, v2));
-    dagBuilder.connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v1, v2));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, v0, v2));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, v1, v2));
     final Map<IRVertex, Integer> partitioning = stagePartitioner.apply(dagBuilder.buildWithoutSourceSinkCheck());
     assertNotEquals(partitioning.get(v0), partitioning.get(v1));
     assertNotEquals(partitioning.get(v1), partitioning.get(v2));

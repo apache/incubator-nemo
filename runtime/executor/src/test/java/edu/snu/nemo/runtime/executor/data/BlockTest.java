@@ -48,15 +48,9 @@ public final class BlockTest {
     serializer = new Serializer<>(IntEncoderFactory.of(), IntDecoderFactory.of(), new ArrayList<>(), new ArrayList<>());
     testData = new HashMap<>();
 
-    final List<Integer> list1 = new ArrayList<>();
-    list1.add(1);
-    final List<Integer> list2 = new ArrayList<>();
-    list2.add(1);
-    list2.add(2);
-    final List<Integer> list3 = new ArrayList<>();
-    list3.add(1);
-    list3.add(2);
-    list3.add(3);
+    final List<Integer> list1 = Collections.singletonList(1);
+    final List<Integer> list2 = Arrays.asList(1, 2);
+    final List<Integer> list3 = Arrays.asList(1, 2, 3);
 
     testData.put(1, list1);
     testData.put(2, list2);

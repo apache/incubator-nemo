@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
@@ -25,7 +25,7 @@ import javax.inject.Inject;
 /**
  * This policy find executors which has corresponding container type.
  */
-@AssociatedProperty(ExecutorPlacementProperty.class)
+@AssociatedProperty(ResourcePriorityProperty.class)
 public final class ContainerTypeAwareSchedulingConstraint implements SchedulingConstraint {
 
   @Inject
@@ -34,9 +34,9 @@ public final class ContainerTypeAwareSchedulingConstraint implements SchedulingC
 
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    final String executorPlacementPropertyValue = task.getPropertyValue(ExecutorPlacementProperty.class)
-        .orElse(ExecutorPlacementProperty.NONE);
-    return executorPlacementPropertyValue.equals(ExecutorPlacementProperty.NONE) ? true
+    final String executorPlacementPropertyValue = task.getPropertyValue(ResourcePriorityProperty.class)
+        .orElse(ResourcePriorityProperty.NONE);
+    return executorPlacementPropertyValue.equals(ResourcePriorityProperty.NONE) ? true
         : executor.getContainerType().equals(executorPlacementPropertyValue);
   }
 }

@@ -16,7 +16,7 @@
 package edu.snu.nemo.compiler.optimizer.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.PrimitiveCompositePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
@@ -32,7 +32,7 @@ public final class DefaultPolicy implements Policy {
    */
   public DefaultPolicy() {
     this.policy = new PolicyBuilder(true)
-        .registerCompileTimePass(new PrimitiveCompositePass())
+        .registerCompileTimePass(new DefaultCompositePass())
         .build();
   }
 
