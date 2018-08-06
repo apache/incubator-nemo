@@ -46,7 +46,7 @@ public class ContextImplTest {
     assertEquals(this.sideInputs, this.context.getSideInputs());
     assertEquals(this.taggedOutputs, this.context.getAdditionalTagOutputs());
 
-    final String sampleText = "sample_text";
+    final String sampleText = "test_text";
 
     assertFalse(this.context.getSerializedData().isPresent());
 

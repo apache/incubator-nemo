@@ -33,7 +33,7 @@ public final class MultinomialLogisticRegressionITCase {
   private static final int TIMEOUT = 240000;
   private static ArgBuilder builder = new ArgBuilder();
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
-  private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
+  private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
 
   @Before
   public void setUp() throws Exception {
@@ -42,7 +42,7 @@ public final class MultinomialLogisticRegressionITCase {
 
   @Test (timeout = TIMEOUT)
   public void test() throws Exception {
-    final String input = fileBasePath + "sample_input_mlr";
+    final String input = fileBasePath + "test_input_mlr";
     final String numFeatures = "100";
     final String numClasses = "5";
     final String numIteration = "3";

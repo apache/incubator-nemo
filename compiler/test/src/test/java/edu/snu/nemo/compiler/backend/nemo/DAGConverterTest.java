@@ -18,13 +18,13 @@ package edu.snu.nemo.compiler.backend.nemo;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.transform.DoTransform;
@@ -71,7 +71,7 @@ public final class DAGConverterTest {
     v2.setProperty(ParallelismProperty.of(2));
     irDAGBuilder.addVertex(v2);
 
-    final IREdge e = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2);
+    final IREdge e = new IREdge(CommunicationPatternProperty.Value.Shuffle, v1, v2);
     irDAGBuilder.connectVertices(e);
 
     final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
@@ -111,37 +111,37 @@ public final class DAGConverterTest {
 
     final IRVertex v1 = s;
     v1.setProperty(ParallelismProperty.of(3));
-    v1.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v1.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     final Transform t = mock(Transform.class);
     final DoTransform dt = new DoTransform(null, null);
     final IRVertex v2 = new OperatorVertex(t);
     v2.setProperty(ParallelismProperty.of(3));
-    v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v2.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     final IRVertex v3 = new OperatorVertex(t);
     v3.setProperty(ParallelismProperty.of(3));
-    v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v3.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     final IRVertex v4 = new OperatorVertex(t);
     v4.setProperty(ParallelismProperty.of(2));
-    v4.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v4.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     final IRVertex v5 = new OperatorVertex(dt);
     v5.setProperty(ParallelismProperty.of(2));
-    v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v5.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     final IRVertex v6 = new OperatorVertex(dt);
     v6.setProperty(ParallelismProperty.of(2));
-    v6.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.RESERVED));
+    v6.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.RESERVED));
 
 //    final IRVertex v7 = new OperatorVertex(t);
 //    v7.setProperty(Parallelism.of(2));
-//    v7.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+//    v7.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     final IRVertex v8 = new OperatorVertex(dt);
     v8.setProperty(ParallelismProperty.of(2));
-    v8.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v8.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     irDAGBuilder.addVertex(v1);
     irDAGBuilder.addVertex(v2);
@@ -153,37 +153,37 @@ public final class DAGConverterTest {
 
 //    irDAGBuilder.addVertex(v7);
 
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v1, v2);
-    e1.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
-    e1.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    final IREdge e1 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v1, v2);
+    e1.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+    e1.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
 
-    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v1, v3);
-    e2.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
-    e2.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v1, v3);
+    e2.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+    e2.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
 
-    final IREdge e3 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v2, v4);
-    e3.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
-    e3.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
+    final IREdge e3 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v2, v4);
+    e3.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+    e3.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
 
-    final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v3, v5);
-    e4.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
-    e4.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
+    final IREdge e4 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v3, v5);
+    e4.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+    e4.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
 
-    final IREdge e5 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v4, v6);
-    e5.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
-    e5.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    final IREdge e5 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v4, v6);
+    e5.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+    e5.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
 
-    final IREdge e6 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v4, v8);
-    e6.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
-    e6.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    final IREdge e6 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v4, v8);
+    e6.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+    e6.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
 
 //    final IREdge e7 = new IREdge(OneToOne, v7, v5);
-//    e7.setProperty(InterTaskDataStoreProperty.of(MemoryStore));
-//    e7.setProperty(Attribute.Key.PullOrPush, DataFlowModelProperty.Value.Push));
+//    e7.setProperty(DataStoreProperty.of(MemoryStore));
+//    e7.setProperty(Attribute.Key.PullOrPush, DataFlowProperty.Value.Push));
 //
 //    final IREdge e8 = new IREdge(OneToOne, v5, v8);
-//    e8.setProperty(InterTaskDataStoreProperty.of(MemoryStore));
-//    e8.setProperty(Attribute.Key.PullOrPush, DataFlowModelProperty.Value.Pull));
+//    e8.setProperty(DataStoreProperty.of(MemoryStore));
+//    e8.setProperty(Attribute.Key.PullOrPush, DataFlowProperty.Value.Pull));
 
     // Stage 1 = {v1, v2, v3}
     irDAGBuilder.connectVertices(e1);

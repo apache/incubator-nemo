@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.NodeNamesProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSiteProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -25,9 +25,9 @@ import javax.inject.Inject;
 import java.util.*;
 
 /**
- * This constraint is to follow {@link NodeNamesProperty}.
+ * This constraint is to follow {@link ResourceSiteProperty}.
  */
-@AssociatedProperty(NodeNamesProperty.class)
+@AssociatedProperty(ResourceSiteProperty.class)
 public final class NodeShareSchedulingConstraint implements SchedulingConstraint {
 
   @Inject
@@ -45,13 +45,13 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
         return nodeName;
       }
     }
-    throw new IllegalStateException("Detected excessive parallelism which NodeNamesProperty does not cover");
+    throw new IllegalStateException("Detected excessive parallelism which ResourceSiteProperty does not cover");
   }
 
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    final Map<String, Integer> propertyValue = task.getPropertyValue(NodeNamesProperty.class)
-            .orElseThrow(() -> new RuntimeException("NodeNamesProperty expected"));
+    final Map<String, Integer> propertyValue = task.getPropertyValue(ResourceSiteProperty.class)
+            .orElseThrow(() -> new RuntimeException("ResourceSiteProperty expected"));
     if (propertyValue.isEmpty()) {
       return true;
     }

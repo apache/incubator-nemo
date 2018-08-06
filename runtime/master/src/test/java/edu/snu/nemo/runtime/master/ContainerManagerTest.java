@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.runtime.master;
 
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
@@ -35,10 +35,8 @@ import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.anyString;
@@ -50,11 +48,11 @@ import static org.mockito.Mockito.when;
  */
 public final class ContainerManagerTest {
   private static final ResourceSpecification RESOURCE_SPEC_A =
-      new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 1024);
+      new ResourceSpecification(ResourcePriorityProperty.COMPUTE, 1, 1024);
   private static final ResourceSpecification RESOURCE_SPEC_B =
-      new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 2, 2048);
+      new ResourceSpecification(ResourcePriorityProperty.TRANSIENT, 2, 2048);
   private static final ResourceSpecification RESOURCE_SPEC_C =
-      new ResourceSpecification(ExecutorPlacementProperty.RESERVED, 3, 3072);
+      new ResourceSpecification(ResourcePriorityProperty.RESERVED, 3, 3072);
 
   private ContainerManager containerManager;
   private AtomicInteger testIdNumber = new AtomicInteger(0);

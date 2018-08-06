@@ -18,8 +18,8 @@ package edu.snu.nemo.runtime.common.plan;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -52,8 +52,8 @@ public final class PhysicalPlanGeneratorTest {
     final DAG<IRVertex, IREdge> irDAG = new DAGBuilder<IRVertex, IREdge>()
         .addVertex(v0)
         .addVertex(v1)
-        .connectVertices(newIREdge(v0, v1, DataCommunicationPatternProperty.Value.OneToOne,
-            DataFlowModelProperty.Value.Pull))
+        .connectVertices(newIREdge(v0, v1, CommunicationPatternProperty.Value.OneToOne,
+            DataFlowProperty.Value.Pull))
         .buildWithoutSourceSinkCheck();
 
     final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(irDAG);
@@ -72,10 +72,10 @@ public final class PhysicalPlanGeneratorTest {
   }
 
   private static final IREdge newIREdge(final IRVertex src, final IRVertex dst,
-                                        final DataCommunicationPatternProperty.Value communicationPattern,
-                                        final DataFlowModelProperty.Value dataFlowModel) {
+                                        final CommunicationPatternProperty.Value communicationPattern,
+                                        final DataFlowProperty.Value dataFlowModel) {
     final IREdge irEdge = new IREdge(communicationPattern, src, dst);
-    irEdge.getExecutionProperties().put(DataFlowModelProperty.of(dataFlowModel));
+    irEdge.getExecutionProperties().put(DataFlowProperty.of(dataFlowModel));
     return irEdge;
   }
 }
