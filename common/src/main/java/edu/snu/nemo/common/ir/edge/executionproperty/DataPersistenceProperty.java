@@ -18,14 +18,14 @@ package edu.snu.nemo.common.ir.edge.executionproperty;
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
- * DataStore ExecutionProperty.
+ * Data persistence ExecutionProperty.
  */
-public final class InterTaskDataStoreProperty extends EdgeExecutionProperty<InterTaskDataStoreProperty.Value> {
+public final class DataPersistenceProperty extends EdgeExecutionProperty<DataPersistenceProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private InterTaskDataStoreProperty(final Value value) {
+  private DataPersistenceProperty(final Value value) {
     super(value);
   }
 
@@ -34,17 +34,15 @@ public final class InterTaskDataStoreProperty extends EdgeExecutionProperty<Inte
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static InterTaskDataStoreProperty of(final Value value) {
-    return new InterTaskDataStoreProperty(value);
+  public static DataPersistenceProperty of(final Value value) {
+    return new DataPersistenceProperty(value);
   }
 
   /**
-   * Possible values of DataStore ExecutionProperty.
+   * Possible options for the data persistence strategy.
    */
   public enum Value {
-    MemoryStore,
-    SerializedMemoryStore,
-    LocalFileStore,
-    GlusterFileStore
+    Discard,
+    Keep
   }
 }

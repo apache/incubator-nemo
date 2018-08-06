@@ -35,8 +35,8 @@ public final class LargeShuffleCompositePass extends CompositePass {
         new LargeShuffleDataStorePass(),
         new LargeShuffleDecoderPass(),
         new LargeShuffleEncoderPass(),
-        new LargeShuffleUsedDataHandlingPass(),
-        new LargeShuffleExecutorSlotCompliancePass()
+        new LargeShuffleDataPersistencePass(),
+        new LargeShuffleResourceSlotPass()
     ));
   }
 }

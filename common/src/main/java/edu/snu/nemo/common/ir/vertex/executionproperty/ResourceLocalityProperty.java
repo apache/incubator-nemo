@@ -18,19 +18,18 @@ package edu.snu.nemo.common.ir.vertex.executionproperty;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * This property decides whether or not to comply to slot restrictions when scheduling this vertex.
+ * This property decides whether or not to schedule this vertex only on executors where source data reside.
  */
-public final class ExecutorSlotComplianceProperty extends VertexExecutionProperty<Boolean> {
-  private static final ExecutorSlotComplianceProperty COMPLIANCE_TRUE = new ExecutorSlotComplianceProperty(true);
-  private static final ExecutorSlotComplianceProperty COMPLIANCE_FALSE
-      = new ExecutorSlotComplianceProperty(false);
+public final class ResourceLocalityProperty extends VertexExecutionProperty<Boolean> {
+  private static final ResourceLocalityProperty SOURCE_TRUE = new ResourceLocalityProperty(true);
+  private static final ResourceLocalityProperty SOURCE_FALSE = new ResourceLocalityProperty(false);
 
   /**
    * Default constructor.
    *
    * @param value value of the ExecutionProperty
    */
-  private ExecutorSlotComplianceProperty(final boolean value) {
+  private ResourceLocalityProperty(final boolean value) {
     super(value);
   }
 
@@ -40,7 +39,7 @@ public final class ExecutorSlotComplianceProperty extends VertexExecutionPropert
    * @param value value of the new execution property
    * @return the execution property
    */
-  public static ExecutorSlotComplianceProperty of(final boolean value) {
-    return value ? COMPLIANCE_TRUE : COMPLIANCE_FALSE;
+  public static ResourceLocalityProperty of(final boolean value) {
+    return value ? SOURCE_TRUE : SOURCE_FALSE;
   }
 }

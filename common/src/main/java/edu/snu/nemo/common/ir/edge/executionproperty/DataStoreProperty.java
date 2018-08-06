@@ -18,15 +18,14 @@ package edu.snu.nemo.common.ir.edge.executionproperty;
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
- * UsedDataHandling ExecutionProperty.
- * This property represents the used data handling strategy.
+ * DataStore ExecutionProperty.
  */
-public final class UsedDataHandlingProperty extends EdgeExecutionProperty<UsedDataHandlingProperty.Value> {
+public final class DataStoreProperty extends EdgeExecutionProperty<DataStoreProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private UsedDataHandlingProperty(final Value value) {
+  private DataStoreProperty(final Value value) {
     super(value);
   }
 
@@ -35,15 +34,17 @@ public final class UsedDataHandlingProperty extends EdgeExecutionProperty<UsedDa
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static UsedDataHandlingProperty of(final Value value) {
-    return new UsedDataHandlingProperty(value);
+  public static DataStoreProperty of(final Value value) {
+    return new DataStoreProperty(value);
   }
 
   /**
-   * Possible values of UsedDataHandling ExecutionProperty.
+   * Possible values of DataStore ExecutionProperty.
    */
   public enum Value {
-    Discard,
-    Keep
+    MemoryStore,
+    SerializedMemoryStore,
+    LocalFileStore,
+    GlusterFileStore
   }
 }

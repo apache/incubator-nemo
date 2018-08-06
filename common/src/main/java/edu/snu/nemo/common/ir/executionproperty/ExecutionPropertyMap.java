@@ -18,7 +18,7 @@ package edu.snu.nemo.common.ir.executionproperty;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
@@ -67,19 +67,19 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     switch (commPattern) {
       case Shuffle:
         map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-        map.put(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
+        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
         break;
       case BroadCast:
         map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
-        map.put(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
+        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
         break;
       case OneToOne:
         map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
-        map.put(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
+        map.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
         break;
       default:
         map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-        map.put(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
+        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     }
     return map;
   }

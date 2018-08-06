@@ -16,7 +16,7 @@
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.composite;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.*;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.DataSkewReshapingPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.SkewReshapingPass;
 
 import java.util.Arrays;
 
@@ -24,21 +24,21 @@ import java.util.Arrays;
  * Pass to modify the DAG for a job to perform data skew.
  * It adds a {@link edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex} before Shuffle edges,
  * to make a barrier before it, and to use the metrics to repartition the skewed data.
- * NOTE: we currently put the DataSkewCompositePass at the end of the list for each policies, as it needs to take a
+ * NOTE: we currently put the SkewCompositePass at the end of the list for each policies, as it needs to take a
  * snapshot at the end of the pass. This could be prevented by modifying other passes to take the snapshot of the DAG
  * at the end of each passes for metricCollectionVertices.
  */
-public final class DataSkewCompositePass extends CompositePass {
+public final class SkewCompositePass extends CompositePass {
   /**
    * Default constructor.
    */
-  public DataSkewCompositePass() {
+  public SkewCompositePass() {
     super(Arrays.asList(
-        new DataSkewReshapingPass(),
-        new DataSkewVertexPass(),
-        new DataSkewEdgeDataStorePass(),
-        new DataSkewEdgeMetricCollectionPass(),
-        new DataSkewEdgePartitionerPass()
+        new SkewReshapingPass(),
+        new SkewResourceSkewedDataPass(),
+        new SkewDataStorePass(),
+        new SkewMetricCollectionPass(),
+        new SkewPartitionerPass()
     ));
   }
 }

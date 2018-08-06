@@ -17,7 +17,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.SkewnessAwareSchedulingProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.data.HashRange;
 import edu.snu.nemo.runtime.common.data.KeyRange;
@@ -34,7 +34,7 @@ import javax.inject.Inject;
  */
 @ThreadSafe
 @DriverSide
-@AssociatedProperty(SkewnessAwareSchedulingProperty.class)
+@AssociatedProperty(ResourceSkewedDataProperty.class)
 public final class SkewnessAwareSchedulingConstraint implements SchedulingConstraint {
 
   @VisibleForTesting

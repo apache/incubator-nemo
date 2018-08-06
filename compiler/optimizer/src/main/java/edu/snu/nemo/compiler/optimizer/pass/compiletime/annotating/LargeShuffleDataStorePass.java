@@ -18,7 +18,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.Collections;
@@ -32,7 +32,7 @@ public final class LargeShuffleDataStorePass extends AnnotatingPass {
    * Default constructor.
    */
   public LargeShuffleDataStorePass() {
-    super(InterTaskDataStoreProperty.class, Collections.singleton(CommunicationPatternProperty.class));
+    super(DataStoreProperty.class, Collections.singleton(CommunicationPatternProperty.class));
   }
 
   @Override
@@ -46,13 +46,13 @@ public final class LargeShuffleDataStorePass extends AnnotatingPass {
           if (CommunicationPatternProperty.Value.Shuffle
           .equals(edgeToMerger.getPropertyValue(CommunicationPatternProperty.class).get())) {
             // Pass data through memory to the merger vertex.
-            edgeToMerger.setProperty(InterTaskDataStoreProperty
-                .of(InterTaskDataStoreProperty.Value.SerializedMemoryStore));
+            edgeToMerger.setProperty(DataStoreProperty
+                .of(DataStoreProperty.Value.SerializedMemoryStore));
           }
         });
         dag.getOutgoingEdgesOf(vertex).forEach(edgeFromMerger ->
             // Merge the input data and write it immediately to the remote disk.
-            edgeFromMerger.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore)));
+            edgeFromMerger.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore)));
       }
     });
     return dag;

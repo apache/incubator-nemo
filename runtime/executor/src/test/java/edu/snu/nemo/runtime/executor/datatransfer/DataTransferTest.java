@@ -87,14 +87,14 @@ import static org.mockito.Mockito.mock;
     SourceVertex.class, ClientRPC.class, MetricManagerMaster.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
-  private static final InterTaskDataStoreProperty.Value MEMORY_STORE =
-      InterTaskDataStoreProperty.Value.MemoryStore;
-  private static final InterTaskDataStoreProperty.Value SER_MEMORY_STORE =
-      InterTaskDataStoreProperty.Value.SerializedMemoryStore;
-  private static final InterTaskDataStoreProperty.Value LOCAL_FILE_STORE =
-      InterTaskDataStoreProperty.Value.LocalFileStore;
-  private static final InterTaskDataStoreProperty.Value REMOTE_FILE_STORE =
-      InterTaskDataStoreProperty.Value.GlusterFileStore;
+  private static final DataStoreProperty.Value MEMORY_STORE =
+      DataStoreProperty.Value.MemoryStore;
+  private static final DataStoreProperty.Value SER_MEMORY_STORE =
+      DataStoreProperty.Value.SerializedMemoryStore;
+  private static final DataStoreProperty.Value LOCAL_FILE_STORE =
+      DataStoreProperty.Value.LocalFileStore;
+  private static final DataStoreProperty.Value REMOTE_FILE_STORE =
+      DataStoreProperty.Value.GlusterFileStore;
   private static final String TMP_LOCAL_FILE_DIRECTORY = "./tmpLocalFiles";
   private static final String TMP_REMOTE_FILE_DIRECTORY = "./tmpRemoteFiles";
   private static final int PARALLELISM_TEN = 10;
@@ -284,7 +284,7 @@ public final class DataTransferTest {
   private void writeAndRead(final BlockManagerWorker sender,
                             final BlockManagerWorker receiver,
                             final CommunicationPatternProperty.Value commPattern,
-                            final InterTaskDataStoreProperty.Value store) throws RuntimeException {
+                            final DataStoreProperty.Value store) throws RuntimeException {
     final int testIndex = TEST_INDEX.getAndIncrement();
     final String edgeId = String.format(EDGE_PREFIX_TEMPLATE, testIndex);
     final Pair<IRVertex, IRVertex> verticesPair = setupVertices(edgeId, sender, receiver);
@@ -296,8 +296,8 @@ public final class DataTransferTest {
     dummyIREdge.setProperty(KeyExtractorProperty.of((element -> element)));
     dummyIREdge.setProperty(CommunicationPatternProperty.of(commPattern));
     dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-    dummyIREdge.setProperty(InterTaskDataStoreProperty.of(store));
-    dummyIREdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
+    dummyIREdge.setProperty(DataStoreProperty.of(store));
+    dummyIREdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     dummyIREdge.setProperty(EncoderProperty.of(ENCODER_FACTORY));
     dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
@@ -366,7 +366,7 @@ public final class DataTransferTest {
   private void writeAndReadWithDuplicateData(final BlockManagerWorker sender,
                                              final BlockManagerWorker receiver,
                                              final CommunicationPatternProperty.Value commPattern,
-                                             final InterTaskDataStoreProperty.Value store) throws RuntimeException {
+                                             final DataStoreProperty.Value store) throws RuntimeException {
     final int testIndex = TEST_INDEX.getAndIncrement();
     final int testIndex2 = TEST_INDEX.getAndIncrement();
     final String edgeId = String.format(EDGE_PREFIX_TEMPLATE, testIndex);
@@ -387,8 +387,8 @@ public final class DataTransferTest {
         = dummyIREdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     duplicateDataProperty.get().setRepresentativeEdgeId(edgeId);
     duplicateDataProperty.get().setGroupSize(2);
-    dummyIREdge.setProperty(InterTaskDataStoreProperty.of(store));
-    dummyIREdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
+    dummyIREdge.setProperty(DataStoreProperty.of(store));
+    dummyIREdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     final RuntimeEdge dummyEdge, dummyEdge2;
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
 

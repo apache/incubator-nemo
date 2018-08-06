@@ -17,36 +17,36 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.UsedDataHandlingProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.Collections;
 
 /**
- * Pass for initiating IREdge UsedDataHandling ExecutionProperty with default values.
+ * Pass for initiating IREdge data persistence ExecutionProperty with default values.
  */
-public final class DefaultEdgeUsedDataHandlingPass extends AnnotatingPass {
+public final class DefaultDataPersistencePass extends AnnotatingPass {
 
   /**
    * Default constructor.
    */
-  public DefaultEdgeUsedDataHandlingPass() {
-    super(UsedDataHandlingProperty.class, Collections.singleton(InterTaskDataStoreProperty.class));
+  public DefaultDataPersistencePass() {
+    super(DataPersistenceProperty.class, Collections.singleton(DataStoreProperty.class));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(irVertex ->
         dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          if (!irEdge.getPropertyValue(UsedDataHandlingProperty.class).isPresent()) {
-            final InterTaskDataStoreProperty.Value dataStoreValue
-                = irEdge.getPropertyValue(InterTaskDataStoreProperty.class).get();
-            if (InterTaskDataStoreProperty.Value.MemoryStore.equals(dataStoreValue)
-                || InterTaskDataStoreProperty.Value.SerializedMemoryStore.equals(dataStoreValue)) {
-              irEdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Discard));
+          if (!irEdge.getPropertyValue(DataPersistenceProperty.class).isPresent()) {
+            final DataStoreProperty.Value dataStoreValue
+                = irEdge.getPropertyValue(DataStoreProperty.class).get();
+            if (DataStoreProperty.Value.MemoryStore.equals(dataStoreValue)
+                || DataStoreProperty.Value.SerializedMemoryStore.equals(dataStoreValue)) {
+              irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard));
             } else {
-              irEdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
+              irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
             }
           }
         }));

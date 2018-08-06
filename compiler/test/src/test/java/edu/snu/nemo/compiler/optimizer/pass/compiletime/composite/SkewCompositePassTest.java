@@ -25,7 +25,7 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.compiler.CompilerTestUtil;
-import edu.snu.nemo.common.ir.vertex.executionproperty.SkewnessAwareSchedulingProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,11 +42,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Test {@link DataSkewCompositePass} with MR workload.
+ * Test {@link SkewCompositePass} with MR workload.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public class DataSkewCompositePassTest {
+public class SkewCompositePassTest {
   private DAG<IRVertex, IREdge> mrDAG;
   private static final long NUM_OF_PASSES_IN_DATA_SKEW_PASS = 5;
 
@@ -59,7 +59,7 @@ public class DataSkewCompositePassTest {
    */
   @Test
   public void testCompositePass() {
-    final CompositePass dataSkewPass = new DataSkewCompositePass();
+    final CompositePass dataSkewPass = new SkewCompositePass();
     assertEquals(NUM_OF_PASSES_IN_DATA_SKEW_PASS, dataSkewPass.getPassList().size());
 
     final Set<Class<? extends ExecutionProperty>> prerequisites = new HashSet<>();
@@ -74,7 +74,7 @@ public class DataSkewCompositePassTest {
   }
 
   /**
-   * Test for {@link DataSkewCompositePass} with MR workload. It must insert a {@link MetricCollectionBarrierVertex}
+   * Test for {@link SkewCompositePass} with MR workload. It must insert a {@link MetricCollectionBarrierVertex}
    * before each shuffle edge.
    * @throws Exception exception on the way.
    */
@@ -87,7 +87,7 @@ public class DataSkewCompositePassTest {
             CommunicationPatternProperty.Value.Shuffle
             .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get())))
         .count();
-    final DAG<IRVertex, IREdge> processedDAG = new DataSkewCompositePass().apply(mrDAG);
+    final DAG<IRVertex, IREdge> processedDAG = new SkewCompositePass().apply(mrDAG);
 
     assertEquals(originalVerticesNum + numOfShuffleGatherEdges, processedDAG.getVertices().size());
     processedDAG.getVertices().stream().map(processedDAG::getIncomingEdgesOf)
@@ -106,7 +106,7 @@ public class DataSkewCompositePassTest {
     processedDAG.filterVertices(v -> v instanceof MetricCollectionBarrierVertex)
         .forEach(metricV -> {
           List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());
-          reducerV.forEach(rV -> assertTrue(rV.getPropertyValue(SkewnessAwareSchedulingProperty.class).get()));
+          reducerV.forEach(rV -> assertTrue(rV.getPropertyValue(ResourceSkewedDataProperty.class).get()));
         });
   }
 }

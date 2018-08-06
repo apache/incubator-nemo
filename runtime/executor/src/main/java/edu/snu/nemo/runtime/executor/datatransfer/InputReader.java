@@ -17,7 +17,7 @@ package edu.snu.nemo.runtime.executor.datatransfer;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -90,15 +90,15 @@ public final class InputReader extends DataTransfer {
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
     final String blockId = getBlockId(dstTaskIndex);
-    final Optional<InterTaskDataStoreProperty.Value> dataStoreProperty
-        = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class);
+    final Optional<DataStoreProperty.Value> dataStoreProperty
+        = runtimeEdge.getPropertyValue(DataStoreProperty.class);
     return blockManagerWorker.readBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all());
   }
 
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
     final int numSrcTasks = this.getSourceParallelism();
-    final Optional<InterTaskDataStoreProperty.Value> dataStoreProperty
-        = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class);
+    final Optional<DataStoreProperty.Value> dataStoreProperty
+        = runtimeEdge.getPropertyValue(DataStoreProperty.class);
 
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
@@ -116,8 +116,8 @@ public final class InputReader extends DataTransfer {
    */
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
     assert (runtimeEdge instanceof StageEdge);
-    final Optional<InterTaskDataStoreProperty.Value> dataStoreProperty
-        = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class);
+    final Optional<DataStoreProperty.Value> dataStoreProperty
+        = runtimeEdge.getPropertyValue(DataStoreProperty.class);
     final KeyRange hashRangeToRead =
         ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
     if (hashRangeToRead == null) {

@@ -15,34 +15,36 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.Collections;
-import java.util.List;
 
 /**
- * A pass to support Disaggregated Resources by tagging edges.
- * This pass handles the DataStore ExecutionProperty.
+ * A pass to optimize large shuffle by tagging edges.
+ * This pass handles the data persistence ExecutionProperty.
  */
-public final class DisaggregationEdgeDataStorePass extends AnnotatingPass {
+public final class LargeShuffleDataPersistencePass extends AnnotatingPass {
+
   /**
    * Default constructor.
    */
-  public DisaggregationEdgeDataStorePass() {
-    super(DataStoreProperty.class, Collections.singleton(DataStoreProperty.class));
+  public LargeShuffleDataPersistencePass() {
+    super(DataPersistenceProperty.class, Collections.singleton(DataFlowProperty.class));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().forEach(vertex -> { // Initialize the DataStore of the DAG with GlusterFileStore.
-      final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      inEdges.forEach(edge -> {
-        edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.GlusterFileStore));
-      });
-    });
+    dag.topologicalDo(irVertex ->
+        dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
+          final DataFlowProperty.Value dataFlowModel = irEdge.getPropertyValue(DataFlowProperty.class).get();
+          if (DataFlowProperty.Value.Push.equals(dataFlowModel)) {
+            irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard));
+          }
+        }));
     return dag;
   }
 }

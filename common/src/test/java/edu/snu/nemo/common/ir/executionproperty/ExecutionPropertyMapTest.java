@@ -58,8 +58,8 @@ public class ExecutionPropertyMapTest {
 
   @Test
   public void testPutGetAndRemove() {
-    edgeMap.put(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
-    assertEquals(InterTaskDataStoreProperty.Value.MemoryStore, edgeMap.get(InterTaskDataStoreProperty.class).get());
+    edgeMap.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+    assertEquals(DataStoreProperty.Value.MemoryStore, edgeMap.get(DataStoreProperty.class).get());
     edgeMap.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     assertEquals(DataFlowProperty.Value.Pull, edgeMap.get(DataFlowProperty.class).get());
     edgeMap.put(EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));

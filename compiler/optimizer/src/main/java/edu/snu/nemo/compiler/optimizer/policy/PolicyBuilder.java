@@ -18,7 +18,7 @@ package edu.snu.nemo.compiler.optimizer.policy;
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
@@ -67,7 +67,7 @@ public final class PolicyBuilder {
     annotatedExecutionProperties.add(ResourcePriorityProperty.class);
     annotatedExecutionProperties.add(ParallelismProperty.class);
     annotatedExecutionProperties.add(DataFlowProperty.class);
-    annotatedExecutionProperties.add(InterTaskDataStoreProperty.class);
+    annotatedExecutionProperties.add(DataStoreProperty.class);
     annotatedExecutionProperties.add(PartitionerProperty.class);
   }
 

@@ -33,15 +33,15 @@ import java.util.List;
  * Pass to modify the DAG for a job to perform data skew.
  * It adds a {@link MetricCollectionBarrierVertex} before Shuffle edges, to make a barrier before it,
  * and to use the metrics to repartition the skewed data.
- * NOTE: we currently put the DataSkewCompositePass at the end of the list for each policies, as it needs to take
+ * NOTE: we currently put the SkewCompositePass at the end of the list for each policies, as it needs to take
  * a snapshot at the end of the pass. This could be prevented by modifying other passes to take the snapshot of the
  * DAG at the end of each passes for metricCollectionVertices.
  */
-public final class DataSkewReshapingPass extends ReshapingPass {
+public final class SkewReshapingPass extends ReshapingPass {
   /**
    * Default constructor.
    */
-  public DataSkewReshapingPass() {
+  public SkewReshapingPass() {
     super(Collections.singleton(CommunicationPatternProperty.class));
   }
 

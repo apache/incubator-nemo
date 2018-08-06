@@ -20,7 +20,7 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.SkewnessAwareSchedulingProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 
 import java.util.List;
 
@@ -28,11 +28,11 @@ import java.util.List;
  * Pass to annotate the DAG for a job to perform data skew.
  * It specifies which optimization to perform on the MetricCollectionBarrierVertex.
  */
-public final class DataSkewVertexPass extends AnnotatingPass {
+public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public DataSkewVertexPass() {
+  public SkewResourceSkewedDataPass() {
     super(DynamicOptimizationProperty.class);
   }
 
@@ -55,8 +55,8 @@ public final class DataSkewVertexPass extends AnnotatingPass {
             .of(DynamicOptimizationProperty.Value.DataSkewRuntimePass)));
     dag.getVertices().stream()
         .filter(v -> hasMetricCollectionBarrierVertexAsParent(dag, v)
-            && !v.getExecutionProperties().containsKey(SkewnessAwareSchedulingProperty.class))
-        .forEach(v -> v.getExecutionProperties().put(SkewnessAwareSchedulingProperty.of(true)));
+            && !v.getExecutionProperties().containsKey(ResourceSkewedDataProperty.class))
+        .forEach(v -> v.getExecutionProperties().put(ResourceSkewedDataProperty.of(true)));
 
     return dag;
   }

@@ -16,7 +16,7 @@
 package edu.snu.nemo.compiler.optimizer.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.*;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.PrimitiveCompositePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.TransientResourceCompositePass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
@@ -36,7 +36,7 @@ public final class TransientResourcePolicy implements Policy {
     this.policy = new PolicyBuilder(true)
         .registerCompileTimePass(new TransientResourceCompositePass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
-        .registerCompileTimePass(new PrimitiveCompositePass())
+        .registerCompileTimePass(new DefaultCompositePass())
         .build();
   }
 

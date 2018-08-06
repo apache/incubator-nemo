@@ -17,35 +17,36 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 
 import java.util.Collections;
-import java.util.List;
 
 /**
- * Transient resource pass for tagging edges with {@link PartitionerProperty}.
+ * Pass to annotate the DAG for a job to perform data skew.
+ * It specifies the outgoing Shuffle edges from MetricCollectionVertices with a MetricCollection ExecutionProperty
+ * which lets the edge to know what metric collection it should perform.
  */
-public final class DataSkewEdgePartitionerPass extends AnnotatingPass {
+public final class SkewMetricCollectionPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public DataSkewEdgePartitionerPass() {
-    super(PartitionerProperty.class, Collections.singleton(MetricCollectionProperty.class));
+  public SkewMetricCollectionPass() {
+    super(MetricCollectionProperty.class, Collections.singleton(CommunicationPatternProperty.class));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().forEach(vertex -> {
-      if (vertex instanceof MetricCollectionBarrierVertex) {
-        final List<IREdge> outEdges = dag.getOutgoingEdgesOf(vertex);
-        outEdges.forEach(edge -> {
+    dag.topologicalDo(v -> {
+      // we only care about metric collection barrier vertices.
+      if (v instanceof MetricCollectionBarrierVertex) {
+        dag.getOutgoingEdgesOf(v).forEach(edge -> {
           // double checking.
-          if (MetricCollectionProperty.Value.DataSkewRuntimePass
-            .equals(edge.getPropertyValue(MetricCollectionProperty.class).get())) {
-            edge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.DataSkewHashPartitioner));
+          if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+              .equals(CommunicationPatternProperty.Value.Shuffle)) {
+            edge.setProperty(MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
           }
         });
       }

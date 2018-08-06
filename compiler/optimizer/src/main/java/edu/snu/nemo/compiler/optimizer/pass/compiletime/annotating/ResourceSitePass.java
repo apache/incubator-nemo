@@ -21,7 +21,7 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.NodeNamesProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSiteProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.commons.math3.optim.BaseOptimizer;
 import org.apache.commons.math3.optim.PointValuePair;
@@ -44,17 +44,17 @@ import java.util.*;
  * <h3>Assumptions</h3>
  * This pass assumes no skew in input or intermediate data, so that the number of Task assigned to a node
  * is proportional to the data size handled by the node.
- * Also, this pass assumes stages with empty map as {@link NodeNamesProperty} are assigned to nodes evenly.
+ * Also, this pass assumes stages with empty map as {@link ResourceSiteProperty} are assigned to nodes evenly.
  * For example, if source splits are not distributed evenly, any source location-aware scheduling policy will
  * assign TaskGroups unevenly.
  * Also, this pass assumes network bandwidth to be the bottleneck. Each node should have enough capacity to run
  * TaskGroups immediately as scheduler attempts to schedule a TaskGroup.
  */
-public final class NodeNamesAssignmentPass extends AnnotatingPass {
+public final class ResourceSitePass extends AnnotatingPass {
 
   // Index of the objective parameter, in the coefficient vector
   private static final int OBJECTIVE_COEFFICIENT_INDEX = 0;
-  private static final Logger LOG = LoggerFactory.getLogger(NodeNamesAssignmentPass.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ResourceSitePass.class);
   private static final HashMap<String, Integer> EMPTY_MAP = new HashMap<>();
 
   private static String bandwidthSpecificationString = "";
@@ -63,14 +63,14 @@ public final class NodeNamesAssignmentPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public NodeNamesAssignmentPass() {
-    super(NodeNamesProperty.class, Collections.singleton(ParallelismProperty.class));
+  public ResourceSitePass() {
+    super(ResourceSiteProperty.class, Collections.singleton(ParallelismProperty.class));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     if (bandwidthSpecificationString.isEmpty()) {
-      dag.topologicalDo(irVertex -> irVertex.setProperty(NodeNamesProperty.of(EMPTY_MAP)));
+      dag.topologicalDo(irVertex -> irVertex.setProperty(ResourceSiteProperty.of(EMPTY_MAP)));
     } else {
       assignNodeShares(dag, BandwidthSpecification.fromJsonString(bandwidthSpecificationString));
     }
@@ -101,17 +101,17 @@ public final class NodeNamesAssignmentPass extends AnnotatingPass {
       if (inEdges.size() == 0) {
         // This vertex is root vertex.
         // Fall back to setting even distribution
-        irVertex.getExecutionProperties().put(NodeNamesProperty.of(EMPTY_MAP));
+        irVertex.getExecutionProperties().put(ResourceSiteProperty.of(EMPTY_MAP));
       } else if (isOneToOneEdge(inEdges)) {
         final Optional<HashMap<String, Integer>> property = inEdges.iterator().next().getSrc()
-            .getExecutionProperties().get(NodeNamesProperty.class);
-        irVertex.getExecutionProperties().put(NodeNamesProperty.of(property.get()));
+            .getExecutionProperties().get(ResourceSiteProperty.class);
+        irVertex.getExecutionProperties().put(ResourceSiteProperty.of(property.get()));
       } else {
         // This IRVertex has shuffle inEdge(s), or has multiple inEdges.
         final Map<String, Integer> parentLocationShares = new HashMap<>();
         for (final IREdge edgeToIRVertex : dag.getIncomingEdgesOf(irVertex)) {
           final IRVertex parentVertex = edgeToIRVertex.getSrc();
-          final Map<String, Integer> parentShares = parentVertex.getPropertyValue(NodeNamesProperty.class).get();
+          final Map<String, Integer> parentShares = parentVertex.getPropertyValue(ResourceSiteProperty.class).get();
           final int parentParallelism = parentVertex.getPropertyValue(ParallelismProperty.class)
               .orElseThrow(() -> new RuntimeException("Parallelism property required"));
           final Map<String, Integer> shares = parentShares.isEmpty() ? getEvenShares(bandwidthSpecification.getNodes(),
@@ -135,7 +135,7 @@ public final class NodeNamesAssignmentPass extends AnnotatingPass {
           shares.put(nodeName, shares.get(nodeName) + 1);
           remainder--;
         }
-        irVertex.getExecutionProperties().put(NodeNamesProperty.of(shares));
+        irVertex.getExecutionProperties().put(ResourceSiteProperty.of(shares));
       }
     });
   }

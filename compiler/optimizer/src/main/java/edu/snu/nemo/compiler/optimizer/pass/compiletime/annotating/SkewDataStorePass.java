@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 
@@ -26,12 +26,12 @@ import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
  * It specifies the incoming one-to-one edges to MetricCollectionVertices to have either MemoryStore or LocalFileStore
  * as its DataStore ExecutionProperty.
  */
-public final class DataSkewEdgeDataStorePass extends AnnotatingPass {
+public final class SkewDataStorePass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public DataSkewEdgeDataStorePass() {
-    super(InterTaskDataStoreProperty.class);
+  public SkewDataStorePass() {
+    super(DataStoreProperty.class);
   }
 
   @Override
@@ -45,9 +45,9 @@ public final class DataSkewEdgeDataStorePass extends AnnotatingPass {
         dag.getIncomingEdgesOf(v).forEach(edge -> {
           // we want it to be in the same stage
           if (edge.equals(edgeToUseMemory)) {
-            edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
+            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
           } else {
-            edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
+            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           }
         });
       }

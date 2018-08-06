@@ -19,33 +19,33 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 
 import java.util.Collections;
 
 /**
- * Sets {@link ExecutorSlotComplianceProperty}.
+ * Sets {@link ResourceSlotProperty}.
  */
-public final class LargeShuffleExecutorSlotCompliancePass extends AnnotatingPass {
+public final class LargeShuffleResourceSlotPass extends AnnotatingPass {
 
-  public LargeShuffleExecutorSlotCompliancePass() {
-    super(ExecutorSlotComplianceProperty.class, Collections.singleton(DataFlowProperty.class));
+  public LargeShuffleResourceSlotPass() {
+    super(ResourceSlotProperty.class, Collections.singleton(DataFlowProperty.class));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    // On every vertex that receive push edge, if ExecutorSlotComplianceProperty is not set, put it as false.
-    // For other vertices, if ExecutorSlotComplianceProperty is not set, put it as true.
+    // On every vertex that receive push edge, if ResourceSlotProperty is not set, put it as false.
+    // For other vertices, if ResourceSlotProperty is not set, put it as true.
     dag.getVertices().stream()
-        .filter(v -> !v.getExecutionProperties().containsKey(ExecutorSlotComplianceProperty.class))
+        .filter(v -> !v.getExecutionProperties().containsKey(ResourceSlotProperty.class))
         .forEach(v -> {
           if (dag.getIncomingEdgesOf(v).stream().anyMatch(
               e -> e.getPropertyValue(DataFlowProperty.class)
                   .orElseThrow(() -> new RuntimeException(String.format("DataFlowProperty for %s must be set",
                       e.getId()))).equals(DataFlowProperty.Value.Push))) {
-            v.getExecutionProperties().put(ExecutorSlotComplianceProperty.of(false));
+            v.getExecutionProperties().put(ResourceSlotProperty.of(false));
           } else {
-            v.getExecutionProperties().put(ExecutorSlotComplianceProperty.of(true));
+            v.getExecutionProperties().put(ResourceSlotProperty.of(true));
           }
         });
     return dag;

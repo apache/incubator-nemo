@@ -18,23 +18,23 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.SourceLocationAwareSchedulingProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 
 /**
- * Sets {@link SourceLocationAwareSchedulingProperty}.
+ * Sets {@link ResourceSlotProperty}.
  */
-public final class SourceLocationAwareSchedulingPass extends AnnotatingPass {
+public final class ResourceSlotPass extends AnnotatingPass {
 
-  public SourceLocationAwareSchedulingPass() {
-    super(SourceLocationAwareSchedulingProperty.class);
+  public ResourceSlotPass() {
+    super(ResourceSlotProperty.class);
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    // On every vertex, if SourceLocationAwareSchedulingProperty is not set, put it as true.
+    // On every vertex, if ResourceSlotProperty is not set, put it as true.
     dag.getVertices().stream()
-        .filter(v -> !v.getExecutionProperties().containsKey(SourceLocationAwareSchedulingProperty.class))
-        .forEach(v -> v.getExecutionProperties().put(SourceLocationAwareSchedulingProperty.of(true)));
+        .filter(v -> !v.getExecutionProperties().containsKey(ResourceSlotProperty.class))
+        .forEach(v -> v.getExecutionProperties().put(ResourceSlotProperty.of(true)));
     return dag;
   }
 }

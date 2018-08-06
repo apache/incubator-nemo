@@ -24,23 +24,23 @@ import java.util.Arrays;
  * It is highly recommended to place reshaping passes before this pass,
  * and annotating passes after that and before this pass.
  */
-public final class PrimitiveCompositePass extends CompositePass {
+public final class DefaultCompositePass extends CompositePass {
   /**
    * Default constructor.
    */
-  public PrimitiveCompositePass() {
+  public DefaultCompositePass() {
     super(Arrays.asList(
         new DefaultParallelismPass(),
         new DefaultEdgeEncoderPass(),
         new DefaultEdgeDecoderPass(),
-        new DefaultInterTaskDataStorePass(),
-        new DefaultEdgeUsedDataHandlingPass(),
+        new DefaultDataStorePass(),
+        new DefaultDataPersistencePass(),
         new DefaultScheduleGroupPass(),
         new CompressionPass(),
         new DecompressionPass(),
-        new SourceLocationAwareSchedulingPass(),
-        new NodeNamesAssignmentPass(),
-        new ExecutorSlotCompliancePass()
+        new ResourceLocalityPass(),
+        new ResourceSitePass(),
+        new ResourceSlotPass()
     ));
   }
 }

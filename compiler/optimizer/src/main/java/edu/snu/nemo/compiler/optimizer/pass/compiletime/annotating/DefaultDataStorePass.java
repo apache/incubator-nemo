@@ -17,34 +17,30 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.UsedDataHandlingProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.Collections;
 
 /**
- * A pass to optimize large shuffle by tagging edges.
- * This pass handles the UsedDataHandling ExecutionProperty.
+ * Edge data store pass to process inter-stage memory store edges.
  */
-public final class LargeShuffleUsedDataHandlingPass extends AnnotatingPass {
-
+public final class DefaultDataStorePass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public LargeShuffleUsedDataHandlingPass() {
-    super(UsedDataHandlingProperty.class, Collections.singleton(DataFlowProperty.class));
+  public DefaultDataStorePass() {
+    super(DataStoreProperty.class, Collections.emptySet());
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.topologicalDo(irVertex ->
-        dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          final DataFlowProperty.Value dataFlowModel = irEdge.getPropertyValue(DataFlowProperty.class).get();
-          if (DataFlowProperty.Value.Push.equals(dataFlowModel)) {
-            irEdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Discard));
-          }
-        }));
+    dag.getVertices().forEach(vertex -> {
+      dag.getIncomingEdgesOf(vertex).stream()
+          .filter(edge -> !edge.getExecutionProperties().containsKey(DataStoreProperty.class))
+          .forEach(edge -> edge.setProperty(
+              DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore)));
+    });
     return dag;
   }
 }

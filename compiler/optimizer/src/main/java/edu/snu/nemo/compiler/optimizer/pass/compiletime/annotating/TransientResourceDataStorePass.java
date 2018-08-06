@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
@@ -33,7 +33,7 @@ public final class TransientResourceDataStorePass extends AnnotatingPass {
    * Default constructor.
    */
   public TransientResourceDataStorePass() {
-    super(InterTaskDataStoreProperty.class, Collections.singleton(ResourcePriorityProperty.class));
+    super(DataStoreProperty.class, Collections.singleton(ResourcePriorityProperty.class));
   }
 
   @Override
@@ -43,12 +43,12 @@ public final class TransientResourceDataStorePass extends AnnotatingPass {
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
           if (fromTransientToReserved(edge) || fromReservedToTransient(edge)) {
-            edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
+            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           } else if (CommunicationPatternProperty.Value.OneToOne
               .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-            edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
+            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
           } else {
-            edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
+            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           }
         });
       }

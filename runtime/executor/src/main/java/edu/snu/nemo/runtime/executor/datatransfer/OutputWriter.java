@@ -36,7 +36,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private final RuntimeEdge<?> runtimeEdge;
   private final String srcVertexId;
   private final IRVertex dstIrVertex;
-  private final InterTaskDataStoreProperty.Value blockStoreValue;
+  private final DataStoreProperty.Value blockStoreValue;
   private final BlockManagerWorker blockManagerWorker;
   private final boolean nonDummyBlock;
   private final Block blockToWrite;
@@ -65,7 +65,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     this.srcVertexId = srcRuntimeVertexId;
     this.dstIrVertex = dstIrVertex;
     this.blockManagerWorker = blockManagerWorker;
-    this.blockStoreValue = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class).get();
+    this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class).get();
 
     // Setup partitioner
     final int dstParallelism = getDstParallelism();
@@ -112,8 +112,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    */
   public void close() {
     // Commit block.
-    final UsedDataHandlingProperty.Value usedDataHandling =
-        runtimeEdge.getPropertyValue(UsedDataHandlingProperty.class).get();
+    final DataPersistenceProperty.Value persistence =
+        runtimeEdge.getPropertyValue(DataPersistenceProperty.class).get();
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     final int multiplier = duplicateDataProperty.isPresent() ? duplicateDataProperty.get().getGroupSize() : 1;
@@ -129,11 +129,11 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
       }
       this.writtenBytes = blockSizeTotal;
       blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, isDataSizeMetricCollectionEdge,
-          partitionSizeMap.get(), srcVertexId, getDstParallelism() * multiplier, usedDataHandling);
+          partitionSizeMap.get(), srcVertexId, getDstParallelism() * multiplier, persistence);
     } else {
       this.writtenBytes = -1; // no written bytes info.
       blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, isDataSizeMetricCollectionEdge,
-          Collections.emptyMap(), srcVertexId, getDstParallelism() * multiplier, usedDataHandling);
+          Collections.emptyMap(), srcVertexId, getDstParallelism() * multiplier, persistence);
     }
   }
 

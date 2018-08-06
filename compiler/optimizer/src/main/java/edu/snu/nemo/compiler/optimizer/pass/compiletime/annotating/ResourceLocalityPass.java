@@ -17,30 +17,24 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-
-import java.util.Collections;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceLocalityProperty;
 
 /**
- * Edge data store pass to process inter-stage memory store edges.
+ * Sets {@link ResourceLocalityProperty}.
  */
-public final class DefaultInterTaskDataStorePass extends AnnotatingPass {
-  /**
-   * Default constructor.
-   */
-  public DefaultInterTaskDataStorePass() {
-    super(InterTaskDataStoreProperty.class, Collections.emptySet());
+public final class ResourceLocalityPass extends AnnotatingPass {
+
+  public ResourceLocalityPass() {
+    super(ResourceLocalityProperty.class);
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().forEach(vertex -> {
-      dag.getIncomingEdgesOf(vertex).stream()
-          .filter(edge -> !edge.getExecutionProperties().containsKey(InterTaskDataStoreProperty.class))
-          .forEach(edge -> edge.setProperty(
-              InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore)));
-    });
+    // On every vertex, if ResourceLocalityProperty is not set, put it as true.
+    dag.getVertices().stream()
+        .filter(v -> !v.getExecutionProperties().containsKey(ResourceLocalityProperty.class))
+        .forEach(v -> v.getExecutionProperties().put(ResourceLocalityProperty.of(true)));
     return dag;
   }
 }

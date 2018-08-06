@@ -58,10 +58,10 @@ public class LargeShuffleCompositePassTest {
           .equals(edgeToMerger.getPropertyValue(CommunicationPatternProperty.class).get())) {
             assertEquals(DataFlowProperty.Value.Push,
                 edgeToMerger.getPropertyValue(DataFlowProperty.class).get());
-            assertEquals(UsedDataHandlingProperty.Value.Discard,
-                edgeToMerger.getPropertyValue(UsedDataHandlingProperty.class).get());
-            assertEquals(InterTaskDataStoreProperty.Value.SerializedMemoryStore,
-                edgeToMerger.getPropertyValue(InterTaskDataStoreProperty.class).get());
+            assertEquals(DataPersistenceProperty.Value.Discard,
+                edgeToMerger.getPropertyValue(DataPersistenceProperty.class).get());
+            assertEquals(DataStoreProperty.Value.SerializedMemoryStore,
+                edgeToMerger.getPropertyValue(DataStoreProperty.class).get());
             assertEquals(BytesDecoderFactory.of(),
                 edgeToMerger.getPropertyValue(DecoderProperty.class).get());
           } else {
@@ -74,8 +74,8 @@ public class LargeShuffleCompositePassTest {
               edgeFromMerger.getPropertyValue(DataFlowProperty.class).get());
           assertEquals(CommunicationPatternProperty.Value.OneToOne,
               edgeFromMerger.getPropertyValue(CommunicationPatternProperty.class).get());
-          assertEquals(InterTaskDataStoreProperty.Value.LocalFileStore,
-              edgeFromMerger.getPropertyValue(InterTaskDataStoreProperty.class).get());
+          assertEquals(DataStoreProperty.Value.LocalFileStore,
+              edgeFromMerger.getPropertyValue(DataStoreProperty.class).get());
           assertEquals(BytesEncoderFactory.of(),
               edgeFromMerger.getPropertyValue(EncoderProperty.class).get());
         });

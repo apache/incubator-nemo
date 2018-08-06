@@ -17,8 +17,8 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.SourceLocationAwareSchedulingProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceLocalityProperty;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
@@ -33,11 +33,11 @@ public final class SchedulingConstraintnRegistryTest {
   public void testSchedulingConstraintRegistry() throws InjectionException {
     final SchedulingConstraintRegistry registry = Tang.Factory.getTang().newInjector()
         .getInstance(SchedulingConstraintRegistry.class);
-    assertEquals(FreeSlotSchedulingConstraint.class, getConstraintOf(ExecutorSlotComplianceProperty.class, registry));
+    assertEquals(FreeSlotSchedulingConstraint.class, getConstraintOf(ResourceSlotProperty.class, registry));
     assertEquals(ContainerTypeAwareSchedulingConstraint.class,
         getConstraintOf(ResourcePriorityProperty.class, registry));
     assertEquals(SourceLocationAwareSchedulingConstraint.class,
-        getConstraintOf(SourceLocationAwareSchedulingProperty.class, registry));
+        getConstraintOf(ResourceLocalityProperty.class, registry));
   }
 
   private static Class<? extends SchedulingConstraint> getConstraintOf(
