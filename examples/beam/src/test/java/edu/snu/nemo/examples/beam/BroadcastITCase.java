@@ -19,7 +19,7 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
-import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismFive;
+import edu.snu.nemo.examples.beam.policy.TransientResourcePolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -70,10 +70,10 @@ public final class BroadcastITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testPado() throws Exception {
+  public void testTransientResource() throws Exception {
     JobLauncher.main(builder
-        .addJobId(BroadcastITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
+        .addJobId(BroadcastITCase.class.getSimpleName() + "_transient")
+        .addOptimizationPolicy(TransientResourcePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 }

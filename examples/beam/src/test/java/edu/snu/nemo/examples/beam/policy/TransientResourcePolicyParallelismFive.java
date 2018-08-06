@@ -16,20 +16,21 @@
 package edu.snu.nemo.examples.beam.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
-import edu.snu.nemo.compiler.optimizer.policy.SailfishPolicy;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
 
 /**
- * A Sailfish policy with fixed parallelism 5 for tests.
+ * A transient resource policy with fixed parallelism 5 for tests.
  */
-public final class SailfishPolicyParallelismFive implements Policy {
+public final class TransientResourcePolicyParallelismFive implements Policy {
   private final Policy policy;
 
-  public SailfishPolicyParallelismFive() {
-    this.policy = PolicyTestUtil.overwriteParallelism(5, SailfishPolicy.class.getCanonicalName());
+  public TransientResourcePolicyParallelismFive() {
+    this.policy =
+        PolicyTestUtil.overwriteParallelism(5, TransientResourcePolicy.class.getCanonicalName());
   }
 
   @Override

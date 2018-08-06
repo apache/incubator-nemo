@@ -85,10 +85,10 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ## YARN cluster example
 ./bin/run_beam.sh \
 	-deploy_mode yarn \
-  	-job_id mr_pado \
+  	-job_id mr_transient \
 	-executor_json `pwd`/examples/resources/beam_sample_executor_resources.json \
   	-user_main edu.snu.nemo.examples.beam.WordCount \
-  	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.PadoPolicy \
+  	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy \
   	-user_args "hdfs://v-m:9000/sample_input_wordcount hdfs://v-m:9000/sample_output_wordcount"
 ```
 ## Resource Configuration
@@ -135,7 +135,7 @@ Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 	-job_id als \
 	-executor_json `pwd`/examples/resources/beam_sample_executor_resources.json \
   	-user_main edu.snu.nemo.examples.beam.AlternatingLeastSquare \
-  	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.PadoPolicy \
+  	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy \
   	-dag_dir "./dag/als" \
   	-user_args "`pwd`/examples/resources/sample_input_als 10 3"
 ```

@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.executor.datatransfer;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
@@ -72,14 +72,14 @@ public final class InputReader extends DataTransfer {
    * @return the read data.
    */
   public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
-    final Optional<DataCommunicationPatternProperty.Value> comValue =
-            runtimeEdge.getPropertyValue(DataCommunicationPatternProperty.class);
+    final Optional<CommunicationPatternProperty.Value> comValue =
+            runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
 
-    if (comValue.get().equals(DataCommunicationPatternProperty.Value.OneToOne)) {
+    if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)) {
       return Collections.singletonList(readOneToOne());
-    } else if (comValue.get().equals(DataCommunicationPatternProperty.Value.BroadCast)) {
+    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)) {
       return readBroadcast();
-    } else if (comValue.get().equals(DataCommunicationPatternProperty.Value.Shuffle)) {
+    } else if (comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)) {
       // If the dynamic optimization which detects data skew is enabled, read the data in the assigned range.
       // TODO #492: Modularize the data communication pattern.
       return readDataInRange();
@@ -170,8 +170,8 @@ public final class InputReader extends DataTransfer {
    * @return the parallelism of the source task.
    */
   public int getSourceParallelism() {
-    if (DataCommunicationPatternProperty.Value.OneToOne
-        .equals(runtimeEdge.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
+    if (CommunicationPatternProperty.Value.OneToOne
+        .equals(runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
       return 1;
     } else {
       final Integer numSrcTasks = srcVertex.getPropertyValue(ParallelismProperty.class).get();

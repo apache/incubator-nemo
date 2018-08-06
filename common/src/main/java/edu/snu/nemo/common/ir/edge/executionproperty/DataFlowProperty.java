@@ -17,17 +17,15 @@ package edu.snu.nemo.common.ir.edge.executionproperty;
 
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
-// TODO #492: modularizing runtime components for data communication pattern.
 /**
- * DataCommunicationPattern ExecutionProperty.
+ * DataFlowModel ExecutionProperty.
  */
-public final class DataCommunicationPatternProperty
-    extends EdgeExecutionProperty<DataCommunicationPatternProperty.Value> {
+public final class DataFlowProperty extends EdgeExecutionProperty<DataFlowProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private DataCommunicationPatternProperty(final Value value) {
+  private DataFlowProperty(final Value value) {
     super(value);
   }
 
@@ -36,16 +34,15 @@ public final class DataCommunicationPatternProperty
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static DataCommunicationPatternProperty of(final Value value) {
-    return new DataCommunicationPatternProperty(value);
+  public static DataFlowProperty of(final Value value) {
+    return new DataFlowProperty(value);
   }
 
   /**
-   * Possible values of DataCommunicationPattern ExecutionProperty.
+   * Possible values of DataFlowModel ExecutionProperty.
    */
   public enum Value {
-    OneToOne,
-    BroadCast,
-    Shuffle
+    Pull,
+    Push,
   }
 }

@@ -18,7 +18,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.composite;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -84,16 +84,16 @@ public class DataSkewCompositePassTest {
     final Integer originalVerticesNum = mrDAG.getVertices().size();
     final Long numOfShuffleGatherEdges = mrDAG.getVertices().stream().filter(irVertex ->
         mrDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
-            DataCommunicationPatternProperty.Value.Shuffle
-            .equals(irEdge.getPropertyValue(DataCommunicationPatternProperty.class).get())))
+            CommunicationPatternProperty.Value.Shuffle
+            .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get())))
         .count();
     final DAG<IRVertex, IREdge> processedDAG = new DataSkewCompositePass().apply(mrDAG);
 
     assertEquals(originalVerticesNum + numOfShuffleGatherEdges, processedDAG.getVertices().size());
     processedDAG.getVertices().stream().map(processedDAG::getIncomingEdgesOf)
         .flatMap(List::stream)
-        .filter(irEdge -> DataCommunicationPatternProperty.Value.Shuffle
-            .equals(irEdge.getPropertyValue(DataCommunicationPatternProperty.class).get()))
+        .filter(irEdge -> CommunicationPatternProperty.Value.Shuffle
+            .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))
         .map(IREdge::getSrc)
         .forEach(irVertex -> assertTrue(irVertex instanceof MetricCollectionBarrierVertex));
 

@@ -16,23 +16,23 @@
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 
 import java.util.Collections;
 import java.util.List;
 
 /**
- * Pado pass for tagging vertices.
+ * Place valuable computations on reserved resources, and the rest on transient resources.
  */
-public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
+public final class TransientResourcePriorityPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public PadoVertexExecutorPlacementPass() {
-    super(ExecutorPlacementProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
+  public TransientResourcePriorityPass() {
+    super(ResourcePriorityProperty.class, Collections.singleton(CommunicationPatternProperty.class));
   }
 
   @Override
@@ -40,12 +40,12 @@ public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
     dag.topologicalDo(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (inEdges.isEmpty()) {
-        vertex.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.TRANSIENT));
+        vertex.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.TRANSIENT));
       } else {
         if (hasM2M(inEdges) || allO2OFromReserved(inEdges)) {
-          vertex.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.RESERVED));
+          vertex.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.RESERVED));
         } else {
-          vertex.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.TRANSIENT));
+          vertex.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.TRANSIENT));
         }
       }
     });
@@ -59,8 +59,8 @@ public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
    */
   private boolean hasM2M(final List<IREdge> irEdges) {
     return irEdges.stream().anyMatch(edge ->
-        edge.getPropertyValue(DataCommunicationPatternProperty.class).get()
-          .equals(DataCommunicationPatternProperty.Value.Shuffle));
+        edge.getPropertyValue(CommunicationPatternProperty.class).get()
+          .equals(CommunicationPatternProperty.Value.Shuffle));
   }
 
   /**
@@ -70,9 +70,9 @@ public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
    */
   private boolean allO2OFromReserved(final List<IREdge> irEdges) {
     return irEdges.stream()
-        .allMatch(edge -> DataCommunicationPatternProperty.Value.OneToOne.equals(
-            edge.getPropertyValue(DataCommunicationPatternProperty.class).get())
-            && edge.getSrc().getPropertyValue(ExecutorPlacementProperty.class).get().equals(
-                ExecutorPlacementProperty.RESERVED));
+        .allMatch(edge -> CommunicationPatternProperty.Value.OneToOne.equals(
+            edge.getPropertyValue(CommunicationPatternProperty.class).get())
+            && edge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get().equals(
+                ResourcePriorityProperty.RESERVED));
   }
 }

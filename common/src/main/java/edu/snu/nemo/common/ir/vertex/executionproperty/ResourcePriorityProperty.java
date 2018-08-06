@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir.edge.executionproperty;
+package edu.snu.nemo.common.ir.vertex.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * DataFlowModel ExecutionProperty.
+ * ExecutionPlacement ExecutionProperty.
  */
-public final class DataFlowModelProperty extends EdgeExecutionProperty<DataFlowModelProperty.Value> {
+public final class ResourcePriorityProperty extends VertexExecutionProperty<String> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private DataFlowModelProperty(final Value value) {
+  private ResourcePriorityProperty(final String value) {
     super(value);
   }
 
@@ -34,15 +34,13 @@ public final class DataFlowModelProperty extends EdgeExecutionProperty<DataFlowM
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static DataFlowModelProperty of(final Value value) {
-    return new DataFlowModelProperty(value);
+  public static ResourcePriorityProperty of(final String value) {
+    return new ResourcePriorityProperty(value);
   }
 
-  /**
-   * Possible values of DataFlowModel ExecutionProperty.
-   */
-  public enum Value {
-    Pull,
-    Push,
-  }
+  // List of default pre-configured values.
+  public static final String NONE = "None";
+  public static final String TRANSIENT = "Transient";
+  public static final String RESERVED = "Reserved";
+  public static final String COMPUTE = "Compute";
 }

@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
@@ -34,7 +34,7 @@ public final class DataSkewEdgeMetricCollectionPass extends AnnotatingPass {
    * Default constructor.
    */
   public DataSkewEdgeMetricCollectionPass() {
-    super(MetricCollectionProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
+    super(MetricCollectionProperty.class, Collections.singleton(CommunicationPatternProperty.class));
   }
 
   @Override
@@ -44,8 +44,8 @@ public final class DataSkewEdgeMetricCollectionPass extends AnnotatingPass {
       if (v instanceof MetricCollectionBarrierVertex) {
         dag.getOutgoingEdgesOf(v).forEach(edge -> {
           // double checking.
-          if (edge.getPropertyValue(DataCommunicationPatternProperty.class).get()
-              .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
+          if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+              .equals(CommunicationPatternProperty.Value.Shuffle)) {
             edge.setProperty(MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
           }
         });

@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageSender;
@@ -87,7 +87,7 @@ public final class BatchSingleJobSchedulerTest {
 
     final ExecutorService serializationExecutorService = Executors.newSingleThreadExecutor();
     final ResourceSpecification computeSpec =
-        new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, EXECUTOR_CAPACITY, 0);
+        new ResourceSpecification(ResourcePriorityProperty.COMPUTE, EXECUTOR_CAPACITY, 0);
     final Function<String, ExecutorRepresenter> computeSpecExecutorRepresenterGenerator = executorId ->
         new ExecutorRepresenter(executorId, computeSpec, mockMsgSender, activeContext, serializationExecutorService,
             executorId);
@@ -96,7 +96,7 @@ public final class BatchSingleJobSchedulerTest {
     final ExecutorRepresenter a1 = computeSpecExecutorRepresenterGenerator.apply("a1");
 
     final ResourceSpecification storageSpec =
-        new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, EXECUTOR_CAPACITY, 0);
+        new ResourceSpecification(ResourcePriorityProperty.TRANSIENT, EXECUTOR_CAPACITY, 0);
     final Function<String, ExecutorRepresenter> storageSpecExecutorRepresenterGenerator = executorId ->
         new ExecutorRepresenter(executorId, storageSpec, mockMsgSender, activeContext, serializationExecutorService,
             executorId);

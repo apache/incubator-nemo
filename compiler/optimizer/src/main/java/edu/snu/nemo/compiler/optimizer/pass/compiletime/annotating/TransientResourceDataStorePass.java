@@ -16,24 +16,24 @@
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 
 import java.util.Collections;
 import java.util.List;
 
 /**
- * Pado pass for tagging edges with DataStore ExecutionProperty.
+ * Transient resource pass for tagging edges with DataStore ExecutionProperty.
  */
-public final class PadoEdgeDataStorePass extends AnnotatingPass {
+public final class TransientResourceDataStorePass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public PadoEdgeDataStorePass() {
-    super(InterTaskDataStoreProperty.class, Collections.singleton(ExecutorPlacementProperty.class));
+  public TransientResourceDataStorePass() {
+    super(InterTaskDataStoreProperty.class, Collections.singleton(ResourcePriorityProperty.class));
   }
 
   @Override
@@ -44,8 +44,8 @@ public final class PadoEdgeDataStorePass extends AnnotatingPass {
         inEdges.forEach(edge -> {
           if (fromTransientToReserved(edge) || fromReservedToTransient(edge)) {
             edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
-          } else if (DataCommunicationPatternProperty.Value.OneToOne
-              .equals(edge.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
+          } else if (CommunicationPatternProperty.Value.OneToOne
+              .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
             edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
           } else {
             edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
@@ -62,10 +62,10 @@ public final class PadoEdgeDataStorePass extends AnnotatingPass {
    * @return whether or not the edge satisfies the condition.
    */
   static boolean fromTransientToReserved(final IREdge irEdge) {
-    return ExecutorPlacementProperty.TRANSIENT
-        .equals(irEdge.getSrc().getPropertyValue(ExecutorPlacementProperty.class).get())
-        && ExecutorPlacementProperty.RESERVED
-        .equals(irEdge.getDst().getPropertyValue(ExecutorPlacementProperty.class).get());
+    return ResourcePriorityProperty.TRANSIENT
+        .equals(irEdge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get())
+        && ResourcePriorityProperty.RESERVED
+        .equals(irEdge.getDst().getPropertyValue(ResourcePriorityProperty.class).get());
   }
 
   /**
@@ -74,9 +74,9 @@ public final class PadoEdgeDataStorePass extends AnnotatingPass {
    * @return whether or not the edge satisfies the condition.
    */
   static boolean fromReservedToTransient(final IREdge irEdge) {
-    return ExecutorPlacementProperty.RESERVED
-        .equals(irEdge.getSrc().getPropertyValue(ExecutorPlacementProperty.class).get())
-        && ExecutorPlacementProperty.TRANSIENT
-        .equals(irEdge.getDst().getPropertyValue(ExecutorPlacementProperty.class).get());
+    return ResourcePriorityProperty.RESERVED
+        .equals(irEdge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get())
+        && ResourcePriorityProperty.TRANSIENT
+        .equals(irEdge.getDst().getPropertyValue(ResourcePriorityProperty.class).get());
   }
 }

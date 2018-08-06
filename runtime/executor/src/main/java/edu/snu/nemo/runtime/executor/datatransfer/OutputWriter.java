@@ -154,8 +154,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    * @return the parallelism of the destination task.
    */
   private int getDstParallelism() {
-    return DataCommunicationPatternProperty.Value.OneToOne.equals(
-        runtimeEdge.getPropertyValue(DataCommunicationPatternProperty.class).get())
+    return CommunicationPatternProperty.Value.OneToOne.equals(
+        runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get())
         ? 1 : dstIrVertex.getPropertyValue(ParallelismProperty.class).get();
   }
 }

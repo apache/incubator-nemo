@@ -15,27 +15,23 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.composite;
 
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.*;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.SailfishRelayReshapingPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.TransientResourceDataFlowPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.TransientResourcePriorityPass;
 
 import java.util.Arrays;
 
 /**
- * A series of passes to support Sailfish-like disk seek batching during shuffle.
+ * A series of passes to harness transient resources.
+ * Ref: https://dl.acm.org/citation.cfm?id=3064181
  */
-public final class SailfishPass extends CompositePass {
+public final class TransientResourceCompositePass extends CompositePass {
   /**
    * Default constructor.
    */
-  public SailfishPass() {
+  public TransientResourceCompositePass() {
     super(Arrays.asList(
-        new SailfishRelayReshapingPass(),
-        new SailfishEdgeDataFlowModelPass(),
-        new SailfishEdgeDataStorePass(),
-        new SailfishEdgeDecoderPass(),
-        new SailfishEdgeEncoderPass(),
-        new SailfishEdgeUsedDataHandlingPass(),
-        new SailfishVertexExecutorSlotCompliancePass()
+        new TransientResourcePriorityPass(),
+        new TransientResourceDataFlowPass()
     ));
   }
 }

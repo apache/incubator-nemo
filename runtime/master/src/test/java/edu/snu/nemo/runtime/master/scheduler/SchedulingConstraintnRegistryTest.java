@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.SourceLocationAwareSchedulingProperty;
 import org.apache.reef.tang.Tang;
@@ -35,7 +35,7 @@ public final class SchedulingConstraintnRegistryTest {
         .getInstance(SchedulingConstraintRegistry.class);
     assertEquals(FreeSlotSchedulingConstraint.class, getConstraintOf(ExecutorSlotComplianceProperty.class, registry));
     assertEquals(ContainerTypeAwareSchedulingConstraint.class,
-        getConstraintOf(ExecutorPlacementProperty.class, registry));
+        getConstraintOf(ResourcePriorityProperty.class, registry));
     assertEquals(SourceLocationAwareSchedulingConstraint.class,
         getConstraintOf(SourceLocationAwareSchedulingProperty.class, registry));
   }

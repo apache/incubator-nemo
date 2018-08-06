@@ -15,27 +15,25 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import edu.snu.nemo.common.coder.BytesEncoderFactory;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.Collections;
 import java.util.List;
 
 /**
- * A pass to support Sailfish-like shuffle by tagging edges.
- * This pass modifies the encoder property toward {@link edu.snu.nemo.common.ir.vertex.transform.RelayTransform}
- * to write data as byte arrays.
+ * A pass to optimize large shuffle by tagging edges.
+ * This pass handles the DataFlowModel ExecutionProperty.
  */
-public final class SailfishEdgeEncoderPass extends AnnotatingPass {
+public final class LargeShuffleDataFlowPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public SailfishEdgeEncoderPass() {
-    super(EncoderProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
+  public LargeShuffleDataFlowPass() {
+    super(DataFlowProperty.class, Collections.singleton(CommunicationPatternProperty.class));
   }
 
   @Override
@@ -43,12 +41,11 @@ public final class SailfishEdgeEncoderPass extends AnnotatingPass {
     dag.getVertices().forEach(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       inEdges.forEach(edge -> {
-        if (edge.getPropertyValue(DataCommunicationPatternProperty.class).get()
-            .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
-          dag.getOutgoingEdgesOf(edge.getDst())
-              .forEach(edgeFromRelay -> {
-                edgeFromRelay.setProperty(EncoderProperty.of(BytesEncoderFactory.of()));
-              });
+        if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.Shuffle)) {
+          edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push)); // Push to the merger vertex.
+        } else {
+          edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
         }
       });
     });

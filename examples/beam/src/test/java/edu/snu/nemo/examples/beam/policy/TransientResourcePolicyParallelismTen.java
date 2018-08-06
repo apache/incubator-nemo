@@ -16,20 +16,21 @@
 package edu.snu.nemo.examples.beam.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.policy.PadoPolicy;
+import edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
 
 /**
- * A pado policy with fixed parallelism 10 for tests.
+ * A transient resource policy with fixed parallelism 10 for tests.
  */
-public final class PadoPolicyParallelismTen implements Policy {
+public final class TransientResourcePolicyParallelismTen implements Policy {
   private final Policy policy;
 
-  public PadoPolicyParallelismTen() {
-    this.policy = PolicyTestUtil.overwriteParallelism(10, PadoPolicy.class.getCanonicalName());
+  public TransientResourcePolicyParallelismTen() {
+    this.policy =
+        PolicyTestUtil.overwriteParallelism(10, TransientResourcePolicy.class.getCanonicalName());
   }
 
   @Override

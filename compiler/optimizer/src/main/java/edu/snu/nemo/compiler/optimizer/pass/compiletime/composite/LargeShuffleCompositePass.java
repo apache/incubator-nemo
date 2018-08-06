@@ -15,24 +15,28 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.composite;
 
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.PadoEdgeDataFlowModelPass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.PadoEdgeDataStorePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.PadoVertexExecutorPlacementPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.*;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.LargeShuffleRelayReshapingPass;
 
 import java.util.Arrays;
 
 /**
- * A series of passes to support Pado optimization.
+ * A series of passes to optimize large shuffle with disk seek batching techniques.
+ * Ref. https://dl.acm.org/citation.cfm?id=2391233
  */
-public final class PadoCompositePass extends CompositePass {
+public final class LargeShuffleCompositePass extends CompositePass {
   /**
    * Default constructor.
    */
-  public PadoCompositePass() {
+  public LargeShuffleCompositePass() {
     super(Arrays.asList(
-        new PadoVertexExecutorPlacementPass(),
-        new PadoEdgeDataStorePass(),
-        new PadoEdgeDataFlowModelPass()
+        new LargeShuffleRelayReshapingPass(),
+        new LargeShuffleDataFlowPass(),
+        new LargeShuffleDataStorePass(),
+        new LargeShuffleDecoderPass(),
+        new LargeShuffleEncoderPass(),
+        new LargeShuffleUsedDataHandlingPass(),
+        new LargeShuffleExecutorSlotCompliancePass()
     ));
   }
 }

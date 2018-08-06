@@ -16,7 +16,7 @@
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -103,7 +103,7 @@ public final class LoopOptimizations {
      * Default constructor.
      */
     public LoopFusionPass() {
-      super(Collections.singleton(DataCommunicationPatternProperty.class));
+      super(Collections.singleton(CommunicationPatternProperty.class));
     }
 
     @Override
@@ -160,7 +160,7 @@ public final class LoopOptimizations {
             // inEdges.
             inEdges.getOrDefault(loopVertex, new ArrayList<>()).forEach(irEdge -> {
               if (builder.contains(irEdge.getSrc())) {
-                final IREdge newIREdge = new IREdge(irEdge.getPropertyValue(DataCommunicationPatternProperty.class)
+                final IREdge newIREdge = new IREdge(irEdge.getPropertyValue(CommunicationPatternProperty.class)
                     .get(), irEdge.getSrc(), newLoopVertex, irEdge.isSideInput());
                 irEdge.copyExecutionPropertiesTo(newIREdge);
                 builder.connectVertices(newIREdge);
@@ -169,7 +169,7 @@ public final class LoopOptimizations {
             // outEdges.
             outEdges.getOrDefault(loopVertex, new ArrayList<>()).forEach(irEdge -> {
               if (builder.contains(irEdge.getDst())) {
-                final IREdge newIREdge = new IREdge(irEdge.getPropertyValue(DataCommunicationPatternProperty.class)
+                final IREdge newIREdge = new IREdge(irEdge.getPropertyValue(CommunicationPatternProperty.class)
                     .get(), newLoopVertex, irEdge.getDst(), irEdge.isSideInput());
                 irEdge.copyExecutionPropertiesTo(newIREdge);
                 builder.connectVertices(newIREdge);
@@ -251,7 +251,7 @@ public final class LoopOptimizations {
      * Default constructor.
      */
     public LoopInvariantCodeMotionPass() {
-      super(Collections.singleton(DataCommunicationPatternProperty.class));
+      super(Collections.singleton(CommunicationPatternProperty.class));
     }
 
     @Override
@@ -287,7 +287,7 @@ public final class LoopOptimizations {
               candidate.getValue().stream().map(IREdge::getSrc).anyMatch(edgeSrc -> edgeSrc.equals(e.getSrc())))
               .forEach(edge -> {
                 edgesToRemove.add(edge);
-                final IREdge newEdge = new IREdge(edge.getPropertyValue(DataCommunicationPatternProperty.class).get(),
+                final IREdge newEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
                     candidate.getKey(), edge.getDst(), edge.isSideInput());
                 newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
                 newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));

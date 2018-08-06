@@ -19,8 +19,8 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
-import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismFive;
-import edu.snu.nemo.examples.beam.policy.SailfishPolicyParallelismFive;
+import edu.snu.nemo.examples.beam.policy.TransientResourcePolicyParallelismFive;
+import edu.snu.nemo.examples.beam.policy.LargeShufflePolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -70,18 +70,18 @@ public final class NetworkTraceAnalysisITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testSailfish() throws Exception {
+  public void testLargeShuffle() throws Exception {
     JobLauncher.main(builder
-        .addJobId(NetworkTraceAnalysisITCase.class.getSimpleName() + "_sailfish")
-        .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
+        .addJobId(NetworkTraceAnalysisITCase.class.getSimpleName() + "_largeshuffle")
+        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 
   @Test (timeout = TIMEOUT)
-  public void testPado() throws Exception {
+  public void testTransientResource() throws Exception {
     JobLauncher.main(builder
-        .addJobId(NetworkTraceAnalysisITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
+        .addJobId(NetworkTraceAnalysisITCase.class.getSimpleName() + "_transient")
+        .addOptimizationPolicy(TransientResourcePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 }

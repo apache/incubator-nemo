@@ -32,11 +32,11 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Test {@link SailfishPass}.
+ * Test {@link LargeShuffleCompositePass}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public class SailfishPassTest {
+public class LargeShuffleCompositePassTest {
   private DAG<IRVertex, IREdge> compiledDAG;
 
   @Before
@@ -45,19 +45,19 @@ public class SailfishPassTest {
   }
 
   @Test
-  public void testSailfish() {
-    final DAG<IRVertex, IREdge> processedDAG = new SailfishPass().apply(compiledDAG);
+  public void testLargeShuffle() {
+    final DAG<IRVertex, IREdge> processedDAG = new LargeShuffleCompositePass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
       if (processedDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
-              DataCommunicationPatternProperty.Value.Shuffle
-          .equals(irEdge.getPropertyValue(DataCommunicationPatternProperty.class).get()))) {
+              CommunicationPatternProperty.Value.Shuffle
+          .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))) {
         // Relay vertex
         processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
-          if (DataCommunicationPatternProperty.Value.Shuffle
-          .equals(edgeToMerger.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
-            assertEquals(DataFlowModelProperty.Value.Push,
-                edgeToMerger.getPropertyValue(DataFlowModelProperty.class).get());
+          if (CommunicationPatternProperty.Value.Shuffle
+          .equals(edgeToMerger.getPropertyValue(CommunicationPatternProperty.class).get())) {
+            assertEquals(DataFlowProperty.Value.Push,
+                edgeToMerger.getPropertyValue(DataFlowProperty.class).get());
             assertEquals(UsedDataHandlingProperty.Value.Discard,
                 edgeToMerger.getPropertyValue(UsedDataHandlingProperty.class).get());
             assertEquals(InterTaskDataStoreProperty.Value.SerializedMemoryStore,
@@ -65,15 +65,15 @@ public class SailfishPassTest {
             assertEquals(BytesDecoderFactory.of(),
                 edgeToMerger.getPropertyValue(DecoderProperty.class).get());
           } else {
-            assertEquals(DataFlowModelProperty.Value.Pull,
-                edgeToMerger.getPropertyValue(DataFlowModelProperty.class).get());
+            assertEquals(DataFlowProperty.Value.Pull,
+                edgeToMerger.getPropertyValue(DataFlowProperty.class).get());
           }
         });
         processedDAG.getOutgoingEdgesOf(irVertex).forEach(edgeFromMerger -> {
-          assertEquals(DataFlowModelProperty.Value.Pull,
-              edgeFromMerger.getPropertyValue(DataFlowModelProperty.class).get());
-          assertEquals(DataCommunicationPatternProperty.Value.OneToOne,
-              edgeFromMerger.getPropertyValue(DataCommunicationPatternProperty.class).get());
+          assertEquals(DataFlowProperty.Value.Pull,
+              edgeFromMerger.getPropertyValue(DataFlowProperty.class).get());
+          assertEquals(CommunicationPatternProperty.Value.OneToOne,
+              edgeFromMerger.getPropertyValue(CommunicationPatternProperty.class).get());
           assertEquals(InterTaskDataStoreProperty.Value.LocalFileStore,
               edgeFromMerger.getPropertyValue(InterTaskDataStoreProperty.class).get());
           assertEquals(BytesEncoderFactory.of(),
@@ -82,7 +82,7 @@ public class SailfishPassTest {
       } else {
         // Non merger vertex.
         processedDAG.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          assertEquals(DataFlowModelProperty.Value.Pull, irEdge.getPropertyValue(DataFlowModelProperty.class).get());
+          assertEquals(DataFlowProperty.Value.Pull, irEdge.getPropertyValue(DataFlowProperty.class).get());
         });
       }
     });

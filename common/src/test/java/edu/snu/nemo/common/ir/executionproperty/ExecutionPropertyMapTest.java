@@ -36,21 +36,21 @@ import static org.junit.Assert.assertTrue;
 public class ExecutionPropertyMapTest {
   private final IRVertex source = new EmptyComponents.EmptySourceVertex<>("Source");
   private final IRVertex destination = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
-  private final DataCommunicationPatternProperty.Value comPattern = DataCommunicationPatternProperty.Value.OneToOne;
-  private final IREdge edge = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, source, destination);
+  private final CommunicationPatternProperty.Value comPattern = CommunicationPatternProperty.Value.OneToOne;
+  private final IREdge edge = new IREdge(CommunicationPatternProperty.Value.OneToOne, source, destination);
 
   private ExecutionPropertyMap<EdgeExecutionProperty> edgeMap;
   private ExecutionPropertyMap<VertexExecutionProperty> vertexMap;
 
   @Before
   public void setUp() {
-    this.edgeMap = ExecutionPropertyMap.of(edge, DataCommunicationPatternProperty.Value.OneToOne);
+    this.edgeMap = ExecutionPropertyMap.of(edge, CommunicationPatternProperty.Value.OneToOne);
     this.vertexMap = ExecutionPropertyMap.of(source);
   }
 
   @Test
   public void testDefaultValues() {
-    assertEquals(comPattern, edgeMap.get(DataCommunicationPatternProperty.class).get());
+    assertEquals(comPattern, edgeMap.get(CommunicationPatternProperty.class).get());
     assertEquals(1, vertexMap.get(ParallelismProperty.class).get().longValue());
     assertEquals(edge.getId(), edgeMap.getId());
     assertEquals(source.getId(), vertexMap.getId());
@@ -60,15 +60,15 @@ public class ExecutionPropertyMapTest {
   public void testPutGetAndRemove() {
     edgeMap.put(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
     assertEquals(InterTaskDataStoreProperty.Value.MemoryStore, edgeMap.get(InterTaskDataStoreProperty.class).get());
-    edgeMap.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
-    assertEquals(DataFlowModelProperty.Value.Pull, edgeMap.get(DataFlowModelProperty.class).get());
+    edgeMap.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    assertEquals(DataFlowProperty.Value.Pull, edgeMap.get(DataFlowProperty.class).get());
     edgeMap.put(EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));
     assertEquals(EncoderFactory.DUMMY_ENCODER_FACTORY, edgeMap.get(EncoderProperty.class).get());
     edgeMap.put(DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
     assertEquals(DecoderFactory.DUMMY_DECODER_FACTORY, edgeMap.get(DecoderProperty.class).get());
 
-    edgeMap.remove(DataFlowModelProperty.class);
-    assertFalse(edgeMap.get(DataFlowModelProperty.class).isPresent());
+    edgeMap.remove(DataFlowProperty.class);
+    assertFalse(edgeMap.get(DataFlowProperty.class).isPresent());
 
     vertexMap.put(ParallelismProperty.of(100));
     assertEquals(100, vertexMap.get(ParallelismProperty.class).get().longValue());
@@ -92,13 +92,13 @@ public class ExecutionPropertyMapTest {
     map0.put(ParallelismProperty.of(2));
     assertTrue(map0.equals(map1));
     assertTrue(map1.equals(map0));
-    map0.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    map0.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     assertFalse(map0.equals(map1));
     assertFalse(map1.equals(map0));
-    map1.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
+    map1.put(DataFlowProperty.of(DataFlowProperty.Value.Push));
     assertFalse(map0.equals(map1));
     assertFalse(map1.equals(map0));
-    map1.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    map1.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     assertTrue(map0.equals(map1));
     assertTrue(map1.equals(map0));
   }

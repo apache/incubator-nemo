@@ -15,41 +15,42 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
+import edu.snu.nemo.common.coder.BytesEncoderFactory;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 
 import java.util.Collections;
 import java.util.List;
 
-import static edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.PadoEdgeDataStorePass.fromTransientToReserved;
-
 /**
- * Pado pass for tagging edges with DataFlowModel ExecutionProperty.
+ * A pass to optimize large shuffle by tagging edges.
+ * This pass modifies the encoder property toward {@link edu.snu.nemo.common.ir.vertex.transform.RelayTransform}
+ * to write data as byte arrays.
  */
-public final class PadoEdgeDataFlowModelPass extends AnnotatingPass {
+public final class LargeShuffleEncoderPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public PadoEdgeDataFlowModelPass() {
-    super(DataFlowModelProperty.class, Collections.singleton(ExecutorPlacementProperty.class));
+  public LargeShuffleEncoderPass() {
+    super(EncoderProperty.class, Collections.singleton(CommunicationPatternProperty.class));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().forEach(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      if (!inEdges.isEmpty()) {
-        inEdges.forEach(edge -> {
-          if (fromTransientToReserved(edge)) {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
-          } else {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
-          }
-        });
-      }
+      inEdges.forEach(edge -> {
+        if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.Shuffle)) {
+          dag.getOutgoingEdgesOf(edge.getDst())
+              .forEach(edgeFromRelay -> {
+                edgeFromRelay.setProperty(EncoderProperty.of(BytesEncoderFactory.of()));
+              });
+        }
+      });
     });
     return dag;
   }

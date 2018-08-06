@@ -17,22 +17,22 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.Collections;
 
 /**
- * A pass to support Sailfish-like shuffle by tagging edges.
+ * A pass to optimize large shuffle by tagging edges.
  * This pass handles the DataStore ExecutionProperty.
  */
-public final class SailfishEdgeDataStorePass extends AnnotatingPass {
+public final class LargeShuffleDataStorePass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public SailfishEdgeDataStorePass() {
-    super(InterTaskDataStoreProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
+  public LargeShuffleDataStorePass() {
+    super(InterTaskDataStoreProperty.class, Collections.singleton(CommunicationPatternProperty.class));
   }
 
   @Override
@@ -40,11 +40,11 @@ public final class SailfishEdgeDataStorePass extends AnnotatingPass {
     dag.getVertices().forEach(vertex -> {
       // Find the merger vertex inserted by reshaping pass.
       if (dag.getIncomingEdgesOf(vertex).stream().anyMatch(irEdge ->
-              DataCommunicationPatternProperty.Value.Shuffle
-          .equals(irEdge.getPropertyValue(DataCommunicationPatternProperty.class).get()))) {
+              CommunicationPatternProperty.Value.Shuffle
+          .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))) {
         dag.getIncomingEdgesOf(vertex).forEach(edgeToMerger -> {
-          if (DataCommunicationPatternProperty.Value.Shuffle
-          .equals(edgeToMerger.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
+          if (CommunicationPatternProperty.Value.Shuffle
+          .equals(edgeToMerger.getPropertyValue(CommunicationPatternProperty.class).get())) {
             // Pass data through memory to the merger vertex.
             edgeToMerger.setProperty(InterTaskDataStoreProperty
                 .of(InterTaskDataStoreProperty.Value.SerializedMemoryStore));

@@ -13,19 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir.vertex.executionproperty;
+package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
+// TODO #492: modularizing runtime components for data communication pattern.
 /**
- * ExecutionPlacement ExecutionProperty.
+ * DataCommunicationPattern ExecutionProperty.
  */
-public final class ExecutorPlacementProperty extends VertexExecutionProperty<String> {
+public final class CommunicationPatternProperty
+    extends EdgeExecutionProperty<CommunicationPatternProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private ExecutorPlacementProperty(final String value) {
+  private CommunicationPatternProperty(final Value value) {
     super(value);
   }
 
@@ -34,13 +36,16 @@ public final class ExecutorPlacementProperty extends VertexExecutionProperty<Str
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static ExecutorPlacementProperty of(final String value) {
-    return new ExecutorPlacementProperty(value);
+  public static CommunicationPatternProperty of(final Value value) {
+    return new CommunicationPatternProperty(value);
   }
 
-  // List of default pre-configured values.
-  public static final String NONE = "None";
-  public static final String TRANSIENT = "Transient";
-  public static final String RESERVED = "Reserved";
-  public static final String COMPUTE = "Compute";
+  /**
+   * Possible values of DataCommunicationPattern ExecutionProperty.
+   */
+  public enum Value {
+    OneToOne,
+    BroadCast,
+    Shuffle
+  }
 }

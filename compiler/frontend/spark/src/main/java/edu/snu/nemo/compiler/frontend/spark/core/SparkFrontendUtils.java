@@ -19,9 +19,9 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
@@ -112,14 +112,14 @@ public final class SparkFrontendUtils {
    * @param dst destination vertex.
    * @return the communication pattern.
    */
-  public static DataCommunicationPatternProperty.Value getEdgeCommunicationPattern(final IRVertex src,
-                                                                                   final IRVertex dst) {
+  public static CommunicationPatternProperty.Value getEdgeCommunicationPattern(final IRVertex src,
+                                                                               final IRVertex dst) {
     if (dst instanceof OperatorVertex
         && (((OperatorVertex) dst).getTransform() instanceof ReduceByKeyTransform
         || ((OperatorVertex) dst).getTransform() instanceof GroupByKeyTransform)) {
-      return DataCommunicationPatternProperty.Value.Shuffle;
+      return CommunicationPatternProperty.Value.Shuffle;
     } else {
-      return DataCommunicationPatternProperty.Value.OneToOne;
+      return CommunicationPatternProperty.Value.OneToOne;
     }
   }
 

@@ -26,7 +26,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Pado pass for tagging edges with {@link PartitionerProperty}.
+ * Transient resource pass for tagging edges with {@link PartitionerProperty}.
  */
 public final class DataSkewEdgePartitionerPass extends AnnotatingPass {
   /**

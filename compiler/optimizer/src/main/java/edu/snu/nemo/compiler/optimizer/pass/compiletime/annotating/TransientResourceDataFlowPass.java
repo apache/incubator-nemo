@@ -17,37 +17,39 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 
 import java.util.Collections;
 import java.util.List;
 
+import static edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.TransientResourceDataStorePass.fromTransientToReserved;
+
 /**
- * A pass to support Sailfish-like shuffle by tagging edges.
- * This pass handles the DataFlowModel ExecutionProperty.
+ * Push from transient resources to reserved resources.
  */
-public final class SailfishEdgeDataFlowModelPass extends AnnotatingPass {
+public final class TransientResourceDataFlowPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public SailfishEdgeDataFlowModelPass() {
-    super(DataFlowModelProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
+  public TransientResourceDataFlowPass() {
+    super(DataFlowProperty.class, Collections.singleton(ResourcePriorityProperty.class));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().forEach(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      inEdges.forEach(edge -> {
-        if (edge.getPropertyValue(DataCommunicationPatternProperty.class).get()
-            .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
-          edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push)); // Push to the merger vertex.
-        } else {
-          edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
-        }
-      });
+      if (!inEdges.isEmpty()) {
+        inEdges.forEach(edge -> {
+          if (fromTransientToReserved(edge)) {
+            edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
+          } else {
+            edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+          }
+        });
+      }
     });
     return dag;
   }

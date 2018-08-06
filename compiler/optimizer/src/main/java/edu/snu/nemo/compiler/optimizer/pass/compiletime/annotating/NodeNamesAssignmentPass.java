@@ -19,7 +19,7 @@ import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.NodeNamesProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -38,8 +38,8 @@ import java.util.*;
 /**
  * Computes and assigns appropriate share of nodes to each irVertex to minimize shuffle time,
  * with respect to bandwidth restrictions of nodes. If bandwidth information is not given, this pass does nothing.
- * This pass follows task assignment of Iridium-style optimization.
- * http://pages.cs.wisc.edu/~akella/papers/gda-sigcomm15.pdf
+ * This pass optimizes task assignment considering nonuniform network bandwidths between resources.
+ * Ref. http://pages.cs.wisc.edu/~akella/papers/gda-sigcomm15.pdf
  *
  * <h3>Assumptions</h3>
  * This pass assumes no skew in input or intermediate data, so that the number of Task assigned to a node
@@ -146,8 +146,8 @@ public final class NodeNamesAssignmentPass extends AnnotatingPass {
    */
   private static boolean isOneToOneEdge(final Collection<IREdge> inEdges) {
     return inEdges.size() == 1 && inEdges.iterator().next()
-          .getPropertyValue(DataCommunicationPatternProperty.class).get()
-          .equals(DataCommunicationPatternProperty.Value.OneToOne);
+          .getPropertyValue(CommunicationPatternProperty.class).get()
+          .equals(CommunicationPatternProperty.Value.OneToOne);
   }
 
   /**

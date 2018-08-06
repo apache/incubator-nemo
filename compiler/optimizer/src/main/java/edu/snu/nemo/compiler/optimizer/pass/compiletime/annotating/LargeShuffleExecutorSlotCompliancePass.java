@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
 
@@ -26,10 +26,10 @@ import java.util.Collections;
 /**
  * Sets {@link ExecutorSlotComplianceProperty}.
  */
-public final class SailfishVertexExecutorSlotCompliancePass extends AnnotatingPass {
+public final class LargeShuffleExecutorSlotCompliancePass extends AnnotatingPass {
 
-  public SailfishVertexExecutorSlotCompliancePass() {
-    super(ExecutorSlotComplianceProperty.class, Collections.singleton(DataFlowModelProperty.class));
+  public LargeShuffleExecutorSlotCompliancePass() {
+    super(ExecutorSlotComplianceProperty.class, Collections.singleton(DataFlowProperty.class));
   }
 
   @Override
@@ -40,9 +40,9 @@ public final class SailfishVertexExecutorSlotCompliancePass extends AnnotatingPa
         .filter(v -> !v.getExecutionProperties().containsKey(ExecutorSlotComplianceProperty.class))
         .forEach(v -> {
           if (dag.getIncomingEdgesOf(v).stream().anyMatch(
-              e -> e.getPropertyValue(DataFlowModelProperty.class)
-                  .orElseThrow(() -> new RuntimeException(String.format("DataFlowModelProperty for %s must be set",
-                      e.getId()))).equals(DataFlowModelProperty.Value.Push))) {
+              e -> e.getPropertyValue(DataFlowProperty.class)
+                  .orElseThrow(() -> new RuntimeException(String.format("DataFlowProperty for %s must be set",
+                      e.getId()))).equals(DataFlowProperty.Value.Push))) {
             v.getExecutionProperties().put(ExecutorSlotComplianceProperty.of(false));
           } else {
             v.getExecutionProperties().put(ExecutorSlotComplianceProperty.of(true));

@@ -18,24 +18,23 @@ package edu.snu.nemo.compiler.optimizer.policy;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.*;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.PrimitiveCompositePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.PadoCompositePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.TransientResourceCompositePass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
 
 /**
- * A policy to perform Pado optimization that uses transient resources on data centers.
- * link to paper: http://dl.acm.org/citation.cfm?id=3064181
+ * A policy to perform optimization that uses transient resources in data centers.
  */
-public final class PadoPolicy implements Policy {
+public final class TransientResourcePolicy implements Policy {
   private final Policy policy;
 
   /**
    * Default constructor.
    */
-  public PadoPolicy() {
+  public TransientResourcePolicy() {
     this.policy = new PolicyBuilder(true)
-        .registerCompileTimePass(new PadoCompositePass())
+        .registerCompileTimePass(new TransientResourceCompositePass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
         .registerCompileTimePass(new PrimitiveCompositePass())
         .build();

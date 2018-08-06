@@ -16,20 +16,21 @@
 package edu.snu.nemo.examples.beam.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.policy.PadoPolicy;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
+import edu.snu.nemo.compiler.optimizer.policy.LargeShufflePolicy;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
 
 /**
- * A pado policy with fixed parallelism 5 for tests.
+ * A large shuffle policy with fixed parallelism 5 for tests.
  */
-public final class PadoPolicyParallelismFive implements Policy {
+public final class LargeShufflePolicyParallelismFive implements Policy {
   private final Policy policy;
 
-  public PadoPolicyParallelismFive() {
-    this.policy = PolicyTestUtil.overwriteParallelism(5, PadoPolicy.class.getCanonicalName());
+  public LargeShufflePolicyParallelismFive() {
+    this.policy =
+        PolicyTestUtil.overwriteParallelism(5, LargeShufflePolicy.class.getCanonicalName());
   }
 
   @Override

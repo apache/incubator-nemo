@@ -18,9 +18,9 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
@@ -42,7 +42,7 @@ public final class DataSkewReshapingPass extends ReshapingPass {
    * Default constructor.
    */
   public DataSkewReshapingPass() {
-    super(Collections.singleton(DataCommunicationPatternProperty.class));
+    super(Collections.singleton(CommunicationPatternProperty.class));
   }
 
   @Override
@@ -53,8 +53,8 @@ public final class DataSkewReshapingPass extends ReshapingPass {
     dag.topologicalDo(v -> {
       // We care about OperatorVertices that have any incoming edges that are of type Shuffle.
       if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
-          DataCommunicationPatternProperty.Value.Shuffle
-          .equals(irEdge.getPropertyValue(DataCommunicationPatternProperty.class).get()))) {
+          CommunicationPatternProperty.Value.Shuffle
+          .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))) {
         final MetricCollectionBarrierVertex<Integer, Long> metricCollectionBarrierVertex
             = new MetricCollectionBarrierVertex<>();
         metricCollectionVertices.add(metricCollectionBarrierVertex);
@@ -62,15 +62,15 @@ public final class DataSkewReshapingPass extends ReshapingPass {
         builder.addVertex(metricCollectionBarrierVertex);
         dag.getIncomingEdgesOf(v).forEach(edge -> {
           // we insert the metric collection vertex when we meet a shuffle edge
-          if (DataCommunicationPatternProperty.Value.Shuffle
-                .equals(edge.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
+          if (CommunicationPatternProperty.Value.Shuffle
+                .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
             // We then insert the dynamicOptimizationVertex between the vertex and incoming vertices.
-            final IREdge newEdge = new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
+            final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne,
                 edge.getSrc(), metricCollectionBarrierVertex);
             newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
             newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
 
-            final IREdge edgeToGbK = new IREdge(edge.getPropertyValue(DataCommunicationPatternProperty.class).get(),
+            final IREdge edgeToGbK = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
                 metricCollectionBarrierVertex, v, edge.isSideInput());
             edge.copyExecutionPropertiesTo(edgeToGbK);
             builder.connectVertices(newEdge);
