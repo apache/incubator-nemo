@@ -58,7 +58,7 @@ public final class IntermediateDataLocationAwareSchedulingConstraint implements 
                 RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId()));
         final BlockManagerMaster.BlockLocationRequestHandler locationHandler =
             blockManagerMaster.getBlockLocationHandler(blockIdToRead);
-        if (locationHandler.getLocationFuture().isDone()) {
+        if (locationHandler.getLocationFuture().isDone()) { // if the location is known.
           try {
             final String location = locationHandler.getLocationFuture().get();
             return Optional.of(location);

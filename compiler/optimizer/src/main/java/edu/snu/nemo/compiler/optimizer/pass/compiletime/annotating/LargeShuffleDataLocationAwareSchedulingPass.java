@@ -30,6 +30,9 @@ import java.util.stream.Stream;
  */
 public final class LargeShuffleDataLocationAwareSchedulingPass extends AnnotatingPass {
 
+  /**
+   * Constructor.
+   */
   public LargeShuffleDataLocationAwareSchedulingPass() {
     super(IntermediateDataLocationAwareSchedulingProperty.class,
         Stream.of(DataFlowProperty.class, CommunicationPatternProperty.class).collect(Collectors.toSet()));
