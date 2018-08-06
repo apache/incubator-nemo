@@ -16,7 +16,11 @@
 package edu.snu.nemo.compiler.frontend.beam;
 
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.ir.edge.executionproperty.*;
+import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
@@ -264,8 +268,8 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
    * @param dst destination vertex.
    * @return the appropriate edge type.
    */
-  private static DataCommunicationPatternProperty.Value getEdgeCommunicationPattern(final IRVertex src,
-                                                                                    final IRVertex dst) {
+  private static CommunicationPatternProperty.Value getEdgeCommunicationPattern(final IRVertex src,
+                                                                                final IRVertex dst) {
     final Class<?> constructUnionTableFn;
     try {
       constructUnionTableFn = Class.forName("org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");
@@ -278,17 +282,17 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     final DoFn srcDoFn = srcTransform instanceof DoTransform ? ((DoTransform) srcTransform).getDoFn() : null;
 
     if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
-      return DataCommunicationPatternProperty.Value.Shuffle;
+      return CommunicationPatternProperty.Value.Shuffle;
     }
     if (srcTransform instanceof FlattenTransform) {
-      return DataCommunicationPatternProperty.Value.OneToOne;
+      return CommunicationPatternProperty.Value.OneToOne;
     }
     if (dstTransform instanceof GroupByKeyTransform) {
-      return DataCommunicationPatternProperty.Value.Shuffle;
+      return CommunicationPatternProperty.Value.Shuffle;
     }
     if (dstTransform instanceof CreateViewTransform) {
-      return DataCommunicationPatternProperty.Value.BroadCast;
+      return CommunicationPatternProperty.Value.BroadCast;
     }
-    return DataCommunicationPatternProperty.Value.OneToOne;
+    return CommunicationPatternProperty.Value.OneToOne;
   }
 }

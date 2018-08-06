@@ -19,8 +19,7 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
-import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismFive;
-import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismTen;
+import edu.snu.nemo.examples.beam.policy.TransientResourcePolicyParallelismTen;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -74,12 +73,12 @@ public final class AlternatingLeastSquareITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testPadoWithPoison() throws Exception {
+  public void testTransientResourceWithPoison() throws Exception {
     JobLauncher.main(builder
         .addResourceJson(poisonedResource)
-        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_pado_poisoned")
+        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_transient_poisoned")
         .addMaxTaskAttempt(Integer.MAX_VALUE)
-        .addOptimizationPolicy(PadoPolicyParallelismTen.class.getCanonicalName())
+        .addOptimizationPolicy(TransientResourcePolicyParallelismTen.class.getCanonicalName())
         .build());
   }
 }

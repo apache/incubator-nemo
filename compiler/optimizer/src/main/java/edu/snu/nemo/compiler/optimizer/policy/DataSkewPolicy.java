@@ -16,9 +16,9 @@
 package edu.snu.nemo.compiler.optimizer.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.SkewCompositePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.PrimitiveCompositePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
@@ -35,17 +35,17 @@ public final class DataSkewPolicy implements Policy {
    */
   public DataSkewPolicy() {
     this.policy = new PolicyBuilder(true)
-        .registerRuntimePass(new DataSkewRuntimePass(), new DataSkewCompositePass())
+        .registerRuntimePass(new DataSkewRuntimePass(), new SkewCompositePass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
-        .registerCompileTimePass(new PrimitiveCompositePass())
+        .registerCompileTimePass(new DefaultCompositePass())
         .build();
   }
 
   public DataSkewPolicy(final int skewness) {
     this.policy = new PolicyBuilder(true)
-        .registerRuntimePass(new DataSkewRuntimePass().setNumSkewedKeys(skewness), new DataSkewCompositePass())
+        .registerRuntimePass(new DataSkewRuntimePass().setNumSkewedKeys(skewness), new SkewCompositePass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
-        .registerCompileTimePass(new PrimitiveCompositePass())
+        .registerCompileTimePass(new DefaultCompositePass())
         .build();
   }
 

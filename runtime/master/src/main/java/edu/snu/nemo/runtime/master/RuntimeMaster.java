@@ -406,7 +406,7 @@ public final class RuntimeMaster {
         metricCollectionBarrierVertex.setMetricData(aggregatedMetricData);
       });
     } else {
-      throw new RuntimeException("Something wrong happened at DataSkewCompositePass.");
+      throw new RuntimeException("Something wrong happened at SkewCompositePass.");
     }
   }
 

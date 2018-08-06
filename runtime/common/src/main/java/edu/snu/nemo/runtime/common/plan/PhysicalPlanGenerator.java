@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
@@ -274,7 +274,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
         Integer newScheduleGroup = null;
         for (final StageEdge stageEdge : dag.getIncomingEdgesOf(destination)) {
           final Stage source = stageEdge.getSrc();
-          if (stageEdge.getDataFlowModel() != DataFlowModelProperty.Value.Pull) {
+          if (stageEdge.getDataFlowModel() != DataFlowProperty.Value.Pull) {
             if (scheduleGroup != null && source.getScheduleGroup() != scheduleGroup) {
               throw new RuntimeException(String.format("Multiple Push inEdges from different ScheduleGroup: %d, %d",
                   scheduleGroup, source.getScheduleGroup()));

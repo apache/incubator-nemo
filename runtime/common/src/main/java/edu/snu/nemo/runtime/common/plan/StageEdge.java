@@ -16,8 +16,8 @@
 package edu.snu.nemo.runtime.common.plan;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
@@ -50,14 +50,14 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   private Map<Integer, KeyRange> taskIdxToKeyRange;
 
   /**
-   * Value for {@link DataCommunicationPatternProperty}.
+   * Value for {@link CommunicationPatternProperty}.
    */
-  private final DataCommunicationPatternProperty.Value dataCommunicationPatternValue;
+  private final CommunicationPatternProperty.Value dataCommunicationPatternValue;
 
   /**
-   * Value for {@link DataFlowModelProperty}.
+   * Value for {@link DataFlowProperty}.
    */
-  private final DataFlowModelProperty.Value dataFlowModelValue;
+  private final DataFlowProperty.Value dataFlowModelValue;
 
   /**
    * Constructor.
@@ -86,12 +86,12 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     for (int taskIdx = 0; taskIdx < dstStage.getTaskIds().size(); taskIdx++) {
       taskIdxToKeyRange.put(taskIdx, HashRange.of(taskIdx, taskIdx + 1, false));
     }
-    this.dataCommunicationPatternValue = edgeProperties.get(DataCommunicationPatternProperty.class)
+    this.dataCommunicationPatternValue = edgeProperties.get(CommunicationPatternProperty.class)
         .orElseThrow(() -> new RuntimeException(String.format(
-            "DataCommunicationPatternProperty not set for %s", runtimeEdgeId)));
-    this.dataFlowModelValue = edgeProperties.get(DataFlowModelProperty.class)
+            "CommunicationPatternProperty not set for %s", runtimeEdgeId)));
+    this.dataFlowModelValue = edgeProperties.get(DataFlowProperty.class)
         .orElseThrow(() -> new RuntimeException(String.format(
-            "DataFlowModelProperty not set for %s", runtimeEdgeId)));
+            "DataFlowProperty not set for %s", runtimeEdgeId)));
   }
 
   /**
@@ -141,16 +141,16 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   }
 
   /**
-   * @return {@link DataCommunicationPatternProperty} value.
+   * @return {@link CommunicationPatternProperty} value.
    */
-  public DataCommunicationPatternProperty.Value getDataCommunicationPattern() {
+  public CommunicationPatternProperty.Value getDataCommunicationPattern() {
     return dataCommunicationPatternValue;
   }
 
   /**
-   * @return {@link DataFlowModelProperty} value.
+   * @return {@link DataFlowProperty} value.
    */
-  public DataFlowModelProperty.Value getDataFlowModel() {
+  public DataFlowProperty.Value getDataFlowModel() {
     return dataFlowModelValue;
   }
 }
