@@ -64,6 +64,10 @@ public class SailfishPassTest {
                 edgeToMerger.getPropertyValue(InterTaskDataStoreProperty.class).get());
             assertEquals(BytesDecoderFactory.of(),
                 edgeToMerger.getPropertyValue(DecoderProperty.class).get());
+            assertEquals(CompressionProperty.Value.LZ4,
+                edgeToMerger.getPropertyValue(CompressionProperty.class).get());
+            assertEquals(CompressionProperty.Value.None,
+                edgeToMerger.getPropertyValue(DecompressionProperty.class).get());
           } else {
             assertEquals(DataFlowModelProperty.Value.Pull,
                 edgeToMerger.getPropertyValue(DataFlowModelProperty.class).get());
@@ -80,6 +84,10 @@ public class SailfishPassTest {
               edgeFromMerger.getPropertyValue(EncoderProperty.class).get());
           assertEquals(PartitionerProperty.Value.IncrementPartitioner,
               edgeFromMerger.getPropertyValue(PartitionerProperty.class).get());
+          assertEquals(CompressionProperty.Value.None,
+              edgeFromMerger.getPropertyValue(CompressionProperty.class).get());
+          assertEquals(CompressionProperty.Value.LZ4,
+              edgeFromMerger.getPropertyValue(DecompressionProperty.class).get());
         });
       } else {
         // Non merger vertex.

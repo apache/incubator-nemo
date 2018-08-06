@@ -45,6 +45,8 @@ public class CompressionStreamChainer implements EncodeStreamChainer {
         return new GZIPOutputStream(out);
       case LZ4:
         return new LZ4BlockOutputStream(out);
+      case None:
+        return out;
       default:
         throw new UnsupportedCompressionException("Not supported compression method");
     }
