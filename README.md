@@ -85,11 +85,11 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ## YARN cluster example
 ./bin/run_beam.sh \
 	-deploy_mode yarn \
-  	-job_id mr_transient \
+ 	-job_id mr_transient \
 	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
-  	-user_main edu.snu.nemo.examples.beam.WordCount \
-  	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy \
-  	-user_args "hdfs://v-m:9000/sample_input_wordcount hdfs://v-m:9000/sample_output_wordcount"
+ 	-user_main edu.snu.nemo.examples.beam.WordCount \
+ 	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy \
+  -user_args "`pwd`/examples/resources/test_input_wordcount `pwd`/examples/resources/test_output_wordcount"
 ```
 ## Resource Configuration
 `-executor_json` command line option can be used to provide a path to the JSON file that describes resource configuration for executors. Its default value is `config/default.json`, which initializes one of each `Transient`, `Reserved`, and `Compute` executor, each of which has one core and 1024MB memory.
@@ -137,7 +137,7 @@ Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
   	-user_main edu.snu.nemo.examples.beam.AlternatingLeastSquare \
   	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy \
   	-dag_dir "./dag/als" \
-  	-user_args "`pwd`test_input_als"
+  	-user_args "`pwd`/examples/resources/test_input_als 10 3"
 ```
 
 ## Speeding up builds 
