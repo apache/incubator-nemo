@@ -22,10 +22,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyV
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.*;
-import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalTagOutputProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.*;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
