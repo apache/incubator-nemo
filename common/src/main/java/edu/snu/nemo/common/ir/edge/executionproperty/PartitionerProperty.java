@@ -44,6 +44,7 @@ public final class PartitionerProperty extends EdgeExecutionProperty<Partitioner
   public enum Value {
     DataSkewHashPartitioner,
     HashPartitioner,
-    IntactPartitioner
+    IntactPartitioner,
+    IncrementPartitioner
   }
 }

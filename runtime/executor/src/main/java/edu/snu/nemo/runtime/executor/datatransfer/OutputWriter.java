@@ -24,6 +24,7 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.block.Block;
+import edu.snu.nemo.runtime.executor.data.block.FileBlock;
 import edu.snu.nemo.runtime.executor.data.partitioner.*;
 
 import java.util.*;
@@ -82,6 +83,9 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
       case DataSkewHashPartitioner:
         this.partitioner = new DataSkewHashPartitioner(hashRangeMultiplier, dstParallelism, keyExtractor.get());
         break;
+      case IncrementPartitioner:
+        this.partitioner = new IncrementPartitioner();
+        break;
       default:
         throw new UnsupportedPartitionerException(
             new Throwable("Partitioner " + partitionerPropertyValue + " is not supported."));
@@ -103,6 +107,12 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   public void write(final Object element) {
     if (nonDummyBlock) {
       blockToWrite.write(partitioner.partition(element), element);
+
+      final DedicatedKeyPerElement dedicatedKeyPerElement =
+          partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
+      if (dedicatedKeyPerElement != null) {
+        blockToWrite.commitPartitions();
+      }
     } // If else, does not need to write because the data is duplicated.
   }
 
