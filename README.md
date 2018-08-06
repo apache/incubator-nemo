@@ -77,19 +77,19 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ## MapReduce example
 ./bin/run_beam.sh \
 	-job_id mr_default \
-	-executor_json `pwd`/examples/resources/beam_sample_executor_resources.json \
+	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
 	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy \
 	-user_main edu.snu.nemo.examples.beam.WordCount \
-	-user_args "`pwd`/examples/resources/sample_input_wordcount `pwd`/examples/resources/sample_output_wordcount"
+	-user_args "`pwd`test_input_wordcount`pwd`/examples/resources/test_output_wordcount"
 
 ## YARN cluster example
 ./bin/run_beam.sh \
 	-deploy_mode yarn \
   	-job_id mr_transient \
-	-executor_json `pwd`/examples/resources/beam_sample_executor_resources.json \
+	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
   	-user_main edu.snu.nemo.examples.beam.WordCount \
   	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy \
-  	-user_args "hdfs://v-m:9000/sample_input_wordcount hdfs://v-m:9000/sample_output_wordcount"
+  	-user_args "test_input_wordcount"
 ```
 ## Resource Configuration
 `-executor_json` command line option can be used to provide a path to the JSON file that describes resource configuration for executors. Its default value is `config/default.json`, which initializes one of each `Transient`, `Reserved`, and `Compute` executor, each of which has one core and 1024MB memory.
@@ -133,11 +133,11 @@ Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 ```bash
 ./bin/run_beam.sh \
 	-job_id als \
-	-executor_json `pwd`/examples/resources/beam_sample_executor_resources.json \
+	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
   	-user_main edu.snu.nemo.examples.beam.AlternatingLeastSquare \
   	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy \
   	-dag_dir "./dag/als" \
-  	-user_args "`pwd`/examples/resources/sample_input_als 10 3"
+  	-user_args "`pwd`test_input_als"
 ```
 
 ## Speeding up builds 

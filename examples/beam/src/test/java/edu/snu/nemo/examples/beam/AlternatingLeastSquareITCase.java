@@ -37,12 +37,12 @@ public final class AlternatingLeastSquareITCase {
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
-  private static final String input = fileBasePath + "sample_input_als";
-  private static final String outputFileName = "sample_output_als";
+  private static final String input = fileBasePath + "test_input_als";
+  private static final String outputFileName = "test_output_als";
   private static final String output = fileBasePath + outputFileName;
-  private static final String testResourceFileName = "test_output_als";
-  private static final String noPoisonResources = fileBasePath + "beam_sample_executor_resources.json";
-  private static final String poisonedResource = fileBasePath + "beam_sample_poisoned_executor_resources.json";
+  private static final String expectedOutputFileName = "expected_output_als";
+  private static final String noPoisonResources = fileBasePath + "beam_test_executor_resources.json";
+  private static final String poisonedResource = fileBasePath + "beam_test_poisoned_executor_resources.json";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
   private static final String lambda = "0.05";
@@ -57,7 +57,7 @@ public final class AlternatingLeastSquareITCase {
   @After
   public void tearDown() throws Exception {
     try {
-      ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+      ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }

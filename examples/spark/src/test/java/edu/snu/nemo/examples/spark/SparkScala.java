@@ -36,7 +36,7 @@ public final class SparkScala {
   private static final int TIMEOUT = 120000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
-  private static final String executorResourceFileName = fileBasePath + "spark_sample_executor_resources.json";
+  private static final String executorResourceFileName = fileBasePath + "spark_test_executor_resources.json";
 
   @Before
   public void setUp() {
@@ -58,9 +58,9 @@ public final class SparkScala {
 
   @Test(timeout = TIMEOUT)
   public void testWordCount() throws Exception {
-    final String inputFileName = "sample_input_wordcount_spark";
-    final String outputFileName = "sample_output_wordcount_spark";
-    final String testResourceFilename = "test_output_wordcount_spark";
+    final String inputFileName = "test_input_wordcount_spark";
+    final String outputFileName = "test_output_wordcount_spark";
+    final String expectedOutputFilename = "expected_output_wordcount_spark";
     final String inputFilePath = fileBasePath + inputFileName;
     final String outputFilePath = fileBasePath + outputFileName;
 
@@ -72,7 +72,7 @@ public final class SparkScala {
         .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFilename);
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }

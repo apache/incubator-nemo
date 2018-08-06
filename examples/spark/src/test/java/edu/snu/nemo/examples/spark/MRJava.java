@@ -37,7 +37,7 @@ public final class MRJava {
   private static final int TIMEOUT = 180000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
-  private static final String executorResourceFileName = fileBasePath + "spark_sample_executor_resources.json";
+  private static final String executorResourceFileName = fileBasePath + "spark_test_executor_resources.json";
 
   @Before
   public void setUp() {
@@ -47,9 +47,9 @@ public final class MRJava {
 
   @Test(timeout = TIMEOUT)
   public void testSparkWordCount() throws Exception {
-    final String inputFileName = "sample_input_wordcount_spark";
-    final String outputFileName = "sample_output_wordcount_spark";
-    final String testResourceFilename = "test_output_wordcount_spark";
+    final String inputFileName = "test_input_wordcount_spark";
+    final String outputFileName = "test_output_wordcount_spark";
+    final String expectedOutputFilename = "expected_output_wordcount_spark";
     final String inputFilePath = fileBasePath + inputFileName;
     final String outputFilePath = fileBasePath + outputFileName;
 
@@ -61,7 +61,7 @@ public final class MRJava {
         .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFilename);
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
@@ -69,8 +69,8 @@ public final class MRJava {
   /* TODO #152: enable execution of multiple jobs (call scheduleJob multiple times with caching).
   @Test(timeout = TIMEOUT)
   public void testSparkWordAndLineCount() throws Exception {
-    final String inputFileName = "sample_input_wordcount_spark";
-    final String outputFileName = "sample_output_word_and_line_count";
+    final String inputFileName = "test_input_wordcount_spark";
+    final String outputFileName = "test_output_word_and_line_count";
     final String testResourceFilename = "test_output_word_and_line_count";
     final String inputFilePath = fileBasePath + inputFileName;
     final String outputFilePath = fileBasePath + outputFileName;
@@ -92,8 +92,8 @@ public final class MRJava {
   /* Temporary disabled due to Travis issue
   @Test(timeout = TIMEOUT)
   public void testSparkMapReduce() throws Exception {
-    final String inputFileName = "sample_input_wordcount_spark";
-    final String outputFileName = "sample_output_mr";
+    final String inputFileName = "test_input_wordcount_spark";
+    final String outputFileName = "test_output_mr";
     final String testResourceFilename = "test_output_wordcount_spark";
     final String inputFilePath = fileBasePath + inputFileName;
     final String outputFilePath = fileBasePath + outputFileName;
