@@ -20,9 +20,9 @@ import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.dag.Edge;
 import edu.snu.nemo.common.dag.Vertex;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.commons.lang3.mutable.MutableInt;
 
@@ -72,8 +72,8 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
                                   final boolean allowShuffleWithinScheduleGroup,
                                   final boolean allowMultipleInEdgesWithinScheduleGroup) {
     super(ScheduleGroupProperty.class, Stream.of(
-        DataCommunicationPatternProperty.class,
-        DataFlowModelProperty.class
+        CommunicationPatternProperty.class,
+        DataFlowProperty.class
     ).collect(Collectors.toSet()));
     this.allowBroadcastWithinScheduleGroup = allowBroadcastWithinScheduleGroup;
     this.allowShuffleWithinScheduleGroup = allowShuffleWithinScheduleGroup;
@@ -121,9 +121,9 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
         // Get ScheduleGroup(s) that push data to the connectedIRVertex
         final Set<ScheduleGroup> pushScheduleGroups = new HashSet<>();
         for (final IREdge edgeToConnectedIRVertex : dag.getIncomingEdgesOf(connectedIRVertex)) {
-          if (edgeToConnectedIRVertex.getPropertyValue(DataFlowModelProperty.class)
-              .orElseThrow(() -> new RuntimeException(String.format("DataFlowModelProperty for %s must be set",
-                  edgeToConnectedIRVertex.getId()))) == DataFlowModelProperty.Value.Push) {
+          if (edgeToConnectedIRVertex.getPropertyValue(DataFlowProperty.class)
+              .orElseThrow(() -> new RuntimeException(String.format("DataFlowProperty for %s must be set",
+                  edgeToConnectedIRVertex.getId()))) == DataFlowProperty.Value.Push) {
             pushScheduleGroups.add(irVertexToScheduleGroupMap.get(edgeToConnectedIRVertex.getSrc()));
           }
         }
@@ -142,16 +142,16 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
               // new ScheduleGroup
               mergability = false;
             }
-            final DataCommunicationPatternProperty.Value communicationPattern = edgeToConnectedIRVertex
-                .getPropertyValue(DataCommunicationPatternProperty.class).orElseThrow(
-                    () -> new RuntimeException(String.format("DataCommunicationPatternProperty for %s must be set",
+            final CommunicationPatternProperty.Value communicationPattern = edgeToConnectedIRVertex
+                .getPropertyValue(CommunicationPatternProperty.class).orElseThrow(
+                    () -> new RuntimeException(String.format("CommunicationPatternProperty for %s must be set",
                         edgeToConnectedIRVertex.getId())));
             if (!allowBroadcastWithinScheduleGroup
-                && communicationPattern == DataCommunicationPatternProperty.Value.BroadCast) {
+                && communicationPattern == CommunicationPatternProperty.Value.BroadCast) {
               mergability = false;
             }
             if (!allowShuffleWithinScheduleGroup
-                && communicationPattern == DataCommunicationPatternProperty.Value.Shuffle) {
+                && communicationPattern == CommunicationPatternProperty.Value.Shuffle) {
               mergability = false;
             }
           }

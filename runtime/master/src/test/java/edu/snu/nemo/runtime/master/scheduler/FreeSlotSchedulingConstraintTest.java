@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.tang.Tang;
@@ -70,7 +70,7 @@ public final class FreeSlotSchedulingConstraintTest {
   public void testFreeSlot() {
 
     final Task task = mock(Task.class);
-    when(task.getPropertyValue(ExecutorSlotComplianceProperty.class)).thenReturn(Optional.of(true));
+    when(task.getPropertyValue(ResourceSlotProperty.class)).thenReturn(Optional.of(true));
 
     final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
 
@@ -89,7 +89,7 @@ public final class FreeSlotSchedulingConstraintTest {
   public void testIgnoringSlot() {
 
     final Task task = mock(Task.class);
-    when(task.getPropertyValue(ExecutorSlotComplianceProperty.class)).thenReturn(Optional.of(false));
+    when(task.getPropertyValue(ResourceSlotProperty.class)).thenReturn(Optional.of(false));
 
     final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
 

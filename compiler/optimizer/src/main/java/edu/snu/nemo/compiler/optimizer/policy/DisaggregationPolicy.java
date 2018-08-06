@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.optimizer.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.*;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.*;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.PrimitiveCompositePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
@@ -35,7 +35,7 @@ public final class DisaggregationPolicy implements Policy {
   public DisaggregationPolicy() {
     this.policy = new PolicyBuilder(false)
         .registerCompileTimePass(new LoopOptimizationCompositePass())
-        .registerCompileTimePass(new PrimitiveCompositePass())
+        .registerCompileTimePass(new DefaultCompositePass())
         .registerCompileTimePass(new DisaggregationEdgeDataStorePass())
         .build();
   }

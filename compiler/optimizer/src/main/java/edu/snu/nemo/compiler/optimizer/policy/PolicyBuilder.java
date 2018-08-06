@@ -16,12 +16,12 @@
 package edu.snu.nemo.compiler.optimizer.policy;
 
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
@@ -62,12 +62,12 @@ public final class PolicyBuilder {
     this.annotatedExecutionProperties = new HashSet<>();
     this.strictPrerequisiteCheckMode = strictPrerequisiteCheckMode;
     // DataCommunicationPattern is already set when creating the IREdge itself.
-    annotatedExecutionProperties.add(DataCommunicationPatternProperty.class);
+    annotatedExecutionProperties.add(CommunicationPatternProperty.class);
     // Some default values are already annotated.
-    annotatedExecutionProperties.add(ExecutorPlacementProperty.class);
+    annotatedExecutionProperties.add(ResourcePriorityProperty.class);
     annotatedExecutionProperties.add(ParallelismProperty.class);
-    annotatedExecutionProperties.add(DataFlowModelProperty.class);
-    annotatedExecutionProperties.add(InterTaskDataStoreProperty.class);
+    annotatedExecutionProperties.add(DataFlowProperty.class);
+    annotatedExecutionProperties.add(DataStoreProperty.class);
     annotatedExecutionProperties.add(PartitionerProperty.class);
   }
 

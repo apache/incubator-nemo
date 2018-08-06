@@ -17,7 +17,7 @@ package edu.snu.nemo.common.ir;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
@@ -53,17 +53,17 @@ public class LoopVertexTest {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     loopDAGBuilder.addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, combine, map2));
-    loopVertex.addDagIncomingEdge(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, source, map1));
-    loopVertex.addIterativeIncomingEdge(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, map2, map1));
+        .connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
+        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
+        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine, map2));
+    loopVertex.addDagIncomingEdge(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1));
+    loopVertex.addIterativeIncomingEdge(new IREdge(CommunicationPatternProperty.Value.OneToOne, map2, map1));
 
     originalDAG = builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, source, map1))
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, combine, map2))
+        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1))
+        .connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
+        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
+        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine, map2))
         .build();
   }
 

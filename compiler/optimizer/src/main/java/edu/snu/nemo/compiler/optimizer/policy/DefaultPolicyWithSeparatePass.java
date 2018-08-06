@@ -16,7 +16,7 @@
 package edu.snu.nemo.compiler.optimizer.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultInterTaskDataStorePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultDataStorePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.CompositePass;
@@ -62,7 +62,7 @@ public final class DefaultPolicyWithSeparatePass implements Policy {
      */
     RefactoredPass() {
       super(Arrays.asList(
-          new DefaultInterTaskDataStorePass(),
+          new DefaultDataStorePass(),
           new DefaultScheduleGroupPass()
       ));
     }

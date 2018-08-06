@@ -70,29 +70,29 @@ public final class WordCountITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testSailfish() throws Exception {
+  public void testLargeShuffle() throws Exception {
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName() + "_sailfish")
-        .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
+        .addJobId(WordCountITCase.class.getSimpleName() + "_largeshuffle")
+        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 
   @Test (timeout = TIMEOUT)
-  public void testSailfishInOneExecutor() throws Exception {
+  public void testLargeShuffleInOneExecutor() throws Exception {
     JobLauncher.main(builder
         .addResourceJson(oneExecutorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName() + "_sailfishInOneExecutor")
-        .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
+        .addJobId(WordCountITCase.class.getSimpleName() + "_largeshuffleInOneExecutor")
+        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 
   @Test (timeout = TIMEOUT)
-  public void testPado() throws Exception {
+  public void testTransientResource() throws Exception {
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
+        .addJobId(WordCountITCase.class.getSimpleName() + "_transient")
+        .addOptimizationPolicy(TransientResourcePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 }
