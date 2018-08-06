@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.master.resource;
 
 import com.google.protobuf.ByteString;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -25,11 +26,10 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * (WARNING) This class is not thread-safe, and thus should only be accessed through ExecutorRegistry.
@@ -47,10 +47,11 @@ public final class ExecutorRepresenter {
 
   private final String executorId;
   private final ResourceSpecification resourceSpecification;
-  private final Set<String> runningTasks;
-  private final Map<String, Integer> runningTaskToAttempt;
-  private final Set<String> completeTasks;
-  private final Set<String> failedTasks;
+  private final Map<String, Task> runningComplyingTasks;
+  private final Map<String, Task> runningNonComplyingTasks;
+  private final Map<Task, Integer> runningTaskToAttempt;
+  private final Set<Task> completeTasks;
+  private final Set<Task> failedTasks;
   private final MessageSender<ControlMessage.Message> messageSender;
   private final ActiveContext activeContext;
   private final ExecutorService serializationExecutorService;
@@ -74,7 +75,8 @@ public final class ExecutorRepresenter {
     this.executorId = executorId;
     this.resourceSpecification = resourceSpecification;
     this.messageSender = messageSender;
-    this.runningTasks = new HashSet<>();
+    this.runningComplyingTasks = new HashMap<>();
+    this.runningNonComplyingTasks = new HashMap<>();
     this.runningTaskToAttempt = new HashMap<>();
     this.completeTasks = new HashSet<>();
     this.failedTasks = new HashSet<>();
@@ -87,10 +89,13 @@ public final class ExecutorRepresenter {
    * Marks all Tasks which were running in this executor as failed.
    */
   public Set<String> onExecutorFailed() {
-    failedTasks.addAll(runningTasks);
-    final Set<String> snapshot = new HashSet<>(runningTasks);
-    runningTasks.clear();
-    return snapshot;
+    failedTasks.addAll(runningComplyingTasks.values());
+    failedTasks.addAll(runningNonComplyingTasks.values());
+    final Set<String> taskIds = Stream.concat(runningComplyingTasks.keySet().stream(),
+        runningNonComplyingTasks.keySet().stream()).collect(Collectors.toSet());
+    runningComplyingTasks.clear();
+    runningNonComplyingTasks.clear();
+    return taskIds;
   }
 
   /**
@@ -98,25 +103,23 @@ public final class ExecutorRepresenter {
    * @param task
    */
   public void onTaskScheduled(final Task task) {
-    runningTasks.add(task.getTaskId());
-    runningTaskToAttempt.put(task.getTaskId(), task.getAttemptIdx());
-    failedTasks.remove(task.getTaskId());
+    (task.getPropertyValue(ExecutorSlotComplianceProperty.class).orElse(true)
+        ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
+    runningTaskToAttempt.put(task, task.getAttemptIdx());
+    failedTasks.remove(task);
 
-    serializationExecutorService.submit(new Runnable() {
-      @Override
-      public void run() {
-        final byte[] serialized = SerializationUtils.serialize(task);
-        sendControlMessage(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.ScheduleTask)
-                .setScheduleTaskMsg(
-                    ControlMessage.ScheduleTaskMsg.newBuilder()
-                        .setTask(ByteString.copyFrom(serialized))
-                        .build())
-                .build());
-      }
+    serializationExecutorService.submit(() -> {
+      final byte[] serialized = SerializationUtils.serialize(task);
+      sendControlMessage(
+          ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdGenerator.generateMessageId())
+              .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.ScheduleTask)
+              .setScheduleTaskMsg(
+                  ControlMessage.ScheduleTaskMsg.newBuilder()
+                      .setTask(ByteString.copyFrom(serialized))
+                      .build())
+              .build());
     });
   }
 
@@ -133,9 +136,9 @@ public final class ExecutorRepresenter {
    *
    */
   public void onTaskExecutionComplete(final String taskId) {
-    runningTasks.remove(taskId);
-    runningTaskToAttempt.remove(taskId);
-    completeTasks.add(taskId);
+    final Task completedTask = removeFromRunningTasks(taskId);
+    runningTaskToAttempt.remove(completedTask);
+    completeTasks.add(completedTask);
   }
 
   /**
@@ -143,9 +146,9 @@ public final class ExecutorRepresenter {
    * @param taskId id of the Task
    */
   public void onTaskExecutionFailed(final String taskId) {
-    runningTasks.remove(taskId);
-    runningTaskToAttempt.remove(taskId);
-    failedTasks.add(taskId);
+    final Task failedTask = removeFromRunningTasks(taskId);
+    runningTaskToAttempt.remove(failedTask);
+    failedTasks.add(failedTask);
   }
 
   /**
@@ -156,28 +159,32 @@ public final class ExecutorRepresenter {
   }
 
   /**
-   * @return set of ids of Tasks that are running in this executor
+   * @return the current snapshot of set of Tasks that are running in this executor.
    */
-  public Set<String> getRunningTasks() {
-    return runningTasks;
-  }
-
-  public Map<String, Integer> getRunningTaskToAttempt() {
-    return runningTaskToAttempt;
+  public Set<Task> getRunningTasks() {
+    return Stream.concat(runningComplyingTasks.values().stream(),
+        runningNonComplyingTasks.values().stream()).collect(Collectors.toSet());
   }
 
   /**
-   * @return set of ids of Tasks that have been failed in this exeuctor
-
-  public Set<String> getFailedTasks() {
-    return failedTasks;
+   * @return the number of running {@link Task}s.
+   */
+  public int getNumOfRunningTasks() {
+    return getNumOfComplyingRunningTasks() + getNumOfNonComplyingRunningTasks();
   }
 
   /**
-   * @return set of ids of Tasks that have been completed in this executor
+   * @return the number of running {@link Task}s that complies to the executor slot restriction.
    */
-  public Set<String> getCompleteTasks() {
-    return completeTasks;
+  public int getNumOfComplyingRunningTasks() {
+    return runningComplyingTasks.size();
+  }
+
+  /**
+   * @return the number of running {@link Task}s that does not comply to the executor slot restriction.
+   */
+  public int getNumOfNonComplyingRunningTasks() {
+    return runningNonComplyingTasks.size();
   }
 
   /**
@@ -212,10 +219,28 @@ public final class ExecutorRepresenter {
   public String toString() {
     final StringBuffer sb = new StringBuffer("ExecutorRepresenter{");
     sb.append("executorId='").append(executorId).append('\'');
-    sb.append(", runningTasks=").append(runningTasks);
+    sb.append(", runningTasks=").append(getRunningTasks());
     sb.append(", failedTasks=").append(failedTasks);
     sb.append('}');
     return sb.toString();
+  }
+
+  /**
+   * Removes the specified {@link Task} from the map of running tasks.
+   *
+   * @param taskId id of the task to remove
+   * @return the removed {@link Task}
+   */
+  private Task removeFromRunningTasks(final String taskId) {
+    final Task task;
+    if (runningComplyingTasks.containsKey(taskId)) {
+      task = runningComplyingTasks.remove(taskId);
+    } else if (runningNonComplyingTasks.containsKey(taskId)) {
+      task = runningNonComplyingTasks.remove(taskId);
+    } else {
+      throw new RuntimeException(String.format("Task %s not found in its ExecutorRepresenter", taskId));
+    }
+    return task;
   }
 }
 

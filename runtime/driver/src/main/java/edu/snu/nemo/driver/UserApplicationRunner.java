@@ -58,7 +58,8 @@ public final class UserApplicationRunner {
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                                 @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
-                                @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt,
+                                @Parameter(JobConf.MaxTaskAttempt.class) final int maxScheduleAttempt,
+                                final NemoBackend backend,
                                 final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                                 final Injector injector,
                                 final RuntimeMaster runtimeMaster) {
@@ -67,7 +68,7 @@ public final class UserApplicationRunner {
     this.maxScheduleAttempt = maxScheduleAttempt;
     this.injector = injector;
     this.runtimeMaster = runtimeMaster;
-    this.backend = new NemoBackend();
+    this.backend = backend;
     this.pubSubWrapper = pubSubEventHandlerWrapper;
   }
 
@@ -80,7 +81,7 @@ public final class UserApplicationRunner {
    */
   public void run(final String dagString) {
     try {
-      LOG.info("##### Nemo Compiler #####");
+      LOG.info("##### Nemo Compiler Start #####");
 
       final DAG<IRVertex, IREdge> dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
       dag.storeJSON(dagDirectory, "ir", "IR before optimization");
@@ -103,6 +104,8 @@ public final class UserApplicationRunner {
 
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
 
+      LOG.info("##### Nemo Compiler Finish #####");
+
       physicalPlan.getStageDAG().storeJSON(dagDirectory, "plan", "physical execution plan by compiler");
 
       // Execute!
@@ -117,7 +120,6 @@ public final class UserApplicationRunner {
 
       jobStateManager.storeJSON(dagDirectory, "final");
       LOG.info("{} is complete!", physicalPlan.getId());
-      runtimeMaster.terminate();
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }

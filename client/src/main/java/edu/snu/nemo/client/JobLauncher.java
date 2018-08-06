@@ -25,7 +25,6 @@ import edu.snu.nemo.runtime.common.message.MessageParameters;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
-import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.client.parameters.JobMessageHandler;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
@@ -33,6 +32,7 @@ import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.*;
+import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
@@ -50,6 +50,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Job launcher.
@@ -61,8 +62,14 @@ public final class JobLauncher {
   private static Configuration jobAndDriverConf = null;
   private static Configuration deployModeConf = null;
   private static Configuration builtJobConf = null;
+
+  private static DriverLauncher driverLauncher;
+  private static DriverRPCServer driverRPCServer;
+
+  private static CountDownLatch driverReadyLatch;
+  private static CountDownLatch jobDoneLatch;
   private static String serializedDAG;
-  private static List<?> collectedData = new ArrayList<>();
+  private static final List<?> COLLECTED_DATA = new ArrayList<>();
 
   /**
    * private constructor.
@@ -77,16 +84,14 @@ public final class JobLauncher {
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
-    final DriverRPCServer driverRPCServer = new DriverRPCServer();
+    driverRPCServer = new DriverRPCServer();
+
     // Registers actions for launching the DAG.
     driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> { })
-        .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event ->
-          driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
-              .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
-              .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
-              .build()))
-        .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> collectedData.addAll(
+        .registerHandler(ControlMessage.DriverToClientMessageType.DriverReady, event -> driverReadyLatch.countDown())
+        .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
+        .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
             SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
         .run();
 
@@ -95,46 +100,104 @@ public final class JobLauncher {
     final Configuration driverConf = getDriverConf(builtJobConf);
     final Configuration driverNcsConf = getDriverNcsConf();
     final Configuration driverMessageConfg = getDriverMessageConf();
-    final Configuration executorResourceConfig = getExecutorResourceConf(builtJobConf);
+    final Configuration executorResourceConfig = getJSONConf(builtJobConf, JobConf.ExecutorJSONPath.class,
+        JobConf.ExecutorJSONContents.class);
+    final Configuration bandwidthConfig = getJSONConf(builtJobConf, JobConf.BandwidthJSONPath.class,
+        JobConf.BandwidthJSONContents.class);
     final Configuration clientConf = getClientConf();
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfg,
-        executorResourceConfig, driverRPCServer.getListeningConfiguration());
+        executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration());
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
 
-    // Launch client main
-    runUserProgramMain(builtJobConf);
-
-    driverRPCServer.shutdown();
-  }
-
-  /**
-   * Launch application using the application DAG.
-   *
-   * @param dag the application DAG.
-   */
-  // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
-  public static void launchDAG(final DAG dag) {
+    // Start Driver and launch user program.
     try {
       if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
         throw new RuntimeException("Configuration for launching driver is not ready");
       }
-      serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
-      // Launch and wait indefinitely for the job to finish
-      final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf)
-          .run(jobAndDriverConf);
-      final Optional<Throwable> possibleError = launcherStatus.getError();
+
+      // Launch driver
+      LOG.info("Launching driver");
+      driverReadyLatch = new CountDownLatch(1);
+      driverLauncher = DriverLauncher.getLauncher(deployModeConf);
+      driverLauncher.submit(jobAndDriverConf, 500);
+      // When the driver is up and the resource is ready, the DriverReady message is delivered.
+
+      // Launch client main
+      runUserProgramMain(builtJobConf);
+
+      // Trigger driver shutdown afterwards
+      driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+          .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
+      // Wait for driver to naturally finish
+      synchronized (driverLauncher) {
+        while (!driverLauncher.getStatus().isDone()) {
+          try {
+            LOG.info("Wait for the driver to finish");
+            driverLauncher.wait();
+          } catch (final InterruptedException e) {
+            LOG.warn("Interrupted: " + e);
+            // clean up state...
+            Thread.currentThread().interrupt();
+          }
+        }
+        LOG.info("Driver terminated");
+      }
+    } catch (final InjectionException e) {
+      throw new RuntimeException(e);
+    } finally {
+      // Close everything that's left
+      driverRPCServer.shutdown();
+      driverLauncher.close();
+      final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
       if (possibleError.isPresent()) {
         throw new RuntimeException(possibleError.get());
       } else {
         LOG.info("Job successfully completed");
       }
-    } catch (final InjectionException e) {
-      throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Launch application using the application DAG.
+   * Notice that we launch the DAG one at a time, as the result of a DAG has to be immediately returned to the
+   * Java variable before the application can be resumed.
+   *
+   * @param dag the application DAG.
+   */
+  // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
+  public static void launchDAG(final DAG dag) {
+    // Wait until the driver is ready.
+    try {
+      LOG.info("Waiting for the driver to be ready");
+      driverReadyLatch.await();
+    } catch (final InterruptedException e) {
+      LOG.warn("Interrupted: " + e);
+      // clean up state...
+      Thread.currentThread().interrupt();
+    }
+
+    LOG.info("Launching DAG...");
+    serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
+    jobDoneLatch = new CountDownLatch(1);
+    driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+        .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
+        .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
+        .build());
+
+    // Wait for the ExecutionDone message from the driver
+    try {
+      LOG.info("Waiting for the DAG to finish execution");
+      jobDoneLatch.await();
+    } catch (final InterruptedException e) {
+      LOG.warn("Interrupted: " + e);
+      // clean up state...
+      Thread.currentThread().interrupt();
+    }
+    LOG.info("DAG execution done");
   }
 
   /**
@@ -156,7 +219,9 @@ public final class JobLauncher {
       throw new RuntimeException("User Main Class not public");
     }
 
+    LOG.info("User program started");
     method.invoke(null, (Object) args);
+    LOG.info("User program finished");
   }
 
   /**
@@ -237,10 +302,11 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.OptimizationPolicy.class);
     cl.registerShortNameOfClass(JobConf.DeployMode.class);
     cl.registerShortNameOfClass(JobConf.DriverMemMb.class);
-    cl.registerShortNameOfClass(JobConf.ExecutorJsonPath.class);
+    cl.registerShortNameOfClass(JobConf.ExecutorJSONPath.class);
+    cl.registerShortNameOfClass(JobConf.BandwidthJSONPath.class);
     cl.registerShortNameOfClass(JobConf.JVMHeapSlack.class);
     cl.registerShortNameOfClass(JobConf.IORequestHandleThreadsTotal.class);
-    cl.registerShortNameOfClass(JobConf.MaxScheduleAttempt.class);
+    cl.registerShortNameOfClass(JobConf.MaxTaskAttempt.class);
     cl.registerShortNameOfClass(JobConf.FileDirectory.class);
     cl.registerShortNameOfClass(JobConf.GlusterVolumeDirectory.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerPort.class);
@@ -277,19 +343,25 @@ public final class JobLauncher {
   }
 
   /**
-   * Get executor resource configuration.
+   * Read json file and return its contents as configuration parameter.
    *
-   * @param jobConf job configuration to get executor json path.
-   * @return executor resource configuration.
+   * @param jobConf job configuration to get json path.
+   * @param pathParameter named parameter represents path to the json file, or an empty string
+   * @param contentsParameter named parameter represents contents of the file
+   * @return configuration with contents of the file, or an empty string as value for {@code contentsParameter}
    * @throws InjectionException exception while injection.
    */
-  private static Configuration getExecutorResourceConf(final Configuration jobConf) throws InjectionException {
+  private static Configuration getJSONConf(final Configuration jobConf,
+                                           final Class<? extends Name<String>> pathParameter,
+                                           final Class<? extends Name<String>> contentsParameter)
+      throws InjectionException {
     final Injector injector = TANG.newInjector(jobConf);
     try {
-      final String path = injector.getNamedInstance(JobConf.ExecutorJsonPath.class);
-      final String contents = new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
+      final String path = injector.getNamedInstance(pathParameter);
+      final String contents = path.isEmpty() ? ""
+          : new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
       return TANG.newConfigurationBuilder()
-          .bindNamedParameter(JobConf.ExecutorJsonContents.class, contents)
+          .bindNamedParameter(contentsParameter, contents)
           .build();
     } catch (final IOException e) {
       throw new RuntimeException(e);
@@ -309,9 +381,12 @@ public final class JobLauncher {
   /**
    * Get the collected data.
    *
+   * @param <T> the type of the data.
    * @return the collected data.
    */
   public static <T> List<T> getCollectedData() {
-    return (List<T>) collectedData;
+    final List<T> result = (List<T>) new ArrayList<>(COLLECTED_DATA);
+    COLLECTED_DATA.clear(); // flush after fetching.
+    return result;
   }
 }

@@ -16,12 +16,14 @@
 package edu.snu.nemo.driver;
 
 import edu.snu.nemo.common.ir.IdManager;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.NodeNamesAssignmentPass;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
 import edu.snu.nemo.runtime.master.ClientRPC;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.ActiveContext;
@@ -71,6 +73,9 @@ public final class NemoDriver {
   private final String glusterDirectory;
   private final ClientRPC clientRPC;
 
+  private static ExecutorService runnerThread = Executors.newSingleThreadExecutor(
+      new BasicThreadFactory.Builder().namingPattern("User App thread-%d").build());
+
   // Client for sending log messages
   private final RemoteClientMessageLoggingHandler handler;
 
@@ -81,7 +86,8 @@ public final class NemoDriver {
                      final LocalAddressProvider localAddressProvider,
                      final JobMessageObserver client,
                      final ClientRPC clientRPC,
-                     @Parameter(JobConf.ExecutorJsonContents.class) final String resourceSpecificationString,
+                     @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
+                     @Parameter(JobConf.BandwidthJSONContents.class) final String bandwidthString,
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
                      @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory) {
@@ -96,8 +102,11 @@ public final class NemoDriver {
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
-    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG,
-        message -> startSchedulingUserApplication(message.getLaunchDAG().getDag()));
+    // TODO #69: Support job-wide execution property
+    NodeNamesAssignmentPass.setBandwidthSpecificationString(bandwidthString);
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message ->
+        startSchedulingUserDAG(message.getLaunchDAG().getDag()));
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.DriverShutdown, message -> shutdown());
     // Send DriverStarted message to the client
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
         .setType(ControlMessage.DriverToClientMessageType.DriverStarted).build());
@@ -109,6 +118,15 @@ public final class NemoDriver {
   private void setUpLogger() {
     final java.util.logging.Logger rootLogger = LogManager.getLogManager().getLogger("");
     rootLogger.addHandler(handler);
+  }
+
+  /**
+   * Trigger shutdown of the driver and the runtime master.
+   */
+  private void shutdown() {
+    LOG.info("Driver shutdown initiated");
+    runnerThread.execute(runtimeMaster::terminate);
+    runnerThread.shutdown();
   }
 
   /**
@@ -144,19 +162,21 @@ public final class NemoDriver {
 
       if (finalExecutorLaunched) {
         clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-            .setType(ControlMessage.DriverToClientMessageType.ResourceReady).build());
+            .setType(ControlMessage.DriverToClientMessageType.DriverReady).build());
       }
     }
   }
 
   /**
-   * Start user application.
+   * Start user DAG.
    */
-  public void startSchedulingUserApplication(final String dagString) {
-    // Launch user application (with a new thread)
-    final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
-    userApplicationRunnerThread.execute(() -> userApplicationRunner.run(dagString));
-    userApplicationRunnerThread.shutdown();
+  public void startSchedulingUserDAG(final String dagString) {
+    runnerThread.execute(() -> {
+      userApplicationRunner.run(dagString);
+      // send driver notification that user application is done.
+      clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+          .setType(ControlMessage.DriverToClientMessageType.ExecutionDone).build());
+    });
   }
 
   /**

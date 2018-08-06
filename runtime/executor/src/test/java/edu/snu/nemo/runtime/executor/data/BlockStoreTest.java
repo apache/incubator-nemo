@@ -77,7 +77,7 @@ public final class BlockStoreTest {
       Collections.singletonList(new DecompressionStreamChainer(CompressionProperty.Value.LZ4)));
   private static final SerializerManager serializerManager = mock(SerializerManager.class);
   private BlockManagerMaster blockManagerMaster;
-  private LocalMessageDispatcher messageDispatcher;
+  private Injector baseInjector;
   // Variables for shuffle test
   private static final int NUM_WRITE_VERTICES = 3;
   private static final int NUM_READ_VERTICES = 3;
@@ -104,11 +104,9 @@ public final class BlockStoreTest {
    */
   @Before
   public void setUp() throws Exception {
-    messageDispatcher = new LocalMessageDispatcher();
-    final LocalMessageEnvironment messageEnvironment =
-        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
-    final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
+    baseInjector = LocalMessageDispatcher.getInjector();
+    final Injector injector = LocalMessageEnvironment
+        .forkInjector(baseInjector, MessageEnvironment.MASTER_COMMUNICATION_ID);
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
     when(serializerManager.getSerializer(any())).thenReturn(SERIALIZER);
 
@@ -189,9 +187,11 @@ public final class BlockStoreTest {
 
     // Generates the range of hash value to read for each read task.
     final int smallDataRangeEnd = 1 + NUM_READ_HASH_TASKS - NUM_WRITE_HASH_TASKS;
-    readKeyRangeList.add(HashRange.of(0, smallDataRangeEnd));
+    readKeyRangeList.add(HashRange.of(0, smallDataRangeEnd, false));
     IntStream.range(0, NUM_READ_HASH_TASKS - 1).forEach(readTaskIdx -> {
-      readKeyRangeList.add(HashRange.of(smallDataRangeEnd + readTaskIdx, smallDataRangeEnd + readTaskIdx + 1));
+      readKeyRangeList.add(HashRange.of(smallDataRangeEnd + readTaskIdx,
+          smallDataRangeEnd + readTaskIdx + 1,
+          false));
     });
 
     // Generates the expected result of hash range retrieval for each read task.
@@ -278,14 +278,11 @@ public final class BlockStoreTest {
 
   private GlusterFileStore createGlusterFileStore(final String executorId)
       throws InjectionException {
-    final LocalMessageEnvironment localMessageEnvironment =
-        new LocalMessageEnvironment(executorId, messageDispatcher);
-    final Injector injector = Tang.Factory.getTang().newInjector();
+    final Injector injector = LocalMessageEnvironment.forkInjector(baseInjector, executorId);
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
     injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
     injector.bindVolatileParameter(JobConf.ExecutorId.class, executorId);
     injector.bindVolatileInstance(SerializerManager.class, serializerManager);
-    injector.bindVolatileInstance(MessageEnvironment.class, localMessageEnvironment);
     return injector.getInstance(GlusterFileStore.class);
   }
 
@@ -347,7 +344,8 @@ public final class BlockStoreTest {
           public Boolean call() {
             try {
               for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_VERTICES; writeTaskIdx++) {
-                readResultCheck(blockIdList.get(writeTaskIdx), HashRange.of(readTaskIdx, readTaskIdx + 1),
+                readResultCheck(blockIdList.get(writeTaskIdx),
+                    HashRange.of(readTaskIdx, readTaskIdx + 1, false),
                     readerSideStore, partitionsPerBlock.get(writeTaskIdx).get(readTaskIdx).getData());
               }
               return true;

@@ -44,6 +44,7 @@ limitations under the License.
         <netty.version>4.1.16.Final</netty.version>
         <jetty-server.version>9.4.10.v20180503</jetty-server.version>
         <jetty-servlet.version>9.4.10.v20180503</jetty-servlet.version>
+        <commons-math.version>3.6.1</commons-math.version>
         <slf4j.version>1.7.20</slf4j.version>
         <!-- Tests -->
         <mockito.version>2.13.0</mockito.version>
@@ -59,14 +60,14 @@ limitations under the License.
         <module>compiler/frontend/beam</module>
         <module>compiler/frontend/spark</module>
         <module>compiler/optimizer</module>
+        <module>compiler/test</module>
         <module>examples/beam</module>
         <module>examples/spark</module>
         <module>runtime/common</module>
         <module>runtime/executor</module>
         <module>runtime/master</module>
         <module>runtime/driver</module>
-        <module>runtime/plangenerator</module>
-        <module>tests</module>
+        <module>runtime/test</module>
     </modules>
 
     <dependencies>

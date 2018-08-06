@@ -54,6 +54,7 @@ public final class GrpcMessageEnvironment implements MessageEnvironment {
   private final NameResolver nameResolver;
   private final IdentifierFactory idFactory;
   private final GrpcMessageServer grpcServer;
+  private final String localSenderId;
 
   @Inject
   private GrpcMessageEnvironment(
@@ -64,6 +65,7 @@ public final class GrpcMessageEnvironment implements MessageEnvironment {
     this.nameResolver = nameResolver;
     this.idFactory = idFactory;
     this.grpcServer = new GrpcMessageServer(localAddressProvider, nameResolver, idFactory, localSenderId);
+    this.localSenderId = localSenderId;
 
     try {
       this.grpcServer.start();
@@ -107,5 +109,10 @@ public final class GrpcMessageEnvironment implements MessageEnvironment {
   @Override
   public void close() throws Exception {
     grpcServer.close();
+  }
+
+  @Override
+  public String getId() {
+    return localSenderId;
   }
 }

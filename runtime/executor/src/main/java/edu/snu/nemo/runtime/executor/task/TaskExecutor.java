@@ -325,7 +325,9 @@ public final class TaskExecutor {
   }
 
   private void handleMainOutputElement(final VertexHarness harness, final Object element) {
-    harness.getWritersToChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
+    harness.getWritersToChildrenTasks().forEach(outputWriter -> {
+      outputWriter.write(element);
+    });
     if (harness.getSideInputChildren().size() > 0) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
     }
@@ -348,8 +350,9 @@ public final class TaskExecutor {
    */
   private boolean handleDataFetchers(final List<DataFetcher> fetchers) {
     final List<DataFetcher> availableFetchers = new ArrayList<>(fetchers);
-    int finishedFetcherIndex = NONE_FINISHED;
     while (!availableFetchers.isEmpty()) { // empty means we've consumed all task-external input data
+      // For this looping of available fetchers.
+      int finishedFetcherIndex = NONE_FINISHED;
       for (int i = 0; i < availableFetchers.size(); i++) {
         final DataFetcher dataFetcher = fetchers.get(i);
         final Object element;

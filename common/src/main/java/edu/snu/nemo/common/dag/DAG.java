@@ -411,7 +411,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
     try (final PrintWriter printWriter = new PrintWriter(file)) {
       printWriter.println(toString());
       printWriter.close();
-      LOG.info(String.format("DAG JSON for %s is saved at %s"
+      LOG.debug(String.format("DAG JSON for %s is saved at %s"
           + " (Use https://service.jangho.kr/nemo-dag/ to visualize it.)", description, file.getPath()));
     } catch (IOException e) {
       LOG.warn(String.format("Cannot store JSON representation of %s to %s: %s",
