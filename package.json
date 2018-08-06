@@ -15,17 +15,17 @@
   "dependencies": {
     "@dagrejs/graphlib": "^2.1.4",
     "dagre": "^0.8.2",
-    "element-ui": "^2.4.3",
-    "fabric": "^2.3.3",
-    "nuxt": "^1.0.0",
+    "element-ui": "^2.4.5",
+    "fabric": "^2.3.4",
+    "nuxt": "^1.4.2",
     "uuid": "^3.3.2",
-    "vue2vis": "git://github.com/alexcode/vue2vis.git#f528a56"
+    "vue2vis": "^0.0.14"
   },
   "devDependencies": {
-    "babel-eslint": "^8.2.1",
+    "babel-eslint": "^8.2.6",
     "eslint": "^4.15.0",
     "eslint-friendly-formatter": "^3.0.0",
     "eslint-loader": "^1.7.1",
-    "eslint-plugin-vue": "^4.0.0"
+    "eslint-plugin-vue": "^4.7.1"
   }
 }

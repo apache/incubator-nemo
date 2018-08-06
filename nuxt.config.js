@@ -26,7 +26,7 @@ module.exports = {
   loading: { color: '#3B8070' },
 
   build: {
-    vendor: ['element-ui'],
+    vendor: ['element-ui', 'vue2vis'],
     extend (config, { isDev, isClient }) {
       if (isDev && isClient) {
         config.module.rules.push({
@@ -36,7 +36,7 @@ module.exports = {
           exclude: /(node_modules)/
         })
       }
-    }
+    },
   }
 
 }
