@@ -67,13 +67,13 @@
 
 <script>
 import Vue from 'vue';
-import JobView from '~/components/JobView';
-import MetricTimeline from '~/components/MetricTimeline';
-import DAG from '~/components/DAG';
-import DetailTable from '~/components/DetailTable';
-import TaskStatistics from '~/components/TaskStatistics';
+import JobView from '../components/JobView';
+import MetricTimeline from '../components/MetricTimeline';
+import DAG from '../components/DAG';
+import DetailTable from '../components/DetailTable';
+import TaskStatistics from '../components/TaskStatistics';
 import { DataSet } from 'vue2vis';
-import { STATE } from '~/assets/constants';
+import { STATE } from '../assets/constants';
 
 // list of metric, order of elements matters.
 const METRIC_LIST = [

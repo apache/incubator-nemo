@@ -27,6 +27,7 @@ module.exports = {
 
   build: {
     vendor: ['element-ui', 'vue2vis'],
+    maxChunkSize: 256000,
     extend (config, { isDev, isClient }) {
       if (isDev && isClient) {
         config.module.rules.push({

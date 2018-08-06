@@ -25,7 +25,7 @@
 </template>
 
 <script>
-import { STATE } from '~/assets/constants';
+import { STATE } from '../assets/constants';
 
 const EXCLUDE_COLUMN = [
   'id',

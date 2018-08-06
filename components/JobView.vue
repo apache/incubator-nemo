@@ -98,7 +98,7 @@
 import Vue from 'vue';
 import uuid from 'uuid/v4';
 import { DataSet } from 'vue2vis';
-import { STATE } from '~/assets/constants';
+import { STATE } from '../assets/constants';
 
 const JOB_STATUS = {
   NOT_CONNECTED: 'NOT CONNECTED',
@@ -236,6 +236,7 @@ export default {
 
     deleteJobId(jobId) {
       if (this.selectedJobId === jobId) {
+        this.selectedJobId = '';
         this.$eventBus.$emit('job-id-deselect');
         this.$eventBus.$emit('clear-dag');
       }
