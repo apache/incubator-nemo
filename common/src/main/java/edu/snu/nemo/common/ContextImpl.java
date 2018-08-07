@@ -25,7 +25,7 @@ import java.util.Optional;
  */
 public final class ContextImpl implements Transform.Context {
   private final Map sideInputs;
-  private final Map additionalTagOutputs;
+  private final Map<String, String> additionalTagOutputs;
   private String data;
 
   /**
@@ -44,7 +44,7 @@ public final class ContextImpl implements Transform.Context {
   }
 
   @Override
-  public Map getAdditionalTagOutputs() {
+  public Map<String, String> getAdditionalTagOutputs() {
     return this.additionalTagOutputs;
   }
 
