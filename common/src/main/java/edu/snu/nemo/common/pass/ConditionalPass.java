@@ -49,7 +49,7 @@ public abstract class ConditionalPass {
    * @return the condition with the new condition added.
    */
   public final Predicate<DAG<IRVertex, IREdge>> addCondition(final Predicate<DAG<IRVertex, IREdge>> newCondition) {
-    // PassCondition automatically adds the new condition to the existing one.
+    // PassCondition adds the new condition to the existing one, with the 'and' boolean operator.
     return getCondition().and(newCondition);
   }
 }
