@@ -57,6 +57,7 @@ public final class PartitionWordsByLengthITCase {
       ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_short", expectedOutputFileName + "_short");
       ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_long", expectedOutputFileName + "_long");
       ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_very_long", expectedOutputFileName + "_very_long");
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_very_very_long", expectedOutputFileName + "_very_very_long");
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
