@@ -19,8 +19,8 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.pass.ConditionalPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.PassCondition;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 
 import java.util.*;
@@ -28,10 +28,9 @@ import java.util.*;
 /**
  * A compile-time pass composed of multiple compile-time passes, which each modifies an IR DAG.
  */
-public abstract class CompositePass implements CompileTimePass {
+public abstract class CompositePass extends ConditionalPass implements CompileTimePass {
   private final List<CompileTimePass> passList;
   private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
-  private final PassCondition condition;
 
   /**
    * Constructor.
@@ -40,7 +39,6 @@ public abstract class CompositePass implements CompileTimePass {
   public CompositePass(final List<CompileTimePass> passList) {
     this.passList = passList;
     this.prerequisiteExecutionProperties = new HashSet<>();
-    this.condition = new PassCondition();
     passList.forEach(pass -> prerequisiteExecutionProperties.addAll(pass.getPrerequisiteExecutionProperties()));
     passList.forEach(pass -> {
       if (pass instanceof AnnotatingPass) {
@@ -75,11 +73,6 @@ public abstract class CompositePass implements CompileTimePass {
     } else {
       return dag;
     }
-  }
-
-  @Override
-  public final PassCondition getCondition() {
-    return condition;
   }
 
   @Override

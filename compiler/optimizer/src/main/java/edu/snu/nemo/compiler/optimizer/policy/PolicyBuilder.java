@@ -26,6 +26,7 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.nemo.common.pass.ConditionalPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.CompositePass;
@@ -56,7 +57,6 @@ public final class PolicyBuilder {
 
   /**
    * Constructor.
-   *
    * @param strictPrerequisiteCheckMode whether to use strict prerequisite check mode or not.
    */
   public PolicyBuilder(final Boolean strictPrerequisiteCheckMode) {
@@ -76,9 +76,9 @@ public final class PolicyBuilder {
   }
 
   /**
-   * Register compile time pass.
+   * Register a compile time pass.
    * @param compileTimePass the compile time pass to register.
-   * @return the PolicyBuilder which registers compileTimePass.
+   * @return the PolicyBuilder which registers the compileTimePass.
    */
   public PolicyBuilder registerCompileTimePass(final CompileTimePass compileTimePass) {
     // We decompose CompositePasses.
@@ -111,23 +111,43 @@ public final class PolicyBuilder {
     return this;
   }
 
+  /**
+   * Register compile time pass with its condition under which to run the pass.
+   * @param compileTimePass the compile time pass to register.
+   * @param condition condition under which to run the pass.
+   * @return the PolicyBuilder which registers the compileTimePass.
+   */
   public PolicyBuilder registerCompileTimePass(final CompileTimePass compileTimePass,
                                                final Predicate<DAG<IRVertex, IREdge>> condition) {
-    compileTimePass.addCondition(condition);
+    ((ConditionalPass) compileTimePass).addCondition(condition);
     return this.registerCompileTimePass(compileTimePass);
   }
 
   /**
-   * Register run time passes.
+   * Register a run time pass.
    * @param runtimePass the runtime pass to register.
    * @param runtimePassRegisterer the compile time pass that triggers the runtime pass.
-   * @return the PolicyBuilder which registers runtimePass and runtimePassRegisterer.
+   * @return the PolicyBuilder which registers the runtimePass and the runtimePassRegisterer.
    */
   public PolicyBuilder registerRuntimePass(final RuntimePass<?> runtimePass,
                                            final CompileTimePass runtimePassRegisterer) {
     registerCompileTimePass(runtimePassRegisterer);
     this.runtimePasses.add(runtimePass);
     return this;
+  }
+
+  /**
+   * Register a run time pass.
+   * @param runtimePass the runtime pass to register.
+   * @param runtimePassRegisterer the compile time pass that triggers the runtime pass.
+   * @param condition condition under which to run the pass.
+   * @return the PolicyBuilder which registers the runtimePass and the runtimePassRegisterer.
+   */
+  public PolicyBuilder registerRuntimePass(final RuntimePass<?> runtimePass,
+                                           final CompileTimePass runtimePassRegisterer,
+                                           final Predicate<DAG<IRVertex, IREdge>> condition) {
+    ((ConditionalPass) runtimePass).addCondition(condition);
+    return this.registerRuntimePass(runtimePass, runtimePassRegisterer);
   }
 
   /**

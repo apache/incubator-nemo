@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package edu.snu.nemo.compiler.optimizer.pass.compiletime;
+package edu.snu.nemo.common.pass;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;

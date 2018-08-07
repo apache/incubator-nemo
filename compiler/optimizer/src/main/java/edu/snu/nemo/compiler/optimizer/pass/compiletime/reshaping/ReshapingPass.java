@@ -16,8 +16,8 @@
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.pass.ConditionalPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.PassCondition;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -26,9 +26,8 @@ import java.util.Set;
  * A compile-time pass that reshapes the structure of the IR DAG.
  * It is ensured by the compiler that no execution properties are modified by a ReshapingPass.
  */
-public abstract class ReshapingPass implements CompileTimePass {
+public abstract class ReshapingPass extends ConditionalPass implements CompileTimePass {
   private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
-  private final PassCondition condition;
 
   /**
    * Default constructor.
@@ -43,12 +42,6 @@ public abstract class ReshapingPass implements CompileTimePass {
    */
   public ReshapingPass(final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties) {
     this.prerequisiteExecutionProperties = prerequisiteExecutionProperties;
-    this.condition = new PassCondition();
-  }
-
-  @Override
-  public final PassCondition getCondition() {
-    return condition;
   }
 
   @Override

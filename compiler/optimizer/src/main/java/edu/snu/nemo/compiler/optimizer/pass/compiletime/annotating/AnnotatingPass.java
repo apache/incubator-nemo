@@ -16,8 +16,9 @@
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.pass.ConditionalPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.PassCondition;
+import edu.snu.nemo.common.pass.PassCondition;
 
 import java.util.Collections;
 import java.util.Set;
@@ -26,10 +27,9 @@ import java.util.Set;
  * A compile-time pass that annotates the IR DAG with execution properties.
  * It is ensured by the compiler that the shape of the IR DAG itself is not modified by an AnnotatingPass.
  */
-public abstract class AnnotatingPass implements CompileTimePass {
+public abstract class AnnotatingPass extends ConditionalPass implements CompileTimePass {
   private final Class<? extends ExecutionProperty> keyOfExecutionPropertyToModify;
   private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
-  private final PassCondition condition;
 
   /**
    * Constructor.
@@ -40,7 +40,6 @@ public abstract class AnnotatingPass implements CompileTimePass {
                         final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties) {
     this.keyOfExecutionPropertyToModify = keyOfExecutionPropertyToModify;
     this.prerequisiteExecutionProperties = prerequisiteExecutionProperties;
-    this.condition = new PassCondition();
   }
 
   /**
@@ -57,11 +56,6 @@ public abstract class AnnotatingPass implements CompileTimePass {
    */
   public final Class<? extends ExecutionProperty> getExecutionPropertyToModify() {
     return keyOfExecutionPropertyToModify;
-  }
-
-  @Override
-  public final PassCondition getCondition() {
-    return condition;
   }
 
   @Override
