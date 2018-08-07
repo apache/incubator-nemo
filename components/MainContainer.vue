@@ -23,34 +23,38 @@
           <template slot="label">
             Timeline <i class="el-icon-time"/>
           </template>
-          <el-row type="flex" justify="space-between">
-            <el-col :span="mainColSpan">
-              <metric-timeline
-                ref="metricTimeline"
-                :selectedJobId="selectedJobId"
-                :groups="groupDataSet"/>
-            </el-col>
-            <el-col :span="subColSpan">
-              <detail-table
-                v-if="tabIndex === '1'"
-                :tableData="tableData"/>
-            </el-col>
-          </el-row>
+          <el-card class="detail-card">
+            <el-row :gutter="10">
+              <el-col height="100%" :span="12" :xs="24">
+                <el-card class="detail-card" header="Select stage">
+                  <stage-select
+                    :metricLookupMap="metricLookupMap"/>
+                </el-card>
+              </el-col>
+              <el-col :span="12" :xs="24">
+                <el-card class="detail-card" header="Detail">
+                  <detail-table
+                    v-if="tabIndex === '1'"
+                    :tableData="tableData"/>
+                </el-card>
+              </el-col>
+            </el-row>
+          </el-card>
+          <el-card header="Timeline" class="detail-card">
+            <metric-timeline
+              ref="metricTimeline"
+              :selectedJobId="selectedJobId"
+              :groups="groupDataSet"/>
+          </el-card>
         </el-tab-pane>
         <el-tab-pane>
           <template slot="label">
             DAG
           </template>
-          <el-row type="flex" justify="space-between">
-            <el-col :span="mainColSpan">
-              <dag :selectedJobId="selectedJobId" :tabIndex="tabIndex"/>
-              </el-col>
-            <el-col :span="subColSpan">
-              <detail-table
-                v-if="tabIndex === '2'"
-                :tableData="tableData"/>
-            </el-col>
-          </el-row>
+          <dag :selectedJobId="selectedJobId" :tabIndex="tabIndex"/>
+          <detail-table
+            v-if="tabIndex === '2'"
+            :tableData="tableData"/>
         </el-tab-pane>
         <el-tab-pane>
           <template slot="label">
@@ -72,6 +76,7 @@ import MetricTimeline from '../components/MetricTimeline';
 import DAG from '../components/DAG';
 import DetailTable from '../components/DetailTable';
 import TaskStatistics from '../components/TaskStatistics';
+import StageSelect from '../components/StageSelect';
 import { DataSet } from 'vue2vis';
 import { STATE } from '../assets/constants';
 
@@ -98,6 +103,7 @@ export default {
     'dag': DAG,
     'detail-table': DetailTable,
     'task-statistics': TaskStatistics,
+    'stage-select': StageSelect,
   },
 
   data() {
@@ -119,19 +125,6 @@ export default {
       tableData: [],
       tabIndex: '0',
     };
-  },
-
-  computed: {
-    mainColSpan() {
-      if (this.tableData.length === 0) {
-        return 24;
-      }
-      return 12;
-    },
-
-    subColSpan() {
-      return 24 - this.mainColSpan;
-    },
   },
 
   beforeMount() {
@@ -238,6 +231,10 @@ export default {
 </script>
 <style>
 .status-header {
+  margin-bottom: 15px;
+}
+
+.detail-card {
   margin-bottom: 15px;
 }
 

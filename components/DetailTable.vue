@@ -1,5 +1,5 @@
 <template>
-  <el-card>
+  <div>
     <el-table
       border
       empty-text="No data"
@@ -17,7 +17,7 @@
       <el-table-column label="Key" prop="key"/>
       <el-table-column label="Value" prop="value"/>
     </el-table>
-  </el-card>
+  </div>
 </template>
 <script>
 export default {
