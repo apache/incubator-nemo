@@ -56,8 +56,9 @@ export default {
       }
     });
 
-    this.$eventBus.$on('set-timeline-items', metricDataSet => {
+    this.$eventBus.$on('set-timeline-filtered-items', metricDataSet => {
       this.timeline.setItems(metricDataSet);
+      this.fitTimeline();
     });
   },
 

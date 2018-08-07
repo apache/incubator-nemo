@@ -23,11 +23,18 @@
           <template slot="label">
             Timeline <i class="el-icon-time"/>
           </template>
+          <el-card header="Timeline" class="detail-card">
+            <metric-timeline
+              ref="metricTimeline"
+              :selectedJobId="selectedJobId"
+              :groups="groupDataSet"/>
+          </el-card>
           <el-card class="detail-card">
             <el-row :gutter="10">
               <el-col height="100%" :span="12" :xs="24">
                 <el-card class="detail-card" header="Select stage">
                   <stage-select
+                    :selectedJobId="selectedJobId"
                     :metricLookupMap="metricLookupMap"/>
                 </el-card>
               </el-col>
@@ -39,12 +46,6 @@
                 </el-card>
               </el-col>
             </el-row>
-          </el-card>
-          <el-card header="Timeline" class="detail-card">
-            <metric-timeline
-              ref="metricTimeline"
-              :selectedJobId="selectedJobId"
-              :groups="groupDataSet"/>
           </el-card>
         </el-tab-pane>
         <el-tab-pane>
@@ -82,7 +83,6 @@ import { STATE } from '../assets/constants';
 
 // list of metric, order of elements matters.
 const METRIC_LIST = [
-  'JobMetric',
   'StageMetric',
   'TaskMetric',
 ];
@@ -145,6 +145,7 @@ export default {
       // event handler for detecting change of job id
       this.$eventBus.$on('job-id-select', data => {
         this.$eventBus.$emit('set-timeline-items', data.metricDataSet);
+        this.$eventBus.$emit('clear-stage-select');
         this.selectedJobId = data.jobId;
         this.jobFrom = data.jobFrom;
         this.metricLookupMap = data.metricLookupMap;
@@ -153,6 +154,7 @@ export default {
 
       this.$eventBus.$on('job-id-deselect', () => {
         this.$eventBus.$emit('set-timeline-items', new DataSet([]));
+        this.$eventBus.$emit('clear-stage-select');
         this.selectedJobId = '';
         this.jobFrom = '';
         this.metricLookupMap = {};

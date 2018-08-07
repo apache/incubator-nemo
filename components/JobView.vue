@@ -459,10 +459,15 @@ export default {
         });
         this.buildMetricLookupMapWithDAG(jobId);
       }
+      newItem.metricId = data.id;
 
       let prevItem = job.metricDataSet.get(newItem.id);
       if (!prevItem) {
         try {
+          this.$eventBus.$emit('add-timeline-item', {
+            jobId,
+            item: newItem,
+          });
           job.metricDataSet.add(newItem);
           this.addMetricToMetricLookupMap(newItem, jobId);
         } catch (e) {
@@ -475,6 +480,10 @@ export default {
         }
       } else {
         try {
+          this.$eventBus.$emit('update-timeline-item', {
+            jobId,
+            item: newItem,
+          });
           job.metricDataSet.update(newItem);
           this.addMetricToMetricLookupMap(newItem, jobId);
         } catch (e) {
