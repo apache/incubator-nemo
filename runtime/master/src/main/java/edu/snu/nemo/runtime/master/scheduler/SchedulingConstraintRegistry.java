@@ -41,14 +41,12 @@ public final class SchedulingConstraintRegistry {
       final FreeSlotSchedulingConstraint freeSlotSchedulingConstraint,
       final SourceLocationAwareSchedulingConstraint sourceLocationAwareSchedulingConstraint,
       final SkewnessAwareSchedulingConstraint skewnessAwareSchedulingConstraint,
-      final NodeShareSchedulingConstraint nodeShareSchedulingConstraint,
-      final IntermediateDataLocationAwareSchedulingConstraint intermediateDataLocationAwareSchedulingConstraint) {
+      final NodeShareSchedulingConstraint nodeShareSchedulingConstraint) {
     registerSchedulingConstraint(containerTypeAwareSchedulingConstraint);
     registerSchedulingConstraint(freeSlotSchedulingConstraint);
     registerSchedulingConstraint(sourceLocationAwareSchedulingConstraint);
     registerSchedulingConstraint(nodeShareSchedulingConstraint);
     registerSchedulingConstraint(skewnessAwareSchedulingConstraint);
-    registerSchedulingConstraint(intermediateDataLocationAwareSchedulingConstraint);
   }
 
   /**
