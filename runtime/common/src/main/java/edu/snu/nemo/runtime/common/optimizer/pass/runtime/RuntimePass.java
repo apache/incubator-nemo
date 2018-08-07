@@ -29,8 +29,7 @@ import java.util.function.BiFunction;
  * after dynamic optimization.
  * @param <T> type of the metric data used for dynamic optimization.
  */
-public abstract class RuntimePass<T> extends Pass
-    implements BiFunction<PhysicalPlan, T, PhysicalPlan>, Serializable {
+public abstract class RuntimePass<T> extends Pass implements BiFunction<PhysicalPlan, T, PhysicalPlan> {
   /**
    * @return the set of event handlers used with the runtime pass.
    */

@@ -27,6 +27,8 @@ import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPas
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.ReshapingPass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 import org.apache.reef.tang.Injector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
@@ -37,6 +39,7 @@ import java.util.List;
 public final class PolicyImpl implements Policy {
   private final List<CompileTimePass> compileTimePasses;
   private final List<RuntimePass<?>> runtimePasses;
+  private static final Logger LOG = LoggerFactory.getLogger(PolicyImpl.class.getName());
 
   /**
    * Constructor.
@@ -51,6 +54,7 @@ public final class PolicyImpl implements Policy {
   @Override
   public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory)
       throws Exception {
+    LOG.info("Launch Compile-time optimizations");
     return process(dag, compileTimePasses.iterator(), dagDirectory);
   }
 
@@ -67,19 +71,26 @@ public final class PolicyImpl implements Policy {
                                                final String dagDirectory) throws Exception {
     if (passes.hasNext()) {
       final CompileTimePass passToApply = passes.next();
-      // Apply the pass to the DAG.
-      final DAG<IRVertex, IREdge> processedDAG = passToApply.getCondition().test(dag)
-          ? passToApply.apply(dag) : dag;
-      // Ensure AnnotatingPass and ReshapingPass functions as intended.
-      if ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(dag, processedDAG))
-          || (passToApply instanceof ReshapingPass && !checkReshapingPass(dag, processedDAG))) {
-        throw new CompileTimeOptimizationException(passToApply.getClass().getSimpleName()
-            + " is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
-            + "Modify it or use a general CompileTimePass");
+      final DAG<IRVertex, IREdge> processedDAG;
+
+      if (passToApply.getCondition().test(dag)) {
+        LOG.info("Apply {} to the DAG", passToApply.getClass().getSimpleName());
+        // Apply the pass to the DAG.
+        processedDAG = passToApply.apply(dag);
+        // Ensure AnnotatingPass and ReshapingPass functions as intended.
+        if ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(dag, processedDAG))
+            || (passToApply instanceof ReshapingPass && !checkReshapingPass(dag, processedDAG))) {
+          throw new CompileTimeOptimizationException(passToApply.getClass().getSimpleName()
+              + " is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
+              + "Modify it or use a general CompileTimePass");
+        }
+        // Save the processed JSON DAG.
+        processedDAG.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
+            "DAG after optimization");
+      } else {
+        LOG.info("Condition unmet for applying {} to the DAG", passToApply.getClass().getSimpleName());
+        processedDAG = dag;
       }
-      // Save the processed JSON DAG.
-      processedDAG.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
-          "DAG after optimization");
       // recursively apply the following passes.
       return process(processedDAG, passes, dagDirectory);
     } else {
@@ -162,6 +173,7 @@ public final class PolicyImpl implements Policy {
 
   @Override
   public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
+    LOG.info("Register run-time optimizations to the PubSubHandler");
     runtimePasses.forEach(runtimePass ->
         runtimePass.getEventHandlerClasses().forEach(runtimeEventHandlerClass -> {
           try {

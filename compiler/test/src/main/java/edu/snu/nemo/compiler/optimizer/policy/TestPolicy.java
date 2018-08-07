@@ -21,7 +21,6 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.*;
-import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 import org.apache.reef.tang.Injector;
 
 import java.util.*;
@@ -49,13 +48,13 @@ public final class TestPolicy implements Policy {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> runCompileTimeOptimization(DAG<IRVertex, IREdge> dag, String dagDirectory)
+  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory)
       throws Exception {
     return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
 
   @Override
-  public void registerRunTimeOptimizations(Injector injector, PubSubEventHandlerWrapper pubSubWrapper) {
+  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
     this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
   }
 }

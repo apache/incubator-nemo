@@ -20,12 +20,13 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
+import java.io.Serializable;
 import java.util.function.Predicate;
 
 /**
  * Abstract class for optimization passes. All passes basically extends this class.
  */
-public abstract class Pass {
+public abstract class Pass implements Serializable {
   private Predicate<DAG<IRVertex, IREdge>> condition;
 
   /**

@@ -29,8 +29,7 @@ import java.util.function.Function;
  * Abstract class for compile-time optimization passes that processes the DAG.
  * It is a function that takes an original DAG to produce a processed DAG, after an optimization.
  */
-public abstract class CompileTimePass extends Pass
-    implements Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>>, Serializable {
+public abstract class CompileTimePass extends Pass implements Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> {
   /**
    * Getter for prerequisite execution properties.
    * @return set of prerequisite execution properties.
