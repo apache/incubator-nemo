@@ -82,7 +82,7 @@ import { DataSet } from 'vue2vis';
 import { STATE } from '../assets/constants';
 
 // list of metric, order of elements matters.
-const METRIC_LIST = [
+export const METRIC_LIST = [
   'StageMetric',
   'TaskMetric',
 ];
@@ -95,6 +95,14 @@ const DAG_TAB = '2';
 let reconnectionTimer;
 // reconnection interval
 const RECONNECT_INTERVAL = 3000;
+
+const LISTENING_EVENT_LIST = [
+  'job-id-select',
+  'job-id-deselect',
+  'build-table-data',
+  'metric-select',
+  'metric-deselect',
+];
 
 export default {
   components: {
@@ -140,6 +148,12 @@ export default {
     this.setUpEventHandlers();
   },
 
+  beforeDestroy() {
+    LISTENING_EVENT_LIST.forEach(e => {
+      this.$eventBus.$off(e);
+    });
+  },
+
   methods: {
     setUpEventHandlers() {
       // event handler for detecting change of job id
@@ -162,7 +176,7 @@ export default {
       });
 
       this.$eventBus.$on('build-table-data', ({ metricId, jobId }) => {
-        if (this.selectJobId === jobId &&
+        if (this.selectedJobId === jobId &&
           this.selectedMetricId === metricId) {
           this.buildTableData(metricId);
         }

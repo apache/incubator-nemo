@@ -26,22 +26,23 @@ test.serial('selectJobId', async t => {
   vm.jobs.foo.dag = 'lorem';
 
   await vm.selectJobId('bar');
-  t.is(counter, 1);
-  t.is(vm.selectedJobId, 'bar');
-  t.is(dagEmitted, null);
+  t.is(counter, 1, 'job-id-select event should be fired');
+  t.is(vm.selectedJobId, 'bar', 'selectedJobId should be changed');
+  t.is(dagEmitted, null, 'dag should not be changed');
 
   await vm.selectJobId('bar');
-  t.is(counter, 1);
-  t.is(vm.selectedJobId, 'bar');
-  t.is(dagEmitted, null);
+  t.is(counter, 1, 'job-id-select event should not be fired');
+  t.is(vm.selectedJobId, 'bar', 'selectedJobId should not be changed');
+  t.is(dagEmitted, null, 'dag should not be changed');
 
   await vm.selectJobId('foo');
-  t.is(counter, 2);
-  t.is(vm.selectedJobId, 'foo');
-  t.is(dagEmitted, 'lorem');
+  t.is(counter, 2, 'job-id-select event should be fired');
+  t.is(vm.selectedJobId, 'foo', 'selectedJobId should be changed');
+  t.is(dagEmitted, 'lorem', 'dag should be changed');
 
   vm.$eventBus.$off('job-id-select');
   vm.$eventBus.$off('dag');
+  vm.$destroy();
 });
 
 test('deletejobId', async t => {
@@ -65,10 +66,11 @@ test('deletejobId', async t => {
   await vm.$nextTick();
 
   // should be deleted
-  t.falsy('foo' in vm.jobs);
-  t.is(deselectCounter, 1);
-  t.is(clearDagCounter, 1);
-  t.is(vm.selectedJobId, '');
+  t.falsy('foo' in vm.jobs,
+    'job `foo` should be deleted from `jobs` object');
+  t.is(deselectCounter, 1, 'job-id-deselect event should be fired');
+  t.is(clearDagCounter, 1, 'clear-dag event should be fired');
+  t.is(vm.selectedJobId, '', 'selectedJobId should be cleared');
 
   vm.selectedJobId = 'foo';
   vm.deleteJobId('bar');
@@ -76,13 +78,17 @@ test('deletejobId', async t => {
 
   // if selectedJobId and target id is not same, do not emit clear events
   // also, make sure that job id is not changed
-  t.falsy('bar' in vm.jobs);
-  t.is(deselectCounter, 1);
-  t.is(clearDagCounter, 1);
-  t.is(vm.selectedJobId, 'foo');
+  t.falsy('bar' in vm.jobs,
+    'job `bar` should be deleted from `jobs` object');
+  t.is(deselectCounter, 1,
+    'job-id-deselect event should not be fired when selectedJobId is differ from deleted job id');
+  t.is(clearDagCounter, 1,
+    'clear-dag event should not be fired when selectedJobId is differ from deleted job id');
+  t.is(vm.selectedJobId, 'foo', 'job id should not be changed');
 
   vm.$eventBus.$off('job-id-deselect');
   vm.$eventBus.$off('clear-dag');
+  vm.$destroy();
 });
 
 test('processMetric', async t => {
@@ -94,7 +100,7 @@ test('processMetric', async t => {
 
   // individual metric
   await vm.processMetric({metricType: 'foo'}, 'foo');
-  t.is(toBeCalledCounter, 1);
+  t.is(toBeCalledCounter, 1, 'individual metric should be processed');
 
   // big chunk of initial metric
   const fakeMetric = {
@@ -125,7 +131,9 @@ test('processMetric', async t => {
   };
 
   await vm.processMetric(fakeMetric, 'foo');
-  t.is(toBeCalledCounter, 6);
+  t.is(toBeCalledCounter, 6, 'metric chunk should be properly processed');
+
+  vm.$destroy();
 });
 
 test.serial('processIndividualMetric', async t => {
@@ -135,21 +143,21 @@ test.serial('processIndividualMetric', async t => {
 
   vm.$eventBus.$on('state-change-event', data => {
     if (stateChangeEventData) {
-      t.fail();
+      t.fail('state-change-event event should be fired only once');
     }
     stateChangeEventData = data;
   });
 
   vm.$eventBus.$on('dag', data => {
     if (dagData) {
-      t.fail();
+      t.fail('dag event should be fired only once');
     }
     dagData = data;
   });
 
   vm._newJob('foo');
   const job = vm.jobs.foo;
-  t.truthy(job);
+  t.truthy(job, 'job should be valid');
 
   const fakeMetric = {
     metricType: 'JobMetric',
@@ -166,20 +174,21 @@ test.serial('processIndividualMetric', async t => {
     }
   };
 
-  vm.buildMetricLookupMapWithDAG = (jobId) => { t.is(jobId, 'foo'); };
+  vm.buildMetricLookupMapWithDAG = (jobId) => { t.is(jobId, 'foo', 'job id should be matched'); };
   await vm.processIndividualMetric(fakeMetric, 'foo');
   await vm.$nextTick();
 
-  t.is(stateChangeEventData.jobId, 'foo');
-  t.is(stateChangeEventData.metricId, 'bar');
-  t.is(stateChangeEventData.metricType, 'JobMetric');
-  t.is(stateChangeEventData.prevState, 'READY');
-  t.is(stateChangeEventData.newState, 'EXECUTING');
+  t.is(stateChangeEventData.jobId, 'foo', 'data should be matched');
+  t.is(stateChangeEventData.metricId, 'bar', 'data should be matched');
+  t.is(stateChangeEventData.metricType, 'JobMetric', 'data should be matched');
+  t.is(stateChangeEventData.prevState, 'READY', 'data should be matched');
+  t.is(stateChangeEventData.newState, 'EXECUTING', 'data should be matched');
 
-  t.is(dagData.dag, 'bar-dag');
-  t.is(dagData.jobId, 'foo');
-  t.false(dagData.init);
+  t.is(dagData.dag, 'bar-dag', 'data should be matched');
+  t.is(dagData.jobId, 'foo', 'data should be matched');
+  t.false(dagData.init, 'data should be matched');
 
   vm.$eventBus.$off('state-change-event');
   vm.$eventBus.$off('dag');
+  vm.$destroy();
 });

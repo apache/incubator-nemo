@@ -39,14 +39,5 @@ export default {
       return key;
     },
   },
-
-  watch: {
-    tableData: {
-      handler() {
-        console.log('changed');
-      },
-      deep: true
-    }
-  },
 }
 </script>

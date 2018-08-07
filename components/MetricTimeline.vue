@@ -14,6 +14,13 @@ import Vue from 'vue';
 
 const FIT_THROTTLE_INTERVAL = 500;
 
+const LISTENING_EVENT_LIST = [
+  'redraw-timeline',
+  'fit-timeline',
+  'move-timeline',
+  'set-timeline-filtered-items',
+];
+
 export default {
   props: ['selectedJobId', 'groups', 'metricLookupMap'],
 
@@ -59,6 +66,12 @@ export default {
     this.$eventBus.$on('set-timeline-filtered-items', metricDataSet => {
       this.timeline.setItems(metricDataSet);
       this.fitTimeline();
+    });
+  },
+
+  beforeDestroy() {
+    LISTENING_EVENT_LIST.forEach(e => {
+      this.$eventBus.$off(e);
     });
   },
 

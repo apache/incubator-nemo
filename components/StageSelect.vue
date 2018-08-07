@@ -32,6 +32,13 @@
 <script>
 import { DataSet } from 'vue2vis';
 
+const LISTENING_EVENT_LIST = [
+  'set-timeline-items',
+  'add-timeline-item',
+  'update-timeline-item',
+  'clear-stage-select',
+];
+
 export default {
   props: ['selectedJobId', 'metricLookupMap'],
 
@@ -71,6 +78,12 @@ export default {
 
     this.$eventBus.$on('clear-stage-select', () => {
       this.selectData = [];
+    });
+  },
+
+  beforeDestroy() {
+    LISTENING_EVENT_LIST.forEach(e => {
+      this.$eventBus.$off(e);
     });
   },
 

@@ -42,6 +42,16 @@ const MY_TAB_INDEX = '2';
 
 const DEBUG = false;
 
+const LISTENING_EVENT_LIST = [
+  'resize-canvas',
+  'rerender-dag',
+  'metric-select-done',
+  'metric-deselect-done',
+  'clear-dag',
+  'dag',
+  'state-change-event',
+];
+
 export default {
 
   props: ['selectedJobId', 'tabIndex'],
@@ -59,6 +69,12 @@ export default {
       this.setUpCanvasEventHandler();
     }
     // debug end
+  },
+
+  beforeDestroy() {
+    LISTENING_EVENT_LIST.forEach(e => {
+      this.$eventBus.$off(e);
+    });
   },
 
   data() {
