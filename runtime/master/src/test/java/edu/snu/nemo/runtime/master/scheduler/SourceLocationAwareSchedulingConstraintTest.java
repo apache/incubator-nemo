@@ -18,9 +18,12 @@ package edu.snu.nemo.runtime.master.scheduler;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceLocalityProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -38,8 +41,9 @@ import static org.mockito.Mockito.*;
  * Test cases for {@link SourceLocationAwareSchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ExecutorRepresenter.class, Task.class, Readable.class})
+@PrepareForTest({ExecutorRepresenter.class, Task.class, Readable.class, BlockManagerMaster.class})
 public final class SourceLocationAwareSchedulingConstraintTest {
+  private Injector injector;
   private static final String SITE_0 = "SEOUL";
   private static final String SITE_1 = "JINJU";
   private static final String SITE_2 = "BUSAN";
@@ -49,6 +53,12 @@ public final class SourceLocationAwareSchedulingConstraintTest {
     when(executorRepresenter.getNodeName()).thenReturn(executorId);
     return executorRepresenter;
   }
+  
+  @Before
+  public void setUp() throws Exception {
+    injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(BlockManagerMaster.class, mock(BlockManagerMaster.class));
+  }
 
   /**
    * {@link SourceLocationAwareSchedulingConstraint} should fail to schedule a {@link Task} when
@@ -56,7 +66,7 @@ public final class SourceLocationAwareSchedulingConstraintTest {
    */
   @Test
   public void testSourceLocationAwareSchedulingNotAvailable() throws InjectionException {
-    final SchedulingConstraint schedulingConstraint = Tang.Factory.getTang().newInjector()
+    final SchedulingConstraint schedulingConstraint = injector
         .getInstance(SourceLocationAwareSchedulingConstraint.class);
 
     // Prepare test scenario
@@ -76,7 +86,7 @@ public final class SourceLocationAwareSchedulingConstraintTest {
    */
   @Test
   public void testSourceLocationAwareSchedulingWithMultiSource() throws InjectionException {
-    final SchedulingConstraint schedulingConstraint = Tang.Factory.getTang().newInjector()
+    final SchedulingConstraint schedulingConstraint = injector
         .getInstance(SourceLocationAwareSchedulingConstraint.class);
     // Prepare test scenario
     final Task task0 = CreateTask.withReadablesWithSourceLocations(
