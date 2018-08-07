@@ -20,16 +20,19 @@ import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.InMemorySourceVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalTagOutputProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -54,8 +57,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -67,7 +68,7 @@ import static org.mockito.Mockito.*;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class,
-    TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class})
+    TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class})
 public final class TaskExecutorTest {
   private static final int DATA_SIZE = 100;
   private static final ExecutionPropertyMap<VertexExecutionProperty> TASK_EXECUTION_PROPERTY_MAP
@@ -278,21 +279,21 @@ public final class TaskExecutorTest {
     final IRVertex bonusVertex1 = new OperatorVertex(new RelayTransform());
     final IRVertex bonusVertex2 = new OperatorVertex(new RelayTransform());
 
-    // Tag to vertex map. Mock tags are used.
-    HashMap<String, String> tagToVertex = new HashMap<>();
-    tagToVertex.put("bonus1", bonusVertex1.getId());
-    tagToVertex.put("bonus2", bonusVertex2.getId());
+    final RuntimeEdge<IRVertex> edge1 = createEdge(routerVertex, mainVertex, false, "edge-1");
+    final RuntimeEdge<IRVertex> edge2 = createEdge(routerVertex, bonusVertex1, false, "edge-2");
+    final RuntimeEdge<IRVertex> edge3 = createEdge(routerVertex, bonusVertex2, false, "edge-3");
 
-    routerVertex.setProperty(AdditionalTagOutputProperty.of(tagToVertex));
+    edge2.getExecutionProperties().put(AdditionalOutputTagProperty.of("bonus1"));
+    edge3.getExecutionProperties().put(AdditionalOutputTagProperty.of("bonus2"));
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(routerVertex)
         .addVertex(mainVertex)
         .addVertex(bonusVertex1)
         .addVertex(bonusVertex2)
-        .connectVertices(createEdge(routerVertex, mainVertex, false, "edge-1"))
-        .connectVertices(createEdge(routerVertex, bonusVertex1, false, "edge-2"))
-        .connectVertices(createEdge(routerVertex, bonusVertex2, false, "edge-3"))
+        .connectVertices(edge1)
+        .connectVertices(edge2)
+        .connectVertices(edge3)
         .buildWithoutSourceSinkCheck();
 
     final Task task = new Task(
@@ -344,17 +345,23 @@ public final class TaskExecutorTest {
   }
 
   private StageEdge mockStageEdgeFrom(final IRVertex irVertex) {
-    final StageEdge edge = mock(StageEdge.class);
-    when(edge.getSrcIRVertex()).thenReturn(irVertex);
-    when(edge.getDstIRVertex()).thenReturn(new OperatorVertex(new RelayTransform()));
-    return edge;
+    return new StageEdge("runtime incoming edge id",
+        ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne),
+        irVertex,
+        new OperatorVertex(new RelayTransform()),
+        mock(Stage.class),
+        mock(Stage.class),
+        false);
   }
 
   private StageEdge mockStageEdgeTo(final IRVertex irVertex) {
-    final StageEdge edge = mock(StageEdge.class);
-    when(edge.getSrcIRVertex()).thenReturn(new OperatorVertex(new RelayTransform()));
-    when(edge.getDstIRVertex()).thenReturn(irVertex);
-    return edge;
+    return new StageEdge("runtime outgoing edge id",
+        ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne),
+        new OperatorVertex(new RelayTransform()),
+        irVertex,
+        mock(Stage.class),
+        mock(Stage.class),
+        false);
   }
 
   /**
