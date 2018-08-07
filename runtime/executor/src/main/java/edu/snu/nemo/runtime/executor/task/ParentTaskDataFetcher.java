@@ -15,6 +15,8 @@
  */
 package edu.snu.nemo.runtime.executor.task;
 
+import edu.snu.nemo.common.coder.DecoderFactory;
+import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
@@ -24,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -111,9 +114,17 @@ class ParentTaskDataFetcher extends DataFetcher {
         if (currentIteratorIndex == expectedNumOfIterators) {
           // Entire fetcher is done
           if (noElementAtAll) {
-            // This shouldn't normally happen, except for cases such as when Beam's VoidCoder is used.
-            noElementAtAll = false;
-            return Void.TYPE;
+            final Optional<DecoderFactory> decoderFactory =
+                readersForParentTask.getRuntimeEdge().getPropertyValue(DecoderProperty.class);
+
+            // TODO #173: Properly handle zero-element task outputs. Currently fetchDataElement relies on
+            // toString() method to distinguish whether to return Void.TYPE or not.
+            if (decoderFactory.get().toString().equals("VoidCoder")) {
+              noElementAtAll = false;
+              return Void.TYPE;
+            } else {
+              return null;
+            }
           } else {
             // This whole fetcher's done
             return null;

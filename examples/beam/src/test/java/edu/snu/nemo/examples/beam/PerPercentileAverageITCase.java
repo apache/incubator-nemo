@@ -19,7 +19,6 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
-import edu.snu.nemo.examples.beam.policy.LargeShufflePolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -28,18 +27,18 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 /**
- * Test PartitionWordByLength program with JobLauncher.
+ * Test PerPercentile Average program with JobLauncher.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class PartitionWordsByLengthITCase {
+public final class PerPercentileAverageITCase {
   private static final int TIMEOUT = 120000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
-  private static final String inputFileName = "test_input_tag";
-  private static final String outputFileName = "test_output_tag";
-  private static final String expectedOutputFileName = "expected_output_tag";
+  private static final String inputFileName = "test_input_partition";
+  private static final String outputFileName = "test_output_partition";
+  private static final String expectedOutputFileName = "expected_output_partition";
   private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
@@ -47,17 +46,19 @@ public final class PartitionWordsByLengthITCase {
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addUserMain(PartitionWordsByLength.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath);
+      .addResourceJson(executorResourceFileName)
+      .addUserMain(PerPercentileAverage.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath);
   }
 
   @After
   public void tearDown() throws Exception {
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_short", expectedOutputFileName + "_short");
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_long", expectedOutputFileName + "_long");
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_very_long", expectedOutputFileName + "_very_long");
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_very_very_long", expectedOutputFileName + "_very_very_long");
+      for (int i = 0; i < 10; i++) {
+        ExampleTestUtil.ensureOutputValidity(fileBasePath,
+            outputFileName + "_" + i,
+            expectedOutputFileName + "_" + i);
+      }
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
@@ -66,18 +67,8 @@ public final class PartitionWordsByLengthITCase {
   @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(PartitionWordsByLengthITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testSailfish() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(PartitionWordsByLengthITCase.class.getSimpleName() + "_sailfish")
-        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addJobId(PerPercentileAverage.class.getSimpleName())
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 }
