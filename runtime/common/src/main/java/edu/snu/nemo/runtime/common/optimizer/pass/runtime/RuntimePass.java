@@ -19,7 +19,6 @@ import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
 import edu.snu.nemo.common.pass.Pass;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 
-import java.io.Serializable;
 import java.util.Set;
 import java.util.function.BiFunction;
 

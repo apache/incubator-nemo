@@ -21,7 +21,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.pass.Pass;
 
-import java.io.Serializable;
 import java.util.Set;
 import java.util.function.Function;
 
