@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.common.optimizer;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -52,11 +51,10 @@ public final class RuntimeOptimizer {
       final PhysicalPlanGenerator physicalPlanGenerator =
           Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
 
-      // Metric data for DataSkewRuntimePass is a pair of blockIds and map of hashrange, partition size.
-      final Pair<List<String>, Map<Integer, Long>> metricData =
-          (Pair<List<String>, Map<Integer, Long>>) metric;
+      // Metric data for DataSkewRuntimePass is a map of <hashrange, partition size>.
+      final Map<Integer, Long> metricData = (Map<Integer, Long>) metric;
       final DAG<IRVertex, IREdge> newIrDAG =
-          new DataSkewRuntimePass(10).apply(originalPlan.getIrDAG(), metricData);
+          new DataSkewRuntimePass().apply(originalPlan.getIrDAG(), metricData);
       final DAG<Stage, StageEdge> stageDAG = newIrDAG.convert(physicalPlanGenerator);
       final PhysicalPlan physicalPlan =
           new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(), newIrDAG, stageDAG);

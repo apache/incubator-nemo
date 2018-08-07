@@ -296,12 +296,9 @@ public final class BlockManagerWorker {
               .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
               .setType(ControlMessage.MessageType.DataSizeMetric)
               .setDataSizeMetricMsg(ControlMessage.DataSizeMetricMsg.newBuilder()
-                  .setBlockId(blockId)
-                  .setSrcIRVertexId(srcIRVertexId)
                   .addAllPartitionSize(partitionSizeEntries)
               )
               .build());
-      LOG.info("Task-{} sent datasizeMetricMsg", RuntimeIdGenerator.getTaskIndexFromBlockId(blockId));
     }
   }
 

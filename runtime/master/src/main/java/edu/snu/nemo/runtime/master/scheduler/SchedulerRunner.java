@@ -15,11 +15,6 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import edu.snu.nemo.common.HashRange;
-import edu.snu.nemo.common.KeyRange;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
-import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
@@ -100,19 +95,6 @@ public final class SchedulerRunner {
     }
   }
 
-  public boolean hasSkewedData(final Task task) {
-    final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
-    for (StageEdge inEdge : task.getTaskIncomingEdges()) {
-      final Map<Integer, KeyRange> taskIdxToKeyRange =
-          inEdge.getPropertyValue(DataSkewMetricProperty.class).get().getMetric();
-      final KeyRange hashRange = taskIdxToKeyRange.get(taskIdx);
-      if (((HashRange) hashRange).isSkewed()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   void doScheduleTaskList() {
     final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
     if (!taskListOptional.isPresent()) {
@@ -148,16 +130,10 @@ public final class SchedulerRunner {
           // Select executor
           final ExecutorRepresenter selectedExecutor
               = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
+
           // update metadata first
           jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
-          final boolean isSkewed = hasSkewedData(task);
-          if (isSkewed) {
-            LOG.info("Skewed {} scheduled to {} {}",
-                task.getTaskId(), selectedExecutor.getNodeName());
-          } else {
-            LOG.info("{} scheduled to {} {}",
-                task.getTaskId(), selectedExecutor.getNodeName());
-          }
+
           // send the task
           selectedExecutor.onTaskScheduled(task);
           scheduledTasks.add(taskId);

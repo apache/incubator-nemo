@@ -17,16 +17,15 @@ package edu.snu.nemo.runtime.common.optimizer.pass.runtime;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.DataSkewMetricFactory;
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
 import edu.snu.nemo.common.exception.DynamicOptimizationException;
 
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.common.KeyRange;
 import edu.snu.nemo.common.HashRange;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEventHandler;
@@ -42,7 +41,7 @@ import java.util.stream.Collectors;
  * this RuntimePass identifies a number of keys with big partition sizes(skewed key)
  * and evenly redistributes data via overwriting incoming edges of destination tasks.
  */
-public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>, Map<Integer, Long>>> {
+public final class DataSkewRuntimePass implements RuntimePass<Map<Integer, Long>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
   private static final int DEFAULT_SKEWED_KEYS = 3;
@@ -74,28 +73,23 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> irDAG,
-                            final Pair<List<String>, Map<Integer, Long>> metricData) {
-    final List<String> blockIds = metricData.left();
-
+                            final Map<Integer, Long> metricData) {
     // get edges to optimize
-    final List<String> optimizationEdgeIds = blockIds.stream().map(blockId ->
-        RuntimeIdGenerator.getRuntimeEdgeIdFromBlockId(blockId)).collect(Collectors.toList());
     final List<IREdge> optimizationEdges = irDAG.getVertices().stream()
         .flatMap(v -> irDAG.getIncomingEdgesOf(v).stream())
-        .filter(e -> optimizationEdgeIds.contains(e.getId()))
+        .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
+            .equals(e.getPropertyValue(MetricCollectionProperty.class)))
         .collect(Collectors.toList());
 
     // Get number of evaluators of the next stage (number of blocks).
     final IREdge targetEdge = optimizationEdges.stream().findFirst()
         .orElseThrow(() -> new RuntimeException("optimization edges are empty"));
     final Integer dstParallelism = targetEdge.getDst().getPropertyValue(ParallelismProperty.class).get();
+
     // Calculate keyRanges.
-    final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), dstParallelism);
+    final List<KeyRange> keyRanges = calculateKeyRanges(metricData, dstParallelism);
     final Map<Integer, KeyRange> taskIdxToKeyRange = new HashMap<>();
     for (int i = 0; i < dstParallelism; i++) {
-      if (((HashRange) keyRanges.get(i)).isSkewed()) {
-        LOG.info("Task-{} is assigned Skewed input", i);
-      }
       taskIdxToKeyRange.put(i, keyRanges.get(i));
     }
     // Overwrite the previously assigned key range in the physical DAG with the new range.

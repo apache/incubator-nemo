@@ -19,7 +19,7 @@ import edu.snu.nemo.common.DataSkewMetricFactory;
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
- * Compression ExecutionProperty.
+ * DataSkewMetric ExecutionProperty.
  */
 public final class DataSkewMetricProperty extends EdgeExecutionProperty<DataSkewMetricFactory> {
   /**
