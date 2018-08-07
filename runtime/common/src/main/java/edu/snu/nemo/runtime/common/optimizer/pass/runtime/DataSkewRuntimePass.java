@@ -47,7 +47,7 @@ public final class DataSkewRuntimePass extends ConditionalPass
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
   // Skewed keys denote for top n keys in terms of partition size.
-  private static final int DEFAULT_NUM_SKEWED_KEYS = 3;
+  public static final int DEFAULT_NUM_SKEWED_KEYS = 3;
   private int numSkewedKeys = DEFAULT_NUM_SKEWED_KEYS;
 
   /**

@@ -15,9 +15,14 @@
  */
 package edu.snu.nemo.compiler.optimizer.policy;
 
+import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.*;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
+import org.apache.reef.tang.Injector;
 
 import java.util.*;
 
@@ -25,30 +30,32 @@ import java.util.*;
  * A policy for tests.
  */
 public final class TestPolicy implements Policy {
-  private final boolean testPushPolicy;
+  private final Policy policy;
 
   public TestPolicy() {
     this(false);
   }
 
   public TestPolicy(final boolean testPushPolicy) {
-    this.testPushPolicy = testPushPolicy;
-  }
-
-  @Override
-  public List<CompileTimePass> getCompileTimePasses() {
-    List<CompileTimePass> policy = new ArrayList<>();
+    List<CompileTimePass> compileTimePasses = new ArrayList<>();
 
     if (testPushPolicy) {
-      policy.add(new ShuffleEdgePushPass());
+      compileTimePasses.add(new ShuffleEdgePushPass());
     }
 
-    policy.add(new DefaultScheduleGroupPass());
-    return policy;
+    compileTimePasses.add(new DefaultScheduleGroupPass());
+
+    this.policy = new PolicyImpl(compileTimePasses, new ArrayList<>());
   }
 
   @Override
-  public List<RuntimePass<?>> getRuntimePasses() {
-    return new ArrayList<>();
+  public DAG<IRVertex, IREdge> runCompileTimeOptimization(DAG<IRVertex, IREdge> dag, String dagDirectory)
+      throws Exception {
+    return this.policy.runCompileTimeOptimization(dag, dagDirectory);
+  }
+
+  @Override
+  public void registerRunTimeOptimizations(Injector injector, PubSubEventHandlerWrapper pubSubWrapper) {
+    this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
   }
 }

@@ -15,34 +15,37 @@
  */
 package edu.snu.nemo.compiler.optimizer.policy;
 
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
-import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
-
-import java.util.List;
+import org.apache.reef.tang.Injector;
 
 /**
  * Basic pull policy.
  */
 public final class BasicPullPolicy implements Policy {
+  public static final PolicyBuilder BUILDER =
+      new PolicyBuilder(true)
+          .registerCompileTimePass(new DefaultScheduleGroupPass());
   private final Policy policy;
 
   /**
    * Default constructor.
    */
   public BasicPullPolicy() {
-    this.policy = new PolicyBuilder(true)
-        .registerCompileTimePass(new DefaultScheduleGroupPass())
-        .build();
+    this.policy = BUILDER.build();
   }
 
   @Override
-  public List<CompileTimePass> getCompileTimePasses() {
-    return this.policy.getCompileTimePasses();
+  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory)
+      throws Exception {
+    return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
 
   @Override
-  public List<RuntimePass<?>> getRuntimePasses() {
-    return this.policy.getRuntimePasses();
+  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
+    this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
   }
 }

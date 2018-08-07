@@ -151,20 +151,26 @@ public final class PolicyBuilder {
   }
 
   /**
+   * Getter for compile time passes.
+   * @return the list of compile time passes.
+   */
+  public List<CompileTimePass> getCompileTimePasses() {
+    return compileTimePasses;
+  }
+
+  /**
+   * Getter for run time passes.
+   * @return the list of run time passes.
+   */
+  public List<RuntimePass<?>> getRuntimePasses() {
+    return runtimePasses;
+  }
+
+  /**
    * Build a policy using compileTimePasses and runtimePasses in this object.
    * @return the built Policy.
    */
   public Policy build() {
-    return new Policy() {
-      @Override
-      public List<CompileTimePass> getCompileTimePasses() {
-        return compileTimePasses;
-      }
-
-      @Override
-      public List<RuntimePass<?>> getRuntimePasses() {
-        return runtimePasses;
-      }
-    };
+    return new PolicyImpl(compileTimePasses, runtimePasses);
   }
 }

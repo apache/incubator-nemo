@@ -13,44 +13,46 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.optimizer;
 
+package edu.snu.nemo.compiler.optimizer.policy;
+
+import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.pass.ConditionalPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.ReshapingPass;
-import edu.snu.nemo.compiler.optimizer.policy.Policy;
+import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
+import org.apache.reef.tang.Injector;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
 
 /**
- * Compile time optimizer class.
+ * Implementation of the {@link Policy} interface.
  */
-public final class CompileTimeOptimizer {
-  /**
-   * Private constructor.
-   */
-  private CompileTimeOptimizer() {
-  }
+public final class PolicyImpl implements Policy {
+  private final List<CompileTimePass> compileTimePasses;
+  private final List<RuntimePass<?>> runtimePasses;
 
   /**
-   * Optimize function.
-   * @param dag input DAG.
-   * @param optimizationPolicy the optimization policy that we want to use to optimize the DAG.
-   * @param dagDirectory directory to save the DAG information.
-   * @return optimized DAG, tagged with execution properties.
-   * @throws Exception throws an exception if there is an exception.
+   * Constructor.
+   * @param compileTimePasses
+   * @param runtimePasses
    */
-  public static DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag, final Policy optimizationPolicy,
-                                               final String dagDirectory) throws Exception {
-    if (optimizationPolicy == null || optimizationPolicy.getCompileTimePasses().isEmpty()) {
-      throw new CompileTimeOptimizationException("A policy name should be specified.");
-    }
-    return process(dag, optimizationPolicy.getCompileTimePasses().iterator(), dagDirectory);
+  public PolicyImpl(final List<CompileTimePass> compileTimePasses, final List<RuntimePass<?>> runtimePasses) {
+    this.compileTimePasses = compileTimePasses;
+    this.runtimePasses = runtimePasses;
+  }
+
+  @Override
+  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory)
+      throws Exception {
+    return process(dag, compileTimePasses.iterator(), dagDirectory);
   }
 
   /**
@@ -157,5 +159,19 @@ public final class CompileTimeOptimizer {
       }
     }
     return true;
+  }
+
+  @Override
+  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
+    runtimePasses.forEach(runtimePass ->
+        runtimePass.getEventHandlerClasses().forEach(runtimeEventHandlerClass -> {
+          try {
+            final RuntimeEventHandler runtimeEventHandler = injector.getInstance(runtimeEventHandlerClass);
+            pubSubWrapper.getPubSubEventHandler()
+                .subscribe(runtimeEventHandler.getEventClass(), runtimeEventHandler);
+          } catch (final Exception e) {
+            throw new RuntimeException(e);
+          }
+        }));
   }
 }
