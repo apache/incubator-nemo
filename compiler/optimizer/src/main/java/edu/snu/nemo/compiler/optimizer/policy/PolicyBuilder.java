@@ -26,16 +26,12 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.pass.ConditionalPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.CompositePass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 
 /**
@@ -119,7 +115,7 @@ public final class PolicyBuilder {
    */
   public PolicyBuilder registerCompileTimePass(final CompileTimePass compileTimePass,
                                                final Predicate<DAG<IRVertex, IREdge>> condition) {
-    ((ConditionalPass) compileTimePass).addCondition(condition);
+    compileTimePass.addCondition(condition);
     return this.registerCompileTimePass(compileTimePass);
   }
 
@@ -146,7 +142,7 @@ public final class PolicyBuilder {
   public PolicyBuilder registerRuntimePass(final RuntimePass<?> runtimePass,
                                            final CompileTimePass runtimePassRegisterer,
                                            final Predicate<DAG<IRVertex, IREdge>> condition) {
-    ((ConditionalPass) runtimePass).addCondition(condition);
+    runtimePass.addCondition(condition);
     return this.registerRuntimePass(runtimePass, runtimePassRegisterer);
   }
 

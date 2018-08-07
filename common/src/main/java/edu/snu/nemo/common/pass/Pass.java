@@ -23,38 +23,41 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import java.util.function.Predicate;
 
 /**
- * Wrapper for {@link Predicate} for which we run the given pass.
+ * Abstract class for optimization passes. All passes basically extends this class.
  */
-public final class PassCondition implements Predicate<DAG<IRVertex, IREdge>> {
+public abstract class Pass {
   private Predicate<DAG<IRVertex, IREdge>> condition;
 
   /**
    * Default constructor.
    */
-  public PassCondition() {
-    this.condition = (dag) -> true;
+  public Pass() {
+    this((dag) -> true);
   }
 
-  @Override
-  public boolean test(final DAG<IRVertex, IREdge> dag) {
-    return condition.test(dag);
+  /**
+   * Constructor.
+   * @param condition condition under which to run the pass.
+   */
+  private Pass(final Predicate<DAG<IRVertex, IREdge>> condition) {
+    this.condition = condition;
   }
 
-  @Override
-  public Predicate<DAG<IRVertex, IREdge>> and(final Predicate<? super DAG<IRVertex, IREdge>> newCondition) {
+  /**
+   * Getter for the condition under which to apply the pass.
+   * @return the condition under which to apply the pass.
+   */
+  public final Predicate<DAG<IRVertex, IREdge>> getCondition() {
+    return this.condition;
+  }
+
+  /**
+   * Add the condition to the existing condition to run the pass.
+   * @param newCondition the new condition to add to the existing condition.
+   * @return the condition with the new condition added.
+   */
+  public final Pass addCondition(final Predicate<DAG<IRVertex, IREdge>> newCondition) {
     this.condition = this.condition.and(newCondition);
-    return this.condition;
-  }
-
-  @Override
-  public Predicate<DAG<IRVertex, IREdge>> negate() {
-    this.condition = this.condition.negate();
-    return this.condition;
-  }
-
-  @Override
-  public Predicate<DAG<IRVertex, IREdge>> or(final Predicate<? super DAG<IRVertex, IREdge>> newCondition) {
-    this.condition = this.condition.or(newCondition);
-    return this.condition;
+    return this;
   }
 }

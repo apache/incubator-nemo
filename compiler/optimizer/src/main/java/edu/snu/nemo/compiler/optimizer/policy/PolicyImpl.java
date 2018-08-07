@@ -22,7 +22,6 @@ import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.pass.ConditionalPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.ReshapingPass;
@@ -41,8 +40,8 @@ public final class PolicyImpl implements Policy {
 
   /**
    * Constructor.
-   * @param compileTimePasses
-   * @param runtimePasses
+   * @param compileTimePasses compile time passes of the policy.
+   * @param runtimePasses run time passes of the policy.
    */
   public PolicyImpl(final List<CompileTimePass> compileTimePasses, final List<RuntimePass<?>> runtimePasses) {
     this.compileTimePasses = compileTimePasses;
@@ -69,7 +68,7 @@ public final class PolicyImpl implements Policy {
     if (passes.hasNext()) {
       final CompileTimePass passToApply = passes.next();
       // Apply the pass to the DAG.
-      final DAG<IRVertex, IREdge> processedDAG = ((ConditionalPass) passToApply).getCondition().test(dag)
+      final DAG<IRVertex, IREdge> processedDAG = passToApply.getCondition().test(dag)
           ? passToApply.apply(dag) : dag;
       // Ensure AnnotatingPass and ReshapingPass functions as intended.
       if ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(dag, processedDAG))
