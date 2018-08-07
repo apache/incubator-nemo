@@ -45,6 +45,6 @@ public final class PartitionerProperty extends EdgeExecutionProperty<Partitioner
     DataSkewHashPartitioner,
     HashPartitioner,
     IntactPartitioner,
-    IncrementPartitioner
+    DedicatedKeyPerElementPartitioner
   }
 }

@@ -82,7 +82,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
       case DataSkewHashPartitioner:
         this.partitioner = new DataSkewHashPartitioner(hashRangeMultiplier, dstParallelism, keyExtractor.get());
         break;
-      case IncrementPartitioner:
+      case DedicatedKeyPerElementPartitioner:
         this.partitioner = new DedicatedKeyPerElementPartitioner();
         break;
       default:

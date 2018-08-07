@@ -28,6 +28,8 @@ import java.util.List;
  * A pass to support Sailfish-like shuffle by tagging edges.
  * This pass modifies the partitioner property from {@link edu.snu.nemo.common.ir.vertex.transform.RelayTransform}
  * to write an element as a partition.
+ * This enables that every byte[] element, which was a partition for the reduce task, becomes one partition again
+ * and flushed to disk write after it is relayed.
  */
 public final class LargeShufflePartitionerPass extends AnnotatingPass {
   /**
@@ -46,7 +48,8 @@ public final class LargeShufflePartitionerPass extends AnnotatingPass {
             .equals(CommunicationPatternProperty.Value.Shuffle)) {
           dag.getOutgoingEdgesOf(edge.getDst())
               .forEach(edgeFromRelay -> {
-                edgeFromRelay.setProperty(PartitionerProperty.of(PartitionerProperty.Value.IncrementPartitioner));
+                edgeFromRelay.setProperty(PartitionerProperty.of(
+                    PartitionerProperty.Value.DedicatedKeyPerElementPartitioner));
               });
         }
       });

@@ -82,7 +82,7 @@ public class LargeShuffleCompositePassTest {
               edgeFromMerger.getPropertyValue(DataStoreProperty.class).get());
           assertEquals(BytesEncoderFactory.of(),
               edgeFromMerger.getPropertyValue(EncoderProperty.class).get());
-          assertEquals(PartitionerProperty.Value.IncrementPartitioner,
+          assertEquals(PartitionerProperty.Value.DedicatedKeyPerElementPartitioner,
               edgeFromMerger.getPropertyValue(PartitionerProperty.class).get());
           assertEquals(CompressionProperty.Value.None,
               edgeFromMerger.getPropertyValue(CompressionProperty.class).get());

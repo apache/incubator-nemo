@@ -112,8 +112,11 @@ public interface Block<K extends Serializable> {
 
   /**
    * Commits all un-committed partitions.
+   * This method can be useful if partitions in a block should be committed before the block is committed totally.
+   * For example, non-committed partitions in a file block can be flushed to storage from memory.
    * If another element is written after this method is called, a new non-committed partition should be created
    * for the element even if a partition with the same key is committed already.
+   *
    * @throws BlockWriteException for any error occurred while trying to commit partitions.
    *                             (This exception will be thrown to the scheduler
    *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
