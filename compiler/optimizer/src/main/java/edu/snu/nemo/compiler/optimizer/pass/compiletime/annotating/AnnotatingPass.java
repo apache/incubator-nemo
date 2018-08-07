@@ -25,7 +25,7 @@ import java.util.Set;
  * A compile-time pass that annotates the IR DAG with execution properties.
  * It is ensured by the compiler that the shape of the IR DAG itself is not modified by an AnnotatingPass.
  */
-public abstract class AnnotatingPass implements CompileTimePass {
+public abstract class AnnotatingPass extends CompileTimePass {
   private final Class<? extends ExecutionProperty> keyOfExecutionPropertyToModify;
   private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
 

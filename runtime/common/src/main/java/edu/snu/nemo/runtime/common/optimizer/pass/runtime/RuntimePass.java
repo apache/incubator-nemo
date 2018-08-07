@@ -16,21 +16,21 @@
 package edu.snu.nemo.runtime.common.optimizer.pass.runtime;
 
 import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
+import edu.snu.nemo.common.pass.Pass;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 
-import java.io.Serializable;
 import java.util.Set;
 import java.util.function.BiFunction;
 
 /**
- * Interface for dynamic optimization passes, for dynamically optimizing a physical plan.
+ * Abstract class for dynamic optimization passes, for dynamically optimizing a physical plan.
  * It is a BiFunction that takes an original physical plan and metric data, to produce a new physical plan
  * after dynamic optimization.
  * @param <T> type of the metric data used for dynamic optimization.
  */
-public interface RuntimePass<T> extends BiFunction<PhysicalPlan, T, PhysicalPlan>, Serializable {
+public abstract class RuntimePass<T> extends Pass implements BiFunction<PhysicalPlan, T, PhysicalPlan> {
   /**
    * @return the set of event handlers used with the runtime pass.
    */
-  Set<Class<? extends RuntimeEventHandler>> getEventHandlerClasses();
+  public abstract Set<Class<? extends RuntimeEventHandler>> getEventHandlerClasses();
 }
