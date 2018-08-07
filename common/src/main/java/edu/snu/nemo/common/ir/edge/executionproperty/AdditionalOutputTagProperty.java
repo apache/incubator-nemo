@@ -13,30 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir.vertex.executionproperty;
+package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
-
-import java.util.HashMap;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
- * AdditionalOutput Execution Property for vertex that outputs additional outputs.
+ * Additional Output Tag Execution Property for edge that contains tag for additional outputs.
  */
-public final class AdditionalTagOutputProperty extends VertexExecutionProperty<HashMap<String, String>> {
+public final class AdditionalOutputTagProperty extends EdgeExecutionProperty<String> {
+
   /**
    * Constructor.
-   * @param value map of tag to IRVertex id.
+   * @param value tag id of additional input.
    */
-  private AdditionalTagOutputProperty(final HashMap<String, String> value) {
+  private AdditionalOutputTagProperty(final String value) {
     super(value);
   }
 
   /**
    * Static method exposing constructor.
-   * @param value map of tag to IRVertex id.
+   * @param value tag id of additional input.
    * @return the newly created execution property.
    */
-  public static AdditionalTagOutputProperty of(final HashMap<String, String> value) {
-    return new AdditionalTagOutputProperty(value);
+  public static AdditionalOutputTagProperty of(final String value) {
+    return new AdditionalOutputTagProperty(value);
   }
 }

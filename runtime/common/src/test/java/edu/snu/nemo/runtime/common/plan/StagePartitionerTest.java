@@ -22,7 +22,6 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.*;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -47,7 +46,6 @@ public final class StagePartitionerTest {
   public void setup() throws InjectionException {
     stagePartitioner = Tang.Factory.getTang().newInjector().getInstance(StagePartitioner.class);
     stagePartitioner.addIgnoredPropertyKey(DynamicOptimizationProperty.class);
-    stagePartitioner.addIgnoredPropertyKey(AdditionalTagOutputProperty.class);
   }
 
   /**
