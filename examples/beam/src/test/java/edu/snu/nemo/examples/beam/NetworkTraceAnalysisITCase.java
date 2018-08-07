@@ -35,11 +35,11 @@ public final class NetworkTraceAnalysisITCase {
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
-  private static final String inputFileName0 = "sample_input_network0";
-  private static final String inputFileName1 = "sample_input_network1";
-  private static final String outputFileName = "sample_output_network";
-  private static final String testResourceFileName = "test_output_network";
-  private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
+  private static final String inputFileName0 = "test_input_network0";
+  private static final String inputFileName1 = "test_input_network1";
+  private static final String outputFileName = "test_output_network";
+  private static final String expectedOutputFileName = "expected_output_network";
+  private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
   private static final String inputFilePath0 =  fileBasePath + inputFileName0;
   private static final String inputFilePath1 =  fileBasePath + inputFileName1;
   private static final String outputFilePath =  fileBasePath + outputFileName;
@@ -55,7 +55,7 @@ public final class NetworkTraceAnalysisITCase {
   @After
   public void tearDown() throws Exception {
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
