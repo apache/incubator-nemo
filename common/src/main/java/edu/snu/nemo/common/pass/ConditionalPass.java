@@ -22,9 +22,15 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.function.Predicate;
 
+/**
+ * Abstract class for conditional passes. All passes basically extends this class.
+ */
 public abstract class ConditionalPass {
   private final PassCondition condition;
 
+  /**
+   * Default constructor.
+   */
   public ConditionalPass() {
     this.condition = new PassCondition();
   }
@@ -33,7 +39,7 @@ public abstract class ConditionalPass {
    * Getter for the condition under which to apply the pass.
    * @return the condition under which to apply the pass.
    */
-  public PassCondition getCondition() {
+  public final PassCondition getCondition() {
     return this.condition;
   }
 
@@ -42,7 +48,7 @@ public abstract class ConditionalPass {
    * @param newCondition the new condition to add to the existing condition.
    * @return the condition with the new condition added.
    */
-  public Predicate<DAG<IRVertex, IREdge>> addCondition(Predicate<DAG<IRVertex, IREdge>> newCondition) {
+  public final Predicate<DAG<IRVertex, IREdge>> addCondition(final Predicate<DAG<IRVertex, IREdge>> newCondition) {
     // PassCondition automatically adds the new condition to the existing one.
     return getCondition().and(newCondition);
   }

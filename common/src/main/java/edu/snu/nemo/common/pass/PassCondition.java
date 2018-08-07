@@ -28,6 +28,9 @@ import java.util.function.Predicate;
 public final class PassCondition implements Predicate<DAG<IRVertex, IREdge>> {
   private Predicate<DAG<IRVertex, IREdge>> condition;
 
+  /**
+   * Default constructor.
+   */
   public PassCondition() {
     this.condition = (dag) -> true;
   }
