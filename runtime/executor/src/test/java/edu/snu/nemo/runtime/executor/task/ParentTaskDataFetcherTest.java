@@ -17,7 +17,6 @@ package edu.snu.nemo.runtime.executor.task;
 
 import edu.snu.nemo.common.coder.DecoderFactory;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -48,7 +47,7 @@ public final class ParentTaskDataFetcherTest {
 
   @Test(timeout=5000)
   public void testVoid() throws Exception {
-    // InputReader
+    // TODO #173: Properly handle zero-element. This test should be updated too.
     final List<String> dataElements = new ArrayList<>(0); // empty data
     final InputReader inputReader = generateInputReaderWithCoder(generateCompletableFuture(dataElements.iterator()),
         "VoidCoder");
@@ -62,7 +61,7 @@ public final class ParentTaskDataFetcherTest {
 
   @Test(timeout=5000)
   public void testEmpty() throws Exception {
-    // InputReader
+    // TODO #173: Properly handle zero-element. This test should be updated too.
     final List<String> dataElements = new ArrayList<>(0); // empty data
     final InputReader inputReader = generateInputReaderWithCoder(generateCompletableFuture(dataElements.iterator()),
         "IntCoder");
