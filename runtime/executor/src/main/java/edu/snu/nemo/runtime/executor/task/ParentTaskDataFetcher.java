@@ -15,8 +15,6 @@
  */
 package edu.snu.nemo.runtime.executor.task;
 
-import edu.snu.nemo.common.coder.DecoderFactory;
-import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
@@ -26,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -45,7 +42,6 @@ class ParentTaskDataFetcher extends DataFetcher {
   private int expectedNumOfIterators;
   private DataUtil.IteratorWithNumBytes currentIterator;
   private int currentIteratorIndex;
-  private boolean noElementAtAll = true;
   private long serBytes = 0;
   private long encodedBytes = 0;
 
@@ -98,9 +94,39 @@ class ParentTaskDataFetcher extends DataFetcher {
     }));
   }
 
+
   @Override
+  boolean hasNext() {
+    if (!hasFetchStarted) {
+      fetchInBackground();
+      advanceIterator();
+    }
+
+    if (this.currentIterator.hasNext()) {
+      return true;
+    } else {
+      if (currentIteratorIndex == expectedNumOfIterators) {
+        // All consumed.
+        return false;
+      } else {
+        countBytes(currentIterator);
+        advanceIterator();
+        return hasNext();
+      }
+    }
+  }
+
+  @Override
+  Object next() {
+    if (!hasFetchStarted) {
+      fetchInBackground();
+      advanceIterator();
+    }
+
+    return this.currentIterator.next();
+  }
+
   Object fetchDataElement() throws IOException {
-    try {
       if (!hasFetchStarted) {
         fetchInBackground();
         advanceIterator();
@@ -108,27 +134,10 @@ class ParentTaskDataFetcher extends DataFetcher {
 
       if (this.currentIterator.hasNext()) {
         // This iterator has an element available
-        noElementAtAll = false;
         return this.currentIterator.next();
       } else {
         if (currentIteratorIndex == expectedNumOfIterators) {
-          // Entire fetcher is done
-          if (noElementAtAll) {
-            final Optional<DecoderFactory> decoderFactory =
-                readersForParentTask.getRuntimeEdge().getPropertyValue(DecoderProperty.class);
-
-            // TODO #173: Properly handle zero-element task outputs. Currently fetchDataElement relies on
-            // toString() method to distinguish whether to return Void.TYPE or not.
-            if (decoderFactory.get().toString().equals("VoidCoder")) {
-              noElementAtAll = false;
-              return Void.TYPE;
-            } else {
-              return null;
-            }
-          } else {
-            // This whole fetcher's done
-            return null;
-          }
+          // This whole fetcher's done
         } else {
           // Advance to the next one
           countBytes(currentIterator);
@@ -136,6 +145,7 @@ class ParentTaskDataFetcher extends DataFetcher {
           return fetchDataElement();
         }
       }
+      /*
     } catch (final Throwable e) {
       // Any failure is caught and thrown as an IOException, so that the task is retried.
       // In particular, we catch unchecked exceptions like RuntimeException thrown by DataUtil.IteratorWithNumBytes
@@ -144,15 +154,16 @@ class ParentTaskDataFetcher extends DataFetcher {
       // "throw Exception" that the TaskExecutor thread can catch and handle.
       throw new IOException(e);
     }
+    */
   }
 
-  private void advanceIterator() throws Throwable {
+  private void advanceIterator() {
     // Take from iteratorQueue
     final Object iteratorOrThrowable;
     try {
       iteratorOrThrowable = iteratorQueue.take();
     } catch (InterruptedException e) {
-      throw e;
+      throw new RuntimeException(e);
     }
 
     // Handle iteratorOrThrowable

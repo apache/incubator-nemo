@@ -383,6 +383,15 @@ public final class TaskExecutor {
       for (int i = 0; i < availableFetchers.size(); i++) {
         final DataFetcher dataFetcher = availableFetchers.get(i);
         final Object element;
+
+
+        if (dataFetcher.hasNext()) {
+
+
+        } else {
+
+        }
+
         try {
           element = dataFetcher.fetchDataElement();
         } catch (IOException e) {
@@ -587,7 +596,7 @@ public final class TaskExecutor {
 
     // finalize OutputWriters for additional tagged children
     vertexHarness.getWritersToAdditionalChildrenTasks().values().forEach(outputWriter -> {
-      outputWriter.close();
+
       final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
       writtenBytes.ifPresent(writtenBytesList::add);
     });

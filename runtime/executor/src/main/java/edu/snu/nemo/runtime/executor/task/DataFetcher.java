@@ -38,13 +38,11 @@ abstract class DataFetcher {
     this.isFromSideInput = isFromSideInput;
   }
 
-  /**
-   * Can block until the next data element becomes available.
-   *
-   * @return null if there's no more data element.
-   * @throws IOException while fetching data
-   */
-  abstract Object fetchDataElement() throws IOException;
+  // Can block.
+  abstract boolean hasNext();
+
+  // Can block.
+  abstract Object next();
 
   VertexHarness getChild() {
     return child;
