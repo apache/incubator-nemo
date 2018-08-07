@@ -18,7 +18,6 @@
  */
 package edu.snu.nemo.runtime.master.eventhandler;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.CompilerEventHandler;
 import edu.snu.nemo.runtime.common.eventhandler.UpdatePhysicalPlanEvent;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
@@ -48,8 +47,8 @@ public final class UpdatePhysicalPlanEventHandler implements CompilerEventHandle
   @Override
   public void onNext(final UpdatePhysicalPlanEvent updatePhysicalPlanEvent) {
     final PhysicalPlan newPlan = updatePhysicalPlanEvent.getNewPhysicalPlan();
-    final Pair<String, String> taskInfo = updatePhysicalPlanEvent.getTaskInfo();
 
-    this.scheduler.updateJob(newPlan.getId(), newPlan, taskInfo);
+    this.scheduler.updateJob(newPlan.getId(), newPlan);
+    this.scheduler.completeHeldTask(updatePhysicalPlanEvent.getTaskId(), updatePhysicalPlanEvent.getExecutorId());
   }
 }

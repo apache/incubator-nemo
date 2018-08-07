@@ -124,14 +124,16 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   @Override
-  public void updateJob(final String jobId, final PhysicalPlan newPhysicalPlan, final Pair<String, String> taskInfo) {
+  public void updateJob(final String jobId, final PhysicalPlan newPhysicalPlan) {
     // update the job in the scheduler.
     // NOTE: what's already been executed is not modified in the new physical plan.
     this.physicalPlan = newPhysicalPlan;
-    if (taskInfo != null) {
-      onTaskExecutionComplete(taskInfo.left(), taskInfo.right(), true);
-      doSchedule();
-    }
+  }
+
+  @Override
+  public void completeHeldTask(final String taskId, final String executorId) {
+    onTaskExecutionComplete(executorId, taskId, true);
+    doSchedule();
   }
 
   /**
@@ -408,7 +410,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
       // and we will use this vertex to perform metric collection and dynamic optimization.
 
       pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(
-          new DynamicOptimizationEvent(physicalPlan, metricCollectionBarrierVertex, Pair.of(executorId, taskId)));
+          new DynamicOptimizationEvent(physicalPlan, metricCollectionBarrierVertex, taskId, executorId));
     } else {
       onTaskExecutionComplete(executorId, taskId, true);
     }
