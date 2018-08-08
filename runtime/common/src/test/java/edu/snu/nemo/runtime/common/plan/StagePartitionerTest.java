@@ -47,6 +47,7 @@ public final class StagePartitionerTest {
   public void setup() throws InjectionException {
     stagePartitioner = Tang.Factory.getTang().newInjector().getInstance(StagePartitioner.class);
     stagePartitioner.addIgnoredPropertyKey(DynamicOptimizationProperty.class);
+    stagePartitioner.addIgnoredPropertyKey(MainOutputTagProperty.class);
   }
 
   /**
