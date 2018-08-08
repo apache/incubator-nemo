@@ -66,17 +66,17 @@ public final class PartitionWordsByLength {
             .into(TypeDescriptors.strings())
             .via(line -> Arrays.asList(line.split(" "))))
         .apply(ParDo.of(new DoFn<String, String>() {
+          // processElement with Beam OutputReceiver.
           @ProcessElement
-          public void processElement(final ProcessContext c) {
-            String word = c.element();
+          public void processElement(@Element final String word, final MultiOutputReceiver r) {
             if (word.length() < 6) {
-              c.output(shortWordsTag, KV.of(word.length(), word));
+              r.get(shortWordsTag).output(KV.of(word.length(), word));
             } else if (word.length() < 11) {
-              c.output(longWordsTag, KV.of(word.length(), word));
+              r.get(longWordsTag).output(KV.of(word.length(), word));
             } else if (word.length() > 12) {
-              c.output(veryVeryLongWordsTag, word);
+              r.get(veryVeryLongWordsTag).output(word);
             } else {
-              c.output(word);
+              r.get(veryLongWordsTag).output(word);
             }
           }
         }).withOutputTags(veryLongWordsTag, TupleTagList
@@ -89,12 +89,12 @@ public final class PartitionWordsByLength {
         .apply(GroupByKey.create())
         .apply(MapElements.via(new FormatLines()));
     PCollection<String> veryLongWords = results.get(veryLongWordsTag);
-    PCollection<String> veryveryLongWords = results.get(veryVeryLongWordsTag);
+    PCollection<String> veryVeryLongWords = results.get(veryVeryLongWordsTag);
 
     GenericSourceSink.write(shortWords, outputFilePath + "_short");
     GenericSourceSink.write(longWords, outputFilePath + "_long");
     GenericSourceSink.write(veryLongWords, outputFilePath + "_very_long");
-    GenericSourceSink.write(veryveryLongWords, outputFilePath + "_very_very_long");
+    GenericSourceSink.write(veryVeryLongWords, outputFilePath + "_very_very_long");
     p.run();
   }
 
