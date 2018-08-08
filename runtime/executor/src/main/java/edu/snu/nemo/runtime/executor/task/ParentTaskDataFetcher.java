@@ -22,8 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.io.IOException;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -56,6 +56,72 @@ class ParentTaskDataFetcher extends DataFetcher {
     this.iteratorQueue = new LinkedBlockingQueue<>();
   }
 
+  @Override
+  Object fetchDataElement() {
+    if (!hasFetchStarted) {
+      fetchDataLazily();
+      advanceIterator();
+      hasFetchStarted = true;
+    }
+
+    if (this.currentIterator.hasNext()) {
+      return this.currentIterator.next();
+    } else {
+      if (currentIteratorIndex == expectedNumOfIterators) {
+        throw new NoSuchElementException();
+      } else {
+        countBytes(currentIterator);
+        advanceIterator();
+        return fetchDataElement(); // recursive call, with the next iterator
+      }
+    }
+  }
+
+  private void advanceIterator() {
+    // Take from iteratorQueue
+    final Object iteratorOrThrowable;
+    try {
+      iteratorOrThrowable = iteratorQueue.take(); // blocking call
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+
+    // Handle iteratorOrThrowable
+    if (iteratorOrThrowable instanceof Throwable) {
+      throw new RuntimeException((Throwable) iteratorOrThrowable);
+    } else {
+      // This iterator is valid. Do advance.
+      this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrThrowable;
+      this.currentIteratorIndex++;
+    }
+  }
+
+  private void fetchDataLazily() {
+    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
+    this.expectedNumOfIterators = futures.size();
+
+    futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
+      try {
+        if (exception != null) {
+          iteratorQueue.put(exception); // can block here
+        } else {
+          iteratorQueue.put(iterator); // can block here
+        }
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(e);
+      }
+    }));
+  }
+
+  final long getSerializedBytes() {
+    return serBytes;
+  }
+
+  final long getEncodedBytes() {
+    return encodedBytes;
+  }
+
   private void countBytes(final DataUtil.IteratorWithNumBytes iterator) {
     try {
       serBytes += iterator.getNumSerializedBytes();
@@ -71,117 +137,5 @@ class ParentTaskDataFetcher extends DataFetcher {
     } catch (final IllegalStateException e) {
       LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
     }
-  }
-
-  /**
-   * Blocking call.
-   */
-  private void fetchInBackground() {
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
-    this.expectedNumOfIterators = futures.size();
-
-    futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
-      try {
-        if (exception != null) {
-          iteratorQueue.put(exception); // can block here
-        } else {
-          iteratorQueue.put(iterator); // can block here
-        }
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new RuntimeException(e); // This shouldn't happen
-      }
-    }));
-  }
-
-
-  @Override
-  boolean hasNext() {
-    if (!hasFetchStarted) {
-      fetchInBackground();
-      advanceIterator();
-    }
-
-    if (this.currentIterator.hasNext()) {
-      return true;
-    } else {
-      if (currentIteratorIndex == expectedNumOfIterators) {
-        // All consumed.
-        return false;
-      } else {
-        countBytes(currentIterator);
-        advanceIterator();
-        return hasNext();
-      }
-    }
-  }
-
-  @Override
-  Object next() {
-    if (!hasFetchStarted) {
-      fetchInBackground();
-      advanceIterator();
-    }
-
-    return this.currentIterator.next();
-  }
-
-  Object fetchDataElement() throws IOException {
-      if (!hasFetchStarted) {
-        fetchInBackground();
-        advanceIterator();
-      }
-
-      if (this.currentIterator.hasNext()) {
-        // This iterator has an element available
-        return this.currentIterator.next();
-      } else {
-        if (currentIteratorIndex == expectedNumOfIterators) {
-          // This whole fetcher's done
-        } else {
-          // Advance to the next one
-          countBytes(currentIterator);
-          advanceIterator();
-          return fetchDataElement();
-        }
-      }
-      /*
-    } catch (final Throwable e) {
-      // Any failure is caught and thrown as an IOException, so that the task is retried.
-      // In particular, we catch unchecked exceptions like RuntimeException thrown by DataUtil.IteratorWithNumBytes
-      // when remote data fetching fails for whatever reason.
-      // Note that we rely on unchecked exceptions because the Iterator interface does not provide the standard
-      // "throw Exception" that the TaskExecutor thread can catch and handle.
-      throw new IOException(e);
-    }
-    */
-  }
-
-  private void advanceIterator() {
-    // Take from iteratorQueue
-    final Object iteratorOrThrowable;
-    try {
-      iteratorOrThrowable = iteratorQueue.take();
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
-
-    // Handle iteratorOrThrowable
-    if (iteratorOrThrowable instanceof Throwable) {
-      throw (Throwable) iteratorOrThrowable;
-    } else {
-      // This iterator is valid. Do advance.
-      hasFetchStarted = true;
-      this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrThrowable;
-      this.currentIteratorIndex++;
-    }
-  }
-
-  public final long getSerializedBytes() {
-    return serBytes;
-  }
-
-  public final long getEncodedBytes() {
-    return encodedBytes;
   }
 }

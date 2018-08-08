@@ -20,6 +20,7 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 /**
  * Fetches data from a data source.
@@ -40,24 +41,19 @@ class SourceVertexDataFetcher extends DataFetcher {
   }
 
   @Override
-  boolean hasNext() {
+  Object fetchDataElement() {
     if (iterator == null) {
-      getIteratorLazily();
+      fetchDataLazily();
     }
 
-    return iterator.hasNext();
-  }
-
-  @Override
-  Object next() {
-    if (iterator == null) {
-      getIteratorLazily();
+    if (iterator.hasNext()) {
+      return iterator.next();
+    } else {
+      throw new NoSuchElementException();
     }
-
-    return iterator.next();
   }
 
-  void getIteratorLazily() {
+  private void fetchDataLazily() {
     final long start = System.currentTimeMillis();
     try {
       iterator = this.readable.read().iterator();
@@ -67,7 +63,7 @@ class SourceVertexDataFetcher extends DataFetcher {
     boundedSourceReadTime += System.currentTimeMillis() - start;
   }
 
-  public final long getBoundedSourceReadTime() {
+  final long getBoundedSourceReadTime() {
     return boundedSourceReadTime;
   }
 }
