@@ -13,33 +13,46 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package edu.snu.nemo.compiler.optimizer.policy;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.LargeShuffleCompositePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import org.apache.reef.tang.Injector;
 
 /**
- * A policy to demonstrate the large shuffle optimization, witch batches disk seek during data shuffle.
+ * A policy to demonstrate the large shuffle optimization, witch batches disk seek during data shuffle, conditionally.
  */
-public final class LargeShufflePolicy implements Policy {
+public final class ConditionalLargeShufflePolicy implements Policy {
   public static final PolicyBuilder BUILDER =
       new PolicyBuilder(false)
-        .registerCompileTimePass(new LargeShuffleCompositePass())
-        .registerCompileTimePass(new LoopOptimizationCompositePass())
-        .registerCompileTimePass(new DefaultCompositePass());
+          .registerCompileTimePass(new LargeShuffleCompositePass(), dag -> getMaxParallelism(dag) > 300)
+          .registerCompileTimePass(new LoopOptimizationCompositePass())
+          .registerCompileTimePass(new DefaultCompositePass());
   private final Policy policy;
 
   /**
    * Default constructor.
    */
-  public LargeShufflePolicy() {
+  public ConditionalLargeShufflePolicy() {
     this.policy = BUILDER.build();
+  }
+
+  /**
+   * Returns the maximum parallelism of the vertices of a IR DAG.
+   * @param dag dag to observe.
+   * @return the maximum parallelism, or 1 by default.
+   */
+  private static int getMaxParallelism(final DAG<IRVertex, IREdge> dag) {
+    return dag.getVertices().stream()
+        .mapToInt(vertex -> vertex.getPropertyValue(ParallelismProperty.class).orElse(1))
+        .max().orElse(1);
   }
 
   @Override

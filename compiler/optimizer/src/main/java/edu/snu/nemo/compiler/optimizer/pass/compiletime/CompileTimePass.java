@@ -19,19 +19,19 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.pass.Pass;
 
-import java.io.Serializable;
 import java.util.Set;
 import java.util.function.Function;
 
 /**
- * Interface for compile-time optimization passes that processes the DAG.
+ * Abstract class for compile-time optimization passes that processes the DAG.
  * It is a function that takes an original DAG to produce a processed DAG, after an optimization.
  */
-public interface CompileTimePass extends Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>>, Serializable {
+public abstract class CompileTimePass extends Pass implements Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> {
   /**
    * Getter for prerequisite execution properties.
    * @return set of prerequisite execution properties.
    */
-  Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties();
+  public abstract Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties();
 }

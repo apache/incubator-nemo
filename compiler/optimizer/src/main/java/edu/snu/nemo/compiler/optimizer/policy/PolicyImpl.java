@@ -13,43 +13,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.optimizer;
 
+package edu.snu.nemo.compiler.optimizer.policy;
+
+import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.ReshapingPass;
-import edu.snu.nemo.compiler.optimizer.policy.Policy;
+import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
+import org.apache.reef.tang.Injector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
 
 /**
- * Compile time optimizer class.
+ * Implementation of the {@link Policy} interface.
  */
-public final class CompiletimeOptimizer {
-  /**
-   * Private constructor.
-   */
-  private CompiletimeOptimizer() {
-  }
+public final class PolicyImpl implements Policy {
+  private final List<CompileTimePass> compileTimePasses;
+  private final List<RuntimePass<?>> runtimePasses;
+  private static final Logger LOG = LoggerFactory.getLogger(PolicyImpl.class.getName());
 
   /**
-   * Optimize function.
-   * @param dag input DAG.
-   * @param optimizationPolicy the optimization policy that we want to use to optimize the DAG.
-   * @param dagDirectory directory to save the DAG information.
-   * @return optimized DAG, tagged with execution properties.
-   * @throws Exception throws an exception if there is an exception.
+   * Constructor.
+   * @param compileTimePasses compile time passes of the policy.
+   * @param runtimePasses run time passes of the policy.
    */
-  public static DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag, final Policy optimizationPolicy,
-                                               final String dagDirectory) throws Exception {
-    if (optimizationPolicy == null || optimizationPolicy.getCompileTimePasses().isEmpty()) {
-      throw new CompileTimeOptimizationException("A policy name should be specified.");
-    }
-    return process(dag, optimizationPolicy.getCompileTimePasses().iterator(), dagDirectory);
+  public PolicyImpl(final List<CompileTimePass> compileTimePasses, final List<RuntimePass<?>> runtimePasses) {
+    this.compileTimePasses = compileTimePasses;
+    this.runtimePasses = runtimePasses;
+  }
+
+  @Override
+  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory)
+      throws Exception {
+    LOG.info("Launch Compile-time optimizations");
+    return process(dag, compileTimePasses.iterator(), dagDirectory);
   }
 
   /**
@@ -65,18 +71,26 @@ public final class CompiletimeOptimizer {
                                                final String dagDirectory) throws Exception {
     if (passes.hasNext()) {
       final CompileTimePass passToApply = passes.next();
-      // Apply the pass to the DAG.
-      final DAG<IRVertex, IREdge> processedDAG = passToApply.apply(dag);
-      // Ensure AnnotatingPass and ReshapingPass functions as intended.
-      if ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(dag, processedDAG))
-          || (passToApply instanceof ReshapingPass && !checkReshapingPass(dag, processedDAG))) {
-        throw new CompileTimeOptimizationException(passToApply.getClass().getSimpleName()
-            + " is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
-            + "Modify it or use a general CompileTimePass");
+      final DAG<IRVertex, IREdge> processedDAG;
+
+      if (passToApply.getCondition().test(dag)) {
+        LOG.info("Apply {} to the DAG", passToApply.getClass().getSimpleName());
+        // Apply the pass to the DAG.
+        processedDAG = passToApply.apply(dag);
+        // Ensure AnnotatingPass and ReshapingPass functions as intended.
+        if ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(dag, processedDAG))
+            || (passToApply instanceof ReshapingPass && !checkReshapingPass(dag, processedDAG))) {
+          throw new CompileTimeOptimizationException(passToApply.getClass().getSimpleName()
+              + " is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
+              + "Modify it or use a general CompileTimePass");
+        }
+        // Save the processed JSON DAG.
+        processedDAG.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
+            "DAG after optimization");
+      } else {
+        LOG.info("Condition unmet for applying {} to the DAG", passToApply.getClass().getSimpleName());
+        processedDAG = dag;
       }
-      // Save the processed JSON DAG.
-      processedDAG.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
-          "DAG after optimization");
       // recursively apply the following passes.
       return process(processedDAG, passes, dagDirectory);
     } else {
@@ -155,5 +169,20 @@ public final class CompiletimeOptimizer {
       }
     }
     return true;
+  }
+
+  @Override
+  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
+    LOG.info("Register run-time optimizations to the PubSubHandler");
+    runtimePasses.forEach(runtimePass ->
+        runtimePass.getEventHandlerClasses().forEach(runtimeEventHandlerClass -> {
+          try {
+            final RuntimeEventHandler runtimeEventHandler = injector.getInstance(runtimeEventHandlerClass);
+            pubSubWrapper.getPubSubEventHandler()
+                .subscribe(runtimeEventHandler.getEventClass(), runtimeEventHandler);
+          } catch (final Exception e) {
+            throw new RuntimeException(e);
+          }
+        }));
   }
 }
