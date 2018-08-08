@@ -64,6 +64,10 @@ public class LargeShuffleCompositePassTest {
                 edgeToMerger.getPropertyValue(DataStoreProperty.class).get());
             assertEquals(BytesDecoderFactory.of(),
                 edgeToMerger.getPropertyValue(DecoderProperty.class).get());
+            assertEquals(CompressionProperty.Value.LZ4,
+                edgeToMerger.getPropertyValue(CompressionProperty.class).get());
+            assertEquals(CompressionProperty.Value.None,
+                edgeToMerger.getPropertyValue(DecompressionProperty.class).get());
           } else {
             assertEquals(DataFlowProperty.Value.Pull,
                 edgeToMerger.getPropertyValue(DataFlowProperty.class).get());
@@ -78,6 +82,12 @@ public class LargeShuffleCompositePassTest {
               edgeFromMerger.getPropertyValue(DataStoreProperty.class).get());
           assertEquals(BytesEncoderFactory.of(),
               edgeFromMerger.getPropertyValue(EncoderProperty.class).get());
+          assertEquals(PartitionerProperty.Value.DedicatedKeyPerElementPartitioner,
+              edgeFromMerger.getPropertyValue(PartitionerProperty.class).get());
+          assertEquals(CompressionProperty.Value.None,
+              edgeFromMerger.getPropertyValue(CompressionProperty.class).get());
+          assertEquals(CompressionProperty.Value.LZ4,
+              edgeFromMerger.getPropertyValue(DecompressionProperty.class).get());
         });
       } else {
         // Non merger vertex.
