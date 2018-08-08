@@ -18,16 +18,15 @@ package edu.snu.nemo.client;
 import edu.snu.nemo.runtime.common.state.PlanState;
 
 /**
- * A class provides the translation between the state of job and corresponding
- * {@link ClientEndpoint}.
+ * A class provides the translation between the state of plan and corresponding {@link ClientEndpoint}.
  */
 public interface StateTranslator {
 
   /**
-   * Translate a job state of nemo to a corresponding client endpoint state.
+   * Translate a plan state of nemo to a corresponding client endpoint state.
    *
-   * @param jobState to translate.
+   * @param planState to translate.
    * @return the translated state.
    */
-  Enum translateState(final PlanState.State jobState);
+  Enum translateState(final PlanState.State planState);
 }

@@ -24,12 +24,12 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * A request endpoint in client side of a job.
+ * A request endpoint in client side of a plan.
  */
 public abstract class ClientEndpoint {
 
   /**
-   * The request endpoint in driver side of the job.
+   * The request endpoint in driver side of the plan.
    */
   private final AtomicReference<DriverEndpoint> driverEndpoint;
 
@@ -41,13 +41,13 @@ public abstract class ClientEndpoint {
   private static final long DEFAULT_DRIVER_WAIT_IN_MILLIS = 100;
 
   /**
-   * A {@link StateTranslator} for this job.
+   * A {@link StateTranslator} for this plan.
    */
   private final StateTranslator stateTranslator;
 
   /**
    * Constructor.
-   * @param stateTranslator translator to translate between the state of job and corresponding.
+   * @param stateTranslator translator to translate between the state of plan and corresponding.
    */
   public ClientEndpoint(final StateTranslator stateTranslator) {
     this.driverEndpoint = new AtomicReference<>();
@@ -57,7 +57,7 @@ public abstract class ClientEndpoint {
   }
 
   /**
-   * Connect the driver endpoint of this job.
+   * Connect the driver endpoint of this plan.
    * This method will be called by {@link DriverEndpoint}.
    *
    * @param dep connected with this client.
@@ -122,11 +122,11 @@ public abstract class ClientEndpoint {
   }
 
   /**
-   * Get the current state of the running job.
+   * Get the current state of the running plan.
    *
-   * @return the current state of the running job.
+   * @return the current state of the running plan.
    */
-  public final synchronized Enum getJobState() {
+  public final synchronized Enum getPlanState() {
     if (driverEndpoint.get() != null) {
       return stateTranslator.translateState(driverEndpoint.get().getState());
     } else {

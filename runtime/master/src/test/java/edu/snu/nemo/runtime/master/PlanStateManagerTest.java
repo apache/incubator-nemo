@@ -92,7 +92,7 @@ public final class PlanStateManagerTest {
   }
 
   /**
-   * Test whether the methods waiting finish of job works properly.
+   * Test whether the methods waiting for the finish of the plan works properly.
    */
   @Test(timeout = 2000)
   public void testWaitUntilFinish() throws Exception {
@@ -101,15 +101,15 @@ public final class PlanStateManagerTest {
     final PlanStateManager planStateManager =
         new PlanStateManager(physicalPlan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
-    assertFalse(planStateManager.isJobDone());
+    assertFalse(planStateManager.isPlanDone());
 
-    // Wait for the job to finish and check the job state.
+    // Wait for the plan to finish and check the plan state.
     // It have to return EXECUTING state after timeout.
     final PlanState.State executingState = planStateManager.waitUntilFinish(100, TimeUnit.MILLISECONDS);
     assertEquals(PlanState.State.EXECUTING, executingState);
 
-    // Complete the job and check the result again.
-    // It have to return COMPLETE.
+    // Complete the plan and check the result again.
+    // It has to return COMPLETE.
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
         .flatMap(stage -> stage.getTaskIds().stream())
         .collect(Collectors.toList());

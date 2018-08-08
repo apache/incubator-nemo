@@ -29,8 +29,8 @@ import java.util.Optional;
 final class SchedulerTestUtil {
   /**
    * Complete the stage by completing all of its Tasks.
-   * @param planStateManager for the submitted job.
-   * @param scheduler for the submitted job.
+   * @param planStateManager for the submitted plan.
+   * @param scheduler for the submitted plan.
    * @param executorRegistry provides executor representers
    * @param stage for which the states should be marked as complete.
    */
@@ -66,7 +66,7 @@ final class SchedulerTestUtil {
   /**
    * Sends task state change event to scheduler.
    * This replaces executor's task completion messages for testing purposes.
-   * @param scheduler for the submitted job.
+   * @param scheduler for the submitted plan.
    * @param executorRegistry provides executor representers
    * @param taskId for the task to change the state.
    * @param newState for the task.

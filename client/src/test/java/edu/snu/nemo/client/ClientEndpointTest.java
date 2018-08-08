@@ -50,7 +50,7 @@ public class ClientEndpointTest {
     final StateTranslator stateTranslator = mock(StateTranslator.class);
     when(stateTranslator.translateState(any())).then(state -> state.getArgument(0));
     final ClientEndpoint clientEndpoint = new TestClientEndpoint(stateTranslator);
-    assertEquals(clientEndpoint.getJobState(), PlanState.State.READY);
+    assertEquals(clientEndpoint.getPlanState(), PlanState.State.READY);
 
     // Wait for connection but not connected.
     assertEquals(clientEndpoint.waitUntilJobFinish(100, TimeUnit.MILLISECONDS), PlanState.State.READY);
@@ -64,7 +64,7 @@ public class ClientEndpointTest {
     final DriverEndpoint driverEndpoint = new DriverEndpoint(planStateManager, clientEndpoint);
 
     // Check the current state.
-    assertEquals(clientEndpoint.getJobState(), PlanState.State.EXECUTING);
+    assertEquals(clientEndpoint.getPlanState(), PlanState.State.EXECUTING);
 
     // Wait for the job to finish but not finished
     assertEquals(clientEndpoint.waitUntilJobFinish(100, TimeUnit.MILLISECONDS), PlanState.State.EXECUTING);

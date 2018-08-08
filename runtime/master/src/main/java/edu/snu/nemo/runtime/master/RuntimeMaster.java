@@ -62,7 +62,7 @@ import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
  * Runtime Master is the central controller of Runtime.
  * Compiler submits an {@link PhysicalPlan} to Runtime Master to execute a job.
  * Runtime Master handles:
- *    a) Scheduling the job with {@link Scheduler}.
+ *    a) Scheduling the plan with {@link Scheduler}.
  *    b) Managing resources with {@link ContainerManager}.
  *    c) Managing blocks with {@link BlockManagerMaster}.
  *    d) Receiving and sending control messages with {@link MessageEnvironment}.
@@ -158,12 +158,12 @@ public final class RuntimeMaster {
    */
   public Pair<PlanStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
                                                                   final int maxScheduleAttempt) {
-    final Callable<Pair<PlanStateManager, ScheduledExecutorService>> jobExecutionCallable = () -> {
+    final Callable<Pair<PlanStateManager, ScheduledExecutorService>> planExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
         blockManagerMaster.initialize(plan);
         final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, maxScheduleAttempt);
-        scheduler.scheduleJob(plan, planStateManager);
+        scheduler.schedulePlan(plan, planStateManager);
         final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(planStateManager);
         return Pair.of(planStateManager, dagLoggingExecutor);
       } catch (Exception e) {
@@ -171,7 +171,7 @@ public final class RuntimeMaster {
       }
     };
     try {
-      return runtimeMasterThread.submit(jobExecutionCallable).get();
+      return runtimeMasterThread.submit(planExecutionCallable).get();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -444,7 +444,7 @@ public final class RuntimeMaster {
 
   /**
    * Schedules a periodic DAG logging thread.
-   * @param planStateManager for the job the DAG should be logged.
+   * @param planStateManager for the plan the DAG should be logged.
    * TODO #20: RESTful APIs to Access Job State and Metric.
    * @return the scheduled executor service.
    */

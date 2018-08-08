@@ -49,15 +49,15 @@ import org.slf4j.Logger;
  * (CONCURRENCY) Only a single dedicated thread should use the public methods of this class.
  * (i.e., runtimeMasterThread in RuntimeMaster)
  *
- * BatchSingleJobScheduler receives a single {@link PhysicalPlan} to execute and schedules the Tasks.
+ * BatchScheduler receives a single {@link PhysicalPlan} to execute and schedules the Tasks.
  */
 @DriverSide
 @NotThreadSafe
-public final class BatchSingleJobScheduler implements Scheduler {
-  private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobScheduler.class.getName());
+public final class BatchScheduler implements Scheduler {
+  private static final Logger LOG = LoggerFactory.getLogger(BatchScheduler.class.getName());
 
   /**
-   * Components related to scheduling the given job.
+   * Components related to scheduling the given plan.
    */
   private final SchedulerRunner schedulerRunner;
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
@@ -70,19 +70,19 @@ public final class BatchSingleJobScheduler implements Scheduler {
   private final PubSubEventHandlerWrapper pubSubEventHandlerWrapper;
 
   /**
-   * The below variables depend on the submitted job to execute.
+   * The below variables depend on the submitted plan to execute.
    */
   private PhysicalPlan physicalPlan;
   private PlanStateManager planStateManager;
   private List<List<Stage>> sortedScheduleGroups;
 
   @Inject
-  private BatchSingleJobScheduler(final SchedulerRunner schedulerRunner,
-                                  final PendingTaskCollectionPointer pendingTaskCollectionPointer,
-                                  final BlockManagerMaster blockManagerMaster,
-                                  final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
-                                  final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
-                                  final ExecutorRegistry executorRegistry) {
+  private BatchScheduler(final SchedulerRunner schedulerRunner,
+                         final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                         final BlockManagerMaster blockManagerMaster,
+                         final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
+                         final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
+                         final ExecutorRegistry executorRegistry) {
     this.schedulerRunner = schedulerRunner;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.blockManagerMaster = blockManagerMaster;
@@ -96,18 +96,18 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   /**
-   * @param physicalPlanOfJob of the job.
-   * @param jobStateManagerOfPlan of the job.
+   * @param physicalPlan the physical plan to schedule.
+   * @param planStateManager the state manager of the plan.
    */
   @Override
-  public void scheduleJob(final PhysicalPlan physicalPlanOfJob, final PlanStateManager jobStateManagerOfPlan) {
-    LOG.info("Scheduled job");
+  public void schedulePlan(final PhysicalPlan physicalPlan, final PlanStateManager planStateManager) {
+    LOG.info("Scheduled plan");
 
-    this.physicalPlan = physicalPlanOfJob;
-    this.planStateManager = jobStateManagerOfPlan;
+    this.physicalPlan = physicalPlan;
+    this.planStateManager = planStateManager;
 
-    schedulerRunner.run(planStateManager);
-    LOG.info("Job to schedule: {}", this.physicalPlan.getId());
+    schedulerRunner.run(this.planStateManager);
+    LOG.info("Plan to schedule: {}", this.physicalPlan.getId());
 
     this.sortedScheduleGroups = this.physicalPlan.getStageDAG().getVertices().stream()
         .collect(Collectors.groupingBy(Stage::getScheduleGroup))
@@ -120,8 +120,8 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   @Override
-  public void updateJob(final String jobId, final PhysicalPlan newPhysicalPlan, final Pair<String, String> taskInfo) {
-    // update the job in the scheduler.
+  public void updatePlan(final String planId, final PhysicalPlan newPhysicalPlan, final Pair<String, String> taskInfo) {
+    // update the physical plan in the scheduler.
     // NOTE: what's already been executed is not modified in the new physical plan.
     this.physicalPlan = newPhysicalPlan;
     if (taskInfo != null) {
@@ -165,7 +165,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           onTaskExecutionOnHold(executorId, taskId, vertexPutOnHold);
           break;
         case FAILED:
-          throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The job failed on Task #")
+          throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The plan failed on Task #")
               .append(taskId).append(" in Executor ").append(executorId).toString()));
         case READY:
         case EXECUTING:
@@ -182,7 +182,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           // If the stage has completed
           final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
           if (planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
-            if (!planStateManager.isJobDone()) {
+            if (!planStateManager.isPlanDone()) {
               doSchedule();
             }
           }

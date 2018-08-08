@@ -31,16 +31,16 @@ public final class PlanState {
     final StateMachine.Builder stateMachineBuilder = StateMachine.newBuilder();
 
     // Add states
-    stateMachineBuilder.addState(State.READY, "The job has been created and submitted to runtime.");
-    stateMachineBuilder.addState(State.EXECUTING, "The job is executing (with its stages executing).");
-    stateMachineBuilder.addState(State.COMPLETE, "The job is complete.");
-    stateMachineBuilder.addState(State.FAILED, "Job failed.");
+    stateMachineBuilder.addState(State.READY, "The plan has been created and submitted to runtime.");
+    stateMachineBuilder.addState(State.EXECUTING, "The plan is executing (with its stages executing).");
+    stateMachineBuilder.addState(State.COMPLETE, "The plan is complete.");
+    stateMachineBuilder.addState(State.FAILED, "Plan failed.");
 
     // Add transitions
     stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
         "Begin executing!");
     stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE,
-        "All stages complete, job complete");
+        "All stages complete, plan complete");
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED,
         "Unrecoverable failure in a stage");
 

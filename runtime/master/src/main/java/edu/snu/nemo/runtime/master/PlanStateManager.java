@@ -39,6 +39,7 @@ import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.common.metric.JobMetric;
 import edu.snu.nemo.runtime.common.metric.StageMetric;
 import edu.snu.nemo.runtime.common.metric.TaskMetric;
+import edu.snu.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +63,7 @@ public final class PlanStateManager {
   private final int maxScheduleAttempt;
 
   /**
-   * The data structures below track the execution states of this job.
+   * The data structures below track the execution states of this plan.
    */
   private final PlanState planState;
   private final Map<String, StageState> idToStageStates;
@@ -75,15 +76,15 @@ public final class PlanStateManager {
   private final Map<String, Integer> taskIdToCurrentAttempt;
 
   /**
-   * Represents the job to manage.
+   * Represents the plan to manage.
    */
   private final PhysicalPlan physicalPlan;
 
   /**
-   * A lock and condition to check whether the job is finished or not.
+   * A lock and condition to check whether the plan is finished or not.
    */
   private final Lock finishLock;
-  private final Condition jobFinishedCondition;
+  private final Condition planFinishedCondition;
 
   /**
    * For metrics.
@@ -104,7 +105,7 @@ public final class PlanStateManager {
     this.idToTaskStates = new HashMap<>();
     this.taskIdToCurrentAttempt = new HashMap<>();
     this.finishLock = new ReentrantLock();
-    this.jobFinishedCondition = finishLock.newCondition();
+    this.planFinishedCondition = finishLock.newCondition();
     this.metricStore = MetricStore.getStore();
 
     metricStore.getOrCreateMetric(JobMetric.class, planId).setStageDAG(physicalPlan.getStageDAG());
@@ -113,12 +114,12 @@ public final class PlanStateManager {
   }
 
   /**
-   * Initializes the states for the job/stages/tasks for this job.
+   * Initializes the states for the plan/stages/tasks for this plan.
    */
   private void initializeComputationStates() {
-    onJobStateChanged(PlanState.State.EXECUTING);
+    onPlanStateChanged(PlanState.State.EXECUTING);
 
-    // Initialize the states for the job down to task-level.
+    // Initialize the states for the plan down to task-level.
     physicalPlan.getStageDAG().topologicalDo(stage -> {
       idToStageStates.put(stage.getId(), new StageState());
       stage.getTaskIds().forEach(taskId -> {
@@ -132,9 +133,9 @@ public final class PlanStateManager {
    * Updates the state of a task.
    * Task state changes can occur both in master and executor.
    * State changes that occur in master are
-   * initiated in {@link edu.snu.nemo.runtime.master.scheduler.BatchSingleJobScheduler}.
+   * initiated in {@link BatchScheduler}.
    * State changes that occur in executors are sent to master as a control message,
-   * and the call to this method is initiated in {@link edu.snu.nemo.runtime.master.scheduler.BatchSingleJobScheduler}
+   * and the call to this method is initiated in {@link BatchScheduler}
    * when the message/event is received.
    *
    * @param taskId  the ID of the task.
@@ -226,20 +227,20 @@ public final class PlanStateManager {
         new Object[]{stageId, stageStateMachine.getCurrentState(), newStageState});
     stageStateMachine.setState(newStageState);
 
-    // Change job state if needed
+    // Change plan state if needed
     final boolean allStagesCompleted = idToStageStates.values().stream().allMatch(state ->
         state.getStateMachine().getCurrentState().equals(StageState.State.COMPLETE));
     if (allStagesCompleted) {
-      onJobStateChanged(PlanState.State.COMPLETE);
+      onPlanStateChanged(PlanState.State.COMPLETE);
     }
   }
 
   /**
    * (PRIVATE METHOD)
-   * Updates the state of the job.
-   * @param newState of the job.
+   * Updates the state of the plan.
+   * @param newState of the plan.
    */
-  private void onJobStateChanged(final PlanState.State newState) {
+  private void onPlanStateChanged(final PlanState.State newState) {
     metricStore.getOrCreateMetric(JobMetric.class, planId)
         .addEvent((PlanState.State) planState.getStateMachine().getCurrentState(), newState);
     metricStore.triggerBroadcast(JobMetric.class, planId);
@@ -251,29 +252,29 @@ public final class PlanStateManager {
     } else if (newState == PlanState.State.COMPLETE || newState == PlanState.State.FAILED) {
       LOG.debug("Plan ID {} {}!", new Object[]{planId, newState});
 
-      // Awake all threads waiting the finish of this job.
+      // Awake all threads waiting the finish of this plan.
       finishLock.lock();
 
       try {
-        jobFinishedCondition.signalAll();
+        planFinishedCondition.signalAll();
       } finally {
         finishLock.unlock();
       }
     } else {
-      throw new IllegalStateTransitionException(new Exception("Illegal Job State Transition"));
+      throw new IllegalStateTransitionException(new Exception("Illegal Plan State Transition"));
     }
   }
 
 
   /**
-   * Wait for this job to be finished and return the final state.
-   * @return the final state of this job.
+   * Wait for this plan to be finished and return the final state.
+   * @return the final state of this plan.
    */
   public PlanState.State waitUntilFinish() {
     finishLock.lock();
     try {
-      if (!isJobDone()) {
-        jobFinishedCondition.await();
+      if (!isPlanDone()) {
+        planFinishedCondition.await();
       }
     } catch (final InterruptedException e) {
       LOG.warn("Interrupted during waiting the finish of Plan ID {}", planId);
@@ -285,17 +286,17 @@ public final class PlanStateManager {
   }
 
   /**
-   * Wait for this job to be finished and return the final state.
+   * Wait for this plan to be finished and return the final state.
    * It wait for at most the given time.
    * @param timeout of waiting.
    * @param unit of the timeout.
-   * @return the final state of this job.
+   * @return the final state of this plan.
    */
   public PlanState.State waitUntilFinish(final long timeout, final TimeUnit unit) {
     finishLock.lock();
     try {
-      if (!isJobDone()) {
-        if (!jobFinishedCondition.await(timeout, unit)) {
+      if (!isPlanDone()) {
+        if (!planFinishedCondition.await(timeout, unit)) {
           LOG.warn("Timeout during waiting the finish of Plan ID {}", planId);
         }
       }
@@ -308,9 +309,10 @@ public final class PlanStateManager {
     return getPlanState();
   }
 
-  public synchronized boolean isJobDone() {
+  public synchronized boolean isPlanDone() {
     return (getPlanState() == PlanState.State.COMPLETE || getPlanState() == PlanState.State.FAILED);
   }
+
   public synchronized String getPlanId() {
     return planId;
   }
@@ -341,7 +343,7 @@ public final class PlanStateManager {
   }
 
   /**
-   * Stores JSON representation of job state into a file.
+   * Stores JSON representation of plan state into a file.
    * @param directory the directory which JSON representation is saved to
    * @param suffix suffix for file name
    */
@@ -354,10 +356,10 @@ public final class PlanStateManager {
     file.getParentFile().mkdirs();
     try (final PrintWriter printWriter = new PrintWriter(file)) {
       printWriter.println(toStringWithPhysicalPlan());
-      LOG.debug(String.format("JSON representation of job state for %s(%s) was saved to %s",
+      LOG.debug(String.format("JSON representation of plan state for %s(%s) was saved to %s",
           planId, suffix, file.getPath()));
     } catch (final IOException e) {
-      LOG.warn(String.format("Cannot store JSON representation of job state for %s(%s) to %s: %s",
+      LOG.warn(String.format("Cannot store JSON representation of plan state for %s(%s) to %s: %s",
           planId, suffix, file.getPath(), e.toString()));
     }
   }

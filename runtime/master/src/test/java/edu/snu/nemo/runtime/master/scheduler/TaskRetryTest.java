@@ -97,8 +97,8 @@ public final class TaskRetryTest {
 
   @Test(timeout=7000)
   public void testExecutorRemoved() throws Exception {
-    // Until the job finishes, events happen
-    while (!planStateManager.isJobDone()) {
+    // Until the plan finishes, events happen
+    while (!planStateManager.isPlanDone()) {
       // 50% chance remove, 50% chance add, 80% chance task completed
       executorRemoved(0.5);
       executorAdded(0.5);
@@ -108,9 +108,9 @@ public final class TaskRetryTest {
       Thread.sleep(10);
     }
 
-    // Job should COMPLETE
+    // Plan should COMPLETE
     assertEquals(PlanState.State.COMPLETE, planStateManager.getPlanState());
-    assertTrue(planStateManager.isJobDone());
+    assertTrue(planStateManager.isPlanDone());
   }
 
   @Test(timeout=7000)
@@ -120,8 +120,8 @@ public final class TaskRetryTest {
     executorAdded(1.0);
     executorAdded(1.0);
 
-    // Until the job finishes, events happen
-    while (!planStateManager.isJobDone()) {
+    // Until the plan finishes, events happen
+    while (!planStateManager.isPlanDone()) {
       // 50% chance task completed
       // 50% chance task output write failed
       taskCompleted(0.5);
@@ -131,9 +131,9 @@ public final class TaskRetryTest {
       Thread.sleep(10);
     }
 
-    // Job should COMPLETE
+    // Plan should COMPLETE
     assertEquals(PlanState.State.COMPLETE, planStateManager.getPlanState());
-    assertTrue(planStateManager.isJobDone());
+    assertTrue(planStateManager.isPlanDone());
   }
 
   ////////////////////////////////////////////////////////////////// Events
@@ -214,7 +214,7 @@ public final class TaskRetryTest {
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PhysicalPlan plan = TestPlanGenerator.generatePhysicalPlan(planType, false);
     final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
-    scheduler.scheduleJob(plan, planStateManager);
+    scheduler.schedulePlan(plan, planStateManager);
     return planStateManager;
   }
 }
