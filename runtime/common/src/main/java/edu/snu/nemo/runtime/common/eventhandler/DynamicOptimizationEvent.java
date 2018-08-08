@@ -18,7 +18,6 @@
  */
 package edu.snu.nemo.runtime.common.eventhandler;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.RuntimeEvent;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
@@ -29,20 +28,24 @@ import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 public final class DynamicOptimizationEvent implements RuntimeEvent {
   private final PhysicalPlan physicalPlan;
   private final MetricCollectionBarrierVertex metricCollectionBarrierVertex;
-  private final Pair<String, String> taskInfo;
+  private final String taskId;
+  private final String executorId;
 
   /**
    * Default constructor.
    * @param physicalPlan physical plan to be optimized.
    * @param metricCollectionBarrierVertex metric collection barrier vertex to retrieve metric data from.
-   * @param taskInfo information of the task.
+   * @param taskId id of the task which triggered the dynamic optimization.
+   * @param executorId the id of executor which executes {@code taskId}
    */
   public DynamicOptimizationEvent(final PhysicalPlan physicalPlan,
                                   final MetricCollectionBarrierVertex metricCollectionBarrierVertex,
-                                  final Pair<String, String> taskInfo) {
+                                  final String taskId,
+                                  final String executorId) {
     this.physicalPlan = physicalPlan;
     this.metricCollectionBarrierVertex = metricCollectionBarrierVertex;
-    this.taskInfo = taskInfo;
+    this.taskId = taskId;
+    this.executorId = executorId;
   }
 
   /**
@@ -60,9 +63,16 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
   }
 
   /**
-   * @return the information of the task at which this optimization occurs: its name and its task ID.
+   * @return id of the task which triggered the dynamic optimization
    */
-  public Pair<String, String> getTaskInfo() {
-    return this.taskInfo;
+  public String getTaskId() {
+    return taskId;
+  }
+
+  /**
+   * @return id of the executor which triggered the dynamic optimization
+   */
+  public String getExecutorId() {
+    return executorId;
   }
 }

@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.common.eventhandler;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.CompilerEvent;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 
@@ -24,17 +23,21 @@ import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
  */
 public final class UpdatePhysicalPlanEvent implements CompilerEvent {
   private final PhysicalPlan newPhysicalPlan;
-  private final Pair<String, String> taskInfo;
+  private final String taskId;
+  private final String executorId;
 
   /**
    * Constructor.
    * @param newPhysicalPlan the newly optimized physical plan.
-   * @param taskInfo information of the task at which this optimization occurs: its name and its task ID.
+   * @param taskId id of the task which triggered the dynamic optimization.
+   * @param executorId the id of executor which executes {@code taskId}
    */
   UpdatePhysicalPlanEvent(final PhysicalPlan newPhysicalPlan,
-                          final Pair<String, String> taskInfo) {
+                          final String taskId,
+                          final String executorId) {
     this.newPhysicalPlan = newPhysicalPlan;
-    this.taskInfo = taskInfo;
+    this.taskId = taskId;
+    this.executorId = executorId;
   }
 
   /**
@@ -45,9 +48,16 @@ public final class UpdatePhysicalPlanEvent implements CompilerEvent {
   }
 
   /**
-   * @return the information of the task at which this optimization occurs: its name and its task ID.
+   * @return id of the task which triggered the dynamic optimization
    */
-  public Pair<String, String> getTaskInfo() {
-    return this.taskInfo;
+  public String getTaskId() {
+    return taskId;
+  }
+
+  /**
+   * @return id of the executor which triggered the dynamic optimization
+   */
+  public String getExecutorId() {
+    return executorId;
   }
 }
