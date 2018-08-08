@@ -18,6 +18,7 @@ package edu.snu.nemo.examples.beam;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
+import edu.snu.nemo.compiler.optimizer.policy.ConditionalLargeShufflePolicy;
 import edu.snu.nemo.examples.beam.policy.*;
 import org.junit.After;
 import org.junit.Before;
@@ -73,7 +74,7 @@ public final class WordCountITCase {
   public void testLargeShuffle() throws Exception {
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName() + "_largeshuffle")
+        .addJobId(WordCountITCase.class.getSimpleName() + "_largeShuffle")
         .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
@@ -84,6 +85,15 @@ public final class WordCountITCase {
         .addResourceJson(oneExecutorResourceFileName)
         .addJobId(WordCountITCase.class.getSimpleName() + "_largeshuffleInOneExecutor")
         .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
+        .build());
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void testConditionalLargeShuffle() throws Exception {
+    JobLauncher.main(builder
+        .addResourceJson(executorResourceFileName)
+        .addJobId(WordCountITCase.class.getSimpleName() + "_conditionalLargeShuffle")
+        .addOptimizationPolicy(ConditionalLargeShufflePolicy.class.getCanonicalName())
         .build());
   }
 

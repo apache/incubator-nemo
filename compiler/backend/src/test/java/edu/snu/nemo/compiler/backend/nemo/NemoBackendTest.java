@@ -21,7 +21,6 @@ import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternPropert
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.dag.DAGBuilder;
-import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy;
 import edu.snu.nemo.conf.JobConf;
@@ -59,7 +58,7 @@ public final class NemoBackendTest<I, O> {
         .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine, map2))
         .build();
 
-    this.dag = CompiletimeOptimizer.optimize(dag, new TransientResourcePolicy(), EMPTY_DAG_DIRECTORY);
+    this.dag = new TransientResourcePolicy().runCompileTimeOptimization(dag, EMPTY_DAG_DIRECTORY);
 
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");

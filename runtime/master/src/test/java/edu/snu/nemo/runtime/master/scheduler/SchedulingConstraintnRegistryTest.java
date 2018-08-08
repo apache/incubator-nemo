@@ -19,20 +19,30 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceLocalityProperty;
+import edu.snu.nemo.runtime.master.BlockManagerMaster;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
 
 /**
  * Tests {@link SchedulingConstraintRegistry}.
  */
+@RunWith(PowerMockRunner.class)
+@PrepareForTest({BlockManagerMaster.class})
 public final class SchedulingConstraintnRegistryTest {
   @Test
   public void testSchedulingConstraintRegistry() throws InjectionException {
-    final SchedulingConstraintRegistry registry = Tang.Factory.getTang().newInjector()
-        .getInstance(SchedulingConstraintRegistry.class);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(BlockManagerMaster.class, mock(BlockManagerMaster.class));
+    final SchedulingConstraintRegistry registry =
+        injector.getInstance(SchedulingConstraintRegistry.class);
     assertEquals(FreeSlotSchedulingConstraint.class, getConstraintOf(ResourceSlotProperty.class, registry));
     assertEquals(ContainerTypeAwareSchedulingConstraint.class,
         getConstraintOf(ResourcePriorityProperty.class, registry));

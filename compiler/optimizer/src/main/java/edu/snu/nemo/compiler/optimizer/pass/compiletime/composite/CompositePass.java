@@ -27,7 +27,7 @@ import java.util.*;
 /**
  * A compile-time pass composed of multiple compile-time passes, which each modifies an IR DAG.
  */
-public abstract class CompositePass implements CompileTimePass {
+public abstract class CompositePass extends CompileTimePass {
   private final List<CompileTimePass> passList;
   private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
 
@@ -74,7 +74,6 @@ public abstract class CompositePass implements CompileTimePass {
     }
   }
 
-  @Override
   public final Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties() {
     return prerequisiteExecutionProperties;
   }

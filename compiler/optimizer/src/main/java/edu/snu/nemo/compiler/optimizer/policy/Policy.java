@@ -15,11 +15,13 @@
  */
 package edu.snu.nemo.compiler.optimizer.policy;
 
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
+import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
+import org.apache.reef.tang.Injector;
 
 import java.io.Serializable;
-import java.util.List;
 
 /**
  * An interface for policies, each of which is composed of a list of static optimization passes.
@@ -27,12 +29,18 @@ import java.util.List;
  */
 public interface Policy extends Serializable {
   /**
-   * @return the content of the policy: the list of static optimization passes of the policy.
+   * Optimize the DAG with the compile time optimizations.
+   * @param dag input DAG.
+   * @param dagDirectory directory to save the DAG information.
+   * @return optimized DAG, reshaped or tagged with execution properties.
+   * @throws Exception throws an exception if there is an exception.
    */
-  List<CompileTimePass> getCompileTimePasses();
+  DAG<IRVertex, IREdge> runCompileTimeOptimization(DAG<IRVertex, IREdge> dag, String dagDirectory) throws Exception;
 
   /**
-   * @return the content of the policy: the list of runtime passses of the policy.
+   * Register runtime optimizations to the event handler.
+   * @param injector Tang Injector, used in the UserApplicationRunner.
+   * @param pubSubWrapper pub-sub event handler, used in the UserApplicationRunner.
    */
-  List<RuntimePass<?>> getRuntimePasses();
+  void registerRunTimeOptimizations(Injector injector, PubSubEventHandlerWrapper pubSubWrapper);
 }

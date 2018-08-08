@@ -17,8 +17,6 @@ package edu.snu.nemo.examples.beam.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
-import edu.snu.nemo.compiler.optimizer.policy.Policy;
-import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
 
@@ -30,32 +28,14 @@ public final class PolicyTestUtil {
    * Overwrite the parallelism of existing policy.
    *
    * @param desiredSourceParallelism       the desired source parallelism to set.
-   * @param policyToOverwriteCanonicalName the name of the policy to overwrite parallelism.
+   * @param compileTimePassesToOverwrite   the list of compile time passes to overwrite.
    * @return the overwritten policy.
    */
-  public static Policy overwriteParallelism(final int desiredSourceParallelism,
-                                            final String policyToOverwriteCanonicalName) {
-    final Policy policyToOverwrite;
-    try {
-      policyToOverwrite = (Policy) Class.forName(policyToOverwriteCanonicalName).newInstance();
-    } catch (final ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-      throw new RuntimeException(e);
-    }
-    final List<CompileTimePass> compileTimePasses = policyToOverwrite.getCompileTimePasses();
-    final int parallelismPassIdx = compileTimePasses.indexOf(new DefaultParallelismPass());
-    compileTimePasses.set(parallelismPassIdx, new DefaultParallelismPass(desiredSourceParallelism, 2));
-    final List<RuntimePass<?>> runtimePasses = policyToOverwrite.getRuntimePasses();
-
-    return new Policy() {
-      @Override
-      public List<CompileTimePass> getCompileTimePasses() {
-        return compileTimePasses;
-      }
-
-      @Override
-      public List<RuntimePass<?>> getRuntimePasses() {
-        return runtimePasses;
-      }
-    };
+  public static List<CompileTimePass> overwriteParallelism(final int desiredSourceParallelism,
+                                            final List<CompileTimePass> compileTimePassesToOverwrite) {
+    final int parallelismPassIdx = compileTimePassesToOverwrite.indexOf(new DefaultParallelismPass());
+    compileTimePassesToOverwrite.set(parallelismPassIdx,
+        new DefaultParallelismPass(desiredSourceParallelism, 2));
+    return compileTimePassesToOverwrite;
   }
 }

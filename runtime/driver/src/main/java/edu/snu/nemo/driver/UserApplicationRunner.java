@@ -18,12 +18,11 @@ package edu.snu.nemo.driver;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
+import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.backend.Backend;
 import edu.snu.nemo.compiler.backend.nemo.NemoBackend;
-import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
@@ -87,20 +86,14 @@ public final class UserApplicationRunner {
       dag.storeJSON(dagDirectory, "ir", "IR before optimization");
       final Policy optimizationPolicy = (Policy) Class.forName(optimizationPolicyCanonicalName).newInstance();
 
-      final DAG<IRVertex, IREdge> optimizedDAG = CompiletimeOptimizer.optimize(dag, optimizationPolicy, dagDirectory);
+      if (optimizationPolicy == null) {
+        throw new CompileTimeOptimizationException("A policy name should be specified.");
+      }
+      final DAG<IRVertex, IREdge> optimizedDAG = optimizationPolicy.runCompileTimeOptimization(dag, dagDirectory);
       optimizedDAG.storeJSON(dagDirectory, "ir-" + optimizationPolicy.getClass().getSimpleName(),
           "IR optimized for " + optimizationPolicy.getClass().getSimpleName());
 
-      optimizationPolicy.getRuntimePasses().forEach(runtimePass ->
-          runtimePass.getEventHandlerClasses().forEach(runtimeEventHandlerClass -> {
-            try {
-              final RuntimeEventHandler runtimeEventHandler = injector.getInstance(runtimeEventHandlerClass);
-              pubSubWrapper.getPubSubEventHandler()
-                  .subscribe(runtimeEventHandler.getEventClass(), runtimeEventHandler);
-            } catch (final Exception e) {
-              throw new RuntimeException(e);
-            }
-          }));
+      optimizationPolicy.registerRunTimeOptimizations(injector, pubSubWrapper);
 
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
 

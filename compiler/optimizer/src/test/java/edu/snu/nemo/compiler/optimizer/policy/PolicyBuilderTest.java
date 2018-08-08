@@ -26,23 +26,20 @@ import static org.junit.Assert.assertTrue;
 public final class PolicyBuilderTest {
   @Test
   public void testDisaggregationPolicy() {
-    final Policy disaggregationPolicy = new DisaggregationPolicy();
-    assertEquals(17, disaggregationPolicy.getCompileTimePasses().size());
-    assertEquals(0, disaggregationPolicy.getRuntimePasses().size());
+    assertEquals(17, DisaggregationPolicy.BUILDER.getCompileTimePasses().size());
+    assertEquals(0, DisaggregationPolicy.BUILDER.getRuntimePasses().size());
   }
 
   @Test
   public void testTransientResourcePolicy() {
-    final Policy transientResourcePolicy = new TransientResourcePolicy();
-    assertEquals(19, transientResourcePolicy.getCompileTimePasses().size());
-    assertEquals(0, transientResourcePolicy.getRuntimePasses().size());
+    assertEquals(19, TransientResourcePolicy.BUILDER.getCompileTimePasses().size());
+    assertEquals(0, TransientResourcePolicy.BUILDER.getRuntimePasses().size());
   }
 
   @Test
   public void testDataSkewPolicy() {
-    final Policy dataSkewPolicy = new DataSkewPolicy();
-    assertEquals(21, dataSkewPolicy.getCompileTimePasses().size());
-    assertEquals(1, dataSkewPolicy.getRuntimePasses().size());
+    assertEquals(21, DataSkewPolicy.BUILDER.getCompileTimePasses().size());
+    assertEquals(1, DataSkewPolicy.BUILDER.getRuntimePasses().size());
   }
 
   @Test
