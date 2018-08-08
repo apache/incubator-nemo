@@ -31,7 +31,7 @@ import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
-import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.LoggerFactory;
@@ -73,7 +73,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * The below variables depend on the submitted job to execute.
    */
   private PhysicalPlan physicalPlan;
-  private JobStateManager jobStateManager;
+  private PlanStateManager planStateManager;
   private List<List<Stage>> sortedScheduleGroups;
 
   @Inject
@@ -97,16 +97,16 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   /**
    * @param physicalPlanOfJob of the job.
-   * @param jobStateManagerOfJob of the job.
+   * @param jobStateManagerOfPlan of the job.
    */
   @Override
-  public void scheduleJob(final PhysicalPlan physicalPlanOfJob, final JobStateManager jobStateManagerOfJob) {
+  public void scheduleJob(final PhysicalPlan physicalPlanOfJob, final PlanStateManager jobStateManagerOfPlan) {
     LOG.info("Scheduled job");
 
     this.physicalPlan = physicalPlanOfJob;
-    this.jobStateManager = jobStateManagerOfJob;
+    this.planStateManager = jobStateManagerOfPlan;
 
-    schedulerRunner.run(jobStateManager);
+    schedulerRunner.run(planStateManager);
     LOG.info("Job to schedule: {}", this.physicalPlan.getId());
 
     this.sortedScheduleGroups = this.physicalPlan.getStageDAG().getVertices().stream()
@@ -148,11 +148,11 @@ public final class BatchSingleJobScheduler implements Scheduler {
                                             final TaskState.State newState,
                                             @Nullable final String vertexPutOnHold,
                                             final TaskState.RecoverableTaskFailureCause failureCause) {
-    final int currentTaskAttemptIndex = jobStateManager.getTaskAttempt(taskId);
+    final int currentTaskAttemptIndex = planStateManager.getTaskAttempt(taskId);
 
     if (taskAttemptIndex == currentTaskAttemptIndex) {
       // Do change state, as this notification is for the current task attempt.
-      jobStateManager.onTaskStateChanged(taskId, newState);
+      planStateManager.onTaskStateChanged(taskId, newState);
       switch (newState) {
         case COMPLETE:
           onTaskExecutionComplete(executorId, taskId, false);
@@ -181,8 +181,8 @@ public final class BatchSingleJobScheduler implements Scheduler {
         case ON_HOLD:
           // If the stage has completed
           final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
-          if (jobStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
-            if (!jobStateManager.isJobDone()) {
+          if (planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
+            if (!planStateManager.isJobDone()) {
               doSchedule();
             }
           }
@@ -296,7 +296,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     return sortedScheduleGroups.stream()
         .filter(scheduleGroup -> scheduleGroup.stream()
             .map(Stage::getId)
-            .map(jobStateManager::getStageState)
+            .map(planStateManager::getStageState)
             .anyMatch(state -> state.equals(StageState.State.INCOMPLETE))) // any incomplete stage in the group
         .findFirst(); // selects the one with the smallest scheduling group index.
   }
@@ -309,7 +309,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
     final List<String> taskIdsToSchedule = new LinkedList<>();
     for (final String taskId : stageToSchedule.getTaskIds()) {
-      final TaskState.State taskState = jobStateManager.getTaskState(taskId);
+      final TaskState.State taskState = planStateManager.getTaskState(taskId);
 
       switch (taskState) {
         // Don't schedule these.
@@ -320,7 +320,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
         // These are schedulable.
         case SHOULD_RETRY:
-          jobStateManager.onTaskStateChanged(taskId, TaskState.State.READY);
+          planStateManager.onTaskStateChanged(taskId, TaskState.State.READY);
         case READY:
           taskIdsToSchedule.add(taskId);
           break;
@@ -337,7 +337,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     taskIdsToSchedule.forEach(taskId -> {
       blockManagerMaster.onProducerTaskScheduled(taskId); // Notify the block manager early for push edges.
       final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
-      final int attemptIdx = jobStateManager.getTaskAttempt(taskId);
+      final int attemptIdx = planStateManager.getTaskAttempt(taskId);
       tasks.add(new Task(
           physicalPlan.getId(),
           taskId,
@@ -388,7 +388,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
 
     final boolean stageComplete =
-        jobStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
+        planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
 
     if (stageComplete) {
       // get optimization vertex from the task.
@@ -446,7 +446,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     final Set<String> tasksToRetry = Sets.union(tasks, requiredParents);
     LOG.info("Will be retried: {}", tasksToRetry);
     tasksToRetry.forEach(
-        taskToReExecute -> jobStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY));
+        taskToReExecute -> planStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY));
   }
 
   private Set<String> recursivelyGetParentTasksForLostBlocks(final Set<String> children) {

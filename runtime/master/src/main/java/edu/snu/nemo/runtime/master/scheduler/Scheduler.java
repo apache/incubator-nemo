@@ -18,7 +18,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
@@ -38,10 +38,10 @@ public interface Scheduler {
   /**
    * Schedules the given job.
    * @param physicalPlan of the job being submitted.
-   * @param jobStateManager to manage the states of the submitted job.
+   * @param planStateManager to manage the states of the submitted job.
    */
   void scheduleJob(PhysicalPlan physicalPlan,
-                   JobStateManager jobStateManager);
+                   PlanStateManager planStateManager);
 
   /**
    * Receives and updates the scheduler with a new physical plan for a job.

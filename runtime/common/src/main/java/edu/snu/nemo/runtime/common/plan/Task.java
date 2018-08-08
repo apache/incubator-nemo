@@ -28,7 +28,7 @@ import java.util.Optional;
  * A Task is a self-contained executable that can be executed on a machine.
  */
 public final class Task implements Serializable {
-  private final String jobId;
+  private final String planId;
   private final String taskId;
   private final List<StageEdge> taskIncomingEdges;
   private final List<StageEdge> taskOutgoingEdges;
@@ -40,7 +40,7 @@ public final class Task implements Serializable {
   /**
    * Constructor.
    *
-   * @param jobId                the id of the job.
+   * @param planId               the id of the physical plan.
    * @param taskId               the ID of the task.
    * @param attemptIdx           the attempt index.
    * @param executionProperties  {@link VertexExecutionProperty} map for the corresponding stage
@@ -49,7 +49,7 @@ public final class Task implements Serializable {
    * @param taskOutgoingEdges    the outgoing edges of the task.
    * @param irVertexIdToReadable the map between IRVertex id to readable.
    */
-  public Task(final String jobId,
+  public Task(final String planId,
               final String taskId,
               final int attemptIdx,
               final ExecutionPropertyMap<VertexExecutionProperty> executionProperties,
@@ -57,7 +57,7 @@ public final class Task implements Serializable {
               final List<StageEdge> taskIncomingEdges,
               final List<StageEdge> taskOutgoingEdges,
               final Map<String, Readable> irVertexIdToReadable) {
-    this.jobId = jobId;
+    this.planId = planId;
     this.taskId = taskId;
     this.attemptIdx = attemptIdx;
     this.executionProperties = executionProperties;
@@ -68,10 +68,10 @@ public final class Task implements Serializable {
   }
 
   /**
-   * @return the id of the job.
+   * @return the id of the plan.
    */
-  public String getJobId() {
-    return jobId;
+  public String getPlanId() {
+    return planId;
   }
 
   /**
@@ -138,8 +138,8 @@ public final class Task implements Serializable {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("jobId: ");
-    sb.append(jobId);
+    sb.append("planId: ");
+    sb.append(planId);
     sb.append(" / taskId: ");
     sb.append(taskId);
     sb.append(" / attempt: ");

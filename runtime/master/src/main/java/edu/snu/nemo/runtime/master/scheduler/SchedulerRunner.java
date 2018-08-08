@@ -17,13 +17,12 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
@@ -47,7 +46,7 @@ import javax.inject.Inject;
 @NotThreadSafe
 public final class SchedulerRunner {
   private static final Logger LOG = LoggerFactory.getLogger(SchedulerRunner.class.getName());
-  private final Map<String, JobStateManager> jobStateManagers;
+  private final Map<String, PlanStateManager> jobStateManagers;
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorService schedulerThread;
   private boolean isSchedulerRunning;
@@ -87,9 +86,9 @@ public final class SchedulerRunner {
       }
       jobStateManagers.values().forEach(jobStateManager -> {
         if (jobStateManager.isJobDone()) {
-          LOG.info("{} is complete.", jobStateManager.getJobId());
+          LOG.info("{} is complete.", jobStateManager.getPlanId());
         } else {
-          LOG.info("{} is incomplete.", jobStateManager.getJobId());
+          LOG.info("{} is incomplete.", jobStateManager.getPlanId());
         }
       });
       LOG.info("SchedulerRunner Terminated!");
@@ -107,8 +106,8 @@ public final class SchedulerRunner {
     final Collection<Task> taskList = taskListOptional.get();
     final List<Task> couldNotSchedule = new ArrayList<>();
     for (final Task task : taskList) {
-      final JobStateManager jobStateManager = jobStateManagers.get(task.getJobId());
-      if (!jobStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
+      final PlanStateManager planStateManager = jobStateManagers.get(task.getPlanId());
+      if (!planStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
         // Guard against race conditions causing duplicate task launches
         LOG.debug("Skipping {} as it is not READY", task.getTaskId());
         continue;
@@ -129,7 +128,7 @@ public final class SchedulerRunner {
           final ExecutorRepresenter selectedExecutor
               = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
           // update metadata first
-          jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+          planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
           LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
 
@@ -165,9 +164,9 @@ public final class SchedulerRunner {
   /**
    * Run the scheduler thread.
    */
-  void run(final JobStateManager jobStateManager) {
+  void run(final PlanStateManager planStateManager) {
+    jobStateManagers.put(planStateManager.getPlanId(), planStateManager);
     if (!isTerminated && !isSchedulerRunning) {
-      jobStateManagers.put(jobStateManager.getJobId(), jobStateManager);
       schedulerThread.execute(new SchedulerThread());
       schedulerThread.shutdown();
       isSchedulerRunning = true;

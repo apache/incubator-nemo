@@ -46,13 +46,13 @@ def stateToColor(state):
 
 class JobState:
     def __init__(self, data):
-        self.id = data['jobId']
+        self.id = data['planId']
         self.stages = {}
         for stage in data['stages']:
             self.stages[stage['id']] = StageState(stage)
     @classmethod
     def empty(cls):
-        return cls({'jobId': None, 'stages': []})
+        return cls({'planId': None, 'stages': []})
     def get(self, id):
         try:
             return self.stages[id]

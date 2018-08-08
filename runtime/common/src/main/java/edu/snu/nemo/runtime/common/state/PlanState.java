@@ -20,10 +20,10 @@ import edu.snu.nemo.common.StateMachine;
 /**
  * Represents the states and their transitions of a physical plan.
  */
-public final class JobState {
+public final class PlanState {
   private final StateMachine stateMachine;
 
-  public JobState() {
+  public PlanState() {
     stateMachine = buildTaskStateMachine();
   }
 
@@ -54,7 +54,7 @@ public final class JobState {
   }
 
   /**
-   * JobState.
+   * PlanState.
    */
   public enum State {
     READY,

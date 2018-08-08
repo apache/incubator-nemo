@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.client;
 
-import edu.snu.nemo.runtime.common.state.JobState;
+import edu.snu.nemo.runtime.common.state.PlanState;
 
 /**
  * A class provides the translation between the state of job and corresponding
@@ -29,5 +29,5 @@ public interface StateTranslator {
    * @param jobState to translate.
    * @return the translated state.
    */
-  Enum translateState(final JobState.State jobState);
+  Enum translateState(final PlanState.State jobState);
 }

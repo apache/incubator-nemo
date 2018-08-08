@@ -23,7 +23,7 @@ import edu.snu.nemo.runtime.common.message.MessageSender;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
-import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
@@ -134,8 +134,8 @@ public final class BatchSingleJobSchedulerTest {
   }
 
   private void scheduleAndCheckJobTermination(final PhysicalPlan plan) throws InjectionException {
-    final JobStateManager jobStateManager = new JobStateManager(plan, metricMessageHandler, 1);
-    scheduler.scheduleJob(plan, jobStateManager);
+    final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, 1);
+    scheduler.scheduleJob(plan, planStateManager);
 
     // For each ScheduleGroup, test if the tasks of the next ScheduleGroup are scheduled
     // after the stages of each ScheduleGroup are made "complete".
@@ -146,14 +146,14 @@ public final class BatchSingleJobSchedulerTest {
       LOG.debug("Checking that all stages of ScheduleGroup {} enter the executing state", scheduleGroupIdx);
       stages.forEach(stage -> {
         SchedulerTestUtil.completeStage(
-            jobStateManager, scheduler, executorRegistry, stage, SCHEDULE_ATTEMPT_INDEX);
+            planStateManager, scheduler, executorRegistry, stage, SCHEDULE_ATTEMPT_INDEX);
       });
     }
 
     LOG.debug("Waiting for job termination after sending stage completion events");
-    while (!jobStateManager.isJobDone()) {
+    while (!planStateManager.isJobDone()) {
     }
-    assertTrue(jobStateManager.isJobDone());
+    assertTrue(planStateManager.isJobDone());
   }
 
   private List<Stage> filterStagesWithAScheduleGroup(

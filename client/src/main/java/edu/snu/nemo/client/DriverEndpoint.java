@@ -15,8 +15,8 @@
  */
 package edu.snu.nemo.client;
 
-import edu.snu.nemo.runtime.common.state.JobState;
-import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.common.state.PlanState;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 
 import java.util.concurrent.TimeUnit;
 
@@ -26,9 +26,9 @@ import java.util.concurrent.TimeUnit;
 public final class DriverEndpoint {
 
   /**
-   * The {@link JobStateManager} of the running job.
+   * The {@link PlanStateManager} of the running job.
    */
-  private final JobStateManager jobStateManager;
+  private final PlanStateManager planStateManager;
 
   /**
    * The {@link ClientEndpoint} of the job.
@@ -38,12 +38,12 @@ public final class DriverEndpoint {
   /**
    * Construct an endpoint in driver side.
    * This method will be called by {@link ClientEndpoint}.
-   * @param jobStateManager of running job.
+   * @param planStateManager of running job.
    * @param clientEndpoint of running job.
    */
-  public DriverEndpoint(final JobStateManager jobStateManager,
+  public DriverEndpoint(final PlanStateManager planStateManager,
                         final ClientEndpoint clientEndpoint) {
-    this.jobStateManager = jobStateManager;
+    this.planStateManager = planStateManager;
     this.clientEndpoint = clientEndpoint;
     clientEndpoint.connectDriver(this);
   }
@@ -53,8 +53,8 @@ public final class DriverEndpoint {
    * This method will be called by {@link ClientEndpoint}.
    * @return the current state of the running job.
    */
-  JobState.State getState() {
-    return jobStateManager.getJobState();
+  PlanState.State getState() {
+    return planStateManager.getPlanState();
   }
 
   /**
@@ -65,9 +65,9 @@ public final class DriverEndpoint {
    * @param unit of the timeout.
    * @return the final state of this job.
    */
-  JobState.State waitUntilFinish(final long timeout,
-                                 final TimeUnit unit) {
-    return jobStateManager.waitUntilFinish(timeout, unit);
+  PlanState.State waitUntilFinish(final long timeout,
+                                  final TimeUnit unit) {
+    return planStateManager.waitUntilFinish(timeout, unit);
   }
 
   /**
@@ -75,7 +75,7 @@ public final class DriverEndpoint {
    * This method will be called by {@link ClientEndpoint}.
    * @return the final state of this job.
    */
-  JobState.State waitUntilFinish() {
-    return jobStateManager.waitUntilFinish();
+  PlanState.State waitUntilFinish() {
+    return planStateManager.waitUntilFinish();
   }
 }

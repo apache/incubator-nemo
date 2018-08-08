@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.client;
 
-import edu.snu.nemo.runtime.common.state.JobState;
+import edu.snu.nemo.runtime.common.state.PlanState;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -130,7 +130,7 @@ public abstract class ClientEndpoint {
     if (driverEndpoint.get() != null) {
       return stateTranslator.translateState(driverEndpoint.get().getState());
     } else {
-      return stateTranslator.translateState(JobState.State.READY);
+      return stateTranslator.translateState(PlanState.State.READY);
     }
   }
 
@@ -161,7 +161,7 @@ public abstract class ClientEndpoint {
         return stateTranslator.translateState(driverEndpoint.get().
             waitUntilFinish(timeout - unit.convert(consumedTime, TimeUnit.NANOSECONDS), unit));
       } else {
-        return JobState.State.READY;
+        return PlanState.State.READY;
       }
     }
   }
@@ -181,7 +181,7 @@ public abstract class ClientEndpoint {
       if (driverIsConnected) {
         return stateTranslator.translateState(driverEndpoint.get().waitUntilFinish());
       } else {
-        return JobState.State.READY;
+        return PlanState.State.READY;
       }
     }
   }

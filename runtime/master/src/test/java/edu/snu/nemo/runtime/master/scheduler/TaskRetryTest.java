@@ -20,10 +20,10 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageSender;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.state.JobState;
+import edu.snu.nemo.runtime.common.state.PlanState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
-import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -68,7 +68,7 @@ public final class TaskRetryTest {
   private Random random;
   private Scheduler scheduler;
   private ExecutorRegistry executorRegistry;
-  private JobStateManager jobStateManager;
+  private PlanStateManager planStateManager;
 
   private static final int MAX_SCHEDULE_ATTEMPT = Integer.MAX_VALUE;
 
@@ -91,14 +91,14 @@ public final class TaskRetryTest {
     injector.bindVolatileInstance(BlockManagerMaster.class, mock(BlockManagerMaster.class));
     scheduler = injector.getInstance(Scheduler.class);
 
-    // Get JobStateManager
-    jobStateManager = runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined);
+    // Get PlanStateManager
+    planStateManager = runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined);
   }
 
   @Test(timeout=7000)
   public void testExecutorRemoved() throws Exception {
     // Until the job finishes, events happen
-    while (!jobStateManager.isJobDone()) {
+    while (!planStateManager.isJobDone()) {
       // 50% chance remove, 50% chance add, 80% chance task completed
       executorRemoved(0.5);
       executorAdded(0.5);
@@ -109,8 +109,8 @@ public final class TaskRetryTest {
     }
 
     // Job should COMPLETE
-    assertEquals(JobState.State.COMPLETE, jobStateManager.getJobState());
-    assertTrue(jobStateManager.isJobDone());
+    assertEquals(PlanState.State.COMPLETE, planStateManager.getPlanState());
+    assertTrue(planStateManager.isJobDone());
   }
 
   @Test(timeout=7000)
@@ -121,7 +121,7 @@ public final class TaskRetryTest {
     executorAdded(1.0);
 
     // Until the job finishes, events happen
-    while (!jobStateManager.isJobDone()) {
+    while (!planStateManager.isJobDone()) {
       // 50% chance task completed
       // 50% chance task output write failed
       taskCompleted(0.5);
@@ -132,8 +132,8 @@ public final class TaskRetryTest {
     }
 
     // Job should COMPLETE
-    assertEquals(JobState.State.COMPLETE, jobStateManager.getJobState());
-    assertTrue(jobStateManager.isJobDone());
+    assertEquals(PlanState.State.COMPLETE, planStateManager.getPlanState());
+    assertTrue(planStateManager.isJobDone());
   }
 
   ////////////////////////////////////////////////////////////////// Events
@@ -177,12 +177,12 @@ public final class TaskRetryTest {
       return;
     }
 
-    final List<String> executingTasks = getTasksInState(jobStateManager, TaskState.State.EXECUTING);
+    final List<String> executingTasks = getTasksInState(planStateManager, TaskState.State.EXECUTING);
     if (!executingTasks.isEmpty()) {
       final int randomIndex = random.nextInt(executingTasks.size());
       final String selectedTask = executingTasks.get(randomIndex);
       SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry, selectedTask,
-          TaskState.State.COMPLETE, jobStateManager.getTaskAttempt(selectedTask));
+          TaskState.State.COMPLETE, planStateManager.getTaskAttempt(selectedTask));
     }
   }
 
@@ -191,30 +191,30 @@ public final class TaskRetryTest {
       return;
     }
 
-    final List<String> executingTasks = getTasksInState(jobStateManager, TaskState.State.EXECUTING);
+    final List<String> executingTasks = getTasksInState(planStateManager, TaskState.State.EXECUTING);
     if (!executingTasks.isEmpty()) {
       final int randomIndex = random.nextInt(executingTasks.size());
       final String selectedTask = executingTasks.get(randomIndex);
       SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry, selectedTask,
-          TaskState.State.SHOULD_RETRY, jobStateManager.getTaskAttempt(selectedTask),
+          TaskState.State.SHOULD_RETRY, planStateManager.getTaskAttempt(selectedTask),
           TaskState.RecoverableTaskFailureCause.OUTPUT_WRITE_FAILURE);
     }
   }
 
   ////////////////////////////////////////////////////////////////// Helper methods
 
-  private List<String> getTasksInState(final JobStateManager jobStateManager, final TaskState.State state) {
-    return jobStateManager.getAllTaskStates().entrySet().stream()
+  private List<String> getTasksInState(final PlanStateManager planStateManager, final TaskState.State state) {
+    return planStateManager.getAllTaskStates().entrySet().stream()
         .filter(entry -> entry.getValue().getStateMachine().getCurrentState().equals(state))
         .map(Map.Entry::getKey)
         .collect(Collectors.toList());
   }
 
-  private JobStateManager runPhysicalPlan(final TestPlanGenerator.PlanType planType) throws Exception {
+  private PlanStateManager runPhysicalPlan(final TestPlanGenerator.PlanType planType) throws Exception {
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PhysicalPlan plan = TestPlanGenerator.generatePhysicalPlan(planType, false);
-    final JobStateManager jobStateManager = new JobStateManager(plan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
-    scheduler.scheduleJob(plan, jobStateManager);
-    return jobStateManager;
+    final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+    scheduler.scheduleJob(plan, planStateManager);
+    return planStateManager;
   }
 }

@@ -156,16 +156,16 @@ public final class RuntimeMaster {
    * @param plan to execute
    * @param maxScheduleAttempt the max number of times this plan/sub-part of the plan should be attempted.
    */
-  public Pair<JobStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
-                                                                 final int maxScheduleAttempt) {
-    final Callable<Pair<JobStateManager, ScheduledExecutorService>> jobExecutionCallable = () -> {
+  public Pair<PlanStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
+                                                                  final int maxScheduleAttempt) {
+    final Callable<Pair<PlanStateManager, ScheduledExecutorService>> jobExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
         blockManagerMaster.initialize(plan);
-        final JobStateManager jobStateManager = new JobStateManager(plan, metricMessageHandler, maxScheduleAttempt);
-        scheduler.scheduleJob(plan, jobStateManager);
-        final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(jobStateManager);
-        return Pair.of(jobStateManager, dagLoggingExecutor);
+        final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, maxScheduleAttempt);
+        scheduler.scheduleJob(plan, planStateManager);
+        final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(planStateManager);
+        return Pair.of(planStateManager, dagLoggingExecutor);
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
@@ -444,17 +444,17 @@ public final class RuntimeMaster {
 
   /**
    * Schedules a periodic DAG logging thread.
-   * @param jobStateManager for the job the DAG should be logged.
+   * @param planStateManager for the job the DAG should be logged.
    * TODO #20: RESTful APIs to Access Job State and Metric.
    * @return the scheduled executor service.
    */
-  private ScheduledExecutorService scheduleDagLogging(final JobStateManager jobStateManager) {
+  private ScheduledExecutorService scheduleDagLogging(final PlanStateManager planStateManager) {
     final ScheduledExecutorService dagLoggingExecutor = Executors.newSingleThreadScheduledExecutor();
     dagLoggingExecutor.scheduleAtFixedRate(new Runnable() {
       private int dagLogFileIndex = 0;
 
       public void run() {
-        jobStateManager.storeJSON(dagDirectory, String.valueOf(dagLogFileIndex++));
+        planStateManager.storeJSON(dagDirectory, String.valueOf(dagLogFileIndex++));
       }
     }, DAG_LOGGING_PERIOD, DAG_LOGGING_PERIOD, TimeUnit.MILLISECONDS);
 
