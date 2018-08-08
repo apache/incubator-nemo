@@ -170,13 +170,8 @@ public final class InputReader extends DataTransfer {
    * @return the parallelism of the source task.
    */
   public int getSourceParallelism() {
-    if (CommunicationPatternProperty.Value.OneToOne
-        .equals(runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-      return 1;
-    } else {
-      final Integer numSrcTasks = srcVertex.getPropertyValue(ParallelismProperty.class).get();
-      return numSrcTasks;
-    }
+    return srcVertex.getPropertyValue(ParallelismProperty.class).
+        orElseThrow(() -> new RuntimeException("No parallelism property on this edge."));
   }
 
   /**

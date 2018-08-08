@@ -80,11 +80,17 @@ public final class DataUtil {
                                                                                      final InputStream inputStream)
       throws IOException {
     final List deserializedData = new ArrayList();
-    final InputStreamIterator iterator = new InputStreamIterator(Collections.singletonList(inputStream).iterator(),
-        serializer, partitionSize);
-    iterator.forEachRemaining(deserializedData::add);
-    return new NonSerializedPartition(key, deserializedData, iterator.getNumSerializedBytes(),
-        iterator.getNumEncodedBytes());
+    // We need to limit read bytes on this inputStream, which could be over-read by wrapped
+    // compression stream. This depends on the nature of the compression algorithm used.
+    // We recommend to wrap with LimitedInputStream once more when
+    // reading input from chained compression InputStream.
+    try (final LimitedInputStream limitedInputStream = new LimitedInputStream(inputStream, partitionSize)) {
+      final InputStreamIterator iterator =
+          new InputStreamIterator(Collections.singletonList(limitedInputStream).iterator(), serializer);
+      iterator.forEachRemaining(deserializedData::add);
+      return new NonSerializedPartition(key, deserializedData, iterator.getNumSerializedBytes(),
+          iterator.getNumEncodedBytes());
+    }
   }
 
   /**
@@ -197,7 +203,6 @@ public final class DataUtil {
 
     private final Iterator<InputStream> inputStreams;
     private final Serializer<?, T> serializer;
-    private final long limit;
 
     private volatile CountingInputStream serializedCountingStream = null;
     private volatile CountingInputStream encodedCountingStream = null;
@@ -218,27 +223,6 @@ public final class DataUtil {
                         final Serializer<?, T> serializer) {
       this.inputStreams = inputStreams;
       this.serializer = serializer;
-      // -1 means no limit.
-      this.limit = -1;
-    }
-
-    /**
-     * Construct {@link Iterator} from {@link InputStream} and {@link DecoderFactory}.
-     *
-     * @param inputStreams The streams to read data from.
-     * @param serializer   The serializer.
-     * @param limit        The bytes to read from the {@link InputStream}.
-     */
-    private InputStreamIterator(
-        final Iterator<InputStream> inputStreams,
-        final Serializer<?, T> serializer,
-        final int limit) {
-      if (limit < 0) {
-        throw new IllegalArgumentException("Negative limit not allowed.");
-      }
-      this.inputStreams = inputStreams;
-      this.serializer = serializer;
-      this.limit = limit;
     }
 
     @Override
@@ -247,11 +231,6 @@ public final class DataUtil {
         return true;
       }
       if (cannotContinueDecoding) {
-        return false;
-      }
-      if (limit != -1 && limit == (serializedCountingStream == null
-          ? numSerializedBytes : numSerializedBytes + serializedCountingStream.getCount())) {
-        cannotContinueDecoding = true;
         return false;
       }
       while (true) {

@@ -334,11 +334,7 @@ public final class DataTransferTest {
       final InputReader reader =
           new InputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
 
-      if (CommunicationPatternProperty.Value.OneToOne.equals(commPattern)) {
-        assertEquals(1, reader.getSourceParallelism());
-      } else {
-        assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
-      }
+      assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
 
       final List dataRead = new ArrayList<>();
       try {
@@ -436,17 +432,9 @@ public final class DataTransferTest {
       final InputReader reader2 =
           new InputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
 
-      if (CommunicationPatternProperty.Value.OneToOne.equals(commPattern)) {
-        assertEquals(1, reader.getSourceParallelism());
-      } else {
-        assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
-      }
+      assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
 
-      if (CommunicationPatternProperty.Value.OneToOne.equals(commPattern)) {
-        assertEquals(1, reader2.getSourceParallelism());
-      } else {
-        assertEquals(PARALLELISM_TEN, reader2.getSourceParallelism());
-      }
+      assertEquals(PARALLELISM_TEN, reader2.getSourceParallelism());
 
       final List dataRead = new ArrayList<>();
       try {
