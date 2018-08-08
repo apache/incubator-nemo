@@ -39,7 +39,6 @@ import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.common.metric.JobMetric;
 import edu.snu.nemo.runtime.common.metric.StageMetric;
 import edu.snu.nemo.runtime.common.metric.TaskMetric;
-import edu.snu.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,9 +132,9 @@ public final class PlanStateManager {
    * Updates the state of a task.
    * Task state changes can occur both in master and executor.
    * State changes that occur in master are
-   * initiated in {@link BatchScheduler}.
+   * initiated in {@link edu.snu.nemo.runtime.master.scheduler.BatchScheduler}.
    * State changes that occur in executors are sent to master as a control message,
-   * and the call to this method is initiated in {@link BatchScheduler}
+   * and the call to this method is initiated in {@link edu.snu.nemo.runtime.master.scheduler.BatchScheduler}
    * when the message/event is received.
    *
    * @param taskId  the ID of the task.

@@ -96,15 +96,15 @@ public final class BatchScheduler implements Scheduler {
   }
 
   /**
-   * @param physicalPlan the physical plan to schedule.
-   * @param planStateManager the state manager of the plan.
+   * @param submittedPhysicalPlan the physical plan to schedule.
+   * @param submittedPlanStateManager the state manager of the plan.
    */
   @Override
-  public void schedulePlan(final PhysicalPlan physicalPlan, final PlanStateManager planStateManager) {
+  public void schedulePlan(final PhysicalPlan submittedPhysicalPlan, final PlanStateManager submittedPlanStateManager) {
     LOG.info("Scheduled plan");
 
-    this.physicalPlan = physicalPlan;
-    this.planStateManager = planStateManager;
+    this.physicalPlan = submittedPhysicalPlan;
+    this.planStateManager = submittedPlanStateManager;
 
     schedulerRunner.run(this.planStateManager);
     LOG.info("Plan to schedule: {}", this.physicalPlan.getId());
