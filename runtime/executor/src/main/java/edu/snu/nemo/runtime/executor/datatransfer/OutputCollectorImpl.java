@@ -29,19 +29,11 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   private final Map<String, ArrayList<Object>> additionalTagOutputQueues; // Use ArrayList to allow 'null' values
 
   /**
-   * Constructor of a new OutputCollectorImpl.
-   */
-  public OutputCollectorImpl() {
-    this.mainTagOutputQueue = new ArrayList<>();
-    this.additionalTagOutputQueues = new HashMap<>();
-  }
-
-  /**
    * Constructor of a new OutputCollectorImpl with tagged outputs.
    * @param taggedChildren tagged children
    */
   public OutputCollectorImpl(final List<String> taggedChildren) {
-    this.mainTagOutputQueue = new ArrayList<>();
+    this.mainTagOutputQueue = new ArrayList<>(1);
     this.additionalTagOutputQueues = new HashMap<>();
     taggedChildren.forEach(child -> this.additionalTagOutputQueues.put(child, new ArrayList<>(1)));
   }

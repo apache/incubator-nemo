@@ -83,7 +83,7 @@ public final class ParentTaskDataFetcherTest {
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
 
-    // Should return the element
+    // Should return only a single element
     assertEquals(singleData, fetcher.fetchDataElement());
   }
 
