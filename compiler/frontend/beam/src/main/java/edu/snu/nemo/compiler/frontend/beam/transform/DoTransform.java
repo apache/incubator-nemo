@@ -36,6 +36,7 @@ import org.joda.time.Instant;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Queue;
 
 /**
@@ -76,7 +77,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     this.startBundleContext = new StartBundleContext(doFn, serializedOptions);
     this.finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
     this.processContext = new ProcessContext(doFn, outputCollector,
-        context.getSideInputs(), context.getTagToAdditionalChildren(), serializedOptions);
+        context.getSideInputs(), context.getMainTag(), context.getTagToAdditionalChildren(), serializedOptions);
     this.invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
@@ -196,6 +197,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     private I input;
     private final OutputCollector<O> outputCollector;
     private final Map sideInputs;
+    private final Optional<String> mainTag;
     private final Map<String, String> additionalOutputs;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
@@ -206,17 +208,20 @@ public final class DoTransform<I, O> implements Transform<I, O> {
      * @param fn                Dofn.
      * @param outputCollector   OutputCollector.
      * @param sideInputs        Map for SideInputs.
+     * @param mainTag           Optional main tag id.
      * @param additionalOutputs Map for TaggedOutputs.
      * @param serializedOptions Options, serialized.
      */
     ProcessContext(final DoFn<I, O> fn,
                    final OutputCollector<O> outputCollector,
                    final Map sideInputs,
+                   final Optional<String> mainTag,
                    final Map<String, String> additionalOutputs,
                    final String serializedOptions) {
       fn.super();
       this.outputCollector = outputCollector;
       this.sideInputs = sideInputs;
+      this.mainTag = mainTag;
       this.additionalOutputs = additionalOutputs;
       this.mapper = new ObjectMapper();
       try {
@@ -279,10 +284,15 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     public <T> void output(final TupleTag<T> tupleTag, final T t) {
       final Object dstVertexId = additionalOutputs.get(tupleTag.getId());
 
-      if (dstVertexId == null) {
-        outputCollector.emit((O) t);
+      if (dstVertexId == null && this.mainTag.isPresent()) {
+        final String tag = this.mainTag.get();
+        if (tag.equals(tupleTag.getId())) {
+          outputCollector.emit((O) t);
+        } else {
+          throw new IllegalArgumentException("Unexpected tag is provided to output(TupleTag, T)");
+        }
       } else {
-        outputCollector.emit((String) additionalOutputs.get(tupleTag.getId()), t);
+        outputCollector.emit(additionalOutputs.get(tupleTag.getId()), t);
       }
     }
 
@@ -392,8 +402,13 @@ public final class DoTransform<I, O> implements Transform<I, O> {
                    final TupleTag<O> tupleTag,
                    final Map<String, String> tagToVertex) {
       final Object dstVertexId = tagToVertex.get(tupleTag.getId());
-      if (dstVertexId == null) {
-        this.dataQueue = outputCollector.getMainTagOutputQueue();
+      if (dstVertexId == null && outputCollector.getMainTag().isPresent()) {
+        final String mainTag = (String) outputCollector.getMainTag().get();
+        if (mainTag.equals(tupleTag.getId())) {
+          this.dataQueue = outputCollector.getMainTagOutputQueue();
+        } else {
+          throw new IllegalArgumentException("Unexpected tag is provided to OutputReceiver");
+        }
       } else {
         this.dataQueue = (Queue<O>) outputCollector.getAdditionalTagOutputQueue((String) dstVertexId);
       }

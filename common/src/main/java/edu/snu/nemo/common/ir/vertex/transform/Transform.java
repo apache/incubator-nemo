@@ -61,6 +61,7 @@ public interface Transform<I, O> extends Serializable {
      * @return sideInputs.
      */
     Map getSideInputs();
+    Optional<String> getMainTag();
     Map<String, String> getTagToAdditionalChildren();
 
     /**

@@ -17,6 +17,7 @@ package edu.snu.nemo.compiler.frontend.beam;
 
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
+import edu.snu.nemo.common.ir.vertex.executionproperty.MainOutputTagProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
@@ -196,6 +197,10 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
       irVertex = new OperatorVertex(transform);
       additionalInputs.put(irVertex, parDo.getAdditionalInputs().values().stream().collect(Collectors.toSet()));
       if (parDo.getAdditionalOutputTags().size() > 0) {
+        // Set MainOutputTagProperty to specify main output tag.
+        irVertex.setProperty(MainOutputTagProperty.of(parDo.getMainOutputTag().getId()));
+
+        // Store PValue to additional tag id mapping.
         beamNode.getOutputs().entrySet().stream()
             .filter(kv -> !kv.getKey().equals(parDo.getMainOutputTag()))
             .forEach(kv -> pValueToTag.put(kv.getValue(), kv.getKey()));

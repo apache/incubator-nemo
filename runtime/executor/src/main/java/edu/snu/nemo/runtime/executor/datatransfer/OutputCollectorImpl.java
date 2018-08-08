@@ -25,6 +25,7 @@ import java.util.*;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
+  private final Optional<String> mainTag;
   private final Set<String> mainTagOutputChildren;
   private final Queue<O> mainTagOutputQueue;
   private final Map<String, Queue<Object>> taggedOutputQueues;
@@ -34,7 +35,10 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @param mainChildren       main children vertices
    * @param additionalChildren additional children vertices
    */
-  public OutputCollectorImpl(final Set<String> mainChildren, final List<String> additionalChildren) {
+  public OutputCollectorImpl(final Optional<String> mainTag,
+                             final Set<String> mainChildren,
+                             final List<String> additionalChildren) {
+    this.mainTag = mainTag;
     this.mainTagOutputChildren = mainChildren;
     this.mainTagOutputQueue = new ArrayDeque<>(1);
     this.taggedOutputQueues = new HashMap<>();
@@ -108,6 +112,10 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
       return this.taggedOutputQueues.get(tag).isEmpty();
     }
+  }
+
+  public Optional<String> getMainTag() {
+    return mainTag;
   }
 
   public Queue<O> getMainTagOutputQueue() {
