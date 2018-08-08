@@ -15,11 +15,7 @@
  */
 package edu.snu.nemo.runtime.executor.task;
 
-import edu.snu.nemo.common.coder.DecoderFactory;
-import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
 import org.junit.Test;
@@ -35,7 +31,6 @@ import java.util.concurrent.Executors;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.when;
 
 /**
@@ -48,8 +43,7 @@ public final class ParentTaskDataFetcherTest {
   @Test(timeout=5000, expected = NoSuchElementException.class)
   public void testEmpty() throws Exception {
     final List<String> empty = new ArrayList<>(0); // empty data
-    final InputReader inputReader = generateInputReaderWithCoder(generateCompletableFuture(empty.iterator()),
-        "IntCoder");
+    final InputReader inputReader = generateInputReader(generateCompletableFuture(empty.iterator()));
 
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
@@ -62,8 +56,7 @@ public final class ParentTaskDataFetcherTest {
   public void testNull() throws Exception {
     final List<String> oneNull = new ArrayList<>(1); // empty data
     oneNull.add(null);
-    final InputReader inputReader = generateInputReaderWithCoder(generateCompletableFuture(oneNull.iterator()),
-        "VoidCoder");
+    final InputReader inputReader = generateInputReader(generateCompletableFuture(oneNull.iterator()));
 
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
@@ -127,28 +120,6 @@ public final class ParentTaskDataFetcherTest {
         readerForParentTask, // This is the only argument that affects the behavior of ParentTaskDataFetcher
         mock(VertexHarness.class),
         false);
-  }
-
-
-  private DecoderFactory generateCoder(final String coder) {
-    final DecoderFactory decoderFactory = mock(DecoderFactory.class);
-    when(decoderFactory.toString()).thenReturn(coder);
-    return decoderFactory;
-  }
-
-  private RuntimeEdge generateEdge(final String coder) {
-    final String runtimeIREdgeId = "Runtime edge with coder";
-    final ExecutionPropertyMap edgeProperties = new ExecutionPropertyMap(runtimeIREdgeId);
-    edgeProperties.put(DecoderProperty.of(generateCoder(coder)));
-    return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, mock(IRVertex.class), mock(IRVertex.class), false);
-  }
-
-  private InputReader generateInputReaderWithCoder(final CompletableFuture completableFuture, final String coder) {
-    final InputReader inputReader = mock(InputReader.class);
-    when(inputReader.read()).thenReturn(Arrays.asList(completableFuture));
-    final RuntimeEdge runtimeEdge = generateEdge(coder);
-    when(inputReader.getRuntimeEdge()).thenReturn(runtimeEdge);
-    return inputReader;
   }
 
   private InputReader generateInputReader(final CompletableFuture completableFuture) {
