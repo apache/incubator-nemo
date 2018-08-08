@@ -220,19 +220,15 @@ public final class TaskExecutor {
     }
 
     // Given a single input element, a vertex can produce many output elements.
-    // Here, we recursively process all of the main output elements.
-    while (!outputCollector.isEmpty()) {
-      final Object element = outputCollector.remove();
-      handleMainOutputElement(vertexHarness, element); // Recursion
-    }
+    // Here, we recursively process all of the main oltput elements.
+    outputCollector.iterateMain().forEach(element -> handleMainOutputElement(vertexHarness, element)); // Recursion
+    outputCollector.clearMain();
 
     // Recursively process all of the additional output elements.
-    vertexHarness.getContext().getAdditionalTagOutputs().values().forEach(value -> {
-      final String dstVertexId = (String) value;
-      while (!outputCollector.isEmpty(dstVertexId)) {
-        final Object element = outputCollector.remove(dstVertexId);
-        handleAdditionalOutputElement(vertexHarness, element, dstVertexId); // Recursion
-      }
+    vertexHarness.getContext().getAdditionalTagOutputs().values().forEach(tag -> {
+      outputCollector.iterateTag(tag).forEach(
+          element -> handleAdditionalOutputElement(vertexHarness, element, tag)); // Recursion
+      outputCollector.clearTag(tag);
     });
   }
 
@@ -326,17 +322,14 @@ public final class TaskExecutor {
     final OutputCollectorImpl outputCollector = vertexHarness.getOutputCollector();
 
     // handle main outputs
-    while (!outputCollector.isEmpty()) {
-      final Object element = outputCollector.remove();
-      handleMainOutputElement(vertexHarness, element);
-    }
+    outputCollector.iterateMain().forEach(element -> handleMainOutputElement(vertexHarness, element)); // Recursion
+    outputCollector.clearMain();
 
     // handle additional tagged outputs
     vertexHarness.getAdditionalTagOutputChildren().keySet().forEach(tag -> {
-      while (!outputCollector.isEmpty(tag)) {
-        final Object element = outputCollector.remove(tag);
-        handleAdditionalOutputElement(vertexHarness, element, tag);
-      }
+      outputCollector.iterateTag(tag).forEach(
+          element -> handleAdditionalOutputElement(vertexHarness, element, tag)); // Recursion
+      outputCollector.clearTag(tag);
     });
     finalizeOutputWriters(vertexHarness);
   }

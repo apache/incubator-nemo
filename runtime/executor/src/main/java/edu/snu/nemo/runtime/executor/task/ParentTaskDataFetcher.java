@@ -39,7 +39,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   private final LinkedBlockingQueue iteratorQueue;
 
   // Non-finals (lazy fetching)
-  private boolean hasFetchStarted;
+  private boolean firstFetch;
   private int expectedNumOfIterators;
   private DataUtil.IteratorWithNumBytes currentIterator;
   private int currentIteratorIndex;
@@ -52,7 +52,7 @@ class ParentTaskDataFetcher extends DataFetcher {
                         final boolean isToSideInput) {
     super(dataSource, child, readerForParentTask.isSideInputReader(), isToSideInput);
     this.readersForParentTask = readerForParentTask;
-    this.hasFetchStarted = false;
+    this.firstFetch = true;
     this.currentIteratorIndex = 0;
     this.iteratorQueue = new LinkedBlockingQueue<>();
   }
@@ -60,22 +60,28 @@ class ParentTaskDataFetcher extends DataFetcher {
   @Override
   Object fetchDataElement() throws IOException {
     try {
-      if (!hasFetchStarted) {
+      if (firstFetch) {
         fetchDataLazily();
         advanceIterator();
-        hasFetchStarted = true;
+        firstFetch = false;
       }
 
-      // Return the current iterator's element
-      if (this.currentIterator.hasNext()) {
-        return this.currentIterator.next();
-      }
+      while (true) {
+        // This iterator has the element
+        if (this.currentIterator.hasNext()) {
+          return this.currentIterator.next();
+        }
 
-      // Return the next iterator's element
-      if (currentIteratorIndex < expectedNumOfIterators) {
-        countBytes(currentIterator);
-        advanceIterator();
-        return fetchDataElement(); // recursive call, with the next iterator
+        // This iterator does not have the element
+        if (currentIteratorIndex < expectedNumOfIterators) {
+          // Next iterator has the element
+          countBytes(currentIterator);
+          advanceIterator();
+          continue;
+        } else {
+          // We've consumed all the iterators
+          break;
+        }
       }
     } catch (final Throwable e) {
       // Any failure is caught and thrown as an IOException, so that the task is retried.
@@ -86,7 +92,7 @@ class ParentTaskDataFetcher extends DataFetcher {
       throw new IOException(e);
     }
 
-    // We've consumed all the data.
+    // We throw the exception here, outside of the above try-catch region
     throw new NoSuchElementException();
   }
 

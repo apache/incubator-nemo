@@ -17,11 +17,7 @@ package edu.snu.nemo.runtime.executor.datatransfer;
 
 import edu.snu.nemo.common.ir.OutputCollector;
 
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
 /**
  * OutputCollector implementation.
@@ -29,18 +25,14 @@ import java.util.Queue;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
-  // This is necessary to handle 'null' data elements emitted by user operators.
-  // ArrayDequeue does not allow 'null' elements, so we use this NULL_REPRESENTER instead.
-  private static final Object NULL_REPRESENTER = new Object();
-
-  private final Queue<O> mainTagOutputQueue;
-  private final Map<String, Queue<Object>> additionalTagOutputQueues;
+  private final ArrayList<O> mainTagOutputQueue; // Use ArrayList to allow 'null' values
+  private final Map<String, ArrayList<Object>> additionalTagOutputQueues; // Use ArrayList to allow 'null' values
 
   /**
    * Constructor of a new OutputCollectorImpl.
    */
   public OutputCollectorImpl() {
-    this.mainTagOutputQueue = new ArrayDeque<>(1);
+    this.mainTagOutputQueue = new ArrayList<>();
     this.additionalTagOutputQueues = new HashMap<>();
   }
 
@@ -49,9 +41,9 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @param taggedChildren tagged children
    */
   public OutputCollectorImpl(final List<String> taggedChildren) {
-    this.mainTagOutputQueue = new ArrayDeque<>(1);
+    this.mainTagOutputQueue = new ArrayList<>();
     this.additionalTagOutputQueues = new HashMap<>();
-    taggedChildren.forEach(child -> this.additionalTagOutputQueues.put(child, new ArrayDeque<>(1)));
+    taggedChildren.forEach(child -> this.additionalTagOutputQueues.put(child, new ArrayList<>(1)));
   }
 
   @Override
@@ -70,55 +62,31 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     }
   }
 
-  /**
-   * Inter-Task data is transferred from sender-side Task's OutputCollectorImpl
-   * to receiver-side Task.
-   *
-   * @return the first element of this list
-   */
-  public O remove() {
-    return mainTagOutputQueue.remove();
+  public Iterable<O> iterateMain() {
+    return mainTagOutputQueue;
   }
 
-  /**
-   * Inter-task data is transferred from sender-side Task's OutputCollectorImpl
-   * to receiver-side Task.
-   *
-   * @param tag output tag
-   * @return the first element of corresponding list
-   */
-  public Object remove(final String tag) {
+  public Iterable<Object> iterateTag(final String tag) {
     if (this.additionalTagOutputQueues.get(tag) == null) {
       // This dstVertexId is for the main tag
-      return remove();
+      return (Iterable<Object>) iterateMain();
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      return this.additionalTagOutputQueues.get(tag).remove();
+      return this.additionalTagOutputQueues.get(tag);
     }
-
   }
 
-  /**
-   * Check if this OutputCollector is empty.
-   *
-   * @return true if this OutputCollector is empty.
-   */
-  public boolean isEmpty() {
-    return mainTagOutputQueue.isEmpty();
+  public void clearMain() {
+    mainTagOutputQueue.clear();
   }
 
-  /**
-   * Check if this OutputCollector is empty.
-   *
-   * @param tag output tag
-   * @return true if this OutputCollector is empty.
-   */
-  public boolean isEmpty(final String tag) {
+  public void clearTag(final String tag) {
     if (this.additionalTagOutputQueues.get(tag) == null) {
-      return isEmpty();
+      // This dstVertexId is for the main tag
+      clearMain();
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      return this.additionalTagOutputQueues.get(tag).isEmpty();
+      this.additionalTagOutputQueues.get(tag).clear();
     }
   }
 }
