@@ -101,9 +101,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    */
   @Override
   public void scheduleJob(final PhysicalPlan physicalPlanOfJob, final JobStateManager jobStateManagerOfJob) {
-    if (this.physicalPlan != null || this.jobStateManager != null) {
-      throw new IllegalStateException("scheduleJob() has been called more than once");
-    }
+    LOG.info("Scheduled job");
 
     this.physicalPlan = physicalPlanOfJob;
     this.jobStateManager = jobStateManagerOfJob;
@@ -111,11 +109,9 @@ public final class BatchSingleJobScheduler implements Scheduler {
     schedulerRunner.run(jobStateManager);
     LOG.info("Job to schedule: {}", this.physicalPlan.getId());
 
-    this.sortedScheduleGroups = this.physicalPlan.getStageDAG().getVertices()
-        .stream()
+    this.sortedScheduleGroups = this.physicalPlan.getStageDAG().getVertices().stream()
         .collect(Collectors.groupingBy(Stage::getScheduleGroup))
-        .entrySet()
-        .stream()
+        .entrySet().stream()
         .sorted(Map.Entry.comparingByKey())
         .map(Map.Entry::getValue)
         .collect(Collectors.toList());

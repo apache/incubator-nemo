@@ -84,17 +84,6 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
   }
 
   /**
-   * Converts a DAG into another DAG according to a function.
-   * @param function to apply when converting a DAG to another.
-   * @param <V2> the converted DAG's vertex type.
-   * @param <E2> the converted DAG's edge type.
-   * @return the converted DAG.
-   */
-  public <V2 extends Vertex, E2 extends Edge<V2>> DAG<V2, E2> convert(final Function<DAG<V, E>, DAG<V2, E2>> function) {
-    return function.apply(this);
-  }
-
-  /**
    * Retrieves the vertex given its ID.
    * @param id of the vertex to retrieve
    * @return the vertex
