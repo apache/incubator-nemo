@@ -45,31 +45,30 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({InputReader.class, VertexHarness.class})
 public final class ParentTaskDataFetcherTest {
 
-  @Test(timeout=5000)
-  public void testVoid() throws Exception {
-    // TODO #173: Properly handle zero-element. This test should be updated too.
-    final List<String> dataElements = new ArrayList<>(0); // empty data
-    final InputReader inputReader = generateInputReaderWithCoder(generateCompletableFuture(dataElements.iterator()),
-        "VoidCoder");
-
-    // Fetcher
-    final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
-
-    // Should return Void.TYPE
-    assertEquals(Void.TYPE, fetcher.fetchDataElement());
-  }
-
-  @Test(timeout=5000)
+  @Test(timeout=5000, expected = NoSuchElementException.class)
   public void testEmpty() throws Exception {
-    // TODO #173: Properly handle zero-element. This test should be updated too.
-    final List<String> dataElements = new ArrayList<>(0); // empty data
-    final InputReader inputReader = generateInputReaderWithCoder(generateCompletableFuture(dataElements.iterator()),
+    final List<String> empty = new ArrayList<>(0); // empty data
+    final InputReader inputReader = generateInputReaderWithCoder(generateCompletableFuture(empty.iterator()),
         "IntCoder");
 
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
 
-    // Should return Void.TYPE
+    // Should trigger the expected 'NoSuchElementException'
+    fetcher.fetchDataElement();
+  }
+
+  @Test(timeout=5000)
+  public void testNull() throws Exception {
+    final List<String> oneNull = new ArrayList<>(1); // empty data
+    oneNull.add(null);
+    final InputReader inputReader = generateInputReaderWithCoder(generateCompletableFuture(oneNull.iterator()),
+        "VoidCoder");
+
+    // Fetcher
+    final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
+
+    // Should return 'null'
     assertEquals(null, fetcher.fetchDataElement());
   }
 
@@ -84,9 +83,8 @@ public final class ParentTaskDataFetcherTest {
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
 
-    // Should return only a single element
+    // Should return the element
     assertEquals(singleData, fetcher.fetchDataElement());
-    assertEquals(null, fetcher.fetchDataElement());
   }
 
   @Test(timeout=5000, expected = IOException.class)

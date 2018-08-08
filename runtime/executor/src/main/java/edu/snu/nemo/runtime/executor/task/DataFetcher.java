@@ -17,6 +17,8 @@ package edu.snu.nemo.runtime.executor.task;
 
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
+import java.io.IOException;
+
 /**
  * An abstraction for fetching data from task-external sources.
  */
@@ -39,10 +41,10 @@ abstract class DataFetcher {
   /**
    * This call can block.
    * @return data element
+   * @throws IOException upon I/O error
    * @throws java.util.NoSuchElementException if no more element is available
-   * @throws RuntimeException if an I/O error occurs during fetching
    */
-  abstract Object fetchDataElement();
+  abstract Object fetchDataElement() throws IOException;
 
   VertexHarness getChild() {
     return child;

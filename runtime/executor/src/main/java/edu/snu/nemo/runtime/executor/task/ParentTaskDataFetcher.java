@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.io.IOException;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
@@ -57,7 +58,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
-  Object fetchDataElement() {
+  Object fetchDataElement() throws IOException {
     if (!hasFetchStarted) {
       fetchDataLazily();
       advanceIterator();
@@ -77,13 +78,13 @@ class ParentTaskDataFetcher extends DataFetcher {
     }
   }
 
-  private void advanceIterator() {
+  private void advanceIterator() throws IOException {
     // Take from iteratorQueue
     final Object iteratorOrThrowable;
     try {
       iteratorOrThrowable = iteratorQueue.take(); // blocking call
     } catch (InterruptedException e) {
-      throw new RuntimeException(e);
+      throw new IOException(e);
     }
 
     // Handle iteratorOrThrowable
@@ -96,7 +97,7 @@ class ParentTaskDataFetcher extends DataFetcher {
     }
   }
 
-  private void fetchDataLazily() {
+  private void fetchDataLazily() throws IOException {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     this.expectedNumOfIterators = futures.size();
 
@@ -109,7 +110,7 @@ class ParentTaskDataFetcher extends DataFetcher {
         }
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
-        throw new RuntimeException(e);
+        throw new RuntimeException(e); // this should not happen
       }
     }));
   }

@@ -41,7 +41,7 @@ class SourceVertexDataFetcher extends DataFetcher {
   }
 
   @Override
-  Object fetchDataElement() {
+  Object fetchDataElement() throws IOException {
     if (iterator == null) {
       fetchDataLazily();
     }
@@ -53,13 +53,9 @@ class SourceVertexDataFetcher extends DataFetcher {
     }
   }
 
-  private void fetchDataLazily() {
+  private void fetchDataLazily() throws IOException {
     final long start = System.currentTimeMillis();
-    try {
-      iterator = this.readable.read().iterator();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    iterator = this.readable.read().iterator();
     boundedSourceReadTime += System.currentTimeMillis() - start;
   }
 
