@@ -103,12 +103,26 @@ public interface Block<K extends Serializable> {
    * Commits this block to prevent further write.
    *
    * @return the size of each partition if the data in the block is serialized.
-   * @throws BlockWriteException for any error occurred while trying to write a block.
+   * @throws BlockWriteException for any error occurred while trying to commit a block.
    *                             (This exception will be thrown to the scheduler
    *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
   Optional<Map<K, Long>> commit() throws BlockWriteException;
+
+  /**
+   * Commits all un-committed partitions.
+   * This method can be useful if partitions in a block should be committed before the block is committed totally.
+   * For example, non-committed partitions in a file block can be flushed to storage from memory.
+   * If another element is written after this method is called, a new non-committed partition should be created
+   * for the element even if a partition with the same key is committed already.
+   *
+   * @throws BlockWriteException for any error occurred while trying to commit partitions.
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
+   */
+  void commitPartitions() throws BlockWriteException;
 
   /**
    * @return the ID of this block.

@@ -23,7 +23,6 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.compiler.optimizer.policy.DisaggregationPolicy;
-import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +68,7 @@ public final class MapReduceDisaggregationOptimization {
     LOG.info(dag.toString());
 
     // Optimize
-    final DAG optimizedDAG = CompiletimeOptimizer.optimize(dag, new DisaggregationPolicy(), EMPTY_DAG_DIRECTORY);
+    final DAG optimizedDAG = new DisaggregationPolicy().runCompileTimeOptimization(dag, EMPTY_DAG_DIRECTORY);
 
     // After
     LOG.info("After Optimization");

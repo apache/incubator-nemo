@@ -82,6 +82,9 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
       case DataSkewHashPartitioner:
         this.partitioner = new DataSkewHashPartitioner(hashRangeMultiplier, dstParallelism, keyExtractor.get());
         break;
+      case DedicatedKeyPerElementPartitioner:
+        this.partitioner = new DedicatedKeyPerElementPartitioner();
+        break;
       default:
         throw new UnsupportedPartitionerException(
             new Throwable("Partitioner " + partitionerPropertyValue + " is not supported."));
@@ -103,6 +106,12 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   public void write(final Object element) {
     if (nonDummyBlock) {
       blockToWrite.write(partitioner.partition(element), element);
+
+      final DedicatedKeyPerElement dedicatedKeyPerElement =
+          partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
+      if (dedicatedKeyPerElement != null) {
+        blockToWrite.commitPartitions();
+      }
     } // If else, does not need to write because the data is duplicated.
   }
 
