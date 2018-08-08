@@ -59,22 +59,31 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   @Override
   Object fetchDataElement() throws IOException {
-    if (!hasFetchStarted) {
-      fetchDataLazily();
-      advanceIterator();
-      hasFetchStarted = true;
-    }
-
-    if (this.currentIterator.hasNext()) {
-      return this.currentIterator.next();
-    } else {
-      if (currentIteratorIndex == expectedNumOfIterators) {
-        throw new NoSuchElementException();
-      } else {
-        countBytes(currentIterator);
+    try {
+      if (!hasFetchStarted) {
+        fetchDataLazily();
         advanceIterator();
-        return fetchDataElement(); // recursive call, with the next iterator
+        hasFetchStarted = true;
       }
+
+      if (this.currentIterator.hasNext()) {
+        return this.currentIterator.next();
+      } else {
+        if (currentIteratorIndex == expectedNumOfIterators) {
+          throw new NoSuchElementException();
+        } else {
+          countBytes(currentIterator);
+          advanceIterator();
+          return fetchDataElement(); // recursive call, with the next iterator
+        }
+      }
+    } catch (final Throwable e) {
+      // Any failure is caught and thrown as an IOException, so that the task is retried.
+      // In particular, we catch unchecked exceptions like RuntimeException thrown by DataUtil.IteratorWithNumBytes
+      // when remote data fetching fails for whatever reason.
+      // Note that we rely on unchecked exceptions because the Iterator interface does not provide the standard
+      // "throw Exception" that the TaskExecutor thread can catch and handle.
+      throw new IOException(e);
     }
   }
 
@@ -84,12 +93,13 @@ class ParentTaskDataFetcher extends DataFetcher {
     try {
       iteratorOrThrowable = iteratorQueue.take(); // blocking call
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new IOException(e);
     }
 
     // Handle iteratorOrThrowable
     if (iteratorOrThrowable instanceof Throwable) {
-      throw new RuntimeException((Throwable) iteratorOrThrowable);
+      throw new IOException((Throwable) iteratorOrThrowable);
     } else {
       // This iterator is valid. Do advance.
       this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrThrowable;
@@ -104,9 +114,9 @@ class ParentTaskDataFetcher extends DataFetcher {
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
       try {
         if (exception != null) {
-          iteratorQueue.put(exception); // can block here
+          iteratorQueue.put(exception);
         } else {
-          iteratorQueue.put(iterator); // can block here
+          iteratorQueue.put(iterator);
         }
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();

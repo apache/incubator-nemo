@@ -35,6 +35,7 @@ import edu.snu.nemo.runtime.executor.MetricMessageSender;
 import edu.snu.nemo.runtime.executor.TaskStateManager;
 import edu.snu.nemo.runtime.executor.datatransfer.*;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -395,9 +396,8 @@ public final class TaskExecutor {
           }
           finishedFetcherIndex = i;
           break;
-        } catch (Throwable e) {
-          // Catch ANY exception occurred during fetching data.
-          // This task should be retried.
+        } catch (IOException e) {
+          // IOException means that this task should be retried.
           taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
               Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
           LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e.toString());

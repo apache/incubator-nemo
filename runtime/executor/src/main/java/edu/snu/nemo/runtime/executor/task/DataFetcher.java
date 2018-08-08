@@ -39,7 +39,7 @@ abstract class DataFetcher {
   }
 
   /**
-   * This call can block.
+   * Can block until the next data element becomes available.
    * @return data element
    * @throws IOException upon I/O error
    * @throws java.util.NoSuchElementException if no more element is available
