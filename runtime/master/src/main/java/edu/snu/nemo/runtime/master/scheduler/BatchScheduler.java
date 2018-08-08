@@ -120,14 +120,10 @@ public final class BatchScheduler implements Scheduler {
   }
 
   @Override
-  public void updatePlan(final String planId, final PhysicalPlan newPhysicalPlan, final Pair<String, String> taskInfo) {
+  public void updatePlan(final String planId, final PhysicalPlan newPhysicalPlan) {
     // update the physical plan in the scheduler.
     // NOTE: what's already been executed is not modified in the new physical plan.
     this.physicalPlan = newPhysicalPlan;
-    if (taskInfo != null) {
-      onTaskExecutionComplete(taskInfo.left(), taskInfo.right(), true);
-      doSchedule();
-    }
   }
 
   /**
@@ -155,7 +151,7 @@ public final class BatchScheduler implements Scheduler {
       planStateManager.onTaskStateChanged(taskId, newState);
       switch (newState) {
         case COMPLETE:
-          onTaskExecutionComplete(executorId, taskId, false);
+          onTaskExecutionComplete(executorId, taskId);
           break;
         case SHOULD_RETRY:
           // SHOULD_RETRY from an executor means that the task ran into a recoverable failure
@@ -355,20 +351,17 @@ public final class BatchScheduler implements Scheduler {
 
   /**
    * Action after task execution has been completed.
+   * Note this method should not be invoked when the previous state of the task is ON_HOLD.
    * @param executorId id of the executor.
    * @param taskId the ID of the task completed.
-   * @param isOnHoldToComplete whether or not if it is switched to complete after it has been on hold.
    */
   private void onTaskExecutionComplete(final String executorId,
-                                       final String taskId,
-                                       final boolean isOnHoldToComplete) {
+                                       final String taskId) {
     LOG.debug("{} completed in {}", new Object[]{taskId, executorId});
-    if (!isOnHoldToComplete) {
-      executorRegistry.updateExecutor(executorId, (executor, state) -> {
-        executor.onTaskExecutionComplete(taskId);
-        return Pair.of(executor, state);
-      });
-    }
+    executorRegistry.updateExecutor(executorId, (executor, state) -> {
+      executor.onTaskExecutionComplete(taskId);
+      return Pair.of(executor, state);
+    });
   }
 
   /**
@@ -404,9 +397,7 @@ public final class BatchScheduler implements Scheduler {
       // and we will use this vertex to perform metric collection and dynamic optimization.
 
       pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(
-          new DynamicOptimizationEvent(physicalPlan, metricCollectionBarrierVertex, Pair.of(executorId, taskId)));
-    } else {
-      onTaskExecutionComplete(executorId, taskId, true);
+          new DynamicOptimizationEvent(physicalPlan, metricCollectionBarrierVertex, taskId, executorId));
     }
   }
 

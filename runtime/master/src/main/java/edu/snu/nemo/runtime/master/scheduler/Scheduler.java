@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.PlanStateManager;
@@ -47,10 +46,8 @@ public interface Scheduler {
    * Receives and updates the scheduler with a new physical plan for a job.
    * @param planId the ID of the physical plan to change.
    * @param newPhysicalPlan new physical plan for the job.
-   * @param taskInfo pair containing the information of the executor id and task id to mark as complete after the
-   *                 update.
    */
-  void updatePlan(String planId, PhysicalPlan newPhysicalPlan, Pair<String, String> taskInfo);
+  void updatePlan(String planId, PhysicalPlan newPhysicalPlan);
 
   /**
    * Called when an executor is added to Runtime, so that the extra resource can be used to execute the job.
