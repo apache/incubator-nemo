@@ -386,15 +386,7 @@ public final class TaskExecutor {
         try {
           element = dataFetcher.fetchDataElement();
         } catch (NoSuchElementException e) {
-          // TODO: handle null Do something
-        } catch (Throwable e) {
-          taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
-              Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
-          LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e.toString());
-          return false;
-        }
-
-        if (element == null) {
+          // We've consumed all the data from this data fetcher.
           if (dataFetcher instanceof SourceVertexDataFetcher) {
             boundedSourceReadTime += ((SourceVertexDataFetcher) dataFetcher).getBoundedSourceReadTime();
           } else if (dataFetcher instanceof ParentTaskDataFetcher) {
@@ -403,12 +395,19 @@ public final class TaskExecutor {
           }
           finishedFetcherIndex = i;
           break;
+        } catch (Throwable e) {
+          // This task should be retried.
+          taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
+              Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
+          LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e.toString());
+          return false;
+        }
+
+        // Successfully fetched an element
+        if (dataFetcher.isFromSideInput()) {
+          sideInputMap.put(((OperatorVertex) dataFetcher.getDataSource()).getTransform().getTag(), element);
         } else {
-          if (dataFetcher.isFromSideInput()) {
-            sideInputMap.put(((OperatorVertex) dataFetcher.getDataSource()).getTransform().getTag(), element);
-          } else {
-            processElementRecursively(dataFetcher.getChild(), element);
-          }
+          processElementRecursively(dataFetcher.getChild(), element);
         }
       }
 
@@ -589,6 +588,7 @@ public final class TaskExecutor {
 
     // finalize OutputWriters for additional tagged children
     vertexHarness.getWritersToAdditionalChildrenTasks().values().forEach(outputWriter -> {
+      outputWriter.close();
 
       final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
       writtenBytes.ifPresent(writtenBytesList::add);
