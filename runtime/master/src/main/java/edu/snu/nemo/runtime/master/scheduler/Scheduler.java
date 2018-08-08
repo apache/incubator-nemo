@@ -50,14 +50,6 @@ public interface Scheduler {
   void updateJob(String jobId, PhysicalPlan newPhysicalPlan);
 
   /**
-   * Completes a task which is in ON_HOLD state.
-   *
-   * @param taskId id of the task
-   * @param executorId id of the executor which executes the task
-   */
-  void completeHeldTask(String taskId, String executorId);
-
-  /**
    * Called when an executor is added to Runtime, so that the extra resource can be used to execute the job.
    * @param executorRepresenter a representation of the added executor.
    */
