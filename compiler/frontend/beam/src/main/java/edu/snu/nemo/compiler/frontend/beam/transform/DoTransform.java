@@ -76,7 +76,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     this.startBundleContext = new StartBundleContext(doFn, serializedOptions);
     this.finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
     this.processContext = new ProcessContext(doFn, outputCollector,
-        context.getSideInputs(), context.getAdditionalTagOutputs(), serializedOptions);
+        context.getSideInputs(), context.getTagToAdditionalChildren(), serializedOptions);
     this.invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
@@ -196,7 +196,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     private I input;
     private final OutputCollector<O> outputCollector;
     private final Map sideInputs;
-    private final Map additionalOutputs;
+    private final Map<String, String> additionalOutputs;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
@@ -206,13 +206,13 @@ public final class DoTransform<I, O> implements Transform<I, O> {
      * @param fn                Dofn.
      * @param outputCollector   OutputCollector.
      * @param sideInputs        Map for SideInputs.
-     * @param additionalOutputs     Map for TaggedOutputs.
+     * @param additionalOutputs Map for TaggedOutputs.
      * @param serializedOptions Options, serialized.
      */
     ProcessContext(final DoFn<I, O> fn,
                    final OutputCollector<O> outputCollector,
                    final Map sideInputs,
-                   final Map additionalOutputs,
+                   final Map<String, String> additionalOutputs,
                    final String serializedOptions) {
       fn.super();
       this.outputCollector = outputCollector;
@@ -277,7 +277,13 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public <T> void output(final TupleTag<T> tupleTag, final T t) {
-      outputCollector.emit((String) additionalOutputs.get(tupleTag.getId()), t);
+      final Object dstVertexId = additionalOutputs.get(tupleTag.getId());
+
+      if (dstVertexId == null) {
+        outputCollector.emit((O) t);
+      } else {
+        outputCollector.emit((String) additionalOutputs.get(tupleTag.getId()), t);
+      }
     }
 
     @Override
@@ -385,8 +391,12 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     OutputReceiver(final OutputCollectorImpl outputCollector,
                        final TupleTag<O> tupleTag,
                        final Map<String, String> tagToVertex) {
-      final String dstVertexId = tagToVertex.get(tupleTag.getId());
-      this.dataQueue = (Queue<O>) outputCollector.getAdditionalTagOutputQueue(dstVertexId);
+      final Object dstVertexId = tagToVertex.get(tupleTag.getId());
+      if (dstVertexId == null) {
+        this.dataQueue = outputCollector.getMainTagOutputQueue();
+      } else {
+        this.dataQueue = (Queue<O>) outputCollector.getAdditionalTagOutputQueue((String) dstVertexId);
+      }
     }
 
     @Override

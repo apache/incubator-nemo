@@ -168,8 +168,12 @@ public final class TaskExecutor {
       // Additional output children task writes
       final Map<String, OutputWriter> additionalChildrenTaskWriters = getAdditionalChildrenTaskWriters(
           taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
+      // find all main vertices and additional vertices
       final List<String> additionalOutputVertices = new ArrayList<>(additionalOutputMap.values());
-      final OutputCollectorImpl oci = new OutputCollectorImpl(additionalOutputVertices);
+      final Set<String> mainChildren =
+          getMainOutputVertices(irVertex, irVertexDag, task.getTaskOutgoingEdges(), additionalOutputVertices);
+      final OutputCollectorImpl oci = new OutputCollectorImpl(mainChildren, additionalOutputVertices);
+
       // intra-vertex writes
       final VertexHarness vertexHarness = new VertexHarness(irVertex, oci, children,
           isToSideInputs, isToAdditionalTagOutputs, mainChildrenTaskWriters, additionalChildrenTaskWriters,
@@ -227,7 +231,7 @@ public final class TaskExecutor {
     }
 
     // Recursively process all of the additional output elements.
-    vertexHarness.getContext().getAdditionalTagOutputs().values().forEach(value -> {
+    vertexHarness.getContext().getTagToAdditionalChildren().values().forEach(value -> {
       final String dstVertexId = (String) value;
       while (!outputCollector.isEmpty(dstVertexId)) {
         final Object element = outputCollector.remove(dstVertexId);
@@ -468,6 +472,29 @@ public final class TaskExecutor {
         .map(inEdgeForThisVertex -> dataTransferFactory
             .createReader(taskIndex, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
         .collect(Collectors.toList());
+  }
+
+  private Set<String> getMainOutputVertices(final IRVertex irVertex,
+                                             final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+                                             final List<StageEdge> outEdgesToChildrenTasks,
+                                             final List<String> additionalOutputVertices) {
+    // all intra-task children vertices id
+    final List<String> outputVertices = irVertexDag.getOutgoingEdgesOf(irVertex).stream()
+        .filter(edge -> edge.getSrc().getId().equals(irVertex.getId()))
+        .map(edge -> edge.getDst().getId())
+        .collect(Collectors.toList());
+
+    // all inter-task children vertices id
+    outputVertices
+        .addAll(outEdgesToChildrenTasks.stream()
+            .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
+            .map(edge -> edge.getDstIRVertex().getId())
+            .collect(Collectors.toList()));
+
+    // return vertices that are not marked as additional tagged outputs
+    return new HashSet<>(outputVertices.stream()
+        .filter(vertexId -> !additionalOutputVertices.contains(vertexId))
+        .collect(Collectors.toList()));
   }
 
   /**

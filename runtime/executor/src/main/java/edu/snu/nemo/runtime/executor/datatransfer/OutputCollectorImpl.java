@@ -17,11 +17,7 @@ package edu.snu.nemo.runtime.executor.datatransfer;
 
 import edu.snu.nemo.common.ir.OutputCollector;
 
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
 /**
  * OutputCollector implementation.
@@ -29,25 +25,21 @@ import java.util.Queue;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
+  private final Set<String> mainTagOutputChildren;
   private final Queue<O> mainTagOutputQueue;
-  private final Map<String, Queue<Object>> additionalTagOutputQueues;
-
-  /**
-   * Constructor of a new OutputCollectorImpl.
-   */
-  public OutputCollectorImpl() {
-    this.mainTagOutputQueue = new ArrayDeque<>(1);
-    this.additionalTagOutputQueues = new HashMap<>();
-  }
+  private final Map<String, Queue<Object>> taggedOutputQueues;
 
   /**
    * Constructor of a new OutputCollectorImpl with tagged outputs.
-   * @param taggedChildren tagged children
+   * @param mainChildren       main children vertices
+   * @param additionalChildren additional children vertices
    */
-  public OutputCollectorImpl(final List<String> taggedChildren) {
+  public OutputCollectorImpl(final Set<String> mainChildren, final List<String> additionalChildren) {
+    this.mainTagOutputChildren = mainChildren;
     this.mainTagOutputQueue = new ArrayDeque<>(1);
-    this.additionalTagOutputQueues = new HashMap<>();
-    taggedChildren.forEach(child -> this.additionalTagOutputQueues.put(child, new ArrayDeque<>(1)));
+    this.taggedOutputQueues = new HashMap<>();
+
+    additionalChildren.forEach(child -> this.taggedOutputQueues.put(child, new ArrayDeque<>(1)));
   }
 
   @Override
@@ -57,12 +49,12 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
-    if (this.additionalTagOutputQueues.get(dstVertexId) == null) {
+    if (this.mainTagOutputChildren.contains(dstVertexId)) {
       // This dstVertexId is for the main tag
       emit((O) output);
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      this.additionalTagOutputQueues.get(dstVertexId).add(output);
+      this.taggedOutputQueues.get(dstVertexId).add(output);
     }
   }
 
@@ -84,12 +76,12 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @return the first element of corresponding list
    */
   public Object remove(final String tag) {
-    if (this.additionalTagOutputQueues.get(tag) == null) {
+    if (this.mainTagOutputChildren.contains(tag)) {
       // This dstVertexId is for the main tag
       return remove();
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      return this.additionalTagOutputQueues.get(tag).remove();
+      return this.taggedOutputQueues.get(tag).remove();
     }
 
   }
@@ -110,11 +102,11 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @return true if this OutputCollector is empty.
    */
   public boolean isEmpty(final String tag) {
-    if (this.additionalTagOutputQueues.get(tag) == null) {
+    if (this.mainTagOutputChildren.contains(tag)) {
       return isEmpty();
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      return this.additionalTagOutputQueues.get(tag).isEmpty();
+      return this.taggedOutputQueues.get(tag).isEmpty();
     }
   }
 
@@ -123,10 +115,10 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   }
 
   public Queue getAdditionalTagOutputQueue(final String dstVertexId) {
-    if (this.additionalTagOutputQueues.get(dstVertexId) == null) {
+    if (this.mainTagOutputChildren.contains(dstVertexId)) {
       return this.mainTagOutputQueue;
     } else {
-      return this.additionalTagOutputQueues.get(dstVertexId);
+      return this.taggedOutputQueues.get(dstVertexId);
     }
   }
 }
