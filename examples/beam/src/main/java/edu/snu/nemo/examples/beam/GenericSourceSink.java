@@ -94,9 +94,11 @@ final class GenericSourceSink {
       dataToWrite.apply(ParDo.of(new HDFSWrite(path)));
       return PDone.in(dataToWrite.getPipeline());
     } else {
-      // Added withWindowedWrites() to local file writes. This is necessary for FileResult coders.
-      // If not specified, FileResultCoder#encode will be blocked. See windowCoder in FileResultCoder#encode
-      // for further information. This is only relevant to local file writes.
+      // (Only relevant to local file writes) withWindowedWrites() is required for local file writes.
+      // Without it, the FileResultCoder#encode, which assumes WindowedValue, will not be able
+      // to properly handle the FileResult (Beam's file metadata information), and hang the job.
+      // The root cause is that the Nemo runtime currently only supports batch applications, and
+      // does not use the Beam's WindowedValue by default.
       return dataToWrite.apply(TextIO.write().to(path).withWindowedWrites());
     }
   }
