@@ -29,6 +29,10 @@ import java.util.Queue;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
+  // This is necessary to handle 'null' data elements emitted by user operators.
+  // ArrayDequeue does not allow 'null' elements, so we use this NULL_REPRESENTER instead.
+  private static final Object NULL_REPRESENTER = new Object();
+
   private final Queue<O> mainTagOutputQueue;
   private final Map<String, Queue<Object>> additionalTagOutputQueues;
 
