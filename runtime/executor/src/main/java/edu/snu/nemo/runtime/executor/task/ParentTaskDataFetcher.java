@@ -66,16 +66,16 @@ class ParentTaskDataFetcher extends DataFetcher {
         hasFetchStarted = true;
       }
 
+      // Return the current iterator's element
       if (this.currentIterator.hasNext()) {
         return this.currentIterator.next();
-      } else {
-        if (currentIteratorIndex == expectedNumOfIterators) {
-          throw new NoSuchElementException();
-        } else {
-          countBytes(currentIterator);
-          advanceIterator();
-          return fetchDataElement(); // recursive call, with the next iterator
-        }
+      }
+
+      // Return the next iterator's element
+      if (currentIteratorIndex < expectedNumOfIterators) {
+        countBytes(currentIterator);
+        advanceIterator();
+        return fetchDataElement(); // recursive call, with the next iterator
       }
     } catch (final Throwable e) {
       // Any failure is caught and thrown as an IOException, so that the task is retried.
@@ -85,6 +85,9 @@ class ParentTaskDataFetcher extends DataFetcher {
       // "throw Exception" that the TaskExecutor thread can catch and handle.
       throw new IOException(e);
     }
+
+    // We've consumed all the data.
+    throw new NoSuchElementException();
   }
 
   private void advanceIterator() throws IOException {
