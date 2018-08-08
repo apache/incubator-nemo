@@ -3,7 +3,7 @@
     <el-button
       v-if="dag"
       class="fit-button"
-      @click="fitButton"
+      @click="fitButtonClicked"
       plain
       type="primary">Fit</el-button>
     <p v-if="!dag">DAG is not ready.</p>
@@ -27,7 +27,11 @@ const VERTEX_HEIGHT = 30;
 const VERTEX_RADIUS = 6;
 const PAN_MARGIN = 20;
 const RECT_ROUND_RADIUS = 4;
+const RECT_STROKE_WIDTH = 2;
+const EDGE_STROKE_WIDTH = 2;
 const ARROW_SIDE = 3;
+
+const GRAPH_MARGIN = 15;
 
 const SUCCESS_COLOR = '#67C23A';
 const DANGER_COLOR = '#F56C6C';
@@ -39,8 +43,6 @@ const MIN_ZOOM = 0.1;
 const TARGET_FIND_TOLERANCE = 4;
 
 const MY_TAB_INDEX = '2';
-
-const DEBUG = false;
 
 const LISTENING_EVENT_LIST = [
   'resize-canvas',
@@ -59,16 +61,6 @@ export default {
   mounted() {
     this.initializeCanvas();
     this.setUpEventListener();
-
-    // debug
-    if (DEBUG) {
-      this.dag = require('~/assets/sample.json').dag;
-      this.resizeCanvas(false);
-      this.drawDAG();
-      this.fitCanvas();
-      this.setUpCanvasEventHandler();
-    }
-    // debug end
   },
 
   beforeDestroy() {
@@ -109,14 +101,14 @@ export default {
       if (!this.stageGraph) {
         return undefined;
       }
-      return this.stageGraph.graph().width;
+      return this.stageGraph.graph().width + GRAPH_MARGIN;
     },
 
     dagHeight() {
       if (!this.stageGraph) {
         return undefined;
       }
-      return this.stageGraph.graph().height;
+      return this.stageGraph.graph().height + GRAPH_MARGIN;
     },
 
     stageIdArray() {
@@ -161,6 +153,7 @@ export default {
     resizeCanvas(fit) {
       return new Promise((resolve, reject) => {
         if (!this.canvas) {
+          reject();
           return;
         }
 
@@ -168,7 +161,6 @@ export default {
           clearTimeout(this.resizeDebounceTimer);
         }
 
-        // TODO: maybe infinitely unresovling promise came out
         this.resizeDebounceTimer = setTimeout(() => {
           if (this.$refs.canvasContainer) {
             let w = this.$refs.canvasContainer.offsetWidth;
@@ -379,7 +371,6 @@ export default {
       });
     },
 
-
     drawDAG() {
       // clear objects in canvas without resetting background
       this.canvas.remove(...this.canvas.getObjects().concat());
@@ -496,7 +487,7 @@ export default {
           ry: RECT_ROUND_RADIUS,
           fill: 'white',
           stroke: 'rgba(100, 200, 200, 0.5)',
-          strokeWidth: 2,
+          strokeWidth: RECT_STROKE_WIDTH,
           originX: 'center',
           originY: 'center',
           hasControls: false,
@@ -519,7 +510,7 @@ export default {
           metricId: edge.label,
           fill: 'transparent',
           stroke: 'black',
-          strokeWidth: 2,
+          strokeWidth: EDGE_STROKE_WIDTH,
           perPixelTargetFind: true,
           hasControls: false,
           hasRotatingPoint: false,
@@ -585,7 +576,7 @@ export default {
       return path;
     },
 
-    fitButton() {
+    fitButtonClicked() {
       this.canvas.viewportTransform[4] = 0;
       this.canvas.viewportTransform[5] = 0;
       this.fitCanvas();

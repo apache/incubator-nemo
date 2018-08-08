@@ -27,7 +27,7 @@
 <script>
 import { STATE } from '../assets/constants';
 
-const EXCLUDE_COLUMN = [
+export const EXCLUDE_COLUMN = [
   'id',
   'state',
   'group',
@@ -43,7 +43,7 @@ let _preprocessMetric = function (metric) {
   let newMetric = Object.assign({}, metric);
 
   Object.keys(newMetric).forEach(key => {
-    if (newMetric[key] === -1) {
+    if (newMetric[key] === NOT_AVAILABLE) {
       newMetric[key] = 'N/A';
     }
   });

@@ -97,7 +97,7 @@ export default {
   methods: {
 
     handleSelectChange(selectData) {
-      if (selectData.length === 0) {
+      if (selectData && selectData.length === 0) {
         this.$eventBus.$emit('metric-deselect');
       }
       this.filterAndSend(this.metricDataSet);

@@ -12,7 +12,7 @@
 import { DataSet } from 'vue2vis';
 import Vue from 'vue';
 
-const FIT_THROTTLE_INTERVAL = 500;
+export const FIT_THROTTLE_INTERVAL = 500;
 
 const LISTENING_EVENT_LIST = [
   'redraw-timeline',
@@ -30,7 +30,7 @@ export default {
       this.redrawTimeline();
     });
 
-    this.$eventBus.$on('fit-timeline', (jobId) => {
+    this.$eventBus.$on('fit-timeline', jobId => {
       if (jobId !== this.selectedJobId) {
         return;
       }
@@ -52,6 +52,10 @@ export default {
       this.moveTimeline(time);
     });
 
+    this.$eventBus.$on('set-timeline-filtered-items', metricDataSet => {
+      this.timeline.setItems(metricDataSet);
+      this.fitTimeline();
+    });
   },
 
   mounted() {
@@ -61,11 +65,6 @@ export default {
       } else {
         this.$eventBus.$emit('metric-select', items[0]);
       }
-    });
-
-    this.$eventBus.$on('set-timeline-filtered-items', metricDataSet => {
-      this.timeline.setItems(metricDataSet);
-      this.fitTimeline();
     });
   },
 
@@ -83,7 +82,7 @@ export default {
         end: Date.now(),
       },
 
-      fitThrottleTimer: undefined,
+      fitThrottleTimer: null,
     };
   },
 

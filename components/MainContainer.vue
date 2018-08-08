@@ -258,12 +258,4 @@ export default {
   padding-top: 8px;
   padding-bottom: 8px;
 }
-
-.no-expand .el-icon {
-  display: none;
-}
-
-.no-expand .el-table__expand-icon {
-  pointer-events: none;
-}
 </style>

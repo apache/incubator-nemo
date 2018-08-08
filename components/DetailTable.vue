@@ -41,3 +41,12 @@ export default {
   },
 }
 </script>
+<style>
+.no-expand .el-icon {
+  display: none;
+}
+
+.no-expand .el-table__expand-icon {
+  pointer-events: none;
+}
+</style>
