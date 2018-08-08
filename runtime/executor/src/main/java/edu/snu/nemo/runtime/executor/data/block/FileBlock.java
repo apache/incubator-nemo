@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.executor.data.block;
 
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.exception.BlockWriteException;
 import edu.snu.nemo.runtime.common.data.KeyRange;
@@ -172,35 +173,27 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       // Deserialize the data
       final List<NonSerializedPartition<K>> deserializedPartitions = new ArrayList<>();
       try {
+        final List<Pair<K, byte[]>> partitionKeyBytesPairs = new ArrayList<>();
         try (final FileInputStream fileStream = new FileInputStream(filePath)) {
           for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
             final K key = partitionMetadata.getKey();
             if (keyRange.includes(key)) {
               // The key value of this partition is in the range.
-              final long availableBefore = fileStream.available();
-              // We need to limit read bytes on this FileStream, which could be over-read by wrapped
-              // compression stream. This depends on the nature of the compression algorithm used.
-              // We recommend to wrap with LimitedInputStream once more when
-              // reading input from chained compression InputStream.
-              // Plus, this stream must be not closed to prevent to close the filtered file partition.
-              final LimitedInputStream limitedInputStream =
-                  new LimitedInputStream(fileStream, partitionMetadata.getPartitionSize());
-              final NonSerializedPartition<K> deserializePartition =
-                  DataUtil.deserializePartition(
-                      partitionMetadata.getPartitionSize(), serializer, key, limitedInputStream);
-              deserializedPartitions.add(deserializePartition);
-              // rearrange file pointer
-              final long toSkip = partitionMetadata.getPartitionSize() - availableBefore + fileStream.available();
-              if (toSkip > 0) {
-                skipBytes(fileStream, toSkip);
-              } else if (toSkip < 0) {
-                throw new IOException("file stream has been overread");
-              }
+              final byte[] partitionBytes = new byte[partitionMetadata.getPartitionSize()];
+              fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
+              partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
             } else {
               // Have to skip this partition.
               skipBytes(fileStream, partitionMetadata.getPartitionSize());
             }
           }
+        }
+        for (final Pair<K, byte[]> partitionKeyBytes : partitionKeyBytesPairs) {
+          final NonSerializedPartition<K> deserializePartition =
+              DataUtil.deserializePartition(
+                  partitionKeyBytes.right().length, serializer, partitionKeyBytes.left(),
+                  new ByteArrayInputStream(partitionKeyBytes.right()));
+          deserializedPartitions.add(deserializePartition);
         }
       } catch (final IOException e) {
         throw new BlockFetchException(e);
