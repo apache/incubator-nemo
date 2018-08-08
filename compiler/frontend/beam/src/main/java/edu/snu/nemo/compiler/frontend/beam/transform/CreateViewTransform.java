@@ -25,8 +25,6 @@ import org.apache.beam.sdk.values.PCollectionView;
 import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 /**
  * CreateView transform implementation.
@@ -75,22 +73,7 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
   @Override
   public void close() {
     final Object view = viewFn.apply(multiView);
-    if (view instanceof List) {
-      // list view fn
-      final List<?> listView = (List<?>) view;
-      outputCollector.emit((O) listView);
-    } else if (view instanceof Iterable) {
-      // iterable view fn
-      final Iterable<?> iterableView = (Iterable<?>) view;
-      outputCollector.emit((O) iterableView);
-    } else if (view instanceof Map) {
-      // map view fn
-      final Map<?, ?> mapView = (Map<?, ?>) view;
-      outputCollector.emit((O) mapView);
-    } else {
-      // singleton view fn
-      outputCollector.emit((O) view);
-    }
+    outputCollector.emit((O) view);
   }
 
   @Override
@@ -111,6 +94,7 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
      * Constructor.
      */
     MultiView() {
+      // Create a placeholder for side input data. CreateViewTransform#onData stores data to this list.
       dataList = new ArrayList<>();
     }
 

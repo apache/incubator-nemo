@@ -389,8 +389,8 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     }
 
     OutputReceiver(final OutputCollectorImpl outputCollector,
-                       final TupleTag<O> tupleTag,
-                       final Map<String, String> tagToVertex) {
+                   final TupleTag<O> tupleTag,
+                   final Map<String, String> tagToVertex) {
       final Object dstVertexId = tagToVertex.get(tupleTag.getId());
       if (dstVertexId == null) {
         this.dataQueue = outputCollector.getMainTagOutputQueue();
