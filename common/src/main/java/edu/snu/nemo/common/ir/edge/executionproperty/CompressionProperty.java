@@ -46,5 +46,6 @@ public final class CompressionProperty extends EdgeExecutionProperty<Compression
   public enum Value {
     Gzip,
     LZ4,
+    None
   }
 }

@@ -26,11 +26,11 @@ import java.util.*;
 /**
  * Runtime optimizer class.
  */
-public final class RuntimeOptimizer {
+public final class RunTimeOptimizer {
   /**
    * Private constructor.
    */
-  private RuntimeOptimizer() {
+  private RunTimeOptimizer() {
   }
 
   /**

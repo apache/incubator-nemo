@@ -25,14 +25,14 @@ import java.util.Set;
  * A compile-time pass that reshapes the structure of the IR DAG.
  * It is ensured by the compiler that no execution properties are modified by a ReshapingPass.
  */
-public abstract class ReshapingPass implements CompileTimePass {
+public abstract class ReshapingPass extends CompileTimePass {
   private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
 
   /**
    * Default constructor.
    */
   public ReshapingPass() {
-    this.prerequisiteExecutionProperties = new HashSet<>();
+    this(new HashSet<>());
   }
 
   /**
@@ -43,7 +43,6 @@ public abstract class ReshapingPass implements CompileTimePass {
     this.prerequisiteExecutionProperties = prerequisiteExecutionProperties;
   }
 
-  @Override
   public final Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties() {
     return prerequisiteExecutionProperties;
   }

@@ -15,30 +15,33 @@
  */
 package edu.snu.nemo.compiler.optimizer.policy;
 
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.SkewCompositePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
-import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
-
-import java.util.List;
+import org.apache.reef.tang.Injector;
 
 /**
  * A policy to perform data skew dynamic optimization.
  */
 public final class DataSkewPolicy implements Policy {
+  public static final PolicyBuilder BUILDER =
+      new PolicyBuilder(true)
+          .registerRuntimePass(new DataSkewRuntimePass().setNumSkewedKeys(DataSkewRuntimePass.DEFAULT_NUM_SKEWED_KEYS),
+              new SkewCompositePass())
+          .registerCompileTimePass(new LoopOptimizationCompositePass())
+          .registerCompileTimePass(new DefaultCompositePass());
   private final Policy policy;
 
   /**
    * Default constructor.
    */
   public DataSkewPolicy() {
-    this.policy = new PolicyBuilder(true)
-        .registerRuntimePass(new DataSkewRuntimePass(), new SkewCompositePass())
-        .registerCompileTimePass(new LoopOptimizationCompositePass())
-        .registerCompileTimePass(new DefaultCompositePass())
-        .build();
+    this.policy = BUILDER.build();
   }
 
   public DataSkewPolicy(final int skewness) {
@@ -50,12 +53,13 @@ public final class DataSkewPolicy implements Policy {
   }
 
   @Override
-  public List<CompileTimePass> getCompileTimePasses() {
-    return this.policy.getCompileTimePasses();
+  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory)
+      throws Exception {
+    return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
 
   @Override
-  public List<RuntimePass<?>> getRuntimePasses() {
-    return this.policy.getRuntimePasses();
+  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
+    this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
   }
 }
