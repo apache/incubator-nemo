@@ -25,60 +25,61 @@ import java.util.*;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
-  private final ArrayList<O> mainTagOutputQueue; // Use ArrayList to allow 'null' values
-  private final Map<String, ArrayList<Object>> additionalTagOutputQueues; // Use ArrayList to allow 'null' values
+  // Use ArrayList (not Queue) to allow 'null' values
+  private final ArrayList<O> mainTagElements;
+  private final Map<String, ArrayList<Object>> additionalTagElementsMap;
 
   /**
    * Constructor of a new OutputCollectorImpl with tagged outputs.
    * @param taggedChildren tagged children
    */
   public OutputCollectorImpl(final List<String> taggedChildren) {
-    this.mainTagOutputQueue = new ArrayList<>(1);
-    this.additionalTagOutputQueues = new HashMap<>();
-    taggedChildren.forEach(child -> this.additionalTagOutputQueues.put(child, new ArrayList<>(1)));
+    this.mainTagElements = new ArrayList<>(1);
+    this.additionalTagElementsMap = new HashMap<>();
+    taggedChildren.forEach(child -> this.additionalTagElementsMap.put(child, new ArrayList<>(1)));
   }
 
   @Override
   public void emit(final O output) {
-    mainTagOutputQueue.add(output);
+    mainTagElements.add(output);
   }
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
-    if (this.additionalTagOutputQueues.get(dstVertexId) == null) {
+    if (this.additionalTagElementsMap.get(dstVertexId) == null) {
       // This dstVertexId is for the main tag
       emit((O) output);
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      this.additionalTagOutputQueues.get(dstVertexId).add(output);
+      this.additionalTagElementsMap.get(dstVertexId).add(output);
     }
   }
 
   public Iterable<O> iterateMain() {
-    return mainTagOutputQueue;
+    return mainTagElements;
   }
 
   public Iterable<Object> iterateTag(final String tag) {
-    if (this.additionalTagOutputQueues.get(tag) == null) {
+    if (this.additionalTagElementsMap.get(tag) == null) {
       // This dstVertexId is for the main tag
       return (Iterable<Object>) iterateMain();
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      return this.additionalTagOutputQueues.get(tag);
+      return this.additionalTagElementsMap.get(tag);
     }
   }
 
   public void clearMain() {
-    mainTagOutputQueue.clear();
+    mainTagElements.clear();
   }
 
   public void clearTag(final String tag) {
-    if (this.additionalTagOutputQueues.get(tag) == null) {
+    if (this.additionalTagElementsMap.get(tag) == null) {
       // This dstVertexId is for the main tag
       clearMain();
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      this.additionalTagOutputQueues.get(tag).clear();
+      this.additionalTagElementsMap.get(tag).clear();
     }
   }
 }
