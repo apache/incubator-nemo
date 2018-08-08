@@ -65,22 +65,28 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     this.srcVertexId = srcRuntimeVertexId;
     this.dstIrVertex = dstIrVertex;
     this.blockManagerWorker = blockManagerWorker;
-    this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class).get();
+    this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class).
+        orElseThrow(() -> new RuntimeException("No data store property on the edge"));
+
 
     // Setup partitioner
-    final int dstParallelism = getDstParallelism();
+    final int dstParallelism = dstIrVertex.getPropertyValue(ParallelismProperty.class).
+        orElseThrow(() -> new RuntimeException("No parallelism property on the destination vertex"));
     final Optional<KeyExtractor> keyExtractor = runtimeEdge.getPropertyValue(KeyExtractorProperty.class);
     final PartitionerProperty.Value partitionerPropertyValue =
-        runtimeEdge.getPropertyValue(PartitionerProperty.class).get();
+        runtimeEdge.getPropertyValue(PartitionerProperty.class).
+            orElseThrow(() -> new RuntimeException("No partitioner property on the edge"));
     switch (partitionerPropertyValue) {
       case IntactPartitioner:
         this.partitioner = new IntactPartitioner();
         break;
       case HashPartitioner:
-        this.partitioner = new HashPartitioner(dstParallelism, keyExtractor.get());
+        this.partitioner = new HashPartitioner(dstParallelism, keyExtractor.
+            orElseThrow(() -> new RuntimeException("No key extractor property on the edge")));
         break;
       case DataSkewHashPartitioner:
-        this.partitioner = new DataSkewHashPartitioner(hashRangeMultiplier, dstParallelism, keyExtractor.get());
+        this.partitioner = new DataSkewHashPartitioner(hashRangeMultiplier, dstParallelism, keyExtractor.
+            orElseThrow(() -> new RuntimeException("No key extractor property on the edge")));
         break;
       case DedicatedKeyPerElementPartitioner:
         this.partitioner = new DedicatedKeyPerElementPartitioner();
@@ -122,10 +128,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   public void close() {
     // Commit block.
     final DataPersistenceProperty.Value persistence =
-        runtimeEdge.getPropertyValue(DataPersistenceProperty.class).get();
-    final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
-        runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
-    final int multiplier = duplicateDataProperty.isPresent() ? duplicateDataProperty.get().getGroupSize() : 1;
+        runtimeEdge.getPropertyValue(DataPersistenceProperty.class).
+            orElseThrow(() -> new RuntimeException("No data persistence property on the edge"));
 
     final boolean isDataSizeMetricCollectionEdge = Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
         .equals(runtimeEdge.getPropertyValue(MetricCollectionProperty.class));
@@ -138,11 +142,11 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
       }
       this.writtenBytes = blockSizeTotal;
       blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, isDataSizeMetricCollectionEdge,
-          partitionSizeMap.get(), srcVertexId, getDstParallelism() * multiplier, persistence);
+          partitionSizeMap.get(), srcVertexId, getExpectedRead(), persistence);
     } else {
       this.writtenBytes = -1; // no written bytes info.
       blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, isDataSizeMetricCollectionEdge,
-          Collections.emptyMap(), srcVertexId, getDstParallelism() * multiplier, persistence);
+          Collections.emptyMap(), srcVertexId, getExpectedRead(), persistence);
     }
   }
 
@@ -158,13 +162,21 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   }
 
   /**
-   * Get the parallelism of the destination task.
+   * Get the expected number of data read according to the communication pattern of the edge and
+   * the parallelism of destination vertex.
    *
-   * @return the parallelism of the destination task.
+   * @return the expected number of data read.
    */
-  private int getDstParallelism() {
-    return CommunicationPatternProperty.Value.OneToOne.equals(
-        runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get())
-        ? 1 : dstIrVertex.getPropertyValue(ParallelismProperty.class).get();
+  private int getExpectedRead() {
+    final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
+        runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
+    final int duplicatedDataMultiplier =
+        duplicateDataProperty.isPresent() ? duplicateDataProperty.get().getGroupSize() : 1;
+    final int readForABlock = CommunicationPatternProperty.Value.OneToOne.equals(
+        runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).orElseThrow(
+            () -> new RuntimeException("No communication pattern on this edge.")))
+        ? 1 : dstIrVertex.getPropertyValue(ParallelismProperty.class).orElseThrow(
+            () -> new RuntimeException("No parallelism property on the destination vertex."));
+    return readForABlock * duplicatedDataMultiplier;
   }
 }
