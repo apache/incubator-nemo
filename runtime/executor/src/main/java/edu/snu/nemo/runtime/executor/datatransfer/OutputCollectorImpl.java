@@ -17,11 +17,7 @@ package edu.snu.nemo.runtime.executor.datatransfer;
 
 import edu.snu.nemo.common.ir.OutputCollector;
 
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
 /**
  * OutputCollector implementation.
@@ -29,92 +25,61 @@ import java.util.Queue;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
-  private final Queue<O> mainTagOutputQueue;
-  private final Map<String, Queue<Object>> additionalTagOutputQueues;
-
-  /**
-   * Constructor of a new OutputCollectorImpl.
-   */
-  public OutputCollectorImpl() {
-    this.mainTagOutputQueue = new ArrayDeque<>(1);
-    this.additionalTagOutputQueues = new HashMap<>();
-  }
+  // Use ArrayList (not Queue) to allow 'null' values
+  private final ArrayList<O> mainTagElements;
+  private final Map<String, ArrayList<Object>> additionalTagElementsMap;
 
   /**
    * Constructor of a new OutputCollectorImpl with tagged outputs.
    * @param taggedChildren tagged children
    */
   public OutputCollectorImpl(final List<String> taggedChildren) {
-    this.mainTagOutputQueue = new ArrayDeque<>(1);
-    this.additionalTagOutputQueues = new HashMap<>();
-    taggedChildren.forEach(child -> this.additionalTagOutputQueues.put(child, new ArrayDeque<>(1)));
+    this.mainTagElements = new ArrayList<>(1);
+    this.additionalTagElementsMap = new HashMap<>();
+    taggedChildren.forEach(child -> this.additionalTagElementsMap.put(child, new ArrayList<>(1)));
   }
 
   @Override
   public void emit(final O output) {
-    mainTagOutputQueue.add(output);
+    mainTagElements.add(output);
   }
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
-    if (this.additionalTagOutputQueues.get(dstVertexId) == null) {
+    if (this.additionalTagElementsMap.get(dstVertexId) == null) {
       // This dstVertexId is for the main tag
       emit((O) output);
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      this.additionalTagOutputQueues.get(dstVertexId).add(output);
+      this.additionalTagElementsMap.get(dstVertexId).add(output);
     }
   }
 
-  /**
-   * Inter-Task data is transferred from sender-side Task's OutputCollectorImpl
-   * to receiver-side Task.
-   *
-   * @return the first element of this list
-   */
-  public O remove() {
-    return mainTagOutputQueue.remove();
+  public Iterable<O> iterateMain() {
+    return mainTagElements;
   }
 
-  /**
-   * Inter-task data is transferred from sender-side Task's OutputCollectorImpl
-   * to receiver-side Task.
-   *
-   * @param tag output tag
-   * @return the first element of corresponding list
-   */
-  public Object remove(final String tag) {
-    if (this.additionalTagOutputQueues.get(tag) == null) {
+  public Iterable<Object> iterateTag(final String tag) {
+    if (this.additionalTagElementsMap.get(tag) == null) {
       // This dstVertexId is for the main tag
-      return remove();
+      return (Iterable<Object>) iterateMain();
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      return this.additionalTagOutputQueues.get(tag).remove();
+      return this.additionalTagElementsMap.get(tag);
     }
-
   }
 
-  /**
-   * Check if this OutputCollector is empty.
-   *
-   * @return true if this OutputCollector is empty.
-   */
-  public boolean isEmpty() {
-    return mainTagOutputQueue.isEmpty();
+  public void clearMain() {
+    mainTagElements.clear();
   }
 
-  /**
-   * Check if this OutputCollector is empty.
-   *
-   * @param tag output tag
-   * @return true if this OutputCollector is empty.
-   */
-  public boolean isEmpty(final String tag) {
-    if (this.additionalTagOutputQueues.get(tag) == null) {
-      return isEmpty();
+  public void clearTag(final String tag) {
+    if (this.additionalTagElementsMap.get(tag) == null) {
+      // This dstVertexId is for the main tag
+      clearMain();
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      return this.additionalTagOutputQueues.get(tag).isEmpty();
+      this.additionalTagElementsMap.get(tag).clear();
     }
   }
 }
