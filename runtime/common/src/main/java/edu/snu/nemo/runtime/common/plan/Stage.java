@@ -75,12 +75,12 @@ public final class Stage extends Vertex {
   }
 
   /**
-   * @return the list of the task IDs in this stage.
+   * @return the list of the task IDs in this stage considering cloning.
    */
-  public List<String> getTaskIds() {
+  public List<String> getPossiblyClonedTaskIds() {
     final List<String> taskIds = new ArrayList<>();
     for (int taskIdx = 0; taskIdx < getParallelism(); taskIdx++) {
-      taskIds.add(RuntimeIdGenerator.generateTaskId(taskIdx, getId()));
+      taskIds.add(RuntimeIdGenerator.generateTaskId(getId(), taskIdx));
     }
     return taskIds;
   }

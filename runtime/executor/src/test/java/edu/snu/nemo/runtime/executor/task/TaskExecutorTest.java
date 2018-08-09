@@ -83,8 +83,7 @@ public final class TaskExecutorTest {
   private AtomicInteger stageId;
 
   private String generateTaskId() {
-    return RuntimeIdGenerator.generateTaskId(0,
-        RuntimeIdGenerator.generateStageId(stageId.getAndIncrement()));
+    return RuntimeIdGenerator.generateTaskId(RuntimeIdGenerator.generateStageId(stageId.getAndIncrement()), 0);
   }
 
   @Before

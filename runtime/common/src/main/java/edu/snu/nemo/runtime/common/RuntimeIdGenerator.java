@@ -29,6 +29,7 @@ public final class RuntimeIdGenerator {
   private static final String BLOCK_PREFIX = "Block-";
   private static final String BLOCK_ID_SPLITTER = "_";
   private static final String TASK_INFIX = "-Task-";
+  private static final String CLONE_OFFSET_PREFIX = "-Clone-";
 
   /**
    * Private constructor which will not be used.
@@ -67,15 +68,23 @@ public final class RuntimeIdGenerator {
     return "Stage-" + stageId;
   }
 
+  public static String generateTaskId(final String stageId, final int index) {
+    return generateTaskId(stageId, index, 0);
+  }
+
   /**
    * Generates the ID for a task.
    *
-   * @param index   the index of this task.
    * @param stageId the ID of the stage.
+   * @param index   the index of this task.
+   * @param cloneOffset a positive number if this task is a clone of an original task.
    * @return the generated ID
    */
-  public static String generateTaskId(final int index, final String stageId) {
-    return stageId + TASK_INFIX + index;
+  public static String generateTaskId(final String stageId, final int index, final int cloneOffset) {
+    if (cloneOffset < 0) {
+      throw new IllegalStateException(String.valueOf(cloneOffset));
+    }
+    return stageId + TASK_INFIX + index + CLONE_OFFSET_PREFIX + cloneOffset;
   }
 
   /**
@@ -92,11 +101,22 @@ public final class RuntimeIdGenerator {
    *
    * @param runtimeEdgeId of the block
    * @param producerTaskIndex of the block
+   * @param producerTaskCloneOffset if the producer task is a clone.
    * @return the generated ID
    */
   public static String generateBlockId(final String runtimeEdgeId,
+                                       final int producerTaskIndex,
+                                       final int producerTaskCloneOffset) {
+    if (producerTaskCloneOffset < 0) {
+      throw new IllegalStateException(String.valueOf(producerTaskCloneOffset));
+    }
+    return BLOCK_PREFIX + runtimeEdgeId + BLOCK_ID_SPLITTER + producerTaskIndex +
+        CLONE_OFFSET_PREFIX + producerTaskCloneOffset;
+  }
+
+  public static String generateBlockId(final String runtimeEdgeId,
                                        final int producerTaskIndex) {
-    return BLOCK_PREFIX + runtimeEdgeId + BLOCK_ID_SPLITTER + producerTaskIndex;
+    return generateBlockId(runtimeEdgeId, producerTaskIndex, 0);
   }
 
   /**

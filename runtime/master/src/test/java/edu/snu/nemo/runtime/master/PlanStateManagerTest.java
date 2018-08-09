@@ -75,7 +75,7 @@ public final class PlanStateManagerTest {
 
     for (int stageIdx = 0; stageIdx < stageList.size(); stageIdx++) {
       final Stage stage = stageList.get(stageIdx);
-      final List<String> taskIds = stage.getTaskIds();
+      final List<String> taskIds = stage.getPossiblyClonedTaskIds();
       taskIds.forEach(taskId -> {
         planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
         planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
@@ -111,7 +111,7 @@ public final class PlanStateManagerTest {
     // Complete the plan and check the result again.
     // It has to return COMPLETE.
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
-        .flatMap(stage -> stage.getTaskIds().stream())
+        .flatMap(stage -> stage.getPossiblyClonedTaskIds().stream())
         .collect(Collectors.toList());
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));

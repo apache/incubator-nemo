@@ -85,7 +85,7 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<List<String>, Ma
 
     // Get number of evaluators of the next stage (number of blocks).
     final Integer numOfDstTasks = optimizationEdges.stream().findFirst().orElseThrow(() ->
-        new RuntimeException("optimization edges are empty")).getDst().getTaskIds().size();
+        new RuntimeException("optimization edges are empty")).getDst().getPossiblyClonedTaskIds().size();
 
     // Calculate keyRanges.
     final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), numOfDstTasks);

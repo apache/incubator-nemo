@@ -121,7 +121,7 @@ public final class PlanStateManager {
     // Initialize the states for the plan down to task-level.
     physicalPlan.getStageDAG().topologicalDo(stage -> {
       idToStageStates.put(stage.getId(), new StageState());
-      stage.getTaskIds().forEach(taskId -> {
+      stage.getPossiblyClonedTaskIds().forEach(taskId -> {
         idToTaskStates.put(taskId, new TaskState());
         taskIdToCurrentAttempt.put(taskId, 1);
       });
@@ -173,7 +173,7 @@ public final class PlanStateManager {
 
     // Change stage state, if needed
     final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
-    final List<String> tasksOfThisStage = physicalPlan.getStageDAG().getVertexById(stageId).getTaskIds();
+    final List<String> tasksOfThisStage = physicalPlan.getStageDAG().getVertexById(stageId).getPossiblyClonedTaskIds();
     final long numOfCompletedOrOnHoldTasksInThisStage = tasksOfThisStage
         .stream()
         .map(this::getTaskState)
@@ -387,7 +387,7 @@ public final class PlanStateManager {
       sb.append("\"tasks\": [");
 
       boolean isFirstTask = true;
-      for (final String taskId : stage.getTaskIds()) {
+      for (final String taskId : stage.getPossiblyClonedTaskIds()) {
         if (!isFirstTask) {
           sb.append(", ");
         }

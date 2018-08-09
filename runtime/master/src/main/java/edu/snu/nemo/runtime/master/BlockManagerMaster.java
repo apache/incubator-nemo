@@ -85,7 +85,7 @@ public final class BlockManagerMaster {
   public void initialize(final PhysicalPlan physicalPlan) {
     final DAG<Stage, StageEdge> stageDAG = physicalPlan.getStageDAG();
     stageDAG.topologicalDo(stage -> {
-      final List<String> taskIdsForStage = stage.getTaskIds();
+      final List<String> taskIdsForStage = stage.getPossiblyClonedTaskIds();
       final List<StageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(stage);
 
       // Initialize states for blocks of inter-stage edges

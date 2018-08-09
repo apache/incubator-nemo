@@ -304,7 +304,7 @@ public final class BatchScheduler implements Scheduler {
         physicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
 
     final List<String> taskIdsToSchedule = new LinkedList<>();
-    for (final String taskId : stageToSchedule.getTaskIds()) {
+    for (final String taskId : stageToSchedule.getPossiblyClonedTaskIds()) {
       final TaskState.State taskState = planStateManager.getTaskState(taskId);
 
       switch (taskState) {
@@ -462,7 +462,7 @@ public final class BatchScheduler implements Scheduler {
     return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
         .stream()
         .flatMap(inStageEdge -> {
-          final List<String> tasksOfParentStage = inStageEdge.getSrc().getTaskIds();
+          final List<String> tasksOfParentStage = inStageEdge.getSrc().getPossiblyClonedTaskIds();
           switch (inStageEdge.getDataCommunicationPattern()) {
             case Shuffle:
             case BroadCast:

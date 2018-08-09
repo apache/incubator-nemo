@@ -311,7 +311,7 @@ public final class DataTransferTest {
         srcStage, dstStage, false);
 
     // Initialize states in Master
-    srcStage.getTaskIds().forEach(srcTaskId -> {
+    srcStage.getPossiblyClonedTaskIds().forEach(srcTaskId -> {
       final String blockId = RuntimeIdGenerator.generateBlockId(
           edgeId, RuntimeIdGenerator.getIndexFromTaskId(srcTaskId));
       master.initializeState(blockId, srcTaskId);
@@ -399,7 +399,7 @@ public final class DataTransferTest {
     dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
         srcStage, dstStage, false);
     // Initialize states in Master
-    srcStage.getTaskIds().forEach(srcTaskId -> {
+    srcStage.getPossiblyClonedTaskIds().forEach(srcTaskId -> {
       final String blockId = RuntimeIdGenerator.generateBlockId(
           edgeId, RuntimeIdGenerator.getIndexFromTaskId(srcTaskId));
       master.initializeState(blockId, srcTaskId);
