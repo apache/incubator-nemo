@@ -20,15 +20,14 @@ import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.io.Serializable;
 
 /**
  * An interface for policies, each of which is composed of a list of static optimization passes.
  * The list of static optimization passes are run in the order provided by the implementation.
+ * Most policies follow the implementation in {@link PolicyImpl}.
  */
-@DefaultImplementation(PolicyImpl.class)
 public interface Policy extends Serializable {
   /**
    * Optimize the DAG with the compile time optimizations.
