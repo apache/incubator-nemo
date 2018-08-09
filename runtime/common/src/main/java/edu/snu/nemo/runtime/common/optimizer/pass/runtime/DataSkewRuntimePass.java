@@ -41,12 +41,13 @@ import java.util.stream.Collectors;
  * this RuntimePass identifies a number of keys with big partition sizes(skewed key)
  * and evenly redistributes data via overwriting incoming edges of destination tasks.
  */
-public final class DataSkewRuntimePass implements RuntimePass<Map<Integer, Long>> {
+public final class DataSkewRuntimePass extends RuntimePass<Map<Integer, Long>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
   private static final int DEFAULT_SKEWED_KEYS = 3;
   // Skewed keys denote for top n keys in terms of partition size.
-  private int numSkewedKeys;
+  public static final int DEFAULT_NUM_SKEWED_KEYS = 3;
+  private int numSkewedKeys = DEFAULT_NUM_SKEWED_KEYS;
 
   /**
    * Constructor.

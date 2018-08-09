@@ -16,7 +16,7 @@
 package edu.snu.nemo.compiler.frontend.beam;
 
 import edu.snu.nemo.client.StateTranslator;
-import edu.snu.nemo.runtime.common.state.JobState;
+import edu.snu.nemo.runtime.common.state.PlanState;
 
 import static org.apache.beam.sdk.PipelineResult.State.*;
 
@@ -33,7 +33,7 @@ public final class BeamStateTranslator implements StateTranslator {
    * @return the translated state.
    */
   @Override
-  public Enum translateState(final JobState.State jobState) {
+  public Enum translateState(final PlanState.State jobState) {
     switch (jobState) {
       case READY:
         return RUNNING;

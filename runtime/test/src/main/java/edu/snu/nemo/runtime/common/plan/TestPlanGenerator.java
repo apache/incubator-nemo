@@ -18,14 +18,13 @@ package edu.snu.nemo.runtime.common.plan;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.test.EmptyComponents;
-import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.nemo.compiler.optimizer.policy.BasicPullPolicy;
 import edu.snu.nemo.compiler.optimizer.policy.BasicPushPolicy;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
@@ -94,8 +93,8 @@ public final class TestPlanGenerator {
    */
   private static PhysicalPlan convertIRToPhysical(final DAG<IRVertex, IREdge> irDAG,
                                                   final Policy policy) throws Exception {
-    final DAG<IRVertex, IREdge> optimized = CompiletimeOptimizer.optimize(irDAG, policy, EMPTY_DAG_DIRECTORY);
-    final DAG<Stage, StageEdge> physicalDAG = optimized.convert(PLAN_GENERATOR);
+    final DAG<IRVertex, IREdge> optimized = policy.runCompileTimeOptimization(irDAG, EMPTY_DAG_DIRECTORY);
+    final DAG<Stage, StageEdge> physicalDAG = PLAN_GENERATOR.apply(optimized);
     return new PhysicalPlan("TestPlan", irDAG, physicalDAG);
   }
 
@@ -108,39 +107,39 @@ public final class TestPlanGenerator {
     final Transform t = new EmptyComponents.EmptyTransform("empty");
     final IRVertex v1 = new OperatorVertex(t);
     v1.setProperty(ParallelismProperty.of(3));
-    v1.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v1.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
     dagBuilder.addVertex(v1);
 
     final IRVertex v2 = new OperatorVertex(t);
     v2.setProperty(ParallelismProperty.of(2));
-    v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v2.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
     dagBuilder.addVertex(v2);
 
     final IRVertex v3 = new OperatorVertex(t);
     v3.setProperty(ParallelismProperty.of(3));
-    v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v3.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
     dagBuilder.addVertex(v3);
 
     final IRVertex v4 = new OperatorVertex(t);
     v4.setProperty(ParallelismProperty.of(2));
-    v4.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v4.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
     dagBuilder.addVertex(v4);
 
     final IRVertex v5 = new OperatorVertex(t);
     v5.setProperty(ParallelismProperty.of(2));
-    v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v5.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
     dagBuilder.addVertex(v5);
 
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2);
+    final IREdge e1 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v1, v2);
     dagBuilder.connectVertices(e1);
 
-    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v3, v2);
+    final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v3, v2);
     dagBuilder.connectVertices(e2);
 
-    final IREdge e3 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v2, v4);
+    final IREdge e3 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v2, v4);
     dagBuilder.connectVertices(e3);
 
-    final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v4, v5);
+    final IREdge e4 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v4, v5);
     dagBuilder.connectVertices(e4);
 
     return dagBuilder.buildWithoutSourceSinkCheck();
@@ -156,31 +155,31 @@ public final class TestPlanGenerator {
     final Transform t = new EmptyComponents.EmptyTransform("empty");
     final IRVertex v1 = new OperatorVertex(t);
     v1.setProperty(ParallelismProperty.of(3));
-    v1.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v1.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
     dagBuilder.addVertex(v1);
 
     final IRVertex v2 = new OperatorVertex(t);
     v2.setProperty(ParallelismProperty.of(2));
     if (sameContainerType) {
-      v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+      v2.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
     } else {
-      v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.TRANSIENT));
+      v2.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.TRANSIENT));
     }
     dagBuilder.addVertex(v2);
 
     final IRVertex v3 = new OperatorVertex(t);
     v3.setProperty(ParallelismProperty.of(2));
     if (sameContainerType) {
-      v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+      v3.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
     } else {
-      v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.TRANSIENT));
+      v3.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.TRANSIENT));
     }
     dagBuilder.addVertex(v3);
 
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2);
+    final IREdge e1 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v1, v2);
     dagBuilder.connectVertices(e1);
 
-    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v3);
+    final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v2, v3);
     dagBuilder.connectVertices(e2);
 
     return dagBuilder.buildWithoutSourceSinkCheck();

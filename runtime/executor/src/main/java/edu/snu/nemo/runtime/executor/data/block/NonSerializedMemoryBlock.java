@@ -188,6 +188,18 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   }
 
   /**
+   * Commits all un-committed partitions.
+   */
+  @Override
+  public synchronized void commitPartitions() throws BlockWriteException {
+    nonCommittedPartitionsMap.forEach((key, partition) -> {
+      partition.commit();
+      nonSerializedPartitions.add(partition);
+    });
+    nonCommittedPartitionsMap.clear();
+  }
+
+  /**
    * @return the ID of this block.
    */
   @Override

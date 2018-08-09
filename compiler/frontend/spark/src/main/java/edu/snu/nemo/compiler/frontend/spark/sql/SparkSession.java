@@ -321,6 +321,9 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
       if (!options.containsKey("spark.master")) { // default spark_master option.
         return this.master("local[*]").getOrCreate();
       }
+      if (!options.containsKey("spark.driver.allowMultipleContexts")) {
+        return this.config("spark.driver.allowMultipleContexts", "true").getOrCreate();
+      }
 
       UserGroupInformation.setLoginUser(UserGroupInformation.createRemoteUser("ubuntu"));
 

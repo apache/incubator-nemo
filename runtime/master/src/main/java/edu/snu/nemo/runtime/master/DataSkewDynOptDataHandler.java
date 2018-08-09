@@ -19,15 +19,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Handler for aggregating data for dynamic optimization.
+ * Handler for aggregating data used in data skew dynamic optimization.
  */
 public class DataSkewDynOptDataHandler implements DynOptDataHandler {
   private final Map<Integer, Long> aggregatedDynOptData;
-  
+
   public DataSkewDynOptDataHandler() {
     this.aggregatedDynOptData = new HashMap<>();
   }
-  
+
   /**
    * Updates data for dynamic optimization sent from Tasks.
    * @param hashIndex hash value of the partition.

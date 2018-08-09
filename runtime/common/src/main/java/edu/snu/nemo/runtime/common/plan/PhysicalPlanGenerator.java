@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
@@ -25,7 +25,6 @@ import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalTagOutputProperty;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
@@ -62,7 +61,6 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
     this.dagDirectory = dagDirectory;
     this.stagePartitioner = stagePartitioner;
     stagePartitioner.addIgnoredPropertyKey(DynamicOptimizationProperty.class);
-    stagePartitioner.addIgnoredPropertyKey(AdditionalTagOutputProperty.class);
   }
 
   /**
@@ -284,7 +282,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
         Integer newScheduleGroup = null;
         for (final StageEdge stageEdge : dag.getIncomingEdgesOf(destination)) {
           final Stage source = stageEdge.getSrc();
-          if (stageEdge.getDataFlowModel() != DataFlowModelProperty.Value.Pull) {
+          if (stageEdge.getDataFlowModel() != DataFlowProperty.Value.Pull) {
             if (scheduleGroup != null && source.getScheduleGroup() != scheduleGroup) {
               throw new RuntimeException(String.format("Multiple Push inEdges from different ScheduleGroup: %d, %d",
                   scheduleGroup, source.getScheduleGroup()));

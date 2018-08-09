@@ -25,7 +25,7 @@ import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.scheduler.BatchSingleJobScheduler;
+import edu.snu.nemo.runtime.master.scheduler.BatchScheduler;
 import edu.snu.nemo.runtime.master.servlet.*;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -62,7 +62,7 @@ import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
  * Runtime Master is the central controller of Runtime.
  * Compiler submits an {@link PhysicalPlan} to Runtime Master to execute a job.
  * Runtime Master handles:
- *    a) Scheduling the job with {@link Scheduler}.
+ *    a) Scheduling the plan with {@link Scheduler}.
  *    b) Managing resources with {@link ContainerManager}.
  *    c) Managing blocks with {@link BlockManagerMaster}.
  *    d) Receiving and sending control messages with {@link MessageEnvironment}.
@@ -154,22 +154,22 @@ public final class RuntimeMaster {
    * @param plan to execute
    * @param maxScheduleAttempt the max number of times this plan/sub-part of the plan should be attempted.
    */
-  public Pair<JobStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
-                                                                 final int maxScheduleAttempt) {
-    final Callable<Pair<JobStateManager, ScheduledExecutorService>> jobExecutionCallable = () -> {
+  public Pair<PlanStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
+                                                                  final int maxScheduleAttempt) {
+    final Callable<Pair<PlanStateManager, ScheduledExecutorService>> planExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
         blockManagerMaster.initialize(plan);
-        final JobStateManager jobStateManager = new JobStateManager(plan, metricMessageHandler, maxScheduleAttempt);
-        scheduler.scheduleJob(plan, jobStateManager);
-        final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(jobStateManager);
-        return Pair.of(jobStateManager, dagLoggingExecutor);
+        final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, maxScheduleAttempt);
+        scheduler.schedulePlan(plan, planStateManager);
+        final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(planStateManager);
+        return Pair.of(planStateManager, dagLoggingExecutor);
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
     };
     try {
-      return runtimeMasterThread.submit(jobExecutionCallable).get();
+      return runtimeMasterThread.submit(planExecutionCallable).get();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -342,7 +342,7 @@ public final class RuntimeMaster {
         throw new RuntimeException(exception);
       case DataSizeMetric:
         // TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
-        ((BatchSingleJobScheduler) scheduler).updateDynOptData(message.getDataSizeMetricMsg().getPartitionSizeList());
+        ((BatchScheduler) scheduler).updateDynOptData(message.getDataSizeMetricMsg().getPartitionSizeList());
         break;
       case MetricMessageReceived:
         final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
@@ -365,26 +365,6 @@ public final class RuntimeMaster {
         throw new IllegalMessageException(
             new Exception("This message should not be received by Master :" + message.getType()));
     }
-  }
-
-  /**
-   * Accumulates the metric data for a barrier vertex.
-   * TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
-   * TODO #98: Implement MetricVertex that collect metric used for dynamic optimization.
-   *
-   * @param partitionSizeInfo the size of partitions in a block to accumulate.
-   */
-  private void accumulateBarrierMetric(final List<ControlMessage.PartitionSizeEntry> partitionSizeInfo) {
-    // For each hash range index, we aggregate the metric data.
-    partitionSizeInfo.forEach(partitionSizeEntry -> {
-      final int key = partitionSizeEntry.getKey();
-      final long size = partitionSizeEntry.getSize();
-      if (aggregatedMetricData.containsKey(key)) {
-        aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + size);
-      } else {
-        aggregatedMetricData.put(key, size);
-      }
-    });
   }
 
   private static TaskState.State convertTaskState(final ControlMessage.TaskStateFromExecutor state) {
@@ -421,17 +401,17 @@ public final class RuntimeMaster {
 
   /**
    * Schedules a periodic DAG logging thread.
-   * @param jobStateManager for the job the DAG should be logged.
+   * @param planStateManager for the plan the DAG should be logged.
    * TODO #20: RESTful APIs to Access Job State and Metric.
    * @return the scheduled executor service.
    */
-  private ScheduledExecutorService scheduleDagLogging(final JobStateManager jobStateManager) {
+  private ScheduledExecutorService scheduleDagLogging(final PlanStateManager planStateManager) {
     final ScheduledExecutorService dagLoggingExecutor = Executors.newSingleThreadScheduledExecutor();
     dagLoggingExecutor.scheduleAtFixedRate(new Runnable() {
       private int dagLogFileIndex = 0;
 
       public void run() {
-        jobStateManager.storeJSON(dagDirectory, String.valueOf(dagLogFileIndex++));
+        planStateManager.storeJSON(dagDirectory, String.valueOf(dagLogFileIndex++));
       }
     }, DAG_LOGGING_PERIOD, DAG_LOGGING_PERIOD, TimeUnit.MILLISECONDS);
 

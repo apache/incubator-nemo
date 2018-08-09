@@ -19,20 +19,21 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.pass.Pass;
 
-import java.io.Serializable;
 import java.util.Set;
 import java.util.function.BiFunction;
 
 /**
- * Interface for dynamic optimization passes, for dynamically optimizing a physical plan.
+ * Abstract class for dynamic optimization passes, for dynamically optimizing a physical plan.
  * It is a BiFunction that takes an original physical plan and metric data, to produce a new physical plan
  * after dynamic optimization.
  * @param <T> type of the metric data used for dynamic optimization.
  */
-public interface RuntimePass<T> extends BiFunction<DAG<IRVertex, IREdge>, T, DAG<IRVertex, IREdge>>, Serializable {
+public abstract class RuntimePass<T> extends Pass
+    implements BiFunction<DAG<IRVertex, IREdge>, T, DAG<IRVertex, IREdge>> {
   /**
    * @return the set of event handlers used with the runtime pass.
    */
-  Set<Class<? extends RuntimeEventHandler>> getEventHandlerClasses();
+  public abstract Set<Class<? extends RuntimeEventHandler>> getEventHandlerClasses();
 }

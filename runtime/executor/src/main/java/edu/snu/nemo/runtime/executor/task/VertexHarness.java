@@ -38,14 +38,16 @@ final class VertexHarness {
   private final List<VertexHarness> sideInputChildren;
   private final List<VertexHarness> nonSideInputChildren;
   private final Map<String, VertexHarness> additionalTagOutputChildren;
-  private final List<OutputWriter> writersToChildrenTasks;
+  private final List<OutputWriter> writersToMainChildrenTasks;
+  private final Map<String, OutputWriter> writersToAdditionalChildrenTasks;
 
   VertexHarness(final IRVertex irVertex,
                 final OutputCollectorImpl outputCollector,
                 final List<VertexHarness> children,
                 final List<Boolean> isSideInputs,
                 final List<Boolean> isAdditionalTagOutputs,
-                final List<OutputWriter> writersToChildrenTasks,
+                final List<OutputWriter> writersToMainChildrenTasks,
+                final Map<String, OutputWriter> writersToAdditionalChildrenTasks,
                 final Transform.Context context) {
     this.irVertex = irVertex;
     this.outputCollector = outputCollector;
@@ -71,7 +73,8 @@ final class VertexHarness {
     this.sideInputChildren = sides;
     this.nonSideInputChildren = nonSides;
     this.additionalTagOutputChildren = tagged;
-    this.writersToChildrenTasks = writersToChildrenTasks;
+    this.writersToMainChildrenTasks = writersToMainChildrenTasks;
+    this.writersToAdditionalChildrenTasks = writersToAdditionalChildrenTasks;
     this.context = context;
   }
 
@@ -111,10 +114,17 @@ final class VertexHarness {
   }
 
   /**
-   * @return OutputWriters of this irVertex. (empty if none exists)
+   * @return OutputWriters for main outputs of this irVertex. (empty if none exists)
    */
-  List<OutputWriter> getWritersToChildrenTasks() {
-    return writersToChildrenTasks;
+  List<OutputWriter> getWritersToMainChildrenTasks() {
+    return writersToMainChildrenTasks;
+  }
+
+  /**
+   * @return OutputWriters for additional tagged outputs of this irVertex. (empty if none exists)
+   */
+  Map<String, OutputWriter> getWritersToAdditionalChildrenTasks() {
+    return writersToAdditionalChildrenTasks;
   }
 
   /**

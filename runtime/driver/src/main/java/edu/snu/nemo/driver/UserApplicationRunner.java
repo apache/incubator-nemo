@@ -18,16 +18,15 @@ package edu.snu.nemo.driver;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
+import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.backend.Backend;
 import edu.snu.nemo.compiler.backend.nemo.NemoBackend;
-import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.Injector;
@@ -87,20 +86,14 @@ public final class UserApplicationRunner {
       dag.storeJSON(dagDirectory, "ir", "IR before optimization");
       final Policy optimizationPolicy = (Policy) Class.forName(optimizationPolicyCanonicalName).newInstance();
 
-      final DAG<IRVertex, IREdge> optimizedDAG = CompiletimeOptimizer.optimize(dag, optimizationPolicy, dagDirectory);
+      if (optimizationPolicy == null) {
+        throw new CompileTimeOptimizationException("A policy name should be specified.");
+      }
+      final DAG<IRVertex, IREdge> optimizedDAG = optimizationPolicy.runCompileTimeOptimization(dag, dagDirectory);
       optimizedDAG.storeJSON(dagDirectory, "ir-" + optimizationPolicy.getClass().getSimpleName(),
           "IR optimized for " + optimizationPolicy.getClass().getSimpleName());
 
-      optimizationPolicy.getRuntimePasses().forEach(runtimePass ->
-          runtimePass.getEventHandlerClasses().forEach(runtimeEventHandlerClass -> {
-            try {
-              final RuntimeEventHandler runtimeEventHandler = injector.getInstance(runtimeEventHandlerClass);
-              pubSubWrapper.getPubSubEventHandler()
-                  .subscribe(runtimeEventHandler.getEventClass(), runtimeEventHandler);
-            } catch (final Exception e) {
-              throw new RuntimeException(e);
-            }
-          }));
+      optimizationPolicy.registerRunTimeOptimizations(injector, pubSubWrapper);
 
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
 
@@ -109,16 +102,16 @@ public final class UserApplicationRunner {
       physicalPlan.getStageDAG().storeJSON(dagDirectory, "plan", "physical execution plan by compiler");
 
       // Execute!
-      final Pair<JobStateManager, ScheduledExecutorService> executionResult =
+      final Pair<PlanStateManager, ScheduledExecutorService> executionResult =
           runtimeMaster.execute(physicalPlan, maxScheduleAttempt);
 
       // Wait for the job to finish and stop logging
-      final JobStateManager jobStateManager = executionResult.left();
+      final PlanStateManager planStateManager = executionResult.left();
       final ScheduledExecutorService dagLoggingExecutor = executionResult.right();
-      jobStateManager.waitUntilFinish();
+      planStateManager.waitUntilFinish();
       dagLoggingExecutor.shutdown();
 
-      jobStateManager.storeJSON(dagDirectory, "final");
+      planStateManager.storeJSON(dagDirectory, "final");
       LOG.info("{} is complete!", physicalPlan.getId());
     } catch (final Exception e) {
       throw new RuntimeException(e);

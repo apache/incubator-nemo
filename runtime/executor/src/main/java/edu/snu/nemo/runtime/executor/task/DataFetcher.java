@@ -40,9 +40,9 @@ abstract class DataFetcher {
 
   /**
    * Can block until the next data element becomes available.
-   *
-   * @return null if there's no more data element.
-   * @throws IOException while fetching data
+   * @return data element
+   * @throws IOException upon I/O error
+   * @throws java.util.NoSuchElementException if no more element is available
    */
   abstract Object fetchDataElement() throws IOException;
 

@@ -15,5 +15,8 @@
  */
 package edu.snu.nemo.runtime.master;
 
+/**
+ * Handler for aggregating data used in dynamic optimization.
+ */
 public interface DynOptDataHandler {
 }

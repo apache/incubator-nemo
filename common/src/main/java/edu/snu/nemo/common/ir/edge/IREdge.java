@@ -17,7 +17,7 @@ package edu.snu.nemo.common.ir.edge;
 
 import edu.snu.nemo.common.dag.Edge;
 import edu.snu.nemo.common.ir.IdManager;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -43,7 +43,7 @@ public final class IREdge extends Edge<IRVertex> {
    * @param src         source vertex.
    * @param dst         destination vertex.
    */
-  public IREdge(final DataCommunicationPatternProperty.Value commPattern,
+  public IREdge(final CommunicationPatternProperty.Value commPattern,
                 final IRVertex src,
                 final IRVertex dst) {
     this(commPattern, src, dst, false);
@@ -57,7 +57,7 @@ public final class IREdge extends Edge<IRVertex> {
    * @param dst         destination vertex.
    * @param isSideInput flag for whether or not the edge is a sideInput.
    */
-  public IREdge(final DataCommunicationPatternProperty.Value commPattern,
+  public IREdge(final CommunicationPatternProperty.Value commPattern,
                 final IRVertex src,
                 final IRVertex dst,
                 final Boolean isSideInput) {

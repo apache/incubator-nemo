@@ -19,7 +19,7 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
-import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismFive;
+import edu.snu.nemo.examples.beam.policy.TransientResourcePolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,10 +37,10 @@ public final class BroadcastITCase {
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
-  private static final String inputFileName = "sample_input_wordcount";
-  private static final String outputFileName = "sample_output_broadcast";
-  private static final String testResourceFileName = "test_output_broadcast";
-  private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
+  private static final String inputFileName = "test_input_wordcount";
+  private static final String outputFileName = "test_output_broadcast";
+  private static final String expectedOutputFileName = "expected_output_broadcast";
+  private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
@@ -55,7 +55,7 @@ public final class BroadcastITCase {
   @After
   public void tearDown() throws Exception {
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
@@ -70,10 +70,10 @@ public final class BroadcastITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testPado() throws Exception {
+  public void testTransientResource() throws Exception {
     JobLauncher.main(builder
-        .addJobId(BroadcastITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
+        .addJobId(BroadcastITCase.class.getSimpleName() + "_transient")
+        .addOptimizationPolicy(TransientResourcePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 }

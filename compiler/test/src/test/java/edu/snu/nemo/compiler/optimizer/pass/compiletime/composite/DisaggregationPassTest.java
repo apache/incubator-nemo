@@ -18,12 +18,12 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.composite;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.CompilerTestUtil;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DisaggregationEdgeDataStorePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultInterTaskDataStorePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultDataStorePass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -49,12 +49,12 @@ public class DisaggregationPassTest {
   public void testDisaggregation() throws Exception {
     final DAG<IRVertex, IREdge> processedDAG =
         new DisaggregationEdgeDataStorePass().apply(
-            new DefaultInterTaskDataStorePass().apply(
+            new DefaultDataStorePass().apply(
                   new DefaultParallelismPass().apply(compiledDAG)));
 
     processedDAG.getTopologicalSort().forEach(irVertex ->
       processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger ->
-          assertEquals(InterTaskDataStoreProperty.Value.GlusterFileStore,
-              edgeToMerger.getPropertyValue(InterTaskDataStoreProperty.class).get())));
+          assertEquals(DataStoreProperty.Value.GlusterFileStore,
+              edgeToMerger.getPropertyValue(DataStoreProperty.class).get())));
   }
 }

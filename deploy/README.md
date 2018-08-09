@@ -29,7 +29,7 @@
 * git clone Nemo on v-m and install
 * Upload a local input file to HDFS with `hdfs -put`
 * Launch a Nemo job with `-deploy_mode yarn`, and hdfs paths as the input/output
-* Example: `./bin/run.sh -deploy_mode yarn -job_id mr -user_main edu.snu.nemo.examples.beam.WordCount -user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"`
+* Example: `./bin/run.sh -deploy_mode yarn -job_id mr -user_main edu.snu.nemo.examples.beam.WordCount -user_args "hdfs://v-m:9000/test_input_wordcount hdfs://v-m:9000/test_output_wordcount"`
 
 ## And you're all set.....?
 * I hope so

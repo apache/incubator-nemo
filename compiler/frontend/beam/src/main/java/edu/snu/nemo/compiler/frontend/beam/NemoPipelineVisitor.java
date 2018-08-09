@@ -16,20 +16,16 @@
 package edu.snu.nemo.compiler.frontend.beam;
 
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalTagOutputProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 
 import edu.snu.nemo.compiler.frontend.beam.transform.*;
 
@@ -110,29 +106,18 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
 
     beamNode.getInputs().values().stream().filter(pValueToVertex::containsKey)
         .forEach(pValue -> {
+          final boolean isAdditionalOutput = pValueToTag.containsKey(pValue);
           final IRVertex src = pValueToVertex.get(pValue);
-          final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex), src, irVertex);
+          final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex), src, irVertex, false);
           final Pair<BeamEncoderFactory, BeamDecoderFactory> coderPair = pValueToCoder.get(pValue);
           edge.setProperty(EncoderProperty.of(coderPair.left()));
           edge.setProperty(DecoderProperty.of(coderPair.right()));
           edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
-          this.builder.connectVertices(edge);
-        });
-
-    // This exclusively updates execution property of vertices with additional tagged outputs.
-    beamNode.getInputs().values().stream().filter(pValueToTag::containsKey)
-        .forEach(pValue -> {
-          final IRVertex src = pValueToVertex.get(pValue);
-          final TupleTag tag = pValueToTag.get(pValue);
-          final HashMap<String, String> tagToVertex = new HashMap<>();
-          tagToVertex.put(tag.getId(), irVertex.getId());
-          if (!src.getPropertyValue(AdditionalTagOutputProperty.class).isPresent()) {
-            src.setProperty(AdditionalTagOutputProperty.of(tagToVertex));
-          } else {
-            final HashMap<String, String> prev = src.getPropertyValue(AdditionalTagOutputProperty.class).get();
-            prev.putAll(tagToVertex);
-            src.setProperty(AdditionalTagOutputProperty.of(prev));
+          // Apply AdditionalOutputTatProperty to edges that corresponds to additional outputs.
+          if (isAdditionalOutput) {
+            edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(pValue).getId()));
           }
+          this.builder.connectVertices(edge);
         });
   }
 
@@ -235,8 +220,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     sideInputs.stream().filter(pValueToVertex::containsKey)
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
-          final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex),
-              src, irVertex, true);
+          final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex), src, irVertex, true);
           final Pair<BeamEncoderFactory, BeamDecoderFactory> coder = pValueToCoder.get(pValue);
           edge.setProperty(EncoderProperty.of(coder.left()));
           edge.setProperty(DecoderProperty.of(coder.right()));
@@ -280,8 +264,8 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
    * @param dst destination vertex.
    * @return the appropriate edge type.
    */
-  private static DataCommunicationPatternProperty.Value getEdgeCommunicationPattern(final IRVertex src,
-                                                                                    final IRVertex dst) {
+  private static CommunicationPatternProperty.Value getEdgeCommunicationPattern(final IRVertex src,
+                                                                                final IRVertex dst) {
     final Class<?> constructUnionTableFn;
     try {
       constructUnionTableFn = Class.forName("org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");
@@ -294,17 +278,17 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     final DoFn srcDoFn = srcTransform instanceof DoTransform ? ((DoTransform) srcTransform).getDoFn() : null;
 
     if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
-      return DataCommunicationPatternProperty.Value.Shuffle;
+      return CommunicationPatternProperty.Value.Shuffle;
     }
     if (srcTransform instanceof FlattenTransform) {
-      return DataCommunicationPatternProperty.Value.OneToOne;
+      return CommunicationPatternProperty.Value.OneToOne;
     }
     if (dstTransform instanceof GroupByKeyTransform) {
-      return DataCommunicationPatternProperty.Value.Shuffle;
+      return CommunicationPatternProperty.Value.Shuffle;
     }
     if (dstTransform instanceof CreateViewTransform) {
-      return DataCommunicationPatternProperty.Value.BroadCast;
+      return CommunicationPatternProperty.Value.BroadCast;
     }
-    return DataCommunicationPatternProperty.Value.OneToOne;
+    return CommunicationPatternProperty.Value.OneToOne;
   }
 }

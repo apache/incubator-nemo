@@ -47,9 +47,6 @@ import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
 import edu.snu.nemo.runtime.master.*;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
-import edu.snu.nemo.runtime.master.resource.ContainerManager;
-import edu.snu.nemo.runtime.master.scheduler.ExecutorRegistry;
-import edu.snu.nemo.runtime.master.scheduler.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;
@@ -93,14 +90,14 @@ import static org.mockito.Mockito.mock;
     SourceVertex.class, ClientRPC.class, MetricManagerMaster.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
-  private static final InterTaskDataStoreProperty.Value MEMORY_STORE =
-      InterTaskDataStoreProperty.Value.MemoryStore;
-  private static final InterTaskDataStoreProperty.Value SER_MEMORY_STORE =
-      InterTaskDataStoreProperty.Value.SerializedMemoryStore;
-  private static final InterTaskDataStoreProperty.Value LOCAL_FILE_STORE =
-      InterTaskDataStoreProperty.Value.LocalFileStore;
-  private static final InterTaskDataStoreProperty.Value REMOTE_FILE_STORE =
-      InterTaskDataStoreProperty.Value.GlusterFileStore;
+  private static final DataStoreProperty.Value MEMORY_STORE =
+      DataStoreProperty.Value.MemoryStore;
+  private static final DataStoreProperty.Value SER_MEMORY_STORE =
+      DataStoreProperty.Value.SerializedMemoryStore;
+  private static final DataStoreProperty.Value LOCAL_FILE_STORE =
+      DataStoreProperty.Value.LocalFileStore;
+  private static final DataStoreProperty.Value REMOTE_FILE_STORE =
+      DataStoreProperty.Value.GlusterFileStore;
   private static final String TMP_LOCAL_FILE_DIRECTORY = "./tmpLocalFiles";
   private static final String TMP_REMOTE_FILE_DIRECTORY = "./tmpRemoteFiles";
   private static final int PARALLELISM_TEN = 10;
@@ -215,82 +212,82 @@ public final class DataTransferTest {
   @Test
   public void testWriteAndRead() throws Exception {
     // test OneToOne same worker
-    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
 
     // test OneToOne different worker
-    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
+    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
 
     // test OneToMany same worker
-    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
 
     // test OneToMany different worker
-    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
+    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
 
     // test ManyToMany same worker
-    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
 
     // test ManyToMany different worker
-    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
+    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
 
     // test ManyToMany same worker
-    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
 
     // test ManyToMany different worker
-    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
+    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
 
     // test ManyToMany same worker (local file)
-    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
 
     // test ManyToMany different worker (local file)
-    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
+    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
 
     // test ManyToMany same worker (remote file)
-    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
+    writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
 
     // test ManyToMany different worker (remote file)
-    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
+    writeAndRead(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
 
     // test OneToOne same worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker1, DataCommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
 
     // test OneToOne different worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker2, DataCommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
 
     // test OneToMany same worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker1, DataCommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
 
     // test OneToMany different worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker2, DataCommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
 
     // test ManyToMany same worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
 
     // test ManyToMany different worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
 
     // test ManyToMany same worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
 
     // test ManyToMany different worker with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
+    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
 
     // test ManyToMany same worker (local file) with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
+    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
 
     // test ManyToMany different worker (local file) with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
+    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
 
     // test ManyToMany same worker (remote file) with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
+    writeAndReadWithDuplicateData(worker1, worker1, CommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
 
     // test ManyToMany different worker (remote file) with duplicate data
-    writeAndReadWithDuplicateData(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
+    writeAndReadWithDuplicateData(worker1, worker2, CommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
   }
 
   private void writeAndRead(final BlockManagerWorker sender,
                             final BlockManagerWorker receiver,
-                            final DataCommunicationPatternProperty.Value commPattern,
-                            final InterTaskDataStoreProperty.Value store) throws RuntimeException {
+                            final CommunicationPatternProperty.Value commPattern,
+                            final DataStoreProperty.Value store) throws RuntimeException {
     final int testIndex = TEST_INDEX.getAndIncrement();
     final String edgeId = String.format(EDGE_PREFIX_TEMPLATE, testIndex);
     final Pair<IRVertex, IRVertex> verticesPair = setupVertices(edgeId, sender, receiver);
@@ -300,14 +297,14 @@ public final class DataTransferTest {
     // Edge setup
     final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex);
     dummyIREdge.setProperty(KeyExtractorProperty.of((element -> element)));
-    dummyIREdge.setProperty(DataCommunicationPatternProperty.of(commPattern));
+    dummyIREdge.setProperty(CommunicationPatternProperty.of(commPattern));
     dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-    dummyIREdge.setProperty(InterTaskDataStoreProperty.of(store));
-    dummyIREdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
+    dummyIREdge.setProperty(DataStoreProperty.of(store));
+    dummyIREdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     dummyIREdge.setProperty(EncoderProperty.of(ENCODER_FACTORY));
     dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
-    if (dummyIREdge.getPropertyValue(DataCommunicationPatternProperty.class).get()
-        .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
+    if (dummyIREdge.getPropertyValue(CommunicationPatternProperty.class).get()
+        .equals(CommunicationPatternProperty.Value.Shuffle)) {
       final int parallelism = dstVertex.getPropertyValue(ParallelismProperty.class).get();
       final Map<Integer, KeyRange> metric = new HashMap<>();
       for (int i = 0; i < parallelism; i++) {
@@ -349,11 +346,7 @@ public final class DataTransferTest {
       final InputReader reader =
           new InputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
 
-      if (DataCommunicationPatternProperty.Value.OneToOne.equals(commPattern)) {
-        assertEquals(1, reader.getSourceParallelism());
-      } else {
-        assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
-      }
+      assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
 
       final List dataRead = new ArrayList<>();
       try {
@@ -367,7 +360,7 @@ public final class DataTransferTest {
     // Compare (should be the same)
     final List flattenedWrittenData = flatten(dataWrittenList);
     final List flattenedReadData = flatten(dataReadList);
-    if (DataCommunicationPatternProperty.Value.BroadCast.equals(commPattern)) {
+    if (CommunicationPatternProperty.Value.BroadCast.equals(commPattern)) {
       final List broadcastedWrittenData = new ArrayList<>();
       IntStream.range(0, PARALLELISM_TEN).forEach(i -> broadcastedWrittenData.addAll(flattenedWrittenData));
       assertEquals(broadcastedWrittenData.size(), flattenedReadData.size());
@@ -380,8 +373,8 @@ public final class DataTransferTest {
 
   private void writeAndReadWithDuplicateData(final BlockManagerWorker sender,
                                              final BlockManagerWorker receiver,
-                                             final DataCommunicationPatternProperty.Value commPattern,
-                                             final InterTaskDataStoreProperty.Value store) throws RuntimeException {
+                                             final CommunicationPatternProperty.Value commPattern,
+                                             final DataStoreProperty.Value store) throws RuntimeException {
     final int testIndex = TEST_INDEX.getAndIncrement();
     final int testIndex2 = TEST_INDEX.getAndIncrement();
     final String edgeId = String.format(EDGE_PREFIX_TEMPLATE, testIndex);
@@ -395,17 +388,15 @@ public final class DataTransferTest {
     dummyIREdge.setProperty(EncoderProperty.of(ENCODER_FACTORY));
     dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
     dummyIREdge.setProperty(KeyExtractorProperty.of((element -> element)));
-    dummyIREdge.setProperty(DataCommunicationPatternProperty.of(commPattern));
+    dummyIREdge.setProperty(CommunicationPatternProperty.of(commPattern));
     dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
     dummyIREdge.setProperty(DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue("dummy")));
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty
         = dummyIREdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     duplicateDataProperty.get().setRepresentativeEdgeId(edgeId);
     duplicateDataProperty.get().setGroupSize(2);
-    dummyIREdge.setProperty(InterTaskDataStoreProperty.of(store));
-    dummyIREdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
-    if (dummyIREdge.getPropertyValue(DataCommunicationPatternProperty.class).get()
-        .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
+    if (dummyIREdge.getPropertyValue(CommunicationPatternProperty.class).get()
+        .equals(CommunicationPatternProperty.Value.Shuffle)) {
       final int parallelism = dstVertex.getPropertyValue(ParallelismProperty.class).get();
       final Map<Integer, KeyRange> metric = new HashMap<>();
       for (int i = 0; i < parallelism; i++) {
@@ -413,6 +404,8 @@ public final class DataTransferTest {
       }
       dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(metric)));
     }
+    dummyIREdge.setProperty(DataStoreProperty.of(store));
+    dummyIREdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     final RuntimeEdge dummyEdge, dummyEdge2;
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
 
@@ -460,17 +453,9 @@ public final class DataTransferTest {
       final InputReader reader2 =
           new InputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
 
-      if (DataCommunicationPatternProperty.Value.OneToOne.equals(commPattern)) {
-        assertEquals(1, reader.getSourceParallelism());
-      } else {
-        assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
-      }
+      assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
 
-      if (DataCommunicationPatternProperty.Value.OneToOne.equals(commPattern)) {
-        assertEquals(1, reader2.getSourceParallelism());
-      } else {
-        assertEquals(PARALLELISM_TEN, reader2.getSourceParallelism());
-      }
+      assertEquals(PARALLELISM_TEN, reader2.getSourceParallelism());
 
       final List dataRead = new ArrayList<>();
       try {
@@ -494,7 +479,7 @@ public final class DataTransferTest {
     final List flattenedWrittenData2 = flatten(dataWrittenList);
     final List flattenedReadData = flatten(dataReadList);
     final List flattenedReadData2 = flatten(dataReadList2);
-    if (DataCommunicationPatternProperty.Value.BroadCast.equals(commPattern)) {
+    if (CommunicationPatternProperty.Value.BroadCast.equals(commPattern)) {
       final List broadcastedWrittenData = new ArrayList<>();
       final List broadcastedWrittenData2 = new ArrayList<>();
       IntStream.range(0, PARALLELISM_TEN).forEach(i -> broadcastedWrittenData.addAll(flattenedWrittenData));

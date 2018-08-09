@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.compiler.optimizer.examples;
 
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
@@ -23,7 +23,6 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.compiler.optimizer.policy.DisaggregationPolicy;
-import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,10 +57,10 @@ public final class MapReduceDisaggregationOptimization {
     builder.addVertex(map);
     builder.addVertex(reduce);
 
-    final IREdge edge1 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, source, map);
+    final IREdge edge1 = new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map);
     builder.connectVertices(edge1);
 
-    final IREdge edge2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, map, reduce);
+    final IREdge edge2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, map, reduce);
     builder.connectVertices(edge2);
 
     final DAG<IRVertex, IREdge> dag = builder.build();
@@ -69,7 +68,7 @@ public final class MapReduceDisaggregationOptimization {
     LOG.info(dag.toString());
 
     // Optimize
-    final DAG optimizedDAG = CompiletimeOptimizer.optimize(dag, new DisaggregationPolicy(), EMPTY_DAG_DIRECTORY);
+    final DAG optimizedDAG = new DisaggregationPolicy().runCompileTimeOptimization(dag, EMPTY_DAG_DIRECTORY);
 
     // After
     LOG.info("After Optimization");

@@ -18,7 +18,6 @@
  */
 package edu.snu.nemo.runtime.common.eventhandler;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.RuntimeEvent;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 
@@ -28,19 +27,23 @@ import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 public final class DynamicOptimizationEvent implements RuntimeEvent {
   private final PhysicalPlan physicalPlan;
   private final Object dynOptData;
-  private final Pair<String, String> taskInfo;
+  private final String taskId;
+  private final String executorId;
 
   /**
    * Default constructor.
    * @param physicalPlan physical plan to be optimized.
-   * @param taskInfo information of the task.
+   * @param taskId id of the task which triggered the dynamic optimization.
+   * @param executorId the id of executor which executes {@code taskId}
    */
   public DynamicOptimizationEvent(final PhysicalPlan physicalPlan,
                                   final Object dynOptData,
-                                  final Pair<String, String> taskInfo) {
+                                  final String taskId,
+                                  final String executorId) {
     this.physicalPlan = physicalPlan;
+    this.taskId = taskId;
     this.dynOptData = dynOptData;
-    this.taskInfo = taskInfo;
+    this.executorId = executorId;
   }
 
   /**
@@ -53,8 +56,15 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
   /**
    * @return the information of the task at which this optimization occurs: its name and its task ID.
    */
-  public Pair<String, String> getTaskInfo() {
-    return this.taskInfo;
+  public String getTaskId() {
+    return taskId;
+  }
+
+  /**
+   * @return id of the executor which triggered the dynamic optimization
+   */
+  public String getExecutorId() {
+    return executorId;
   }
 
   public Object getDynOptData() {

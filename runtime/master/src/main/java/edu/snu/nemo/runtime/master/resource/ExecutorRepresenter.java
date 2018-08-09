@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.resource;
 
 import com.google.protobuf.ByteString;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -106,7 +106,7 @@ public final class ExecutorRepresenter {
    * @param task
    */
   public void onTaskScheduled(final Task task) {
-    (task.getPropertyValue(ExecutorSlotComplianceProperty.class).orElse(true)
+    (task.getPropertyValue(ResourceSlotProperty.class).orElse(true)
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);

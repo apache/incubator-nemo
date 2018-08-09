@@ -20,7 +20,7 @@ import edu.snu.nemo.common.HashRange;
 import edu.snu.nemo.common.KeyRange;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -43,8 +43,8 @@ public final class DefaultMetricPass extends AnnotatingPass {
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(dst ->
       dag.getIncomingEdgesOf(dst).forEach(edge -> {
-        if (DataCommunicationPatternProperty.Value.Shuffle
-            .equals(edge.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
+        if (CommunicationPatternProperty.Value.Shuffle
+            .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
           final int parallelism = dst.getPropertyValue(ParallelismProperty.class).get();
           final Map<Integer, KeyRange> metric = new HashMap<>();
           for (int i = 0; i < parallelism; i++) {

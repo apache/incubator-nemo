@@ -15,23 +15,24 @@
  */
 package edu.snu.nemo.compiler.optimizer.policy;
 
+import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.CompositePass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Predicate;
 
 /**
  * A builder for policies.
@@ -52,7 +53,6 @@ public final class PolicyBuilder {
 
   /**
    * Constructor.
-   *
    * @param strictPrerequisiteCheckMode whether to use strict prerequisite check mode or not.
    */
   public PolicyBuilder(final Boolean strictPrerequisiteCheckMode) {
@@ -62,19 +62,19 @@ public final class PolicyBuilder {
     this.annotatedExecutionProperties = new HashSet<>();
     this.strictPrerequisiteCheckMode = strictPrerequisiteCheckMode;
     // DataCommunicationPattern is already set when creating the IREdge itself.
-    annotatedExecutionProperties.add(DataCommunicationPatternProperty.class);
+    annotatedExecutionProperties.add(CommunicationPatternProperty.class);
     // Some default values are already annotated.
-    annotatedExecutionProperties.add(ExecutorPlacementProperty.class);
+    annotatedExecutionProperties.add(ResourcePriorityProperty.class);
     annotatedExecutionProperties.add(ParallelismProperty.class);
-    annotatedExecutionProperties.add(DataFlowModelProperty.class);
-    annotatedExecutionProperties.add(InterTaskDataStoreProperty.class);
+    annotatedExecutionProperties.add(DataFlowProperty.class);
+    annotatedExecutionProperties.add(DataStoreProperty.class);
     annotatedExecutionProperties.add(PartitionerProperty.class);
   }
 
   /**
-   * Register compile time pass.
+   * Register a compile time pass.
    * @param compileTimePass the compile time pass to register.
-   * @return the PolicyBuilder which registers compileTimePass.
+   * @return the PolicyBuilder which registers the compileTimePass.
    */
   public PolicyBuilder registerCompileTimePass(final CompileTimePass compileTimePass) {
     // We decompose CompositePasses.
@@ -108,16 +108,58 @@ public final class PolicyBuilder {
   }
 
   /**
-   * Register run time passes.
+   * Register compile time pass with its condition under which to run the pass.
+   * @param compileTimePass the compile time pass to register.
+   * @param condition condition under which to run the pass.
+   * @return the PolicyBuilder which registers the compileTimePass.
+   */
+  public PolicyBuilder registerCompileTimePass(final CompileTimePass compileTimePass,
+                                               final Predicate<DAG<IRVertex, IREdge>> condition) {
+    compileTimePass.addCondition(condition);
+    return this.registerCompileTimePass(compileTimePass);
+  }
+
+  /**
+   * Register a run time pass.
    * @param runtimePass the runtime pass to register.
-   * @param runtimePassRegistrator the compile time pass that triggers the runtime pass.
-   * @return the PolicyBuilder which registers runtimePass and runtimePassRegistrator.
+   * @param runtimePassRegisterer the compile time pass that triggers the runtime pass.
+   * @return the PolicyBuilder which registers the runtimePass and the runtimePassRegisterer.
    */
   public PolicyBuilder registerRuntimePass(final RuntimePass<?> runtimePass,
-                                           final CompileTimePass runtimePassRegistrator) {
-    registerCompileTimePass(runtimePassRegistrator);
+                                           final CompileTimePass runtimePassRegisterer) {
+    registerCompileTimePass(runtimePassRegisterer);
     this.runtimePasses.add(runtimePass);
     return this;
+  }
+
+  /**
+   * Register a run time pass.
+   * @param runtimePass the runtime pass to register.
+   * @param runtimePassRegisterer the compile time pass that triggers the runtime pass.
+   * @param condition condition under which to run the pass.
+   * @return the PolicyBuilder which registers the runtimePass and the runtimePassRegisterer.
+   */
+  public PolicyBuilder registerRuntimePass(final RuntimePass<?> runtimePass,
+                                           final CompileTimePass runtimePassRegisterer,
+                                           final Predicate<DAG<IRVertex, IREdge>> condition) {
+    runtimePass.addCondition(condition);
+    return this.registerRuntimePass(runtimePass, runtimePassRegisterer);
+  }
+
+  /**
+   * Getter for compile time passes.
+   * @return the list of compile time passes.
+   */
+  public List<CompileTimePass> getCompileTimePasses() {
+    return compileTimePasses;
+  }
+
+  /**
+   * Getter for run time passes.
+   * @return the list of run time passes.
+   */
+  public List<RuntimePass<?>> getRuntimePasses() {
+    return runtimePasses;
   }
 
   /**
@@ -125,16 +167,6 @@ public final class PolicyBuilder {
    * @return the built Policy.
    */
   public Policy build() {
-    return new Policy() {
-      @Override
-      public List<CompileTimePass> getCompileTimePasses() {
-        return compileTimePasses;
-      }
-
-      @Override
-      public List<RuntimePass<?>> getRuntimePasses() {
-        return runtimePasses;
-      }
-    };
+    return new PolicyImpl(compileTimePasses, runtimePasses);
   }
 }

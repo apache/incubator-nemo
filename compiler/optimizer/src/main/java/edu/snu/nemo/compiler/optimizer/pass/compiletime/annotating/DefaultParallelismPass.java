@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.dag.DAG;
@@ -49,7 +49,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
    */
   public DefaultParallelismPass(final int desiredSourceParallelism,
                                 final int shuffleDecreaseFactor) {
-    super(ParallelismProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
+    super(ParallelismProperty.class, Collections.singleton(CommunicationPatternProperty.class));
     this.desiredSourceParallelism = desiredSourceParallelism;
     this.shuffleDecreaseFactor = shuffleDecreaseFactor;
   }
@@ -75,13 +75,13 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data
           // as a sideInput will have their own number of parallelism
           final Integer o2oParallelism = inEdges.stream()
-             .filter(edge -> DataCommunicationPatternProperty.Value.OneToOne
-                  .equals(edge.getPropertyValue(DataCommunicationPatternProperty.class).get()))
+             .filter(edge -> CommunicationPatternProperty.Value.OneToOne
+                  .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
               .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
               .max().orElse(1);
           final Integer shuffleParallelism = inEdges.stream()
-              .filter(edge -> DataCommunicationPatternProperty.Value.Shuffle
-                  .equals(edge.getPropertyValue(DataCommunicationPatternProperty.class).get()))
+              .filter(edge -> CommunicationPatternProperty.Value.Shuffle
+                  .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
               .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
               .map(i -> i / shuffleDecreaseFactor)
               .max().orElse(1);
@@ -113,8 +113,8 @@ public final class DefaultParallelismPass extends AnnotatingPass {
                                                       final Integer parallelism) {
     final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
     final Integer ancestorParallelism = inEdges.stream()
-        .filter(edge -> DataCommunicationPatternProperty.Value.OneToOne
-            .equals(edge.getPropertyValue(DataCommunicationPatternProperty.class).get()))
+        .filter(edge -> CommunicationPatternProperty.Value.OneToOne
+            .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
         .map(IREdge::getSrc)
         .mapToInt(inVertex -> recursivelySynchronizeO2OParallelism(dag, inVertex, parallelism))
         .max().orElse(1);

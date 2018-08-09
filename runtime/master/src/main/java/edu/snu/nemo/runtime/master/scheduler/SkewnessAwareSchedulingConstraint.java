@@ -18,7 +18,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.SkewnessAwareSchedulingProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.common.HashRange;
 import edu.snu.nemo.common.KeyRange;
@@ -31,18 +31,13 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * This policy aims to distribute partitions with skewed keys to different executors.
  */
 @ThreadSafe
 @DriverSide
-@AssociatedProperty(SkewnessAwareSchedulingProperty.class)
+@AssociatedProperty(ResourceSkewedDataProperty.class)
 public final class SkewnessAwareSchedulingConstraint implements SchedulingConstraint {
-  private static final Logger LOG = LoggerFactory.getLogger(SkewnessAwareSchedulingConstraint.class.getName());
-
   @VisibleForTesting
   @Inject
   public SkewnessAwareSchedulingConstraint() {
@@ -69,11 +64,6 @@ public final class SkewnessAwareSchedulingConstraint implements SchedulingConstr
         return false;
       }
     }
-    /*
-    if (!hasSkewedData(task)) {
-      LOG.info("Non-Skewed {} can be assigned to {}", task.getTaskId(), executor.getNodeName());
-    }
-    */
     return true;
   }
 }

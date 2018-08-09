@@ -15,15 +15,17 @@
  */
 package edu.snu.nemo.compiler.optimizer.policy;
 
+import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultInterTaskDataStorePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultDataStorePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.CompositePass;
-import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
+import org.apache.reef.tang.Injector;
 
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * A simple example policy to demonstrate a policy with a separate, refactored pass.
@@ -31,38 +33,40 @@ import java.util.List;
  * This example simply shows that users can define their own pass in their policy.
  */
 public final class DefaultPolicyWithSeparatePass implements Policy {
+  public static final PolicyBuilder BUILDER =
+      new PolicyBuilder(true)
+          .registerCompileTimePass(new DefaultParallelismPass())
+          .registerCompileTimePass(new RefactoredPass());
   private final Policy policy;
 
   /**
    * Default constructor.
    */
   public DefaultPolicyWithSeparatePass() {
-    this.policy = new PolicyBuilder(true)
-        .registerCompileTimePass(new DefaultParallelismPass())
-        .registerCompileTimePass(new RefactoredPass())
-        .build();
+    this.policy = BUILDER.build();
   }
 
   @Override
-  public List<CompileTimePass> getCompileTimePasses() {
-    return this.policy.getCompileTimePasses();
+  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory)
+      throws Exception {
+    return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
 
   @Override
-  public List<RuntimePass<?>> getRuntimePasses() {
-    return this.policy.getRuntimePasses();
+  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
+    this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
   }
 
   /**
    * A simple custom pass consisted of the two passes at the end of the default pass.
    */
-  public final class RefactoredPass extends CompositePass {
+  public static final class RefactoredPass extends CompositePass {
     /**
      * Default constructor.
      */
     RefactoredPass() {
       super(Arrays.asList(
-          new DefaultInterTaskDataStorePass(),
+          new DefaultDataStorePass(),
           new DefaultScheduleGroupPass()
       ));
     }

@@ -40,17 +40,29 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({InputReader.class, VertexHarness.class})
 public final class ParentTaskDataFetcherTest {
 
-  @Test(timeout=5000)
+  @Test(timeout=5000, expected = NoSuchElementException.class)
   public void testEmpty() throws Exception {
-    // InputReader
-    final List<String> dataElements = new ArrayList<>(0); // empty data
-    final InputReader inputReader = generateInputReader(generateCompletableFuture(dataElements.iterator()));
+    final List<String> empty = new ArrayList<>(0); // empty data
+    final InputReader inputReader = generateInputReader(generateCompletableFuture(empty.iterator()));
 
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
 
-    // Should return Void.TYPE
-    assertEquals(Void.TYPE, fetcher.fetchDataElement());
+    // Should trigger the expected 'NoSuchElementException'
+    fetcher.fetchDataElement();
+  }
+
+  @Test(timeout=5000)
+  public void testNull() throws Exception {
+    final List<String> oneNull = new ArrayList<>(1); // empty data
+    oneNull.add(null);
+    final InputReader inputReader = generateInputReader(generateCompletableFuture(oneNull.iterator()));
+
+    // Fetcher
+    final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
+
+    // Should return 'null'
+    assertEquals(null, fetcher.fetchDataElement());
   }
 
   @Test(timeout=5000)
@@ -66,7 +78,6 @@ public final class ParentTaskDataFetcherTest {
 
     // Should return only a single element
     assertEquals(singleData, fetcher.fetchDataElement());
-    assertEquals(null, fetcher.fetchDataElement());
   }
 
   @Test(timeout=5000, expected = IOException.class)

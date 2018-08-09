@@ -18,6 +18,7 @@ package edu.snu.nemo.examples.beam;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
+import edu.snu.nemo.compiler.optimizer.policy.ConditionalLargeShufflePolicy;
 import edu.snu.nemo.examples.beam.policy.*;
 import org.junit.After;
 import org.junit.Before;
@@ -36,11 +37,11 @@ public final class WordCountITCase {
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
-  private static final String inputFileName = "sample_input_wordcount";
-  private static final String outputFileName = "sample_output_wordcount";
-  private static final String testResourceFileName = "test_output_wordcount";
-  private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
-  private static final String oneExecutorResourceFileName = fileBasePath + "beam_sample_one_executor_resources.json";
+  private static final String inputFileName = "test_input_wordcount";
+  private static final String outputFileName = "test_output_wordcount";
+  private static final String expectedOutputFileName = "expected_output_wordcount";
+  private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
+  private static final String oneExecutorResourceFileName = fileBasePath + "beam_test_one_executor_resources.json";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
@@ -54,7 +55,7 @@ public final class WordCountITCase {
   @After
   public void tearDown() throws Exception {
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
@@ -70,29 +71,38 @@ public final class WordCountITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testSailfish() throws Exception {
+  public void testLargeShuffle() throws Exception {
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName() + "_sailfish")
-        .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
+        .addJobId(WordCountITCase.class.getSimpleName() + "_largeShuffle")
+        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 
   @Test (timeout = TIMEOUT)
-  public void testSailfishInOneExecutor() throws Exception {
+  public void testLargeShuffleInOneExecutor() throws Exception {
     JobLauncher.main(builder
         .addResourceJson(oneExecutorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName() + "_sailfishInOneExecutor")
-        .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
+        .addJobId(WordCountITCase.class.getSimpleName() + "_largeshuffleInOneExecutor")
+        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 
   @Test (timeout = TIMEOUT)
-  public void testPado() throws Exception {
+  public void testConditionalLargeShuffle() throws Exception {
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
+        .addJobId(WordCountITCase.class.getSimpleName() + "_conditionalLargeShuffle")
+        .addOptimizationPolicy(ConditionalLargeShufflePolicy.class.getCanonicalName())
+        .build());
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void testTransientResource() throws Exception {
+    JobLauncher.main(builder
+        .addResourceJson(executorResourceFileName)
+        .addJobId(WordCountITCase.class.getSimpleName() + "_transient")
+        .addOptimizationPolicy(TransientResourcePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 }

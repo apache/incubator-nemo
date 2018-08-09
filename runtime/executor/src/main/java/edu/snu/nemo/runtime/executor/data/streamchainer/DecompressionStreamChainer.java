@@ -45,6 +45,8 @@ public class DecompressionStreamChainer implements DecodeStreamChainer {
         return new GZIPInputStream(in);
       case LZ4:
         return new LZ4BlockInputStream(in);
+      case None:
+        return in;
       default:
         throw new UnsupportedCompressionException("Not supported compression method");
     }
