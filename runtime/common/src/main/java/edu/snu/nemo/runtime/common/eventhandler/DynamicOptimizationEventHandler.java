@@ -18,7 +18,6 @@
  */
 package edu.snu.nemo.runtime.common.eventhandler;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
@@ -54,11 +53,10 @@ public final class DynamicOptimizationEventHandler implements RuntimeEventHandle
     final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
             dynamicOptimizationEvent.getMetricCollectionBarrierVertex();
 
-    final Pair<String, String> taskInfo = dynamicOptimizationEvent.getTaskInfo();
-
     final PhysicalPlan newPlan = RunTimeOptimizer.dynamicOptimization(physicalPlan,
         metricCollectionBarrierVertex);
 
-    pubSubEventHandler.onNext(new UpdatePhysicalPlanEvent(newPlan, taskInfo));
+    pubSubEventHandler.onNext(new UpdatePhysicalPlanEvent(newPlan, dynamicOptimizationEvent.getTaskId(),
+        dynamicOptimizationEvent.getExecutorId()));
   }
 }
