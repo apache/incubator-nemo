@@ -61,7 +61,7 @@ public final class SkewnessAwareSchedulingConstraintTest {
 
   private static Task mockTask(final int taskIdx, final List<StageEdge> inEdges) {
     final Task task = mock(Task.class);
-    when(task.getTaskId()).thenReturn(RuntimeIdGenerator.generateTaskId("Stage-0", taskIdx));
+    when(task.getTaskId()).thenReturn(RuntimeIdGenerator.generateTaskId("Stage-0", taskIdx, 0));
     when(task.getTaskIncomingEdges()).thenReturn(inEdges);
     return task;
   }

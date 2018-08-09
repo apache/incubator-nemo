@@ -21,16 +21,14 @@ import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Stage.
@@ -78,9 +76,18 @@ public final class Stage extends Vertex {
    * @return the list of the task IDs in this stage considering cloning.
    */
   public List<String> getPossiblyClonedTaskIds() {
+    // Get possibly cloned task ids.
+    final int cloneNum = executionProperties.get(ClonedSchedulingProperty.class).orElse(1);
     final List<String> taskIds = new ArrayList<>();
     for (int taskIdx = 0; taskIdx < getParallelism(); taskIdx++) {
-      taskIds.add(RuntimeIdGenerator.generateTaskId(getId(), taskIdx));
+      for (int cloneOffset = 0; cloneOffset < cloneNum; cloneOffset++) {
+        taskIds.add(RuntimeIdGenerator.generateTaskId(getId(), taskIdx, cloneOffset));
+      }
+    }
+
+    // Shuffle to avoid always doing the same work back-to-back.
+    if (cloneNum > 1) {
+      Collections.shuffle(taskIds);
     }
     return taskIds;
   }

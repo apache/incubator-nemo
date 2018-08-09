@@ -68,10 +68,6 @@ public final class RuntimeIdGenerator {
     return "Stage-" + stageId;
   }
 
-  public static String generateTaskId(final String stageId, final int index) {
-    return generateTaskId(stageId, index, 0);
-  }
-
   /**
    * Generates the ID for a task.
    *
@@ -112,11 +108,6 @@ public final class RuntimeIdGenerator {
     }
     return BLOCK_PREFIX + runtimeEdgeId + BLOCK_ID_SPLITTER + producerTaskIndex +
         CLONE_OFFSET_PREFIX + producerTaskCloneOffset;
-  }
-
-  public static String generateBlockId(final String runtimeEdgeId,
-                                       final int producerTaskIndex) {
-    return generateBlockId(runtimeEdgeId, producerTaskIndex, 0);
   }
 
   /**

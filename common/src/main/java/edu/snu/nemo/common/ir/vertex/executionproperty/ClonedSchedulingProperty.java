@@ -35,6 +35,9 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Inte
    * @return the newly created execution property.
    */
   public static ClonedSchedulingProperty of(final Integer value) {
+    if (value <= 0) {
+      throw new IllegalStateException(String.valueOf(value));
+    }
     return new ClonedSchedulingProperty(value);
   }
 }

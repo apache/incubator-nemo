@@ -36,7 +36,7 @@ public final class ClonedSchedulingPass extends AnnotatingPass {
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().forEach(vertex -> vertex.setProperty(ClonedSchedulingProperty.of(2));
+    dag.getVertices().forEach(vertex -> vertex.setProperty(ClonedSchedulingProperty.of(2)));
     return dag;
   }
 }
