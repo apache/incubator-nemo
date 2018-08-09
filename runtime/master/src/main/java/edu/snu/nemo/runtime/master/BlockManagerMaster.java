@@ -50,6 +50,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static edu.snu.nemo.runtime.common.state.BlockState.State.IN_PROGRESS;
+import static edu.snu.nemo.runtime.common.state.BlockState.State.NOT_AVAILABLE;
 
 /**
  * Master-side block manager.
@@ -229,8 +230,8 @@ public final class BlockManagerMaster {
     try {
       if (producerTaskIdToBlockIds.containsKey(scheduledTaskId)) {
         producerTaskIdToBlockIds.get(scheduledTaskId).forEach(blockId -> {
-          if (!blockIdToMetadata.get(blockId).getBlockState()
-              .getStateMachine().getCurrentState().equals(IN_PROGRESS)) {
+          if (blockIdToMetadata.get(blockId).getBlockState()
+              .getStateMachine().getCurrentState().equals(NOT_AVAILABLE)) {
             onBlockStateChanged(blockId, IN_PROGRESS, null);
           }
         });

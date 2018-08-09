@@ -23,7 +23,7 @@ import edu.snu.nemo.runtime.common.message.MessageSender;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
-import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
@@ -54,13 +54,13 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 /**
- * Tests {@link BatchSingleJobScheduler}.
+ * Tests {@link BatchScheduler}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ContainerManager.class, BlockManagerMaster.class,
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
-public final class BatchSingleJobSchedulerTest {
-  private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobSchedulerTest.class.getName());
+public final class BatchSchedulerTest {
+  private static final Logger LOG = LoggerFactory.getLogger(BatchSchedulerTest.class.getName());
   private Scheduler scheduler;
   private ExecutorRegistry executorRegistry;
   private final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
@@ -80,7 +80,7 @@ public final class BatchSingleJobSchedulerTest {
     injector.bindVolatileInstance(BlockManagerMaster.class, mock(BlockManagerMaster.class));
     injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
     injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
-    scheduler = injector.getInstance(BatchSingleJobScheduler.class);
+    scheduler = injector.getInstance(BatchScheduler.class);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
@@ -114,28 +114,28 @@ public final class BatchSingleJobSchedulerTest {
   }
 
   /**
-   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchSingleJobScheduler}.
+   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchScheduler}.
    * Task state changes are explicitly submitted to scheduler instead of executor messages.
    */
   @Test(timeout=10000)
   public void testPull() throws Exception {
-    scheduleAndCheckJobTermination(
+    scheduleAndCheckPlanTermination(
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false));
   }
 
   /**
-   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchSingleJobScheduler}.
+   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchScheduler}.
    * Task state changes are explicitly submitted to scheduler instead of executor messages.
    */
   @Test(timeout=10000)
   public void testPush() throws Exception {
-    scheduleAndCheckJobTermination(
+    scheduleAndCheckPlanTermination(
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, true));
   }
 
-  private void scheduleAndCheckJobTermination(final PhysicalPlan plan) throws InjectionException {
-    final JobStateManager jobStateManager = new JobStateManager(plan, metricMessageHandler, 1);
-    scheduler.scheduleJob(plan, jobStateManager);
+  private void scheduleAndCheckPlanTermination(final PhysicalPlan plan) throws InjectionException {
+    final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, 1);
+    scheduler.schedulePlan(plan, planStateManager);
 
     // For each ScheduleGroup, test if the tasks of the next ScheduleGroup are scheduled
     // after the stages of each ScheduleGroup are made "complete".
@@ -146,14 +146,14 @@ public final class BatchSingleJobSchedulerTest {
       LOG.debug("Checking that all stages of ScheduleGroup {} enter the executing state", scheduleGroupIdx);
       stages.forEach(stage -> {
         SchedulerTestUtil.completeStage(
-            jobStateManager, scheduler, executorRegistry, stage, SCHEDULE_ATTEMPT_INDEX);
+            planStateManager, scheduler, executorRegistry, stage, SCHEDULE_ATTEMPT_INDEX);
       });
     }
 
-    LOG.debug("Waiting for job termination after sending stage completion events");
-    while (!jobStateManager.isJobDone()) {
+    LOG.debug("Waiting for plan termination after sending stage completion events");
+    while (!planStateManager.isPlanDone()) {
     }
-    assertTrue(jobStateManager.isJobDone());
+    assertTrue(planStateManager.isPlanDone());
   }
 
   private List<Stage> filterStagesWithAScheduleGroup(

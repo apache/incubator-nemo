@@ -17,7 +17,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
@@ -31,23 +31,23 @@ import javax.annotation.Nullable;
  * Other scheduler-related classes that are accessed by only one of the two threads are not synchronized(NotThreadSafe).
  */
 @DriverSide
-@DefaultImplementation(BatchSingleJobScheduler.class)
+@DefaultImplementation(BatchScheduler.class)
 public interface Scheduler {
 
   /**
-   * Schedules the given job.
+   * Schedules the given plan.
    * @param physicalPlan of the job being submitted.
-   * @param jobStateManager to manage the states of the submitted job.
+   * @param planStateManager to manage the states of the submitted plan.
    */
-  void scheduleJob(PhysicalPlan physicalPlan,
-                   JobStateManager jobStateManager);
+  void schedulePlan(PhysicalPlan physicalPlan,
+                    PlanStateManager planStateManager);
 
   /**
    * Receives and updates the scheduler with a new physical plan for a job.
-   * @param jobId the ID of the job to change the physical plan.
+   * @param planId the ID of the physical plan to change.
    * @param newPhysicalPlan new physical plan for the job.
    */
-  void updateJob(String jobId, PhysicalPlan newPhysicalPlan);
+  void updatePlan(String planId, PhysicalPlan newPhysicalPlan);
 
   /**
    * Called when an executor is added to Runtime, so that the extra resource can be used to execute the job.
