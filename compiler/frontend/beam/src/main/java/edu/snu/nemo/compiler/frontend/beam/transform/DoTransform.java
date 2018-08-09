@@ -35,9 +35,9 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Instant;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
 
 /**
  * DoFn transform implementation.
@@ -392,10 +392,10 @@ public final class DoTransform<I, O> implements Transform<I, O> {
    * @param <O> output type
    */
   static final class OutputReceiver<O> implements DoFn.OutputReceiver<O> {
-    private final Queue<O> dataQueue;
+    private final List<O> dataElements;
 
     OutputReceiver(final OutputCollectorImpl<O> outputCollector) {
-      this.dataQueue = outputCollector.getMainTagOutputQueue();
+      this.dataElements = outputCollector.getMainTagOutputQueue();
     }
 
     OutputReceiver(final OutputCollectorImpl outputCollector,
@@ -405,23 +405,23 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       if (dstVertexId == null && outputCollector.getMainTag().isPresent()) {
         final String mainTag = (String) outputCollector.getMainTag().get();
         if (mainTag.equals(tupleTag.getId())) {
-          this.dataQueue = outputCollector.getMainTagOutputQueue();
+          this.dataElements = outputCollector.getMainTagOutputQueue();
         } else {
           throw new IllegalArgumentException("Unexpected tag is provided to OutputReceiver");
         }
       } else {
-        this.dataQueue = (Queue<O>) outputCollector.getAdditionalTagOutputQueue((String) dstVertexId);
+        this.dataElements = (List<O>) outputCollector.getAdditionalTagOutputQueue((String) dstVertexId);
       }
     }
 
     @Override
     public void output(final O output) {
-      dataQueue.add(output);
+      dataElements.add(output);
     }
 
     @Override
     public void outputWithTimestamp(final O output, final Instant timestamp) {
-      dataQueue.add(output);
+      dataElements.add(output);
     }
   }
 

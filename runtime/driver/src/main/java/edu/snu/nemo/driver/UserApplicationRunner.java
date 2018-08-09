@@ -26,7 +26,7 @@ import edu.snu.nemo.compiler.backend.nemo.NemoBackend;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.Injector;
@@ -102,16 +102,16 @@ public final class UserApplicationRunner {
       physicalPlan.getStageDAG().storeJSON(dagDirectory, "plan", "physical execution plan by compiler");
 
       // Execute!
-      final Pair<JobStateManager, ScheduledExecutorService> executionResult =
+      final Pair<PlanStateManager, ScheduledExecutorService> executionResult =
           runtimeMaster.execute(physicalPlan, maxScheduleAttempt);
 
       // Wait for the job to finish and stop logging
-      final JobStateManager jobStateManager = executionResult.left();
+      final PlanStateManager planStateManager = executionResult.left();
       final ScheduledExecutorService dagLoggingExecutor = executionResult.right();
-      jobStateManager.waitUntilFinish();
+      planStateManager.waitUntilFinish();
       dagLoggingExecutor.shutdown();
 
-      jobStateManager.storeJSON(dagDirectory, "final");
+      planStateManager.storeJSON(dagDirectory, "final");
       LOG.info("{} is complete!", physicalPlan.getId());
     } catch (final Exception e) {
       throw new RuntimeException(e);

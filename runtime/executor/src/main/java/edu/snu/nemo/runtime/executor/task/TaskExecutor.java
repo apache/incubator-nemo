@@ -226,19 +226,15 @@ public final class TaskExecutor {
     }
 
     // Given a single input element, a vertex can produce many output elements.
-    // Here, we recursively process all of the main output elements.
-    while (!outputCollector.isEmpty()) {
-      final Object element = outputCollector.remove();
-      handleMainOutputElement(vertexHarness, element); // Recursion
-    }
+    // Here, we recursively process all of the main oltput elements.
+    outputCollector.iterateMain().forEach(element -> handleMainOutputElement(vertexHarness, element)); // Recursion
+    outputCollector.clearMain();
 
     // Recursively process all of the additional output elements.
-    vertexHarness.getContext().getTagToAdditionalChildren().values().forEach(value -> {
-      final String dstVertexId = (String) value;
-      while (!outputCollector.isEmpty(dstVertexId)) {
-        final Object element = outputCollector.remove(dstVertexId);
-        handleAdditionalOutputElement(vertexHarness, element, dstVertexId); // Recursion
-      }
+    vertexHarness.getContext().getTagToAdditionalChildren().values().forEach(tag -> {
+      outputCollector.iterateTag(tag).forEach(
+          element -> handleAdditionalOutputElement(vertexHarness, element, tag)); // Recursion
+      outputCollector.clearTag(tag);
     });
   }
 
@@ -332,17 +328,14 @@ public final class TaskExecutor {
     final OutputCollectorImpl outputCollector = vertexHarness.getOutputCollector();
 
     // handle main outputs
-    while (!outputCollector.isEmpty()) {
-      final Object element = outputCollector.remove();
-      handleMainOutputElement(vertexHarness, element);
-    }
+    outputCollector.iterateMain().forEach(element -> handleMainOutputElement(vertexHarness, element)); // Recursion
+    outputCollector.clearMain();
 
     // handle additional tagged outputs
     vertexHarness.getAdditionalTagOutputChildren().keySet().forEach(tag -> {
-      while (!outputCollector.isEmpty(tag)) {
-        final Object element = outputCollector.remove(tag);
-        handleAdditionalOutputElement(vertexHarness, element, tag);
-      }
+      outputCollector.iterateTag(tag).forEach(
+          element -> handleAdditionalOutputElement(vertexHarness, element, tag)); // Recursion
+      outputCollector.clearTag(tag);
     });
     finalizeOutputWriters(vertexHarness);
   }
@@ -389,16 +382,11 @@ public final class TaskExecutor {
       for (int i = 0; i < availableFetchers.size(); i++) {
         final DataFetcher dataFetcher = availableFetchers.get(i);
         final Object element;
+
         try {
           element = dataFetcher.fetchDataElement();
-        } catch (IOException e) {
-          taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
-              Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
-          LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e.toString());
-          return false;
-        }
-
-        if (element == null) {
+        } catch (NoSuchElementException e) {
+          // We've consumed all the data from this data fetcher.
           if (dataFetcher instanceof SourceVertexDataFetcher) {
             boundedSourceReadTime += ((SourceVertexDataFetcher) dataFetcher).getBoundedSourceReadTime();
           } else if (dataFetcher instanceof ParentTaskDataFetcher) {
@@ -407,12 +395,19 @@ public final class TaskExecutor {
           }
           finishedFetcherIndex = i;
           break;
+        } catch (IOException e) {
+          // IOException means that this task should be retried.
+          taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
+              Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
+          LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e.toString());
+          return false;
+        }
+
+        // Successfully fetched an element
+        if (dataFetcher.isFromSideInput()) {
+          sideInputMap.put(((OperatorVertex) dataFetcher.getDataSource()).getTransform().getTag(), element);
         } else {
-          if (dataFetcher.isFromSideInput()) {
-            sideInputMap.put(((OperatorVertex) dataFetcher.getDataSource()).getTransform().getTag(), element);
-          } else {
-            processElementRecursively(dataFetcher.getChild(), element);
-          }
+          processElementRecursively(dataFetcher.getChild(), element);
         }
       }
 
@@ -617,6 +612,7 @@ public final class TaskExecutor {
     // finalize OutputWriters for additional tagged children
     vertexHarness.getWritersToAdditionalChildrenTasks().values().forEach(outputWriter -> {
       outputWriter.close();
+
       final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
       writtenBytes.ifPresent(writtenBytesList::add);
     });

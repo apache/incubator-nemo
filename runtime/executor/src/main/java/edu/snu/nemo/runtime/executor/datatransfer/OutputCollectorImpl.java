@@ -27,28 +27,29 @@ import java.util.*;
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   private final Optional<String> mainTag;
   private final Set<String> mainTagOutputChildren;
-  private final Queue<O> mainTagOutputQueue;
-  private final Map<String, Queue<Object>> taggedOutputQueues;
+  // Use ArrayList (not Queue) to allow 'null' values
+  private final ArrayList<O> mainTagElements;
+  private final Map<String, ArrayList<Object>> additionalTagElementsMap;
 
   /**
    * Constructor of a new OutputCollectorImpl with tagged outputs.
-   * @param mainChildren       main children vertices
-   * @param additionalChildren additional children vertices
+   * @param mainTag        main tag
+   * @param mainChildren   main children vertices
+   * @param taggedChildren additional children vertices
    */
   public OutputCollectorImpl(final Optional<String> mainTag,
                              final Set<String> mainChildren,
-                             final List<String> additionalChildren) {
+                             final List<String> taggedChildren) {
     this.mainTag = mainTag;
     this.mainTagOutputChildren = mainChildren;
-    this.mainTagOutputQueue = new ArrayDeque<>(1);
-    this.taggedOutputQueues = new HashMap<>();
-
-    additionalChildren.forEach(child -> this.taggedOutputQueues.put(child, new ArrayDeque<>(1)));
+    this.mainTagElements = new ArrayList<>(1);
+    this.additionalTagElementsMap = new HashMap<>();
+    taggedChildren.forEach(child -> this.additionalTagElementsMap.put(child, new ArrayList<>(1)));
   }
 
   @Override
   public void emit(final O output) {
-    mainTagOutputQueue.add(output);
+    mainTagElements.add(output);
   }
 
   @Override
@@ -58,59 +59,34 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       emit((O) output);
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      this.taggedOutputQueues.get(dstVertexId).add(output);
+      this.additionalTagElementsMap.get(dstVertexId).add(output);
     }
   }
 
-  /**
-   * Inter-Task data is transferred from sender-side Task's OutputCollectorImpl
-   * to receiver-side Task.
-   *
-   * @return the first element of this list
-   */
-  public O remove() {
-    return mainTagOutputQueue.remove();
+  public Iterable<O> iterateMain() {
+    return mainTagElements;
   }
 
-  /**
-   * Inter-task data is transferred from sender-side Task's OutputCollectorImpl
-   * to receiver-side Task.
-   *
-   * @param tag output tag
-   * @return the first element of corresponding list
-   */
-  public Object remove(final String tag) {
+  public Iterable<Object> iterateTag(final String tag) {
     if (this.mainTagOutputChildren.contains(tag)) {
       // This dstVertexId is for the main tag
-      return remove();
+      return (Iterable<Object>) iterateMain();
     } else {
-      // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      return this.taggedOutputQueues.get(tag).remove();
+      return this.additionalTagElementsMap.get(tag);
     }
-
   }
 
-  /**
-   * Check if this OutputCollector is empty.
-   *
-   * @return true if this OutputCollector is empty.
-   */
-  public boolean isEmpty() {
-    return mainTagOutputQueue.isEmpty();
+  public void clearMain() {
+    mainTagElements.clear();
   }
 
-  /**
-   * Check if this OutputCollector is empty.
-   *
-   * @param tag output tag
-   * @return true if this OutputCollector is empty.
-   */
-  public boolean isEmpty(final String tag) {
+  public void clearTag(final String tag) {
     if (this.mainTagOutputChildren.contains(tag)) {
-      return isEmpty();
+      // This dstVertexId is for the main tag
+      clearMain();
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      return this.taggedOutputQueues.get(tag).isEmpty();
+      this.additionalTagElementsMap.get(tag).clear();
     }
   }
 
@@ -118,15 +94,15 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     return mainTag;
   }
 
-  public Queue<O> getMainTagOutputQueue() {
-    return mainTagOutputQueue;
+  public List<O> getMainTagOutputQueue() {
+    return mainTagElements;
   }
 
-  public Queue getAdditionalTagOutputQueue(final String dstVertexId) {
+  public List getAdditionalTagOutputQueue(final String dstVertexId) {
     if (this.mainTagOutputChildren.contains(dstVertexId)) {
-      return this.mainTagOutputQueue;
+      return this.mainTagElements;
     } else {
-      return this.taggedOutputQueues.get(dstVertexId);
+      return this.additionalTagElementsMap.get(dstVertexId);
     }
   }
 }

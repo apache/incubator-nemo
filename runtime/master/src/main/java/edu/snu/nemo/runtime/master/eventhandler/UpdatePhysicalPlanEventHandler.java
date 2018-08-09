@@ -48,6 +48,6 @@ public final class UpdatePhysicalPlanEventHandler implements CompilerEventHandle
   public void onNext(final UpdatePhysicalPlanEvent updatePhysicalPlanEvent) {
     final PhysicalPlan newPlan = updatePhysicalPlanEvent.getNewPhysicalPlan();
 
-    this.scheduler.updateJob(newPlan.getId(), newPlan);
+    this.scheduler.updatePlan(newPlan.getId(), newPlan);
   }
 }

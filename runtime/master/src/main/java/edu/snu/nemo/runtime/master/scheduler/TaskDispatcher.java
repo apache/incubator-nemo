@@ -17,7 +17,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -37,16 +37,16 @@ import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 
 /**
- * Schedules tasks in discrete batches (scheduling iterations).
- * A scheduling iteration occurs under one of the following conditions
+ * Dispatches tasks to executors in discrete batches (dispatch iterations).
+ * A dispatch iteration occurs under one of the following conditions
  * - An executor slot becomes available (for reasons such as task completion/failure, or executor addition)
  * - A new list of tasks become available (for reasons such as stage completion, task failure, or executor removal)
  */
 @DriverSide
 @NotThreadSafe
-public final class SchedulerRunner {
-  private static final Logger LOG = LoggerFactory.getLogger(SchedulerRunner.class.getName());
-  private final Map<String, JobStateManager> jobStateManagers;
+final class TaskDispatcher {
+  private static final Logger LOG = LoggerFactory.getLogger(TaskDispatcher.class.getName());
+  private final Map<String, PlanStateManager> planStateManagers;
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorService schedulerThread;
   private boolean isSchedulerRunning;
@@ -58,14 +58,14 @@ public final class SchedulerRunner {
   private final SchedulingPolicy schedulingPolicy;
 
   @Inject
-  private SchedulerRunner(final SchedulingConstraintRegistry schedulingConstraintRegistry,
-                          final SchedulingPolicy schedulingPolicy,
-                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
-                          final ExecutorRegistry executorRegistry) {
-    this.jobStateManagers = new HashMap<>();
+  private TaskDispatcher(final SchedulingConstraintRegistry schedulingConstraintRegistry,
+                         final SchedulingPolicy schedulingPolicy,
+                         final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                         final ExecutorRegistry executorRegistry) {
+    this.planStateManagers = new HashMap<>();
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable ->
-        new Thread(runnable, "SchedulerRunner thread"));
+        new Thread(runnable, "TaskDispatcher thread"));
     this.isSchedulerRunning = false;
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
@@ -74,7 +74,7 @@ public final class SchedulerRunner {
   }
 
   /**
-   * A separate thread is run to schedule tasks to executors.
+   * A separate thread is run to dispatch tasks to executors.
    * See comments in the {@link Scheduler} for avoiding race conditions.
    */
   private final class SchedulerThread implements Runnable {
@@ -84,18 +84,18 @@ public final class SchedulerRunner {
         doScheduleTaskList();
         schedulingIteration.await();
       }
-      jobStateManagers.values().forEach(jobStateManager -> {
-        if (jobStateManager.isJobDone()) {
-          LOG.info("{} is complete.", jobStateManager.getJobId());
+      planStateManagers.values().forEach(planStateManager -> {
+        if (planStateManager.isPlanDone()) {
+          LOG.info("{} is complete.", planStateManager.getPlanId());
         } else {
-          LOG.info("{} is incomplete.", jobStateManager.getJobId());
+          LOG.info("{} is incomplete.", planStateManager.getPlanId());
         }
       });
-      LOG.info("SchedulerRunner Terminated!");
+      LOG.info("TaskDispatcher Terminated!");
     }
   }
 
-  void doScheduleTaskList() {
+  private void doScheduleTaskList() {
     final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
     if (!taskListOptional.isPresent()) {
       // Task list is empty
@@ -106,8 +106,8 @@ public final class SchedulerRunner {
     final Collection<Task> taskList = taskListOptional.get();
     final List<Task> couldNotSchedule = new ArrayList<>();
     for (final Task task : taskList) {
-      final JobStateManager jobStateManager = jobStateManagers.get(task.getJobId());
-      if (!jobStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
+      final PlanStateManager planStateManager = planStateManagers.get(task.getPlanId());
+      if (!planStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
         // Guard against race conditions causing duplicate task launches
         LOG.debug("Skipping {} as it is not READY", task.getTaskId());
         continue;
@@ -128,7 +128,7 @@ public final class SchedulerRunner {
           final ExecutorRepresenter selectedExecutor
               = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
           // update metadata first
-          jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+          planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
           LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
 
@@ -162,11 +162,11 @@ public final class SchedulerRunner {
   }
 
   /**
-   * Run the scheduler thread.
+   * Run the dispatcher thread.
    */
-  void run(final JobStateManager jobStateManager) {
+  void run(final PlanStateManager planStateManager) {
+    planStateManagers.put(planStateManager.getPlanId(), planStateManager);
     if (!isTerminated && !isSchedulerRunning) {
-      jobStateManagers.put(jobStateManager.getJobId(), jobStateManager);
       schedulerThread.execute(new SchedulerThread());
       schedulerThread.shutdown();
       isSchedulerRunning = true;
