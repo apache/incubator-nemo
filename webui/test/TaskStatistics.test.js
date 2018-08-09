@@ -41,7 +41,8 @@ test.serial('column generation', async t => {
 
   vm.$mount();
 
-  t.is(vm.columnArray.length, 2, 'should discard specific columns');
+  t.is(vm.columnArray.length, 3, 'should discard specific columns');
+  t.truthy(vm.columnArray.includes('duration'), 'should add duration field');
   t.truthy(vm.columnArray.includes('fooProperty'));
   t.truthy(vm.columnArray.includes('barProperty'));
 
