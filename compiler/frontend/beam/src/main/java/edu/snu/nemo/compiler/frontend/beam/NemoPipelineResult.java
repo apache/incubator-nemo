@@ -37,7 +37,7 @@ public final class NemoPipelineResult extends ClientEndpoint implements Pipeline
 
   @Override
   public State getState() {
-    return (State) super.getJobState();
+    return (State) super.getPlanState();
   }
 
   @Override

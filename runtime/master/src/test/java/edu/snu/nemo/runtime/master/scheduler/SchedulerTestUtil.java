@@ -18,7 +18,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
 import java.util.Optional;
@@ -29,25 +29,25 @@ import java.util.Optional;
 final class SchedulerTestUtil {
   /**
    * Complete the stage by completing all of its Tasks.
-   * @param jobStateManager for the submitted job.
-   * @param scheduler for the submitted job.
+   * @param planStateManager for the submitted plan.
+   * @param scheduler for the submitted plan.
    * @param executorRegistry provides executor representers
    * @param stage for which the states should be marked as complete.
    */
-  static void completeStage(final JobStateManager jobStateManager,
+  static void completeStage(final PlanStateManager planStateManager,
                             final Scheduler scheduler,
                             final ExecutorRegistry executorRegistry,
                             final Stage stage,
                             final int attemptIdx) {
     // Loop until the stage completes.
     while (true) {
-      final StageState.State stageState = jobStateManager.getStageState(stage.getId());
+      final StageState.State stageState = planStateManager.getStageState(stage.getId());
       if (StageState.State.COMPLETE == stageState) {
         // Stage has completed, so we break out of the loop.
         break;
       } else if (StageState.State.INCOMPLETE == stageState) {
         stage.getTaskIds().forEach(taskId -> {
-          final TaskState.State taskState = jobStateManager.getTaskState(taskId);
+          final TaskState.State taskState = planStateManager.getTaskState(taskId);
           if (TaskState.State.EXECUTING == taskState) {
             sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId,
                 TaskState.State.COMPLETE, attemptIdx, null);
@@ -66,7 +66,7 @@ final class SchedulerTestUtil {
   /**
    * Sends task state change event to scheduler.
    * This replaces executor's task completion messages for testing purposes.
-   * @param scheduler for the submitted job.
+   * @param scheduler for the submitted plan.
    * @param executorRegistry provides executor representers
    * @param taskId for the task to change the state.
    * @param newState for the task.

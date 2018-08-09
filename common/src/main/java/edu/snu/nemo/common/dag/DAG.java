@@ -27,7 +27,6 @@ import java.io.PrintWriter;
 import java.io.Serializable;
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -81,17 +80,6 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
     this.loopStackDepthMap = new HashMap<>();
     assignedLoopVertexMap.forEach((v, loopVertex) -> this.assignedLoopVertexMap.put(v.getId(), loopVertex));
     loopStackDepthMap.forEach(((v, integer) -> this.loopStackDepthMap.put(v.getId(), integer)));
-  }
-
-  /**
-   * Converts a DAG into another DAG according to a function.
-   * @param function to apply when converting a DAG to another.
-   * @param <V2> the converted DAG's vertex type.
-   * @param <E2> the converted DAG's edge type.
-   * @return the converted DAG.
-   */
-  public <V2 extends Vertex, E2 extends Edge<V2>> DAG<V2, E2> convert(final Function<DAG<V, E>, DAG<V2, E2>> function) {
-    return function.apply(this);
   }
 
   /**

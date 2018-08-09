@@ -22,7 +22,7 @@ import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.state.JobState;
+import edu.snu.nemo.runtime.common.state.PlanState;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.common.plan.TestPlanGenerator;
@@ -42,11 +42,11 @@ import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.mock;
 
 /**
- * Tests {@link JobStateManager}.
+ * Tests {@link PlanStateManager}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(MetricMessageHandler.class)
-public final class JobStateManagerTest {
+public final class PlanStateManagerTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
   private MetricMessageHandler metricMessageHandler;
 
@@ -59,17 +59,17 @@ public final class JobStateManagerTest {
   }
 
   /**
-   * This method builds a physical DAG starting from an IR DAG and submits it to {@link JobStateManager}.
+   * This method builds a physical DAG starting from an IR DAG and submits it to {@link PlanStateManager}.
    * State changes are explicitly called to check whether states are managed correctly or not.
    */
   @Test
   public void testPhysicalPlanStateChanges() throws Exception {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
-    final JobStateManager jobStateManager =
-        new JobStateManager(physicalPlan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+    final PlanStateManager planStateManager =
+        new PlanStateManager(physicalPlan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
-    assertEquals(jobStateManager.getJobId(), "TestPlan");
+    assertEquals(planStateManager.getPlanId(), "TestPlan");
 
     final List<Stage> stageList = physicalPlan.getStageDAG().getTopologicalSort();
 
@@ -77,45 +77,45 @@ public final class JobStateManagerTest {
       final Stage stage = stageList.get(stageIdx);
       final List<String> taskIds = stage.getTaskIds();
       taskIds.forEach(taskId -> {
-        jobStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
-        jobStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
+        planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
+        planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
         if (RuntimeIdGenerator.getIndexFromTaskId(taskId) == taskIds.size() - 1) {
-          assertEquals(StageState.State.COMPLETE, jobStateManager.getStageState(stage.getId()));
+          assertEquals(StageState.State.COMPLETE, planStateManager.getStageState(stage.getId()));
         }
       });
-      taskIds.forEach(taskId -> assertEquals(jobStateManager.getTaskState(taskId), TaskState.State.COMPLETE));
+      taskIds.forEach(taskId -> assertEquals(planStateManager.getTaskState(taskId), TaskState.State.COMPLETE));
 
       if (stageIdx == stageList.size() - 1) {
-        assertEquals(jobStateManager.getJobState(), JobState.State.COMPLETE);
+        assertEquals(planStateManager.getPlanState(), PlanState.State.COMPLETE);
       }
     }
   }
 
   /**
-   * Test whether the methods waiting finish of job works properly.
+   * Test whether the methods waiting for the finish of the plan works properly.
    */
   @Test(timeout = 2000)
   public void testWaitUntilFinish() throws Exception {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
-    final JobStateManager jobStateManager =
-        new JobStateManager(physicalPlan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+    final PlanStateManager planStateManager =
+        new PlanStateManager(physicalPlan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
-    assertFalse(jobStateManager.isJobDone());
+    assertFalse(planStateManager.isPlanDone());
 
-    // Wait for the job to finish and check the job state.
+    // Wait for the plan to finish and check the plan state.
     // It have to return EXECUTING state after timeout.
-    final JobState.State executingState = jobStateManager.waitUntilFinish(100, TimeUnit.MILLISECONDS);
-    assertEquals(JobState.State.EXECUTING, executingState);
+    final PlanState.State executingState = planStateManager.waitUntilFinish(100, TimeUnit.MILLISECONDS);
+    assertEquals(PlanState.State.EXECUTING, executingState);
 
-    // Complete the job and check the result again.
-    // It have to return COMPLETE.
+    // Complete the plan and check the result again.
+    // It has to return COMPLETE.
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
         .flatMap(stage -> stage.getTaskIds().stream())
         .collect(Collectors.toList());
-    tasks.forEach(taskId -> jobStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
-    tasks.forEach(taskId -> jobStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));
-    final JobState.State completedState = jobStateManager.waitUntilFinish();
-    assertEquals(JobState.State.COMPLETE, completedState);
+    tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
+    tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));
+    final PlanState.State completedState = planStateManager.waitUntilFinish();
+    assertEquals(PlanState.State.COMPLETE, completedState);
   }
 }
