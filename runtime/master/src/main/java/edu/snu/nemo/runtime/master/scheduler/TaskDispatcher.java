@@ -37,15 +37,15 @@ import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 
 /**
- * Schedules tasks in discrete batches (scheduling iterations).
- * A scheduling iteration occurs under one of the following conditions
+ * Dispatches tasks to executors in discrete batches (dispatch iterations).
+ * A dispatch iteration occurs under one of the following conditions
  * - An executor slot becomes available (for reasons such as task completion/failure, or executor addition)
  * - A new list of tasks become available (for reasons such as stage completion, task failure, or executor removal)
  */
 @DriverSide
 @NotThreadSafe
-public final class SchedulerRunner {
-  private static final Logger LOG = LoggerFactory.getLogger(SchedulerRunner.class.getName());
+final class TaskDispatcher {
+  private static final Logger LOG = LoggerFactory.getLogger(TaskDispatcher.class.getName());
   private final Map<String, PlanStateManager> planStateManagers;
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorService schedulerThread;
@@ -58,14 +58,14 @@ public final class SchedulerRunner {
   private final SchedulingPolicy schedulingPolicy;
 
   @Inject
-  private SchedulerRunner(final SchedulingConstraintRegistry schedulingConstraintRegistry,
-                          final SchedulingPolicy schedulingPolicy,
-                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
-                          final ExecutorRegistry executorRegistry) {
+  private TaskDispatcher(final SchedulingConstraintRegistry schedulingConstraintRegistry,
+                         final SchedulingPolicy schedulingPolicy,
+                         final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                         final ExecutorRegistry executorRegistry) {
     this.planStateManagers = new HashMap<>();
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable ->
-        new Thread(runnable, "SchedulerRunner thread"));
+        new Thread(runnable, "TaskDispatcher thread"));
     this.isSchedulerRunning = false;
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
@@ -74,7 +74,7 @@ public final class SchedulerRunner {
   }
 
   /**
-   * A separate thread is run to schedule tasks to executors.
+   * A separate thread is run to dispatch tasks to executors.
    * See comments in the {@link Scheduler} for avoiding race conditions.
    */
   private final class SchedulerThread implements Runnable {
@@ -91,11 +91,11 @@ public final class SchedulerRunner {
           LOG.info("{} is incomplete.", planStateManager.getPlanId());
         }
       });
-      LOG.info("SchedulerRunner Terminated!");
+      LOG.info("TaskDispatcher Terminated!");
     }
   }
 
-  void doScheduleTaskList() {
+  private void doScheduleTaskList() {
     final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
     if (!taskListOptional.isPresent()) {
       // Task list is empty
@@ -162,7 +162,7 @@ public final class SchedulerRunner {
   }
 
   /**
-   * Run the scheduler thread.
+   * Run the dispatcher thread.
    */
   void run(final PlanStateManager planStateManager) {
     planStateManagers.put(planStateManager.getPlanId(), planStateManager);

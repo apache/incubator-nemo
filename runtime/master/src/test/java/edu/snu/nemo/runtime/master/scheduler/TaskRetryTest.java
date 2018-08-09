@@ -57,7 +57,7 @@ import static org.mockito.Mockito.mock;
  * Tests fault tolerance.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({BlockManagerMaster.class, SchedulerRunner.class, SchedulingConstraintRegistry.class,
+@PrepareForTest({BlockManagerMaster.class, TaskDispatcher.class, SchedulingConstraintRegistry.class,
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
 public final class TaskRetryTest {
   @Rule public TestName testName = new TestName();

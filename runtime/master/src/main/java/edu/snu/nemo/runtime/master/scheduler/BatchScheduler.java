@@ -59,7 +59,7 @@ public final class BatchScheduler implements Scheduler {
   /**
    * Components related to scheduling the given plan.
    */
-  private final SchedulerRunner schedulerRunner;
+  private final TaskDispatcher taskDispatcher;
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorRegistry executorRegistry;
 
@@ -77,13 +77,13 @@ public final class BatchScheduler implements Scheduler {
   private List<List<Stage>> sortedScheduleGroups;
 
   @Inject
-  private BatchScheduler(final SchedulerRunner schedulerRunner,
+  private BatchScheduler(final TaskDispatcher taskDispatcher,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final BlockManagerMaster blockManagerMaster,
                          final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                          final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
                          final ExecutorRegistry executorRegistry) {
-    this.schedulerRunner = schedulerRunner;
+    this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.blockManagerMaster = blockManagerMaster;
     this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
@@ -106,7 +106,7 @@ public final class BatchScheduler implements Scheduler {
     this.physicalPlan = submittedPhysicalPlan;
     this.planStateManager = submittedPlanStateManager;
 
-    schedulerRunner.run(this.planStateManager);
+    taskDispatcher.run(this.planStateManager);
     LOG.info("Plan to schedule: {}", this.physicalPlan.getId());
 
     this.sortedScheduleGroups = this.physicalPlan.getStageDAG().getVertices().stream()
@@ -191,13 +191,13 @@ public final class BatchScheduler implements Scheduler {
           break;
       }
 
-      // Invoke schedulerRunner.onExecutorSlotAvailable()
+      // Invoke taskDispatcher.onExecutorSlotAvailable()
       switch (newState) {
         // These three states mean that a slot is made available.
         case COMPLETE:
         case ON_HOLD:
         case SHOULD_RETRY:
-          schedulerRunner.onExecutorSlotAvailable();
+          taskDispatcher.onExecutorSlotAvailable();
           break;
         default:
           break;
@@ -218,7 +218,7 @@ public final class BatchScheduler implements Scheduler {
   public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
     LOG.info("{} added (node: {})", executorRepresenter.getExecutorId(), executorRepresenter.getNodeName());
     executorRegistry.registerExecutor(executorRepresenter);
-    schedulerRunner.onExecutorSlotAvailable();
+    taskDispatcher.onExecutorSlotAvailable();
   }
 
   @Override
@@ -242,7 +242,7 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public void terminate() {
-    this.schedulerRunner.terminate();
+    this.taskDispatcher.terminate();
     this.executorRegistry.terminate();
   }
 
@@ -254,7 +254,7 @@ public final class BatchScheduler implements Scheduler {
    *
    * These are the reasons why.
    * - We 'reset' {@link PendingTaskCollectionPointer}, and not 'add' new tasks to it
-   * - We make {@link SchedulerRunner} run only tasks that are READY.
+   * - We make {@link TaskDispatcher} dispatch only the tasks that are READY.
    */
   private void doSchedule() {
     final Optional<List<Stage>> earliest = selectEarliestSchedulableGroup();
@@ -277,8 +277,8 @@ public final class BatchScheduler implements Scheduler {
       // Set the pointer to the schedulable tasks.
       pendingTaskCollectionPointer.setToOverwrite(tasksToSchedule);
 
-      // Notify the runner that a new collection is available.
-      schedulerRunner.onNewPendingTaskCollectionAvailable();
+      // Notify the dispatcher that a new collection is available.
+      taskDispatcher.onNewPendingTaskCollectionAvailable();
     } else {
       LOG.info("Skipping this round as no ScheduleGroup is schedulable.");
     }
