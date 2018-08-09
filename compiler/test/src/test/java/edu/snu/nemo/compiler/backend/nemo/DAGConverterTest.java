@@ -76,7 +76,7 @@ public final class DAGConverterTest {
     final DAG<IRVertex, IREdge> irDAG = new TestPolicy().runCompileTimeOptimization(
         irDAGBuilder.buildWithoutSourceSinkCheck(), DAG.EMPTY_DAG_DIRECTORY);
     final DAG<Stage, StageEdge> DAGOfStages = physicalPlanGenerator.stagePartitionIrDAG(irDAG);
-    final DAG<Stage, StageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
+    final DAG<Stage, StageEdge> physicalDAG = physicalPlanGenerator.apply(irDAG);
 
     // Test DAG of stages
     final List<Stage> sortedDAGOfStages = DAGOfStages.getTopologicalSort();

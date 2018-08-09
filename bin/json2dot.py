@@ -44,15 +44,15 @@ def stateToColor(state):
     except:
         return 'white'
 
-class JobState:
+class PlanState:
     def __init__(self, data):
-        self.id = data['jobId']
+        self.id = data['planId']
         self.stages = {}
         for stage in data['stages']:
             self.stages[stage['id']] = StageState(stage)
     @classmethod
     def empty(cls):
-        return cls({'jobId': None, 'stages': []})
+        return cls({'planId': None, 'stages': []})
     def get(self, id):
         try:
             return self.stages[id]
@@ -96,11 +96,11 @@ class DAG:
     A class for converting DAG to Graphviz representation.
     JSON representation should be formatted like what toString method in DAG.java does.
     '''
-    def __init__(self, dag, jobState):
+    def __init__(self, dag, planState):
         self.vertices = {}
         self.edges = []
         for vertex in dag['vertices']:
-            self.vertices[vertex['id']] = Vertex(vertex['id'], vertex['properties'], jobState.get(vertex['id']))
+            self.vertices[vertex['id']] = Vertex(vertex['id'], vertex['properties'], planState.get(vertex['id']))
         for edge in dag['edges']:
             self.edges.append(Edge(self.vertices[edge['src']], self.vertices[edge['dst']], edge['properties']))
     @property
@@ -178,7 +178,7 @@ class NormalVertex:
 class LoopVertex:
     def __init__(self, id, properties):
         self.id = id
-        self.dag = DAG(properties['DAG'], JobState.empty())
+        self.dag = DAG(properties['DAG'], PlanState.empty())
         self.remaining_iteration = properties['remainingIteration']
         self.executionProperties = properties['executionProperties']
         self.incoming = properties['dagIncomingEdges']
@@ -217,7 +217,7 @@ class Stage:
     def __init__(self, id, properties, state):
         self.id = id
         self.properties = properties
-        self.stageDAG = DAG(properties['irDag'], JobState.empty())
+        self.stageDAG = DAG(properties['irDag'], PlanState.empty())
         self.idx = getIdx()
         self.state = state
         self.executionProperties = self.properties['executionProperties']
@@ -316,9 +316,9 @@ class RuntimeEdge:
 
 def jsonToDot(jsonDict):
     try:
-        dag = DAG(jsonDict['dag'], JobState(jsonDict['jobState']))
+        dag = DAG(jsonDict['dag'], PlanState(jsonDict['planState']))
     except:
-        dag = DAG(jsonDict, JobState.empty())
+        dag = DAG(jsonDict, PlanState.empty())
     return 'digraph dag {compound=true; nodesep=1.0; forcelabels=true;' + dag.dot + '}'
 
 if __name__ == "__main__":
