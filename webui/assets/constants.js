@@ -1,0 +1,10 @@
+// valid state string
+export const STATE = {
+  READY: 'READY',
+  EXECUTING: 'EXECUTING',
+  INCOMPLETE: 'INCOMPLETE',
+  COMPLETE: 'COMPLETE',
+  FAILED: 'FAILED',
+  ON_HOLD: 'ON_HOLD',
+  SHOULD_RETRY: 'SHOULD_RETRY',
+};
