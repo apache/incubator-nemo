@@ -35,6 +35,7 @@ import org.apache.spark.rdd.{AsyncRDDActions, DoubleRDDFunctions, OrderedRDDFunc
 import org.apache.spark.serializer.Serializer
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{Dependency, Partition, Partitioner, SparkContext, TaskContext}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
@@ -48,6 +49,7 @@ final class RDD[T: ClassTag] protected[rdd] (
     protected[rdd] val dag: DAG[IRVertex, IREdge],
     protected[rdd] val lastVertex: IRVertex,
     private val sourceRDD: Option[org.apache.spark.rdd.RDD[T]]) extends org.apache.spark.rdd.RDD[T](_sc, deps) {
+  private val LOG = LoggerFactory.getLogger(classOf[RDD[T]].getName)
 
   protected[rdd] val serializer: Serializer = SparkFrontendUtils.deriveSerializerFrom(_sc)
   private val loopVertexStack = new util.Stack[LoopVertex]
@@ -223,6 +225,70 @@ final class RDD[T: ClassTag] protected[rdd] (
     JobLauncher.launchDAG(builder.build)
   }
 
+  /////////////// CACHING ///////////////
+
+  /**
+   * Set this RDD's storage level to persist its values across operations after the first time
+   * it is computed. This can only be used to assign a new storage level if the RDD does not
+   * have a storage level set yet. Local checkpointing is an exception.
+   */
+  override def persist(newLevel: StorageLevel): RDD.this.type = {
+    var actualUseDisk = false
+    var actualUseMemory = false
+    val actualUseOffHeap = false
+    var actualDeserialized = false
+    val actualReplication = 1
+
+    if (!newLevel.isValid) {
+      throw new RuntimeException("Non-valid StorageLevel: " + newLevel.toString())
+    }
+
+    // Modify un-available options to an available option
+    if (newLevel.useDisk && newLevel.useMemory) {
+      actualUseDisk = true
+      actualUseMemory = false
+      // TODO #??: enable disk and memory persist
+      LOG.warn("Cannot persist data in disk and memory at the same time. The data will be persisted in disk only.")
+    } else {
+      actualUseDisk = newLevel.useDisk
+      actualUseMemory = newLevel.useMemory
+    }
+
+    if (newLevel.useOffHeap) {
+      // TODO #??: enable off-heap persist
+      LOG.warn("Cannot persist data using off-heap area. The data will be persisted in heap instead of off-heap.")
+    }
+
+    if (newLevel.deserialized && actualUseDisk) {
+      LOG.warn(
+        "Cannot persist data as deserialized form in disk. The data will be persisted in serialized form instead.")
+      actualDeserialized = false
+    } else {
+      actualDeserialized = newLevel.deserialized
+    }
+
+    if (newLevel.replication > 1) {
+      // TODO #??: enable replication for persisted data
+      LOG.warn("Cannot persist data with replication. The data will not be replicated.")
+    }
+
+    val actualNewLevel =
+      StorageLevel.apply(actualUseDisk, actualUseMemory, actualUseOffHeap, actualDeserialized, actualReplication)
+
+    return this // TODO: TMP
+  }
+
+  /**
+   * Persist this RDD with the default storage level (`MEMORY_ONLY`).
+   */
+  override def persist(): RDD.this.type = persist(StorageLevel.MEMORY_ONLY)
+
+  /**
+   * Persist this RDD with the default storage level (`MEMORY_ONLY`).
+   */
+  override def cache(): RDD.this.type = persist()
+
+
   /////////////// UNSUPPORTED METHODS ///////////////
   //TODO#92: Implement the unimplemented transformations/actions & dataset initialization methods for Spark frontend.
 
@@ -235,15 +301,6 @@ final class RDD[T: ClassTag] protected[rdd] (
   override def sparkContext: SparkContext = super.sparkContext
 
   override def setName(_name: String): RDD.this.type =
-    throw new UnsupportedOperationException("Operation not yet implemented.")
-
-  override def persist(newLevel: StorageLevel): RDD.this.type =
-    throw new UnsupportedOperationException("Operation not yet implemented.")
-
-  override def persist(): RDD.this.type =
-    throw new UnsupportedOperationException("Operation not yet implemented.")
-
-  override def cache(): RDD.this.type =
     throw new UnsupportedOperationException("Operation not yet implemented.")
 
   override def unpersist(blocking: Boolean): RDD.this.type =

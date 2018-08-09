@@ -21,6 +21,7 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.GhostProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
@@ -177,10 +178,9 @@ public final class BatchScheduler implements Scheduler {
         case ON_HOLD:
           // If the stage has completed
           final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
-          if (planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
-            if (!planStateManager.isPlanDone()) {
-              doSchedule();
-            }
+          if (planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)
+              && !planStateManager.isPlanDone()) {
+            doSchedule();
           }
           break;
         case SHOULD_RETRY:
@@ -208,7 +208,7 @@ public final class BatchScheduler implements Scheduler {
       // and then a notification that the task that was running in the removed executor has been completed.
       // In this case, if we do not consider the attempt number, the state changes from SHOULD_RETRY to COMPLETED,
       // which is illegal.
-      LOG.info("{} state change to {} arrived late, we will ignore this.", new Object[]{taskId, newState});
+      LOG.info("{} state change to {} arrived late, we will ignore this.", taskId, newState);
     } else {
       throw new SchedulingException(new Throwable("AttemptIdx for a task cannot be greater than its current index"));
     }
@@ -298,6 +298,15 @@ public final class BatchScheduler implements Scheduler {
   }
 
   private List<Task> selectSchedulableTasks(final Stage stageToSchedule) {
+    if (stageToSchedule.getPropertyValue(GhostProperty.class).orElse(false)) {
+      // Ignore ghost stage.
+      for (final String taskId : stageToSchedule.getTaskIds()) {
+        planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
+      }
+
+      return Collections.emptyList();
+    }
+
     final List<StageEdge> stageIncomingEdges =
         physicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
     final List<StageEdge> stageOutgoingEdges =
@@ -357,7 +366,7 @@ public final class BatchScheduler implements Scheduler {
    */
   private void onTaskExecutionComplete(final String executorId,
                                        final String taskId) {
-    LOG.debug("{} completed in {}", new Object[]{taskId, executorId});
+    LOG.debug("{} completed in {}", taskId, executorId);
     executorRegistry.updateExecutor(executorId, (executor, state) -> {
       executor.onTaskExecutionComplete(taskId);
       return Pair.of(executor, state);
@@ -373,7 +382,7 @@ public final class BatchScheduler implements Scheduler {
   private void onTaskExecutionOnHold(final String executorId,
                                      final String taskId,
                                      final String vertexPutOnHold) {
-    LOG.info("{} put on hold in {}", new Object[]{taskId, executorId});
+    LOG.info("{} put on hold in {}", taskId, executorId);
     executorRegistry.updateExecutor(executorId, (executor, state) -> {
       executor.onTaskExecutionComplete(taskId);
       return Pair.of(executor, state);

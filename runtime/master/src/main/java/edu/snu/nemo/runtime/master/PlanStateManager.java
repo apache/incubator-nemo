@@ -143,8 +143,7 @@ public final class PlanStateManager {
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
     // Change task state
     final StateMachine taskState = idToTaskStates.get(taskId).getStateMachine();
-    LOG.debug("Task State Transition: id {}, from {} to {}",
-        new Object[]{taskId, taskState.getCurrentState(), newTaskState});
+    LOG.debug("Task State Transition: id {}, from {} to {}", taskId, taskState.getCurrentState(), newTaskState);
 
     metricStore.getOrCreateMetric(TaskMetric.class, taskId)
         .addEvent((TaskState.State) taskState.getCurrentState(), newTaskState);
@@ -223,7 +222,7 @@ public final class PlanStateManager {
     metricStore.triggerBroadcast(StageMetric.class, stageId);
 
     LOG.debug("Stage State Transition: id {} from {} to {}",
-        new Object[]{stageId, stageStateMachine.getCurrentState(), newStageState});
+        stageId, stageStateMachine.getCurrentState(), newStageState);
     stageStateMachine.setState(newStageState);
 
     // Change plan state if needed
@@ -249,7 +248,7 @@ public final class PlanStateManager {
     if (newState == PlanState.State.EXECUTING) {
       LOG.debug("Executing Plan ID {}...", this.planId);
     } else if (newState == PlanState.State.COMPLETE || newState == PlanState.State.FAILED) {
-      LOG.debug("Plan ID {} {}!", new Object[]{planId, newState});
+      LOG.debug("Plan ID {} {}!", planId, newState);
 
       // Awake all threads waiting the finish of this plan.
       finishLock.lock();
@@ -272,7 +271,7 @@ public final class PlanStateManager {
   public PlanState.State waitUntilFinish() {
     finishLock.lock();
     try {
-      if (!isPlanDone()) {
+      while (!isPlanDone()) {
         planFinishedCondition.await();
       }
     } catch (final InterruptedException e) {
