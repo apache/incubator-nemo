@@ -20,7 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.state.JobState;
+import edu.snu.nemo.runtime.common.state.PlanState;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,9 +29,9 @@ import java.util.List;
 /**
  * Metric class for Job (or {@link PhysicalPlan}).
  */
-public final class JobMetric implements StateMetric<JobState.State> {
+public final class JobMetric implements StateMetric<PlanState.State> {
   private String id;
-  private List<StateTransitionEvent<JobState.State>> stateTransitionEvents = new ArrayList<>();
+  private List<StateTransitionEvent<PlanState.State>> stateTransitionEvents = new ArrayList<>();
   private JsonNode stageDagJson;
 
   public JobMetric(final PhysicalPlan physicalPlan) {
@@ -63,12 +63,12 @@ public final class JobMetric implements StateMetric<JobState.State> {
   }
 
   @Override
-  public List<StateTransitionEvent<JobState.State>> getStateTransitionEvents() {
+  public List<StateTransitionEvent<PlanState.State>> getStateTransitionEvents() {
     return stateTransitionEvents;
   }
 
   @Override
-  public void addEvent(final JobState.State prevState, final JobState.State newState) {
+  public void addEvent(final PlanState.State prevState, final PlanState.State newState) {
     stateTransitionEvents.add(new StateTransitionEvent<>(System.currentTimeMillis(), prevState, newState));
   }
 

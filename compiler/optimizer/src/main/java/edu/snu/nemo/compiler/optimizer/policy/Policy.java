@@ -26,6 +26,7 @@ import java.io.Serializable;
 /**
  * An interface for policies, each of which is composed of a list of static optimization passes.
  * The list of static optimization passes are run in the order provided by the implementation.
+ * Most policies follow the implementation in {@link PolicyImpl}.
  */
 public interface Policy extends Serializable {
   /**
