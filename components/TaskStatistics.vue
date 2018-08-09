@@ -39,19 +39,41 @@ export const EXCLUDE_COLUMN = [
 
 const NOT_AVAILABLE = -1;
 
-// this function will replace NOT_AVAILABLE
-// constant to N/A string.
-let _preprocessMetric = function (metric) {
+// this function will preprocess TaskMetric metric array.
+const _preprocessMetric = function (metric) {
   let newMetric = Object.assign({}, metric);
 
   Object.keys(newMetric).forEach(key => {
+    // replace NOT_AVAILBLE to 'N/A'
     if (newMetric[key] === NOT_AVAILABLE) {
       newMetric[key] = 'N/A';
     }
   });
 
+  if (newMetric.stateTransitionEvents) {
+    const ste = newMetric.stateTransitionEvents;
+    if (ste.length > 2) {
+      const firstEvent = ste[0], lastEvent = ste[ste.length - 1];
+      if (_isDoneTaskEvent(lastEvent)) {
+        newMetric.duration = lastEvent.timestamp - firstEvent.timestamp;
+      } else {
+        newMetric.duration = 'N/A';
+      }
+    } else {
+      newMetric.duration = 'N/A';
+    }
+  }
+
   return newMetric;
-}
+};
+
+const _isDoneTaskEvent = function (event) {
+  if (event.newState === STATE.COMPLETE
+    || event.newState === STATE.FAILED) {
+    return true;
+  }
+  return false;
+};
 
 export default {
   props: ['metricLookupMap'],
