@@ -25,11 +25,14 @@ export default {
   props: ['selectedJobId', 'groups', 'metricLookupMap'],
 
   beforeMount() {
+    // listen to redraw-timeline event.
     this.$eventBus.$on('redraw-timeline', async () => {
+      // wait for rendering components
       await this.$nextTick();
       this.redrawTimeline();
     });
 
+    // listen to fit-timeline event.
     this.$eventBus.$on('fit-timeline', jobId => {
       if (jobId !== this.selectedJobId) {
         return;
@@ -45,6 +48,7 @@ export default {
       }, FIT_THROTTLE_INTERVAL);
     });
 
+    // listen to move-timeline event.
     this.$eventBus.$on('move-timeline', ({ time, jobId }) => {
       if (jobId !== this.selectedJobId) {
         return;
@@ -52,6 +56,9 @@ export default {
       this.moveTimeline(time);
     });
 
+    // listen to set-timeline-filtered-items event.
+    // sets timeline DataSet, which was filtered by stage filters.
+    // this event only emitted by StageSelect component.
     this.$eventBus.$on('set-timeline-filtered-items', metricDataSet => {
       this.timeline.setItems(metricDataSet);
       this.fitTimeline();
@@ -59,6 +66,7 @@ export default {
   },
 
   mounted() {
+    // metric selection event handler
     this.timeline.on('select', ({ items }) => {
       if (items.length === 0) {
         this.$eventBus.$emit('metric-deselect');
@@ -93,11 +101,21 @@ export default {
   },
 
   methods: {
+    /**
+     * Redraw timeline. If timeline layout is collapsed or
+     * twingled, this method should be called.
+     * This method also fit the timeline synchronously.
+     */
     redrawTimeline() {
       this.timeline.redraw();
       this.timeline.fit();
     },
 
+    /**
+     * Fit timeline to make all available elements visible.
+     * It may be throw error if element is not ready or
+     * timeline itself it not ready, but it's ignorable.
+     */
     fitTimeline() {
       try {
         this.timeline.fit();
@@ -106,6 +124,12 @@ export default {
       }
     },
 
+    /**
+     * Move timeline to specific timestamp.
+     * It may be throw error if element is not ready or
+     * timeline itself it not ready, but it's ignorable.
+     * @param time timestamp or Date to move.
+     */
     moveTimeline(time) {
       try {
         this.timeline.moveTo(time, false);

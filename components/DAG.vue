@@ -97,6 +97,9 @@ export default {
 
   computed: {
 
+    /**
+     * width of DAG, padded with GRAPH_MARGIN.
+     */
     dagWidth() {
       if (!this.stageGraph) {
         return undefined;
@@ -104,6 +107,9 @@ export default {
       return this.stageGraph.graph().width + GRAPH_MARGIN;
     },
 
+    /**
+     * height of DAG, padded with GRAPH_MARGIN.
+     */
     dagHeight() {
       if (!this.stageGraph) {
         return undefined;
@@ -111,6 +117,9 @@ export default {
       return this.stageGraph.graph().height + GRAPH_MARGIN;
     },
 
+    /**
+     * array of stage id inside of dag.
+     */
     stageIdArray() {
       if (!this.dag) {
         return undefined;
@@ -118,6 +127,10 @@ export default {
       return this.dag.vertices.map(v => v.id);
     },
 
+
+    /**
+     * array of stage edge id inside of dag.
+     */
     stageEdges() {
       if (!this.dag) {
         return undefined;
@@ -128,6 +141,9 @@ export default {
   },
 
   methods: {
+    /**
+     * Initialize canvas, which DAG will be drawn.
+     */
     initializeCanvas() {
       this.canvas = new fabric.Canvas('dag-canvas', {
         selection: false,
@@ -138,6 +154,11 @@ export default {
       this.canvas.renderAll();
     },
 
+    /**
+     * Initialize variables.
+     * this method does not change the properties of canvas,
+     * but resets DAG information and coordinates of mouse actions.
+     */
     initializeVariables() {
       this.lastXCoord = 0;
       this.lastYCoord = 0;
@@ -150,6 +171,10 @@ export default {
       this.stageInnerObjects = {};
     },
 
+    /**
+     * Resize canvas size according to outer element.
+     * @param fit if true, DAG will be fitted after resize.
+     */
     resizeCanvas(fit) {
       return new Promise((resolve, reject) => {
         if (!this.canvas) {
@@ -175,7 +200,11 @@ export default {
       });
     },
 
+    /**
+     * Setup all event listener for this component.
+     */
     setUpEventListener() {
+      // invoke resize of canvas when pages is resize
       if (process.browser) {
         window.addEventListener('resize',
           () => this.resizeCanvas(true), false);
@@ -185,6 +214,8 @@ export default {
         this.resizeCanvas(true);
       });
 
+      // resize canvas, fit, and recalculate inner coordinates
+      // and rerender canvas
       this.$eventBus.$on('rerender-dag', async () => {
         // wait for tab pane render
         await this.$nextTick();
@@ -244,6 +275,7 @@ export default {
         this.dag = dag;
         this.drawDAG();
         this.setStates(states);
+        // restore previous translation viewport
         this.canvas.viewportTransform[4] = this.lastViewportX;
         this.canvas.viewportTransform[5] = this.lastViewportY;
       });
@@ -251,14 +283,17 @@ export default {
       // stage state transition event
       this.$eventBus.$on('state-change-event', event => {
         const { jobId, metricId, metricType, newState } = event;
+        // ignore if metric type is not StageMetric
         if (metricType !== 'StageMetric') {
           return;
         }
 
+        // ignore if jobId mismatch with selected job
         if (jobId !== this.selectedJobId) {
           return;
         }
 
+        // ignore if metric id is not included in inner stage objects
         if (!metricId || !(metricId in this.stageObjects)) {
           return;
         }
@@ -275,6 +310,9 @@ export default {
       });
     },
 
+    /**
+     * Setup canvas event handler. (e.g. mouse event, selection event)
+     */
     setUpCanvasEventHandler() {
       // zoom feature
       this.canvas.on('mouse:wheel', options => {
@@ -335,12 +373,20 @@ export default {
       });
     },
 
+    /**
+     * Reset all coordinates of each object inside of canvas.
+     * This method should be called when inner coordinate system changed.
+     */
     resetCoords() {
       this.canvas.forEachObject(obj => {
         obj.setCoords();
       });
     },
 
+    /**
+     * Set zoom and viewport of canvas to DAG fit in canvas size.
+     * This method is asynchronous.
+     */
     async fitCanvas() {
       let widthRatio = this.canvas.width / this.dagWidth;
       let heightRatio = this.canvas.height / this.dagHeight;
@@ -350,10 +396,19 @@ export default {
       this.canvas.renderAll();
     },
 
+    /**
+     * Fetch inner irDag of DAG object.
+     * Should be modified when DAG object structure is changed in Nemo side.
+     */
     getInnerIrDag(stageId) {
       return this.dag.vertices.find(v => v.id === stageId).properties.irDag;
     },
 
+    /**
+     * Set stage states. Should be called once when job id is changed,
+     * and redrawing new DAG.
+     * @param states stage id to state map.
+     */
     setStates(states) {
       Object.keys(states).forEach(stageId => {
         const stage = this.stageObjects[stageId];
@@ -371,6 +426,11 @@ export default {
       });
     },
 
+    /**
+     * Draw DAG.
+     * This method decides each object's coordinates and
+     * overall DAG shape(topology).
+     */
     drawDAG() {
       // clear objects in canvas without resetting background
       this.canvas.remove(...this.canvas.getObjects().concat());
@@ -543,6 +603,10 @@ export default {
       });
     },
 
+    /**
+     * Build SVG path of arrow head.
+     * @param edges array of edges.
+     */
     drawSVGArrow(edges) {
       let path = '';
       edges.points.forEach(point => {
@@ -576,6 +640,10 @@ export default {
       return path;
     },
 
+    /**
+     * Click listener for fit button.
+     * Reset translation viewport and fit canvas.
+     */
     fitButtonClicked() {
       this.canvas.viewportTransform[4] = 0;
       this.canvas.viewportTransform[5] = 0;

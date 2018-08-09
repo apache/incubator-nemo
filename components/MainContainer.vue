@@ -155,6 +155,9 @@ export default {
   },
 
   methods: {
+    /**
+     * Set up event handlers for this component.
+     */
     setUpEventHandlers() {
       // event handler for detecting change of job id
       this.$eventBus.$on('job-id-select', data => {
@@ -198,6 +201,10 @@ export default {
       });
     },
 
+    /**
+     * Build table data which will be used in TaskStatistics component.
+     * @param metricId id of metric. Used to lookup metricLookupMap.
+     */
     buildTableData(metricId) {
       this.tableData = [];
       const metric = this._removeUnusedProperties(this.metricLookupMap[metricId]);
@@ -227,6 +234,9 @@ export default {
       });
     },
 
+    /**
+     * Handler for clicking tab.
+     */
     handleTabClick({ index }) {
       this.tabIndex = index;
       if (index === TIMELINE_TAB) {

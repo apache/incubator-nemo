@@ -51,11 +51,13 @@ export default {
   },
 
   mounted() {
+    // this event is emitted by JobView, which processes incoming metric.
     this.$eventBus.$on('set-timeline-items', metricDataSet => {
       this.metricDataSet = metricDataSet;
       this.filterAndSend(metricDataSet);
     });
 
+    // this event is emitted by JobView, which processes incoming metric.
     this.$eventBus.$on('add-timeline-item', ({ jobId, item }) => {
       if (jobId !== this.selectedJobId) {
         return;
@@ -66,6 +68,7 @@ export default {
       }
     });
 
+    // this event is emitted by JobView, which processes incoming metric.
     this.$eventBus.$on('update-timeline-item', ({ jobId, item }) => {
       if (jobId !== this.selectedJobId) {
         return;
@@ -76,6 +79,7 @@ export default {
       }
     });
 
+    // should be emitted when metric was deselected or job was cleared.
     this.$eventBus.$on('clear-stage-select', () => {
       this.selectData = [];
     });
@@ -88,6 +92,10 @@ export default {
   },
 
   computed: {
+    /**
+     * Temporary computed property which filter StageMetric metric id
+     * by matching regex pattern.
+     */
     stageList() {
       return Object.keys(this.metricLookupMap)
         .filter(id => /^Stage-[0-9]+$/.test(id.trim()));
@@ -96,6 +104,13 @@ export default {
 
   methods: {
 
+    /**
+     * Handler that handles change in stage filter selection.
+     * If there is no selected stage, this method will emit
+     * metric deselection event.
+     * @param selectData selected stage id array. will be provided by
+     *        element-ui el-select component.
+     */
     handleSelectChange(selectData) {
       if (selectData && selectData.length === 0) {
         this.$eventBus.$emit('metric-deselect');
@@ -103,6 +118,11 @@ export default {
       this.filterAndSend(this.metricDataSet);
     },
 
+    /**
+     * Filter metric DataSet by stage id array and send it to
+     * MetricTimeline component to render timeline.
+     * @param metricDataSet DataSet object for timeline.
+     */
     filterAndSend(metricDataSet) {
       this.newMetricDataSet = this.filterDataSet(metricDataSet);
       // filter and add to newMetricDataSet
@@ -110,6 +130,10 @@ export default {
         'set-timeline-filtered-items', this.newMetricDataSet);
     },
 
+    /**
+     * Filter DataSet by stage id array.
+     * @param metricDataSet DataSet object for timeline.
+     */
     filterDataSet(metricDataSet) {
       let newMetricDataSet = new DataSet([]);
       metricDataSet.forEach(item => {
@@ -120,6 +144,11 @@ export default {
       return newMetricDataSet;
     },
 
+    /**
+     * Determines whether item is filtered by current stage selecion.
+     * @param item item to filter.
+     * @returns true if it should be contained to DataSet, false if not.
+     */
     filterItem(item) {
       for (const stage of this.selectData) {
         if (item.metricId.startsWith(stage + '-')
@@ -130,12 +159,18 @@ export default {
       return false;
     },
 
+    /**
+     * Select all stage id.
+     */
     selectAll() {
       this.selectData = [];
       this.stageList.forEach(s => this.selectData.push(s));
       this.handleSelectChange(this.selectData);
     },
 
+    /**
+     * Clear stage filter array.
+     */
     clearAll() {
       this.selectData = [];
       this.handleSelectChange(this.selectData);

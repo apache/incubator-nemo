@@ -39,6 +39,8 @@ export const EXCLUDE_COLUMN = [
 
 const NOT_AVAILABLE = -1;
 
+// this function will replace NOT_AVAILABLE
+// constant to N/A string.
 let _preprocessMetric = function (metric) {
   let newMetric = Object.assign({}, metric);
 
@@ -71,10 +73,20 @@ export default {
       return 0;
     },
 
+    /**
+     * Fetch last stateTransitionEvents element and extract
+     * newState property. See STATE constant.
+     * @returns newState of last stateTransitionEvents array
+     */
     toStateText(e) {
       return e[e.length - 1].newState;
     },
 
+    /**
+     * Helper function for converting state to element-ui type string.
+     * @param e state.
+     * @returns element-ui type string.
+     */
     toStateType(e) {
       let t = this.toStateText(e);
       switch (t) {
@@ -97,12 +109,20 @@ export default {
   },
 
   computed: {
+    /**
+     * Computed property which consists table data.
+     */
     taskMetric() {
       return Object.keys(this.metricLookupMap)
         .filter(key => this.metricLookupMap[key].group === 'TaskMetric')
         .map(key => _preprocessMetric(this.metricLookupMap[key]));
     },
 
+    /**
+     * Computed property of column string array.
+     * This property will look first element of `taskMetric` array and
+     * extract object keys and filter by EXECLUDE_COLUMN.
+     */
     columnArray() {
       if (!this.taskMetric[0]) {
         return [];

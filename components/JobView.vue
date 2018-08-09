@@ -130,6 +130,9 @@ export default {
   },
 
   computed: {
+    /**
+     * Computed property of table rows, containing job id and status.
+     */
     jobTableData() {
       return Object.keys(this.jobs).map(jobId => ({
         jobId: jobId,
@@ -139,6 +142,9 @@ export default {
   },
 
   methods: {
+    /**
+     * Handler for uploading file.
+     */
     async handleUpload(options) {
       this.addJobDialogVisible = false;
       let fileReader = new FileReader();
@@ -157,6 +163,10 @@ export default {
       fileReader.readAsText(options.file);
     },
 
+    /**
+     * Show notification on right side of screen
+     * using element-ui's notification function.
+     */
     notifyError(msg) {
       this.$notify.error({
         title: 'Error',
@@ -208,6 +218,10 @@ export default {
       }
     },
 
+    /**
+     * Select job and propagate job change event to other components.
+     * @param jobId id of job.
+     */
     async selectJobId(jobId) {
       if (!(jobId in this.jobs) || jobId === this.selectedJobId) {
         return;
@@ -234,6 +248,10 @@ export default {
       }
     },
 
+    /**
+     * Delete job and propagate job deletion events to other components.
+     * @param jobId id of job.
+     */
     deleteJobId(jobId) {
       if (this.selectedJobId === jobId) {
         this.selectedJobId = '';
@@ -249,6 +267,9 @@ export default {
       Vue.delete(this.jobs, jobId);
     },
 
+    /**
+     * Handler for adding WebSocket endpoint.
+     */
     handleWebSocketAdd() {
       this.addJobFromWebSocketEndpoint(this.wsEndpointInput);
       this.wsEndpointInput = '';
@@ -268,6 +289,12 @@ export default {
       });
     },
 
+    /**
+     * Method for parsing JSON dump file and processing
+     * inner metric information.
+     * @param fileName name of JSON file.
+     * @param content content of file.
+     */
     async addJobFromFile(fileName, content) {
       let parsedData;
       try {
@@ -277,6 +304,8 @@ export default {
         return;
       }
 
+      // for now, Nemo's job id is not informative,
+      // so job id is generated with uuid.
       const jobId = uuid();
       this._newJob(jobId);
       this.jobs[jobId].fileName = fileName;
@@ -287,6 +316,10 @@ export default {
       this.processMetric(parsedData, jobId);
     },
 
+    /**
+     * Add job from WebSocket endpoint.
+     * @param endpoint WebSocket endpoint.
+     */
     addJobFromWebSocketEndpoint(endpoint) {
       let alreadyExistsError = false;
       endpoint = endpoint.trim();
@@ -314,6 +347,10 @@ export default {
       this.prepareWebSocket(jobId);
     },
 
+    /**
+     * Try to connect WebSocket.
+     * @param jobId id of job.
+     */
     prepareWebSocket(jobId) {
       if (!process.browser) {
         return;
@@ -361,6 +398,11 @@ export default {
       };
     },
 
+    /**
+     * Process metric chunk or individual metric.
+     * @param metric metric object.
+     * @param jobId id of job.
+     */
     async processMetric(metric, jobId) {
       // specific event broadcast
       if ('metricType' in metric) {
@@ -378,6 +420,14 @@ export default {
       }
     },
 
+    /**
+     * Process individual metric. All metric should be passed
+     * through this method to be processed properly and propagated to
+     * other components.
+     * @param metricType type of metric.
+     * @param data metric data.
+     * @param jobId id of job.
+     */
     async processIndividualMetric({ metricType, data }, jobId) {
       const job = this.jobs[jobId];
 
@@ -504,10 +554,19 @@ export default {
       job.dagStageState[metricId] = newState;
     },
 
+    /**
+     * Send fit-timeline event.
+     * @param jobId id of job.
+     */
     fitTimeline(jobId) {
       this.$eventBus.$emit('fit-timeline', jobId);
     },
 
+    /**
+     * Send move-timeline event.
+     * @param time Date or timestamp to move timeline.
+     * @param jobId id of job.
+     */
     moveTimeline(time, jobId) {
       this.$eventBus.$emit('move-timeline', {
         jobId: jobId,
@@ -528,6 +587,10 @@ export default {
       return newMetric;
     },
 
+    /**
+     * Build metricLookupMap based on DAG.
+     * @param jobId id of job.
+     */
     buildMetricLookupMapWithDAG(jobId) {
       const job = this.jobs[jobId];
       job.dag.vertices.forEach(stage => {
@@ -546,6 +609,11 @@ export default {
       });
     },
 
+    /**
+     * Add a metric data to its metricLookupMap.
+     * @param metric metric data.
+     * @param jobId id of job.
+     */
     addMetricToMetricLookupMap(metric, jobId) {
       const job = this.jobs[jobId];
       if (metric.group === 'JobMetric') {
