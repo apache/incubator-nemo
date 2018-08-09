@@ -42,7 +42,6 @@ public final class DynamicOptimizationEventHandler implements RuntimeEventHandle
     this.pubSubEventHandler = pubSubEventHandlerWrapper.getPubSubEventHandler();
   }
 
-  @Override
   public Class<DynamicOptimizationEvent> getEventClass() {
     return DynamicOptimizationEvent.class;
   }
@@ -50,11 +49,10 @@ public final class DynamicOptimizationEventHandler implements RuntimeEventHandle
   @Override
   public void onNext(final DynamicOptimizationEvent dynamicOptimizationEvent) {
     final PhysicalPlan physicalPlan = dynamicOptimizationEvent.getPhysicalPlan();
-    final Object metricData = dynamicOptimizationEvent.getMetricData();
-
     final Pair<String, String> taskInfo = dynamicOptimizationEvent.getTaskInfo();
+    final Object dynOptData = dynamicOptimizationEvent.getDynOptData();
 
-    final PhysicalPlan newPlan = RuntimeOptimizer.dynamicOptimization(physicalPlan, metricData);
+    final PhysicalPlan newPlan = RuntimeOptimizer.dynamicOptimization(physicalPlan, dynOptData);
 
     pubSubEventHandler.onNext(new UpdatePhysicalPlanEvent(newPlan, taskInfo));
   }

@@ -17,18 +17,17 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.collect.Sets;
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
 import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.state.TaskState;
+import edu.snu.nemo.runtime.master.DataSkewDynOptDataHandler;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.common.exception.*;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.JobStateManager;
@@ -75,7 +74,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   private PhysicalPlan physicalPlan;
   private JobStateManager jobStateManager;
   private List<List<Stage>> sortedScheduleGroups;
-  private Object metricData;
+  private DataSkewDynOptDataHandler dataSkewDynOptDataHandler;
 
   @Inject
   private BatchSingleJobScheduler(final SchedulerRunner schedulerRunner,
@@ -94,6 +93,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           .subscribe(updatePhysicalPlanEventHandler.getEventClass(), updatePhysicalPlanEventHandler);
     }
     this.executorRegistry = executorRegistry;
+    this.dataSkewDynOptDataHandler = new DataSkewDynOptDataHandler();
   }
 
   /**
@@ -135,10 +135,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
     }
   }
 
-  public void updateMetric(final Map<Integer, Long> aggregatedMetricData) {
-    this.metricData = aggregatedMetricData;
-  }
-
   /**
    * Handles task state transition notifications sent from executors.
    * Note that we can receive notifications for previous task attempts, due to the nature of asynchronous events.
@@ -169,7 +165,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           onTaskExecutionFailedRecoverable(executorId, taskId, failureCause);
           break;
         case ON_HOLD:
-          onTaskExecutionOnHold(executorId, taskId, vertexPutOnHold);
+          onTaskExecutionOnHold(executorId, taskId);
           break;
         case FAILED:
           throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The job failed on Task #")
@@ -383,11 +379,9 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * Action for after task execution is put on hold.
    * @param executorId       the ID of the executor.
    * @param taskId           the ID of the task.
-   * @param vertexPutOnHold  the ID of vertex that is put on hold.
    */
   private void onTaskExecutionOnHold(final String executorId,
-                                     final String taskId,
-                                     final String vertexPutOnHold) {
+                                     final String taskId) {
     LOG.info("{} put on hold in {}", new Object[]{taskId, executorId});
     executorRegistry.updateExecutor(executorId, (executor, state) -> {
       executor.onTaskExecutionComplete(taskId);
@@ -399,20 +393,9 @@ public final class BatchSingleJobScheduler implements Scheduler {
         jobStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
 
     if (stageComplete) {
-      // get optimization vertex from the task.
-      final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
-          getVertexDagById(taskId).getVertices().stream() // get vertex list
-              .filter(irVertex -> irVertex.getId().equals(vertexPutOnHold)) // find it
-              .filter(irVertex -> irVertex instanceof MetricCollectionBarrierVertex)
-              .distinct()
-              .map(irVertex -> (MetricCollectionBarrierVertex) irVertex) // convert types
-              .findFirst().orElseThrow(() -> new RuntimeException(TaskState.State.ON_HOLD.name() // get it
-              + " called with failed task ids by some other task than "
-              + MetricCollectionBarrierVertex.class.getSimpleName()));
-      // and we will use this vertex to perform metric collection and dynamic optimization.
-
-      pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(
-          new DynamicOptimizationEvent(physicalPlan, metricData, Pair.of(executorId, taskId)));
+      pubSubEventHandlerWrapper.getPubSubEventHandler()
+          .onNext(new DynamicOptimizationEvent(physicalPlan, dataSkewDynOptDataHandler.getDynOptData(),
+              Pair.of(executorId, taskId)));
     } else {
       onTaskExecutionComplete(executorId, taskId, true);
     }
@@ -495,16 +478,17 @@ public final class BatchSingleJobScheduler implements Scheduler {
         .collect(Collectors.toSet());
   }
 
-  /**
-   * @param taskId id of the task
-   * @return the IR dag
-   */
-  private DAG<IRVertex, RuntimeEdge<IRVertex>> getVertexDagById(final String taskId) {
-    for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
-      if (stage.getId().equals(RuntimeIdGenerator.getStageIdFromTaskId(taskId))) {
-        return stage.getIRDAG();
-      }
+  public void updateDynOptData(final Object dynOptData) {
+    if (dataSkewDynOptDataHandler instanceof DataSkewDynOptDataHandler) {
+      List<ControlMessage.PartitionSizeEntry> partitionSizeInfo
+          = (List<ControlMessage.PartitionSizeEntry>) dynOptData;
+      partitionSizeInfo.forEach(partitionSizeEntry -> {
+        final int hashIndex = partitionSizeEntry.getKey();
+        final long partitionSize = partitionSizeEntry.getSize();
+        dataSkewDynOptDataHandler.updateDynOptData(hashIndex, partitionSize);
+      });
+    } else {
+      throw new UnsupportedOperationException("Unsupported DynOptDataHandler type");
     }
-    throw new RuntimeException("This taskId does not exist in the plan");
   }
 }

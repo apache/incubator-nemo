@@ -27,7 +27,7 @@ import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
  */
 public final class DynamicOptimizationEvent implements RuntimeEvent {
   private final PhysicalPlan physicalPlan;
-  private final Object metricData;
+  private final Object dynOptData;
   private final Pair<String, String> taskInfo;
 
   /**
@@ -36,10 +36,10 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
    * @param taskInfo information of the task.
    */
   public DynamicOptimizationEvent(final PhysicalPlan physicalPlan,
-                                  final Object metricData,
+                                  final Object dynOptData,
                                   final Pair<String, String> taskInfo) {
     this.physicalPlan = physicalPlan;
-    this.metricData = metricData;
+    this.dynOptData = dynOptData;
     this.taskInfo = taskInfo;
   }
 
@@ -50,14 +50,14 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
     return this.physicalPlan;
   }
 
-  public Object getMetricData() {
-    return this.metricData;
-  }
-
   /**
    * @return the information of the task at which this optimization occurs: its name and its task ID.
    */
   public Pair<String, String> getTaskInfo() {
     return this.taskInfo;
+  }
+
+  public Object getDynOptData() {
+    return this.dynOptData;
   }
 }

@@ -40,7 +40,6 @@ public final class UpdatePhysicalPlanEventHandler implements CompilerEventHandle
     this.scheduler = scheduler;
   }
 
-  @Override
   public Class<UpdatePhysicalPlanEvent> getEventClass() {
     return UpdatePhysicalPlanEvent.class;
   }
