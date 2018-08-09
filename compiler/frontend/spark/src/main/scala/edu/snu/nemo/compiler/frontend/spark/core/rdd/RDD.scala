@@ -16,12 +16,14 @@
 package edu.snu.nemo.compiler.frontend.spark.core.rdd
 
 import java.util
+import java.util.UUID
 
 import edu.snu.nemo.client.JobLauncher
 import edu.snu.nemo.common.dag.{DAG, DAGBuilder}
 import edu.snu.nemo.common.ir.edge.IREdge
-import edu.snu.nemo.common.ir.edge.executionproperty.{DecoderProperty, EncoderProperty, KeyExtractorProperty}
+import edu.snu.nemo.common.ir.edge.executionproperty._
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
+import edu.snu.nemo.common.ir.vertex.transform.RelayTransform
 import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
 import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
@@ -35,7 +37,7 @@ import org.apache.spark.rdd.{AsyncRDDActions, DoubleRDDFunctions, OrderedRDDFunc
 import org.apache.spark.serializer.Serializer
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{Dependency, Partition, Partitioner, SparkContext, TaskContext}
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j.LoggerFactory
 
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
@@ -58,6 +60,7 @@ final class RDD[T: ClassTag] protected[rdd] (
   private val decoderProperty: EdgeExecutionProperty[_ <: Serializable] =
     DecoderProperty.of(new SparkDecoderFactory[T](serializer)).asInstanceOf[EdgeExecutionProperty[_ <: Serializable]]
   private val keyExtractorProperty: KeyExtractorProperty = KeyExtractorProperty.of(new SparkKeyExtractor)
+  private var persistedGhostVertex: Option[IRVertex] = Option.empty
 
   /**
    * Constructor without dependencies (not needed in Nemo RDD).
@@ -235,9 +238,7 @@ final class RDD[T: ClassTag] protected[rdd] (
   override def persist(newLevel: StorageLevel): RDD.this.type = {
     var actualUseDisk = false
     var actualUseMemory = false
-    val actualUseOffHeap = false
     var actualDeserialized = false
-    val actualReplication = 1
 
     if (!newLevel.isValid) {
       throw new RuntimeException("Non-valid StorageLevel: " + newLevel.toString())
@@ -272,10 +273,37 @@ final class RDD[T: ClassTag] protected[rdd] (
       LOG.warn("Cannot persist data with replication. The data will not be replicated.")
     }
 
-    val actualNewLevel =
-      StorageLevel.apply(actualUseDisk, actualUseMemory, actualUseOffHeap, actualDeserialized, actualReplication)
+    // TODO #??: disable changing persist strategy after a RDD is executed.
+    val builder = new DAGBuilder[IRVertex, IREdge](dag)
+    if (persistedGhostVertex.isDefined) {
+      builder.removeVertex(persistedGhostVertex.get)
+    }
 
-    return this // TODO: TMP
+    val ghostVertex = new OperatorVertex(new RelayTransform[T]())
+    builder.addVertex(ghostVertex, loopVertexStack)
+
+    val newEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, lastVertex, ghostVertex)
+    // Setup default properties
+    newEdge.setProperty(encoderProperty)
+    newEdge.setProperty(decoderProperty)
+    newEdge.setProperty(keyExtractorProperty)
+    // Setup cache-related properties
+    if (actualUseDisk) {
+      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore))
+    } else if (actualDeserialized) {
+      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore))
+    } else {
+      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore))
+    }
+    newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep))
+    val cacheID = UUID.randomUUID()
+    newEdge.setProperty(CacheIDProperty.of(cacheID))
+    newEdge.setProperty(
+      DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue("CacheGroup-" + cacheID)))
+    builder.connectVertices(newEdge)
+
+    persistedGhostVertex = Option.apply(ghostVertex)
+    this
   }
 
   /**

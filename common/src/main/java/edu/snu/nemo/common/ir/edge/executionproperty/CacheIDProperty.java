@@ -17,16 +17,18 @@ package edu.snu.nemo.common.ir.edge.executionproperty;
 
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
+import java.util.UUID;
+
 /**
- * Partitioner ExecutionProperty.
+ * Cache ID ExecutionProperty.
  */
-public final class PartitionerProperty extends EdgeExecutionProperty<PartitionerProperty.Value> {
+public final class CacheIDProperty extends EdgeExecutionProperty<UUID> {
   /**
    * Constructor.
    *
    * @param value value of the execution property.
    */
-  private PartitionerProperty(final Value value) {
+  private CacheIDProperty(final UUID value) {
     super(value);
   }
 
@@ -36,17 +38,7 @@ public final class PartitionerProperty extends EdgeExecutionProperty<Partitioner
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static PartitionerProperty of(final Value value) {
-    return new PartitionerProperty(value);
-  }
-
-  /**
-   * Possible values of Partitioner ExecutionProperty.
-   */
-  public enum Value {
-    DataSkewHashPartitioner,
-    HashPartitioner,
-    IntactPartitioner,
-    DedicatedKeyPerElementPartitioner
+  public static CacheIDProperty of(final UUID value) {
+    return new CacheIDProperty(value);
   }
 }
