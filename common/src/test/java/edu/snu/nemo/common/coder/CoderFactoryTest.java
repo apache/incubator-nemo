@@ -18,7 +18,6 @@ package edu.snu.nemo.common.coder;
 
 import edu.snu.nemo.common.ContextImpl;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -28,10 +27,6 @@ import java.io.ByteArrayOutputStream;
  * Tests {@link ContextImpl}.
  */
 public class CoderFactoryTest {
-
-  @Before
-  public void setUp() {
-  }
 
   @Test
   public void testBytesCoderFactories() throws Exception {
