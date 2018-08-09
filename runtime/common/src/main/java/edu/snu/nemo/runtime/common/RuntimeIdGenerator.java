@@ -43,6 +43,7 @@ public final class RuntimeIdGenerator {
    * Generates the ID for physical plan.
    *
    * @return the generated ID
+   * TODO #100: Refactor string-based RuntimeIdGenerator for IR-based DynOpt
    */
   public static String generatePhysicalPlanId() {
     return "Plan-" + physicalPlanIdGenerator.get();

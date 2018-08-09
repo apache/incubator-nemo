@@ -47,7 +47,7 @@ public class DataSkewRuntimePassTest {
     final Integer taskNum = 5;
 
     final List<KeyRange> keyRanges =
-        new DataSkewRuntimePass(2).setNumSkewedKeys(2).calculateKeyRanges(testMetricData, taskNum);
+        new DataSkewRuntimePass().setNumSkewedKeys(2).calculateKeyRanges(testMetricData, taskNum);
 
     // Test whether it correctly redistributed hash ranges.
     assertEquals(0, keyRanges.get(0).rangeBeginInclusive());

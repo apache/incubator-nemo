@@ -54,7 +54,7 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
   }
 
   /**
-   * @return the information of the task at which this optimization occurs: its name and its task ID.
+   * @return id of the task which triggered the dynamic optimization.
    */
   public String getTaskId() {
     return taskId;

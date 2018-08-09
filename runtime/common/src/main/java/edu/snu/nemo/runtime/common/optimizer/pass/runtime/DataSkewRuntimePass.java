@@ -44,7 +44,6 @@ import java.util.stream.Collectors;
 public final class DataSkewRuntimePass extends RuntimePass<Map<Integer, Long>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
-  private static final int DEFAULT_SKEWED_KEYS = 3;
   // Skewed keys denote for top n keys in terms of partition size.
   public static final int DEFAULT_NUM_SKEWED_KEYS = 3;
   private int numSkewedKeys = DEFAULT_NUM_SKEWED_KEYS;
@@ -54,7 +53,7 @@ public final class DataSkewRuntimePass extends RuntimePass<Map<Integer, Long>> {
    */
   public DataSkewRuntimePass() {
     this.eventHandlers = Collections.singleton(DynamicOptimizationEventHandler.class);
-    this.numSkewedKeys = DEFAULT_SKEWED_KEYS;
+    this.numSkewedKeys = DEFAULT_NUM_SKEWED_KEYS;
   }
 
   public DataSkewRuntimePass(final int numOfSkewedKeys) {

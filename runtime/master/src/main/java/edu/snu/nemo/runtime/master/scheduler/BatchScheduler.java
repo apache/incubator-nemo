@@ -131,7 +131,7 @@ public final class BatchScheduler implements Scheduler {
    * Handles task state transition notifications sent from executors.
    * Note that we can receive notifications for previous task attempts, due to the nature of asynchronous events.
    * We ignore such late-arriving notifications, and only handle notifications for the current task attempt.
-   *  @param executorId the id of the executor where the message was sent from.
+   * @param executorId the id of the executor where the message was sent from.
    * @param taskId whose state has changed
    * @param taskAttemptIndex of the task whose state has changed
    * @param newState the state to change to
@@ -318,7 +318,6 @@ public final class BatchScheduler implements Scheduler {
           planStateManager.onTaskStateChanged(taskId, TaskState.State.READY);
         case READY:
           taskIdsToSchedule.add(taskId);
-          LOG.info("{} is READY", taskId);
           break;
 
         // This shouldn't happen.

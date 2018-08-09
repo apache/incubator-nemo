@@ -103,10 +103,8 @@ final class TaskDispatcher {
       return;
     }
 
-    final List<String> scheduledTasks = new ArrayList<>();
     final Collection<Task> taskList = taskListOptional.get();
     final List<Task> couldNotSchedule = new ArrayList<>();
-
     for (final Task task : taskList) {
       final PlanStateManager planStateManager = planStateManagers.get(task.getPlanId());
       if (!planStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
@@ -114,7 +112,6 @@ final class TaskDispatcher {
         LOG.debug("Skipping {} as it is not READY", task.getTaskId());
         continue;
       }
-      final String taskId = task.getTaskId();
 
       executorRegistry.viewExecutors(executors -> {
         final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
@@ -130,13 +127,11 @@ final class TaskDispatcher {
           // Select executor
           final ExecutorRepresenter selectedExecutor
               = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
-
           // update metadata first
           planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
           // send the task
           selectedExecutor.onTaskScheduled(task);
-          scheduledTasks.add(taskId);
         } else {
           couldNotSchedule.add(task);
         }
