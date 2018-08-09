@@ -68,15 +68,16 @@ public final class PartitionWordsByLength {
         .apply(ParDo.of(new DoFn<String, String>() {
           // processElement with Beam OutputReceiver.
           @ProcessElement
-          public void processElement(@Element final String word, final MultiOutputReceiver r) {
+          public void processElement(final ProcessContext c) {
+            final String word = c.element();
             if (word.length() < 6) {
-              r.get(shortWordsTag).output(KV.of(word.length(), word));
+              c.output(shortWordsTag, KV.of(word.length(), word));
             } else if (word.length() < 11) {
-              r.get(longWordsTag).output(KV.of(word.length(), word));
+              c.output(longWordsTag, KV.of(word.length(), word));
             } else if (word.length() > 12) {
-              r.get(veryVeryLongWordsTag).output(word);
+              c.output(veryVeryLongWordsTag, word);
             } else {
-              r.get(veryLongWordsTag).output(word);
+              c.output(word);
             }
           }
         }).withOutputTags(veryLongWordsTag, TupleTagList

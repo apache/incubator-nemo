@@ -19,7 +19,6 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
-import edu.snu.nemo.examples.beam.policy.LargeShufflePolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -69,15 +68,6 @@ public final class PartitionWordsByLengthITCase {
         .addResourceJson(executorResourceFileName)
         .addJobId(PartitionWordsByLengthITCase.class.getSimpleName())
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testSailfish() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(PartitionWordsByLengthITCase.class.getSimpleName() + "_sailfish")
-        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 }
