@@ -59,7 +59,7 @@ public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
             // Insert a merger vertex having transform that write received data immediately
             // before the vertex receiving shuffled data.
             final OperatorVertex iFileMergerVertex = new OperatorVertex(new RelayTransform());
-            iFileMergerVertex.getExecutionProperties().put(SkipSerDesProperty.of());
+            iFileMergerVertex.setProperty(SkipSerDesProperty.of());
 
             builder.addVertex(iFileMergerVertex);
             final IREdge newEdgeToMerger = new IREdge(CommunicationPatternProperty.Value.Shuffle,

@@ -299,8 +299,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
     dag.topologicalDo(stage -> {
       final int scheduleGroup = stageToScheduleGroupMap.get(stage);
       stage.getExecutionProperties().put(ScheduleGroupProperty.of(scheduleGroup));
-      stage.getIRDAG().topologicalDo(vertex -> vertex.getExecutionProperties()
-          .put(ScheduleGroupProperty.of(scheduleGroup)));
+      stage.getIRDAG().topologicalDo(vertex -> vertex.setProperty(ScheduleGroupProperty.of(scheduleGroup)));
     });
   }
 

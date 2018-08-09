@@ -58,7 +58,17 @@ public abstract class IRVertex extends Vertex {
    * @return the IRVertex with the execution property set.
    */
   public final IRVertex setProperty(final VertexExecutionProperty<?> executionProperty) {
-    executionProperties.put(executionProperty);
+    executionProperties.put(executionProperty, false);
+    return this;
+  }
+
+  /**
+   * Set an executionProperty of the IRVertex, permanently.
+   * @param executionProperty new execution property.
+   * @return the IRVertex with the execution property set.
+   */
+  public final IRVertex setPropertyPermanently(final VertexExecutionProperty<?> executionProperty) {
+    executionProperties.put(executionProperty, true);
     return this;
   }
 
@@ -76,7 +86,7 @@ public abstract class IRVertex extends Vertex {
   /**
    * @return the ExecutionPropertyMap of the IRVertex.
    */
-  public final ExecutionPropertyMap getExecutionProperties() {
+  public final ExecutionPropertyMap<VertexExecutionProperty> getExecutionProperties() {
     return executionProperties;
   }
 

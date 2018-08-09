@@ -92,8 +92,8 @@ public final class PolicyBuilder {
 
     // check annotation of annotating passes.
     if (compileTimePass instanceof AnnotatingPass) {
-      final AnnotatingPass annotatingPass = (AnnotatingPass) compileTimePass;
       this.annotatedExecutionProperties.add(annotatingPass.getExecutionPropertyToModify());
+      final AnnotatingPass annotatingPass = (AnnotatingPass) compileTimePass;
       if (strictPrerequisiteCheckMode
           && finalizedExecutionProperties.contains(annotatingPass.getExecutionPropertyToModify())) {
         throw new CompileTimeOptimizationException(annotatingPass.getExecutionPropertyToModify()

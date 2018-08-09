@@ -119,7 +119,8 @@ public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, M
    * @return set of stage-level properties for the stage
    */
   public Set<VertexExecutionProperty> getStageProperties(final IRVertex vertex) {
-    final Stream<VertexExecutionProperty> stream = vertex.getExecutionProperties().stream();
-    return stream.filter(p -> !ignoredPropertyKeys.contains(p.getClass())).collect(Collectors.toSet());
+    return vertex.getExecutionProperties().stream()
+        .filter(p -> !ignoredPropertyKeys.contains(p.getClass()))
+        .collect(Collectors.toSet());
   }
 }

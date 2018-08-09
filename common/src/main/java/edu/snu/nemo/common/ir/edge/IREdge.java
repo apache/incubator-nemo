@@ -68,12 +68,21 @@ public final class IREdge extends Edge<IRVertex> {
 
   /**
    * Set an executionProperty of the IREdge.
-   *
    * @param executionProperty the execution property.
    * @return the IREdge with the execution property set.
    */
   public IREdge setProperty(final EdgeExecutionProperty<?> executionProperty) {
-    executionProperties.put(executionProperty);
+    executionProperties.put(executionProperty, false);
+    return this;
+  }
+
+  /**
+   * Set an executionProperty of the IREdge, permanently.
+   * @param executionProperty the execution property.
+   * @return the IREdge with the execution property set.
+   */
+  public IREdge setPropertyPermanently(final EdgeExecutionProperty<?> executionProperty) {
+    executionProperties.put(executionProperty, true);
     return this;
   }
 
@@ -92,7 +101,7 @@ public final class IREdge extends Edge<IRVertex> {
   /**
    * @return the ExecutionPropertyMap of the IREdge.
    */
-  public ExecutionPropertyMap getExecutionProperties() {
+  public ExecutionPropertyMap<EdgeExecutionProperty> getExecutionProperties() {
     return executionProperties;
   }
 
