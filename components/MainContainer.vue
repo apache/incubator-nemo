@@ -29,33 +29,41 @@
               :selectedJobId="selectedJobId"
               :groups="groupDataSet"/>
           </el-card>
-          <el-card class="detail-card">
-            <el-row :gutter="10">
-              <el-col height="100%" :span="12" :xs="24">
-                <el-card class="detail-card" header="Select stage">
-                  <stage-select
-                    :selectedJobId="selectedJobId"
-                    :metricLookupMap="metricLookupMap"/>
-                </el-card>
-              </el-col>
-              <el-col :span="12" :xs="24">
-                <el-card class="detail-card" header="Detail">
-                  <detail-table
-                    v-if="tabIndex === '1'"
-                    :tableData="tableData"/>
-                </el-card>
-              </el-col>
-            </el-row>
-          </el-card>
+          <el-row :gutter="10">
+            <el-col height="100%" :span="12" :xs="24">
+              <el-card class="detail-card" header="Select stage">
+                <stage-select
+                  :selectedJobId="selectedJobId"
+                  :metricLookupMap="metricLookupMap"/>
+              </el-card>
+            </el-col>
+            <el-col :span="12" :xs="24">
+              <el-card class="detail-card" header="Detail">
+                <detail-table
+                  v-if="tabIndex === '1'"
+                  :tableData="tableData"/>
+              </el-card>
+            </el-col>
+          </el-row>
         </el-tab-pane>
         <el-tab-pane>
           <template slot="label">
             DAG
           </template>
-          <dag :selectedJobId="selectedJobId" :tabIndex="tabIndex"/>
-          <detail-table
-            v-if="tabIndex === '2'"
-            :tableData="tableData"/>
+          <el-row :gutter="10">
+            <el-col :span="16" :xs="24">
+              <el-card header="DAG">
+                <dag :selectedJobId="selectedJobId" :tabIndex="tabIndex"/>
+              </el-card>
+            </el-col>
+            <el-col :span="8" :xs="24">
+              <el-card header="Detail">
+                <detail-table
+                  v-if="tabIndex === '2'"
+                  :tableData="tableData"/>
+              </el-card>
+            </el-col>
+          </el-row>
         </el-tab-pane>
         <el-tab-pane>
           <template slot="label">
