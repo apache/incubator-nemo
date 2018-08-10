@@ -23,8 +23,6 @@ import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
-import java.util.Collections;
-
 /**
  * Pass to annotate the DAG for a job to perform data skew.
  * It specifies the outgoing Shuffle edges from MetricCollectionVertices with a MetricCollection ExecutionProperty

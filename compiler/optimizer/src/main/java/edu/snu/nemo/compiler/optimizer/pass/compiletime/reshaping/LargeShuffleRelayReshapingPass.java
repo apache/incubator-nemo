@@ -26,8 +26,6 @@ import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.transform.RelayTransform;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
-import java.util.Collections;
-
 /**
  * Pass to modify the DAG for a job to batch the disk seek.
  * It adds a {@link OperatorVertex} with {@link RelayTransform} before the vertices

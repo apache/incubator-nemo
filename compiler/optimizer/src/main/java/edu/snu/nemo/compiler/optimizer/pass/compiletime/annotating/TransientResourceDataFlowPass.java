@@ -22,7 +22,6 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
-import java.util.Collections;
 import java.util.List;
 
 import static edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.TransientResourceDataStorePass.fromTransientToReserved;

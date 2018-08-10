@@ -28,8 +28,6 @@ import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.apache.commons.lang3.mutable.MutableInt;
 
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * A pass for assigning each stages in schedule groups.

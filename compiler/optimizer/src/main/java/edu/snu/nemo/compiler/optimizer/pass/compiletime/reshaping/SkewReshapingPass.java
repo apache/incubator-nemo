@@ -27,7 +27,6 @@ import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**

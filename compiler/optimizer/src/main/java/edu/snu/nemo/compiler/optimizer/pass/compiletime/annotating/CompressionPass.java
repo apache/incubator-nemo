@@ -18,7 +18,6 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 

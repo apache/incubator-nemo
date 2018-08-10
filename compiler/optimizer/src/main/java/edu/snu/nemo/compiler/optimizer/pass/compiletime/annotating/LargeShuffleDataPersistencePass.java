@@ -22,8 +22,6 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
-import java.util.Collections;
-
 /**
  * A pass to optimize large shuffle by tagging edges.
  * This pass handles the data persistence ExecutionProperty.

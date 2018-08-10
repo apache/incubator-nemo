@@ -22,7 +22,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
-import java.util.Collections;
 import java.util.List;
 
 /**

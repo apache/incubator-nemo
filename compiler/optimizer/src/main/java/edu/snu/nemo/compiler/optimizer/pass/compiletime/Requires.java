@@ -20,6 +20,9 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 
 import java.lang.annotation.*;
 
+/**
+ * Annotation used to indicate which execution properties the class requires as prerequisites.
+ */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
