@@ -40,7 +40,8 @@ public abstract class AnnotatingPass extends CompileTimePass {
     this.keyOfExecutionPropertyToModify = new HashSet<>(Arrays.asList(annotates.value()));
 
     final Requires requires = cls.getAnnotation(Requires.class);
-    this.prerequisiteExecutionProperties = new HashSet<>(Arrays.asList(requires.value()));
+    this.prerequisiteExecutionProperties = requires == null
+        ? new HashSet<>() : new HashSet<>(Arrays.asList(requires.value()));
   }
 
   /**

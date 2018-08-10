@@ -36,7 +36,8 @@ public abstract class ReshapingPass extends CompileTimePass {
    */
   public ReshapingPass(final Class<? extends ReshapingPass> cls) {
     final Requires requires = cls.getAnnotation(Requires.class);
-    this.prerequisiteExecutionProperties = new HashSet<>(Arrays.asList(requires.value()));
+    this.prerequisiteExecutionProperties = requires == null
+        ? new HashSet<>() : new HashSet<>(Arrays.asList(requires.value()));
   }
 
   public final Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties() {
