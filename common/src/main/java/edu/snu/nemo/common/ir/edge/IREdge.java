@@ -26,7 +26,6 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.io.Serializable;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 /**
  * Physical execution plan of intermediate data movement.
@@ -68,12 +67,21 @@ public final class IREdge extends Edge<IRVertex> {
 
   /**
    * Set an executionProperty of the IREdge.
-   *
    * @param executionProperty the execution property.
    * @return the IREdge with the execution property set.
    */
   public IREdge setProperty(final EdgeExecutionProperty<?> executionProperty) {
-    executionProperties.put(executionProperty);
+    executionProperties.put(executionProperty, false);
+    return this;
+  }
+
+  /**
+   * Set an executionProperty of the IREdge, permanently.
+   * @param executionProperty the execution property.
+   * @return the IREdge with the execution property set.
+   */
+  public IREdge setPropertyPermanently(final EdgeExecutionProperty<?> executionProperty) {
+    executionProperties.put(executionProperty, true);
     return this;
   }
 
@@ -92,7 +100,7 @@ public final class IREdge extends Edge<IRVertex> {
   /**
    * @return the ExecutionPropertyMap of the IREdge.
    */
-  public ExecutionPropertyMap getExecutionProperties() {
+  public ExecutionPropertyMap<EdgeExecutionProperty> getExecutionProperties() {
     return executionProperties;
   }
 
@@ -117,7 +125,7 @@ public final class IREdge extends Edge<IRVertex> {
    * @param thatEdge the edge to copy executionProperties to.
    */
   public void copyExecutionPropertiesTo(final IREdge thatEdge) {
-    this.getExecutionProperties().forEachProperties((Consumer<EdgeExecutionProperty>) thatEdge::setProperty);
+    this.getExecutionProperties().forEachProperties(thatEdge::setProperty);
   }
 
   @Override

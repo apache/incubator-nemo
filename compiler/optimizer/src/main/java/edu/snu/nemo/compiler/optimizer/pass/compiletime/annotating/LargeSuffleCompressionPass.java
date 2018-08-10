@@ -44,12 +44,11 @@ public final class LargeSuffleCompressionPass extends AnnotatingPass {
       inEdges.forEach(edge -> {
         if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
             .equals(CommunicationPatternProperty.Value.Shuffle)) {
-          edge.setProperty(CompressionProperty.of(CompressionProperty.Value.LZ4));
+          edge.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.LZ4));
 
           dag.getOutgoingEdgesOf(edge.getDst())
-              .forEach(edgeFromRelay -> {
-                edgeFromRelay.setProperty(CompressionProperty.of(CompressionProperty.Value.None));
-              });
+              .forEach(edgeFromRelay ->
+                  edgeFromRelay.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.None)));
         }
       });
     });

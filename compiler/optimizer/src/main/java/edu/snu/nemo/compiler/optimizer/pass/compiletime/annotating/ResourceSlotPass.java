@@ -33,8 +33,8 @@ public final class ResourceSlotPass extends AnnotatingPass {
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     // On every vertex, if ResourceSlotProperty is not set, put it as true.
     dag.getVertices().stream()
-        .filter(v -> !v.getExecutionProperties().containsKey(ResourceSlotProperty.class))
-        .forEach(v -> v.getExecutionProperties().put(ResourceSlotProperty.of(true)));
+        .filter(v -> !v.getPropertyValue(ResourceSlotProperty.class).isPresent())
+        .forEach(v -> v.setProperty(ResourceSlotProperty.of(true)));
     return dag;
   }
 }

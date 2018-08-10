@@ -46,13 +46,12 @@ public final class LargeShuffleDataStorePass extends AnnotatingPass {
           if (CommunicationPatternProperty.Value.Shuffle
           .equals(edgeToMerger.getPropertyValue(CommunicationPatternProperty.class).get())) {
             // Pass data through memory to the merger vertex.
-            edgeToMerger.setProperty(DataStoreProperty
-                .of(DataStoreProperty.Value.SerializedMemoryStore));
+            edgeToMerger.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore));
           }
         });
         dag.getOutgoingEdgesOf(vertex).forEach(edgeFromMerger ->
             // Merge the input data and write it immediately to the remote disk.
-            edgeFromMerger.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore)));
+            edgeFromMerger.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore)));
       }
     });
     return dag;

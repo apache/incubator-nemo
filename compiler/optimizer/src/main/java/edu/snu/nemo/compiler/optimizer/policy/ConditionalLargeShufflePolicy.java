@@ -31,7 +31,7 @@ import org.apache.reef.tang.Injector;
  */
 public final class ConditionalLargeShufflePolicy implements Policy {
   public static final PolicyBuilder BUILDER =
-      new PolicyBuilder(false)
+      new PolicyBuilder()
           .registerCompileTimePass(new LargeShuffleCompositePass(), dag -> getMaxParallelism(dag) > 300)
           .registerCompileTimePass(new LoopOptimizationCompositePass())
           .registerCompileTimePass(new DefaultCompositePass());
