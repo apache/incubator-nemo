@@ -35,6 +35,7 @@ import static org.junit.Assert.assertTrue;
  * Test for {@link BlockManagerMaster}.
  */
 public final class BlockManagerMasterTest {
+  private static int CLONE_OFFSET = 0;
   private BlockManagerMaster blockManagerMaster;
 
   @Before
@@ -79,9 +80,9 @@ public final class BlockManagerMasterTest {
   public void testLostAfterCommit() throws Exception {
     final String edgeId = RuntimeIdManager.generateStageEdgeId("Edge0");
     final int srcTaskIndex = 0;
-    final String taskId = RuntimeIdManager.generateTaskId("Stagetest", srcTaskIndex, 0);
+    final String taskId = RuntimeIdManager.generateTaskId("Stagetest", srcTaskIndex, CLONE_OFFSET);
     final String executorId = RuntimeIdManager.generateExecutorId();
-    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex, 0);
+    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex, CLONE_OFFSET);
 
     // Initially the block state is NOT_AVAILABLE.
     blockManagerMaster.initializeState(blockId, taskId);
@@ -112,9 +113,9 @@ public final class BlockManagerMasterTest {
   public void testBeforeAfterCommit() throws Exception {
     final String edgeId = RuntimeIdManager.generateStageEdgeId("Edge1");
     final int srcTaskIndex = 0;
-    final String taskId = RuntimeIdManager.generateTaskId("StageTest", srcTaskIndex, 0);
+    final String taskId = RuntimeIdManager.generateTaskId("StageTest", srcTaskIndex, CLONE_OFFSET);
     final String executorId = RuntimeIdManager.generateExecutorId();
-    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex, 0);
+    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex, CLONE_OFFSET);
 
     // The block is being scheduled.
     blockManagerMaster.initializeState(blockId, taskId);

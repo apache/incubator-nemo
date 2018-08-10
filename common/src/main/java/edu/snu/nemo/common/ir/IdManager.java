@@ -41,7 +41,7 @@ public final class IdManager {
    * @return a new edge ID.
    */
   public static String newEdgeId() {
-    return "edge" + (isDriver ? "d" : "") + edgeId.getAndIncrement();
+    return "edge" + (isDriver ? "(d)" : "") + edgeId.getAndIncrement();
   }
 
   /**

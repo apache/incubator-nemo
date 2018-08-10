@@ -164,11 +164,11 @@ public final class TaskExecutor {
 
       // Handle writes
       // Main output children task writes
-      final List<OutputWriter> mainChildrenTaskWriters = getMainChildrenTaskWriters(
-          taskIndex, cloneOffset, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
+      final List<OutputWriter> mainChildrenTaskWriters = getMainChildrenTaskWriters(irVertex,
+          taskIndex, cloneOffset, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
       // Additional output children task writes
-      final Map<String, OutputWriter> additionalChildrenTaskWriters = getAdditionalChildrenTaskWriters(
-          taskIndex, cloneOffset, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
+      final Map<String, OutputWriter> additionalChildrenTaskWriters = getAdditionalChildrenTaskWriters(irVertex,
+          taskIndex, cloneOffset, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
       final List<String> additionalOutputVertices = new ArrayList<>(additionalOutputMap.values());
       final OutputCollectorImpl oci = new OutputCollectorImpl(additionalOutputVertices);
       // intra-vertex writes
@@ -185,7 +185,7 @@ public final class TaskExecutor {
             irVertex, sourceReader.get(), vertexHarness, isToSideInput)); // Source vertex read
       }
       final List<InputReader> parentTaskReaders =
-          getParentTaskReaders(taskIndex, cloneOffset, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
+          getParentTaskReaders(irVertex, taskIndex, cloneOffset, task.getTaskIncomingEdges(), dataTransferFactory);
       parentTaskReaders.forEach(parentTaskReader -> {
         dataFetcherList.add(new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
             vertexHarness, isToSideInput)); // Parent-task read
@@ -454,9 +454,9 @@ public final class TaskExecutor {
     }
   }
 
-  private List<InputReader> getParentTaskReaders(final int taskIndex,
+  private List<InputReader> getParentTaskReaders(final IRVertex irVertex,
+                                                 final int taskIndex,
                                                  final int cloneOffset,
-                                                 final IRVertex irVertex,
                                                  final List<StageEdge> inEdgesFromParentTasks,
                                                  final DataTransferFactory dataTransferFactory) {
     return inEdgesFromParentTasks
@@ -469,17 +469,17 @@ public final class TaskExecutor {
 
   /**
    * Return inter-task OutputWriters, for single output or output associated with main tag.
+   * @param irVertex                source irVertex
    * @param taskIndex               current task index
    * @param cloneOffset             current task's clone offset
-   * @param irVertex                source irVertex
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
    * @param dataTransferFactory     dataTransferFactory
    * @param taggedOutputs           tag to vertex id map
    * @return OutputWriters for main children tasks
    */
-  private List<OutputWriter> getMainChildrenTaskWriters(final int taskIndex,
+  private List<OutputWriter> getMainChildrenTaskWriters(final IRVertex irVertex,
+                                                        final int taskIndex,
                                                         final int cloneOffset,
-                                                        final IRVertex irVertex,
                                                         final List<StageEdge> outEdgesToChildrenTasks,
                                                         final DataTransferFactory dataTransferFactory,
                                                         final Map<String, String> taggedOutputs) {
@@ -494,17 +494,17 @@ public final class TaskExecutor {
 
   /**
    * Return inter-task OutputWriters associated with additional output tags.
+   * @param irVertex                source irVertex
    * @param taskIndex               current task index
    * @param cloneOffset             clone offset
-   * @param irVertex                source irVertex
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
    * @param dataTransferFactory     dataTransferFactory
    * @param taggedOutputs           tag to vertex id map
    * @return additional children vertex id to OutputWriters map.
    */
-  private Map<String, OutputWriter> getAdditionalChildrenTaskWriters(final int taskIndex,
+  private Map<String, OutputWriter> getAdditionalChildrenTaskWriters(final IRVertex irVertex,
+                                                                     final int taskIndex,
                                                                      final int cloneOffset,
-                                                                     final IRVertex irVertex,
                                                                      final List<StageEdge> outEdgesToChildrenTasks,
                                                                      final DataTransferFactory dataTransferFactory,
                                                                      final Map<String, String> taggedOutputs) {
