@@ -29,10 +29,11 @@ import org.apache.reef.tang.Injector;
  */
 public final class LargeShufflePolicy implements Policy {
   public static final PolicyBuilder BUILDER =
-      new PolicyBuilder(false)
-        .registerCompileTimePass(new LargeShuffleCompositePass())
-        .registerCompileTimePass(new LoopOptimizationCompositePass())
-        .registerCompileTimePass(new DefaultCompositePass());
+      new PolicyBuilder()
+          .registerCompileTimePass(new DefaultCompositePass())
+          .registerCompileTimePass(new LargeShuffleCompositePass())
+          .registerCompileTimePass(new LoopOptimizationCompositePass())
+          .registerCompileTimePass(new DefaultCompositePass());
   private final Policy policy;
 
   /**

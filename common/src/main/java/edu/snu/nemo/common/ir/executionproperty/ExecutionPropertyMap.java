@@ -130,7 +130,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
         && !properties.get(executionProperty.getClass()).equals(executionProperty)) {
       throw new CompileTimeOptimizationException("Trying to overwrite a finalized execution property ["
           + executionProperty.getClass().getSimpleName() + "] from ["
-          + properties.get(executionProperty.getClass()) + "] to [" + executionProperty + "]");
+          + properties.get(executionProperty.getClass()).getValue() + "] to [" + executionProperty.getValue() + "]");
     }
 
     // start the actual put process.

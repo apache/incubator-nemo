@@ -15,8 +15,14 @@
  */
 package edu.snu.nemo.common.test;
 
+import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 
@@ -30,6 +36,28 @@ public final class EmptyComponents {
   public static final Transform EMPTY_TRANSFORM = new EmptyTransform("");
 
   private EmptyComponents() {
+  }
+
+  public static DAG<IRVertex, IREdge> buildEmptyDAG() {
+    DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
+    final IRVertex s = new EmptyComponents.EmptySourceVertex<>("s");
+    final IRVertex t1 = new OperatorVertex(new EmptyComponents.EmptyTransform("t1"));
+    final IRVertex t2 = new OperatorVertex(new EmptyComponents.EmptyTransform("t2"));
+    final IRVertex t3 = new OperatorVertex(new EmptyComponents.EmptyTransform("t3"));
+    final IRVertex t4 = new OperatorVertex(new EmptyComponents.EmptyTransform("t4"));
+    final IRVertex t5 = new OperatorVertex(new EmptyComponents.EmptyTransform("t5"));
+    dagBuilder.addVertex(s);
+    dagBuilder.addVertex(t1);
+    dagBuilder.addVertex(t2);
+    dagBuilder.addVertex(t3);
+    dagBuilder.addVertex(t4);
+    dagBuilder.addVertex(t5);
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, s, t1));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, t1, t2));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t3));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, t3, t4));
+    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t5));
+    return dagBuilder.build();
   }
 
   /**
