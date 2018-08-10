@@ -77,11 +77,11 @@ public final class BlockManagerMasterTest {
    */
   @Test
   public void testLostAfterCommit() throws Exception {
-    final String edgeId = RuntimeIdManager.generateStageEdgeId("Edge-0");
+    final String edgeId = RuntimeIdManager.generateStageEdgeId("Edge0");
     final int srcTaskIndex = 0;
     final String taskId = RuntimeIdManager.generateTaskId("Stagetest", srcTaskIndex, 0);
     final String executorId = RuntimeIdManager.generateExecutorId();
-    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex);
+    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex, 0);
 
     // Initially the block state is NOT_AVAILABLE.
     blockManagerMaster.initializeState(blockId, taskId);
@@ -110,11 +110,11 @@ public final class BlockManagerMasterTest {
    */
   @Test
   public void testBeforeAfterCommit() throws Exception {
-    final String edgeId = RuntimeIdManager.generateStageEdgeId("Edge-1");
+    final String edgeId = RuntimeIdManager.generateStageEdgeId("Edge1");
     final int srcTaskIndex = 0;
     final String taskId = RuntimeIdManager.generateTaskId("StageTest", srcTaskIndex, 0);
     final String executorId = RuntimeIdManager.generateExecutorId();
-    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex);
+    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex, 0);
 
     // The block is being scheduled.
     blockManagerMaster.initializeState(blockId, taskId);

@@ -69,6 +69,7 @@ import static org.mockito.Mockito.when;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({BlockManagerMaster.class, RuntimeMaster.class, SerializerManager.class})
 public final class BlockStoreTest {
+  private static final int CLONE_OFFSET = 0;
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final Serializer SERIALIZER = new Serializer(
       PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of()),
@@ -124,7 +125,7 @@ public final class BlockStoreTest {
     final String shuffleEdge = RuntimeIdManager.generateStageEdgeId("shuffle_edge");
     IntStream.range(0, NUM_WRITE_VERTICES).forEach(writeTaskIdx -> {
       // Create a block for each writer task.
-      final String blockId = RuntimeIdManager.generateBlockId(shuffleEdge, writeTaskIdx);
+      final String blockId = RuntimeIdManager.generateBlockId(shuffleEdge, writeTaskIdx, CLONE_OFFSET);
       blockIdList.add(blockId);
       blockManagerMaster.initializeState(blockId, "Unused");
       blockManagerMaster.onBlockStateChanged(
@@ -146,7 +147,8 @@ public final class BlockStoreTest {
     final String concEdge = RuntimeIdManager.generateStageEdgeId("conc_read_edge");
 
     // Generates the ids and the data to be used.
-    concBlockId = RuntimeIdManager.generateBlockId(concEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1);
+    concBlockId = RuntimeIdManager.generateBlockId(
+        concEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1, CLONE_OFFSET);
     blockManagerMaster.initializeState(concBlockId, "unused");
     blockManagerMaster.onBlockStateChanged(
         concBlockId, BlockState.State.IN_PROGRESS, null);
@@ -170,7 +172,7 @@ public final class BlockStoreTest {
     // Generates the ids and the data of the blocks to be used.
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writeTaskIdx -> {
       final String blockId = RuntimeIdManager.generateBlockId(
-          hashEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1 + writeTaskIdx);
+          hashEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1 + writeTaskIdx, CLONE_OFFSET);
       hashedBlockIdList.add(blockId);
       blockManagerMaster.initializeState(blockId, "Unused");
       blockManagerMaster.onBlockStateChanged(

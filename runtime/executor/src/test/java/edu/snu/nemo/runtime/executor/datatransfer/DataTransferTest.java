@@ -86,6 +86,8 @@ import static org.mockito.Mockito.mock;
 @PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class,
     SourceVertex.class, ClientRPC.class, MetricManagerMaster.class})
 public final class DataTransferTest {
+  private static final int CLONE_OFFSET = 0;
+
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final DataStoreProperty.Value MEMORY_STORE =
       DataStoreProperty.Value.MemoryStore;
@@ -332,7 +334,7 @@ public final class DataTransferTest {
     final List<List> dataReadList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
-          new InputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+          new InputReader(dstTaskIndex, CLONE_OFFSET, srcVertex, dummyEdge, receiver);
 
       assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
 
@@ -428,9 +430,9 @@ public final class DataTransferTest {
     final List<List> dataReadList2 = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
-          new InputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+          new InputReader(dstTaskIndex, CLONE_OFFSET, srcVertex, dummyEdge, receiver);
       final InputReader reader2 =
-          new InputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
+          new InputReader(dstTaskIndex, CLONE_OFFSET, srcVertex, dummyEdge2, receiver);
 
       assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
 

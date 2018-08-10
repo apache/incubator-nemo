@@ -42,7 +42,7 @@ public final class RuntimeIdManager {
    *
    * @return the generated ID
    */
-  public static String generatePhysicalPlanId(){
+  public static String generatePhysicalPlanId() {
     return "Plan" + physicalPlanIdGenerator.getAndIncrement();
   }
 

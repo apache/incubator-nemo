@@ -61,13 +61,15 @@ public final class DataTransferFactory {
    * Creates an {@link InputReader} between two stages.
    *
    * @param dstTaskIdx  the index of the destination task.
+   * @param cloneOffset the clone offset.
    * @param srcIRVertex the {@link IRVertex} that output the data to be read.
    * @param runtimeEdge that connects the tasks belonging to srcIRVertex to dstTask.
    * @return the {@link InputReader} created.
    */
   public InputReader createReader(final int dstTaskIdx,
+                                  final int cloneOffset,
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge) {
-    return new InputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
+    return new InputReader(dstTaskIdx, cloneOffset, srcIRVertex, runtimeEdge, blockManagerWorker);
   }
 }

@@ -41,7 +41,6 @@ import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 
@@ -462,7 +461,6 @@ public final class BatchScheduler implements Scheduler {
     return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
         .stream()
         .flatMap(inStageEdge -> {
-          // Use the original parent task (not clones) for now.
           final List<String> tasksOfParentStage = inStageEdge.getSrc().getOriginalTaskIdsSortedByIndex();
           switch (inStageEdge.getDataCommunicationPattern()) {
             case Shuffle:
@@ -470,9 +468,9 @@ public final class BatchScheduler implements Scheduler {
               // All of the parent stage's tasks are parents
               return tasksOfParentStage.stream();
             case OneToOne:
-              // Only one of the parent stage's tasks is a parent
-              // TODO: clone
-              return Stream.of(tasksOfParentStage.get(RuntimeIdManager.getIndexFromTaskId(childTaskId)));
+              // Only one of the parent stage's tasks (and possibly its clones) is a parent
+              return tasksOfParentStage.stream().filter(parentTask ->
+                  RuntimeIdManager.getIndexFromTaskId(parentTask) == RuntimeIdManager.getIndexFromTaskId(childTaskId));
             default:
               throw new IllegalStateException(inStageEdge.toString());
           }
