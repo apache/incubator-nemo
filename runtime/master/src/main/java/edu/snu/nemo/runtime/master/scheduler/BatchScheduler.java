@@ -461,7 +461,7 @@ public final class BatchScheduler implements Scheduler {
     return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
         .stream()
         .flatMap(inStageEdge -> {
-          final List<String> tasksOfParentStage = inStageEdge.getSrc().getOriginalTaskIdsSortedByIndex();
+          final List<String> tasksOfParentStage = inStageEdge.getSrc().getAllPossiblyClonedTaskIdsShuffled();
           switch (inStageEdge.getDataCommunicationPattern()) {
             case Shuffle:
             case BroadCast:

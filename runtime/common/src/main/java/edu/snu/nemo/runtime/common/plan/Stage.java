@@ -84,11 +84,7 @@ public final class Stage extends Vertex {
         taskIds.add(RuntimeIdManager.generateTaskId(getId(), taskIdx, cloneOffset));
       }
     }
-
-    // Shuffle to avoid always doing the same work back-to-back.
-    if (cloneNum > 1) {
-      Collections.shuffle(taskIds);
-    }
+    Collections.shuffle(taskIds); // Shuffle to avoid always scheduling clones back-to-back.
     return taskIds;
   }
 

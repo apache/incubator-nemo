@@ -79,10 +79,8 @@ public final class PlanStateManagerTest {
       taskIds.forEach(taskId -> {
         planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
         planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
-        if (RuntimeIdManager.getIndexFromTaskId(taskId) == taskIds.size() - 1) {
-          assertEquals(StageState.State.COMPLETE, planStateManager.getStageState(stage.getId()));
-        }
       });
+      assertEquals(StageState.State.COMPLETE, planStateManager.getStageState(stage.getId()));
       taskIds.forEach(taskId -> assertEquals(planStateManager.getTaskState(taskId), TaskState.State.COMPLETE));
 
       if (stageIdx == stageList.size() - 1) {

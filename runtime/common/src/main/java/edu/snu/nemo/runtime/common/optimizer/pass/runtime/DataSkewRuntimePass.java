@@ -84,17 +84,17 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<List<String>, Ma
         .collect(Collectors.toList());
 
     // Get number of evaluators of the next stage (number of blocks).
-    final Integer numOfDstTasks = optimizationEdges.stream().findFirst().orElseThrow(() ->
+    final Integer numOfOriginalDstTasks = optimizationEdges.stream().findFirst().orElseThrow(() ->
         new RuntimeException("optimization edges are empty")).getDst().getOriginalTaskIdsSortedByIndex().size();
 
     // Calculate keyRanges.
-    final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), numOfDstTasks);
+    final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), numOfOriginalDstTasks);
 
     // Overwrite the previously assigned key range in the physical DAG with the new range.
     optimizationEdges.forEach(optimizationEdge -> {
       // Update the information.
       final Map<Integer, KeyRange> taskIdxToHashRange = new HashMap<>();
-      for (int taskIdx = 0; taskIdx < numOfDstTasks; taskIdx++) {
+      for (int taskIdx = 0; taskIdx < numOfOriginalDstTasks; taskIdx++) {
         taskIdxToHashRange.put(taskIdx, keyRanges.get(taskIdx));
       }
       optimizationEdge.setTaskIdxToKeyRange(taskIdxToHashRange);
