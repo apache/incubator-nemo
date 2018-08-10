@@ -55,7 +55,11 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       emit((O) output);
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      this.additionalTagElementsMap.get(dstVertexId).add(output);
+      final List<Object> dataElements = this.additionalTagElementsMap.get(dstVertexId);
+      if (dataElements == null) {
+        throw new IllegalArgumentException("Wrong destination vertex id passed!");
+      }
+      dataElements.add(output);
     }
   }
 
@@ -68,7 +72,11 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       // This dstVertexId is for the main tag
       return (Iterable<Object>) iterateMain();
     } else {
-      return this.additionalTagElementsMap.get(tag);
+      final List<Object> dataElements = this.additionalTagElementsMap.get(tag);
+      if (dataElements == null) {
+        throw new IllegalArgumentException("Wrong destination vertex id passed!");
+      }
+      return dataElements;
     }
   }
 
@@ -82,7 +90,11 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       clearMain();
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      this.additionalTagElementsMap.get(tag).clear();
+      final List<Object> dataElements = this.additionalTagElementsMap.get(tag);
+      if (dataElements == null) {
+        throw new IllegalArgumentException("Wrong destination vertex id passed!");
+      }
+      dataElements.clear();
     }
   }
 
@@ -90,11 +102,15 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     return mainTagElements;
   }
 
-  public List getAdditionalTagOutputQueue(final String dstVertexId) {
+  public List<Object> getAdditionalTagOutputQueue(final String dstVertexId) {
     if (this.mainTagOutputChildren.contains(dstVertexId)) {
-      return this.mainTagElements;
+      return (List<Object>) this.mainTagElements;
     } else {
-      return this.additionalTagElementsMap.get(dstVertexId);
+      final List<Object> dataElements = this.additionalTagElementsMap.get(dstVertexId);
+      if (dataElements == null) {
+        throw new IllegalArgumentException("Wrong destination vertex id passed!");
+      }
+      return dataElements;
     }
   }
 }
