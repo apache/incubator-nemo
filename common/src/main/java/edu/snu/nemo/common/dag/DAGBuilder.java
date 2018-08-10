@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.common.dag;
 
+import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
@@ -193,7 +194,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     stack.push(vertex);
     // When we encounter a vertex that we've already gone through, then there is a cycle.
     if (outgoingEdges.get(vertex).stream().map(Edge::getDst).anyMatch(stack::contains)) {
-      throw new RuntimeException("DAG contains a cycle");
+      throw new CompileTimeOptimizationException("DAG contains a cycle");
     } else {
       outgoingEdges.get(vertex).stream().map(Edge::getDst)
           .filter(v -> !visited.contains(v))
@@ -215,7 +216,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
           .filter(v -> !(v instanceof SourceVertex))
           .map(V::getId)
           .collect(Collectors.toList()).toString();
-      throw new RuntimeException("DAG source check failed while building DAG. " + problematicVertices);
+      throw new CompileTimeOptimizationException("DAG source check failed while building DAG. " + problematicVertices);
     }
   }
 
@@ -232,7 +233,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
       final String problematicVertices = verticesToObserve.get().filter(v ->
           !(v instanceof OperatorVertex || v instanceof LoopVertex))
           .map(V::getId).collect(Collectors.toList()).toString();
-      throw new RuntimeException("DAG sink check failed while building DAG: " + problematicVertices);
+      throw new CompileTimeOptimizationException("DAG sink check failed while building DAG: " + problematicVertices);
     }
   }
 
@@ -245,7 +246,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
         .filter(e -> Boolean.TRUE.equals(e.isSideInput()))
         .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
         .forEach(e -> {
-          throw new RuntimeException("DAG execution property check: "
+          throw new CompileTimeOptimizationException("DAG execution property check: "
               + "SideInput edge is not compatible with push" + e.getId());
         }));
     // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
@@ -254,7 +255,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
                       .equals(e.getPropertyValue(MetricCollectionProperty.class)))
         .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
         .forEach(e -> {
-          throw new RuntimeException("DAG execution property check: "
+          throw new CompileTimeOptimizationException("DAG execution property check: "
               + "DataSizeMetricCollection edge is not compatible with push" + e.getId());
         }));
   }
