@@ -20,6 +20,7 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.Collections;
 import java.util.List;
@@ -31,12 +32,14 @@ import java.util.List;
  * This enables that every byte[] element, which was a partition for the reduce task, becomes one partition again
  * and flushed to disk write after it is relayed.
  */
+@Annotates(PartitionerProperty.class)
+@Requires(CommunicationPatternProperty.class)
 public final class LargeShufflePartitionerPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public LargeShufflePartitionerPass() {
-    super(PartitionerProperty.class, Collections.singleton(CommunicationPatternProperty.class));
+    super(LargeShufflePartitionerPass.class);
   }
 
   @Override

@@ -20,6 +20,7 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.Collections;
 import java.util.List;
@@ -28,12 +29,14 @@ import java.util.List;
  * A pass to optimize large shuffle by tagging edges.
  * This pass handles the DataFlowModel ExecutionProperty.
  */
+@Annotates(DataFlowProperty.class)
+@Requires(CommunicationPatternProperty.class)
 public final class LargeShuffleDataFlowPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public LargeShuffleDataFlowPass() {
-    super(DataFlowProperty.class, Collections.singleton(CommunicationPatternProperty.class));
+    super(LargeShuffleDataFlowPass.class);
   }
 
   @Override

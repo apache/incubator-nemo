@@ -17,8 +17,11 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -26,33 +29,26 @@ import java.util.Set;
  * It is ensured by the compiler that the shape of the IR DAG itself is not modified by an AnnotatingPass.
  */
 public abstract class AnnotatingPass extends CompileTimePass {
-  private final Class<? extends ExecutionProperty> keyOfExecutionPropertyToModify;
+  private final Set<Class<? extends ExecutionProperty>> keyOfExecutionPropertyToModify;
   private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
 
   /**
    * Constructor.
-   * @param keyOfExecutionPropertyToModify key of execution property to modify.
-   * @param prerequisiteExecutionProperties prerequisite execution properties.
+   * @param cls the annotating pass class.
    */
-  public AnnotatingPass(final Class<? extends ExecutionProperty> keyOfExecutionPropertyToModify,
-                        final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties) {
-    this.keyOfExecutionPropertyToModify = keyOfExecutionPropertyToModify;
-    this.prerequisiteExecutionProperties = prerequisiteExecutionProperties;
-  }
+  public AnnotatingPass(final Class<? extends AnnotatingPass> cls) {
+    final Annotates annotates = cls.getAnnotation(Annotates.class);
+    this.keyOfExecutionPropertyToModify = new HashSet<>(Arrays.asList(annotates.value()));
 
-  /**
-   * Constructor.
-   * @param keyOfExecutionPropertyToModify key of execution property to modify.
-   */
-  public AnnotatingPass(final Class<? extends ExecutionProperty> keyOfExecutionPropertyToModify) {
-    this(keyOfExecutionPropertyToModify, Collections.emptySet());
+    final Requires requires = cls.getAnnotation(Requires.class);
+    this.prerequisiteExecutionProperties = new HashSet<>(Arrays.asList(requires.value()));
   }
 
   /**
    * Getter for key of execution property to modify.
    * @return key of execution property to modify.
    */
-  public final Class<? extends ExecutionProperty> getExecutionPropertyToModify() {
+  public final Set<Class<? extends ExecutionProperty>> getExecutionPropertyToModify() {
     return keyOfExecutionPropertyToModify;
   }
 

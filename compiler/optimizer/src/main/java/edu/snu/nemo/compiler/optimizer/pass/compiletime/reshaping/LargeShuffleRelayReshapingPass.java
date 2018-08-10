@@ -24,6 +24,7 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.transform.RelayTransform;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.Collections;
 
@@ -33,13 +34,14 @@ import java.util.Collections;
  * receiving shuffle edges,
  * to merge the shuffled data in memory and write to the disk at once.
  */
+@Requires(CommunicationPatternProperty.class)
 public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
 
   /**
    * Default constructor.
    */
   public LargeShuffleRelayReshapingPass() {
-    super(Collections.singleton(CommunicationPatternProperty.class));
+    super(LargeShuffleRelayReshapingPass.class);
   }
 
   @Override

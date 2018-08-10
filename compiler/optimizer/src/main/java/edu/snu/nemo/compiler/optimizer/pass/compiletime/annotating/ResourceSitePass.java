@@ -23,6 +23,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternPropert
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSiteProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.apache.commons.math3.optim.BaseOptimizer;
 import org.apache.commons.math3.optim.PointValuePair;
 import org.apache.commons.math3.optim.linear.*;
@@ -50,6 +51,8 @@ import java.util.*;
  * Also, this pass assumes network bandwidth to be the bottleneck. Each node should have enough capacity to run
  * TaskGroups immediately as scheduler attempts to schedule a TaskGroup.
  */
+@Annotates(ResourceSiteProperty.class)
+@Requires(ParallelismProperty.class)
 public final class ResourceSitePass extends AnnotatingPass {
 
   // Index of the objective parameter, in the coefficient vector
@@ -64,7 +67,7 @@ public final class ResourceSitePass extends AnnotatingPass {
    * Default constructor.
    */
   public ResourceSitePass() {
-    super(ResourceSiteProperty.class, Collections.singleton(ParallelismProperty.class));
+    super(ResourceSitePass.class);
   }
 
   @Override

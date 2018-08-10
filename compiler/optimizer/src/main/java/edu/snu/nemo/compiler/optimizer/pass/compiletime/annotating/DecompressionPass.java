@@ -26,13 +26,14 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
  * A pass for applying decompression algorithm for data flowing between vertices.
  * It always
  */
+@Annotates(CompressionProperty.class)
 public final class DecompressionPass extends AnnotatingPass {
 
   /**
    * Constructor.
    */
   public DecompressionPass() {
-    super(CompressionProperty.class);
+    super(DecompressionPass.class);
   }
 
   @Override

@@ -20,6 +20,7 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.Collections;
 import java.util.List;
@@ -29,12 +30,14 @@ import static edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.Transi
 /**
  * Push from transient resources to reserved resources.
  */
+@Annotates(DataFlowProperty.class)
+@Requires(ResourcePriorityProperty.class)
 public final class TransientResourceDataFlowPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public TransientResourceDataFlowPass() {
-    super(DataFlowProperty.class, Collections.singleton(ResourcePriorityProperty.class));
+    super(TransientResourceDataFlowPass.class);
   }
 
   @Override

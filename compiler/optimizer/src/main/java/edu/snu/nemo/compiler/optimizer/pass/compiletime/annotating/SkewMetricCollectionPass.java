@@ -21,6 +21,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternPropert
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.Collections;
 
@@ -29,12 +30,14 @@ import java.util.Collections;
  * It specifies the outgoing Shuffle edges from MetricCollectionVertices with a MetricCollection ExecutionProperty
  * which lets the edge to know what metric collection it should perform.
  */
+@Annotates(MetricCollectionProperty.class)
+@Requires(CommunicationPatternProperty.class)
 public final class SkewMetricCollectionPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public SkewMetricCollectionPass() {
-    super(MetricCollectionProperty.class, Collections.singleton(CommunicationPatternProperty.class));
+    super(SkewMetricCollectionPass.class);
   }
 
   @Override

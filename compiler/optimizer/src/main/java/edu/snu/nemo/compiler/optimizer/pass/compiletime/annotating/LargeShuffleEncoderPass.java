@@ -21,6 +21,7 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.Collections;
 import java.util.List;
@@ -30,12 +31,14 @@ import java.util.List;
  * This pass modifies the encoder property toward {@link edu.snu.nemo.common.ir.vertex.transform.RelayTransform}
  * to write data as byte arrays.
  */
+@Annotates(EncoderProperty.class)
+@Requires(CommunicationPatternProperty.class)
 public final class LargeShuffleEncoderPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public LargeShuffleEncoderPass() {
-    super(EncoderProperty.class, Collections.singleton(CommunicationPatternProperty.class));
+    super(LargeShuffleEncoderPass.class);
   }
 
   @Override

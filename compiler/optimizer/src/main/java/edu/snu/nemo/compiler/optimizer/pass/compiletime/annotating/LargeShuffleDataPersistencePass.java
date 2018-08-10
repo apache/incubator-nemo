@@ -20,6 +20,7 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.Collections;
 
@@ -27,13 +28,15 @@ import java.util.Collections;
  * A pass to optimize large shuffle by tagging edges.
  * This pass handles the data persistence ExecutionProperty.
  */
+@Annotates(DataPersistenceProperty.class)
+@Requires(DataFlowProperty.class)
 public final class LargeShuffleDataPersistencePass extends AnnotatingPass {
 
   /**
    * Default constructor.
    */
   public LargeShuffleDataPersistencePass() {
-    super(DataPersistenceProperty.class, Collections.singleton(DataFlowProperty.class));
+    super(LargeShuffleDataPersistencePass.class);
   }
 
   @Override

@@ -31,6 +31,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test {@link DefaultEdgeEncoderPass} and {@link DefaultEdgeDecoderPass}.
@@ -48,9 +49,9 @@ public class DefaultEdgeCoderPassTest {
   @Test
   public void testAnnotatingPass() {
     final AnnotatingPass encoderPass = new DefaultEdgeEncoderPass();
-    assertEquals(EncoderProperty.class, encoderPass.getExecutionPropertyToModify());
+    assertTrue(encoderPass.getExecutionPropertyToModify().contains(EncoderProperty.class));
     final AnnotatingPass decoderPass = new DefaultEdgeDecoderPass();
-    assertEquals(DecoderProperty.class, decoderPass.getExecutionPropertyToModify());
+    assertTrue(decoderPass.getExecutionPropertyToModify().contains(DecoderProperty.class));
   }
 
   @Test

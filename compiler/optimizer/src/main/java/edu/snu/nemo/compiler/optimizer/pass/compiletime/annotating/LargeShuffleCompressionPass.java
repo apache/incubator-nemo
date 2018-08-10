@@ -18,39 +18,41 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
- * A pass for tagging shuffle edges different from the default ones.
- * It sets DataFlowModel ExecutionProperty as "push".
+ * A pass to support Sailfish-like shuffle by tagging edges.
+ * This pass modifies the encoder property toward {@link edu.snu.nemo.common.ir.vertex.transform.RelayTransform}
+ * to write data as byte arrays.
  */
-@Annotates(DataFlowProperty.class)
+@Annotates(CompressionProperty.class)
 @Requires(CommunicationPatternProperty.class)
-public final class ShuffleEdgePushPass extends AnnotatingPass {
+public final class LargeShuffleCompressionPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public ShuffleEdgePushPass() {
-    super(ShuffleEdgePushPass.class);
+  public LargeShuffleCompressionPass() {
+    super(LargeShuffleCompressionPass.class);
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().forEach(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      if (!inEdges.isEmpty()) {
-        inEdges.forEach(edge -> {
-          if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
-              .equals(CommunicationPatternProperty.Value.Shuffle)) {
-            edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
-          }
-        });
-      }
+      inEdges.forEach(edge -> {
+        if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.Shuffle)) {
+          edge.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.LZ4));
+
+          dag.getOutgoingEdgesOf(edge.getDst())
+              .forEach(edgeFromRelay ->
+                  edgeFromRelay.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.None)));
+        }
+      });
     });
     return dag;
   }

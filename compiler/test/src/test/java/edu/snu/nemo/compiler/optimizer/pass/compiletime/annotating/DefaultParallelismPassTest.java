@@ -29,6 +29,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test {@link DefaultParallelismPass}.
@@ -46,7 +47,7 @@ public class DefaultParallelismPassTest {
   @Test
   public void testAnnotatingPass() {
     final AnnotatingPass parallelismPass = new DefaultParallelismPass();
-    assertEquals(ParallelismProperty.class, parallelismPass.getExecutionPropertyToModify());
+    assertTrue(parallelismPass.getExecutionPropertyToModify().contains(ParallelismProperty.class));
   }
 
   @Test

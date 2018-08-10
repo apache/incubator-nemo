@@ -17,7 +17,9 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -29,18 +31,12 @@ public abstract class ReshapingPass extends CompileTimePass {
   private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
 
   /**
-   * Default constructor.
-   */
-  public ReshapingPass() {
-    this(new HashSet<>());
-  }
-
-  /**
    * Constructor.
-   * @param prerequisiteExecutionProperties prerequisite of execution properties.
+   * @param cls the reshaping pass class.
    */
-  public ReshapingPass(final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties) {
-    this.prerequisiteExecutionProperties = prerequisiteExecutionProperties;
+  public ReshapingPass(final Class<? extends ReshapingPass> cls) {
+    final Requires requires = cls.getAnnotation(Requires.class);
+    this.prerequisiteExecutionProperties = new HashSet<>(Arrays.asList(requires.value()));
   }
 
   public final Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties() {

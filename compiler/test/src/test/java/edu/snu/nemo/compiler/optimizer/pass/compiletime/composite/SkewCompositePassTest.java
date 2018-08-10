@@ -67,7 +67,7 @@ public class SkewCompositePassTest {
         prerequisites.addAll(compileTimePass.getPrerequisiteExecutionProperties()));
     dataSkewPass.getPassList().forEach(compileTimePass -> {
       if (compileTimePass instanceof AnnotatingPass) {
-        prerequisites.remove(((AnnotatingPass) compileTimePass).getExecutionPropertyToModify());
+        prerequisites.removeAll(((AnnotatingPass) compileTimePass).getExecutionPropertyToModify());
       }
     });
     assertEquals(prerequisites, dataSkewPass.getPrerequisiteExecutionProperties());

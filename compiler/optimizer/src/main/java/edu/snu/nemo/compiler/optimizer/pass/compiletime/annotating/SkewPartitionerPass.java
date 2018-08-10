@@ -21,6 +21,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.Collections;
 import java.util.List;
@@ -28,12 +29,14 @@ import java.util.List;
 /**
  * Transient resource pass for tagging edges with {@link PartitionerProperty}.
  */
+@Annotates(PartitionerProperty.class)
+@Requires(MetricCollectionProperty.class)
 public final class SkewPartitionerPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public SkewPartitionerPass() {
-    super(PartitionerProperty.class, Collections.singleton(MetricCollectionProperty.class));
+    super(SkewPartitionerPass.class);
   }
 
   @Override

@@ -20,6 +20,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternPropert
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.Collections;
 import java.util.List;
@@ -27,12 +28,14 @@ import java.util.List;
 /**
  * Place valuable computations on reserved resources, and the rest on transient resources.
  */
+@Annotates(ResourcePriorityProperty.class)
+@Requires(CommunicationPatternProperty.class)
 public final class TransientResourcePriorityPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public TransientResourcePriorityPass() {
-    super(ResourcePriorityProperty.class, Collections.singleton(CommunicationPatternProperty.class));
+    super(TransientResourcePriorityPass.class);
   }
 
   @Override
