@@ -22,7 +22,7 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
  *
  * Limitations of the current runtime implementation. (will be addressed in the future)
  * (1) A vertex cannot have a larger # of clones than its parent vertex.
- * (2) *ALL* of the clones are always scheduled, and the vertex is considered complete after all of clones finish.
+ * (2) *ALL* of the clones are always scheduled, and the vertex is considered complete after all of the clones finish.
  */
 public final class ClonedSchedulingProperty extends VertexExecutionProperty<Integer> {
   /**
