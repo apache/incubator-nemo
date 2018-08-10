@@ -65,17 +65,6 @@ public final class Task implements Serializable {
     this.irVertexIdToReadable = irVertexIdToReadable;
   }
 
-  public Task clone() {
-    return new Task(planId,
-        taskId,
-        attemptIdx,
-        executionProperties.getCopy(),
-        serializedIRDag,
-        new ArrayList<>(taskIncomingEdges),
-        new ArrayList<>(taskOutgoingEdges),
-        new HashMap<>(irVertexIdToReadable));
-  }
-
   /**
    * @return the id of the plan.
    */

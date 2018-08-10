@@ -204,9 +204,10 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
         stageIdToStageMap.put(stageId, stage);
       }
 
+      // To prevent re-fetching readables in source vertex
+      // during re-generation of physical plan for dynamic optimization.
       for (IRVertex irVertex : stageVertices) {
         irVertex.setStagePartitioned();
-        LOG.info("{} stagePartitioned", irVertex.getId());
       }
     }
 

@@ -46,15 +46,15 @@ public final class RunTimeOptimizer {
    */
   public static synchronized PhysicalPlan dynamicOptimization(
           final PhysicalPlan originalPlan,
-          final Object metric) {
+          final Object dynOptData) {
     try {
       final PhysicalPlanGenerator physicalPlanGenerator =
           Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
 
-      // Metric data for DataSkewRuntimePass is a map of <hashrange, partition size>.
-      final Map<Integer, Long> metricData = (Map<Integer, Long>) metric;
+      // Data for dynamic optimization used in DataSkewRuntimePass
+      // is a map of <hash value, partition size>.
       final DAG<IRVertex, IREdge> newIrDAG =
-          new DataSkewRuntimePass().apply(originalPlan.getIrDAG(), metricData);
+          new DataSkewRuntimePass().apply(originalPlan.getIrDAG(), (Map<Integer, Long>) dynOptData);
       final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(newIrDAG);
       final PhysicalPlan physicalPlan =
           new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(), newIrDAG, stageDAG);

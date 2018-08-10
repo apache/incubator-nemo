@@ -82,6 +82,13 @@ public abstract class IRVertex extends Vertex {
     return executionProperties;
   }
 
+  public final void setStagePartitioned() {
+    stagePartitioned = true;
+  }
+  public final boolean getStagePartitioned() {
+    return stagePartitioned;
+  }
+
   /**
    * @return IRVertex properties in String form.
    */
@@ -90,12 +97,5 @@ public abstract class IRVertex extends Vertex {
     sb.append("\"class\": \"").append(this.getClass().getSimpleName());
     sb.append("\", \"executionProperties\": ").append(executionProperties);
     return sb.toString();
-  }
-
-  public final void setStagePartitioned() {
-    stagePartitioned = true;
-  }
-  public final boolean getStagePartitioned() {
-    return stagePartitioned;
   }
 }

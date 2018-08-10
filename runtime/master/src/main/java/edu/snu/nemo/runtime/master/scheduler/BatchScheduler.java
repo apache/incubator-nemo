@@ -20,12 +20,12 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
 import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.DataSkewDynOptDataHandler;
+import edu.snu.nemo.runtime.master.DynOptDataHandler;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.runtime.common.state.StageState;
@@ -74,7 +74,7 @@ public final class BatchScheduler implements Scheduler {
   private PhysicalPlan physicalPlan;
   private PlanStateManager planStateManager;
   private List<List<Stage>> sortedScheduleGroups;
-  private DataSkewDynOptDataHandler dataSkewDynOptDataHandler;
+  private List<DynOptDataHandler> dynOptDataHandlers;
 
   @Inject
   private BatchScheduler(final TaskDispatcher taskDispatcher,
@@ -93,7 +93,8 @@ public final class BatchScheduler implements Scheduler {
           .subscribe(updatePhysicalPlanEventHandler.getEventClass(), updatePhysicalPlanEventHandler);
     }
     this.executorRegistry = executorRegistry;
-    this.dataSkewDynOptDataHandler = new DataSkewDynOptDataHandler();
+    this.dynOptDataHandlers = new ArrayList<>();
+    dynOptDataHandlers.add(new DataSkewDynOptDataHandler());
   }
 
   /**
@@ -337,11 +338,11 @@ public final class BatchScheduler implements Scheduler {
           physicalPlan.getId(),
           taskId,
           attemptIdx,
-          stageToSchedule.getExecutionProperties().getCopy(),
+          stageToSchedule.getExecutionProperties(),
           stageToSchedule.getSerializedIRDAG(),
-          new ArrayList<>(stageIncomingEdges),
-          new ArrayList<>(stageOutgoingEdges),
-          new HashMap<>(vertexIdToReadables.get(taskIdx))));
+          stageIncomingEdges,
+          stageOutgoingEdges,
+          vertexIdToReadables.get(taskIdx)));
     });
     return tasks;
   }
@@ -381,8 +382,11 @@ public final class BatchScheduler implements Scheduler {
         planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
 
     if (stageComplete) {
+      final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
+          .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
+          .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
       pubSubEventHandlerWrapper.getPubSubEventHandler()
-          .onNext(new DynamicOptimizationEvent(physicalPlan, dataSkewDynOptDataHandler.getDynOptData(),
+          .onNext(new DynamicOptimizationEvent(physicalPlan, dynOptDataHandler.getDynOptData(),
               taskId, executorId));
     }
   }
@@ -465,16 +469,9 @@ public final class BatchScheduler implements Scheduler {
   }
 
   public void updateDynOptData(final Object dynOptData) {
-    if (dataSkewDynOptDataHandler instanceof DataSkewDynOptDataHandler) {
-      List<ControlMessage.PartitionSizeEntry> partitionSizeInfo
-          = (List<ControlMessage.PartitionSizeEntry>) dynOptData;
-      partitionSizeInfo.forEach(partitionSizeEntry -> {
-        final int hashIndex = partitionSizeEntry.getKey();
-        final long partitionSize = partitionSizeEntry.getSize();
-        dataSkewDynOptDataHandler.updateDynOptData(hashIndex, partitionSize);
-      });
-    } else {
-      throw new UnsupportedOperationException("Unsupported DynOptDataHandler type");
-    }
+    final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
+        .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
+        .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
+    dynOptDataHandler.updateDynOptData(dynOptData);
   }
 }

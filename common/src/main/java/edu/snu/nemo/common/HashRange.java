@@ -122,8 +122,8 @@ public final class HashRange implements KeyRange<Integer> {
   @Override
   public int hashCode() {
     return Arrays.hashCode(new Object[] {
-        rangeBeginInclusive,    //auto-boxed
-        rangeEndExclusive, //auto-boxed
+        rangeBeginInclusive,
+        rangeEndExclusive,
         isSkewed,
     });
   }

@@ -130,6 +130,7 @@ final class TaskDispatcher {
           // update metadata first
           planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
+          LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
           // send the task
           selectedExecutor.onTaskScheduled(task);
         } else {

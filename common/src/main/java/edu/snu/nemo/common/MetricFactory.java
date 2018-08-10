@@ -22,6 +22,5 @@ import java.io.Serializable;
  *
  * @param <T> metric type.
  */
-// TODO #120: Separate EOFException from Decoder Failures
 public interface MetricFactory<T> extends Serializable {
 }

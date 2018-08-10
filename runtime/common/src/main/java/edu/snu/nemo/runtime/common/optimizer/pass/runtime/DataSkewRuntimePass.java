@@ -19,7 +19,6 @@ import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.DataSkewMetricFactory;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
-import edu.snu.nemo.common.exception.DynamicOptimizationException;
 
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
@@ -46,7 +45,7 @@ public final class DataSkewRuntimePass extends RuntimePass<Map<Integer, Long>> {
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
   // Skewed keys denote for top n keys in terms of partition size.
   public static final int DEFAULT_NUM_SKEWED_KEYS = 3;
-  private int numSkewedKeys = DEFAULT_NUM_SKEWED_KEYS;
+  private int numSkewedKeys;
 
   /**
    * Constructor.
@@ -128,16 +127,16 @@ public final class DataSkewRuntimePass extends RuntimePass<Map<Integer, Long>> {
    * to a key range of partitions with approximate size of (total size of partitions / the number of tasks).
    *
    * @param keyToPartitionSizeMap a map of key to partition size.
-   * @param dstParallelism the number of tasks that receives this data as input.
+   * @param dstParallelism the number of tasks that receive this data as input.
    * @return the list of key ranges calculated.
    */
   @VisibleForTesting
   public List<KeyRange> calculateKeyRanges(final Map<Integer, Long> keyToPartitionSizeMap,
                                            final Integer dstParallelism) {
-    // Get the biggest key.
-    final int maxKey = keyToPartitionSizeMap.keySet().stream()
+    // Get the last key.
+    final int lastKey = keyToPartitionSizeMap.keySet().stream()
         .max(Integer::compareTo)
-        .orElseThrow(() -> new DynamicOptimizationException("Cannot find max key among blocks."));
+        .get();
 
     // Identify skewed keys, which is top numSkewedKeys number of keys.
     List<Integer> skewedKeys = identifySkewedKeys(keyToPartitionSizeMap);
@@ -179,15 +178,15 @@ public final class DataSkewRuntimePass extends RuntimePass<Map<Integer, Long>> {
         prevAccumulatedSize = currentAccumulatedSize;
         startingKey = finishingKey;
       } else { // last one: we put the range of the rest.
-        boolean isSkewedKey = containsSkewedKey(skewedKeys, startingKey, maxKey + 1);
+        boolean isSkewedKey = containsSkewedKey(skewedKeys, startingKey, lastKey + 1);
         keyRanges.add(i - 1,
-            HashRange.of(startingKey, maxKey + 1, isSkewedKey));
+            HashRange.of(startingKey, lastKey + 1, isSkewedKey));
 
-        while (finishingKey <= maxKey) {
+        while (finishingKey <= lastKey) {
           currentAccumulatedSize += keyToPartitionSizeMap.getOrDefault(finishingKey, 0L);
           finishingKey++;
         }
-        LOG.debug("KeyRange {}~{}, Size {}", startingKey, maxKey + 1,
+        LOG.debug("KeyRange {}~{}, Size {}", startingKey, lastKey + 1,
             currentAccumulatedSize - prevAccumulatedSize);
       }
     }

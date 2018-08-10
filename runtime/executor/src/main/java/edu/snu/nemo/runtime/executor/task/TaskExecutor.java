@@ -57,7 +57,6 @@ public final class TaskExecutor {
 
   // Essential information
   private boolean isExecuted;
-  private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDAG;
   private final String taskId;
   private final TaskStateManager taskStateManager;
   private final List<DataFetcher> dataFetchers;
@@ -91,7 +90,6 @@ public final class TaskExecutor {
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     // Essential information
     this.isExecuted = false;
-    this.irVertexDAG = irVertexDag;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
 

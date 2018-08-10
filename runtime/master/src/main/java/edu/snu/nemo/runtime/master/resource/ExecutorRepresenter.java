@@ -31,9 +31,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * (WARNING) This class is not thread-safe, and thus should only be accessed through ExecutorRegistry.
  *
@@ -47,7 +44,6 @@ import org.slf4j.LoggerFactory;
  */
 @NotThreadSafe
 public final class ExecutorRepresenter {
-  private static final Logger LOG = LoggerFactory.getLogger(ExecutorRepresenter.class.getName());
   private final String executorId;
   private final ResourceSpecification resourceSpecification;
   private final Map<String, Task> runningComplyingTasks;
@@ -110,26 +106,18 @@ public final class ExecutorRepresenter {
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
-    final byte[] serialized;
-    try {
-      serialized = SerializationUtils.serialize(task);
-    } catch (final Throwable t) {
-      LOG.error(t.toString());
-      t.printStackTrace();
-      throw new RuntimeException(t);
-    }
     serializationExecutorService.submit(() -> {
-        final ControlMessage.Message msg =
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.ScheduleTask)
-                .setScheduleTaskMsg(
-                    ControlMessage.ScheduleTaskMsg.newBuilder()
-                        .setTask(ByteString.copyFrom(serialized))
-                        .build())
-                .build();
-        sendControlMessage(msg);
+      final byte[] serialized = SerializationUtils.serialize(task);
+      sendControlMessage(
+          ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdGenerator.generateMessageId())
+              .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.ScheduleTask)
+              .setScheduleTaskMsg(
+                  ControlMessage.ScheduleTaskMsg.newBuilder()
+                      .setTask(ByteString.copyFrom(serialized))
+                      .build())
+              .build());
     });
   }
 
