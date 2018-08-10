@@ -22,7 +22,6 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 import java.io.Serializable;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 /**
  * The basic unit of operation in a dataflow program, as well as the most important data structure in Nemo.
@@ -49,7 +48,7 @@ public abstract class IRVertex extends Vertex {
    * @param thatVertex the edge to copy executionProperties to.
    */
   public final void copyExecutionPropertiesTo(final IRVertex thatVertex) {
-    this.getExecutionProperties().forEachProperties((Consumer<VertexExecutionProperty>) thatVertex::setProperty);
+    this.getExecutionProperties().forEachProperties(thatVertex::setProperty);
   }
 
   /**

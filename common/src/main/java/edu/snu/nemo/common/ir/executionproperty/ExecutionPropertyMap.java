@@ -15,12 +15,11 @@
  */
 package edu.snu.nemo.common.ir.executionproperty;
 
+import edu.snu.nemo.common.coder.DecoderFactory;
+import edu.snu.nemo.common.coder.EncoderFactory;
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -66,6 +65,8 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     final ExecutionPropertyMap<EdgeExecutionProperty> map = new ExecutionPropertyMap<>(irEdge.getId());
     map.put(CommunicationPatternProperty.of(commPattern));
     map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    map.put(EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));
+    map.put(DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
     switch (commPattern) {
       case Shuffle:
         map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));

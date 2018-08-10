@@ -26,7 +26,6 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.io.Serializable;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 /**
  * Physical execution plan of intermediate data movement.
@@ -126,7 +125,7 @@ public final class IREdge extends Edge<IRVertex> {
    * @param thatEdge the edge to copy executionProperties to.
    */
   public void copyExecutionPropertiesTo(final IREdge thatEdge) {
-    this.getExecutionProperties().forEachProperties((Consumer<EdgeExecutionProperty>) thatEdge::setProperty);
+    this.getExecutionProperties().forEachProperties(thatEdge::setProperty);
   }
 
   @Override
