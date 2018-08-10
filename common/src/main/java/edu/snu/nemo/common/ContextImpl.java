@@ -25,7 +25,6 @@ import java.util.Optional;
  */
 public final class ContextImpl implements Transform.Context {
   private final Map sideInputs;
-  private final Optional<String> mainTag;
   private final Map<String, String> tagToAdditionalChildren;
   private String data;
 
@@ -35,10 +34,8 @@ public final class ContextImpl implements Transform.Context {
    * @param tagToAdditionalChildren tag id to additional vertices id map.
    */
   public ContextImpl(final Map sideInputs,
-                     final Optional<String> mainTag,
                      final Map<String, String> tagToAdditionalChildren) {
     this.sideInputs = sideInputs;
-    this.mainTag =  mainTag;
     this.tagToAdditionalChildren = tagToAdditionalChildren;
     this.data = null;
   }
@@ -51,11 +48,6 @@ public final class ContextImpl implements Transform.Context {
   @Override
   public Map<String, String> getTagToAdditionalChildren() {
     return this.tagToAdditionalChildren;
-  }
-
-  @Override
-  public Optional<String> getMainTag() {
-    return mainTag;
   }
 
   @Override

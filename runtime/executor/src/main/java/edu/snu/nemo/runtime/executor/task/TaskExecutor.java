@@ -22,7 +22,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import edu.snu.nemo.common.ir.vertex.*;
-import edu.snu.nemo.common.ir.vertex.executionproperty.MainOutputTagProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
@@ -173,13 +172,12 @@ public final class TaskExecutor {
       final List<String> additionalOutputVertices = new ArrayList<>(additionalOutputMap.values());
       final Set<String> mainChildren =
           getMainOutputVertices(irVertex, irVertexDag, task.getTaskOutgoingEdges(), additionalOutputVertices);
-      final Optional<String> mainTag = irVertex.getPropertyValue(MainOutputTagProperty.class);
-      final OutputCollectorImpl oci = new OutputCollectorImpl(mainTag, mainChildren, additionalOutputVertices);
+      final OutputCollectorImpl oci = new OutputCollectorImpl(mainChildren, additionalOutputVertices);
 
       // intra-vertex writes
       final VertexHarness vertexHarness = new VertexHarness(irVertex, oci, children,
           isToSideInputs, isToAdditionalTagOutputs, mainChildrenTaskWriters, additionalChildrenTaskWriters,
-          new ContextImpl(sideInputMap, mainTag, additionalOutputMap));
+          new ContextImpl(sideInputMap, additionalOutputMap));
       prepareTransform(vertexHarness);
       vertexIdToHarness.put(irVertex.getId(), vertexHarness);
 
