@@ -18,7 +18,6 @@ package edu.snu.nemo.examples.spark;
 
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
-import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,9 +60,9 @@ public final class MRJava {
         .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFilename);
+      SparkExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFilename);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      SparkExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 
@@ -83,9 +82,9 @@ public final class MRJava {
         .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFilename);
+      SparkExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFilename);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      SparkExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 }

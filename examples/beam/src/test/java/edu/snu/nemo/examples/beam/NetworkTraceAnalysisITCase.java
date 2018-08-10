@@ -17,7 +17,6 @@ package edu.snu.nemo.examples.beam;
 
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
-import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import edu.snu.nemo.examples.beam.policy.TransientResourcePolicyParallelismFive;
 import edu.snu.nemo.examples.beam.policy.LargeShufflePolicyParallelismFive;
@@ -55,9 +54,9 @@ public final class NetworkTraceAnalysisITCase {
   @After
   public void tearDown() throws Exception {
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
+      BeamExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      BeamExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 

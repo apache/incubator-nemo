@@ -17,7 +17,6 @@ package edu.snu.nemo.examples.beam;
 
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
-import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.examples.beam.policy.DataSkewPolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
@@ -54,9 +53,9 @@ public final class PerKeyMedianITCase {
   @After
   public void tearDown() throws Exception {
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
+      BeamExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      BeamExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 
