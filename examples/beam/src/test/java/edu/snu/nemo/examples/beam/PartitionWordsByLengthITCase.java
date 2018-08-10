@@ -18,6 +18,7 @@ package edu.snu.nemo.examples.beam;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
+import edu.snu.nemo.examples.beam.policy.LargeShufflePolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,6 +60,15 @@ public final class PartitionWordsByLengthITCase {
     } finally {
       BeamExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void testLargeShuffle() throws Exception {
+    JobLauncher.main(builder
+        .addResourceJson(executorResourceFileName)
+        .addJobId(PartitionWordsByLengthITCase.class.getSimpleName() + "_largeshuffle")
+        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
+        .build());
   }
 
   @Test (timeout = TIMEOUT)
