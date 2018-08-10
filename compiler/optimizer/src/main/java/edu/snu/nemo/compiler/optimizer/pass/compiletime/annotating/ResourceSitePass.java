@@ -104,11 +104,11 @@ public final class ResourceSitePass extends AnnotatingPass {
       if (inEdges.size() == 0) {
         // This vertex is root vertex.
         // Fall back to setting even distribution
-        irVertex.getExecutionProperties().put(ResourceSiteProperty.of(EMPTY_MAP));
+        irVertex.setProperty(ResourceSiteProperty.of(EMPTY_MAP));
       } else if (isOneToOneEdge(inEdges)) {
         final Optional<HashMap<String, Integer>> property = inEdges.iterator().next().getSrc()
-            .getExecutionProperties().get(ResourceSiteProperty.class);
-        irVertex.getExecutionProperties().put(ResourceSiteProperty.of(property.get()));
+            .getPropertyValue(ResourceSiteProperty.class);
+        irVertex.setProperty(ResourceSiteProperty.of(property.get()));
       } else {
         // This IRVertex has shuffle inEdge(s), or has multiple inEdges.
         final Map<String, Integer> parentLocationShares = new HashMap<>();
@@ -138,7 +138,7 @@ public final class ResourceSitePass extends AnnotatingPass {
           shares.put(nodeName, shares.get(nodeName) + 1);
           remainder--;
         }
-        irVertex.getExecutionProperties().put(ResourceSiteProperty.of(shares));
+        irVertex.setProperty(ResourceSiteProperty.of(shares));
       }
     });
   }

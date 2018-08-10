@@ -40,27 +40,15 @@ import java.util.function.Predicate;
 public final class PolicyBuilder {
   private final List<CompileTimePass> compileTimePasses;
   private final List<RuntimePass<?>> runtimePasses;
-  private final Set<Class<? extends ExecutionProperty>> finalizedExecutionProperties;
   private final Set<Class<? extends ExecutionProperty>> annotatedExecutionProperties;
-  private final Boolean strictPrerequisiteCheckMode;
 
   /**
    * Default constructor.
    */
   public PolicyBuilder() {
-    this(false);
-  }
-
-  /**
-   * Constructor.
-   * @param strictPrerequisiteCheckMode whether to use strict prerequisite check mode or not.
-   */
-  public PolicyBuilder(final Boolean strictPrerequisiteCheckMode) {
     this.compileTimePasses = new ArrayList<>();
     this.runtimePasses = new ArrayList<>();
-    this.finalizedExecutionProperties = new HashSet<>();
     this.annotatedExecutionProperties = new HashSet<>();
-    this.strictPrerequisiteCheckMode = strictPrerequisiteCheckMode;
     // DataCommunicationPattern is already set when creating the IREdge itself.
     annotatedExecutionProperties.add(CommunicationPatternProperty.class);
     // Some default values are already annotated.
@@ -94,13 +82,7 @@ public final class PolicyBuilder {
     if (compileTimePass instanceof AnnotatingPass) {
       final AnnotatingPass annotatingPass = (AnnotatingPass) compileTimePass;
       this.annotatedExecutionProperties.addAll(annotatingPass.getExecutionPropertyToModify());
-      if (strictPrerequisiteCheckMode
-          && finalizedExecutionProperties.contains(annotatingPass.getExecutionPropertyToModify())) {
-        throw new CompileTimeOptimizationException(annotatingPass.getExecutionPropertyToModify()
-            + " should have already been finalized.");
-      }
     }
-    finalizedExecutionProperties.addAll(compileTimePass.getPrerequisiteExecutionProperties());
 
     this.compileTimePasses.add(compileTimePass);
 

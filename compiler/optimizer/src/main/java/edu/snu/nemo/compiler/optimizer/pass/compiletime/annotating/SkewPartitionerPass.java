@@ -47,7 +47,7 @@ public final class SkewPartitionerPass extends AnnotatingPass {
           // double checking.
           if (MetricCollectionProperty.Value.DataSkewRuntimePass
             .equals(edge.getPropertyValue(MetricCollectionProperty.class).get())) {
-            edge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.DataSkewHashPartitioner));
+            edge.setPropertyPermanently(PartitionerProperty.of(PartitionerProperty.Value.DataSkewHashPartitioner));
           }
         });
       }

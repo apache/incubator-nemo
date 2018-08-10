@@ -49,10 +49,9 @@ public final class LargeShufflePartitionerPass extends AnnotatingPass {
         if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
             .equals(CommunicationPatternProperty.Value.Shuffle)) {
           dag.getOutgoingEdgesOf(edge.getDst())
-              .forEach(edgeFromRelay -> {
-                edgeFromRelay.setProperty(PartitionerProperty.of(
-                    PartitionerProperty.Value.DedicatedKeyPerElementPartitioner));
-              });
+              .forEach(edgeFromRelay ->
+                  edgeFromRelay.setPropertyPermanently(PartitionerProperty.of(
+                      PartitionerProperty.Value.DedicatedKeyPerElementPartitioner)));
         }
       });
     });

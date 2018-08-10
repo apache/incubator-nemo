@@ -102,7 +102,7 @@ public final class DefaultScheduleGroupPassTest {
       dagBuilder.addVertex(vertex);
     }
     for (final IREdge edge : Arrays.asList(e0, e1, e2, e3, e4)) {
-      edge.getExecutionProperties().put(DataFlowProperty.of(dataFlowModel));
+      edge.setProperty(DataFlowProperty.of(dataFlowModel));
       dagBuilder.connectVertices(edge);
     }
     return Pair.of(dagBuilder.buildWithoutSourceSinkCheck(), vertices);
@@ -142,7 +142,7 @@ public final class DefaultScheduleGroupPassTest {
       dagBuilder.addVertex(vertex);
     }
     for (final IREdge edge : Arrays.asList(e0, e1, e2, e3, e4)) {
-      edge.getExecutionProperties().put(DataFlowProperty.of(dataFlowModel));
+      edge.setProperty(DataFlowProperty.of(dataFlowModel));
       dagBuilder.connectVertices(edge);
     }
     return Pair.of(dagBuilder.buildWithoutSourceSinkCheck(), vertices);
@@ -275,7 +275,7 @@ public final class DefaultScheduleGroupPassTest {
     final Pair<DAG<IRVertex, IREdge>, List<IRVertex>> dag
         = generateJoinDAG(CommunicationPatternProperty.Value.OneToOne, DataFlowProperty.Value.Push);
     dag.left().getOutgoingEdgesOf(dag.right().get(1)).iterator().next()
-        .getExecutionProperties().put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+        .setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     pass.apply(dag.left());
     final int idxForFirstScheduleGroup = getScheduleGroup(dag.right().get(0));
     final int idxForSecondScheduleGroup = getScheduleGroup(dag.right().get(2));

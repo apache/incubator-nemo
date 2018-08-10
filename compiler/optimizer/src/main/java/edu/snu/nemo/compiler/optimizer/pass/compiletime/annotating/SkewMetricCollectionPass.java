@@ -47,7 +47,8 @@ public final class SkewMetricCollectionPass extends AnnotatingPass {
           // double checking.
           if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
               .equals(CommunicationPatternProperty.Value.Shuffle)) {
-            edge.setProperty(MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
+            edge.setPropertyPermanently(MetricCollectionProperty.of(
+                MetricCollectionProperty.Value.DataSkewRuntimePass));
           }
         });
       }

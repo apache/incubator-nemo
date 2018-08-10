@@ -46,9 +46,9 @@ public final class SkewDataStorePass extends AnnotatingPass {
         dag.getIncomingEdgesOf(v).forEach(edge -> {
           // we want it to be in the same stage
           if (edge.equals(edgeToUseMemory)) {
-            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+            edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
           } else {
-            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+            edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           }
         });
       }

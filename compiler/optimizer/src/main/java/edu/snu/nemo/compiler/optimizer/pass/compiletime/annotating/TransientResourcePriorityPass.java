@@ -42,12 +42,12 @@ public final class TransientResourcePriorityPass extends AnnotatingPass {
     dag.topologicalDo(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (inEdges.isEmpty()) {
-        vertex.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.TRANSIENT));
+        vertex.setPropertyPermanently(ResourcePriorityProperty.of(ResourcePriorityProperty.TRANSIENT));
       } else {
         if (hasM2M(inEdges) || allO2OFromReserved(inEdges)) {
-          vertex.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.RESERVED));
+          vertex.setPropertyPermanently(ResourcePriorityProperty.of(ResourcePriorityProperty.RESERVED));
         } else {
-          vertex.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.TRANSIENT));
+          vertex.setPropertyPermanently(ResourcePriorityProperty.of(ResourcePriorityProperty.TRANSIENT));
         }
       }
     });

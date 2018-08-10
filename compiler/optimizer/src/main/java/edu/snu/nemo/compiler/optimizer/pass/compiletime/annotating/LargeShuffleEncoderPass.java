@@ -48,9 +48,8 @@ public final class LargeShuffleEncoderPass extends AnnotatingPass {
         if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
             .equals(CommunicationPatternProperty.Value.Shuffle)) {
           dag.getOutgoingEdgesOf(edge.getDst())
-              .forEach(edgeFromRelay -> {
-                edgeFromRelay.setProperty(EncoderProperty.of(BytesEncoderFactory.of()));
-              });
+              .forEach(edgeFromRelay ->
+                  edgeFromRelay.setPropertyPermanently(EncoderProperty.of(BytesEncoderFactory.of())));
         }
       });
     });

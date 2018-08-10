@@ -47,12 +47,11 @@ public final class LargeShuffleDecompressionPass extends AnnotatingPass {
       inEdges.forEach(edge -> {
         if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
             .equals(CommunicationPatternProperty.Value.Shuffle)) {
-          edge.setProperty(DecompressionProperty.of(CompressionProperty.Value.None));
+          edge.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.None));
 
           dag.getOutgoingEdgesOf(edge.getDst())
-              .forEach(edgeFromRelay -> {
-                edgeFromRelay.setProperty(DecompressionProperty.of(CompressionProperty.Value.LZ4));
-              });
+              .forEach(edgeFromRelay ->
+                  edgeFromRelay.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.LZ4)));
         }
       });
     });
