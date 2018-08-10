@@ -70,6 +70,7 @@ import static org.mockito.Mockito.*;
 @PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class,
     TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class})
 public final class TaskExecutorTest {
+  private static final int CLONE_OFFSET = 0;
   private static final int DATA_SIZE = 100;
   private static final ExecutionPropertyMap<VertexExecutionProperty> TASK_EXECUTION_PROPERTY_MAP
       = new ExecutionPropertyMap<>("TASK_EXECUTION_PROPERTY_MAP");
@@ -83,7 +84,8 @@ public final class TaskExecutorTest {
   private AtomicInteger stageId;
 
   private String generateTaskId() {
-    return RuntimeIdManager.generateTaskId(RuntimeIdManager.generateStageId(stageId.getAndIncrement()), 0, 0);
+    return RuntimeIdManager.generateTaskId(
+        RuntimeIdManager.generateStageId(stageId.getAndIncrement()), 0, CLONE_OFFSET);
   }
 
   @Before

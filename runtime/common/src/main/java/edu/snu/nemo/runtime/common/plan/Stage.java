@@ -98,7 +98,8 @@ public final class Stage extends Vertex {
   public List<String> getOriginalTaskIdsSortedByIndex() {
     final List<String> taskIds = new ArrayList<>();
     for (int taskIdx = 0; taskIdx < getParallelism(); taskIdx++) {
-      taskIds.add(RuntimeIdManager.generateTaskId(getId(), taskIdx, 0));
+      final int cloneOffSetOfOriginalTask = 0;
+      taskIds.add(RuntimeIdManager.generateTaskId(getId(), taskIdx, cloneOffSetOfOriginalTask));
     }
     return taskIds;
   }

@@ -324,7 +324,8 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = transferFactory.createWriter(srcVertex, srcTaskIndex, 0, dstVertex, dummyEdge);
+      final OutputWriter writer =
+          transferFactory.createWriter(srcVertex, srcTaskIndex, CLONE_OFFSET, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
@@ -415,12 +416,14 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = transferFactory.createWriter(srcVertex, srcTaskIndex, 0, dstVertex, dummyEdge);
+      final OutputWriter writer =
+          transferFactory.createWriter(srcVertex, srcTaskIndex, CLONE_OFFSET, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
 
-      final OutputWriter writer2 = transferFactory.createWriter(srcVertex, srcTaskIndex, 0, dstVertex, dummyEdge2);
+      final OutputWriter writer2 =
+          transferFactory.createWriter(srcVertex, srcTaskIndex, CLONE_OFFSET, dstVertex, dummyEdge2);
       dataWritten.iterator().forEachRemaining(writer2::write);
       writer2.close();
     });
