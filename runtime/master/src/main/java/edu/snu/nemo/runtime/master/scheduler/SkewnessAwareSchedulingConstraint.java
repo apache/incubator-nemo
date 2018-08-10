@@ -18,7 +18,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.data.HashRange;
 import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
@@ -43,7 +43,7 @@ public final class SkewnessAwareSchedulingConstraint implements SchedulingConstr
   }
 
   public boolean hasSkewedData(final Task task) {
-    final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
+    final int taskIdx = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
     for (StageEdge inEdge : task.getTaskIncomingEdges()) {
       final KeyRange hashRange = inEdge.getTaskIdxToKeyRange().get(taskIdx);
       if (((HashRange) hashRange).isSkewed()) {

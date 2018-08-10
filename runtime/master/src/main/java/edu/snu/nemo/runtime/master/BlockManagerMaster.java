@@ -21,7 +21,7 @@ import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
@@ -43,7 +43,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.IntStream;
 
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
@@ -82,29 +81,32 @@ public final class BlockManagerMaster {
     this.lock = new ReentrantReadWriteLock();
   }
 
-  public void initialize(final PhysicalPlan physicalPlan) {
+  void initialize(final PhysicalPlan physicalPlan) {
     final DAG<Stage, StageEdge> stageDAG = physicalPlan.getStageDAG();
     stageDAG.topologicalDo(stage -> {
-      final List<String> taskIdsForStage = stage.getPossiblyClonedTaskIds();
+      final List<String> srcTaskIdsOfStage = stage.getAllPossiblyClonedTaskIdsShuffled();
       final List<StageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(stage);
 
       // Initialize states for blocks of inter-stage edges
       stageOutgoingEdges.forEach(stageEdge -> {
-        final int srcParallelism = taskIdsForStage.size();
-        IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-          final String blockId = RuntimeIdGenerator.generateBlockId(stageEdge.getId(), srcTaskIdx);
-          initializeState(blockId, taskIdsForStage.get(srcTaskIdx));
+        srcTaskIdsOfStage.forEach(taskId -> {
+          final int srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
+          final int srcTaskCloneOffset = RuntimeIdManager.getCloneOffsetFromTaskId(taskId);
+          final String blockId = RuntimeIdManager.generateBlockId(stageEdge.getId(), srcTaskIndex, srcTaskCloneOffset);
+          initializeState(blockId, taskId);
         });
       });
 
       // Initialize states for blocks of stage internal edges
-      taskIdsForStage.forEach(taskId -> {
+      srcTaskIdsOfStage.forEach(taskId -> {
         final DAG<IRVertex, RuntimeEdge<IRVertex>> taskInternalDag = stage.getIRDAG();
         taskInternalDag.getVertices().forEach(task -> {
           final List<RuntimeEdge<IRVertex>> internalOutgoingEdges = taskInternalDag.getOutgoingEdgesOf(task);
           internalOutgoingEdges.forEach(taskRuntimeEdge -> {
-            final int srcTaskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
-            final String blockId = RuntimeIdGenerator.generateBlockId(taskRuntimeEdge.getId(), srcTaskIdx);
+            final int srcTaskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
+            final int srcTaskCloneOffset = RuntimeIdManager.getCloneOffsetFromTaskId(taskId);
+            final String blockId =
+                RuntimeIdManager.generateBlockId(taskRuntimeEdge.getId(), srcTaskIdx, srcTaskCloneOffset);
             initializeState(blockId, taskId);
           });
         });
@@ -454,7 +456,7 @@ public final class BlockManagerMaster {
         }
         messageContext.reply(
             ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
+                .setId(RuntimeIdManager.generateMessageId())
                 .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.BlockLocationInfo)
                 .setBlockLocationInfoMsg(infoMsgBuilder.build())

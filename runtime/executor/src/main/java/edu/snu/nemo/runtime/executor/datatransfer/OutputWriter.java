@@ -20,7 +20,7 @@ import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.block.Block;
@@ -48,6 +48,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    *
    * @param hashRangeMultiplier the {@link edu.snu.nemo.conf.JobConf.HashRangeMultiplier}.
    * @param srcTaskIdx          the index of the source task.
+   * @param cloneOffset         the clone offset of the source task.
    * @param srcRuntimeVertexId  the ID of the source vertex.
    * @param dstIrVertex         the destination IR vertex.
    * @param runtimeEdge         the {@link RuntimeEdge}.
@@ -55,12 +56,13 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    */
   OutputWriter(final int hashRangeMultiplier,
                final int srcTaskIdx,
+               final int cloneOffset,
                final String srcRuntimeVertexId,
                final IRVertex dstIrVertex,
                final RuntimeEdge<?> runtimeEdge,
                final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
-    this.blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
+    this.blockId = RuntimeIdManager.generateBlockId(getId(), srcTaskIdx, cloneOffset);
     this.runtimeEdge = runtimeEdge;
     this.srcVertexId = srcRuntimeVertexId;
     this.dstIrVertex = dstIrVertex;

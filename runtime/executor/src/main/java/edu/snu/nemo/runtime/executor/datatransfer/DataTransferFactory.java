@@ -43,15 +43,17 @@ public final class DataTransferFactory {
    *
    * @param srcIRVertex the {@link IRVertex} that outputs the data to be written.
    * @param srcTaskIdx  the index of the source task.
+   * @param cloneOffset the clone offset of the source task
    * @param dstIRVertex the {@link IRVertex} that will take the output data as its input.
    * @param runtimeEdge that connects the srcTask to the tasks belonging to dstIRVertex.
    * @return the {@link OutputWriter} created.
    */
   public OutputWriter createWriter(final IRVertex srcIRVertex,
                                    final int srcTaskIdx,
+                                   final int cloneOffset,
                                    final IRVertex dstIRVertex,
                                    final RuntimeEdge<?> runtimeEdge) {
-    return new OutputWriter(hashRangeMultiplier, srcTaskIdx,
+    return new OutputWriter(hashRangeMultiplier, srcTaskIdx, cloneOffset,
         srcIRVertex.getId(), dstIRVertex, runtimeEdge, blockManagerWorker);
   }
 

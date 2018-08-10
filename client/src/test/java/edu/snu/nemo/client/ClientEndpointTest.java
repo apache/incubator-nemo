@@ -71,7 +71,7 @@ public class ClientEndpointTest {
 
     // Check finish.
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
-        .flatMap(stage -> stage.getPossiblyClonedTaskIds().stream())
+        .flatMap(stage -> stage.getAllPossiblyClonedTaskIdsShuffled().stream())
         .collect(Collectors.toList());
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));

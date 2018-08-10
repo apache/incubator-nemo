@@ -30,7 +30,7 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -305,15 +305,15 @@ public final class DataTransferTest {
 
     final IRVertex srcMockVertex = mock(IRVertex.class);
     final IRVertex dstMockVertex = mock(IRVertex.class);
-    final Stage srcStage = setupStages("srcStage-" + testIndex);
-    final Stage dstStage = setupStages("dstStage-" + testIndex);
+    final Stage srcStage = setupStages("srcStage" + testIndex);
+    final Stage dstStage = setupStages("dstStage" + testIndex);
     dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
         srcStage, dstStage, false);
 
     // Initialize states in Master
-    srcStage.getPossiblyClonedTaskIds().forEach(srcTaskId -> {
-      final String blockId = RuntimeIdGenerator.generateBlockId(
-          edgeId, RuntimeIdGenerator.getIndexFromTaskId(srcTaskId));
+    srcStage.getAllPossiblyClonedTaskIdsShuffled().forEach(srcTaskId -> {
+      final String blockId = RuntimeIdManager.generateBlockId(edgeId, RuntimeIdManager.getIndexFromTaskId(srcTaskId),
+          RuntimeIdManager.getCloneOffsetFromTaskId(srcTaskId));
       master.initializeState(blockId, srcTaskId);
       master.onProducerTaskScheduled(srcTaskId);
     });
@@ -322,7 +322,7 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = transferFactory.createWriter(srcVertex, srcTaskIndex, dstVertex, dummyEdge);
+      final OutputWriter writer = transferFactory.createWriter(srcVertex, srcTaskIndex, 0, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
@@ -390,21 +390,21 @@ public final class DataTransferTest {
 
     final IRVertex srcMockVertex = mock(IRVertex.class);
     final IRVertex dstMockVertex = mock(IRVertex.class);
-    final Stage srcStage = setupStages("srcStage-" + testIndex);
-    final Stage dstStage = setupStages("dstStage-" + testIndex);
+    final Stage srcStage = setupStages("srcStage" + testIndex);
+    final Stage dstStage = setupStages("dstStage" + testIndex);
     dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
         srcStage, dstStage, false);
     final IRVertex dstMockVertex2 = mock(IRVertex.class);
-    final Stage dstStage2 = setupStages("dstStage-" + testIndex2);
+    final Stage dstStage2 = setupStages("dstStage" + testIndex2);
     dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
         srcStage, dstStage, false);
     // Initialize states in Master
-    srcStage.getPossiblyClonedTaskIds().forEach(srcTaskId -> {
-      final String blockId = RuntimeIdGenerator.generateBlockId(
-          edgeId, RuntimeIdGenerator.getIndexFromTaskId(srcTaskId));
+    srcStage.getAllPossiblyClonedTaskIdsShuffled().forEach(srcTaskId -> {
+      final String blockId = RuntimeIdManager.generateBlockId(
+          edgeId, RuntimeIdManager.getIndexFromTaskId(srcTaskId), RuntimeIdManager.getCloneOffsetFromTaskId(srcTaskId));
       master.initializeState(blockId, srcTaskId);
-      final String blockId2 = RuntimeIdGenerator.generateBlockId(
-          edgeId2, RuntimeIdGenerator.getIndexFromTaskId(srcTaskId));
+      final String blockId2 = RuntimeIdManager.generateBlockId(edgeId2,
+          RuntimeIdManager.getIndexFromTaskId(srcTaskId), RuntimeIdManager.getCloneOffsetFromTaskId(srcTaskId));
       master.initializeState(blockId2, srcTaskId);
       master.onProducerTaskScheduled(srcTaskId);
     });
@@ -413,12 +413,12 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = transferFactory.createWriter(srcVertex, srcTaskIndex, dstVertex, dummyEdge);
+      final OutputWriter writer = transferFactory.createWriter(srcVertex, srcTaskIndex, 0, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
 
-      final OutputWriter writer2 = transferFactory.createWriter(srcVertex, srcTaskIndex, dstVertex, dummyEdge2);
+      final OutputWriter writer2 = transferFactory.createWriter(srcVertex, srcTaskIndex, 0, dstVertex, dummyEdge2);
       dataWritten.iterator().forEachRemaining(writer2::write);
       writer2.close();
     });

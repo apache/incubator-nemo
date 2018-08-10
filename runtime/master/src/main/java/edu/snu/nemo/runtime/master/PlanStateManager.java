@@ -20,7 +20,7 @@ import edu.snu.nemo.common.exception.IllegalStateTransitionException;
 import edu.snu.nemo.common.exception.SchedulingException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.StateMachine;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.state.PlanState;
@@ -121,7 +121,7 @@ public final class PlanStateManager {
     // Initialize the states for the plan down to task-level.
     physicalPlan.getStageDAG().topologicalDo(stage -> {
       idToStageStates.put(stage.getId(), new StageState());
-      stage.getPossiblyClonedTaskIds().forEach(taskId -> {
+      stage.getAllPossiblyClonedTaskIdsShuffled().forEach(taskId -> {
         idToTaskStates.put(taskId, new TaskState());
         taskIdToCurrentAttempt.put(taskId, 1);
       });
@@ -172,8 +172,9 @@ public final class PlanStateManager {
     }
 
     // Change stage state, if needed
-    final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
-    final List<String> tasksOfThisStage = physicalPlan.getStageDAG().getVertexById(stageId).getPossiblyClonedTaskIds();
+    final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+    final List<String> tasksOfThisStage =
+        physicalPlan.getStageDAG().getVertexById(stageId).getAllPossiblyClonedTaskIdsShuffled();
     final long numOfCompletedOrOnHoldTasksInThisStage = tasksOfThisStage
         .stream()
         .map(this::getTaskState)
@@ -387,7 +388,7 @@ public final class PlanStateManager {
       sb.append("\"tasks\": [");
 
       boolean isFirstTask = true;
-      for (final String taskId : stage.getPossiblyClonedTaskIds()) {
+      for (final String taskId : stage.getAllPossiblyClonedTaskIdsShuffled()) {
         if (!isFirstTask) {
           sb.append(", ");
         }

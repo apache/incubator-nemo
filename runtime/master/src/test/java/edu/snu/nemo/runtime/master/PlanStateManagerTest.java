@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master;
 
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
@@ -75,11 +75,11 @@ public final class PlanStateManagerTest {
 
     for (int stageIdx = 0; stageIdx < stageList.size(); stageIdx++) {
       final Stage stage = stageList.get(stageIdx);
-      final List<String> taskIds = stage.getPossiblyClonedTaskIds();
+      final List<String> taskIds = stage.getAllPossiblyClonedTaskIdsShuffled();
       taskIds.forEach(taskId -> {
         planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
         planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
-        if (RuntimeIdGenerator.getIndexFromTaskId(taskId) == taskIds.size() - 1) {
+        if (RuntimeIdManager.getIndexFromTaskId(taskId) == taskIds.size() - 1) {
           assertEquals(StageState.State.COMPLETE, planStateManager.getStageState(stage.getId()));
         }
       });
@@ -111,7 +111,7 @@ public final class PlanStateManagerTest {
     // Complete the plan and check the result again.
     // It has to return COMPLETE.
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
-        .flatMap(stage -> stage.getPossiblyClonedTaskIds().stream())
+        .flatMap(stage -> stage.getAllPossiblyClonedTaskIdsShuffled().stream())
         .collect(Collectors.toList());
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));

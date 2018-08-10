@@ -46,7 +46,7 @@ final class SchedulerTestUtil {
         // Stage has completed, so we break out of the loop.
         break;
       } else if (StageState.State.INCOMPLETE == stageState) {
-        stage.getPossiblyClonedTaskIds().forEach(taskId -> {
+        stage.getAllPossiblyClonedTaskIdsShuffled().forEach(taskId -> {
           final TaskState.State taskState = planStateManager.getTaskState(taskId);
           if (TaskState.State.EXECUTING == taskState) {
             sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId,
