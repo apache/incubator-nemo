@@ -213,7 +213,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
       boolean usedCurrentScheduleGroup = false;
       for (final IRVertex irVertex : scheduleGroup.vertices) {
         if (!irVertex.getPropertyValue(ScheduleGroupProperty.class).isPresent()) {
-          irVertex.getExecutionProperties().put(ScheduleGroupProperty.of(currentScheduleGroup.getValue()));
+          irVertex.setProperty(ScheduleGroupProperty.of(currentScheduleGroup.getValue()));
           usedCurrentScheduleGroup = true;
         }
       }

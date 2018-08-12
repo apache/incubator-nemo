@@ -37,15 +37,15 @@ public final class LargeShuffleResourceSlotPass extends AnnotatingPass {
     // On every vertex that receive push edge, if ResourceSlotProperty is not set, put it as false.
     // For other vertices, if ResourceSlotProperty is not set, put it as true.
     dag.getVertices().stream()
-        .filter(v -> !v.getExecutionProperties().containsKey(ResourceSlotProperty.class))
+        .filter(v -> !v.getPropertyValue(ResourceSlotProperty.class).isPresent())
         .forEach(v -> {
           if (dag.getIncomingEdgesOf(v).stream().anyMatch(
               e -> e.getPropertyValue(DataFlowProperty.class)
                   .orElseThrow(() -> new RuntimeException(String.format("DataFlowProperty for %s must be set",
                       e.getId()))).equals(DataFlowProperty.Value.Push))) {
-            v.getExecutionProperties().put(ResourceSlotProperty.of(false));
+            v.setPropertyPermanently(ResourceSlotProperty.of(false));
           } else {
-            v.getExecutionProperties().put(ResourceSlotProperty.of(true));
+            v.setPropertyPermanently(ResourceSlotProperty.of(true));
           }
         });
     return dag;
