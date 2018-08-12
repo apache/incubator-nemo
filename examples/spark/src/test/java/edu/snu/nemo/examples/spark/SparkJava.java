@@ -17,6 +17,7 @@ package edu.snu.nemo.examples.spark;
 
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
+import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
 import edu.snu.nemo.examples.spark.sql.JavaUserDefinedTypedAggregation;
 import edu.snu.nemo.examples.spark.sql.JavaUserDefinedUntypedAggregation;

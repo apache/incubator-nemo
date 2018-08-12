@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.examples.beam;
+package edu.snu.nemo.common.test;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,18 +25,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 /**
  * Test Utils for Examples.
  */
-public final class BeamExampleTestUtil {
+public final class ExampleTestUtil {
   private static final Double ERROR = 1e-8;
   /**
    * Private constructor.
    */
-  private BeamExampleTestUtil() {
+  private ExampleTestUtil() {
   }
 
   /**
@@ -132,14 +129,17 @@ public final class BeamExampleTestUtil {
           .collect(Collectors.toList());
     }
 
-    assertEquals("Output size should be equal!", resourceOutput.size(), testOutput.size());
+    if (testOutput.size() != resourceOutput.size()) {
+      throw new RuntimeException("output mismatch");
+    }
 
     for (int i = 0; i < testOutput.size(); i++) {
       for (int j = 0; j < testOutput.get(i).size(); j++) {
         final Double testElement = testOutput.get(i).get(j);
         final Double resourceElement = resourceOutput.get(i).get(j);
-        assertTrue("Difference should be small!",
-            Math.abs(testElement - resourceElement) / resourceElement < ERROR);
+        if (Math.abs(testElement - resourceElement) / resourceElement > ERROR) {
+          throw new RuntimeException("output mismatch");
+        }
       }
     }
   }

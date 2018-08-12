@@ -17,6 +17,7 @@ package edu.snu.nemo.examples.beam;
 
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
+import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
@@ -54,12 +55,12 @@ public final class PerPercentileAverageITCase {
   public void tearDown() throws Exception {
     try {
       for (int i = 0; i < 10; i++) {
-        BeamExampleTestUtil.ensureOutputValidity(fileBasePath,
+        ExampleTestUtil.ensureOutputValidity(fileBasePath,
             outputFileName + "_" + i,
             expectedOutputFileName + "_" + i);
       }
     } finally {
-      BeamExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 

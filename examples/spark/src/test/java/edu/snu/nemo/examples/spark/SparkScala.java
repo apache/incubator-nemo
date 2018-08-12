@@ -17,6 +17,7 @@ package edu.snu.nemo.examples.spark;
 
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
+import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.junit.Before;
 import org.junit.Test;
@@ -71,9 +72,9 @@ public final class SparkScala {
         .build());
 
     try {
-      SparkExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFilename);
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFilename);
     } finally {
-      SparkExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 }

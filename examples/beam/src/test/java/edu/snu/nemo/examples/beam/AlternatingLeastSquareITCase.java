@@ -17,6 +17,7 @@ package edu.snu.nemo.examples.beam;
 
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
+import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
 import edu.snu.nemo.examples.beam.policy.TransientResourcePolicyParallelismTen;
 import org.junit.After;
@@ -56,9 +57,9 @@ public final class AlternatingLeastSquareITCase {
   @After
   public void tearDown() throws Exception {
     try {
-      BeamExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
+      ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
     } finally {
-      BeamExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 
