@@ -196,6 +196,7 @@ public final class JobLauncher {
       LOG.warn("Interrupted: " + e);
       // clean up state...
       Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
     }
     LOG.info("DAG execution done");
   }

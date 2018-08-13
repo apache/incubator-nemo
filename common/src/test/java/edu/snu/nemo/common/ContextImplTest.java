@@ -20,8 +20,7 @@ import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -33,7 +32,7 @@ import static org.junit.Assert.assertTrue;
 public class ContextImplTest {
   private Transform.Context context;
   private final Map sideInputs = new HashMap();
-  private final Map taggedOutputs = new HashMap();
+  private final Map<String, String> taggedOutputs = new HashMap();
 
   @Before
   public void setUp() {
@@ -44,7 +43,7 @@ public class ContextImplTest {
   @Test
   public void testContextImpl() {
     assertEquals(this.sideInputs, this.context.getSideInputs());
-    assertEquals(this.taggedOutputs, this.context.getAdditionalTagOutputs());
+    assertEquals(this.taggedOutputs, this.context.getTagToAdditionalChildren());
 
     final String sampleText = "test_text";
 

@@ -506,7 +506,7 @@ public final class TaskExecutorTest {
     @Override
     public void prepare(final Context context, OutputCollector<Integer> outputCollector) {
       this.outputCollector = outputCollector;
-      this.tagToVertex = context.getAdditionalTagOutputs();
+      this.tagToVertex = context.getTagToAdditionalChildren();
     }
 
     @Override
