@@ -38,21 +38,21 @@ public class BeamFrontendMLRTest {
     final DAG<IRVertex, IREdge> producedDAG = CompilerTestUtil.compileMLRDAG();
 
     assertEquals(producedDAG.getTopologicalSort(), producedDAG.getTopologicalSort());
-    assertEquals(33, producedDAG.getVertices().size());
+    assertEquals(36, producedDAG.getVertices().size());
 
     final IRVertex vertex3 = producedDAG.getTopologicalSort().get(0);
     assertEquals(0, producedDAG.getIncomingEdgesOf(vertex3).size());
     assertEquals(0, producedDAG.getIncomingEdgesOf(vertex3.getId()).size());
     assertEquals(3, producedDAG.getOutgoingEdgesOf(vertex3).size());
 
-    final IRVertex vertex12 = producedDAG.getTopologicalSort().get(10);
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex12).size());
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex12.getId()).size());
-    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex12).size());
+    final IRVertex vertex13 = producedDAG.getTopologicalSort().get(11);
+    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex13).size());
+    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex13.getId()).size());
+    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex13).size());
 
-    final IRVertex vertex17 = producedDAG.getTopologicalSort().get(15);
-    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex17).size());
-    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex17.getId()).size());
-    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex17).size());
+    final IRVertex vertex19 = producedDAG.getTopologicalSort().get(17);
+    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex19).size());
+    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex19.getId()).size());
+    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex19).size());
   }
 }

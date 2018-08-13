@@ -38,7 +38,7 @@ public final class BeamFrontendALSTest {
     final DAG<IRVertex, IREdge> producedDAG = CompilerTestUtil.compileALSDAG();
 
     assertEquals(producedDAG.getTopologicalSort(), producedDAG.getTopologicalSort());
-    assertEquals(32, producedDAG.getVertices().size());
+    assertEquals(38, producedDAG.getVertices().size());
 
 //    producedDAG.getTopologicalSort().forEach(v -> System.out.println(v.getId()));
     final IRVertex vertex4 = producedDAG.getTopologicalSort().get(6);
@@ -46,14 +46,14 @@ public final class BeamFrontendALSTest {
     assertEquals(1, producedDAG.getIncomingEdgesOf(vertex4.getId()).size());
     assertEquals(4, producedDAG.getOutgoingEdgesOf(vertex4).size());
 
-    final IRVertex vertex12 = producedDAG.getTopologicalSort().get(10);
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex12).size());
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex12.getId()).size());
-    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex12).size());
-
     final IRVertex vertex13 = producedDAG.getTopologicalSort().get(11);
-    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex13).size());
-    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex13.getId()).size());
+    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex13).size());
+    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex13.getId()).size());
     assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex13).size());
+
+    final IRVertex vertex14 = producedDAG.getTopologicalSort().get(12);
+    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex14).size());
+    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex14.getId()).size());
+    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex14).size());
   }
 }

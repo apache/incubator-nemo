@@ -72,13 +72,14 @@ public final class AlternatingLeastSquareITCase {
         .build());
   }
 
-  @Test (timeout = TIMEOUT)
-  public void testTransientResourceWithPoison() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(poisonedResource)
-        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_transient_poisoned")
-        .addMaxTaskAttempt(Integer.MAX_VALUE)
-        .addOptimizationPolicy(TransientResourcePolicyParallelismTen.class.getCanonicalName())
-        .build());
-  }
+  // TODO #137: Retry parent task(s) upon task INPUT_READ_FAILURE
+  // @Test (timeout = TIMEOUT)
+  // public void testTransientResourceWithPoison() throws Exception {
+  //   JobLauncher.main(builder
+  //       .addResourceJson(poisonedResource)
+  //       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_transient_poisoned")
+  //       .addMaxTaskAttempt(Integer.MAX_VALUE)
+  //       .addOptimizationPolicy(TransientResourcePolicyParallelismTen.class.getCanonicalName())
+  //       .build());
+  // }
 }
