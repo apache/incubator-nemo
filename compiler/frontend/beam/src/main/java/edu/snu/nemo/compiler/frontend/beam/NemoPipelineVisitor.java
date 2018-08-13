@@ -58,6 +58,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
   private final Stack<LoopVertex> loopVertexStack;
   private final Map<PValue, Pair<BeamEncoderFactory, BeamDecoderFactory>> pValueToCoder;
   private final Map<PValue, TupleTag> pValueToTag;
+  private final PipelineVisitor pipelineVisitor = new PipelineVisitor();
 
   /**
    * Constructor of the BEAM Visitor.
@@ -76,6 +77,11 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
 
   @Override
   public CompositeBehavior enterCompositeTransform(final TransformHierarchy.Node beamNode) {
+    try {
+      this.pipelineVisitor.enterCompositeTransform(beamNode);
+    } catch (final Exception e) {
+      e.printStackTrace();
+    }
     if (beamNode.getTransform() instanceof LoopCompositeTransform) {
       final LoopVertex loopVertex = new LoopVertex(beamNode.getFullName());
       this.builder.addVertex(loopVertex, this.loopVertexStack);
@@ -87,6 +93,11 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
 
   @Override
   public void leaveCompositeTransform(final TransformHierarchy.Node beamNode) {
+    try {
+      this.pipelineVisitor.leaveCompositeTransform(beamNode);
+    } catch (final Exception e) {
+      e.printStackTrace();
+    }
     if (beamNode.getTransform() instanceof LoopCompositeTransform) {
       this.loopVertexStack.pop();
     }
@@ -94,6 +105,11 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
 
   @Override
   public void visitPrimitiveTransform(final TransformHierarchy.Node beamNode) {
+    try {
+      this.pipelineVisitor.visitPrimitiveTransform(beamNode);
+    } catch (final Exception e) {
+      e.printStackTrace();
+    }
 //    Print if needed for development
 //    LOG.info("visitp " + beamNode.getTransform());
     final IRVertex irVertex =
