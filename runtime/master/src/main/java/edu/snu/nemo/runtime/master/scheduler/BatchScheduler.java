@@ -301,6 +301,7 @@ public final class BatchScheduler implements Scheduler {
     if (stageToSchedule.getPropertyValue(GhostProperty.class).orElse(false)) {
       // Ignore ghost stage.
       for (final String taskId : stageToSchedule.getTaskIds()) {
+        planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
         planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
       }
 

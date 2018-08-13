@@ -23,6 +23,7 @@ import edu.snu.nemo.common.dag.{DAG, DAGBuilder}
 import edu.snu.nemo.common.ir.edge.IREdge
 import edu.snu.nemo.common.ir.edge.executionproperty._
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
+import edu.snu.nemo.common.ir.vertex.executionproperty.GhostProperty
 import edu.snu.nemo.common.ir.vertex.transform.RelayTransform
 import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
@@ -48,7 +49,7 @@ import scala.reflect.ClassTag
 final class RDD[T: ClassTag] protected[rdd] (
     protected[rdd] val _sc: SparkContext,
     private val deps: Seq[Dependency[_]],
-    protected[rdd] val dag: DAG[IRVertex, IREdge],
+    protected[rdd] var dag: DAG[IRVertex, IREdge],
     protected[rdd] val lastVertex: IRVertex,
     private val sourceRDD: Option[org.apache.spark.rdd.RDD[T]]) extends org.apache.spark.rdd.RDD[T](_sc, deps) {
   private val LOG = LoggerFactory.getLogger(classOf[RDD[T]].getName)
@@ -280,6 +281,7 @@ final class RDD[T: ClassTag] protected[rdd] (
     }
 
     val ghostVertex = new OperatorVertex(new RelayTransform[T]())
+    ghostVertex.setProperty(GhostProperty.of())
     builder.addVertex(ghostVertex, loopVertexStack)
 
     val newEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, lastVertex, ghostVertex)
@@ -298,10 +300,12 @@ final class RDD[T: ClassTag] protected[rdd] (
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep))
     val cacheID = UUID.randomUUID()
     newEdge.setProperty(CacheIDProperty.of(cacheID))
-    newEdge.setProperty(
-      DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue("CacheGroup-" + cacheID)))
+    val dupEdgeVal = new DuplicateEdgeGroupPropertyValue("CacheGroup-" + cacheID)
+    dupEdgeVal.setRepresentativeEdgeId(newEdge.getId)
+    newEdge.setProperty(DuplicateEdgeGroupProperty.of(dupEdgeVal))
     builder.connectVertices(newEdge)
 
+    dag = builder.buildWithoutSourceSinkCheck()
     persistedGhostVertex = Option.apply(ghostVertex)
     this
   }

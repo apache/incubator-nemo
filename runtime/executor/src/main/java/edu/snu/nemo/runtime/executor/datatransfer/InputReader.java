@@ -151,9 +151,10 @@ public final class InputReader extends DataTransfer {
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     if (!duplicateDataProperty.isPresent() || duplicateDataProperty.get().getGroupSize() <= 1) {
       return RuntimeIdGenerator.generateBlockId(getId(), taskIdx);
+    } else {
+      final String duplicateEdgeId = duplicateDataProperty.get().getRepresentativeEdgeId();
+      return RuntimeIdGenerator.generateBlockId(duplicateEdgeId, taskIdx);
     }
-    final String duplicateEdgeId = duplicateDataProperty.get().getRepresentativeEdgeId();
-    return RuntimeIdGenerator.generateBlockId(duplicateEdgeId, taskIdx);
   }
 
   public IRVertex getSrcIrVertex() {

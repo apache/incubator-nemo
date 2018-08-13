@@ -24,7 +24,6 @@ import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlanGenerator;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
-import org.apache.reef.tang.Tang;
 
 import javax.inject.Inject;
 
@@ -32,34 +31,25 @@ import javax.inject.Inject;
  * Backend component for Nemo Runtime.
  */
 public final class NemoBackend implements Backend<PhysicalPlan> {
+
+  private final PhysicalPlanGenerator physicalPlanGenerator;
+
   /**
    * Constructor.
    */
   @Inject
-  private NemoBackend() {
+  private NemoBackend(final PhysicalPlanGenerator physicalPlanGenerator) {
+    this.physicalPlanGenerator = physicalPlanGenerator;
   }
 
   /**
    * Compiles an IR DAG into a {@link PhysicalPlan} to be submitted to Runtime.
+   *
    * @param irDAG to compile.
    * @return the execution plan to be submitted to Runtime.
-   * @throws Exception any exception occurred during the compilation.
    */
-  public PhysicalPlan compile(final DAG<IRVertex, IREdge> irDAG) throws Exception {
-    final PhysicalPlanGenerator physicalPlanGenerator =
-        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
-    return compile(irDAG, physicalPlanGenerator);
-  }
+  public PhysicalPlan compile(final DAG<IRVertex, IREdge> irDAG) {
 
-  /**
-   * Compiles an IR DAG into a {@link PhysicalPlan} to be submitted to Runtime.
-   * Receives {@link PhysicalPlanGenerator} with configured directory of DAG files.
-   * @param irDAG to compile.
-   * @param physicalPlanGenerator with custom DAG directory.
-   * @return the execution plan to be submitted to Runtime.
-   */
-  public PhysicalPlan compile(final DAG<IRVertex, IREdge> irDAG,
-                              final PhysicalPlanGenerator physicalPlanGenerator) {
     final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(irDAG);
     return new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(), stageDAG);
   }

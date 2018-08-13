@@ -340,7 +340,7 @@ public final class TaskExecutor {
     // writes to children tasks
     harness.getWritersToMainChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
     // writes to side input children tasks
-    if (harness.getSideInputChildren().isEmpty()) {
+    if (!harness.getSideInputChildren().isEmpty()) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
     }
     // process elements in the next vertices within a task
@@ -353,7 +353,7 @@ public final class TaskExecutor {
         .filter(kv -> kv.getKey().equals(tag))
         .forEach(kv -> kv.getValue().write(element));
     // writes to side input children tasks
-    if (harness.getSideInputChildren().isEmpty()) {
+    if (!harness.getSideInputChildren().isEmpty()) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
     }
     // process elements in the next vertices within a task
