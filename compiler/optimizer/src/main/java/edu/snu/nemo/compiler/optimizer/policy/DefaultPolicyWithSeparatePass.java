@@ -34,7 +34,7 @@ import java.util.Arrays;
  */
 public final class DefaultPolicyWithSeparatePass implements Policy {
   public static final PolicyBuilder BUILDER =
-      new PolicyBuilder(true)
+      new PolicyBuilder()
           .registerCompileTimePass(new DefaultParallelismPass())
           .registerCompileTimePass(new RefactoredPass());
   private final Policy policy;

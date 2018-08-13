@@ -43,12 +43,12 @@ public final class TransientResourceDataStorePass extends AnnotatingPass {
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
           if (fromTransientToReserved(edge) || fromReservedToTransient(edge)) {
-            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+            edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           } else if (CommunicationPatternProperty.Value.OneToOne
               .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+            edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
           } else {
-            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+            edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           }
         });
       }

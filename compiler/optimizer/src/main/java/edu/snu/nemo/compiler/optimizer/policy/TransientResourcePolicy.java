@@ -29,7 +29,7 @@ import org.apache.reef.tang.Injector;
  */
 public final class TransientResourcePolicy implements Policy {
   public static final PolicyBuilder BUILDER =
-      new PolicyBuilder(true)
+      new PolicyBuilder()
           .registerCompileTimePass(new TransientResourceCompositePass())
           .registerCompileTimePass(new LoopOptimizationCompositePass())
           .registerCompileTimePass(new DefaultCompositePass());

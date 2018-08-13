@@ -27,7 +27,7 @@ import org.apache.reef.tang.Injector;
  */
 public final class DefaultPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
-      new PolicyBuilder(true)
+      new PolicyBuilder()
           .registerCompileTimePass(new DefaultCompositePass());
   private final Policy policy;
 

@@ -27,7 +27,7 @@ import org.apache.reef.tang.Injector;
  */
 public final class BasicPullPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
-      new PolicyBuilder(true)
+      new PolicyBuilder()
           .registerCompileTimePass(new DefaultScheduleGroupPass());
   private final Policy policy;
 

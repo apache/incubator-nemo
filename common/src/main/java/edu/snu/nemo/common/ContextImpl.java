@@ -25,16 +25,18 @@ import java.util.Optional;
  */
 public final class ContextImpl implements Transform.Context {
   private final Map sideInputs;
-  private final Map<String, String> additionalTagOutputs;
+  private final Map<String, String> tagToAdditionalChildren;
   private String data;
 
   /**
    * Constructor of Context Implementation.
-   * @param sideInputs side inputs.
+   * @param sideInputs              side inputs.
+   * @param tagToAdditionalChildren tag id to additional vertices id map.
    */
-  public ContextImpl(final Map sideInputs, final Map additionalTagOutputs) {
+  public ContextImpl(final Map sideInputs,
+                     final Map<String, String> tagToAdditionalChildren) {
     this.sideInputs = sideInputs;
-    this.additionalTagOutputs = additionalTagOutputs;
+    this.tagToAdditionalChildren = tagToAdditionalChildren;
     this.data = null;
   }
 
@@ -44,8 +46,8 @@ public final class ContextImpl implements Transform.Context {
   }
 
   @Override
-  public Map<String, String> getAdditionalTagOutputs() {
-    return this.additionalTagOutputs;
+  public Map<String, String> getTagToAdditionalChildren() {
+    return this.tagToAdditionalChildren;
   }
 
   @Override
