@@ -99,8 +99,8 @@ public final class DAGConverterTest {
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage1).size(), 1);
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage2).size(), 0);
 
-    assertEquals(physicalStage1.getTaskIds().size(), 3);
-    assertEquals(physicalStage2.getTaskIds().size(), 2);
+    assertEquals(physicalStage1.getAllPossiblyClonedTaskIdsShuffled().size(), 3);
+    assertEquals(physicalStage2.getAllPossiblyClonedTaskIdsShuffled().size(), 2);
   }
 
   @Test

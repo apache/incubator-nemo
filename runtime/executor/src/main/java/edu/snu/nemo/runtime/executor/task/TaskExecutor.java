@@ -23,7 +23,7 @@ import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -133,7 +133,8 @@ public final class TaskExecutor {
   private Pair<List<DataFetcher>, List<VertexHarness>> prepare(final Task task,
                                                                final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                                                                final DataTransferFactory dataTransferFactory) {
-    final int taskIndex = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
+    final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
+    final int cloneOffset = RuntimeIdManager.getCloneOffsetFromTaskId(task.getTaskId());
 
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
@@ -163,12 +164,11 @@ public final class TaskExecutor {
 
       // Handle writes
       // Main output children task writes
-      final List<OutputWriter> mainChildrenTaskWriters = getMainChildrenTaskWriters(
-          taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
+      final List<OutputWriter> mainChildrenTaskWriters = getMainChildrenTaskWriters(irVertex,
+          taskIndex, cloneOffset, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
       // Additional output children task writes
-      final Map<String, OutputWriter> additionalChildrenTaskWriters = getAdditionalChildrenTaskWriters(
-          taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
-      // Find all main vertices and additional vertices
+      final Map<String, OutputWriter> additionalChildrenTaskWriters = getAdditionalChildrenTaskWriters(irVertex,
+          taskIndex, cloneOffset, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
       final List<String> additionalOutputVertices = new ArrayList<>(additionalOutputMap.values());
       final Set<String> mainChildren =
           getMainOutputVertices(irVertex, irVertexDag, task.getTaskOutgoingEdges(), additionalOutputVertices);
@@ -188,7 +188,7 @@ public final class TaskExecutor {
             irVertex, sourceReader.get(), vertexHarness, isToSideInput)); // Source vertex read
       }
       final List<InputReader> parentTaskReaders =
-          getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
+          getParentTaskReaders(irVertex, taskIndex, cloneOffset, task.getTaskIncomingEdges(), dataTransferFactory);
       parentTaskReaders.forEach(parentTaskReader -> {
         dataFetcherList.add(new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
             vertexHarness, isToSideInput)); // Parent-task read
@@ -457,15 +457,16 @@ public final class TaskExecutor {
     }
   }
 
-  private List<InputReader> getParentTaskReaders(final int taskIndex,
-                                                 final IRVertex irVertex,
+  private List<InputReader> getParentTaskReaders(final IRVertex irVertex,
+                                                 final int taskIndex,
+                                                 final int cloneOffset,
                                                  final List<StageEdge> inEdgesFromParentTasks,
                                                  final DataTransferFactory dataTransferFactory) {
     return inEdgesFromParentTasks
         .stream()
         .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId()))
         .map(inEdgeForThisVertex -> dataTransferFactory
-            .createReader(taskIndex, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
+            .createReader(taskIndex, cloneOffset, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
         .collect(Collectors.toList());
   }
 
@@ -494,15 +495,17 @@ public final class TaskExecutor {
 
   /**
    * Return inter-task OutputWriters, for single output or output associated with main tag.
-   * @param taskIndex               current task index
    * @param irVertex                source irVertex
+   * @param taskIndex               current task index
+   * @param cloneOffset             current task's clone offset
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
    * @param dataTransferFactory     dataTransferFactory
    * @param taggedOutputs           tag to vertex id map
    * @return OutputWriters for main children tasks
    */
-  private List<OutputWriter> getMainChildrenTaskWriters(final int taskIndex,
-                                                        final IRVertex irVertex,
+  private List<OutputWriter> getMainChildrenTaskWriters(final IRVertex irVertex,
+                                                        final int taskIndex,
+                                                        final int cloneOffset,
                                                         final List<StageEdge> outEdgesToChildrenTasks,
                                                         final DataTransferFactory dataTransferFactory,
                                                         final Map<String, String> taggedOutputs) {
@@ -510,22 +513,24 @@ public final class TaskExecutor {
         .stream()
         .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
         .filter(outEdge -> !taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
-        .map(outEdgeForThisVertex -> dataTransferFactory
-            .createWriter(irVertex, taskIndex, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
+        .map(outEdgeForThisVertex -> dataTransferFactory.createWriter(irVertex, taskIndex, cloneOffset,
+            outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
         .collect(Collectors.toList());
   }
 
   /**
    * Return inter-task OutputWriters associated with additional output tags.
-   * @param taskIndex               current task index
    * @param irVertex                source irVertex
+   * @param taskIndex               current task index
+   * @param cloneOffset             clone offset
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
    * @param dataTransferFactory     dataTransferFactory
    * @param taggedOutputs           tag to vertex id map
    * @return additional children vertex id to OutputWriters map.
    */
-  private Map<String, OutputWriter> getAdditionalChildrenTaskWriters(final int taskIndex,
-                                                                     final IRVertex irVertex,
+  private Map<String, OutputWriter> getAdditionalChildrenTaskWriters(final IRVertex irVertex,
+                                                                     final int taskIndex,
+                                                                     final int cloneOffset,
                                                                      final List<StageEdge> outEdgesToChildrenTasks,
                                                                      final DataTransferFactory dataTransferFactory,
                                                                      final Map<String, String> taggedOutputs) {
@@ -537,7 +542,7 @@ public final class TaskExecutor {
         .filter(outEdge -> taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
         .forEach(outEdgeForThisVertex -> {
           additionalChildrenTaskWriters.put(outEdgeForThisVertex.getDstIRVertex().getId(),
-              dataTransferFactory.createWriter(irVertex, taskIndex, outEdgeForThisVertex.getDstIRVertex(),
+              dataTransferFactory.createWriter(irVertex, taskIndex, cloneOffset, outEdgeForThisVertex.getDstIRVertex(),
                   outEdgeForThisVertex));
         });
 
@@ -578,7 +583,7 @@ public final class TaskExecutor {
     vertexHarness.getContext().getSerializedData().ifPresent(data ->
         persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
             ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
+                .setId(RuntimeIdManager.generateMessageId())
                 .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.ExecutorDataCollected)
                 .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(data).build())

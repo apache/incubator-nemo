@@ -21,16 +21,14 @@ import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Stage.
@@ -75,12 +73,29 @@ public final class Stage extends Vertex {
   }
 
   /**
-   * @return the list of the task IDs in this stage.
+   * @return (including clones) all task IDs in this stage shuffled.
    */
-  public List<String> getTaskIds() {
+  public List<String> getAllPossiblyClonedTaskIdsShuffled() {
+    // Get possibly cloned task ids.
+    final int cloneNum = executionProperties.get(ClonedSchedulingProperty.class).orElse(1);
     final List<String> taskIds = new ArrayList<>();
     for (int taskIdx = 0; taskIdx < getParallelism(); taskIdx++) {
-      taskIds.add(RuntimeIdGenerator.generateTaskId(taskIdx, getId()));
+      for (int cloneOffset = 0; cloneOffset < cloneNum; cloneOffset++) {
+        taskIds.add(RuntimeIdManager.generateTaskId(getId(), taskIdx, cloneOffset));
+      }
+    }
+    Collections.shuffle(taskIds); // Shuffle to avoid always scheduling clones back-to-back.
+    return taskIds;
+  }
+
+  /**
+   * @return (excluding clones) original task ids sorted.
+   */
+  public List<String> getOriginalTaskIdsSortedByIndex() {
+    final List<String> taskIds = new ArrayList<>();
+    for (int taskIdx = 0; taskIdx < getParallelism(); taskIdx++) {
+      final int cloneOffSetOfOriginalTask = 0;
+      taskIds.add(RuntimeIdManager.generateTaskId(getId(), taskIdx, cloneOffSetOfOriginalTask));
     }
     return taskIds;
   }

@@ -19,7 +19,7 @@ import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceLocalityProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
@@ -60,8 +60,9 @@ public final class SourceLocationAwareSchedulingConstraint implements Scheduling
           physicalStageEdge.getPropertyValue(CommunicationPatternProperty.class)
               .orElseThrow(() -> new RuntimeException("No comm pattern!")))) {
         final String blockIdToRead =
-            RuntimeIdGenerator.generateBlockId(physicalStageEdge.getId(),
-                RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId()));
+            RuntimeIdManager.generateBlockId(physicalStageEdge.getId(),
+                RuntimeIdManager.getIndexFromTaskId(task.getTaskId()),
+                RuntimeIdManager.getCloneOffsetFromTaskId(task.getTaskId()));
         final BlockManagerMaster.BlockLocationRequestHandler locationHandler =
             blockManagerMaster.getBlockLocationHandler(blockIdToRead);
         if (locationHandler.getLocationFuture().isDone()) { // if the location is known.

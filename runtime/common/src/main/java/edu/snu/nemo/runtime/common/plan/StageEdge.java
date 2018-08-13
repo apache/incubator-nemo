@@ -72,18 +72,18 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    */
   @VisibleForTesting
   public StageEdge(final String runtimeEdgeId,
-            final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
-            final IRVertex srcVertex,
-            final IRVertex dstVertex,
-            final Stage srcStage,
-            final Stage dstStage,
-            final Boolean isSideInput) {
+                   final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
+                   final IRVertex srcVertex,
+                   final IRVertex dstVertex,
+                   final Stage srcStage,
+                   final Stage dstStage,
+                   final Boolean isSideInput) {
     super(runtimeEdgeId, edgeProperties, srcStage, dstStage, isSideInput);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
     // Initialize the key range of each dst task.
     this.taskIdxToKeyRange = new HashMap<>();
-    for (int taskIdx = 0; taskIdx < dstStage.getTaskIds().size(); taskIdx++) {
+    for (int taskIdx = 0; taskIdx < dstStage.getOriginalTaskIdsSortedByIndex().size(); taskIdx++) {
       taskIdxToKeyRange.put(taskIdx, HashRange.of(taskIdx, taskIdx + 1, false));
     }
     this.dataCommunicationPatternValue = edgeProperties.get(CommunicationPatternProperty.class)

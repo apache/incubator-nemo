@@ -30,7 +30,7 @@ import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.Task;
@@ -70,6 +70,7 @@ import static org.mockito.Mockito.*;
 @PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class,
     TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class})
 public final class TaskExecutorTest {
+  private static final int CLONE_OFFSET = 0;
   private static final int DATA_SIZE = 100;
   private static final ExecutionPropertyMap<VertexExecutionProperty> TASK_EXECUTION_PROPERTY_MAP
       = new ExecutionPropertyMap<>("TASK_EXECUTION_PROPERTY_MAP");
@@ -83,8 +84,8 @@ public final class TaskExecutorTest {
   private AtomicInteger stageId;
 
   private String generateTaskId() {
-    return RuntimeIdGenerator.generateTaskId(0,
-        RuntimeIdGenerator.generateStageId(stageId.getAndIncrement()));
+    return RuntimeIdManager.generateTaskId(
+        RuntimeIdManager.generateStageId(stageId.getAndIncrement()), 0, CLONE_OFFSET);
   }
 
   @Before
@@ -98,8 +99,8 @@ public final class TaskExecutorTest {
     // Mock a DataTransferFactory.
     vertexIdToOutputData = new HashMap<>();
     dataTransferFactory = mock(DataTransferFactory.class);
-    when(dataTransferFactory.createReader(anyInt(), any(), any())).then(new ParentTaskReaderAnswer());
-    when(dataTransferFactory.createWriter(any(), anyInt(), any(), any())).then(new ChildTaskWriterAnswer());
+    when(dataTransferFactory.createReader(anyInt(), anyInt(), any(), any())).then(new ParentTaskReaderAnswer());
+    when(dataTransferFactory.createWriter(any(), anyInt(), anyInt(), any(), any())).then(new ChildTaskWriterAnswer());
 
     // Mock a MetricMessageSender.
     metricMessageSender = mock(MetricMessageSender.class);

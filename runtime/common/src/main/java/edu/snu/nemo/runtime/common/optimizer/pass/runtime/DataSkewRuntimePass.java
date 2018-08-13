@@ -22,7 +22,7 @@ import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
 import edu.snu.nemo.common.exception.DynamicOptimizationException;
 
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
@@ -76,7 +76,7 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<List<String>, Ma
 
     // get edges to optimize
     final List<String> optimizationEdgeIds = blockIds.stream().map(blockId ->
-        RuntimeIdGenerator.getRuntimeEdgeIdFromBlockId(blockId)).collect(Collectors.toList());
+        RuntimeIdManager.getRuntimeEdgeIdFromBlockId(blockId)).collect(Collectors.toList());
     final DAG<Stage, StageEdge> stageDAG = originalPlan.getStageDAG();
     final List<StageEdge> optimizationEdges = stageDAG.getVertices().stream()
         .flatMap(stage -> stageDAG.getIncomingEdgesOf(stage).stream())
@@ -84,17 +84,17 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<List<String>, Ma
         .collect(Collectors.toList());
 
     // Get number of evaluators of the next stage (number of blocks).
-    final Integer numOfDstTasks = optimizationEdges.stream().findFirst().orElseThrow(() ->
-        new RuntimeException("optimization edges are empty")).getDst().getTaskIds().size();
+    final Integer numOfOriginalDstTasks = optimizationEdges.stream().findFirst().orElseThrow(() ->
+        new RuntimeException("optimization edges are empty")).getDst().getOriginalTaskIdsSortedByIndex().size();
 
     // Calculate keyRanges.
-    final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), numOfDstTasks);
+    final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), numOfOriginalDstTasks);
 
     // Overwrite the previously assigned key range in the physical DAG with the new range.
     optimizationEdges.forEach(optimizationEdge -> {
       // Update the information.
       final Map<Integer, KeyRange> taskIdxToHashRange = new HashMap<>();
-      for (int taskIdx = 0; taskIdx < numOfDstTasks; taskIdx++) {
+      for (int taskIdx = 0; taskIdx < numOfOriginalDstTasks; taskIdx++) {
         taskIdxToHashRange.put(taskIdx, keyRanges.get(taskIdx));
       }
       optimizationEdge.setTaskIdxToKeyRange(taskIdxToHashRange);

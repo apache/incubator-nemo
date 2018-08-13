@@ -17,7 +17,7 @@ package edu.snu.nemo.runtime.master;
 
 import javax.inject.Inject;
 
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.master.scheduler.ExecutorRegistry;
@@ -46,7 +46,7 @@ public final class MetricManagerMaster implements MetricMessageHandler {
   public synchronized void sendMetricFlushRequest() {
     executorRegistry.viewExecutors(executors -> executors.forEach(executor -> {
       final ControlMessage.Message message = ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdGenerator.generateMessageId())
+          .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
           .setType(ControlMessage.MessageType.RequestMetricFlush)
           .build();

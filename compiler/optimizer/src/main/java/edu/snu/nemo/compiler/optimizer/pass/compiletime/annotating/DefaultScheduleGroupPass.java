@@ -271,7 +271,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
      * @param dst destination vertex.
      */
     ScheduleGroupEdge(final ScheduleGroup src, final ScheduleGroup dst) {
-      super(String.format("ScheduleGroupEdge-%d", nextScheduleGroupEdgeId++), src, dst);
+      super(String.format("ScheduleGroupEdge%d", nextScheduleGroupEdgeId++), src, dst);
     }
 
     @Override

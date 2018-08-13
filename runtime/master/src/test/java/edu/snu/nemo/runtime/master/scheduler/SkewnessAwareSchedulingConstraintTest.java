@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.data.HashRange;
 import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
@@ -38,6 +38,7 @@ import static org.mockito.Mockito.when;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, Task.class, HashRange.class, StageEdge.class})
 public final class SkewnessAwareSchedulingConstraintTest {
+  private static final int CLONE_OFFSET = 0;
 
   private static StageEdge mockStageEdge() {
     final Map<Integer, KeyRange> taskIdxToKeyRange = new HashMap<>();
@@ -61,7 +62,7 @@ public final class SkewnessAwareSchedulingConstraintTest {
 
   private static Task mockTask(final int taskIdx, final List<StageEdge> inEdges) {
     final Task task = mock(Task.class);
-    when(task.getTaskId()).thenReturn(RuntimeIdGenerator.generateTaskId(taskIdx, "Stage-0"));
+    when(task.getTaskId()).thenReturn(RuntimeIdManager.generateTaskId("Stage0", taskIdx, CLONE_OFFSET));
     when(task.getTaskIncomingEdges()).thenReturn(inEdges);
     return task;
   }

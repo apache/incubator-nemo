@@ -22,7 +22,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
@@ -47,6 +47,7 @@ import java.util.stream.StreamSupport;
 public final class InputReader extends DataTransfer {
   private static final Logger LOG = LoggerFactory.getLogger(InputReader.class.getName());
   private final int dstTaskIndex;
+  private final int cloneOffset;
   private final BlockManagerWorker blockManagerWorker;
 
   /**
@@ -56,11 +57,13 @@ public final class InputReader extends DataTransfer {
   private final RuntimeEdge runtimeEdge;
 
   public InputReader(final int dstTaskIndex,
+                     final int cloneOffset,
                      final IRVertex srcVertex,
                      final RuntimeEdge runtimeEdge,
                      final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
     this.dstTaskIndex = dstTaskIndex;
+    this.cloneOffset = cloneOffset;
     this.srcVertex = srcVertex;
     this.runtimeEdge = runtimeEdge;
     this.blockManagerWorker = blockManagerWorker;
@@ -150,10 +153,10 @@ public final class InputReader extends DataTransfer {
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     if (!duplicateDataProperty.isPresent() || duplicateDataProperty.get().getGroupSize() <= 1) {
-      return RuntimeIdGenerator.generateBlockId(getId(), taskIdx);
+      return RuntimeIdManager.generateBlockId(getId(), taskIdx, cloneOffset);
     }
     final String duplicateEdgeId = duplicateDataProperty.get().getRepresentativeEdgeId();
-    return RuntimeIdGenerator.generateBlockId(duplicateEdgeId, taskIdx);
+    return RuntimeIdManager.generateBlockId(duplicateEdgeId, taskIdx, cloneOffset);
   }
 
   public IRVertex getSrcIrVertex() {

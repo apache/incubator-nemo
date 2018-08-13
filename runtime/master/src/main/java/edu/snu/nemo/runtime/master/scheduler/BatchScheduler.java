@@ -21,7 +21,7 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
 import edu.snu.nemo.runtime.common.state.BlockState;
@@ -41,7 +41,6 @@ import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 
@@ -176,7 +175,7 @@ public final class BatchScheduler implements Scheduler {
         case COMPLETE:
         case ON_HOLD:
           // If the stage has completed
-          final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
+          final String stageIdForTaskUponCompletion = RuntimeIdManager.getStageIdFromTaskId(taskId);
           if (planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
             if (!planStateManager.isPlanDone()) {
               doSchedule();
@@ -271,7 +270,7 @@ public final class BatchScheduler implements Scheduler {
 
       LOG.info("Scheduling some tasks in {}, which are in the same ScheduleGroup", tasksToSchedule.stream()
           .map(Task::getTaskId)
-          .map(RuntimeIdGenerator::getStageIdFromTaskId)
+          .map(RuntimeIdManager::getStageIdFromTaskId)
           .collect(Collectors.toSet()));
 
       // Set the pointer to the schedulable tasks.
@@ -304,7 +303,7 @@ public final class BatchScheduler implements Scheduler {
         physicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
 
     final List<String> taskIdsToSchedule = new LinkedList<>();
-    for (final String taskId : stageToSchedule.getTaskIds()) {
+    for (final String taskId : stageToSchedule.getAllPossiblyClonedTaskIdsShuffled()) {
       final TaskState.State taskState = planStateManager.getTaskState(taskId);
 
       switch (taskState) {
@@ -332,7 +331,7 @@ public final class BatchScheduler implements Scheduler {
     final List<Task> tasks = new ArrayList<>(taskIdsToSchedule.size());
     taskIdsToSchedule.forEach(taskId -> {
       blockManagerMaster.onProducerTaskScheduled(taskId); // Notify the block manager early for push edges.
-      final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
+      final int taskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
       final int attemptIdx = planStateManager.getTaskAttempt(taskId);
       tasks.add(new Task(
           physicalPlan.getId(),
@@ -378,7 +377,7 @@ public final class BatchScheduler implements Scheduler {
       executor.onTaskExecutionComplete(taskId);
       return Pair.of(executor, state);
     });
-    final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
+    final String stageIdForTaskUponCompletion = RuntimeIdManager.getStageIdFromTaskId(taskId);
 
     final boolean stageComplete =
         planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
@@ -458,19 +457,20 @@ public final class BatchScheduler implements Scheduler {
   }
 
   private Set<String> getParentTasks(final String childTaskId) {
-    final String stageIdOfChildTask = RuntimeIdGenerator.getStageIdFromTaskId(childTaskId);
+    final String stageIdOfChildTask = RuntimeIdManager.getStageIdFromTaskId(childTaskId);
     return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
         .stream()
         .flatMap(inStageEdge -> {
-          final List<String> tasksOfParentStage = inStageEdge.getSrc().getTaskIds();
+          final List<String> tasksOfParentStage = inStageEdge.getSrc().getAllPossiblyClonedTaskIdsShuffled();
           switch (inStageEdge.getDataCommunicationPattern()) {
             case Shuffle:
             case BroadCast:
               // All of the parent stage's tasks are parents
               return tasksOfParentStage.stream();
             case OneToOne:
-              // Only one of the parent stage's tasks is a parent
-              return Stream.of(tasksOfParentStage.get(RuntimeIdGenerator.getIndexFromTaskId(childTaskId)));
+              // Only one of the parent stage's tasks (and possibly its clones) is a parent
+              return tasksOfParentStage.stream().filter(parentTask ->
+                  RuntimeIdManager.getIndexFromTaskId(parentTask) == RuntimeIdManager.getIndexFromTaskId(childTaskId));
             default:
               throw new IllegalStateException(inStageEdge.toString());
           }
@@ -484,7 +484,7 @@ public final class BatchScheduler implements Scheduler {
    */
   private DAG<IRVertex, RuntimeEdge<IRVertex>> getVertexDagById(final String taskId) {
     for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
-      if (stage.getId().equals(RuntimeIdGenerator.getStageIdFromTaskId(taskId))) {
+      if (stage.getId().equals(RuntimeIdManager.getStageIdFromTaskId(taskId))) {
         return stage.getIRDAG();
       }
     }

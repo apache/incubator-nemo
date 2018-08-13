@@ -15,14 +15,13 @@
  */
 package edu.snu.nemo.runtime.master;
 
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.state.BlockState;
 import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -36,6 +35,7 @@ import static org.junit.Assert.assertTrue;
  * Test for {@link BlockManagerMaster}.
  */
 public final class BlockManagerMasterTest {
+  private static int CLONE_OFFSET = 0;
   private BlockManagerMaster blockManagerMaster;
 
   @Before
@@ -78,11 +78,11 @@ public final class BlockManagerMasterTest {
    */
   @Test
   public void testLostAfterCommit() throws Exception {
-    final String edgeId = RuntimeIdGenerator.generateStageEdgeId("Edge-0");
+    final String edgeId = RuntimeIdManager.generateStageEdgeId("Edge0");
     final int srcTaskIndex = 0;
-    final String taskId = RuntimeIdGenerator.generateTaskId(srcTaskIndex, "Stage-test");
-    final String executorId = RuntimeIdGenerator.generateExecutorId();
-    final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIndex);
+    final String taskId = RuntimeIdManager.generateTaskId("Stagetest", srcTaskIndex, CLONE_OFFSET);
+    final String executorId = RuntimeIdManager.generateExecutorId();
+    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex, CLONE_OFFSET);
 
     // Initially the block state is NOT_AVAILABLE.
     blockManagerMaster.initializeState(blockId, taskId);
@@ -111,11 +111,11 @@ public final class BlockManagerMasterTest {
    */
   @Test
   public void testBeforeAfterCommit() throws Exception {
-    final String edgeId = RuntimeIdGenerator.generateStageEdgeId("Edge-1");
+    final String edgeId = RuntimeIdManager.generateStageEdgeId("Edge1");
     final int srcTaskIndex = 0;
-    final String taskId = RuntimeIdGenerator.generateTaskId(srcTaskIndex, "Stage-Test");
-    final String executorId = RuntimeIdGenerator.generateExecutorId();
-    final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIndex);
+    final String taskId = RuntimeIdManager.generateTaskId("StageTest", srcTaskIndex, CLONE_OFFSET);
+    final String executorId = RuntimeIdManager.generateExecutorId();
+    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex, CLONE_OFFSET);
 
     // The block is being scheduled.
     blockManagerMaster.initializeState(blockId, taskId);
