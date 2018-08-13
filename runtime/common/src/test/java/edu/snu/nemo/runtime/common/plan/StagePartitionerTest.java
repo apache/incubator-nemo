@@ -58,9 +58,9 @@ public final class StagePartitionerTest {
   private static IRVertex newVertex(final int parallelism, final int scheduleGroup,
                                     final List<VertexExecutionProperty> otherProperties) {
     final IRVertex vertex = new OperatorVertex(EMPTY_TRANSFORM);
-    vertex.getExecutionProperties().put(ParallelismProperty.of(parallelism));
-    vertex.getExecutionProperties().put(ScheduleGroupProperty.of(scheduleGroup));
-    otherProperties.forEach(property -> vertex.getExecutionProperties().put(property));
+    vertex.setProperty(ParallelismProperty.of(parallelism));
+    vertex.setProperty(ScheduleGroupProperty.of(scheduleGroup));
+    otherProperties.forEach(property -> vertex.setProperty(property));
     return vertex;
   }
 

@@ -43,9 +43,9 @@ public final class LargeShuffleDataFlowPass extends AnnotatingPass {
       inEdges.forEach(edge -> {
         if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
             .equals(CommunicationPatternProperty.Value.Shuffle)) {
-          edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push)); // Push to the merger vertex.
+          edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Push)); // Push to the merger vertex.
         } else {
-          edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+          edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Pull));
         }
       });
     });

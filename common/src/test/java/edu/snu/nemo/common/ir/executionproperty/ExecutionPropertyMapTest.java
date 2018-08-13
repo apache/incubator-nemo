@@ -17,6 +17,7 @@ package edu.snu.nemo.common.ir.executionproperty;
 
 import edu.snu.nemo.common.coder.DecoderFactory;
 import edu.snu.nemo.common.coder.EncoderFactory;
+import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -24,7 +25,9 @@ import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.test.EmptyComponents;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -101,5 +104,21 @@ public class ExecutionPropertyMapTest {
     map1.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     assertTrue(map0.equals(map1));
     assertTrue(map1.equals(map0));
+  }
+
+  @Rule
+  public final ExpectedException expectedException = ExpectedException.none();
+
+  @Test
+  public void testFinalizedProperty() {
+    // this should work without a problem..
+    final ExecutionPropertyMap<ExecutionProperty> map = new ExecutionPropertyMap<>("map");
+    map.put(ParallelismProperty.of(1), false);
+    assertEquals(ParallelismProperty.of(1), map.put(ParallelismProperty.of(2)));
+    assertEquals(ParallelismProperty.of(2), map.put(ParallelismProperty.of(3), true));
+
+    // test exception
+    expectedException.expect(CompileTimeOptimizationException.class);
+    map.put(ParallelismProperty.of(4));
   }
 }

@@ -481,13 +481,11 @@ public final class DataTransferTest {
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
-    final ExecutionPropertyMap srcVertexProperties = srcVertex.getExecutionProperties();
-    srcVertexProperties.put(ParallelismProperty.of(PARALLELISM_TEN));
+    srcVertex.setProperty(ParallelismProperty.of(PARALLELISM_TEN));
 
     // Dst setup
     final SourceVertex dstVertex = new EmptyComponents.EmptySourceVertex("Destination");
-    final ExecutionPropertyMap dstVertexProperties = dstVertex.getExecutionProperties();
-    dstVertexProperties.put(ParallelismProperty.of(PARALLELISM_TEN));
+    dstVertex.setProperty(ParallelismProperty.of(PARALLELISM_TEN));
 
     return Pair.of(srcVertex, dstVertex);
   }
@@ -503,13 +501,11 @@ public final class DataTransferTest {
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
-    final ExecutionPropertyMap srcVertexProperties = srcVertex.getExecutionProperties();
-    srcVertexProperties.put(ParallelismProperty.of(PARALLELISM_TEN));
+    srcVertex.setProperty(ParallelismProperty.of(PARALLELISM_TEN));
 
     // Dst setup
     final SourceVertex dstVertex = new EmptyComponents.EmptySourceVertex("Destination");
-    final ExecutionPropertyMap dstVertexProperties = dstVertex.getExecutionProperties();
-    dstVertexProperties.put(ParallelismProperty.of(PARALLELISM_TEN));
+    dstVertex.setProperty(ParallelismProperty.of(PARALLELISM_TEN));
 
     return Pair.of(srcVertex, dstVertex);
   }

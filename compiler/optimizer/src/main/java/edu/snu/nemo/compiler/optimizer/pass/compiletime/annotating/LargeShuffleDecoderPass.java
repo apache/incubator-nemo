@@ -45,7 +45,7 @@ public final class LargeShuffleDecoderPass extends AnnotatingPass {
       inEdges.forEach(edge -> {
         if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
             .equals(CommunicationPatternProperty.Value.Shuffle)) {
-          edge.setProperty(DecoderProperty.of(BytesDecoderFactory.of()));
+          edge.setPropertyPermanently(DecoderProperty.of(BytesDecoderFactory.of()));
         }
       });
     });

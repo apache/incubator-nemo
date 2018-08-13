@@ -42,7 +42,7 @@ public final class LargeShuffleDataPersistencePass extends AnnotatingPass {
         dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
           final DataFlowProperty.Value dataFlowModel = irEdge.getPropertyValue(DataFlowProperty.class).get();
           if (DataFlowProperty.Value.Push.equals(dataFlowModel)) {
-            irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard));
+            irEdge.setPropertyPermanently(DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard));
           }
         }));
     return dag;
