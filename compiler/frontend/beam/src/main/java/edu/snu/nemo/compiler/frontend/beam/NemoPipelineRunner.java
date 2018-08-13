@@ -57,6 +57,18 @@ public final class NemoPipelineRunner extends PipelineRunner<NemoPipelineResult>
     final NemoPipelineVisitor nemoPipelineVisitor = new NemoPipelineVisitor(builder, nemoPipelineOptions);
     pipeline.traverseTopologically(nemoPipelineVisitor);
     final DAG dag = builder.build();
+
+    final PipelineVisitor pipelineVisitor = new PipelineVisitor();
+    pipeline.traverseTopologically(pipelineVisitor);
+    try {
+      final PipelineTranslator pipelineTranslator = new PipelineTranslator(nemoPipelineOptions);
+      pipelineTranslator.apply(pipelineVisitor.getRootTransformVertex())
+          .storeJSON("VISITOR", "visitor", "NeoVisitor");
+    } catch (final Exception e) {
+      e.printStackTrace();
+    }
+
+
     final NemoPipelineResult nemoPipelineResult = new NemoPipelineResult();
     JobLauncher.launchDAG(dag);
     return nemoPipelineResult;
