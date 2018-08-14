@@ -80,8 +80,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
   }
 
   private static void topologicalTranslator(final TranslationContext ctx,
-                                            final CompositeTransformVertex transformVertex,
-                                            final PTransform<?, ?> transform) {
+                                            final CompositeTransformVertex transformVertex) {
     transformVertex.getDAG().topologicalDo(ctx::translate);
   }
 
@@ -172,7 +171,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     ctx.builder.addVertex(loopVertex, ctx.loopVertexStack);
     ctx.builder.removeVertex(loopVertex);
     ctx.loopVertexStack.push(loopVertex);
-    topologicalTranslator(ctx, transformVertex, transform);
+    topologicalTranslator(ctx, transformVertex);
     ctx.loopVertexStack.pop();
   }
 
@@ -230,28 +229,38 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
       final PTransform<?, ?> transform = transformVertex.getNode().getTransform();
       if (transform == null) {
         // root node
-        topologicalTranslator(this, (CompositeTransformVertex) transformVertex, null);
+        topologicalTranslator(this, (CompositeTransformVertex) transformVertex);
         return;
       }
-      final Method translator = (isComposite ? compositeTransformToTranslator : primitiveTransformToTranslator)
-          .get(transform.getClass());
-      if (translator == null) {
-        if (isComposite) {
-          // default translator for CompositeTransform
-          topologicalTranslator(this, (CompositeTransformVertex) transformVertex, transform);
+
+      Class<?> clazz = transform.getClass();
+      while (true) {
+        final Method translator = (isComposite ? compositeTransformToTranslator : primitiveTransformToTranslator)
+            .get(clazz);
+        if (translator == null) {
+          if (clazz.getSuperclass() != null) {
+            clazz = clazz.getSuperclass();
+            continue;
+          }
+          if (isComposite) {
+            // default translator for CompositeTransform
+            topologicalTranslator(this, (CompositeTransformVertex) transformVertex);
+            break;
+          } else {
+            throw new UnsupportedOperationException(String.format("Primitive transform %s is not supported",
+                transform.getClass().getCanonicalName()));
+          }
         } else {
-          throw new UnsupportedOperationException(String.format("Primitive transform %s is not supported",
-              transform.getClass().getCanonicalName()));
-        }
-      } else {
-        try {
-          translator.setAccessible(true);
-          translator.invoke(null, this, transformVertex, transform);
-        } catch (final IllegalAccessException | InvocationTargetException e) {
-          throw new RuntimeException(e);
-        } catch (final RuntimeException e) {
-          throw new RuntimeException(String.format(
-              "Translator %s have failed to translate %s", translator, transform), e);
+          try {
+            translator.setAccessible(true);
+            translator.invoke(null, this, transformVertex, transform);
+            break;
+          } catch (final IllegalAccessException e) {
+            throw new RuntimeException(e);
+          } catch (final InvocationTargetException | RuntimeException e) {
+            throw new RuntimeException(String.format(
+                "Translator %s have failed to translate %s", translator, transform), e);
+          }
         }
       }
     }
