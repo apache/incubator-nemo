@@ -81,17 +81,15 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<IREdge, Map<Inte
             .equals(e.getPropertyValue(MetricCollectionProperty.class)))
         .collect(Collectors.toList());
 
-    // Get number of evaluators of the next stage (number of blocks).
     final IREdge targetEdge = metricData.left();
+    // Get number of evaluators of the next stage (number of blocks).
     final Integer dstParallelism = targetEdge.getDst().getPropertyValue(ParallelismProperty.class).get();
-  
+
     // Calculate keyRanges.
     final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), dstParallelism);
     final Map<Integer, KeyRange> taskIdxToKeyRange = new HashMap<>();
     for (int i = 0; i < dstParallelism; i++) {
       taskIdxToKeyRange.put(i, keyRanges.get(i));
-      LOG.info("Task {} got {}~{}", i, keyRanges.get(i).rangeBeginInclusive(),
-          keyRanges.get(i).rangeEndExclusive());
     }
     // Overwrite the previously assigned key range in the physical DAG with the new range.
     targetEdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(taskIdxToKeyRange)));

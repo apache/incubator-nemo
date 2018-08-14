@@ -56,7 +56,8 @@ public final class RunTimeOptimizer {
       // Data for dynamic optimization used in DataSkewRuntimePass
       // is a map of <hash value, partition size>.
       final DAG<IRVertex, IREdge> newIrDAG =
-          new DataSkewRuntimePass().apply(originalPlan.getIrDAG(), Pair.of(targetEdge, (Map<Integer, Long>) dynOptData));
+          new DataSkewRuntimePass()
+              .apply(originalPlan.getIrDAG(), Pair.of(targetEdge, (Map<Integer, Long>) dynOptData));
       final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(newIrDAG);
       final PhysicalPlan physicalPlan =
           new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(), newIrDAG, stageDAG);

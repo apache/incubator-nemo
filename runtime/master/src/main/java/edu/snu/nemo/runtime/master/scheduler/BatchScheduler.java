@@ -17,7 +17,6 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.collect.Sets;
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.IREdge;
@@ -367,11 +366,26 @@ public final class BatchScheduler implements Scheduler {
       return Pair.of(executor, state);
     });
   }
-  
-  public IREdge stageEdgeToIREdge(final StageEdge se) {
-    final IRVertex srcIRVertex = se.getSrcIRVertex();
-    final IRVertex dstIRVertex = se.getDstIRVertex();
-    return physicalPlan.getIrDAG().getEdgeBetween(srcIRVertex.getId(), dstIRVertex.getId());
+
+  public IREdge getEdgeToOptimize(final String taskId) {
+    // Get a stage including the given task
+    final Stage stagePutOnHold = physicalPlan.getStageDAG().getVertices().stream()
+        .filter(stage -> stage.getTaskIds().contains(taskId)).findFirst().get();
+
+    // Get outgoing edges of that stage with MetricCollectionProperty
+    List<StageEdge> stageEdges = physicalPlan.getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
+    IREdge targetEdge = null;
+    for (StageEdge edge : stageEdges) {
+      final IRVertex srcIRVertex = edge.getSrcIRVertex();
+      final IRVertex dstIRVertex = edge.getDstIRVertex();
+      targetEdge = physicalPlan.getIrDAG().getEdgeBetween(srcIRVertex.getId(), dstIRVertex.getId());
+      if (MetricCollectionProperty.Value.DataSkewRuntimePass
+          .equals(targetEdge.getPropertyValue(MetricCollectionProperty.class).get())) {
+        break;
+      }
+    }
+
+    return targetEdge;
   }
 
   /**
@@ -390,30 +404,12 @@ public final class BatchScheduler implements Scheduler {
 
     final boolean stageComplete =
         planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
-    
-    
-    // Get the target Stage
-    final Stage targetStage = physicalPlan.getStageDAG().getVertices().stream()
-        .filter(stage -> stage.getTaskIds().contains(taskId)).findFirst().get();
-    
-    // Get the incoming edge to that stage with MetricCollectionProperty
-    List<StageEdge> stageEdges = physicalPlan.getStageDAG().getIncomingEdgesOf(targetStage);
-    IREdge targetEdge = null;
-    for (StageEdge edge : stageEdges) {
-      targetEdge = stageEdgeToIREdge(edge);
-      if (MetricCollectionProperty.Value.DataSkewRuntimePass
-          .equals(targetEdge.getPropertyValue(MetricCollectionProperty.class).get())) {
-        break;
-      }
-    }
-    
+
+    final IREdge targetEdge = getEdgeToOptimize(taskId);
     if (targetEdge == null) {
-      throw new RuntimeException();
+      throw new RuntimeException("No edges specified for data skew optimization");
     }
-    
-    LOG.info("targetEdge: {} {}", targetEdge.getId(),
-        targetEdge.getPropertyValue(MetricCollectionProperty.class));
-  
+
     if (stageComplete) {
       final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
           .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
