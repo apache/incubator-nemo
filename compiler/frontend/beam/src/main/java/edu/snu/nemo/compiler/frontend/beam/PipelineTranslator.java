@@ -235,7 +235,13 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
       for (final PValue pValue : inputs) {
         final IRVertex src = pValueToProducer.get(pValue);
         if (src == null) {
-          throw new RuntimeException(String.format("Cannot find producer of %s", pValue));
+          try {
+            throw new RuntimeException(String.format("Cannot find a vertex that emits pValue %s, "
+                + "while PTransform %s is known to produce it.", pValue, pipeline.getPrimitiveProducerOf(pValue)));
+          } catch (final RuntimeException e) {
+            throw new RuntimeException(String.format("Cannot find a vertex that emits pValue %s, "
+                + "and the corresponding PTransform was not found", pValue));
+          }
         }
         final CommunicationPatternProperty.Value communicationPattern = cPatternFunc.apply(src, dst);
         if (communicationPattern == null) {

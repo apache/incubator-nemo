@@ -62,7 +62,7 @@ public final class NemoPipelineRunner extends PipelineRunner<NemoPipelineResult>
     pipeline.traverseTopologically(pipelineVisitor);
     try {
       final PipelineTranslator pipelineTranslator = new PipelineTranslator(nemoPipelineOptions);
-      pipelineTranslator.apply(pipelineVisitor.getRootTransformVertex())
+      pipelineTranslator.apply(pipelineVisitor.getConvertedPipeline())
           .storeJSON("VISITOR", "visitor", "NeoVisitor");
     } catch (final Exception e) {
       e.printStackTrace();

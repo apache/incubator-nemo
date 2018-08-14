@@ -50,10 +50,9 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   @Override
   public CompositeBehavior enterCompositeTransform(final TransformHierarchy.Node node) {
     final CompositeTransformVertex vertex;
-    if (rootVertex == null) {
+    if (compositeTransformVertexStack.isEmpty()) {
       // There is always a top-level CompositeTransform that encompasses the entire Beam pipeline.
       vertex = new CompositeTransformVertex(node, null);
-      rootVertex = vertex;
     } else {
       vertex = new CompositeTransformVertex(node, compositeTransformVertexStack.peek());
     }
@@ -65,13 +64,23 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   public void leaveCompositeTransform(final TransformHierarchy.Node node) {
     final CompositeTransformVertex vertex = compositeTransformVertexStack.pop();
     vertex.build();
-    if (!compositeTransformVertexStack.isEmpty()) {
+    if (compositeTransformVertexStack.isEmpty()) {
+      // The vertex is the root.
+      if (rootVertex != null) {
+        throw new RuntimeException("The visitor already have traversed a Beam pipeline. "
+            + "Re-using a visitor is not allowed.");
+      }
+      rootVertex = vertex;
+    } else {
       // The CompositeTransformVertex is ready; adding it to its parent vertex.
       compositeTransformVertexStack.peek().addVertex(vertex);
     }
   }
 
-  public CompositeTransformVertex getRootTransformVertex() {
+  public CompositeTransformVertex getConvertedPipeline() {
+    if (rootVertex == null) {
+      throw new RuntimeException("The visitor have not fully traversed through a Beam pipeline.");
+    }
     return rootVertex;
   }
   /**
