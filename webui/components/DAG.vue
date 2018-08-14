@@ -188,8 +188,10 @@ export default {
     /**
      * Resize canvas size according to outer element.
      * @param fit if true, DAG will be fitted after resize.
+     * @param resizeToGraphSize if true, canvas height will be
+     * resized to be fit with dag height.
      */
-    resizeCanvas(fit) {
+    resizeCanvas(fit, resizeToGraphSize=true) {
       return new Promise((resolve, reject) => {
         if (!this.canvas) {
           reject();
@@ -204,7 +206,10 @@ export default {
           if (this.$refs.canvasContainer) {
             let w = this.$refs.canvasContainer.offsetWidth;
             this.canvas.setWidth(w);
-            this.canvas.setHeight(w * CANVAS_RATIO);
+            if (resizeToGraphSize && this.stageGraph) {
+              const targetHeight = (w / this.dagWidth) * this.dagHeight;
+              this.canvas.setHeight(targetHeight);
+            }
             if (fit) {
               this.fitCanvas();
             }
@@ -212,6 +217,31 @@ export default {
           }
         }, DEBOUNCE_INTERVAL);
       });
+    },
+
+    /**
+     * Resize and fit the canvas. This method also recalculate offsets of
+     * inner canvas and reset translate viewports to the last cached values.
+     */
+    async rerenderDAG() {
+      // wait for tab pane render
+      await this.$nextTick();
+      await this.resizeCanvas(false);
+
+      if (this.fitCanvasNextTime) {
+        this.fitCanvasNextTime = false;
+        await this.fitCanvas();
+      }
+
+      if (!this.dag) {
+        return;
+      }
+
+      this.canvas.viewportTransform[4] = this.lastViewportX;
+      this.canvas.viewportTransform[5] = this.lastViewportY;
+      this.canvas.calcOffset();
+      await this.$nextTick();
+      this.canvas.renderAll();
     },
 
     /**
@@ -231,24 +261,7 @@ export default {
       // resize canvas, fit, and recalculate inner coordinates
       // and rerender canvas
       this.$eventBus.$on('rerender-dag', async () => {
-        // wait for tab pane render
-        await this.$nextTick();
-        await this.resizeCanvas(false);
-
-        if (this.fitCanvasNextTime) {
-          this.fitCanvasNextTime = false;
-          await this.fitCanvas();
-        }
-
-        if (!this.dag) {
-          return;
-        }
-
-        this.canvas.viewportTransform[4] = this.lastViewportX;
-        this.canvas.viewportTransform[5] = this.lastViewportY;
-        this.canvas.calcOffset();
-        await this.$nextTick();
-        this.canvas.renderAll();
+        await this.rerenderDAG();
       });
 
       this.$eventBus.$on('metric-select-done', () => {
@@ -275,10 +288,6 @@ export default {
           return;
         }
 
-        if (this.tabIndex === MY_TAB_INDEX) {
-          await this.resizeCanvas(false);
-        }
-
         if (init) {
           this.initializeVariables();
         }
@@ -288,6 +297,11 @@ export default {
         this.setUpCanvasEventHandler();
         this.dag = dag;
         this.drawDAG();
+
+        if (this.tabIndex === MY_TAB_INDEX) {
+          await this.resizeCanvas(false);
+        }
+
         this.setStates(states);
         // restore previous translation viewport
         this.canvas.viewportTransform[4] = this.lastViewportX;
@@ -404,7 +418,7 @@ export default {
     async fitCanvas() {
       let widthRatio = this.canvas.width / this.dagWidth;
       let heightRatio = this.canvas.height / this.dagHeight;
-      let targetRatio = widthRatio > heightRatio ?
+      let targetRatio = widthRatio < heightRatio ?
         heightRatio : widthRatio;
       this.canvas.setZoom(targetRatio);
       this.canvas.renderAll();
@@ -529,7 +543,7 @@ export default {
       this.stageGraph = new Graph();
       let g = this.stageGraph;
 
-      g.setGraph({ rankdir: 'LR' });
+      g.setGraph({ rankdir: 'TB' });
       g.setDefaultEdgeLabel(function () { return {}; });
 
       this.stageIdArray.forEach(stageId => {
