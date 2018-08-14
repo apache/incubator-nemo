@@ -58,7 +58,6 @@ public final class NemoPipelineRunner extends PipelineRunner<NemoPipelineResult>
     pipeline.traverseTopologically(nemoPipelineVisitor);
     final DAG dag = builder.build();
 
-    /*
     final PipelineVisitor pipelineVisitor = new PipelineVisitor();
     pipeline.traverseTopologically(pipelineVisitor);
     try {
@@ -68,7 +67,6 @@ public final class NemoPipelineRunner extends PipelineRunner<NemoPipelineResult>
     } catch (final Exception e) {
       e.printStackTrace();
     }
-    */
 
 
     final NemoPipelineResult nemoPipelineResult = new NemoPipelineResult();
