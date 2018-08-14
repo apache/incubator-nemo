@@ -45,8 +45,10 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
     final PrimitiveTransformVertex vertex = new PrimitiveTransformVertex(node, compositeTransformVertexStack.peek());
     compositeTransformVertexStack.peek().addVertex(vertex);
     vertex.getPValuesConsumed()
-        .forEach(pValue -> getDestinationOfDataFlowEdge(vertex, pValue)
-            .parent.addDataFlow(new DataFlow(pValue, vertex)));
+        .forEach(pValue -> {
+          final TransformVertex dst = getDestinationOfDataFlowEdge(vertex, pValue);
+          dst.parent.addDataFlow(new DataFlowEdge(dst.parent.getProducerOf(pValue), dst));
+        });
   }
 
   @Override
@@ -143,7 +145,7 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
    */
   public final class CompositeTransformVertex extends TransformVertex {
     private final Map<PValue, TransformVertex> pValueToProducer = new HashMap<>();
-    private final Collection<DataFlow> dataFlows = new ArrayList<>();
+    private final Collection<DataFlowEdge> dataFlowEdges = new ArrayList<>();
     private final DAGBuilder<TransformVertex, DataFlowEdge> builder = new DAGBuilder<>();
     private DAG<TransformVertex, DataFlowEdge> dag = null;
     private CompositeTransformVertex(final TransformHierarchy.Node node, final CompositeTransformVertex parent) {
@@ -153,18 +155,15 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
       if (dag != null) {
         throw new RuntimeException("DAG already have been built.");
       }
-      dataFlows.forEach(dataFlow -> {
-        final TransformVertex dst = getDestinationOfDataFlowEdge(dataFlow.consumer, dataFlow.pValue);
-        builder.connectVertices(new DataFlowEdge(getProducerOf(dataFlow.pValue), dst));
-      });
+      dataFlowEdges.forEach(builder::connectVertices);
       dag = builder.build();
     }
     private void addVertex(final TransformVertex vertex) {
       vertex.getPValuesProduced().forEach(value -> pValueToProducer.put(value, vertex));
       builder.addVertex(vertex);
     }
-    private void addDataFlow(final DataFlow dataFlow) {
-      dataFlows.add(dataFlow);
+    private void addDataFlow(final DataFlowEdge dataFlowEdge) {
+      dataFlowEdges.add(dataFlowEdge);
     }
     public Collection<PValue> getPValuesProduced() {
       return pValueToProducer.keySet();
@@ -190,19 +189,6 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
     private DataFlowEdge(final TransformVertex src,
                          final TransformVertex dst) {
       super(String.format("%s%d", DATAFLOW, nextIdx++), src, dst);
-    }
-
-  }
-
-  /**
-   * Dataflow.
-   */
-  private final class DataFlow {
-    private final PValue pValue;
-    private final TransformVertex consumer;
-    private DataFlow(final PValue pValue, final TransformVertex consumer) {
-      this.pValue = pValue;
-      this.consumer = consumer;
     }
   }
 
