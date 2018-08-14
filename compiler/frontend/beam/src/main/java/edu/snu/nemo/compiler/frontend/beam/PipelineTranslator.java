@@ -43,7 +43,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -82,14 +81,14 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
 
   private static void topologicalTranslator(final TranslationContext ctx,
                                             final CompositeTransformVertex transformVertex,
-                                            final PTransform transform) {
-    transformVertex.getDAG().topologicalDo(vertex -> ctx.translate(vertex));
+                                            final PTransform<?, ?> transform) {
+    transformVertex.getDAG().topologicalDo(ctx::translate);
   }
 
   @PrimitiveTransformTranslator(Read.Bounded.class)
   private static void boundedReadTranslator(final TranslationContext ctx,
                                             final PrimitiveTransformVertex transformVertex,
-                                            final Read.Bounded transform) {
+                                            final Read.Bounded<?> transform) {
     final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource());
     ctx.builder.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
@@ -99,23 +98,24 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
   @PrimitiveTransformTranslator(ParDo.MultiOutput.class)
   private static void parDoMultiOutputTranslator(final TranslationContext ctx,
                                                  final PrimitiveTransformVertex transformVertex,
-                                                 final ParDo.MultiOutput transform) {
+                                                 final ParDo.MultiOutput<?, ?> transform) {
     final DoTransform doTransform = new DoTransform(transform.getFn(), ctx.pipelineOptions);
     final IRVertex vertex = new OperatorVertex(doTransform);
     ctx.builder.addVertex(vertex);
     transformVertex.getNode().getOutputs().entrySet().stream()
         .filter(pValueWithTupleTag -> !pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
         .forEach(pValueWithTupleTag -> ctx.pValueToTag.put(pValueWithTupleTag.getValue(), pValueWithTupleTag.getKey()));
-    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
-    transform.getSideInputs()
-        .forEach((Consumer<PCollectionView<?>>) input -> ctx.addEdgeTo(vertex, input, true));
+    transformVertex.getNode().getInputs().values().stream()
+        .filter(input -> !transform.getAdditionalInputs().values().contains(input))
+        .forEach(input -> ctx.addEdgeTo(vertex, input, false));
+    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input, true));
     ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
   }
 
   @PrimitiveTransformTranslator(GroupByKey.class)
   private static void groupByKeyTranslator(final TranslationContext ctx,
                                            final PrimitiveTransformVertex transformVertex,
-                                           final GroupByKey transform) {
+                                           final GroupByKey<?, ?> transform) {
     final IRVertex vertex = new OperatorVertex(new GroupByKeyTransform());
     ctx.builder.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
@@ -125,7 +125,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
   @PrimitiveTransformTranslator({Window.class, Window.Assign.class})
   private static void windowTranslator(final TranslationContext ctx,
                                        final PrimitiveTransformVertex transformVertex,
-                                       final PTransform transform) {
+                                       final PTransform<?, ?> transform) {
     final WindowFn windowFn;
     if (transform instanceof Window) {
       windowFn = ((Window) transform).getWindowFn();
@@ -143,8 +143,8 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
   @PrimitiveTransformTranslator(View.CreatePCollectionView.class)
   private static void createPCollectionViewTranslator(final TranslationContext ctx,
                                                       final PrimitiveTransformVertex transformVertex,
-                                                      final View.CreatePCollectionView transform) {
-    final IRVertex vertex = new OperatorVertex(new CreateViewTransform(transform.getView()));
+                                                      final View.CreatePCollectionView<?, ?> transform) {
+    final IRVertex vertex = new OperatorVertex(new CreateViewTransform<>(transform.getView()));
     ctx.builder.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
     ctx.registerOutputsFrom(vertex, Collections.singleton(transform.getView()));
@@ -154,7 +154,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
   @PrimitiveTransformTranslator(Flatten.PCollections.class)
   private static void flattenTranslator(final TranslationContext ctx,
                                         final PrimitiveTransformVertex transformVertex,
-                                        final Flatten.PCollections transform) {
+                                        final Flatten.PCollections<?> transform) {
     final IRVertex vertex = new OperatorVertex(new FlattenTransform());
     ctx.builder.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
@@ -211,7 +211,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
 
     private void translate(final TransformVertex transformVertex) {
       final boolean isComposite = transformVertex instanceof CompositeTransformVertex;
-      final PTransform transform = transformVertex.getNode().getTransform();
+      final PTransform<?, ?> transform = transformVertex.getNode().getTransform();
       if (transform == null) {
         // root node
         topologicalTranslator(this, (CompositeTransformVertex) transformVertex, null);
