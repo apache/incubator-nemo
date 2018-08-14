@@ -44,7 +44,9 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   public void visitPrimitiveTransform(final TransformHierarchy.Node node) {
     final PrimitiveTransformVertex vertex = new PrimitiveTransformVertex(node, compositeTransformVertexStack.peek());
     compositeTransformVertexStack.peek().addVertex(vertex);
-    vertex.getPValuesConsumed().forEach(pValue -> getCommonParent(vertex, pValue).addDataFlow(pValue));
+    vertex.getPValuesConsumed()
+        .forEach(pValue -> getDestinationOfDataFlowEdge(vertex, pValue)
+            .parent.addDataFlow(new DataFlow(pValue, vertex)));
   }
 
   @Override
@@ -95,9 +97,7 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
       this.parent = parent;
     }
     public abstract Collection<PValue> getPValuesProduced();
-    public abstract Collection<PValue> getPValuesConsumed();
     public abstract PrimitiveTransformVertex getPrimitiveProducerOf(final PValue pValue);
-    public abstract PrimitiveTransformVertex getPrimitiveConsumerOf(final PValue pValue);
     public TransformHierarchy.Node getNode() {
       return node;
     }
@@ -137,20 +137,13 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
       }
       return this;
     }
-    public PrimitiveTransformVertex getPrimitiveConsumerOf(final PValue pValue) {
-      if (!getPValuesConsumed().contains(pValue)) {
-        throw new RuntimeException();
-      }
-      return this;
-    }
   }
   /**
    * Represents a transform hierarchy for composite transform.
    */
   public final class CompositeTransformVertex extends TransformVertex {
     private final Map<PValue, TransformVertex> pValueToProducer = new HashMap<>();
-    private final Map<PValue, TransformVertex> pValueToConsumer = new HashMap<>();
-    private final Collection<PValue> dataFlows = new ArrayList<>();
+    private final Collection<DataFlow> dataFlows = new ArrayList<>();
     private final DAGBuilder<TransformVertex, DataFlowEdge> builder = new DAGBuilder<>();
     private DAG<TransformVertex, DataFlowEdge> dag = null;
     private CompositeTransformVertex(final TransformHierarchy.Node node, final CompositeTransformVertex parent) {
@@ -160,22 +153,21 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
       if (dag != null) {
         throw new RuntimeException("DAG already have been built.");
       }
-      dataFlows.forEach(pValue -> builder.connectVertices(new DataFlowEdge(pValue, this)));
+      dataFlows.forEach(dataFlow -> {
+        final TransformVertex dst = getDestinationOfDataFlowEdge(dataFlow.consumer, dataFlow.pValue);
+        builder.connectVertices(new DataFlowEdge(getProducerOf(dataFlow.pValue), dst));
+      });
       dag = builder.build();
     }
     private void addVertex(final TransformVertex vertex) {
       vertex.getPValuesProduced().forEach(value -> pValueToProducer.put(value, vertex));
-      vertex.getPValuesConsumed().forEach(value -> pValueToConsumer.put(value, vertex));
       builder.addVertex(vertex);
     }
-    private void addDataFlow(final PValue pValue) {
-      dataFlows.add(pValue);
+    private void addDataFlow(final DataFlow dataFlow) {
+      dataFlows.add(dataFlow);
     }
     public Collection<PValue> getPValuesProduced() {
       return pValueToProducer.keySet();
-    }
-    public Collection<PValue> getPValuesConsumed() {
-      return pValueToConsumer.keySet();
     }
     public TransformVertex getProducerOf(final PValue pValue) {
       final TransformVertex vertex = pValueToProducer.get(pValue);
@@ -184,18 +176,8 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
       }
       return vertex;
     }
-    public TransformVertex getConsumerOf(final PValue pValue) {
-      final TransformVertex vertex = pValueToConsumer.get(pValue);
-      if (vertex == null) {
-        throw new RuntimeException();
-      }
-      return vertex;
-    }
     public PrimitiveTransformVertex getPrimitiveProducerOf(final PValue pValue) {
       return getProducerOf(pValue).getPrimitiveProducerOf(pValue);
-    }
-    public PrimitiveTransformVertex getPrimitiveConsumerOf(final PValue pValue) {
-      return getConsumerOf(pValue).getPrimitiveConsumerOf(pValue);
     }
     public DAG<TransformVertex, DataFlowEdge> getDAG() {
       return dag;
@@ -205,44 +187,34 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
    * Represents data flow from a transform to another transform.
    */
   public final class DataFlowEdge extends Edge<TransformVertex> {
+    private DataFlowEdge(final TransformVertex src,
+                         final TransformVertex dst) {
+      super(String.format("%s%d", DATAFLOW, nextIdx++), src, dst);
+    }
+
+  }
+
+  /**
+   * Dataflow.
+   */
+  private final class DataFlow {
     private final PValue pValue;
-    private final PrimitiveTransformVertex primitiveProducer;
-    private final CompositeTransformVertex mostCloseCommonParent;
-    private final PrimitiveTransformVertex primitiveConsumer;
-
-    private DataFlowEdge(final PValue pValue,
-                         final CompositeTransformVertex mostCloseCommonParent) {
-      super(String.format("%s%d", DATAFLOW, nextIdx++),
-          mostCloseCommonParent.getProducerOf(pValue), mostCloseCommonParent.getConsumerOf(pValue));
+    private final TransformVertex consumer;
+    private DataFlow(final PValue pValue, final TransformVertex consumer) {
       this.pValue = pValue;
-      this.primitiveProducer = mostCloseCommonParent.getPrimitiveProducerOf(pValue);
-      this.mostCloseCommonParent = mostCloseCommonParent;
-      this.primitiveConsumer = mostCloseCommonParent.getPrimitiveConsumerOf(pValue);
-    }
-
-    public PValue getPValue() {
-      return pValue;
-    }
-    public PrimitiveTransformVertex getPrimitiveProducer() {
-      return primitiveProducer;
-    }
-    public CompositeTransformVertex getMostCloseCommonParent() {
-      return mostCloseCommonParent;
-    }
-    public PrimitiveTransformVertex getPrimitiveConsumer() {
-      return primitiveConsumer;
+      this.consumer = consumer;
     }
   }
 
-  private static CompositeTransformVertex getCommonParent(final PrimitiveTransformVertex consumer,
-                                                          final PValue pValue) {
-    CompositeTransformVertex current = consumer.getParent();
+  private TransformVertex getDestinationOfDataFlowEdge(final PrimitiveTransformVertex primitiveConsumer,
+                                                       final PValue pValue) {
+    TransformVertex current = primitiveConsumer;
     while (true) {
-      if (current.getPValuesProduced().contains(pValue)) {
+      if (current.getParent().getPValuesProduced().contains(pValue)) {
         return current;
       }
       current = current.getParent();
-      if (current == null) {
+      if (current.getParent() == null) {
         throw new RuntimeException(String.format("Cannot find producer of %s", pValue));
       }
     }
