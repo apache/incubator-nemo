@@ -26,7 +26,9 @@ final class BeamKeyExtractor implements KeyExtractor {
   @Override
   public Object extractKey(final Object element) {
     if (element instanceof KV) {
-      return ((KV) element).getKey();
+      // Handle null keys, since Beam allows KV with null keys.
+      final Object key = ((KV) element).getKey();
+      return key == null ? 0 : key;
     } else {
       return element;
     }

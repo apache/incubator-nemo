@@ -17,12 +17,14 @@ package edu.snu.nemo.compiler.frontend.beam.transform;
 
 import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
+import org.apache.beam.sdk.transforms.Materializations;
 import org.apache.beam.sdk.transforms.ViewFn;
-import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
 
+import javax.annotation.Nullable;
+import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * CreateView transform implementation.
@@ -32,8 +34,8 @@ import java.util.List;
 public final class CreateViewTransform<I, O> implements Transform<I, O> {
   private final PCollectionView pCollectionView;
   private OutputCollector<O> outputCollector;
-  private List<WindowedValue<I>> windowed;
-  private final ViewFn<Iterable<WindowedValue<I>>, O> viewFn;
+  private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
+  private final MultiView<Object> multiView;
 
   /**
    * Constructor of CreateViewTransform.
@@ -41,8 +43,8 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
    */
   public CreateViewTransform(final PCollectionView<O> pCollectionView) {
     this.pCollectionView = pCollectionView;
-    this.windowed = new ArrayList<>();
     this.viewFn = this.pCollectionView.getViewFn();
+    this.multiView = new MultiView<>();
   }
 
   @Override
@@ -52,8 +54,11 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void onData(final I element) {
-    WindowedValue<I> data = WindowedValue.valueInGlobalWindow(element);
-    windowed.add(data);
+    // Since CreateViewTransform takes KV(Void, value), this is okay
+    if (element instanceof KV) {
+      final KV<?, ?> kv = (KV<?, ?>) element;
+      multiView.getDataList().add(kv.getValue());
+    }
   }
 
   /**
@@ -67,8 +72,8 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void close() {
-    O output = viewFn.apply(windowed);
-    outputCollector.emit(output);
+    final Object view = viewFn.apply(multiView);
+    outputCollector.emit((O) view);
   }
 
   @Override
@@ -76,5 +81,30 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
     final StringBuilder sb = new StringBuilder();
     sb.append("CreateViewTransform:" + pCollectionView);
     return sb.toString();
+  }
+
+  /**
+   * Represents {@code PrimitiveViewT} supplied to the {@link ViewFn}.
+   * @param <T> primitive view type
+   */
+  public final class MultiView<T> implements Materializations.MultimapView<Void, T>, Serializable {
+    private final ArrayList<T> dataList;
+
+    /**
+     * Constructor.
+     */
+    MultiView() {
+      // Create a placeholder for side input data. CreateViewTransform#onData stores data to this list.
+      dataList = new ArrayList<>();
+    }
+
+    @Override
+    public Iterable<T> get(@Nullable final Void aVoid) {
+      return dataList;
+    }
+
+    public ArrayList<T> getDataList() {
+      return dataList;
+    }
   }
 }

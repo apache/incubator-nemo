@@ -60,16 +60,16 @@ public class LoopInvariantCodeMotionPassTest {
     final LoopVertex alsLoop = alsLoopOpt.get();
 
     final IRVertex vertex7 = groupedDAG.getTopologicalSort().get(3);
-    final IRVertex vertex13 = alsLoop.getDAG().getTopologicalSort().get(3);
+    final IRVertex vertex14 = alsLoop.getDAG().getTopologicalSort().get(4);
 
-    final Set<IREdge> oldDAGIncomingEdges = alsLoop.getDagIncomingEdges().get(vertex13);
+    final Set<IREdge> oldDAGIncomingEdges = alsLoop.getDagIncomingEdges().get(vertex14);
     final List<IREdge> newDAGIncomingEdge = groupedDAG.getIncomingEdgesOf(vertex7);
 
-    alsLoop.getDagIncomingEdges().remove(vertex13);
+    alsLoop.getDagIncomingEdges().remove(vertex14);
     alsLoop.getDagIncomingEdges().putIfAbsent(vertex7, new HashSet<>());
     newDAGIncomingEdge.forEach(alsLoop.getDagIncomingEdges().get(vertex7)::add);
 
-    alsLoop.getNonIterativeIncomingEdges().remove(vertex13);
+    alsLoop.getNonIterativeIncomingEdges().remove(vertex14);
     alsLoop.getNonIterativeIncomingEdges().putIfAbsent(vertex7, new HashSet<>());
     newDAGIncomingEdge.forEach(alsLoop.getNonIterativeIncomingEdges().get(vertex7)::add);
 

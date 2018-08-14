@@ -64,20 +64,20 @@ public final class PartitionWordsByLengthITCase {
   }
 
   @Test (timeout = TIMEOUT)
+  public void testLargeShuffle() throws Exception {
+    JobLauncher.main(builder
+        .addResourceJson(executorResourceFileName)
+        .addJobId(PartitionWordsByLengthITCase.class.getSimpleName() + "_largeshuffle")
+        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
+        .build());
+  }
+
+  @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
         .addJobId(PartitionWordsByLengthITCase.class.getSimpleName())
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testSailfish() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(PartitionWordsByLengthITCase.class.getSimpleName() + "_sailfish")
-        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 }
