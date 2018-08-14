@@ -43,6 +43,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -91,7 +92,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
                                             final Read.Bounded transform) {
     final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource());
     ctx.builder.addVertex(vertex);
-    ctx.addEdgesTo(vertex, transformVertex.getNode().getInputs().values(), false);
+    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
     ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
   }
 
@@ -105,8 +106,9 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     transformVertex.getNode().getOutputs().entrySet().stream()
         .filter(pValueWithTupleTag -> !pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
         .forEach(pValueWithTupleTag -> ctx.pValueToTag.put(pValueWithTupleTag.getValue(), pValueWithTupleTag.getKey()));
-    ctx.addEdgesTo(vertex, transformVertex.getNode().getInputs().values(), false);
-    ctx.addEdgesTo(vertex, transform.getSideInputs(), true);
+    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
+    transform.getSideInputs()
+        .forEach((Consumer<PCollectionView<?>>) input -> ctx.addEdgeTo(vertex, input, true));
     ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
   }
 
@@ -116,7 +118,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
                                            final GroupByKey transform) {
     final IRVertex vertex = new OperatorVertex(new GroupByKeyTransform());
     ctx.builder.addVertex(vertex);
-    ctx.addEdgesTo(vertex, transformVertex.getNode().getInputs().values(), false);
+    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
     ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
   }
 
@@ -134,7 +136,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     }
     final IRVertex vertex = new OperatorVertex(new WindowTransform(windowFn));
     ctx.builder.addVertex(vertex);
-    ctx.addEdgesTo(vertex, transformVertex.getNode().getInputs().values(), false);
+    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
     ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
   }
 
@@ -144,7 +146,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
                                                       final View.CreatePCollectionView transform) {
     final IRVertex vertex = new OperatorVertex(new CreateViewTransform(transform.getView()));
     ctx.builder.addVertex(vertex);
-    ctx.addEdgesTo(vertex, transformVertex.getNode().getInputs().values(), false);
+    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
     ctx.registerOutputsFrom(vertex, Collections.singleton(transform.getView()));
     ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
   }
@@ -155,7 +157,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
                                         final Flatten.PCollections transform) {
     final IRVertex vertex = new OperatorVertex(new FlattenTransform());
     ctx.builder.addVertex(vertex);
-    ctx.addEdgesTo(vertex, transformVertex.getNode().getInputs().values(), false);
+    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
     ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
   }
 
@@ -238,52 +240,49 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
       }
     }
 
-    private void addEdgesTo(final IRVertex dst,
-                            final Collection<? extends PValue> inputs,
-                            final boolean isSideInput,
-                            final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> cPatternFunc) {
-      for (final PValue pValue : inputs) {
-        final IRVertex src = pValueToProducer.get(pValue);
-        if (src == null) {
-          try {
-            throw new RuntimeException(String.format("Cannot find a vertex that emits pValue %s, "
-                + "while PTransform %s is known to produce it.", pValue, pipeline.getPrimitiveProducerOf(pValue)));
-          } catch (final RuntimeException e) {
-            throw new RuntimeException(String.format("Cannot find a vertex that emits pValue %s, "
-                + "and the corresponding PTransform was not found", pValue));
-          }
+    private void addEdgeTo(final IRVertex dst,
+                           final PValue input,
+                           final boolean isSideInput,
+                           final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> cPatternFunc) {
+      final IRVertex src = pValueToProducer.get(input);
+      if (src == null) {
+        try {
+          throw new RuntimeException(String.format("Cannot find a vertex that emits pValue %s, "
+              + "while PTransform %s is known to produce it.", input, pipeline.getPrimitiveProducerOf(input)));
+        } catch (final RuntimeException e) {
+          throw new RuntimeException(String.format("Cannot find a vertex that emits pValue %s, "
+              + "and the corresponding PTransform was not found", input));
         }
-        final CommunicationPatternProperty.Value communicationPattern = cPatternFunc.apply(src, dst);
-        if (communicationPattern == null) {
-          throw new RuntimeException(String.format("%s have failed to determine communication pattern "
-              + "for an edge from %s to %s", cPatternFunc, src, dst));
-        }
-        final IREdge edge = new IREdge(communicationPattern, src, dst, isSideInput);
-        final Coder coder;
-        if (pValue instanceof PCollection) {
-          coder = ((PCollection) pValue).getCoder();
-        } else if (pValue instanceof PCollectionView) {
-          coder = getCoderForView((PCollectionView) pValue);
-        } else {
-          coder = null;
-        }
-        if (coder == null) {
-          throw new RuntimeException(String.format("While adding an edge from %s, to %s, coder for PValue %s cannot "
-              + "be determined", src, dst, pValue));
-        }
-        edge.setProperty(EncoderProperty.of(new BeamEncoderFactory(coder)));
-        edge.setProperty(DecoderProperty.of(new BeamDecoderFactory(coder)));
-        if (pValueToTag.containsKey(pValue)) {
-          edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(pValue).getId()));
-        }
-        edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
-        builder.connectVertices(edge);
       }
-
+      final CommunicationPatternProperty.Value communicationPattern = cPatternFunc.apply(src, dst);
+      if (communicationPattern == null) {
+        throw new RuntimeException(String.format("%s have failed to determine communication pattern "
+            + "for an edge from %s to %s", cPatternFunc, src, dst));
+      }
+      final IREdge edge = new IREdge(communicationPattern, src, dst, isSideInput);
+      final Coder coder;
+      if (input instanceof PCollection) {
+        coder = ((PCollection) input).getCoder();
+      } else if (input instanceof PCollectionView) {
+        coder = getCoderForView((PCollectionView) input);
+      } else {
+        coder = null;
+      }
+      if (coder == null) {
+        throw new RuntimeException(String.format("While adding an edge from %s, to %s, coder for PValue %s cannot "
+            + "be determined", src, dst, input));
+      }
+      edge.setProperty(EncoderProperty.of(new BeamEncoderFactory(coder)));
+      edge.setProperty(DecoderProperty.of(new BeamDecoderFactory(coder)));
+      if (pValueToTag.containsKey(input)) {
+        edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
+      }
+      edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
+      builder.connectVertices(edge);
     }
 
-    private void addEdgesTo(final IRVertex dst, final Collection<? extends PValue> inputs, final boolean isSideInput) {
-      addEdgesTo(dst, inputs, isSideInput, DefaultCommunicationPatternSelector.INSTANCE);
+    private void addEdgeTo(final IRVertex dst, final PValue input, final boolean isSideInput) {
+      addEdgeTo(dst, input, isSideInput, DefaultCommunicationPatternSelector.INSTANCE);
     }
 
     private void registerOutputsFrom(final IRVertex irVertex, final Collection<PValue> outputs) {
