@@ -101,10 +101,10 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
                                                  final ParDo.MultiOutput transform) {
     final DoTransform doTransform = new DoTransform(transform.getFn(), ctx.pipelineOptions);
     final IRVertex vertex = new OperatorVertex(doTransform);
+    ctx.builder.addVertex(vertex);
     transformVertex.getNode().getOutputs().entrySet().stream()
         .filter(pValueWithTupleTag -> !pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
         .forEach(pValueWithTupleTag -> ctx.pValueToTag.put(pValueWithTupleTag.getValue(), pValueWithTupleTag.getKey()));
-    ctx.builder.addVertex(vertex);
     ctx.addEdgesTo(vertex, transformVertex.getNode().getInputs().values(), false);
     ctx.addEdgesTo(vertex, transform.getSideInputs(), true);
     ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
@@ -145,7 +145,6 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     final IRVertex vertex = new OperatorVertex(new CreateViewTransform(transform.getView()));
     ctx.builder.addVertex(vertex);
     ctx.addEdgesTo(vertex, transformVertex.getNode().getInputs().values(), false);
-    ctx.registerOutputsFrom(vertex, Collections.singleton(transform.getView()));
     ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
   }
 
