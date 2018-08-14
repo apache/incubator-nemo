@@ -20,6 +20,7 @@ import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.PipelineVisitor.*;
@@ -40,6 +41,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Stack;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -88,7 +90,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
                                             final PrimitiveTransformVertex transformVertex,
                                             final Read.Bounded<?> transform) {
     final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource());
-    ctx.builder.addVertex(vertex);
+    ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
@@ -99,7 +101,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
                                                  final ParDo.MultiOutput<?, ?> transform) {
     final DoTransform doTransform = new DoTransform(transform.getFn(), ctx.pipelineOptions);
     final IRVertex vertex = new OperatorVertex(doTransform);
-    ctx.builder.addVertex(vertex);
+    ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().stream()
         .filter(input -> !transform.getAdditionalInputs().values().contains(input))
         .forEach(input -> ctx.addEdgeTo(vertex, input, false));
@@ -118,7 +120,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
                                            final PrimitiveTransformVertex transformVertex,
                                            final GroupByKey<?, ?> transform) {
     final IRVertex vertex = new OperatorVertex(new GroupByKeyTransform());
-    ctx.builder.addVertex(vertex);
+    ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
@@ -136,7 +138,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
       throw new UnsupportedOperationException(String.format("%s is not supported", transform));
     }
     final IRVertex vertex = new OperatorVertex(new WindowTransform(windowFn));
-    ctx.builder.addVertex(vertex);
+    ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
@@ -146,7 +148,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
                                                       final PrimitiveTransformVertex transformVertex,
                                                       final View.CreatePCollectionView<?, ?> transform) {
     final IRVertex vertex = new OperatorVertex(new CreateViewTransform<>(transform.getView()));
-    ctx.builder.addVertex(vertex);
+    ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
     ctx.registerMainOutputFrom(vertex, transform.getView());
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
@@ -157,9 +159,21 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
                                         final PrimitiveTransformVertex transformVertex,
                                         final Flatten.PCollections<?> transform) {
     final IRVertex vertex = new OperatorVertex(new FlattenTransform());
-    ctx.builder.addVertex(vertex);
+    ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
+  }
+
+  @CompositeTransformTranslator(LoopCompositeTransform.class)
+  private static void loopTranslator(final TranslationContext ctx,
+                                     final CompositeTransformVertex transformVertex,
+                                     final LoopCompositeTransform<?, ?> transform) {
+    final LoopVertex loopVertex = new LoopVertex(transformVertex.getNode().getFullName());
+    ctx.builder.addVertex(loopVertex, ctx.loopVertexStack);
+    ctx.builder.removeVertex(loopVertex);
+    ctx.loopVertexStack.push(loopVertex);
+    topologicalTranslator(ctx, transformVertex, transform);
+    ctx.loopVertexStack.pop();
   }
 
   @Override
@@ -197,6 +211,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     private final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
     private final Map<PValue, IRVertex> pValueToProducer = new HashMap<>();
     private final Map<PValue, TupleTag<?>> pValueToTag = new HashMap<>();
+    private final Stack<LoopVertex> loopVertexStack = new Stack<>();
     private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator;
     private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator;
 
@@ -239,6 +254,10 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
               "Translator %s have failed to translate %s", translator, transform), e);
         }
       }
+    }
+
+    private void addVertex(final IRVertex vertex) {
+      builder.addVertex(vertex, loopVertexStack);
     }
 
     private void addEdgeTo(final IRVertex dst,
