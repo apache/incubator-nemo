@@ -30,6 +30,7 @@ module.exports = {
     '~/plugins/element-ui',
     '~/plugins/vue2vis',
     '~/plugins/event-bus',
+    { src: '~/plugins/vue-affix', ssr: false },
   ],
 
   css: [

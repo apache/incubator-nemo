@@ -64,18 +64,24 @@ limitations under the License.
           <template slot="label">
             DAG
           </template>
-          <el-row :gutter="10">
+          <el-row id="affix-target" :gutter="10">
             <el-col :span="16" :xs="24">
               <el-card header="DAG">
                 <dag :selectedJobId="selectedJobId" :tabIndex="tabIndex"/>
               </el-card>
             </el-col>
             <el-col :span="8" :xs="24">
-              <el-card header="Detail">
-                <detail-table
-                  v-if="tabIndex === '2'"
-                  :tableData="tableData"/>
-              </el-card>
+              <no-ssr>
+                <affix
+                  relative-element-selector="#affix-target"
+                  >
+                  <el-card header="Detail">
+                    <detail-table
+                      v-if="tabIndex === '2'"
+                      :tableData="tableData"/>
+                  </el-card>
+                </affix>
+              </no-ssr>
             </el-col>
           </el-row>
         </el-tab-pane>
