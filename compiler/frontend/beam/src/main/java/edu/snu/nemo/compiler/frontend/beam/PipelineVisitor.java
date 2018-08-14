@@ -227,6 +227,9 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
         return current;
       }
       current = current.getParent();
+      if (current == null) {
+        throw new RuntimeException(String.format("Cannot find producer of %s", pValue));
+      }
     }
   }
 }
