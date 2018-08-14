@@ -16,11 +16,13 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
-import edu.snu.nemo.runtime.common.data.HashRange;
-import edu.snu.nemo.runtime.common.data.KeyRange;
+import edu.snu.nemo.common.HashRange;
+import edu.snu.nemo.common.KeyRange;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -28,6 +30,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
+import java.util.Map;
 
 /**
  * This policy aims to distribute partitions with skewed keys to different executors.
@@ -36,7 +39,6 @@ import javax.inject.Inject;
 @DriverSide
 @AssociatedProperty(ResourceSkewedDataProperty.class)
 public final class SkewnessAwareSchedulingConstraint implements SchedulingConstraint {
-
   @VisibleForTesting
   @Inject
   public SkewnessAwareSchedulingConstraint() {
@@ -45,9 +47,14 @@ public final class SkewnessAwareSchedulingConstraint implements SchedulingConstr
   public boolean hasSkewedData(final Task task) {
     final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
     for (StageEdge inEdge : task.getTaskIncomingEdges()) {
-      final KeyRange hashRange = inEdge.getTaskIdxToKeyRange().get(taskIdx);
-      if (((HashRange) hashRange).isSkewed()) {
-        return true;
+      if (CommunicationPatternProperty.Value.Shuffle
+      .equals(inEdge.getDataCommunicationPattern())) {
+        final Map<Integer, KeyRange> taskIdxToKeyRange =
+            inEdge.getPropertyValue(DataSkewMetricProperty.class).get().getMetric();
+        final KeyRange hashRange = taskIdxToKeyRange.get(taskIdx);
+        if (((HashRange) hashRange).isSkewed()) {
+          return true;
+        }
       }
     }
     return false;

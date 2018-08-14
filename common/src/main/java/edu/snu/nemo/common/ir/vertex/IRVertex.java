@@ -29,6 +29,7 @@ import java.util.Optional;
  */
 public abstract class IRVertex extends Vertex {
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
+  private boolean stagePartitioned;
 
   /**
    * Constructor of IRVertex.
@@ -36,6 +37,7 @@ public abstract class IRVertex extends Vertex {
   public IRVertex() {
     super(IdManager.newVertexId());
     this.executionProperties = ExecutionPropertyMap.of(this);
+    this.stagePartitioned = false;
   }
 
   /**
@@ -87,6 +89,13 @@ public abstract class IRVertex extends Vertex {
    */
   public final ExecutionPropertyMap<VertexExecutionProperty> getExecutionProperties() {
     return executionProperties;
+  }
+
+  public final void setStagePartitioned() {
+    stagePartitioned = true;
+  }
+  public final boolean getStagePartitioned() {
+    return stagePartitioned;
   }
 
   /**

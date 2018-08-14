@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.data;
+package edu.snu.nemo.common;
 
 import java.io.Serializable;
 
