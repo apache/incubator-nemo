@@ -149,6 +149,16 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
   }
 
+  @PrimitiveTransformTranslator(Flatten.PCollections.class)
+  private static void flattenTranslator(final TranslationContext ctx,
+                                        final PrimitiveTransformVertex transformVertex,
+                                        final Flatten.PCollections transform) {
+    final IRVertex vertex = new OperatorVertex(new FlattenTransform());
+    ctx.builder.addVertex(vertex);
+    ctx.addEdgesTo(vertex, transformVertex.getNode().getInputs().values(), false);
+    ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
+  }
+
   @Override
   public DAG<IRVertex, IREdge> apply(final CompositeTransformVertex pipeline) {
     final TranslationContext ctx = new TranslationContext(pipeline, primitiveTransformToTranslator,
