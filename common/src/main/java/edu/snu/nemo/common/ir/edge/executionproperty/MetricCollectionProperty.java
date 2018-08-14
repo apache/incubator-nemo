@@ -17,16 +17,20 @@ package edu.snu.nemo.common.ir.edge.executionproperty;
 
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
+import java.util.UUID;
+
 /**
  * MetricCollection ExecutionProperty.
  */
 public final class MetricCollectionProperty extends EdgeExecutionProperty<MetricCollectionProperty.Value> {
+  //final UUID uuid;
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private MetricCollectionProperty(final Value value) {
     super(value);
+    //uuid = UUID.randomUUID();
   }
 
   /**
@@ -44,4 +48,9 @@ public final class MetricCollectionProperty extends EdgeExecutionProperty<Metric
   public enum Value {
     DataSkewRuntimePass
   }
+  
+  /*
+  public UUID getUUID() {
+    return uuid;
+  }*/
 }

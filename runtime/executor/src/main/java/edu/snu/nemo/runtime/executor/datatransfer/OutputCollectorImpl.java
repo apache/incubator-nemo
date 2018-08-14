@@ -25,15 +25,19 @@ import java.util.*;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
+  private final Set<String> mainTagOutputChildren;
   // Use ArrayList (not Queue) to allow 'null' values
   private final ArrayList<O> mainTagElements;
   private final Map<String, ArrayList<Object>> additionalTagElementsMap;
 
   /**
    * Constructor of a new OutputCollectorImpl with tagged outputs.
-   * @param taggedChildren tagged children
+   * @param mainChildren   main children vertices
+   * @param taggedChildren additional children vertices
    */
-  public OutputCollectorImpl(final List<String> taggedChildren) {
+  public OutputCollectorImpl(final Set<String> mainChildren,
+                             final List<String> taggedChildren) {
+    this.mainTagOutputChildren = mainChildren;
     this.mainTagElements = new ArrayList<>(1);
     this.additionalTagElementsMap = new HashMap<>();
     taggedChildren.forEach(child -> this.additionalTagElementsMap.put(child, new ArrayList<>(1)));
@@ -46,12 +50,16 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
-    if (this.additionalTagElementsMap.get(dstVertexId) == null) {
+    if (this.mainTagOutputChildren.contains(dstVertexId)) {
       // This dstVertexId is for the main tag
       emit((O) output);
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      this.additionalTagElementsMap.get(dstVertexId).add(output);
+      final List<Object> dataElements = this.additionalTagElementsMap.get(dstVertexId);
+      if (dataElements == null) {
+        throw new IllegalArgumentException("Wrong destination vertex id passed!");
+      }
+      dataElements.add(output);
     }
   }
 
@@ -60,12 +68,15 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   }
 
   public Iterable<Object> iterateTag(final String tag) {
-    if (this.additionalTagElementsMap.get(tag) == null) {
+    if (this.mainTagOutputChildren.contains(tag)) {
       // This dstVertexId is for the main tag
       return (Iterable<Object>) iterateMain();
     } else {
-      // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      return this.additionalTagElementsMap.get(tag);
+      final List<Object> dataElements = this.additionalTagElementsMap.get(tag);
+      if (dataElements == null) {
+        throw new IllegalArgumentException("Wrong destination vertex id passed!");
+      }
+      return dataElements;
     }
   }
 
@@ -74,12 +85,32 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   }
 
   public void clearTag(final String tag) {
-    if (this.additionalTagElementsMap.get(tag) == null) {
+    if (this.mainTagOutputChildren.contains(tag)) {
       // This dstVertexId is for the main tag
       clearMain();
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      this.additionalTagElementsMap.get(tag).clear();
+      final List<Object> dataElements = this.additionalTagElementsMap.get(tag);
+      if (dataElements == null) {
+        throw new IllegalArgumentException("Wrong destination vertex id passed!");
+      }
+      dataElements.clear();
+    }
+  }
+
+  public List<O> getMainTagOutputQueue() {
+    return mainTagElements;
+  }
+
+  public List<Object> getAdditionalTagOutputQueue(final String dstVertexId) {
+    if (this.mainTagOutputChildren.contains(dstVertexId)) {
+      return (List<Object>) this.mainTagElements;
+    } else {
+      final List<Object> dataElements = this.additionalTagElementsMap.get(dstVertexId);
+      if (dataElements == null) {
+        throw new IllegalArgumentException("Wrong destination vertex id passed!");
+      }
+      return dataElements;
     }
   }
 }

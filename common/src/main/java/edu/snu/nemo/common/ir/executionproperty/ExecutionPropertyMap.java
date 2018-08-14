@@ -15,11 +15,11 @@
  */
 package edu.snu.nemo.common.ir.executionproperty;
 
+import edu.snu.nemo.common.coder.DecoderFactory;
+import edu.snu.nemo.common.coder.EncoderFactory;
+import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -42,6 +42,7 @@ import java.util.stream.Stream;
 public final class ExecutionPropertyMap<T extends ExecutionProperty> implements Serializable {
   private final String id;
   private final Map<Class<? extends ExecutionProperty>, T> properties = new HashMap<>();
+  private final Set<Class<? extends ExecutionProperty>> finalizedProperties = new HashSet<>();
 
   /**
    * Constructor for ExecutionPropertyMap class.
@@ -64,6 +65,8 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     final ExecutionPropertyMap<EdgeExecutionProperty> map = new ExecutionPropertyMap<>(irEdge.getId());
     map.put(CommunicationPatternProperty.of(commPattern));
     map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    map.put(EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));
+    map.put(DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
     switch (commPattern) {
       case Shuffle:
         map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
@@ -105,11 +108,36 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
   }
 
   /**
-   * Put the given execution property  in the ExecutionPropertyMap.
+   * Put the given execution property  in the ExecutionPropertyMap. By default, it does not finalize the property.
    * @param executionProperty execution property to insert.
-   * @return the previous execution property, or null if there was no execution property with the specified property key
+   * @return the previous execution property, or null if there was no execution property
+   * with the specified property key.
    */
   public T put(final T executionProperty) {
+    return this.put(executionProperty, false);
+  }
+
+  /**
+   * Put the given execution property in the ExecutionPropertyMap.
+   * @param executionProperty execution property to insert.
+   * @param finalize whether or not to finalize the execution property.
+   * @return the previous execution property, or null if there was no execution property
+   * with the specified property key.
+   */
+  public T put(final T executionProperty, final Boolean finalize) {
+    // check if the property has been already finalized. We don't mind overwriting an identical value.
+    if (finalizedProperties.contains(executionProperty.getClass())
+        && properties.get(executionProperty.getClass()) != null
+        && !properties.get(executionProperty.getClass()).equals(executionProperty)) {
+      throw new CompileTimeOptimizationException("Trying to overwrite a finalized execution property ["
+          + executionProperty.getClass().getSimpleName() + "] from ["
+          + properties.get(executionProperty.getClass()).getValue() + "] to [" + executionProperty.getValue() + "]");
+    }
+
+    // start the actual put process.
+    if (finalize) {
+      this.finalizedProperties.add(executionProperty.getClass());
+    }
     return properties.put(executionProperty.getClass(), executionProperty);
   }
 

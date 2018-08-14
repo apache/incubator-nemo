@@ -17,6 +17,7 @@ package edu.snu.nemo.runtime.common.optimizer.pass.runtime;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.DataSkewMetricFactory;
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
 
@@ -40,7 +41,7 @@ import java.util.stream.Collectors;
  * this RuntimePass identifies a number of keys with big partition sizes(skewed key)
  * and evenly redistributes data via overwriting incoming edges of destination tasks.
  */
-public final class DataSkewRuntimePass extends RuntimePass<Map<Integer, Long>> {
+public final class DataSkewRuntimePass extends RuntimePass<Pair<IREdge, Map<Integer, Long>>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
   // Skewed keys denote for top n keys in terms of partition size.
@@ -72,7 +73,7 @@ public final class DataSkewRuntimePass extends RuntimePass<Map<Integer, Long>> {
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> irDAG,
-                            final Map<Integer, Long> metricData) {
+                                     final Pair<IREdge, Map<Integer, Long>> metricData) {
     // get edges to optimize
     final List<IREdge> optimizationEdges = irDAG.getVertices().stream()
         .flatMap(v -> irDAG.getIncomingEdgesOf(v).stream())
@@ -81,15 +82,16 @@ public final class DataSkewRuntimePass extends RuntimePass<Map<Integer, Long>> {
         .collect(Collectors.toList());
 
     // Get number of evaluators of the next stage (number of blocks).
-    final IREdge targetEdge = optimizationEdges.stream().findFirst()
-        .orElseThrow(() -> new RuntimeException("optimization edges are empty"));
+    final IREdge targetEdge = metricData.left();
     final Integer dstParallelism = targetEdge.getDst().getPropertyValue(ParallelismProperty.class).get();
-
+  
     // Calculate keyRanges.
-    final List<KeyRange> keyRanges = calculateKeyRanges(metricData, dstParallelism);
+    final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), dstParallelism);
     final Map<Integer, KeyRange> taskIdxToKeyRange = new HashMap<>();
     for (int i = 0; i < dstParallelism; i++) {
       taskIdxToKeyRange.put(i, keyRanges.get(i));
+      LOG.info("Task {} got {}~{}", i, keyRanges.get(i).rangeBeginInclusive(),
+          keyRanges.get(i).rangeEndExclusive());
     }
     // Overwrite the previously assigned key range in the physical DAG with the new range.
     targetEdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(taskIdxToKeyRange)));

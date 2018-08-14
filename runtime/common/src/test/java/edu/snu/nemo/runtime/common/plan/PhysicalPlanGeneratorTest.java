@@ -66,8 +66,8 @@ public final class PhysicalPlanGeneratorTest {
 
   private static final IRVertex newIRVertex(final int scheduleGroup, final int parallelism) {
     final IRVertex irVertex = new OperatorVertex(EMPTY_TRANSFORM);
-    irVertex.getExecutionProperties().put(ScheduleGroupProperty.of(scheduleGroup));
-    irVertex.getExecutionProperties().put(ParallelismProperty.of(parallelism));
+    irVertex.setProperty(ScheduleGroupProperty.of(scheduleGroup));
+    irVertex.setProperty(ParallelismProperty.of(parallelism));
     return irVertex;
   }
 
@@ -75,7 +75,7 @@ public final class PhysicalPlanGeneratorTest {
                                         final CommunicationPatternProperty.Value communicationPattern,
                                         final DataFlowProperty.Value dataFlowModel) {
     final IREdge irEdge = new IREdge(communicationPattern, src, dst);
-    irEdge.getExecutionProperties().put(DataFlowProperty.of(dataFlowModel));
+    irEdge.setProperty(DataFlowProperty.of(dataFlowModel));
     return irEdge;
   }
 }

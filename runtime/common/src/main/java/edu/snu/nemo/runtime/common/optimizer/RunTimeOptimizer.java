@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.common.optimizer;
 
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -46,7 +47,8 @@ public final class RunTimeOptimizer {
    */
   public static synchronized PhysicalPlan dynamicOptimization(
           final PhysicalPlan originalPlan,
-          final Object dynOptData) {
+          final Object dynOptData,
+          final IREdge targetEdge) {
     try {
       final PhysicalPlanGenerator physicalPlanGenerator =
           Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
@@ -54,7 +56,7 @@ public final class RunTimeOptimizer {
       // Data for dynamic optimization used in DataSkewRuntimePass
       // is a map of <hash value, partition size>.
       final DAG<IRVertex, IREdge> newIrDAG =
-          new DataSkewRuntimePass().apply(originalPlan.getIrDAG(), (Map<Integer, Long>) dynOptData);
+          new DataSkewRuntimePass().apply(originalPlan.getIrDAG(), Pair.of(targetEdge, (Map<Integer, Long>) dynOptData));
       final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(newIrDAG);
       final PhysicalPlan physicalPlan =
           new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(), newIrDAG, stageDAG);

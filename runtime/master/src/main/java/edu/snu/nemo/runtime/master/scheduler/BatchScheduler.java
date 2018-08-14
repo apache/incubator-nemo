@@ -17,8 +17,12 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.collect.Sets;
 import edu.snu.nemo.common.Pair;
+import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
@@ -363,6 +367,12 @@ public final class BatchScheduler implements Scheduler {
       return Pair.of(executor, state);
     });
   }
+  
+  public IREdge stageEdgeToIREdge(final StageEdge se) {
+    final IRVertex srcIRVertex = se.getSrcIRVertex();
+    final IRVertex dstIRVertex = se.getDstIRVertex();
+    return physicalPlan.getIrDAG().getEdgeBetween(srcIRVertex.getId(), dstIRVertex.getId());
+  }
 
   /**
    * Action for after task execution is put on hold.
@@ -380,14 +390,37 @@ public final class BatchScheduler implements Scheduler {
 
     final boolean stageComplete =
         planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
-
+    
+    
+    // Get the target Stage
+    final Stage targetStage = physicalPlan.getStageDAG().getVertices().stream()
+        .filter(stage -> stage.getTaskIds().contains(taskId)).findFirst().get();
+    
+    // Get the incoming edge to that stage with MetricCollectionProperty
+    List<StageEdge> stageEdges = physicalPlan.getStageDAG().getIncomingEdgesOf(targetStage);
+    IREdge targetEdge = null;
+    for (StageEdge edge : stageEdges) {
+      targetEdge = stageEdgeToIREdge(edge);
+      if (MetricCollectionProperty.Value.DataSkewRuntimePass
+          .equals(targetEdge.getPropertyValue(MetricCollectionProperty.class).get())) {
+        break;
+      }
+    }
+    
+    if (targetEdge == null) {
+      throw new RuntimeException();
+    }
+    
+    LOG.info("targetEdge: {} {}", targetEdge.getId(),
+        targetEdge.getPropertyValue(MetricCollectionProperty.class));
+  
     if (stageComplete) {
       final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
           .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
           .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
       pubSubEventHandlerWrapper.getPubSubEventHandler()
           .onNext(new DynamicOptimizationEvent(physicalPlan, dynOptDataHandler.getDynOptData(),
-              taskId, executorId));
+              taskId, executorId, targetEdge));
     }
   }
 
