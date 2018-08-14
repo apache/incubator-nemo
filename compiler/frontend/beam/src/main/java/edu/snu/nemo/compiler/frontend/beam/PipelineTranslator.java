@@ -39,7 +39,6 @@ import java.lang.annotation.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -233,6 +232,9 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
                             final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> cPatternFunc) {
       for (final PValue pValue : inputs) {
         final IRVertex src = pValueToProducer.get(pValue);
+        if (src == null) {
+          throw new RuntimeException(String.format("Cannot find producer of %s", pValue));
+        }
         final CommunicationPatternProperty.Value communicationPattern = cPatternFunc.apply(src, dst);
         if (communicationPattern == null) {
           throw new RuntimeException(String.format("%s have failed to determine communication pattern "
