@@ -39,6 +39,7 @@ import java.lang.annotation.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -144,6 +145,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     final IRVertex vertex = new OperatorVertex(new CreateViewTransform(transform.getView()));
     ctx.builder.addVertex(vertex);
     ctx.addEdgesTo(vertex, transformVertex.getNode().getInputs().values(), false);
+    ctx.registerOutputsFrom(vertex, Collections.singleton(transform.getView()));
     ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
   }
 

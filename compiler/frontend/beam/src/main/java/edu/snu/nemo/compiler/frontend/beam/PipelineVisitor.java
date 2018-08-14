@@ -22,6 +22,7 @@ import edu.snu.nemo.common.dag.Vertex;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PValue;
 
 import java.util.*;
@@ -99,19 +100,24 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
    * Represents a transform hierarchy for primitive transform.
    */
   public final class PrimitiveTransformVertex extends TransformVertex {
+    private final List<PValue> pValuesProduced = new ArrayList<>();
     private final List<PValue> pValuesConsumed = new ArrayList<>();
     private PrimitiveTransformVertex(final TransformHierarchy.Node node, final CompositeTransformVertex parent) {
       super(node, parent);
+      if (node.getTransform() instanceof View.CreatePCollectionView) {
+        pValuesProduced.add(((View.CreatePCollectionView) node.getTransform()).getView());
+      }
       if (node.getTransform() instanceof ParDo.SingleOutput) {
         pValuesConsumed.addAll(((ParDo.SingleOutput) node.getTransform()).getSideInputs());
       }
       if (node.getTransform() instanceof ParDo.MultiOutput) {
         pValuesConsumed.addAll(((ParDo.MultiOutput) node.getTransform()).getSideInputs());
       }
+      pValuesProduced.addAll(getNode().getOutputs().values());
       pValuesConsumed.addAll(getNode().getInputs().values());
     }
     public Collection<PValue> getPValuesProduced() {
-      return getNode().getOutputs().values();
+      return pValuesProduced;
     }
     public Collection<PValue> getPValuesConsumed() {
       return pValuesConsumed;
