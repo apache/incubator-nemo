@@ -38,8 +38,6 @@ import org.apache.beam.sdk.values.*;
 import java.lang.annotation.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -92,7 +90,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource());
     ctx.builder.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
-    ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
+    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
   @PrimitiveTransformTranslator(ParDo.MultiOutput.class)
@@ -102,14 +100,17 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     final DoTransform doTransform = new DoTransform(transform.getFn(), ctx.pipelineOptions);
     final IRVertex vertex = new OperatorVertex(doTransform);
     ctx.builder.addVertex(vertex);
-    transformVertex.getNode().getOutputs().entrySet().stream()
-        .filter(pValueWithTupleTag -> !pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
-        .forEach(pValueWithTupleTag -> ctx.pValueToTag.put(pValueWithTupleTag.getValue(), pValueWithTupleTag.getKey()));
     transformVertex.getNode().getInputs().values().stream()
         .filter(input -> !transform.getAdditionalInputs().values().contains(input))
         .forEach(input -> ctx.addEdgeTo(vertex, input, false));
     transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input, true));
-    ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
+    transformVertex.getNode().getOutputs().entrySet().stream()
+        .filter(pValueWithTupleTag -> pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
+        .forEach(pValueWithTupleTag -> ctx.registerMainOutputFrom(vertex, pValueWithTupleTag.getValue()));
+    transformVertex.getNode().getOutputs().entrySet().stream()
+        .filter(pValueWithTupleTag -> !pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
+        .forEach(pValueWithTupleTag -> ctx.registerAdditionalOutputFrom(vertex, pValueWithTupleTag.getValue(),
+            pValueWithTupleTag.getKey()));
   }
 
   @PrimitiveTransformTranslator(GroupByKey.class)
@@ -119,7 +120,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     final IRVertex vertex = new OperatorVertex(new GroupByKeyTransform());
     ctx.builder.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
-    ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
+    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
   @PrimitiveTransformTranslator({Window.class, Window.Assign.class})
@@ -137,7 +138,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     final IRVertex vertex = new OperatorVertex(new WindowTransform(windowFn));
     ctx.builder.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
-    ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
+    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
   @PrimitiveTransformTranslator(View.CreatePCollectionView.class)
@@ -147,8 +148,8 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     final IRVertex vertex = new OperatorVertex(new CreateViewTransform<>(transform.getView()));
     ctx.builder.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
-    ctx.registerOutputsFrom(vertex, Collections.singleton(transform.getView()));
-    ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
+    ctx.registerMainOutputFrom(vertex, transform.getView());
+    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
   @PrimitiveTransformTranslator(Flatten.PCollections.class)
@@ -158,7 +159,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     final IRVertex vertex = new OperatorVertex(new FlattenTransform());
     ctx.builder.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
-    ctx.registerOutputsFrom(vertex, transformVertex.getNode().getOutputs().values());
+    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
   @Override
@@ -260,7 +261,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
             + "for an edge from %s to %s", cPatternFunc, src, dst));
       }
       final IREdge edge = new IREdge(communicationPattern, src, dst, isSideInput);
-      final Coder coder;
+      final Coder<?> coder;
       if (input instanceof PCollection) {
         coder = ((PCollection) input).getCoder();
       } else if (input instanceof PCollectionView) {
@@ -272,8 +273,8 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
         throw new RuntimeException(String.format("While adding an edge from %s, to %s, coder for PValue %s cannot "
             + "be determined", src, dst, input));
       }
-      edge.setProperty(EncoderProperty.of(new BeamEncoderFactory(coder)));
-      edge.setProperty(DecoderProperty.of(new BeamDecoderFactory(coder)));
+      edge.setProperty(EncoderProperty.of(new BeamEncoderFactory<>(coder)));
+      edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));
       if (pValueToTag.containsKey(input)) {
         edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
       }
@@ -285,8 +286,13 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
       addEdgeTo(dst, input, isSideInput, DefaultCommunicationPatternSelector.INSTANCE);
     }
 
-    private void registerOutputsFrom(final IRVertex irVertex, final Collection<PValue> outputs) {
-      outputs.forEach(output -> pValueToProducer.put(output, irVertex));
+    private void registerMainOutputFrom(final IRVertex irVertex, final PValue output) {
+      pValueToProducer.put(output, irVertex);
+    }
+
+    private void registerAdditionalOutputFrom(final IRVertex irVertex, final PValue output, final TupleTag<?> tag) {
+      pValueToTag.put(output, tag);
+      pValueToProducer.put(output, irVertex);
     }
 
     /**
@@ -295,9 +301,9 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
      * @param view {@link PCollectionView} from the corresponding {@link View.CreatePCollectionView} transform
      * @return appropriate {@link Coder} for {@link PCollectionView}
      */
-    private Coder getCoderForView(final PCollectionView view) {
+    private Coder<?> getCoderForView(final PCollectionView view) {
       final PrimitiveTransformVertex src = pipeline.getPrimitiveProducerOf(view);
-      final Coder baseCoder = src.getNode().getInputs().values().stream()
+      final Coder<?> baseCoder = src.getNode().getInputs().values().stream()
           .filter(v -> v instanceof PCollection).map(v -> (PCollection) v).findFirst()
           .orElseThrow(() -> new RuntimeException(String.format("No incoming PCollection to %s", src)))
           .getCoder();
@@ -307,10 +313,10 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
       } else if (viewFn instanceof PCollectionViews.ListViewFn) {
         return ListCoder.of(baseCoder);
       } else if (viewFn instanceof PCollectionViews.MapViewFn) {
-        final KvCoder inputCoder = (KvCoder) baseCoder;
+        final KvCoder<?, ?> inputCoder = (KvCoder) baseCoder;
         return MapCoder.of(inputCoder.getKeyCoder(), inputCoder.getValueCoder());
       } else if (viewFn instanceof PCollectionViews.MultimapViewFn) {
-        final KvCoder inputCoder = (KvCoder) baseCoder;
+        final KvCoder<?, ?> inputCoder = (KvCoder) baseCoder;
         return MapCoder.of(inputCoder.getKeyCoder(), IterableCoder.of(inputCoder.getValueCoder()));
       } else if (viewFn instanceof PCollectionViews.SingletonViewFn) {
         return baseCoder;
