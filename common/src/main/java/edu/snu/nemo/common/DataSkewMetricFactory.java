@@ -13,24 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.beam;
+package edu.snu.nemo.common;
 
-import edu.snu.nemo.common.KeyExtractor;
-import org.apache.beam.sdk.values.KV;
+import java.util.Map;
 
 /**
- * Extracts the key from a KV element.
- * For non-KV elements, the elements themselves become the key.
+ * A {@link MetricFactory} which is used for data skew handling.
  */
-final class BeamKeyExtractor implements KeyExtractor {
-  @Override
-  public Object extractKey(final Object element) {
-    if (element instanceof KV) {
-      // Handle null keys, since Beam allows KV with null keys.
-      final Object key = ((KV) element).getKey();
-      return key == null ? 0 : key;
-    } else {
-      return element;
-    }
+public final class DataSkewMetricFactory implements MetricFactory<Map<Integer, KeyRange>> {
+  private Map<Integer, KeyRange> metric;
+
+  /**
+   * Default constructor.
+   */
+  public DataSkewMetricFactory(final Map<Integer, KeyRange> metric) {
+    this.metric = metric;
+  }
+
+  public Map<Integer, KeyRange> getMetric() {
+    return metric;
   }
 }

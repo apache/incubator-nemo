@@ -13,24 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.beam;
+package edu.snu.nemo.common;
 
-import edu.snu.nemo.common.KeyExtractor;
-import org.apache.beam.sdk.values.KV;
+import java.io.Serializable;
 
 /**
- * Extracts the key from a KV element.
- * For non-KV elements, the elements themselves become the key.
+ * A serializable metric factory.
+ *
+ * @param <T> metric type.
  */
-final class BeamKeyExtractor implements KeyExtractor {
-  @Override
-  public Object extractKey(final Object element) {
-    if (element instanceof KV) {
-      // Handle null keys, since Beam allows KV with null keys.
-      final Object key = ((KV) element).getKey();
-      return key == null ? 0 : key;
-    } else {
-      return element;
-    }
-  }
+public interface MetricFactory<T> extends Serializable {
 }

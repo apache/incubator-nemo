@@ -54,10 +54,16 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
         .filter(v -> v instanceof MetricCollectionBarrierVertex)
         .forEach(v -> v.setProperty(DynamicOptimizationProperty
             .of(DynamicOptimizationProperty.Value.DataSkewRuntimePass)));
+
     dag.getVertices().stream()
         .filter(v -> hasMetricCollectionBarrierVertexAsParent(dag, v)
-            && !v.getPropertyValue(ResourceSkewedDataProperty.class).isPresent())
-        .forEach(v -> v.setProperty(ResourceSkewedDataProperty.of(true)));
+            && !v.getExecutionProperties().containsKey(ResourceSkewedDataProperty.class))
+        .forEach(childV -> {
+          childV.getExecutionProperties().put(ResourceSkewedDataProperty.of(true));
+          dag.getDescendants(childV.getId()).forEach(descendentV -> {
+            descendentV.getExecutionProperties().put(ResourceSkewedDataProperty.of(true));
+          });
+        });
 
     return dag;
   }

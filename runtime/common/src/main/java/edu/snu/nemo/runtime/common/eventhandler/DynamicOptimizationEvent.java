@@ -19,7 +19,7 @@
 package edu.snu.nemo.runtime.common.eventhandler;
 
 import edu.snu.nemo.common.eventhandler.RuntimeEvent;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
+import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 
 /**
@@ -27,25 +27,27 @@ import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
  */
 public final class DynamicOptimizationEvent implements RuntimeEvent {
   private final PhysicalPlan physicalPlan;
-  private final MetricCollectionBarrierVertex metricCollectionBarrierVertex;
+  private final Object dynOptData;
   private final String taskId;
   private final String executorId;
+  private final IREdge targetEdge;
 
   /**
    * Default constructor.
    * @param physicalPlan physical plan to be optimized.
-   * @param metricCollectionBarrierVertex metric collection barrier vertex to retrieve metric data from.
    * @param taskId id of the task which triggered the dynamic optimization.
    * @param executorId the id of executor which executes {@code taskId}
    */
   public DynamicOptimizationEvent(final PhysicalPlan physicalPlan,
-                                  final MetricCollectionBarrierVertex metricCollectionBarrierVertex,
+                                  final Object dynOptData,
                                   final String taskId,
-                                  final String executorId) {
+                                  final String executorId,
+                                  final IREdge targetEdge) {
     this.physicalPlan = physicalPlan;
-    this.metricCollectionBarrierVertex = metricCollectionBarrierVertex;
     this.taskId = taskId;
+    this.dynOptData = dynOptData;
     this.executorId = executorId;
+    this.targetEdge = targetEdge;
   }
 
   /**
@@ -56,14 +58,7 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
   }
 
   /**
-   * @return the metric collection barrier vertex for the dynamic optimization.
-   */
-  public MetricCollectionBarrierVertex getMetricCollectionBarrierVertex() {
-    return this.metricCollectionBarrierVertex;
-  }
-
-  /**
-   * @return id of the task which triggered the dynamic optimization
+   * @return id of the task which triggered the dynamic optimization.
    */
   public String getTaskId() {
     return taskId;
@@ -74,5 +69,13 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
    */
   public String getExecutorId() {
     return executorId;
+  }
+
+  public Object getDynOptData() {
+    return this.dynOptData;
+  }
+
+  public IREdge getTargetEdge() {
+    return this.targetEdge;
   }
 }

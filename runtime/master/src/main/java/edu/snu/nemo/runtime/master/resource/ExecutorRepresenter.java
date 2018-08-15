@@ -44,7 +44,6 @@ import java.util.stream.Stream;
  */
 @NotThreadSafe
 public final class ExecutorRepresenter {
-
   private final String executorId;
   private final ResourceSpecification resourceSpecification;
   private final Map<String, Task> runningComplyingTasks;
@@ -107,7 +106,6 @@ public final class ExecutorRepresenter {
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
-
     serializationExecutorService.submit(() -> {
       final byte[] serialized = SerializationUtils.serialize(task);
       sendControlMessage(

@@ -66,9 +66,10 @@ public final class PartitionWordsByLength {
             .into(TypeDescriptors.strings())
             .via(line -> Arrays.asList(line.split(" "))))
         .apply(ParDo.of(new DoFn<String, String>() {
+          // processElement with Beam OutputReceiver.
           @ProcessElement
           public void processElement(final ProcessContext c) {
-            String word = c.element();
+            final String word = c.element();
             if (word.length() < 6) {
               c.output(shortWordsTag, KV.of(word.length(), word));
             } else if (word.length() < 11) {
@@ -89,12 +90,12 @@ public final class PartitionWordsByLength {
         .apply(GroupByKey.create())
         .apply(MapElements.via(new FormatLines()));
     PCollection<String> veryLongWords = results.get(veryLongWordsTag);
-    PCollection<String> veryveryLongWords = results.get(veryVeryLongWordsTag);
+    PCollection<String> veryVeryLongWords = results.get(veryVeryLongWordsTag);
 
     GenericSourceSink.write(shortWords, outputFilePath + "_short");
     GenericSourceSink.write(longWords, outputFilePath + "_long");
     GenericSourceSink.write(veryLongWords, outputFilePath + "_very_long");
-    GenericSourceSink.write(veryveryLongWords, outputFilePath + "_very_very_long");
+    GenericSourceSink.write(veryVeryLongWords, outputFilePath + "_very_very_long");
     p.run();
   }
 
