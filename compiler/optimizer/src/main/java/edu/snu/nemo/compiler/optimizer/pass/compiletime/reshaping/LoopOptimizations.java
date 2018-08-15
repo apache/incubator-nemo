@@ -225,21 +225,23 @@ public final class LoopOptimizations {
 
     /**
      * Check the equality of two intPredicates.
-     * @param predicate1 the first IntPredicate.
-     * @param predicate2 the second IntPredicate.
-     * @param numberToTestUntil Number to check the IntPredicates from.
+     * Check if the both the predicates either passes together or fails together for each
+     * integer in the range [0,noOfTimes]
+     *
+     * @param firstPredicate the first IntPredicate.
+     * @param secondPredicate the second IntPredicate.
+     * @param noOfTimes Number to check the IntPredicates from.
      * @return whether or not we can say that they are equal.
      */
-    private Boolean checkEqualityOfIntPredicates(final IntPredicate predicate1, final IntPredicate predicate2,
-                                                 final Integer numberToTestUntil) {
-      // TODO #11: Generalize Equality of Int Predicates for Loops.
-      if (numberToTestUntil.equals(0)) {
-        return predicate1.test(numberToTestUntil) == predicate2.test(numberToTestUntil);
-      } else if (predicate1.test(numberToTestUntil) != predicate2.test(numberToTestUntil)) {
-        return false;
-      } else {
-        return checkEqualityOfIntPredicates(predicate1, predicate2, numberToTestUntil - 1);
+    public static Boolean checkEqualityOfIntPredicates(final IntPredicate firstPredicate,
+                                                 final IntPredicate secondPredicate,
+                                                 final int noOfTimes) {
+      for (int value = 0; value <= noOfTimes; value++) {
+          if (firstPredicate.test(value) != secondPredicate.test(value)) {
+              return false;
+          }
       }
+      return true;
     }
   }
 
