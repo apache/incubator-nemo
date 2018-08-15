@@ -15,9 +15,9 @@
  */
 package edu.snu.nemo.runtime.executor.data;
 
+import edu.snu.nemo.common.HashRange;
 import edu.snu.nemo.common.coder.IntDecoderFactory;
 import edu.snu.nemo.common.coder.IntEncoderFactory;
-import edu.snu.nemo.runtime.common.data.HashRange;
 import edu.snu.nemo.runtime.executor.data.block.Block;
 import edu.snu.nemo.runtime.executor.data.block.FileBlock;
 import edu.snu.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
