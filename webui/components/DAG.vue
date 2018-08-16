@@ -14,15 +14,9 @@ limitations under the License.
 -->
 <template>
   <div ref="canvasContainer" class="dag-canvas-container">
-    <el-button
-      v-if="dag"
-      class="fit-button"
-      @click="fitButtonClicked"
-      plain
-      type="primary">Fit</el-button>
     <p v-if="!dag">DAG is not ready.</p>
     <div v-show="dag">
-      <canvas class="dag-canvas" id="dag-canvas"></canvas>
+      <canvas ref="dagCanvas" class="dag-canvas" id="dag-canvas"></canvas>
     </div>
   </div>
 </template>
@@ -86,11 +80,6 @@ export default {
   data() {
     return {
       canvas: undefined,
-      isDragging: false,
-      lastXCoord: 0,
-      lastYCoord: 0,
-      lastViewportX: 0,
-      lastViewportY: 0,
       fitCanvasNextTime: true,
 
       resizeDebounceTimer: undefined,
@@ -112,23 +101,50 @@ export default {
   computed: {
 
     /**
-     * width of DAG, padded with GRAPH_MARGIN.
+     * width of DAG
      */
     dagWidth() {
       if (!this.stageGraph) {
         return undefined;
       }
-      return this.stageGraph.graph().width + GRAPH_MARGIN;
+
+      const edges = this.stageGraph.edges();
+      const stages = this.stageGraph.nodes();
+
+      const edgeMax = Math.max(...edges
+        .map(e => this.stageGraph.edge(e))
+        .map(edge => edge.points)
+        .reduce((acc, curr) => acc.concat(curr))
+        .map(point => point.x));
+
+      const stageMax = Math.max(...stages
+        .map(node => this.stageGraph.node(node))
+        .map(stage => stage.x + stage.width / 2));
+
+      return Math.max(edgeMax, stageMax) + EDGE_STROKE_WIDTH * 2;
     },
 
     /**
-     * height of DAG, padded with GRAPH_MARGIN.
+     * height of DAG
      */
     dagHeight() {
       if (!this.stageGraph) {
         return undefined;
       }
-      return this.stageGraph.graph().height + GRAPH_MARGIN;
+      const edges = this.stageGraph.edges();
+      const stages = this.stageGraph.nodes();
+
+      const edgeMax = Math.max(...edges
+        .map(e => this.stageGraph.edge(e))
+        .map(edge => edge.points)
+        .reduce((acc, curr) => acc.concat(curr))
+        .map(point => point.y));
+
+      const stageMax = Math.max(...stages
+        .map(node => this.stageGraph.node(node))
+        .map(stage => stage.y + stage.height / 2));
+
+      return Math.max(edgeMax, stageMax) + EDGE_STROKE_WIDTH * 2;
     },
 
     /**
@@ -174,10 +190,6 @@ export default {
      * but resets DAG information and coordinates of mouse actions.
      */
     initializeVariables() {
-      this.lastXCoord = 0;
-      this.lastYCoord = 0;
-      this.lastViewportX = 0;
-      this.lastViewportY = 0;
       this.stageGraph = undefined;
       this.verticesGraph = {};
       this.vertexObjects = {};
@@ -204,7 +216,7 @@ export default {
 
         this.resizeDebounceTimer = setTimeout(() => {
           if (this.$refs.canvasContainer) {
-            let w = this.$refs.canvasContainer.offsetWidth;
+            const w = this.$refs.canvasContainer.offsetWidth;
             this.canvas.setWidth(w);
             if (resizeToGraphSize && this.stageGraph) {
               const targetHeight = (w / this.dagWidth) * this.dagHeight;
@@ -237,11 +249,13 @@ export default {
         return;
       }
 
-      this.canvas.viewportTransform[4] = this.lastViewportX;
-      this.canvas.viewportTransform[5] = this.lastViewportY;
       this.canvas.calcOffset();
       await this.$nextTick();
       this.canvas.renderAll();
+      // maybe fabric.js issue?
+      this.canvas.viewportTransform[4] = 0;
+      this.canvas.viewportTransform[5] = 0;
+      await this.fitCanvas();
     },
 
     /**
@@ -304,8 +318,8 @@ export default {
 
         this.setStates(states);
         // restore previous translation viewport
-        this.canvas.viewportTransform[4] = this.lastViewportX;
-        this.canvas.viewportTransform[5] = this.lastViewportY;
+        this.canvas.viewportTransform[4] = 0;
+        this.canvas.viewportTransform[5] = 0;
       });
 
       // stage state transition event
@@ -339,55 +353,9 @@ export default {
     },
 
     /**
-     * Setup canvas event handler. (e.g. mouse event, selection event)
+     * Setup canvas event handler. (e.g. selection event)
      */
     setUpCanvasEventHandler() {
-      // zoom feature
-      this.canvas.on('mouse:wheel', options => {
-        let delta = options.e.deltaY;
-        let zoom = this.canvas.getZoom();
-        zoom += delta / 200;
-        if (zoom > MAX_ZOOM) {
-          zoom = MAX_ZOOM;
-        } else if (zoom < MIN_ZOOM) {
-          zoom = MIN_ZOOM;
-        }
-        this.canvas.zoomToPoint({
-          x: options.e.offsetX,
-          y: options.e.offsetY,
-        }, zoom);
-        this.lastViewportX = this.canvas.viewportTransform[4];
-        this.lastViewportY = this.canvas.viewportTransform[5];
-        options.e.preventDefault();
-        options.e.stopPropagation();
-      });
-
-      // pan feature
-      this.canvas.on('mouse:down', options => {
-        let e = options.e;
-        this.isDragging = true;
-        this.lastXCoord = e.clientX;
-        this.lastYCoord = e.clientY;
-      });
-
-      this.canvas.on('mouse:move', options => {
-        if (this.isDragging) {
-          const e = options.e;
-          this.canvas.viewportTransform[4] += e.clientX - this.lastXCoord;
-          this.canvas.viewportTransform[5] += e.clientY - this.lastYCoord;
-          this.lastViewportX = this.canvas.viewportTransform[4];
-          this.lastViewportY = this.canvas.viewportTransform[5];
-          this.canvas.requestRenderAll();
-          this.lastXCoord = e.clientX;
-          this.lastYCoord = e.clientY;
-        }
-      });
-
-      this.canvas.on('mouse:up', () => {
-        this.isDragging = false;
-        this.resetCoords();
-      });
-
       this.canvas.on('selection:created', options => {
         this.$eventBus.$emit('metric-select', options.target.metricId);
       });
@@ -416,8 +384,8 @@ export default {
      * This method is asynchronous.
      */
     async fitCanvas() {
-      let widthRatio = this.canvas.width / this.dagWidth;
-      let heightRatio = this.canvas.height / this.dagHeight;
+      let widthRatio = this.canvas.width / (this.dagWidth);
+      let heightRatio = this.canvas.height / (this.dagHeight);
       let targetRatio = widthRatio < heightRatio ?
         heightRatio : widthRatio;
       this.canvas.setZoom(targetRatio);
@@ -519,7 +487,7 @@ export default {
         });
 
         g.edges().map(e => g.edge(e)).forEach(edge => {
-          let path = this.drawSVGArrow(edge);
+          let path = this.drawSVGEdgeWithArrow(edge);
 
           let pathObj = new fabric.Path(path);
           pathObj.set({
@@ -591,7 +559,7 @@ export default {
 
       let stageEdgeObjectArray = [];
       g.edges().map(e => g.edge(e)).forEach(edge => {
-        let path = this.drawSVGArrow(edge);
+        let path = this.drawSVGEdgeWithArrow(edge);
 
         let pathObj = new fabric.Path(path);
         pathObj.set({
@@ -632,10 +600,10 @@ export default {
     },
 
     /**
-     * Build SVG path of arrow head.
-     * @param edges array of edges.
+     * Build SVG path with arrow head.
+     * @param edge object to draw.
      */
-    drawSVGArrow(edges) {
+    drawSVGEdgeWithArrow(edges) {
       let path = '';
       edges.points.forEach(point => {
         if (!path) {
@@ -644,6 +612,7 @@ export default {
           path += ` L ${point.x} ${point.y}`;
         }
       });
+
       const l = edges.points.length,
         a = ARROW_SIDE, h = a * Math.sqrt(3) / 2;
       const p1 = edges.points[l - 2], p2 = edges.points[l - 1];
@@ -662,20 +631,10 @@ export default {
       ].map(_d => trans(_d, theta));
 
       d.forEach(p => {
-        path += ` l ${p.x} ${p.y}`
+        path += ` l ${p.x} ${p.y}`;
       });
 
       return path;
-    },
-
-    /**
-     * Click listener for fit button.
-     * Reset translation viewport and fit canvas.
-     */
-    fitButtonClicked() {
-      this.canvas.viewportTransform[4] = 0;
-      this.canvas.viewportTransform[5] = 0;
-      this.fitCanvas();
     },
   }
 }
