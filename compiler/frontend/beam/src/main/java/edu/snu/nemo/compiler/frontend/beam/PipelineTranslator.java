@@ -221,7 +221,7 @@ public final class PipelineTranslator
     final TransformVertex last = topologicalOrdering.get(topologicalOrdering.size() - 1);
 
     if (first.getNode().getTransform() instanceof GroupByKey) {
-      // Translate the given CompositeTransform with OneToOneEdge-enforced context.
+      // Translate the given CompositeTransform under OneToOneEdge-enforced context.
       final TranslationContext oneToOneEdgeContext = new TranslationContext(ctx,
           OneToOneCommunicationPatternSelector.INSTANCE);
       transformVertex.getDAG().topologicalDo(oneToOneEdgeContext::translate);
