@@ -43,18 +43,24 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 /**
  * Converts DAG of Beam pipeline to Nemo IR DAG.
  */
-public final class PipelineTranslator implements Function<CompositeTransformVertex, DAG<IRVertex, IREdge>> {
+public final class PipelineTranslator
+    implements BiFunction<CompositeTransformVertex, PipelineOptions, DAG<IRVertex, IREdge>> {
+
+  private static final PipelineTranslator INSTANCE = new PipelineTranslator();
+
   private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator = new HashMap<>();
   private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator = new HashMap<>();
-  private final PipelineOptions pipelineOptions;
 
-  public PipelineTranslator(final PipelineOptions pipelineOptions) {
-    this.pipelineOptions = pipelineOptions;
+  public static DAG<IRVertex, IREdge> translate(final CompositeTransformVertex pipeline,
+                                                final PipelineOptions pipelineOptions) {
+    return INSTANCE.apply(pipeline, pipelineOptions);
+  }
+
+  private PipelineTranslator() {
     for (final Method translator : getClass().getDeclaredMethods()) {
       final PrimitiveTransformTranslator primitive = translator.getAnnotation(PrimitiveTransformTranslator.class);
       final CompositeTransformTranslator composite = translator.getAnnotation(CompositeTransformTranslator.class);
@@ -178,7 +184,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final CompositeTransformVertex pipeline) {
+  public DAG<IRVertex, IREdge> apply(final CompositeTransformVertex pipeline, final PipelineOptions pipelineOptions) {
     final TranslationContext ctx = new TranslationContext(pipeline, primitiveTransformToTranslator,
         compositeTransformToTranslator, pipelineOptions);
     ctx.translate(pipeline);
@@ -268,7 +274,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     private void addEdgeTo(final IRVertex dst,
                            final PValue input,
                            final boolean isSideInput,
-                           final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> cPatternFunc) {
+                           final CommunicationPatternProperty.Value selectedCommunicationPattern) {
       final IRVertex src = pValueToProducer.get(input);
       if (src == null) {
         try {
@@ -279,10 +285,11 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
               + "and the corresponding PTransform was not found", input));
         }
       }
-      final CommunicationPatternProperty.Value communicationPattern = cPatternFunc.apply(src, dst);
+      final CommunicationPatternProperty.Value communicationPattern = selectedCommunicationPattern == null
+          ? selectCommunicationPattern(src, dst) : selectedCommunicationPattern;
       if (communicationPattern == null) {
-        throw new RuntimeException(String.format("%s have failed to determine communication pattern "
-            + "for an edge from %s to %s", cPatternFunc, src, dst));
+        throw new RuntimeException(String.format("Cannot determine communication pattern "
+            + "for an edge from %s to %s", src, dst));
       }
       final IREdge edge = new IREdge(communicationPattern, src, dst, isSideInput);
       final Coder<?> coder;
@@ -307,7 +314,7 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
     }
 
     private void addEdgeTo(final IRVertex dst, final PValue input, final boolean isSideInput) {
-      addEdgeTo(dst, input, isSideInput, DefaultCommunicationPatternSelector.INSTANCE);
+      addEdgeTo(dst, input, isSideInput, null);
     }
 
     private void registerMainOutputFrom(final IRVertex irVertex, final PValue output) {
@@ -348,18 +355,8 @@ public final class PipelineTranslator implements Function<CompositeTransformVert
         throw new UnsupportedOperationException(String.format("Unsupported viewFn %s", viewFn.getClass()));
       }
     }
-  }
 
-  /**
-   * Selector.
-   */
-  private static final class DefaultCommunicationPatternSelector
-      implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
-
-    private static final DefaultCommunicationPatternSelector INSTANCE = new DefaultCommunicationPatternSelector();
-
-    @Override
-    public CommunicationPatternProperty.Value apply(final IRVertex src, final IRVertex dst) {
+    private CommunicationPatternProperty.Value selectCommunicationPattern(final IRVertex src, final IRVertex dst) {
       final Class<?> constructUnionTableFn;
       try {
         constructUnionTableFn = Class.forName("org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");

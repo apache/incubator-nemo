@@ -56,8 +56,8 @@ public final class NemoPipelineRunner extends PipelineRunner<NemoPipelineResult>
   public NemoPipelineResult run(final Pipeline pipeline) {
     final PipelineVisitor pipelineVisitor = new PipelineVisitor();
     pipeline.traverseTopologically(pipelineVisitor);
-    final PipelineTranslator pipelineTranslator = new PipelineTranslator(nemoPipelineOptions);
-    final DAG<IRVertex, IREdge> dag = pipelineTranslator.apply(pipelineVisitor.getConvertedPipeline());
+    final DAG<IRVertex, IREdge> dag = PipelineTranslator.translate(pipelineVisitor.getConvertedPipeline(),
+        nemoPipelineOptions);
 
     final NemoPipelineResult nemoPipelineResult = new NemoPipelineResult();
     JobLauncher.launchDAG(dag);
