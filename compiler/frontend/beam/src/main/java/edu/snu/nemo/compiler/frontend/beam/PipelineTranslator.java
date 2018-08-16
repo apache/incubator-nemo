@@ -71,7 +71,7 @@ public final class PipelineTranslator
   }
 
   /**
-   * Creates the translator, while builds a map between {@link PTransform}s and the corresponding translators.
+   * Creates the translator, while building a map between {@link PTransform}s and the corresponding translators.
    */
   private PipelineTranslator() {
     for (final Method translator : getClass().getDeclaredMethods()) {
@@ -177,18 +177,6 @@ public final class PipelineTranslator
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
-  @CompositeTransformTranslator(LoopCompositeTransform.class)
-  private static void loopTranslator(final TranslationContext ctx,
-                                     final CompositeTransformVertex transformVertex,
-                                     final LoopCompositeTransform<?, ?> transform) {
-    final LoopVertex loopVertex = new LoopVertex(transformVertex.getNode().getFullName());
-    ctx.builder.addVertex(loopVertex, ctx.loopVertexStack);
-    ctx.builder.removeVertex(loopVertex);
-    ctx.loopVertexStack.push(loopVertex);
-    topologicalTranslator(ctx, transformVertex, transform);
-    ctx.loopVertexStack.pop();
-  }
-
   /**
    * Default translator for CompositeTransforms. Translates inner DAG without modifying {@link TranslationContext}.
    *
@@ -239,6 +227,25 @@ public final class PipelineTranslator
     } else {
       transformVertex.getDAG().topologicalDo(ctx::translate);
     }
+  }
+
+  /**
+   * Pushes the loop vertex to the stack before translating the inner DAG, and pops it after the translation.
+   *
+   * @param ctx provides translation context
+   * @param transformVertex the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code transformVertex}
+   */
+  @CompositeTransformTranslator(LoopCompositeTransform.class)
+  private static void loopTranslator(final TranslationContext ctx,
+                                     final CompositeTransformVertex transformVertex,
+                                     final LoopCompositeTransform<?, ?> transform) {
+    final LoopVertex loopVertex = new LoopVertex(transformVertex.getNode().getFullName());
+    ctx.builder.addVertex(loopVertex, ctx.loopVertexStack);
+    ctx.builder.removeVertex(loopVertex);
+    ctx.loopVertexStack.push(loopVertex);
+    topologicalTranslator(ctx, transformVertex, transform);
+    ctx.loopVertexStack.pop();
   }
 
   @Override

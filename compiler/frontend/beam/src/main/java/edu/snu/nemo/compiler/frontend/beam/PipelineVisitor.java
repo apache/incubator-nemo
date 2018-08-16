@@ -145,9 +145,6 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
     private final List<PValue> pValuesProduced = new ArrayList<>();
     private final List<PValue> pValuesConsumed = new ArrayList<>();
 
-    /**
-     * {@inheritDoc}
-     */
     private PrimitiveTransformVertex(final TransformHierarchy.Node node, final CompositeTransformVertex parent) {
       super(node, parent);
       if (node.getTransform() instanceof View.CreatePCollectionView) {
@@ -192,9 +189,6 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
     private final DAGBuilder<TransformVertex, DataFlowEdge> builder = new DAGBuilder<>();
     private DAG<TransformVertex, DataFlowEdge> dag = null;
 
-    /**
-     * {@inheritDoc}
-     */
     private CompositeTransformVertex(final TransformHierarchy.Node node, final CompositeTransformVertex parent) {
       super(node, parent);
     }
