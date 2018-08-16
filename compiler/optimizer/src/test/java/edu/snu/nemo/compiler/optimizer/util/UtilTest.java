@@ -13,28 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
+package edu.snu.nemo.compiler.optimizer.util;
+
+import static org.junit.Assert.assertEquals;
 
 import java.util.function.IntPredicate;
 
 import org.junit.Test;
 
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.LoopOptimizations.LoopFusionPass;
-import static org.junit.Assert.assertEquals;
-
-public class LoopOptimizationsTest {
+public class UtilTest {
 
     @Test
     public void testcheckEqualityOfIntPredicates() {
 
-        IntPredicate secondPredicate = number -> number < 10;
         IntPredicate firstPredicate = number -> number < 5;
+        IntPredicate secondPredicate = number -> number < 10;
         assertEquals(true,
-                LoopFusionPass.checkEqualityOfIntPredicates(firstPredicate, secondPredicate, 4));
+                Util.checkEqualityOfIntPredicates(firstPredicate, secondPredicate, 4));
         assertEquals(false,
-                LoopFusionPass.checkEqualityOfIntPredicates(firstPredicate, secondPredicate, 5));
+                Util.checkEqualityOfIntPredicates(firstPredicate, secondPredicate, 5));
         assertEquals(false,
-                LoopFusionPass.checkEqualityOfIntPredicates(firstPredicate, secondPredicate, 7));
+                Util.checkEqualityOfIntPredicates(firstPredicate, secondPredicate, 7));
     }
 }
 

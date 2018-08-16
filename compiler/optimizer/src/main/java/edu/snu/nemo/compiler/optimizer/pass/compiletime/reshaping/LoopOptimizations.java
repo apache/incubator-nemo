@@ -21,6 +21,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
+import edu.snu.nemo.compiler.optimizer.util.Util;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 
@@ -135,7 +136,7 @@ public final class LoopOptimizations {
         independentLoops.forEach(independentLoop -> {
           // add them to the list if those independent loops have equal termination conditions.
           if (independentLoop.getMaxNumberOfIterations().equals(numberOfIterations)
-              && checkEqualityOfIntPredicates(independentLoop.getTerminationCondition(), terminationCondition,
+              && Util.checkEqualityOfIntPredicates(independentLoop.getTerminationCondition(), terminationCondition,
               numberOfIterations)) {
             loopsToBeFused.add(independentLoop);
           }
@@ -221,27 +222,6 @@ public final class LoopOptimizations {
         loopVertex.getDagOutgoingEdges().forEach((v, es) -> es.forEach(mergedLoopVertex::addDagOutgoingEdge));
       });
       return mergedLoopVertex;
-    }
-
-    /**
-     * Check the equality of two intPredicates.
-     * Check if the both the predicates either passes together or fails together for each
-     * integer in the range [0,noOfTimes]
-     *
-     * @param firstPredicate the first IntPredicate.
-     * @param secondPredicate the second IntPredicate.
-     * @param noOfTimes Number to check the IntPredicates from.
-     * @return whether or not we can say that they are equal.
-     */
-    public static Boolean checkEqualityOfIntPredicates(final IntPredicate firstPredicate,
-                                                 final IntPredicate secondPredicate,
-                                                 final int noOfTimes) {
-      for (int value = 0; value <= noOfTimes; value++) {
-          if (firstPredicate.test(value) != secondPredicate.test(value)) {
-              return false;
-          }
-      }
-      return true;
     }
   }
 
