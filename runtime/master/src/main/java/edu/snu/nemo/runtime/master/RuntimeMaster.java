@@ -78,7 +78,6 @@ public final class RuntimeMaster {
   private final ExecutorService runtimeMasterThread;
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
-  private final BlockManagerMaster blockManagerMaster;
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
   private final MetricStore metricStore;
@@ -86,6 +85,7 @@ public final class RuntimeMaster {
   private final ExecutorService metricAggregationService;
   private final ClientRPC clientRPC;
   private final MetricManagerMaster metricManagerMaster;
+  private final PlanStateManager planStateManager;
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
   private final String dagDirectory;
@@ -98,11 +98,11 @@ public final class RuntimeMaster {
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
                         final ContainerManager containerManager,
-                        final BlockManagerMaster blockManagerMaster,
                         final MetricMessageHandler metricMessageHandler,
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
                         final MetricManagerMaster metricManagerMaster,
+                        final PlanStateManager planStateManager,
                         @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
@@ -112,7 +112,6 @@ public final class RuntimeMaster {
         Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster thread"));
     this.scheduler = scheduler;
     this.containerManager = containerManager;
-    this.blockManagerMaster = blockManagerMaster;
     this.metricMessageHandler = metricMessageHandler;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
@@ -127,6 +126,7 @@ public final class RuntimeMaster {
     this.metricAggregationService = Executors.newFixedThreadPool(10);
     this.metricStore = MetricStore.getStore();
     this.metricServer = startRestMetricServer();
+    this.planStateManager = planStateManager;
   }
 
   private Server startRestMetricServer() {
@@ -152,8 +152,9 @@ public final class RuntimeMaster {
 
   /**
    * Submits the {@link PhysicalPlan} to Runtime.
+   * At now, we are assuming that a single job submit multiple plans.
    *
-   * @param plan to execute
+   * @param plan               to execute
    * @param maxScheduleAttempt the max number of times this plan/sub-part of the plan should be attempted.
    */
   public Pair<PlanStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
@@ -161,10 +162,8 @@ public final class RuntimeMaster {
     final Callable<Pair<PlanStateManager, ScheduledExecutorService>> planExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
-        blockManagerMaster.initialize(plan);
-        final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, maxScheduleAttempt);
-        scheduler.schedulePlan(plan, planStateManager);
-        final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(planStateManager);
+        scheduler.schedulePlan(plan, maxScheduleAttempt);
+        final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging();
         return Pair.of(planStateManager, dagLoggingExecutor);
       } catch (Exception e) {
         throw new RuntimeException(e);
@@ -177,6 +176,9 @@ public final class RuntimeMaster {
     }
   }
 
+  /**
+   * Terminates the RuntimeMaster.
+   */
   public void terminate() {
     // send metric flush request to all executors
     metricManagerMaster.sendMetricFlushRequest();
@@ -211,6 +213,11 @@ public final class RuntimeMaster {
     // Do not shutdown runtimeMasterThread. We need it to clean things up.
   }
 
+  /**
+   * Requests a container with resource specification.
+   *
+   * @param resourceSpecificationString the resource specification.
+   */
   public void requestContainer(final String resourceSpecificationString) {
     final Future<?> containerRequestEventResult = runtimeMasterThread.submit(() -> {
       try {
@@ -444,11 +451,11 @@ public final class RuntimeMaster {
 
   /**
    * Schedules a periodic DAG logging thread.
-   * @param planStateManager for the plan the DAG should be logged.
    * TODO #20: RESTful APIs to Access Job State and Metric.
+   *
    * @return the scheduled executor service.
    */
-  private ScheduledExecutorService scheduleDagLogging(final PlanStateManager planStateManager) {
+  private ScheduledExecutorService scheduleDagLogging() {
     final ScheduledExecutorService dagLoggingExecutor = Executors.newSingleThreadScheduledExecutor();
     dagLoggingExecutor.scheduleAtFixedRate(new Runnable() {
       private int dagLogFileIndex = 0;

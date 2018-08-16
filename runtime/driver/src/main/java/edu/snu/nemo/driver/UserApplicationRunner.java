@@ -17,12 +17,10 @@ package edu.snu.nemo.driver;
 
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.backend.Backend;
 import edu.snu.nemo.compiler.optimizer.Optimizer;
-import edu.snu.nemo.compiler.optimizer.policy.Policy;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.master.PlanStateManager;
@@ -68,14 +66,16 @@ public final class UserApplicationRunner {
    * and tell {@link RuntimeMaster} to execute the plan.
    *
    * @param dagString Serialized IR DAG from Nemo Client.
+   * @param jobId     The job ID.
    */
-  public synchronized void run(final String dagString) {
+  public synchronized void run(final String dagString,
+                               final String jobId) {
     try {
       LOG.info("##### Nemo Compiler Start #####");
 
       final DAG<IRVertex, IREdge> dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
       final DAG<IRVertex, IREdge> optimizedDAG = optimizer.optimizeDag(dag);
-      final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
+      final PhysicalPlan physicalPlan = backend.compile(optimizedDAG, jobId);
 
       LOG.info("##### Nemo Compiler Finish #####");
 
@@ -88,11 +88,14 @@ public final class UserApplicationRunner {
       // Wait for the job to finish and stop logging
       final PlanStateManager planStateManager = executionResult.left();
       final ScheduledExecutorService dagLoggingExecutor = executionResult.right();
-      planStateManager.waitUntilFinish();
-      dagLoggingExecutor.shutdown();
+      try {
+        planStateManager.waitUntilFinish();
+        dagLoggingExecutor.shutdown();
+      } finally {
+        planStateManager.storeJSON(dagDirectory, "final");
+      }
 
-      planStateManager.storeJSON(dagDirectory, "final");
-      LOG.info("{} is complete!", physicalPlan.getId());
+      LOG.info("{} is complete!", physicalPlan.getPlanId());
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }

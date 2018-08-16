@@ -31,6 +31,7 @@ message ClientToDriverMessage {
 
 message LaunchDAGMessage {
     required string dag = 1;
+    required string jobId = 2;
 }
 
 message DataCollectMessage {

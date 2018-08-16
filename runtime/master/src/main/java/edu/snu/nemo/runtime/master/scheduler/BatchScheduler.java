@@ -27,6 +27,7 @@ import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
 import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.state.TaskState;
+import edu.snu.nemo.runtime.master.PlanAppender;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
@@ -63,6 +64,7 @@ public final class BatchScheduler implements Scheduler {
   private final TaskDispatcher taskDispatcher;
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorRegistry executorRegistry;
+  private final PlanStateManager planStateManager;
 
   /**
    * Other necessary components of this {@link edu.snu.nemo.runtime.master.RuntimeMaster}.
@@ -73,8 +75,6 @@ public final class BatchScheduler implements Scheduler {
   /**
    * The below variables depend on the submitted plan to execute.
    */
-  private PhysicalPlan physicalPlan;
-  private PlanStateManager planStateManager;
   private List<List<Stage>> sortedScheduleGroups;
 
   @Inject
@@ -83,7 +83,8 @@ public final class BatchScheduler implements Scheduler {
                          final BlockManagerMaster blockManagerMaster,
                          final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                          final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
-                         final ExecutorRegistry executorRegistry) {
+                         final ExecutorRegistry executorRegistry,
+                         final PlanStateManager planStateManager) {
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.blockManagerMaster = blockManagerMaster;
@@ -94,37 +95,60 @@ public final class BatchScheduler implements Scheduler {
           .subscribe(updatePhysicalPlanEventHandler.getEventClass(), updatePhysicalPlanEventHandler);
     }
     this.executorRegistry = executorRegistry;
+    this.planStateManager = planStateManager;
   }
 
   /**
+   * Schedules a given plan.
+   * If multiple physical plans are submitted, they will be appended and handled as a single plan.
+   * TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
+   *
    * @param submittedPhysicalPlan the physical plan to schedule.
-   * @param submittedPlanStateManager the state manager of the plan.
+   * @param maxScheduleAttempt    the max number of times this plan/sub-part of the plan should be attempted.
    */
   @Override
-  public void schedulePlan(final PhysicalPlan submittedPhysicalPlan, final PlanStateManager submittedPlanStateManager) {
-    LOG.info("Scheduled plan");
+  public void schedulePlan(final PhysicalPlan submittedPhysicalPlan,
+                           final int maxScheduleAttempt) {
+    LOG.info("Plan to schedule: {}", submittedPhysicalPlan.getPlanId());
 
-    this.physicalPlan = submittedPhysicalPlan;
-    this.planStateManager = submittedPlanStateManager;
-
-    taskDispatcher.run(this.planStateManager);
-    LOG.info("Plan to schedule: {}", this.physicalPlan.getId());
-
-    this.sortedScheduleGroups = this.physicalPlan.getStageDAG().getVertices().stream()
-        .collect(Collectors.groupingBy(Stage::getScheduleGroup))
-        .entrySet().stream()
-        .sorted(Map.Entry.comparingByKey())
-        .map(Map.Entry::getValue)
-        .collect(Collectors.toList());
+    if (!planStateManager.isInitialized()) {
+      // First scheduling.
+      taskDispatcher.run();
+      updatePlan(submittedPhysicalPlan, maxScheduleAttempt);
+    } else {
+      // Append the submitted plan to the original plan.
+      final PhysicalPlan appendedPlan =
+          PlanAppender.appendPlan(planStateManager.getPhysicalPlan(), submittedPhysicalPlan);
+      updatePlan(appendedPlan, maxScheduleAttempt);
+    }
 
     doSchedule();
   }
 
   @Override
-  public void updatePlan(final String planId, final PhysicalPlan newPhysicalPlan) {
+  public void updatePlan(final PhysicalPlan newPhysicalPlan) {
     // update the physical plan in the scheduler.
     // NOTE: what's already been executed is not modified in the new physical plan.
-    this.physicalPlan = newPhysicalPlan;
+    // TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
+    updatePlan(newPhysicalPlan, planStateManager.getMaxScheduleAttempt());
+  }
+
+  /**
+   * Update the physical plan in the scheduler.
+   *
+   * @param newPhysicalPlan    the new physical plan to update.
+   * @param maxScheduleAttempt the maximum number of task scheduling attempt.
+   */
+  private void updatePlan(final PhysicalPlan newPhysicalPlan,
+                          final int maxScheduleAttempt) {
+    blockManagerMaster.initialize(newPhysicalPlan);
+    planStateManager.updatePlan(newPhysicalPlan, maxScheduleAttempt);
+    this.sortedScheduleGroups = newPhysicalPlan.getStageDAG().getVertices().stream()
+        .collect(Collectors.groupingBy(Stage::getScheduleGroup))
+        .entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .map(Map.Entry::getValue)
+        .collect(Collectors.toList());
   }
 
   /**
@@ -132,11 +156,11 @@ public final class BatchScheduler implements Scheduler {
    * Note that we can receive notifications for previous task attempts, due to the nature of asynchronous events.
    * We ignore such late-arriving notifications, and only handle notifications for the current task attempt.
    *
-   * @param executorId the id of the executor where the message was sent from.
-   * @param taskId whose state has changed
+   * @param executorId       the id of the executor where the message was sent from.
+   * @param taskId           whose state has changed
    * @param taskAttemptIndex of the task whose state has changed
-   * @param newState the state to change to
-   * @param vertexPutOnHold the ID of vertex that is put on hold. It is null otherwise.
+   * @param newState         the state to change to
+   * @param vertexPutOnHold  the ID of vertex that is put on hold. It is null otherwise.
    */
   @Override
   public void onTaskStateReportFromExecutor(final String executorId,
@@ -251,7 +275,7 @@ public final class BatchScheduler implements Scheduler {
   /**
    * The main entry point for task scheduling.
    * This operation can be invoked at any point during job execution, as it is designed to be free of side-effects.
-   *
+   * <p>
    * These are the reasons why.
    * - We 'reset' {@link PendingTaskCollectionPointer}, and not 'add' new tasks to it
    * - We make {@link TaskDispatcher} dispatch only the tasks that are READY.
@@ -309,9 +333,9 @@ public final class BatchScheduler implements Scheduler {
     }
 
     final List<StageEdge> stageIncomingEdges =
-        physicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
+        planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
     final List<StageEdge> stageOutgoingEdges =
-        physicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
+        planStateManager.getPhysicalPlan().getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
 
     final List<String> taskIdsToSchedule = new LinkedList<>();
     for (final String taskId : stageToSchedule.getTaskIds()) {
@@ -345,7 +369,7 @@ public final class BatchScheduler implements Scheduler {
       final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
       final int attemptIdx = planStateManager.getTaskAttempt(taskId);
       tasks.add(new Task(
-          physicalPlan.getId(),
+          planStateManager.getPhysicalPlan().getPlanId(),
           taskId,
           attemptIdx,
           stageToSchedule.getExecutionProperties(),
@@ -362,8 +386,9 @@ public final class BatchScheduler implements Scheduler {
   /**
    * Action after task execution has been completed.
    * Note this method should not be invoked when the previous state of the task is ON_HOLD.
+   *
    * @param executorId id of the executor.
-   * @param taskId the ID of the task completed.
+   * @param taskId     the ID of the task completed.
    */
   private void onTaskExecutionComplete(final String executorId,
                                        final String taskId) {
@@ -376,9 +401,10 @@ public final class BatchScheduler implements Scheduler {
 
   /**
    * Action for after task execution is put on hold.
-   * @param executorId       the ID of the executor.
-   * @param taskId           the ID of the task.
-   * @param vertexPutOnHold  the ID of vertex that is put on hold.
+   *
+   * @param executorId      the ID of the executor.
+   * @param taskId          the ID of the task.
+   * @param vertexPutOnHold the ID of vertex that is put on hold.
    */
   private void onTaskExecutionOnHold(final String executorId,
                                      final String taskId,
@@ -406,16 +432,17 @@ public final class BatchScheduler implements Scheduler {
               + MetricCollectionBarrierVertex.class.getSimpleName()));
       // and we will use this vertex to perform metric collection and dynamic optimization.
 
-      pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(
-          new DynamicOptimizationEvent(physicalPlan, metricCollectionBarrierVertex, taskId, executorId));
+      pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(new DynamicOptimizationEvent(
+          planStateManager.getPhysicalPlan(), metricCollectionBarrierVertex, taskId, executorId));
     }
   }
 
   /**
    * Action for after task execution has failed but it's recoverable.
-   * @param executorId    the ID of the executor
-   * @param taskId   the ID of the task
-   * @param failureCause  the cause of failure
+   *
+   * @param executorId   the ID of the executor
+   * @param taskId       the ID of the task
+   * @param failureCause the cause of failure
    */
   private void onTaskExecutionFailedRecoverable(final String executorId,
                                                 final String taskId,
@@ -469,7 +496,7 @@ public final class BatchScheduler implements Scheduler {
 
   private Set<String> getParentTasks(final String childTaskId) {
     final String stageIdOfChildTask = RuntimeIdGenerator.getStageIdFromTaskId(childTaskId);
-    return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
+    return planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
         .stream()
         .flatMap(inStageEdge -> {
           final List<String> tasksOfParentStage = inStageEdge.getSrc().getTaskIds();
@@ -493,7 +520,7 @@ public final class BatchScheduler implements Scheduler {
    * @return the IR dag
    */
   private DAG<IRVertex, RuntimeEdge<IRVertex>> getVertexDagById(final String taskId) {
-    for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
+    for (final Stage stage : planStateManager.getPhysicalPlan().getStageDAG().getVertices()) {
       if (stage.getId().equals(RuntimeIdGenerator.getStageIdFromTaskId(taskId))) {
         return stage.getIRDAG();
       }

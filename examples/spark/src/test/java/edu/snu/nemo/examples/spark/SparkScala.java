@@ -19,6 +19,7 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
+import edu.snu.nemo.examples.spark.policy.DefaultPolicyParallelismFive;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -81,10 +82,10 @@ public final class SparkScala {
   @Test(timeout = TIMEOUT)
   public void testCachingWordCount() throws Exception {
     final String inputFileName = "test_input_wordcount_spark";
-    final String outputFileName1 = "test_output_wordcount_spark1";
-    final String outputFileName2 = "test_output_wordcount_spark2";
-    final String expectedOutputFilename1 = "expected_output_wordcount_spark1";
-    final String expectedOutputFilename2 = "expected_output_wordcount_spark2";
+    final String outputFileName1 = "test_output_wordcount_spark";
+    final String outputFileName2 = "test_output_reversed_wordcount_spark";
+    final String expectedOutputFilename1 = "expected_output_wordcount_spark";
+    final String expectedOutputFilename2 = "expected_output_reversed_wordcount_spark";
     final String inputFilePath = fileBasePath + inputFileName;
     final String outputFilePath1 = fileBasePath + outputFileName1;
     final String outputFilePath2 = fileBasePath + outputFileName2;

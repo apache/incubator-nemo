@@ -13,27 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.examples.beam.policy;
+package edu.snu.nemo.examples.spark.policy;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.compiler.optimizer.policy.LargeShufflePolicy;
+import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
 import edu.snu.nemo.compiler.optimizer.policy.PolicyImpl;
 import org.apache.reef.tang.Injector;
 
 /**
- * A large shuffle policy with fixed parallelism 5 for tests.
+ * A default policy with fixed parallelism 5 for tests.
  */
-public final class LargeShufflePolicyParallelismFive implements Policy {
+public final class DefaultPolicyParallelismFive implements Policy {
   private final Policy policy;
 
-  public LargeShufflePolicyParallelismFive() {
+  public DefaultPolicyParallelismFive() {
     this.policy = new PolicyImpl(
-        PolicyTestUtil.overwriteParallelism(5, LargeShufflePolicy.BUILDER.getCompileTimePasses()),
-        LargeShufflePolicy.BUILDER.getRuntimePasses());
+        PolicyTestUtil.overwriteParallelism(5, DefaultPolicy.BUILDER.getCompileTimePasses()),
+        DefaultPolicy.BUILDER.getRuntimePasses());
   }
 
   @Override

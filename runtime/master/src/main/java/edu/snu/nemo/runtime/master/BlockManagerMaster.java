@@ -18,7 +18,6 @@ package edu.snu.nemo.runtime.master;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.IllegalMessageException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
@@ -26,7 +25,6 @@ import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.state.BlockState;
@@ -54,6 +52,8 @@ import static edu.snu.nemo.runtime.common.state.BlockState.State.NOT_AVAILABLE;
 
 /**
  * Master-side block manager.
+ * This implementation assumes that only a single user application can submit (maybe multiple) plans through
+ * {@link edu.snu.nemo.runtime.master.scheduler.Scheduler}.
  */
 @ThreadSafe
 @DriverSide
@@ -82,6 +82,12 @@ public final class BlockManagerMaster {
     this.lock = new ReentrantReadWriteLock();
   }
 
+  /**
+   * Initialize the state of the blocks which will be generated from a newly submitted Plan.
+   * TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
+   *
+   * @param physicalPlan the new physical plan.
+   */
   public void initialize(final PhysicalPlan physicalPlan) {
     final DAG<Stage, StageEdge> stageDAG = physicalPlan.getStageDAG();
     stageDAG.topologicalDo(stage -> {
@@ -93,20 +99,9 @@ public final class BlockManagerMaster {
         final int srcParallelism = taskIdsForStage.size();
         IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
           final String blockId = RuntimeIdGenerator.generateBlockId(stageEdge.getId(), srcTaskIdx);
-          initializeState(blockId, taskIdsForStage.get(srcTaskIdx));
-        });
-      });
-
-      // Initialize states for blocks of stage internal edges
-      taskIdsForStage.forEach(taskId -> {
-        final DAG<IRVertex, RuntimeEdge<IRVertex>> taskInternalDag = stage.getIRDAG();
-        taskInternalDag.getVertices().forEach(task -> {
-          final List<RuntimeEdge<IRVertex>> internalOutgoingEdges = taskInternalDag.getOutgoingEdgesOf(task);
-          internalOutgoingEdges.forEach(taskRuntimeEdge -> {
-            final int srcTaskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
-            final String blockId = RuntimeIdGenerator.generateBlockId(taskRuntimeEdge.getId(), srcTaskIdx);
-            initializeState(blockId, taskId);
-          });
+          if (!blockIdToMetadata.containsKey(blockId)) {
+            initializeState(blockId, taskIdsForStage.get(srcTaskIdx));
+          } // The Plan can be appended. Ignore the already initialized edges.
         });
       });
     });
@@ -115,7 +110,7 @@ public final class BlockManagerMaster {
   /**
    * Initializes the states of a block which will be produced by producer task(s).
    *
-   * @param blockId             the id of the block to initialize.
+   * @param blockId        the id of the block to initialize.
    * @param producerTaskId the id of the producer task.
    */
   @VisibleForTesting
@@ -222,6 +217,7 @@ public final class BlockManagerMaster {
 
   /**
    * To be called when a potential producer task is scheduled.
+   *
    * @param scheduledTaskId the ID of the scheduled task.
    */
   public void onProducerTaskScheduled(final String scheduledTaskId) {
@@ -473,6 +469,7 @@ public final class BlockManagerMaster {
 
   /**
    * Return the corresponding {@link BlockState.State} for the specified {@link ControlMessage.BlockStateFromExecutor}.
+   *
    * @param state {@link ControlMessage.BlockStateFromExecutor}
    * @return the corresponding {@link BlockState.State}
    */
@@ -491,6 +488,7 @@ public final class BlockManagerMaster {
 
   /**
    * Return the corresponding {@link ControlMessage.BlockStateFromExecutor} for the specified {@link BlockState.State}.
+   *
    * @param state {@link BlockState.State}
    * @return the corresponding {@link ControlMessage.BlockStateFromExecutor}
    */
@@ -506,5 +504,4 @@ public final class BlockManagerMaster {
         throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
     }
   }
-
 }

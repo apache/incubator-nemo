@@ -84,15 +84,8 @@ public final class TaskRetryTest {
     // Get executorRegistry
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
 
-    // Get scheduler
-    injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
-    injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
-    injector.bindVolatileInstance(SchedulingConstraintRegistry.class, mock(SchedulingConstraintRegistry.class));
-    injector.bindVolatileInstance(BlockManagerMaster.class, mock(BlockManagerMaster.class));
-    scheduler = injector.getInstance(Scheduler.class);
-
     // Get PlanStateManager
-    planStateManager = runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined);
+    planStateManager = runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, injector);
   }
 
   @Test(timeout=7000)
@@ -210,11 +203,21 @@ public final class TaskRetryTest {
         .collect(Collectors.toList());
   }
 
-  private PlanStateManager runPhysicalPlan(final TestPlanGenerator.PlanType planType) throws Exception {
+  private PlanStateManager runPhysicalPlan(final TestPlanGenerator.PlanType planType,
+                                           final Injector injector) throws Exception {
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PhysicalPlan plan = TestPlanGenerator.generatePhysicalPlan(planType, false);
-    final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
-    scheduler.schedulePlan(plan, planStateManager);
+
+    // Get scheduler
+    injector.bindVolatileInstance(MetricMessageHandler.class, metricMessageHandler);
+    injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
+    injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
+    injector.bindVolatileInstance(SchedulingConstraintRegistry.class, mock(SchedulingConstraintRegistry.class));
+    injector.bindVolatileInstance(BlockManagerMaster.class, mock(BlockManagerMaster.class));
+    injector.bindVolatileInstance(PlanStateManager.class, planStateManager);
+    scheduler = injector.getInstance(Scheduler.class);
+
+    scheduler.schedulePlan(plan, MAX_SCHEDULE_ATTEMPT);
     return planStateManager;
   }
 }

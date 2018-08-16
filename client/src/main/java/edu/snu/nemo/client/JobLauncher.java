@@ -68,6 +68,7 @@ public final class JobLauncher {
 
   private static CountDownLatch driverReadyLatch;
   private static CountDownLatch jobDoneLatch;
+  private static String jobId;
   private static String serializedDAG;
   private static final List<?> COLLECTED_DATA = new ArrayList<>();
 
@@ -88,7 +89,8 @@ public final class JobLauncher {
 
     // Registers actions for launching the DAG.
     driverRPCServer
-        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> { })
+        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> {
+        })
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverReady, event -> driverReadyLatch.countDown())
         .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
         .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
@@ -185,7 +187,10 @@ public final class JobLauncher {
     jobDoneLatch = new CountDownLatch(1);
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
         .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
-        .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
+        .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder()
+            .setDag(serializedDAG)
+            .setJobId(jobId)
+            .build())
         .build());
 
     // Wait for the ExecutionDone message from the driver
@@ -269,7 +274,7 @@ public final class JobLauncher {
    */
   private static Configuration getDriverConf(final Configuration jobConf) throws InjectionException {
     final Injector injector = TANG.newInjector(jobConf);
-    final String jobId = injector.getNamedInstance(JobConf.JobId.class);
+    jobId = injector.getNamedInstance(JobConf.JobId.class);
     final int driverMemory = injector.getNamedInstance(JobConf.DriverMemMb.class);
     return DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(NemoDriver.class))
@@ -346,8 +351,8 @@ public final class JobLauncher {
   /**
    * Read json file and return its contents as configuration parameter.
    *
-   * @param jobConf job configuration to get json path.
-   * @param pathParameter named parameter represents path to the json file, or an empty string
+   * @param jobConf           job configuration to get json path.
+   * @param pathParameter     named parameter represents path to the json file, or an empty string
    * @param contentsParameter named parameter represents contents of the file
    * @return configuration with contents of the file, or an empty string as value for {@code contentsParameter}
    * @throws InjectionException exception while injection.

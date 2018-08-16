@@ -49,16 +49,6 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.StageEdge}.
-   *
-   * @param irEdgeId .
-   * @return the generated ID
-   */
-  public static String generateStageEdgeId(final String irEdgeId) {
-    return "SEdge-" + irEdgeId;
-  }
-
-  /**
    * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.Stage}.
    * @param stageId stage ID in numeric form.
    * @return the generated ID

@@ -105,7 +105,7 @@ public final class NemoDriver {
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message ->
-        startSchedulingUserDAG(message.getLaunchDAG().getDag()));
+        startSchedulingUserDAG(message.getLaunchDAG().getDag(), message.getLaunchDAG().getJobId()));
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.DriverShutdown, message -> shutdown());
     // Send DriverStarted message to the client
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
@@ -168,11 +168,15 @@ public final class NemoDriver {
   }
 
   /**
-   * Start user DAG.
+   * Start to schedule a submitted user DAG.
+   *
+   * @param dagString  the serialized DAG to schedule.
+   * @param jobIdOfDag the job ID of the DAG. // TODO check.
    */
-  public void startSchedulingUserDAG(final String dagString) {
+  private void startSchedulingUserDAG(final String dagString,
+                                      final String jobIdOfDag) {
     runnerThread.execute(() -> {
-      userApplicationRunner.run(dagString);
+      userApplicationRunner.run(dagString, jobIdOfDag);
       // send driver notification that user application is done.
       clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
           .setType(ControlMessage.DriverToClientMessageType.ExecutionDone).build());

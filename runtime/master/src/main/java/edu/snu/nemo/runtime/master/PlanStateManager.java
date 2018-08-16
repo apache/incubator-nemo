@@ -44,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
+import javax.inject.Inject;
 
 import static edu.snu.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 
@@ -58,8 +59,10 @@ import static edu.snu.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 @ThreadSafe
 public final class PlanStateManager {
   private static final Logger LOG = LoggerFactory.getLogger(PlanStateManager.class.getName());
-  private final String planId;
-  private final int maxScheduleAttempt;
+  private String jobId;
+  private String planId;
+  private int maxScheduleAttempt;
+  private boolean initialized;
 
   /**
    * The data structures below track the execution states of this plan.
@@ -77,7 +80,7 @@ public final class PlanStateManager {
   /**
    * Represents the plan to manage.
    */
-  private final PhysicalPlan physicalPlan;
+  private PhysicalPlan physicalPlan;
 
   /**
    * A lock and condition to check whether the plan is finished or not.
@@ -89,16 +92,16 @@ public final class PlanStateManager {
    * For metrics.
    */
   private final MetricMessageHandler metricMessageHandler;
-
   private MetricStore metricStore;
 
-  public PlanStateManager(final PhysicalPlan physicalPlan,
-                          final MetricMessageHandler metricMessageHandler,
-                          final int maxScheduleAttempt) {
-    this.planId = physicalPlan.getId();
-    this.physicalPlan = physicalPlan;
+  /**
+   * Constructor.
+   *
+   * @param metricMessageHandler the metric handler for the plan.
+   */
+  @Inject
+  private PlanStateManager(final MetricMessageHandler metricMessageHandler) {
     this.metricMessageHandler = metricMessageHandler;
-    this.maxScheduleAttempt = maxScheduleAttempt;
     this.planState = new PlanState();
     this.idToStageStates = new HashMap<>();
     this.idToTaskStates = new HashMap<>();
@@ -106,24 +109,50 @@ public final class PlanStateManager {
     this.finishLock = new ReentrantLock();
     this.planFinishedCondition = finishLock.newCondition();
     this.metricStore = MetricStore.getStore();
+    this.initialized = false;
+  }
 
-    metricStore.getOrCreateMetric(JobMetric.class, planId).setStageDAG(physicalPlan.getStageDAG());
-    metricStore.triggerBroadcast(JobMetric.class, planId);
+  /**
+   * Update the physical plan and maximum attempt.
+   *
+   * @param physicalPlanToUpdate    the physical plan to manage.
+   * @param maxScheduleAttemptToSet the maximum number of times this plan/sub-part of the plan should be attempted.
+   */
+  public synchronized void updatePlan(final PhysicalPlan physicalPlanToUpdate,
+                                      final int maxScheduleAttemptToSet) {
+    if (!initialized) {
+      // First scheduling.
+      this.jobId = physicalPlanToUpdate.getJobId();
+      this.initialized = true;
+    } else if (!physicalPlanToUpdate.getJobId().equals(jobId)) {
+      throw new RuntimeException("Plans from different job is submitted. "
+          + PlanStateManager.class + " is designed to handle plans from a single job!");
+    }
+    this.metricStore.getOrCreateMetric(JobMetric.class, planId).setStageDAG(physicalPlanToUpdate.getStageDAG());
+    this.metricStore.triggerBroadcast(JobMetric.class, planId);
+    this.physicalPlan = physicalPlanToUpdate;
+    this.planId = physicalPlanToUpdate.getPlanId();
+    this.maxScheduleAttempt = maxScheduleAttemptToSet;
     initializeComputationStates();
   }
 
   /**
    * Initializes the states for the plan/stages/tasks for this plan.
+   * TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
    */
   private void initializeComputationStates() {
     onPlanStateChanged(PlanState.State.EXECUTING);
 
     // Initialize the states for the plan down to task-level.
     physicalPlan.getStageDAG().topologicalDo(stage -> {
-      idToStageStates.put(stage.getId(), new StageState());
+      if (!idToStageStates.containsKey(stage.getId())) {
+        idToStageStates.put(stage.getId(), new StageState());
+      }
       stage.getTaskIds().forEach(taskId -> {
-        idToTaskStates.put(taskId, new TaskState());
-        taskIdToCurrentAttempt.put(taskId, 1);
+        if (!idToTaskStates.containsKey(taskId)) {
+          idToTaskStates.put(taskId, new TaskState());
+          taskIdToCurrentAttempt.put(taskId, 1);
+        }
       });
     });
   }
@@ -137,8 +166,8 @@ public final class PlanStateManager {
    * and the call to this method is initiated in {@link edu.snu.nemo.runtime.master.scheduler.BatchScheduler}
    * when the message/event is received.
    *
-   * @param taskId  the ID of the task.
-   * @param newTaskState     the new state of the task.
+   * @param taskId       the ID of the task.
+   * @param newTaskState the new state of the task.
    */
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
     // Change task state
@@ -210,7 +239,8 @@ public final class PlanStateManager {
   /**
    * (PRIVATE METHOD)
    * Updates the state of a stage.
-   * @param stageId of the stage.
+   *
+   * @param stageId       of the stage.
    * @param newStageState of the stage.
    */
   private void onStageStateChanged(final String stageId, final StageState.State newStageState) {
@@ -236,6 +266,7 @@ public final class PlanStateManager {
   /**
    * (PRIVATE METHOD)
    * Updates the state of the plan.
+   *
    * @param newState of the plan.
    */
   private void onPlanStateChanged(final PlanState.State newState) {
@@ -266,6 +297,7 @@ public final class PlanStateManager {
 
   /**
    * Wait for this plan to be finished and return the final state.
+   *
    * @return the final state of this plan.
    */
   public PlanState.State waitUntilFinish() {
@@ -286,8 +318,9 @@ public final class PlanStateManager {
   /**
    * Wait for this plan to be finished and return the final state.
    * It wait for at most the given time.
+   *
    * @param timeout of waiting.
-   * @param unit of the timeout.
+   * @param unit    of the timeout.
    * @return the final state of this plan.
    */
   public PlanState.State waitUntilFinish(final long timeout, final TimeUnit unit) {
@@ -307,26 +340,47 @@ public final class PlanStateManager {
     return getPlanState();
   }
 
+  /**
+   * @return whether the execution for the plan is done or not.
+   */
   public synchronized boolean isPlanDone() {
     return (getPlanState() == PlanState.State.COMPLETE || getPlanState() == PlanState.State.FAILED);
   }
 
+  /**
+   * @return the ID of the plan.
+   */
   public synchronized String getPlanId() {
     return planId;
   }
 
+  /**
+   * @return the state of the plan.
+   */
   public synchronized PlanState.State getPlanState() {
     return (PlanState.State) planState.getStateMachine().getCurrentState();
   }
 
+  /**
+   * @param stageId the stage ID to query.
+   * @return the state of the stage.
+   */
   public synchronized StageState.State getStageState(final String stageId) {
     return (StageState.State) idToStageStates.get(stageId).getStateMachine().getCurrentState();
   }
 
+  /**
+   * @param taskId the ID of the task to query.
+   * @return the state of the task.
+   */
   public synchronized TaskState.State getTaskState(final String taskId) {
     return (TaskState.State) idToTaskStates.get(taskId).getStateMachine().getCurrentState();
   }
 
+  /**
+   * @param taskId the ID of a task to query.
+   * @return the number of attempt of the task.
+   */
   public synchronized int getTaskAttempt(final String taskId) {
     if (taskIdToCurrentAttempt.containsKey(taskId)) {
       return taskIdToCurrentAttempt.get(taskId);
@@ -341,9 +395,31 @@ public final class PlanStateManager {
   }
 
   /**
+   * @return the physical plan.
+   */
+  public synchronized PhysicalPlan getPhysicalPlan() {
+    return physicalPlan;
+  }
+
+  /**
+   * @return the maximum number of task scheduling.
+   */
+  public int getMaxScheduleAttempt() {
+    return maxScheduleAttempt;
+  }
+
+  /**
+   * @return whether any plan has been submitted and initialized.
+   */
+  public synchronized boolean isInitialized() {
+    return initialized;
+  }
+
+  /**
    * Stores JSON representation of plan state into a file.
+   *
    * @param directory the directory which JSON representation is saved to
-   * @param suffix suffix for file name
+   * @param suffix    suffix for file name
    */
   public void storeJSON(final String directory, final String suffix) {
     if (directory.equals(EMPTY_DAG_DIRECTORY)) {
@@ -362,7 +438,7 @@ public final class PlanStateManager {
     }
   }
 
-  public String toStringWithPhysicalPlan() {
+  private String toStringWithPhysicalPlan() {
     final StringBuilder sb = new StringBuilder("{");
     sb.append("\"dag\": ").append(physicalPlan.getStageDAG().toString()).append(", ");
     sb.append("\"planState\": ").append(toString()).append("}");

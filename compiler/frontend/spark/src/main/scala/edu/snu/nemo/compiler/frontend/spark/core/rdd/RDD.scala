@@ -24,7 +24,7 @@ import edu.snu.nemo.common.ir.edge.IREdge
 import edu.snu.nemo.common.ir.edge.executionproperty._
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
 import edu.snu.nemo.common.ir.vertex.executionproperty.GhostProperty
-import edu.snu.nemo.common.ir.vertex.transform.RelayTransform
+import edu.snu.nemo.common.ir.vertex.transform.DummyTransform
 import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
 import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
@@ -280,7 +280,7 @@ final class RDD[T: ClassTag] protected[rdd] (
       builder.removeVertex(persistedGhostVertex.get)
     }
 
-    val ghostVertex = new OperatorVertex(new RelayTransform[T]())
+    val ghostVertex = new OperatorVertex(new DummyTransform[T]())
     ghostVertex.setProperty(GhostProperty.of())
     builder.addVertex(ghostVertex, loopVertexStack)
 

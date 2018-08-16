@@ -26,19 +26,23 @@ import java.util.Map;
  * A job's physical plan, to be executed by the Runtime.
  */
 public final class PhysicalPlan implements Serializable {
-  private final String id;
+  private final String jobId;
+  private final String planId;
   private final DAG<Stage, StageEdge> stageDAG;
   private final Map<String, IRVertex> idToIRVertex;
 
   /**
    * Constructor.
    *
-   * @param id              ID of the plan.
-   * @param stageDAG        the DAG of stages.
+   * @param jobId    the job ID.
+   * @param planId   the ID of the plan.
+   * @param stageDAG the DAG of stages.
    */
-  public PhysicalPlan(final String id,
+  public PhysicalPlan(final String jobId,
+                      final String planId,
                       final DAG<Stage, StageEdge> stageDAG) {
-    this.id = id;
+    this.jobId = jobId;
+    this.planId = planId;
     this.stageDAG = stageDAG;
 
     idToIRVertex = new HashMap<>();
@@ -50,10 +54,17 @@ public final class PhysicalPlan implements Serializable {
   }
 
   /**
-   * @return id of the plan.
+   * @return the job ID.
    */
-  public String getId() {
-    return id;
+  public String getJobId() {
+    return jobId;
+  }
+
+  /**
+   * @return the ID of the plan.
+   */
+  public String getPlanId() {
+    return planId;
   }
 
   /**

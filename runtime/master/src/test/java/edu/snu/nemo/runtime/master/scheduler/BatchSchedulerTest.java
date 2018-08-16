@@ -62,6 +62,7 @@ import static org.mockito.Mockito.mock;
 public final class BatchSchedulerTest {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSchedulerTest.class.getName());
   private Scheduler scheduler;
+  private PlanStateManager planStateManager;
   private ExecutorRegistry executorRegistry;
   private final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
@@ -80,6 +81,8 @@ public final class BatchSchedulerTest {
     injector.bindVolatileInstance(BlockManagerMaster.class, mock(BlockManagerMaster.class));
     injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
     injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
+    injector.bindVolatileInstance(MetricMessageHandler.class, metricMessageHandler);
+    planStateManager = injector.getInstance(PlanStateManager.class);
     scheduler = injector.getInstance(BatchScheduler.class);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
@@ -134,8 +137,7 @@ public final class BatchSchedulerTest {
   }
 
   private void scheduleAndCheckPlanTermination(final PhysicalPlan plan) throws InjectionException {
-    final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, 1);
-    scheduler.schedulePlan(plan, planStateManager);
+    scheduler.schedulePlan(plan, 1);
 
     // For each ScheduleGroup, test if the tasks of the next ScheduleGroup are scheduled
     // after the stages of each ScheduleGroup are made "complete".

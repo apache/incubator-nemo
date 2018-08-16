@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.source;
+package edu.snu.nemo.common.ir.vertex;
 
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.vertex.SourceVertex;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,8 +25,9 @@ import java.util.List;
 /**
  * Bounded source vertex for cached data.
  * It does not have actual data but just wraps the cached input data.
+ * @param <T> the type of data to emit.
  */
-public final class SparkCachedSourceDummyVertex<T> extends SourceVertex<T> {
+public final class CachedSourceVertex<T> extends SourceVertex<T> {
   private List<Readable<T>> readables;
 
   /**
@@ -35,7 +35,7 @@ public final class SparkCachedSourceDummyVertex<T> extends SourceVertex<T> {
    *
    * @param numPartitions the number of partitions.
    */
-  public SparkCachedSourceDummyVertex(final int numPartitions) {
+  public CachedSourceVertex(final int numPartitions) {
     this.readables = new ArrayList<>();
     for (int i = 0; i < numPartitions; i++) {
       readables.add(new CachedReadable());
@@ -47,13 +47,13 @@ public final class SparkCachedSourceDummyVertex<T> extends SourceVertex<T> {
    *
    * @param readables the list of Readables to set.
    */
-  private SparkCachedSourceDummyVertex(final List<Readable<T>> readables) {
+  private CachedSourceVertex(final List<Readable<T>> readables) {
     this.readables = readables;
   }
 
   @Override
-  public SparkCachedSourceDummyVertex getClone() {
-    final SparkCachedSourceDummyVertex that = new SparkCachedSourceDummyVertex<>(this.readables);
+  public CachedSourceVertex getClone() {
+    final CachedSourceVertex that = new CachedSourceVertex<>(this.readables);
     this.copyExecutionPropertiesTo(that);
     return that;
   }

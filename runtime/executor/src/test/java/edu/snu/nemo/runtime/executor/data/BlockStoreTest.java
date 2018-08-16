@@ -17,6 +17,7 @@ package edu.snu.nemo.runtime.executor.data;
 
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.coder.*;
+import edu.snu.nemo.common.ir.IdManager;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
@@ -121,7 +122,7 @@ public final class BlockStoreTest {
     IntStream.range(0, NUM_READ_VERTICES).forEach(number -> readTaskIdList.add("Read_IR_vertex"));
 
     // Generates the ids and the data of the blocks to be used.
-    final String shuffleEdge = RuntimeIdGenerator.generateStageEdgeId("shuffle_edge");
+    final String shuffleEdge = IdManager.newEdgeId();
     IntStream.range(0, NUM_WRITE_VERTICES).forEach(writeTaskIdx -> {
       // Create a block for each writer task.
       final String blockId = RuntimeIdGenerator.generateBlockId(shuffleEdge, writeTaskIdx);
@@ -143,7 +144,7 @@ public final class BlockStoreTest {
     // Following part is for the concurrent read test.
     final String writeTaskId = "conc_write_IR_vertex";
     final List<String> concReadTaskIdList = new ArrayList<>(NUM_CONC_READ_TASKS);
-    final String concEdge = RuntimeIdGenerator.generateStageEdgeId("conc_read_edge");
+    final String concEdge = IdManager.newEdgeId();
 
     // Generates the ids and the data to be used.
     concBlockId = RuntimeIdGenerator.generateBlockId(concEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1);
@@ -165,7 +166,7 @@ public final class BlockStoreTest {
     // Generates the ids of the tasks to be used.
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(number -> writeHashTaskIdList.add("hash_write_IR_vertex"));
     IntStream.range(0, NUM_READ_HASH_TASKS).forEach(number -> readHashTaskIdList.add("hash_read_IR_vertex"));
-    final String hashEdge = RuntimeIdGenerator.generateStageEdgeId("hash_edge");
+    final String hashEdge = IdManager.newEdgeId();
 
     // Generates the ids and the data of the blocks to be used.
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writeTaskIdx -> {
