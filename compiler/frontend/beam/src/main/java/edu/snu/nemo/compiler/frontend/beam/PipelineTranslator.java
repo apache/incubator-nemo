@@ -40,6 +40,7 @@ import java.lang.annotation.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 import java.util.function.BiFunction;
@@ -183,10 +184,34 @@ public final class PipelineTranslator
     transformVertex.getDAG().topologicalDo(ctx::translate);
   }
 
+  @CompositeTransformTranslator({Combine.Globally.class, Combine.PerKey.class, Combine.GroupedValues.class})
+  private static void combineTranslator(final TranslationContext ctx,
+                                        final CompositeTransformVertex transformVertex,
+                                        final PTransform<?, ?> transform) {
+    final List<TransformVertex> topologicalOrdering = transformVertex.getDAG().getTopologicalSort();
+    final TransformVertex first = topologicalOrdering.get(0);
+    final TransformVertex last = topologicalOrdering.get(topologicalOrdering.size() - 1);
+    if (first.getNode().getTransform() instanceof GroupByKey) {
+      final TranslationContext oneToOneEdgeContext = new TranslationContext(ctx,
+          OneToOneCommunicationPatternSelector.INSTANCE);
+      transformVertex.getDAG().topologicalDo(oneToOneEdgeContext::translate);
+
+      final IRVertex groupByKey = new OperatorVertex(new GroupByKeyTransform());
+      ctx.addVertex(groupByKey);
+      last.getNode().getOutputs().values().forEach(outputFromCombiner
+          -> ctx.addEdgeTo(groupByKey, outputFromCombiner, false));
+      first.getNode().getOutputs().values()
+          .forEach(outputFromGroupByKey -> ctx.registerMainOutputFrom(groupByKey, outputFromGroupByKey));
+      topologicalOrdering.stream().skip(1).forEach(ctx::translate);
+    } else {
+      transformVertex.getDAG().topologicalDo(ctx::translate);
+    }
+  }
+
   @Override
   public DAG<IRVertex, IREdge> apply(final CompositeTransformVertex pipeline, final PipelineOptions pipelineOptions) {
     final TranslationContext ctx = new TranslationContext(pipeline, primitiveTransformToTranslator,
-        compositeTransformToTranslator, pipelineOptions);
+        compositeTransformToTranslator, DefaultCommunicationPatternSelector.INSTANCE, pipelineOptions);
     ctx.translate(pipeline);
     return ctx.builder.build();
   }
@@ -213,23 +238,45 @@ public final class PipelineTranslator
    * Ctx.
    */
   private static final class TranslationContext {
-    private final PipelineOptions pipelineOptions;
     private final CompositeTransformVertex pipeline;
-    private final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
-    private final Map<PValue, IRVertex> pValueToProducer = new HashMap<>();
-    private final Map<PValue, TupleTag<?>> pValueToTag = new HashMap<>();
-    private final Stack<LoopVertex> loopVertexStack = new Stack<>();
+    private final PipelineOptions pipelineOptions;
+    private final DAGBuilder<IRVertex, IREdge> builder;
+    private final Map<PValue, IRVertex> pValueToProducer;
+    private final Map<PValue, TupleTag<?>> pValueToTag;
+    private final Stack<LoopVertex> loopVertexStack;
+    private final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> communicationPatternSelector;
+
     private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator;
     private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator;
 
     private TranslationContext(final CompositeTransformVertex pipeline,
                                final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator,
                                final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator,
+                               final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> selector,
                                final PipelineOptions pipelineOptions) {
       this.pipeline = pipeline;
+      this.builder = new DAGBuilder<>();
+      this.pValueToProducer = new HashMap<>();
+      this.pValueToTag = new HashMap<>();
+      this.loopVertexStack = new Stack<>();
       this.primitiveTransformToTranslator = primitiveTransformToTranslator;
       this.compositeTransformToTranslator = compositeTransformToTranslator;
+      this.communicationPatternSelector = selector;
       this.pipelineOptions = pipelineOptions;
+    }
+
+    private TranslationContext(final TranslationContext ctx,
+                               final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> selector) {
+      this.pipeline = ctx.pipeline;
+      this.pipelineOptions = ctx.pipelineOptions;
+      this.builder = ctx.builder;
+      this.pValueToProducer = ctx.pValueToProducer;
+      this.pValueToTag = ctx.pValueToTag;
+      this.loopVertexStack = ctx.loopVertexStack;
+      this.primitiveTransformToTranslator = ctx.primitiveTransformToTranslator;
+      this.compositeTransformToTranslator = ctx.compositeTransformToTranslator;
+
+      this.communicationPatternSelector = selector;
     }
 
     private void translate(final TransformVertex transformVertex) {
@@ -271,10 +318,7 @@ public final class PipelineTranslator
       builder.addVertex(vertex, loopVertexStack);
     }
 
-    private void addEdgeTo(final IRVertex dst,
-                           final PValue input,
-                           final boolean isSideInput,
-                           final CommunicationPatternProperty.Value selectedCommunicationPattern) {
+    private void addEdgeTo(final IRVertex dst, final PValue input, final boolean isSideInput) {
       final IRVertex src = pValueToProducer.get(input);
       if (src == null) {
         try {
@@ -285,11 +329,10 @@ public final class PipelineTranslator
               + "and the corresponding PTransform was not found", input));
         }
       }
-      final CommunicationPatternProperty.Value communicationPattern = selectedCommunicationPattern == null
-          ? selectCommunicationPattern(src, dst) : selectedCommunicationPattern;
+      final CommunicationPatternProperty.Value communicationPattern = communicationPatternSelector.apply(src, dst);
       if (communicationPattern == null) {
-        throw new RuntimeException(String.format("Cannot determine communication pattern "
-            + "for an edge from %s to %s", src, dst));
+        throw new RuntimeException(String.format("%s have failed to determine communication pattern "
+            + "for an edge from %s to %s", communicationPatternSelector, src, dst));
       }
       final IREdge edge = new IREdge(communicationPattern, src, dst, isSideInput);
       final Coder<?> coder;
@@ -311,10 +354,6 @@ public final class PipelineTranslator
       }
       edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
       builder.connectVertices(edge);
-    }
-
-    private void addEdgeTo(final IRVertex dst, final PValue input, final boolean isSideInput) {
-      addEdgeTo(dst, input, isSideInput, null);
     }
 
     private void registerMainOutputFrom(final IRVertex irVertex, final PValue output) {
@@ -355,8 +394,18 @@ public final class PipelineTranslator
         throw new UnsupportedOperationException(String.format("Unsupported viewFn %s", viewFn.getClass()));
       }
     }
+  }
 
-    private CommunicationPatternProperty.Value selectCommunicationPattern(final IRVertex src, final IRVertex dst) {
+  /**
+   * Tr.
+   */
+  private static final class DefaultCommunicationPatternSelector
+      implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
+
+    private static final DefaultCommunicationPatternSelector INSTANCE = new DefaultCommunicationPatternSelector();
+
+    @Override
+    public CommunicationPatternProperty.Value apply(final IRVertex src, final IRVertex dst) {
       final Class<?> constructUnionTableFn;
       try {
         constructUnionTableFn = Class.forName("org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");
@@ -380,6 +429,18 @@ public final class PipelineTranslator
       if (dstTransform instanceof CreateViewTransform) {
         return CommunicationPatternProperty.Value.BroadCast;
       }
+      return CommunicationPatternProperty.Value.OneToOne;
+    }
+  }
+
+  /**
+   * Tr.
+   */
+  private static final class OneToOneCommunicationPatternSelector
+      implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
+    private static final OneToOneCommunicationPatternSelector INSTANCE = new OneToOneCommunicationPatternSelector();
+    @Override
+    public CommunicationPatternProperty.Value apply(final IRVertex src, final IRVertex dst) {
       return CommunicationPatternProperty.Value.OneToOne;
     }
   }
