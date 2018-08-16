@@ -18,9 +18,14 @@ package edu.snu.nemo.compiler.optimizer.util;
 import java.util.function.IntPredicate;
 
 /**
- * Class to hold the utility methods for compiler optimizer
+ * Class to hold the utility methods for compiler optimizer.
  */
-public class Util {
+public final class Util {
+
+    /**
+     * Private constructor for utility class.
+     */
+    private Util() { }
 
     /**
      * Check the equality of two intPredicates.
@@ -43,5 +48,3 @@ public class Util {
       return true;
     }
 }
-
-    
