@@ -45,8 +45,8 @@ public final class SchedulingConstraintRegistry {
     registerSchedulingConstraint(containerTypeAwareSchedulingConstraint);
     registerSchedulingConstraint(freeSlotSchedulingConstraint);
     registerSchedulingConstraint(sourceLocationAwareSchedulingConstraint);
-    registerSchedulingConstraint(nodeShareSchedulingConstraint);
     registerSchedulingConstraint(skewnessAwareSchedulingConstraint);
+    registerSchedulingConstraint(nodeShareSchedulingConstraint);
   }
 
   /**

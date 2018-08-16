@@ -54,7 +54,7 @@ final class VertexHarness {
     if (children.size() != isSideInputs.size() || children.size() != isAdditionalTagOutputs.size()) {
       throw new IllegalStateException(irVertex.toString());
     }
-    final Map<String, String> taggedOutputMap = context.getAdditionalTagOutputs();
+    final Map<String, String> taggedOutputMap = context.getTagToAdditionalChildren();
     final List<VertexHarness> sides = new ArrayList<>();
     final List<VertexHarness> nonSides = new ArrayList<>();
     final Map<String, VertexHarness> tagged = new HashMap<>();

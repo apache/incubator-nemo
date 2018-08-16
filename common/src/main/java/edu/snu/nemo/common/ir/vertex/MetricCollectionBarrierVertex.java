@@ -41,7 +41,7 @@ public final class MetricCollectionBarrierVertex<K, V> extends IRVertex {
    * Constructor for dynamic optimization vertex.
    */
   public MetricCollectionBarrierVertex() {
-    this.metricData = null;
+    this.metricData = new HashMap<>();
     this.blockIds = new ArrayList<>();
     this.dagSnapshot = null;
   }

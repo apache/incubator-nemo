@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.data;
+package edu.snu.nemo.common;
+
+import java.util.Arrays;
 
 /**
  * Descriptor for hash range.
@@ -109,22 +111,23 @@ public final class HashRange implements KeyRange<Integer> {
       return false;
     }
     final HashRange hashRange = (HashRange) o;
-    if (rangeBeginInclusive != hashRange.rangeBeginInclusive) {
+    if (rangeBeginInclusive != hashRange.rangeBeginInclusive
+        || rangeEndExclusive != hashRange.rangeEndExclusive
+        || isSkewed != hashRange.isSkewed) {
       return false;
     }
-    return rangeEndExclusive == hashRange.rangeEndExclusive;
+    return true;
   }
 
   @Override
   public int hashCode() {
-    int result = rangeBeginInclusive;
-    result = 31 * result + rangeEndExclusive;
-    return result;
+    return Arrays.hashCode(new Object[] {
+        rangeBeginInclusive,
+        rangeEndExclusive,
+        isSkewed,
+    });
   }
 
-  public void setAsSkewed() {
-    isSkewed = true;
-  }
   public boolean isSkewed() {
     return isSkewed;
   }

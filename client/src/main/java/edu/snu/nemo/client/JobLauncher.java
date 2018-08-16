@@ -196,6 +196,7 @@ public final class JobLauncher {
       LOG.warn("Interrupted: " + e);
       // clean up state...
       Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
     }
     LOG.info("DAG execution done");
   }
@@ -314,6 +315,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerNumListeningThreads.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerNumWorkingThreads.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportClientNumThreads.class);
+    cl.registerShortNameOfClass(JobConf.MaxNumDownloadsForARuntimeEdge.class);
     cl.processCommandLine(args);
     return confBuilder.build();
   }

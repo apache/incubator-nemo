@@ -13,24 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.beam;
-
-import edu.snu.nemo.common.KeyExtractor;
-import org.apache.beam.sdk.values.KV;
+package edu.snu.nemo.runtime.master;
 
 /**
- * Extracts the key from a KV element.
- * For non-KV elements, the elements themselves become the key.
+ * Handler for aggregating data used in dynamic optimization.
  */
-final class BeamKeyExtractor implements KeyExtractor {
-  @Override
-  public Object extractKey(final Object element) {
-    if (element instanceof KV) {
-      // Handle null keys, since Beam allows KV with null keys.
-      final Object key = ((KV) element).getKey();
-      return key == null ? 0 : key;
-    } else {
-      return element;
-    }
-  }
+public interface DynOptDataHandler {
+  /**
+   * Updates data for dynamic optimization sent from Tasks.
+   * @param dynOptData data used for dynamic optimization.
+   */
+  void updateDynOptData(Object dynOptData);
+
+  /**
+   * Returns aggregated data for dynamic optimization.
+   * @return aggregated data used for dynamic optimization.
+   */
+  Object getDynOptData();
 }
