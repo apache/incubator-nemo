@@ -48,6 +48,7 @@ import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.inject.Inject;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -202,6 +203,7 @@ public final class RuntimeMaster {
         throw new RuntimeException("Failed to stop rest api server.");
       }
 
+      metricStore.dumpAllMetricToFile(Paths.get(dagDirectory, "metric.json").toString());
     });
 
     // Do not shutdown runtimeMasterThread. We need it to clean things up.
