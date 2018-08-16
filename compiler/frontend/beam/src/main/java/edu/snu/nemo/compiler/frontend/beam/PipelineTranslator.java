@@ -108,7 +108,21 @@ public final class PipelineTranslator
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
-  @PrimitiveTransformTranslator({ParDo.SingleOutput.class, ParDo.MultiOutput.class})
+  @PrimitiveTransformTranslator(ParDo.SingleOutput.class)
+  private static void parDoSingleOutputTranslator(final TranslationContext ctx,
+                                                  final PrimitiveTransformVertex transformVertex,
+                                                  final ParDo.SingleOutput<?, ?> transform) {
+    final DoTransform doTransform = new DoTransform(transform.getFn(), ctx.pipelineOptions);
+    final IRVertex vertex = new OperatorVertex(doTransform);
+    ctx.addVertex(vertex);
+    transformVertex.getNode().getInputs().values().stream()
+        .filter(input -> !transform.getAdditionalInputs().values().contains(input))
+        .forEach(input -> ctx.addEdgeTo(vertex, input, false));
+    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input, true));
+    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
+  }
+
+  @PrimitiveTransformTranslator(ParDo.MultiOutput.class)
   private static void parDoMultiOutputTranslator(final TranslationContext ctx,
                                                  final PrimitiveTransformVertex transformVertex,
                                                  final ParDo.MultiOutput<?, ?> transform) {
