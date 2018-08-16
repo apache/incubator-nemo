@@ -47,6 +47,9 @@ import java.util.function.BiFunction;
 
 /**
  * Converts DAG of Beam pipeline to Nemo IR DAG.
+ * For a {@link PrimitiveTransformVertex}, it defines mapping to the corresponding {@link IRVertex}.
+ * For a {@link CompositeTransformVertex}, it defines how to setup and clear {@link TranslationContext}
+ * before start translating inner Beam transform hierarchy.
  */
 public final class PipelineTranslator
     implements BiFunction<CompositeTransformVertex, PipelineOptions, DAG<IRVertex, IREdge>> {
@@ -56,11 +59,20 @@ public final class PipelineTranslator
   private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator = new HashMap<>();
   private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator = new HashMap<>();
 
+  /**
+   * Static translator method.
+   * @param pipeline Top-level Beam transform hierarchy, usually given by {@link PipelineVisitor}
+   * @param pipelineOptions {@link PipelineOptions}
+   * @return Nemo IR DAG
+   */
   public static DAG<IRVertex, IREdge> translate(final CompositeTransformVertex pipeline,
                                                 final PipelineOptions pipelineOptions) {
     return INSTANCE.apply(pipeline, pipelineOptions);
   }
 
+  /**
+   * Creates the translator, while builds a map between {@link PTransform}s and the corresponding translators.
+   */
   private PipelineTranslator() {
     for (final Method translator : getClass().getDeclaredMethods()) {
       final PrimitiveTransformTranslator primitive = translator.getAnnotation(PrimitiveTransformTranslator.class);
@@ -96,7 +108,7 @@ public final class PipelineTranslator
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
-  @PrimitiveTransformTranslator(ParDo.MultiOutput.class)
+  @PrimitiveTransformTranslator({ParDo.SingleOutput.class, ParDo.MultiOutput.class})
   private static void parDoMultiOutputTranslator(final TranslationContext ctx,
                                                  final PrimitiveTransformVertex transformVertex,
                                                  final ParDo.MultiOutput<?, ?> transform) {
@@ -177,6 +189,13 @@ public final class PipelineTranslator
     ctx.loopVertexStack.pop();
   }
 
+  /**
+   * Default translator for CompositeTransforms. Translates inner DAG without modifying {@link TranslationContext}.
+   *
+   * @param ctx provides translation context
+   * @param transformVertex the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code transformVertex}
+   */
   @CompositeTransformTranslator(PTransform.class)
   private static void topologicalTranslator(final TranslationContext ctx,
                                             final CompositeTransformVertex transformVertex,
@@ -184,6 +203,13 @@ public final class PipelineTranslator
     transformVertex.getDAG().topologicalDo(ctx::translate);
   }
 
+  /**
+   * Translator for Combine transform. Implements local combining before shuffling key-value pairs.
+   *
+   * @param ctx provides translation context
+   * @param transformVertex the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code transformVertex}
+   */
   @CompositeTransformTranslator({Combine.Globally.class, Combine.PerKey.class, Combine.GroupedValues.class})
   private static void combineTranslator(final TranslationContext ctx,
                                         final CompositeTransformVertex transformVertex,
@@ -191,17 +217,24 @@ public final class PipelineTranslator
     final List<TransformVertex> topologicalOrdering = transformVertex.getDAG().getTopologicalSort();
     final TransformVertex first = topologicalOrdering.get(0);
     final TransformVertex last = topologicalOrdering.get(topologicalOrdering.size() - 1);
+
     if (first.getNode().getTransform() instanceof GroupByKey) {
+      // Translate the given CompositeTransform with OneToOneEdge-enforced context.
       final TranslationContext oneToOneEdgeContext = new TranslationContext(ctx,
           OneToOneCommunicationPatternSelector.INSTANCE);
       transformVertex.getDAG().topologicalDo(oneToOneEdgeContext::translate);
 
+      // Attempt to translate the CompositeTransform again.
+      // Add GroupByKey, which is the first transform in the given CompositeTransform.
+      // Make sure it consumes the output from the last vertex in OneToOneEdge-translated hierarchy.
       final IRVertex groupByKey = new OperatorVertex(new GroupByKeyTransform());
       ctx.addVertex(groupByKey);
       last.getNode().getOutputs().values().forEach(outputFromCombiner
           -> ctx.addEdgeTo(groupByKey, outputFromCombiner, false));
       first.getNode().getOutputs().values()
           .forEach(outputFromGroupByKey -> ctx.registerMainOutputFrom(groupByKey, outputFromGroupByKey));
+
+      // Translate the remaining vertices.
       topologicalOrdering.stream().skip(1).forEach(ctx::translate);
     } else {
       transformVertex.getDAG().topologicalDo(ctx::translate);
@@ -217,7 +250,7 @@ public final class PipelineTranslator
   }
 
   /**
-   * Primitive transform translator.
+   * Annotates translator for PrimitiveTransform.
    */
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
@@ -226,7 +259,7 @@ public final class PipelineTranslator
   }
 
   /**
-   * Composite transform translator.
+   * Annotates translator for CompositeTransform.
    */
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
@@ -235,7 +268,7 @@ public final class PipelineTranslator
   }
 
   /**
-   * Ctx.
+   * Translation context.
    */
   private static final class TranslationContext {
     private final CompositeTransformVertex pipeline;
@@ -249,6 +282,13 @@ public final class PipelineTranslator
     private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator;
     private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator;
 
+    /**
+     * @param pipeline the pipeline to translate
+     * @param primitiveTransformToTranslator provides translators for PrimitiveTransform
+     * @param compositeTransformToTranslator provides translators for CompositeTransform
+     * @param selector provides {@link CommunicationPatternProperty.Value} for IR edges
+     * @param pipelineOptions {@link PipelineOptions}
+     */
     private TranslationContext(final CompositeTransformVertex pipeline,
                                final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator,
                                final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator,
@@ -265,6 +305,12 @@ public final class PipelineTranslator
       this.pipelineOptions = pipelineOptions;
     }
 
+    /**
+     * Copy constructor, except for setting different CommunicationPatternProperty selector.
+     *
+     * @param ctx the original {@link TranslationContext}
+     * @param selector provides {@link CommunicationPatternProperty.Value} for IR edges
+     */
     private TranslationContext(final TranslationContext ctx,
                                final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> selector) {
       this.pipeline = ctx.pipeline;
@@ -279,6 +325,11 @@ public final class PipelineTranslator
       this.communicationPatternSelector = selector;
     }
 
+    /**
+     * Selects appropriate translator to translate the given hierarchy.
+     *
+     * @param transformVertex the Beam transform hierarchy to translate
+     */
     private void translate(final TransformVertex transformVertex) {
       final boolean isComposite = transformVertex instanceof CompositeTransformVertex;
       final PTransform<?, ?> transform = transformVertex.getNode().getTransform();
@@ -314,10 +365,22 @@ public final class PipelineTranslator
       }
     }
 
+    /**
+     * Add IR vertex to the builder.
+     *
+     * @param vertex IR vertex to add
+     */
     private void addVertex(final IRVertex vertex) {
       builder.addVertex(vertex, loopVertexStack);
     }
 
+    /**
+     * Add IR edge to the builder.
+     *
+     * @param dst the destination IR vertex.
+     * @param input the {@link PValue} {@code dst} consumes
+     * @param isSideInput whether it is sideInput or not.
+     */
     private void addEdgeTo(final IRVertex dst, final PValue input, final boolean isSideInput) {
       final IRVertex src = pValueToProducer.get(input);
       if (src == null) {
@@ -356,10 +419,23 @@ public final class PipelineTranslator
       builder.connectVertices(edge);
     }
 
+    /**
+     * Registers a {@link PValue} as a main output from the specified {@link IRVertex}.
+     *
+     * @param irVertex the IR vertex
+     * @param output the {@link PValue} {@code irVertex} emits as main output
+     */
     private void registerMainOutputFrom(final IRVertex irVertex, final PValue output) {
       pValueToProducer.put(output, irVertex);
     }
 
+    /**
+     * Registers a {@link PValue} as an additional output from the specified {@link IRVertex}.
+     *
+     * @param irVertex the IR vertex
+     * @param output the {@link PValue} {@code irVertex} emits as additional output
+     * @param tag the {@link TupleTag} associated with this additional output
+     */
     private void registerAdditionalOutputFrom(final IRVertex irVertex, final PValue output, final TupleTag<?> tag) {
       pValueToTag.put(output, tag);
       pValueToProducer.put(output, irVertex);
@@ -397,7 +473,7 @@ public final class PipelineTranslator
   }
 
   /**
-   * Tr.
+   * Default implementation for {@link CommunicationPatternProperty.Value} selector.
    */
   private static final class DefaultCommunicationPatternSelector
       implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
@@ -434,7 +510,7 @@ public final class PipelineTranslator
   }
 
   /**
-   * Tr.
+   * A {@link CommunicationPatternProperty.Value} selector which always emits OneToOne.
    */
   private static final class OneToOneCommunicationPatternSelector
       implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
