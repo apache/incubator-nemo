@@ -26,6 +26,7 @@ import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.state.BlockState;
+import edu.snu.nemo.runtime.executor.TestUtil;
 import edu.snu.nemo.runtime.executor.data.block.Block;
 import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import edu.snu.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
@@ -99,6 +100,10 @@ public final class BlockStoreTest {
   private List<KeyRange> readKeyRangeList;
   private List<List<Iterable>> expectedDataInRange;
 
+  private String getTaskId(final int index) {
+    return RuntimeIdManager.generateTaskId("STAGE", index, 0);
+  }
+
   /**
    * Generates the ids and the data which will be used for the block store tests.
    */
@@ -124,7 +129,7 @@ public final class BlockStoreTest {
     final String shuffleEdge = RuntimeIdManager.generateStageEdgeId("shuffle_edge");
     IntStream.range(0, NUM_WRITE_VERTICES).forEach(writeTaskIdx -> {
       // Create a block for each writer task.
-      final String blockId = RuntimeIdManager.generateBlockId(shuffleEdge, writeTaskIdx);
+      final String blockId = RuntimeIdManager.generateBlockId(shuffleEdge, getTaskId(writeTaskIdx));
       blockIdList.add(blockId);
       blockManagerMaster.initializeState(blockId, "Unused");
       blockManagerMaster.onBlockStateChanged(
@@ -141,12 +146,11 @@ public final class BlockStoreTest {
     });
 
     // Following part is for the concurrent read test.
-    final String writeTaskId = "conc_write_IR_vertex";
     final List<String> concReadTaskIdList = new ArrayList<>(NUM_CONC_READ_TASKS);
     final String concEdge = RuntimeIdManager.generateStageEdgeId("conc_read_edge");
 
     // Generates the ids and the data to be used.
-    concBlockId = RuntimeIdManager.generateBlockId(concEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1);
+    concBlockId = RuntimeIdManager.generateBlockId(concEdge, getTaskId(NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1));
     blockManagerMaster.initializeState(concBlockId, "unused");
     blockManagerMaster.onBlockStateChanged(
         concBlockId, BlockState.State.IN_PROGRESS, null);
@@ -169,8 +173,7 @@ public final class BlockStoreTest {
 
     // Generates the ids and the data of the blocks to be used.
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writeTaskIdx -> {
-      final String blockId = RuntimeIdManager.generateBlockId(
-          hashEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1 + writeTaskIdx);
+      final String blockId = RuntimeIdManager.generateBlockId(hashEdge, getTaskId(NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1 + writeTaskIdx));
       hashedBlockIdList.add(blockId);
       blockManagerMaster.initializeState(blockId, "Unused");
       blockManagerMaster.onBlockStateChanged(

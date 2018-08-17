@@ -150,8 +150,18 @@ public final class RuntimeIdManager {
    * @param blockId the block ID to extract.
    * @return the task index.
    */
-  public static String getTaskIndexFromBlockId(final String blockId) {
-    return split(blockId)[1];
+  public static int getTaskIndexFromBlockId(final String blockId) {
+    return Integer.valueOf(split(blockId)[1]);
+  }
+
+  /**
+   * Extracts wild card from a block ID.
+   *
+   * @param blockId the block ID to extract.
+   * @return the wild card.
+   */
+  public static String getWildCardFromBlockId(final String blockId) {
+    return generateBlockIdWildcard(getRuntimeEdgeIdFromBlockId(blockId), getTaskIndexFromBlockId(blockId));
   }
 
   /**

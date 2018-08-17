@@ -43,6 +43,7 @@ import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.executor.Executor;
+import edu.snu.nemo.runtime.executor.TestUtil;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
 import edu.snu.nemo.runtime.master.*;
@@ -323,7 +324,7 @@ public final class DataTransferTest {
         srcStage, dstStage, false);
 
     // Initialize states in Master
-    generateTaskIds(srcStage).forEach(srcTaskId -> {
+    TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskId);
       master.initializeState(blockId, srcTaskId);
       master.onProducerTaskScheduled(srcTaskId);
@@ -331,7 +332,7 @@ public final class DataTransferTest {
 
     // Write
     final List<List> dataWrittenList = new ArrayList<>();
-    generateTaskIds(srcStage).forEach(srcTaskId -> {
+    TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
       final OutputWriter writer = transferFactory.createWriter(srcTaskId, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
@@ -419,7 +420,7 @@ public final class DataTransferTest {
     dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
         srcStage, dstStage, false);
     // Initialize states in Master
-    generateTaskIds(srcStage).forEach(srcTaskId -> {
+    TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskId);
       master.initializeState(blockId, srcTaskId);
       final String blockId2 = RuntimeIdManager.generateBlockId(edgeId2, srcTaskId);
@@ -429,7 +430,7 @@ public final class DataTransferTest {
 
     // Write
     final List<List> dataWrittenList = new ArrayList<>();
-    generateTaskIds(srcStage).forEach(srcTaskId -> {
+    TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
       final OutputWriter writer = transferFactory.createWriter(srcTaskId, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
@@ -537,12 +538,4 @@ public final class DataTransferTest {
     return new Stage(stageId, emptyDag, stageExecutionProperty, Collections.emptyList());
   }
 
-  private List<String> generateTaskIds(final Stage stage) {
-    final List<String> result = new ArrayList<>(stage.getParallelism());
-    final int first_attempt = 0;
-    for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
-      result.add(RuntimeIdManager.generateTaskId(stage.getId(), taskIndex, first_attempt));
-    }
-    return result;
-  }
 }

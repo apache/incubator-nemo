@@ -335,7 +335,7 @@ public final class BatchScheduler implements Scheduler {
     final Stage stagePutOnHold = physicalPlan.getStageDAG().getVertices().stream()
         .filter(stage -> stage.getId().equals(RuntimeIdManager.getStageIdFromTaskId(taskId)))
         .findFirst()
-        .get();
+        .get
 
     // Get outgoing edges of that stage with MetricCollectionProperty
     List<StageEdge> stageEdges = physicalPlan.getStageDAG().getOutgoingEdgesOf(stagePutOnHold);

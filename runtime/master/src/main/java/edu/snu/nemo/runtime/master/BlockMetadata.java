@@ -32,7 +32,7 @@ final class BlockMetadata {
   private static final Logger LOG = LoggerFactory.getLogger(BlockMetadata.class.getName());
   private final String blockId;
   private final BlockState blockState;
-  private volatile BlockManagerMaster.BlockLocationRequestHandler locationHandler;
+  private volatile BlockManagerMaster.BlockIdWildcardLocationRequestHandler locationHandler;
 
   /**
    * Constructs the metadata for a block.
@@ -43,7 +43,7 @@ final class BlockMetadata {
     // Initialize block level metadata.
     this.blockId = blockId;
     this.blockState = new BlockState();
-    this.locationHandler = new BlockManagerMaster.BlockLocationRequestHandler(blockId);
+    this.locationHandler = new BlockManagerMaster.BlockIdWildcardLocationRequestHandler(blockId);
   }
 
   /**
@@ -65,7 +65,7 @@ final class BlockMetadata {
       case NOT_AVAILABLE:
         // Reset the block location and committer information.
         locationHandler.completeExceptionally(new AbsentBlockException(blockId, newState));
-        locationHandler = new BlockManagerMaster.BlockLocationRequestHandler(blockId);
+        locationHandler = new BlockManagerMaster.BlockIdWildcardLocationRequestHandler(blockId);
         break;
       case AVAILABLE:
         if (location == null) {
@@ -90,14 +90,14 @@ final class BlockMetadata {
   /**
    * @return the state of this block.
    */
-  BlockState getBlockState() {
-    return blockState;
+  BlockState.State getBlockState() {
+    return (BlockState.State) blockState.getStateMachine().getCurrentState();
   }
 
   /**
    * @return the handler of block location requests.
    */
-  synchronized BlockManagerMaster.BlockLocationRequestHandler getLocationHandler() {
+  synchronized BlockManagerMaster.BlockIdWildcardLocationRequestHandler getLocationHandler() {
     return locationHandler;
   }
 }
