@@ -102,7 +102,7 @@ public final class SparkScala {
       //ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName2, expectedOutputFilename2);
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName1);
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName2);
+      //ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName2);
     }
   }
 }

@@ -67,7 +67,7 @@ public final class PlanStateManager {
   /**
    * The data structures below track the execution states of this plan.
    */
-  private final PlanState planState;
+  private PlanState planState;
   private final Map<String, StageState> idToStageStates;
   private final Map<String, TaskState> idToTaskStates;
 
@@ -102,7 +102,6 @@ public final class PlanStateManager {
   @Inject
   private PlanStateManager(final MetricMessageHandler metricMessageHandler) {
     this.metricMessageHandler = metricMessageHandler;
-    this.planState = new PlanState();
     this.idToStageStates = new HashMap<>();
     this.idToTaskStates = new HashMap<>();
     this.taskIdToCurrentAttempt = new HashMap<>();
@@ -128,6 +127,7 @@ public final class PlanStateManager {
       throw new RuntimeException("Plans from different job is submitted. "
           + PlanStateManager.class + " is designed to handle plans from a single job!");
     }
+    this.planState = new PlanState();
     this.metricStore.getOrCreateMetric(JobMetric.class, planId).setStageDAG(physicalPlanToUpdate.getStageDAG());
     this.metricStore.triggerBroadcast(JobMetric.class, planId);
     this.physicalPlan = physicalPlanToUpdate;

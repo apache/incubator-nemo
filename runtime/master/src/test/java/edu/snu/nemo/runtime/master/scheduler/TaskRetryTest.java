@@ -85,7 +85,7 @@ public final class TaskRetryTest {
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
 
     // Get PlanStateManager
-    planStateManager = runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, injector);
+    runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, injector);
   }
 
   @Test(timeout=7000)
@@ -203,8 +203,8 @@ public final class TaskRetryTest {
         .collect(Collectors.toList());
   }
 
-  private PlanStateManager runPhysicalPlan(final TestPlanGenerator.PlanType planType,
-                                           final Injector injector) throws Exception {
+  private void runPhysicalPlan(final TestPlanGenerator.PlanType planType,
+                               final Injector injector) throws Exception {
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PhysicalPlan plan = TestPlanGenerator.generatePhysicalPlan(planType, false);
 
@@ -214,10 +214,9 @@ public final class TaskRetryTest {
     injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
     injector.bindVolatileInstance(SchedulingConstraintRegistry.class, mock(SchedulingConstraintRegistry.class));
     injector.bindVolatileInstance(BlockManagerMaster.class, mock(BlockManagerMaster.class));
-    injector.bindVolatileInstance(PlanStateManager.class, planStateManager);
+    planStateManager = injector.getInstance(PlanStateManager.class);
     scheduler = injector.getInstance(Scheduler.class);
 
     scheduler.schedulePlan(plan, MAX_SCHEDULE_ATTEMPT);
-    return planStateManager;
   }
 }
