@@ -74,6 +74,8 @@ public final class TaskExecutorTest {
   private static final ExecutionPropertyMap<VertexExecutionProperty> TASK_EXECUTION_PROPERTY_MAP
       = new ExecutionPropertyMap<>("TASK_EXECUTION_PROPERTY_MAP");
   private static final int SOURCE_PARALLELISM = 5;
+  private static final int FIRST_ATTEMPT = 0;
+
   private List<Integer> elements;
   private Map<String, List> vertexIdToOutputData;
   private DataTransferFactory dataTransferFactory;
@@ -83,8 +85,8 @@ public final class TaskExecutorTest {
   private AtomicInteger stageId;
 
   private String generateTaskId() {
-    return RuntimeIdManager.generateTaskId(0,
-        RuntimeIdManager.generateStageId(stageId.getAndIncrement()));
+    return RuntimeIdManager.generateTaskId(
+        RuntimeIdManager.generateStageId(stageId.getAndIncrement()), 0, FIRST_ATTEMPT);
   }
 
   @Before

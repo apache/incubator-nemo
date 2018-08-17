@@ -35,6 +35,7 @@ import static org.junit.Assert.assertTrue;
  * Test for {@link BlockManagerMaster}.
  */
 public final class BlockManagerMasterTest {
+  private static int FIRST_ATTEMPT = 0;
   private BlockManagerMaster blockManagerMaster;
 
   @Before
@@ -79,9 +80,9 @@ public final class BlockManagerMasterTest {
   public void testLostAfterCommit() throws Exception {
     final String edgeId = RuntimeIdManager.generateStageEdgeId("Edge-0");
     final int srcTaskIndex = 0;
-    final String taskId = RuntimeIdManager.generateTaskId(srcTaskIndex, "Stage-test");
+    final String taskId = RuntimeIdManager.generateTaskId("Stage-test", srcTaskIndex, FIRST_ATTEMPT);
     final String executorId = RuntimeIdManager.generateExecutorId();
-    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex);
+    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex, FIRST_ATTEMPT);
 
     // Initially the block state is NOT_AVAILABLE.
     blockManagerMaster.initializeState(blockId, taskId);
@@ -112,9 +113,9 @@ public final class BlockManagerMasterTest {
   public void testBeforeAfterCommit() throws Exception {
     final String edgeId = RuntimeIdManager.generateStageEdgeId("Edge-1");
     final int srcTaskIndex = 0;
-    final String taskId = RuntimeIdManager.generateTaskId(srcTaskIndex, "Stage-Test");
+    final String taskId = RuntimeIdManager.generateTaskId("Stage-Test", srcTaskIndex, FIRST_ATTEMPT);
     final String executorId = RuntimeIdManager.generateExecutorId();
-    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex);
+    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex, FIRST_ATTEMPT);
 
     // The block is being scheduled.
     blockManagerMaster.initializeState(blockId, taskId);

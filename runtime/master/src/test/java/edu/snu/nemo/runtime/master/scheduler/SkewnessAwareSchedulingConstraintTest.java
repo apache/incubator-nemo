@@ -46,6 +46,7 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({ExecutorRepresenter.class, Task.class, Stage.class, HashRange.class,
 IRVertex.class, IREdge.class})
 public final class SkewnessAwareSchedulingConstraintTest {
+  private final static int FIRST_ATTEMPT = 0;
 
   private static StageEdge mockStageEdge(final int numSkewedHashRange,
                                          final int numTotalHashRange) {
@@ -77,7 +78,7 @@ public final class SkewnessAwareSchedulingConstraintTest {
 
   private static Task mockTask(final int taskIdx, final List<StageEdge> inEdges) {
     final Task task = mock(Task.class);
-    when(task.getTaskId()).thenReturn(RuntimeIdManager.generateTaskId(taskIdx, "Stage-0"));
+    when(task.getTaskId()).thenReturn(RuntimeIdManager.generateTaskId("Stage-0", taskIdx, FIRST_ATTEMPT));
     when(task.getTaskIncomingEdges()).thenReturn(inEdges);
     return task;
   }
