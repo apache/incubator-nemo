@@ -68,7 +68,6 @@ public final class JobLauncher {
 
   private static CountDownLatch driverReadyLatch;
   private static CountDownLatch jobDoneLatch;
-  private static String jobId;
   private static String serializedDAG;
   private static final List<?> COLLECTED_DATA = new ArrayList<>();
 
@@ -189,7 +188,6 @@ public final class JobLauncher {
         .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
         .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder()
             .setDag(serializedDAG)
-            .setJobId(jobId)
             .build())
         .build());
 
@@ -274,7 +272,7 @@ public final class JobLauncher {
    */
   private static Configuration getDriverConf(final Configuration jobConf) throws InjectionException {
     final Injector injector = TANG.newInjector(jobConf);
-    jobId = injector.getNamedInstance(JobConf.JobId.class);
+    final String jobId = injector.getNamedInstance(JobConf.JobId.class);
     final int driverMemory = injector.getNamedInstance(JobConf.DriverMemMb.class);
     return DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(NemoDriver.class))

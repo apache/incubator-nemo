@@ -19,7 +19,6 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
-import edu.snu.nemo.examples.spark.policy.DefaultPolicyParallelismFive;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -99,10 +98,10 @@ public final class SparkScala {
 
     try {
       ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName1, expectedOutputFilename1);
-      //ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName2, expectedOutputFilename2);
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName2, expectedOutputFilename2);
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName1);
-      //ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName2);
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName2);
     }
   }
 }

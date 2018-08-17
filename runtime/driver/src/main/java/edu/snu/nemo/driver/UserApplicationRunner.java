@@ -40,7 +40,6 @@ import java.util.concurrent.ScheduledExecutorService;
 public final class UserApplicationRunner {
   private static final Logger LOG = LoggerFactory.getLogger(UserApplicationRunner.class.getName());
 
-  private final String dagDirectory;
   private final int maxScheduleAttempt;
 
   private final RuntimeMaster runtimeMaster;
@@ -48,12 +47,10 @@ public final class UserApplicationRunner {
   private final Backend<PhysicalPlan> backend;
 
   @Inject
-  private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
-                                @Parameter(JobConf.MaxTaskAttempt.class) final int maxScheduleAttempt,
+  private UserApplicationRunner(@Parameter(JobConf.MaxTaskAttempt.class) final int maxScheduleAttempt,
                                 final Optimizer optimizer,
                                 final Backend<PhysicalPlan> backend,
                                 final RuntimeMaster runtimeMaster) {
-    this.dagDirectory = dagDirectory;
     this.maxScheduleAttempt = maxScheduleAttempt;
     this.runtimeMaster = runtimeMaster;
     this.optimizer = optimizer;
@@ -66,20 +63,16 @@ public final class UserApplicationRunner {
    * and tell {@link RuntimeMaster} to execute the plan.
    *
    * @param dagString Serialized IR DAG from Nemo Client.
-   * @param jobId     The job ID.
    */
-  public synchronized void run(final String dagString,
-                               final String jobId) {
+  public synchronized void run(final String dagString) {
     try {
       LOG.info("##### Nemo Compiler Start #####");
 
       final DAG<IRVertex, IREdge> dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
       final DAG<IRVertex, IREdge> optimizedDAG = optimizer.optimizeDag(dag);
-      final PhysicalPlan physicalPlan = backend.compile(optimizedDAG, jobId);
+      final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
 
       LOG.info("##### Nemo Compiler Finish #####");
-
-      physicalPlan.getStageDAG().storeJSON(dagDirectory, "plan", "physical execution plan by compiler");
 
       // Execute!
       final Pair<PlanStateManager, ScheduledExecutorService> executionResult =
@@ -92,7 +85,7 @@ public final class UserApplicationRunner {
         planStateManager.waitUntilFinish();
         dagLoggingExecutor.shutdown();
       } finally {
-        planStateManager.storeJSON(dagDirectory, "final");
+        planStateManager.storeJSON("final");
       }
 
       LOG.info("{} is complete!", physicalPlan.getPlanId());

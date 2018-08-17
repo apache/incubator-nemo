@@ -115,11 +115,13 @@ public final class BatchScheduler implements Scheduler {
       // First scheduling.
       taskDispatcher.run();
       updatePlan(submittedPhysicalPlan, maxScheduleAttempt);
+      planStateManager.storeJSON("submitted");
     } else {
       // Append the submitted plan to the original plan.
       final PhysicalPlan appendedPlan =
           PlanAppender.appendPlan(planStateManager.getPhysicalPlan(), submittedPhysicalPlan);
       updatePlan(appendedPlan, maxScheduleAttempt);
+      planStateManager.storeJSON("appended");
     }
 
     doSchedule();

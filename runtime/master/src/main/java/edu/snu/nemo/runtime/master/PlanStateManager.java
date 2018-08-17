@@ -20,6 +20,7 @@ import edu.snu.nemo.common.exception.IllegalStateTransitionException;
 import edu.snu.nemo.common.exception.SchedulingException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.StateMachine;
+import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
@@ -40,6 +41,7 @@ import edu.snu.nemo.runtime.common.metric.JobMetric;
 import edu.snu.nemo.runtime.common.metric.StageMetric;
 import edu.snu.nemo.runtime.common.metric.TaskMetric;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,6 +93,7 @@ public final class PlanStateManager {
   /**
    * For metrics.
    */
+  private final String dagDirectory;
   private final MetricMessageHandler metricMessageHandler;
   private MetricStore metricStore;
 
@@ -100,13 +103,15 @@ public final class PlanStateManager {
    * @param metricMessageHandler the metric handler for the plan.
    */
   @Inject
-  private PlanStateManager(final MetricMessageHandler metricMessageHandler) {
+  private PlanStateManager(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
+                           final MetricMessageHandler metricMessageHandler) {
     this.metricMessageHandler = metricMessageHandler;
     this.idToStageStates = new HashMap<>();
     this.idToTaskStates = new HashMap<>();
     this.taskIdToCurrentAttempt = new HashMap<>();
     this.finishLock = new ReentrantLock();
     this.planFinishedCondition = finishLock.newCondition();
+    this.dagDirectory = dagDirectory;
     this.metricStore = MetricStore.getStore();
     this.initialized = false;
   }
@@ -121,11 +126,7 @@ public final class PlanStateManager {
                                       final int maxScheduleAttemptToSet) {
     if (!initialized) {
       // First scheduling.
-      this.jobId = physicalPlanToUpdate.getJobId();
       this.initialized = true;
-    } else if (!physicalPlanToUpdate.getJobId().equals(jobId)) {
-      throw new RuntimeException("Plans from different job is submitted. "
-          + PlanStateManager.class + " is designed to handle plans from a single job!");
     }
     this.planState = new PlanState();
     this.metricStore.getOrCreateMetric(JobMetric.class, planId).setStageDAG(physicalPlanToUpdate.getStageDAG());
@@ -418,15 +419,14 @@ public final class PlanStateManager {
   /**
    * Stores JSON representation of plan state into a file.
    *
-   * @param directory the directory which JSON representation is saved to
    * @param suffix    suffix for file name
    */
-  public void storeJSON(final String directory, final String suffix) {
-    if (directory.equals(EMPTY_DAG_DIRECTORY)) {
+  public void storeJSON(final String suffix) {
+    if (dagDirectory.equals(EMPTY_DAG_DIRECTORY)) {
       return;
     }
 
-    final File file = new File(directory, planId + "-" + suffix + ".json");
+    final File file = new File(dagDirectory, planId + "-" + suffix + ".json");
     file.getParentFile().mkdirs();
     try (final PrintWriter printWriter = new PrintWriter(file)) {
       printWriter.println(toStringWithPhysicalPlan());

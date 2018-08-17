@@ -30,11 +30,9 @@ public interface Backend<Plan> {
   /**
    * Compiles a DAG to a physical execution plan.
    *
-   * @param dag   the DAG to compile.
-   * @param jobId the job ID.
+   * @param dag the DAG to compile.
    * @return the execution plan generated.
    * @throws Exception Exception on the way.
    */
-  Plan compile(DAG<IRVertex, IREdge> dag,
-               String jobId) throws Exception;
+  Plan compile(DAG<IRVertex, IREdge> dag) throws Exception;
 }

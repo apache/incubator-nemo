@@ -100,7 +100,7 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<List<String>, Ma
       optimizationEdge.setTaskIdxToKeyRange(taskIdxToHashRange);
     });
 
-    return new PhysicalPlan(originalPlan.getJobId(), originalPlan.getPlanId(), physicalDAGBuilder.build());
+    return new PhysicalPlan(originalPlan.getPlanId(), physicalDAGBuilder.build());
   }
 
   public List<Integer> identifySkewedKeys(final Map<Integer, Long> keyValToPartitionSizeMap) {

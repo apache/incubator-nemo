@@ -16,7 +16,6 @@
 package edu.snu.nemo.runtime.master;
 
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
@@ -38,7 +37,6 @@ import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.annotations.Parameter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHandler;
 import org.slf4j.Logger;
@@ -88,7 +86,6 @@ public final class RuntimeMaster {
   private final PlanStateManager planStateManager;
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
-  private final String dagDirectory;
   private final Set<IRVertex> irVertices;
   private final AtomicInteger resourceRequestCount;
   private CountDownLatch metricCountDownLatch;
@@ -102,8 +99,7 @@ public final class RuntimeMaster {
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
                         final MetricManagerMaster metricManagerMaster,
-                        final PlanStateManager planStateManager,
-                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
+                        final PlanStateManager planStateManager) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
@@ -118,7 +114,6 @@ public final class RuntimeMaster {
         .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.clientRPC = clientRPC;
     this.metricManagerMaster = metricManagerMaster;
-    this.dagDirectory = dagDirectory;
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
@@ -461,7 +456,7 @@ public final class RuntimeMaster {
       private int dagLogFileIndex = 0;
 
       public void run() {
-        planStateManager.storeJSON(dagDirectory, String.valueOf(dagLogFileIndex++));
+        planStateManager.storeJSON(String.valueOf(dagLogFileIndex++));
       }
     }, DAG_LOGGING_PERIOD, DAG_LOGGING_PERIOD, TimeUnit.MILLISECONDS);
 

@@ -122,6 +122,6 @@ public final class PlanAppender {
       }
     });
 
-    return new PhysicalPlan(originalPlan.getJobId(), originalPlan.getPlanId(), physicalDAGBuilder.build());
+    return new PhysicalPlan(originalPlan.getPlanId(), physicalDAGBuilder.build());
   }
 }

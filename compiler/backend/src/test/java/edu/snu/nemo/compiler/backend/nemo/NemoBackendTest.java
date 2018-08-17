@@ -68,7 +68,7 @@ public final class NemoBackendTest<I, O> {
    */
   @Test
   public void testExecutionPlanGeneration() {
-    final PhysicalPlan executionPlan = nemoBackend.compile(dag, "TestJob");
+    final PhysicalPlan executionPlan = nemoBackend.compile(dag);
 
     assertEquals(2, executionPlan.getStageDAG().getVertices().size());
     assertEquals(2, executionPlan.getStageDAG().getTopologicalSort().get(0).getIRDAG().getVertices().size());
