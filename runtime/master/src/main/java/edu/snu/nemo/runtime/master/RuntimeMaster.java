@@ -158,7 +158,7 @@ public final class RuntimeMaster {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
         blockManagerMaster.initialize(plan);
-        final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, maxScheduleAttempt);
+        final PlanStateManager planStateManager = new PlanStateManager(plan, maxScheduleAttempt);
         scheduler.schedulePlan(plan, planStateManager);
         final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(planStateManager);
         return Pair.of(planStateManager, dagLoggingExecutor);

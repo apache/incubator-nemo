@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.common.metric.JobMetric;
@@ -109,7 +110,7 @@ public final class PlanStateManager {
       for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
         // for each task idx of this stage
         stageIdToTaskAttemptStates.get(stage.getId()).add(new ArrayList<>());
-        // task states will be initialized lazily in getExecutableTaskAttempts()
+        // task states will be initialized lazily in getReadyTaskAttempts()
       }
     });
   }
@@ -122,10 +123,11 @@ public final class PlanStateManager {
   }
 
   /**
+   * Get task attempts that are "READY".
    * @param stageId to run
    * @return executable task attempts
    */
-  public synchronized List<String> getExecutableTaskAttempts(final String stageId) {
+  public synchronized List<String> getReadyTaskAttempts(final String stageId) {
     if (getStageState(stageId).equals(StageState.State.COMPLETE)) {
       // This stage is done
       return new ArrayList<>(0);
@@ -175,45 +177,43 @@ public final class PlanStateManager {
    */
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
     // Change task state
-    final StateMachine taskState = stageIdToTaskAttemptStates
-        .get(RuntimeIdManager.getStageIdFromTaskId(taskId))
-        .get(RuntimeIdManager.getIndexFromTaskId(taskId))
-        .get(RuntimeIdManager.getAttemptFromTaskId(taskId))
-        .getStateMachine();
-
+    final StateMachine taskState = getTaskStateHelper(taskId).getStateMachine();
     LOG.debug("Task State Transition: id {}, from {} to {}",
         new Object[]{taskId, taskState.getCurrentState(), newTaskState});
-
     metricStore.getOrCreateMetric(TaskMetric.class, taskId)
         .addEvent((TaskState.State) taskState.getCurrentState(), newTaskState);
     metricStore.triggerBroadcast(TaskMetric.class, taskId);
-
     taskState.setState(newTaskState);
 
-    // Change stage state, if needed
-
-
+    // Log not-yet-completed tasks for us humans to track progress
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
-    final long numOfCompletedOrOnHoldTasksInThisStage = tasksOfThisStage
-        .stream()
-        .map(this::getTaskState)
-        .filter(state -> state.equals(TaskState.State.COMPLETE) || state.equals(TaskState.State.ON_HOLD))
+    final List<List<TaskState>> taskStatesOfThisStage = stageIdToTaskAttemptStates.get(stageId);
+    final long numOfCompletedTasksInThisStage = taskStatesOfThisStage.stream()
+        .map(attempts -> attempts.stream().anyMatch(state ->
+            state.getStateMachine().getCurrentState().equals(TaskState.State.COMPLETE)))
+        .filter(bool -> bool.equals(true))
         .count();
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
-      // Log not-yet-completed tasks for us to track progress
-      LOG.info("{} completed: {} Task(s) remaining in this stage",
-          taskId, tasksOfThisStage.size() - numOfCompletedOrOnHoldTasksInThisStage);
+      LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",
+          taskId, taskStatesOfThisStage.size() - numOfCompletedTasksInThisStage, taskStatesOfThisStage.size());
     }
+
+    // Change stage state, if needed
     switch (newTaskState) {
-      // INCOMPLETE stage
+      // INCOMPLETE stage `
       case SHOULD_RETRY:
-        onStageStateChanged(stageId, StageState.State.INCOMPLETE);
+        final boolean isAPeerAttemptCompleted = getPeerAttemptsforTheSameTaskIndex(taskId).stream()
+            .anyMatch(state -> state.equals(TaskState.State.COMPLETE));
+        if (!isAPeerAttemptCompleted) {
+          // None of the peers has completed, hence this stage is incomplete
+          onStageStateChanged(stageId, StageState.State.INCOMPLETE);
+        }
         break;
 
       // COMPLETE stage
       case COMPLETE:
       case ON_HOLD:
-        if (numOfCompletedOrOnHoldTasksInThisStage == tasksOfThisStage.size()) {
+        if (numOfCompletedTasksInThisStage == taskStatesOfThisStage.size()) {
           onStageStateChanged(stageId, StageState.State.COMPLETE);
         }
         break;
@@ -226,6 +226,20 @@ public final class PlanStateManager {
       default:
         throw new UnknownExecutionStateException(new Throwable("This task state is unknown"));
     }
+  }
+
+  private List<TaskState.State> getPeerAttemptsforTheSameTaskIndex(final String taskId) {
+    final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
+    final int taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
+    final int attempt = RuntimeIdManager.getAttemptFromTaskId(taskId);
+
+    final List<TaskState> otherAttemptsforTheSameTaskIndex =
+        new ArrayList<>(stageIdToTaskAttemptStates.get(stageId).get(taskIndex));
+    otherAttemptsforTheSameTaskIndex.remove(attempt);
+
+    return otherAttemptsforTheSameTaskIndex.stream()
+        .map(state -> (TaskState.State) state.getStateMachine().getCurrentState())
+        .collect(Collectors.toList());
   }
 
   /**
@@ -345,13 +359,19 @@ public final class PlanStateManager {
   }
 
   public synchronized TaskState.State getTaskState(final String taskId) {
-    final int attempt = RuntimeIdManager.getAttemptFromTaskId(taskId);
-    return (TaskState.State) taskIndexToAttemptStates.get(taskId).get(attempt).getStateMachine().getCurrentState();
+    return (TaskState.State) getTaskStateHelper(taskId).getStateMachine().getCurrentState();
+  }
+
+  private TaskState getTaskStateHelper(final String taskId) {
+    return stageIdToTaskAttemptStates
+        .get(RuntimeIdManager.getStageIdFromTaskId(taskId))
+        .get(RuntimeIdManager.getIndexFromTaskId(taskId))
+        .get(RuntimeIdManager.getAttemptFromTaskId(taskId));
   }
 
   @VisibleForTesting
-  public synchronized Map<String, List<TaskState>> getAllTaskStates() {
-    return taskIndexToAttemptStates;
+  public synchronized Map<String, List<List<TaskState>>> getAllTaskStates() {
+    return stageIdToTaskAttemptStates;
   }
 
   /**
@@ -400,18 +420,30 @@ public final class PlanStateManager {
       sb.append("\"tasks\": [");
 
       boolean isFirstTask = true;
-      for (final String taskId : stage.getTaskIds()) {
+      for (final Map.Entry<String, TaskState.State> entry : getTaskAttemptToItsState(stage.getId()).entrySet()) {
         if (!isFirstTask) {
           sb.append(", ");
         }
         isFirstTask = false;
-        final TaskState taskState = taskIndexToAttemptStates.get(taskId);
-        sb.append("{\"id\": \"").append(taskId).append("\", ");
-        sb.append("\"state\": \"").append(taskState.toString()).append("\"}");
+        sb.append("{\"id\": \"").append(entry.getKey()).append("\", ");
+        sb.append("\"state\": \"").append(entry.getValue().toString()).append("\"}");
       }
       sb.append("]}");
     }
     sb.append("]}");
     return sb.toString();
+  }
+
+  private Map<String, TaskState.State> getTaskAttemptToItsState(final String stageId) {
+    final Map<String, TaskState.State> result = new HashMap<>();
+    final List<List<TaskState>> taskStates = stageIdToTaskAttemptStates.get(stageId);
+    for (int taskIndex = 0; taskIndex < taskStates.size(); taskIndex++) {
+      final List<TaskState> attemptStates = taskStates.get(taskIndex);
+      for (int attempt = 0; attempt < attemptStates.size(); attempt++) {
+        result.put(RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt),
+            (TaskState.State) attemptStates.get(attempt).getStateMachine().getCurrentState());
+      }
+    }
+    return result;
   }
 }

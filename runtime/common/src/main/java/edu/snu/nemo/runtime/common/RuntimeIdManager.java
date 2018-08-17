@@ -135,16 +135,6 @@ public final class RuntimeIdManager {
   }
 
   /**
-   * Extracts task index from a block ID.
-   *
-   * @param blockId the block ID to extract.
-   * @return the task index.
-   */
-  public static String getTaskIndexFromBlockId(final String blockId) {
-    return split(blockId)[1];
-  }
-
-  /**
    * Extracts stage ID from a task ID.
    *
    * @param taskId the task ID to extract.

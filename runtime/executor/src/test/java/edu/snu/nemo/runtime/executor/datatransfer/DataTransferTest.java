@@ -323,7 +323,7 @@ public final class DataTransferTest {
         srcStage, dstStage, false);
 
     // Initialize states in Master
-    srcStage.getTaskIds().forEach(srcTaskId -> {
+    generateTaskIds(srcStage).forEach(srcTaskId -> {
       final String blockId = RuntimeIdManager.generateBlockId(
           edgeId, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
       master.initializeState(blockId, srcTaskId);
@@ -420,7 +420,7 @@ public final class DataTransferTest {
     dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
         srcStage, dstStage, false);
     // Initialize states in Master
-    srcStage.getTaskIds().forEach(srcTaskId -> {
+    generateTaskIds(srcStage).forEach(srcTaskId -> {
       final String blockId = RuntimeIdManager.generateBlockId(
           edgeId, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
       master.initializeState(blockId, srcTaskId);
@@ -538,5 +538,14 @@ public final class DataTransferTest {
     stageExecutionProperty.put(ParallelismProperty.of(PARALLELISM_TEN));
     stageExecutionProperty.put(ScheduleGroupProperty.of(0));
     return new Stage(stageId, emptyDag, stageExecutionProperty, Collections.emptyList());
+  }
+
+  private List<String> generateTaskIds(final Stage stage) {
+    final List<String> result = new ArrayList<>(stage.getParallelism());
+    final int first_attempt = 0;
+    for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
+      result.add(RuntimeIdManager.generateTaskId(stage.getId(), taskIndex, first_attempt));
+    }
+    return result;
   }
 }
