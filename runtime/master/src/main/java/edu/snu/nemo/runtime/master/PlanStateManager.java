@@ -434,6 +434,14 @@ public final class PlanStateManager {
   }
 
   @VisibleForTesting
+  public synchronized Map<String, TaskState.State> getAllTaskAttemptIdsToItsState() {
+    return physicalPlan.getStageDAG().getVertices()
+        .stream()
+        .map(Stage::getId)
+        .flatMap(stageId -> getTaskAttemptIdsToItsState(stageId).entrySet().stream())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
   private Map<String, TaskState.State> getTaskAttemptIdsToItsState(final String stageId) {
     final Map<String, TaskState.State> result = new HashMap<>();
     final List<List<TaskState>> taskStates = stageIdToTaskAttemptStates.get(stageId);

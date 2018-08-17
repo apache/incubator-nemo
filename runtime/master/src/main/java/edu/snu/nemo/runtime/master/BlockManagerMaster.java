@@ -59,7 +59,7 @@ import static edu.snu.nemo.runtime.common.state.BlockState.State.NOT_AVAILABLE;
 @DriverSide
 public final class BlockManagerMaster {
   private static final Logger LOG = LoggerFactory.getLogger(BlockManagerMaster.class.getName());
-  private final Map<String, BlockMetadata> blockIdToMetadata;
+  private final Map<String, BlockMetadata> blockIdToMetadatas;
   private final Map<String, Set<String>> producerTaskIdToBlockIds;
   // A lock that can be acquired exclusively or not.
   // Because the BlockMetadata itself is sufficiently synchronized,

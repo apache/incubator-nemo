@@ -45,7 +45,7 @@ import java.util.stream.StreamSupport;
  * Represents the input data transfer to a task.
  */
 public final class InputReader extends DataTransfer {
-  private final int dstTaskIndex;
+  private final String dstTaskId;
   private final BlockManagerWorker blockManagerWorker;
 
   /**
@@ -54,12 +54,12 @@ public final class InputReader extends DataTransfer {
   private final IRVertex srcVertex;
   private final RuntimeEdge runtimeEdge;
 
-  public InputReader(final int dstTaskIndex,
+  public InputReader(final String dstTaskId,
                      final IRVertex srcVertex,
                      final RuntimeEdge runtimeEdge,
                      final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
-    this.dstTaskIndex = dstTaskIndex;
+    this.dstTaskId = dstTaskId;
     this.srcVertex = srcVertex;
     this.runtimeEdge = runtimeEdge;
     this.blockManagerWorker = blockManagerWorker;
@@ -88,7 +88,7 @@ public final class InputReader extends DataTransfer {
   }
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    final String blockId = getBlockId(dstTaskIndex);
+    final String blockId = getBlockId(dstTaskId);
     final Optional<DataStoreProperty.Value> dataStoreProperty
         = runtimeEdge.getPropertyValue(DataStoreProperty.class);
     return blockManagerWorker.readBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all());
@@ -136,24 +136,14 @@ public final class InputReader extends DataTransfer {
     return futures;
   }
 
-  public RuntimeEdge getRuntimeEdge() {
-    return runtimeEdge;
-  }
-
-  /**
-   * Get block id.
-   *
-   * @param  taskIdx task index of the block
-   * @return the block id
-   */
-  private String getBlockId(final int taskIdx) {
+  private String getBlockId(final String taskId) {
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     if (!duplicateDataProperty.isPresent() || duplicateDataProperty.get().getGroupSize() <= 1) {
-      return RuntimeIdManager.generateBlockId(getId(), taskIdx);
+      return RuntimeIdManager.generateBlockId(getId(), taskId);
     }
     final String duplicateEdgeId = duplicateDataProperty.get().getRepresentativeEdgeId();
-    return RuntimeIdManager.generateBlockId(duplicateEdgeId, taskIdx);
+    return RuntimeIdManager.generateBlockId(duplicateEdgeId, taskId);
   }
 
   public IRVertex getSrcIrVertex() {

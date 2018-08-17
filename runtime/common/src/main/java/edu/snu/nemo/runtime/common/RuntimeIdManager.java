@@ -93,15 +93,13 @@ public final class RuntimeIdManager {
    * Generates the ID for a block, whose data is the output of a task.
    *
    * @param runtimeEdgeId of the block
-   * @param producerTaskIndex of the block
+   * @param producerTaskId of the block
    * @return the generated ID
    */
   public static String generateBlockId(final String runtimeEdgeId,
-                                       final int producerTaskIndex) {
-    if (producerTaskIndex < 0 || producerTaskAttempt < 0) {
-      throw new IllegalStateException(producerTaskIndex + ", " + producerTaskAttempt);
-    }
-    return runtimeEdgeId + SPLITTER + producerTaskIndex + SPLITTER + producerTaskAttempt;
+                                       final String producerTaskId) {
+    return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
+        + SPLITTER + getAttemptFromTaskId(producerTaskId);
   }
 
   /**
@@ -132,6 +130,16 @@ public final class RuntimeIdManager {
    */
   public static String getRuntimeEdgeIdFromBlockId(final String blockId) {
     return split(blockId)[0];
+  }
+
+  /**
+   * Extracts task index from a block ID.
+   *
+   * @param blockId the block ID to extract.
+   * @return the task index.
+   */
+  public static String getTaskIndexFromBlockId(final String blockId) {
+    return split(blockId)[1];
   }
 
   /**

@@ -232,7 +232,6 @@ public final class BlockManagerWorker {
    * @param blockStore           the store to save the block.
    * @param reportPartitionSizes whether report the size of partitions to master or not.
    * @param partitionSizeMap     the map of partition keys and sizes to report.
-   * @param srcIRVertexId        the IR vertex ID of the source task.
    * @param expectedReadTotal    the expected number of read for this block.
    * @param persistence          how to handle the used block.
    */
@@ -240,7 +239,6 @@ public final class BlockManagerWorker {
                          final DataStoreProperty.Value blockStore,
                          final boolean reportPartitionSizes,
                          final Map<Integer, Long> partitionSizeMap,
-                         final String srcIRVertexId,
                          final int expectedReadTotal,
                          final DataPersistenceProperty.Value persistence) {
     final String blockId = block.getId();

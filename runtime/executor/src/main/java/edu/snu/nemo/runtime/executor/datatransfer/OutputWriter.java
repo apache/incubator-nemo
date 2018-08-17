@@ -32,9 +32,7 @@ import java.util.*;
  * Represents the output data transfer from a task.
  */
 public final class OutputWriter extends DataTransfer implements AutoCloseable {
-  private final String blockId;
   private final RuntimeEdge<?> runtimeEdge;
-  private final String srcVertexId;
   private final IRVertex dstIrVertex;
   private final DataStoreProperty.Value blockStoreValue;
   private final BlockManagerWorker blockManagerWorker;
@@ -48,21 +46,18 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    *
    * @param hashRangeMultiplier the {@link edu.snu.nemo.conf.JobConf.HashRangeMultiplier}.
    * @param srcTaskIdx          the index of the source task.
-   * @param srcRuntimeVertexId  the ID of the source vertex.
    * @param dstIrVertex         the destination IR vertex.
    * @param runtimeEdge         the {@link RuntimeEdge}.
    * @param blockManagerWorker  the {@link BlockManagerWorker}.
    */
   OutputWriter(final int hashRangeMultiplier,
                final int srcTaskIdx,
-               final String srcRuntimeVertexId,
                final IRVertex dstIrVertex,
                final RuntimeEdge<?> runtimeEdge,
                final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
     this.blockId = RuntimeIdManager.generateBlockId(getId(), srcTaskIdx);
     this.runtimeEdge = runtimeEdge;
-    this.srcVertexId = srcRuntimeVertexId;
     this.dstIrVertex = dstIrVertex;
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class).
@@ -142,11 +137,11 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
       }
       this.writtenBytes = blockSizeTotal;
       blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, isDataSizeMetricCollectionEdge,
-          partitionSizeMap.get(), srcVertexId, getExpectedRead(), persistence);
+          partitionSizeMap.get(), getExpectedRead(), persistence);
     } else {
       this.writtenBytes = -1; // no written bytes info.
       blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, isDataSizeMetricCollectionEdge,
-          Collections.emptyMap(), srcVertexId, getExpectedRead(), persistence);
+          Collections.emptyMap(), getExpectedRead(), persistence);
     }
   }
 

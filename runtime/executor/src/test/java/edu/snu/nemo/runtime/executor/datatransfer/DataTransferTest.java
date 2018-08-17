@@ -324,8 +324,7 @@ public final class DataTransferTest {
 
     // Initialize states in Master
     generateTaskIds(srcStage).forEach(srcTaskId -> {
-      final String blockId = RuntimeIdManager.generateBlockId(
-          edgeId, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
+      final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskId);
       master.initializeState(blockId, srcTaskId);
       master.onProducerTaskScheduled(srcTaskId);
     });
@@ -334,7 +333,7 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = transferFactory.createWriter(srcVertex, srcTaskIndex, dstVertex, dummyEdge);
+      final OutputWriter writer = transferFactory.createWriter(srcTaskIndex, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
@@ -421,11 +420,9 @@ public final class DataTransferTest {
         srcStage, dstStage, false);
     // Initialize states in Master
     generateTaskIds(srcStage).forEach(srcTaskId -> {
-      final String blockId = RuntimeIdManager.generateBlockId(
-          edgeId, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
+      final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskId);
       master.initializeState(blockId, srcTaskId);
-      final String blockId2 = RuntimeIdManager.generateBlockId(
-          edgeId2, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
+      final String blockId2 = RuntimeIdManager.generateBlockId(edgeId2, srcTaskId);
       master.initializeState(blockId2, srcTaskId);
       master.onProducerTaskScheduled(srcTaskId);
     });
@@ -434,12 +431,12 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = transferFactory.createWriter(srcVertex, srcTaskIndex, dstVertex, dummyEdge);
+      final OutputWriter writer = transferFactory.createWriter(srcTaskIndex, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
 
-      final OutputWriter writer2 = transferFactory.createWriter(srcVertex, srcTaskIndex, dstVertex, dummyEdge2);
+      final OutputWriter writer2 = transferFactory.createWriter(srcTaskIndex, dstVertex, dummyEdge2);
       dataWritten.iterator().forEachRemaining(writer2::write);
       writer2.close();
     });

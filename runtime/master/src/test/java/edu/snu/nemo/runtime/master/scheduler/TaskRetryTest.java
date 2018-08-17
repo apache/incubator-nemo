@@ -204,7 +204,7 @@ public final class TaskRetryTest {
   ////////////////////////////////////////////////////////////////// Helper methods
 
   private List<String> getTasksInState(final PlanStateManager planStateManager, final TaskState.State state) {
-    return planStateManager.getTaskAttemptIdsToItsState()
+    return planStateManager.getAllTaskAttemptIdsToItsState()
         .entrySet()
         .stream()
         .filter(entry -> entry.getValue().equals(state))
