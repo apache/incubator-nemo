@@ -146,7 +146,6 @@ public final class TaskExecutorTest {
         new Task(
             "testSourceVertexDataFetching",
             generateTaskId(),
-            0,
             TASK_EXECUTION_PROPERTY_MAP,
             new byte[0],
             Collections.emptyList(),
@@ -176,7 +175,6 @@ public final class TaskExecutorTest {
     final Task task = new Task(
         "testSourceVertexDataFetching",
         generateTaskId(),
-        0,
         TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
         Collections.singletonList(mockStageEdgeTo(vertex)),
@@ -214,7 +212,6 @@ public final class TaskExecutorTest {
     final Task task = new Task(
         "testSourceVertexDataFetching",
         generateTaskId(),
-        0,
         TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
         Collections.singletonList(mockStageEdgeTo(operatorIRVertex1)),
@@ -246,7 +243,6 @@ public final class TaskExecutorTest {
     final Task task = new Task(
         "testSourceVertexDataFetching",
         generateTaskId(),
-        0,
         TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
         Arrays.asList(mockStageEdgeTo(operatorIRVertex1), mockStageEdgeTo(operatorIRVertex2)),
@@ -301,7 +297,6 @@ public final class TaskExecutorTest {
     final Task task = new Task(
         "testAdditionalOutputs",
         generateTaskId(),
-        0,
         TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
         Collections.singletonList(mockStageEdgeTo(routerVertex)),

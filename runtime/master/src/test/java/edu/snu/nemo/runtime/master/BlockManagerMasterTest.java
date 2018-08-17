@@ -82,7 +82,7 @@ public final class BlockManagerMasterTest {
     final int srcTaskIndex = 0;
     final String taskId = RuntimeIdManager.generateTaskId("Stage-test", srcTaskIndex, FIRST_ATTEMPT);
     final String executorId = RuntimeIdManager.generateExecutorId();
-    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex, FIRST_ATTEMPT);
+    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex);
 
     // Initially the block state is NOT_AVAILABLE.
     blockManagerMaster.initializeState(blockId, taskId);
@@ -115,7 +115,7 @@ public final class BlockManagerMasterTest {
     final int srcTaskIndex = 0;
     final String taskId = RuntimeIdManager.generateTaskId("Stage-Test", srcTaskIndex, FIRST_ATTEMPT);
     final String executorId = RuntimeIdManager.generateExecutorId();
-    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex, FIRST_ATTEMPT);
+    final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskIndex);
 
     // The block is being scheduled.
     blockManagerMaster.initializeState(blockId, taskId);

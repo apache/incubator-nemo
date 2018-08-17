@@ -24,7 +24,7 @@ import java.io.Serializable;
 import java.util.*;
 
 /**
- * A Task is a self-contained executable that can be executed on a machine.
+ * A Task (attempt) is a self-contained executable that can be executed on a machine.
  */
 public final class Task implements Serializable {
   private final String planId;
@@ -39,7 +39,7 @@ public final class Task implements Serializable {
    * Constructor.
    *
    * @param planId               the id of the physical plan.
-   * @param taskId               the ID of the task.
+   * @param taskId               the ID of this task attempt.
    * @param executionProperties  {@link VertexExecutionProperty} map for the corresponding stage
    * @param serializedIRDag      the serialized DAG of the task.
    * @param taskIncomingEdges    the incoming edges of the task.

@@ -17,7 +17,6 @@ package edu.snu.nemo.runtime.master;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.exception.IllegalStateTransitionException;
-import edu.snu.nemo.common.exception.SchedulingException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.StateMachine;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
@@ -65,8 +64,8 @@ public final class PlanStateManager {
    * The data structures below track the execution states of this plan.
    */
   private final PlanState planState;
-  private final Map<String, StageState> idToStageStates;
-  private final Map<String, TaskState> idToTaskStates;
+  private final Map<String, StageState> stageIdToState;
+  private final Map<String, List<TaskState>> taskIndexToAttemptStates; // sorted by attempt indices
 
   /**
    * Represents the plan to manage.
@@ -87,8 +86,8 @@ public final class PlanStateManager {
     this.physicalPlan = physicalPlan;
     this.maxScheduleAttempt = maxScheduleAttempt;
     this.planState = new PlanState();
-    this.idToStageStates = new HashMap<>();
-    this.idToTaskStates = new HashMap<>();
+    this.stageIdToState = new HashMap<>();
+    this.taskIndexToAttemptStates = new HashMap<>();
     this.finishLock = new ReentrantLock();
     this.planFinishedCondition = finishLock.newCondition();
     this.metricStore = MetricStore.getStore();
@@ -103,14 +102,38 @@ public final class PlanStateManager {
    */
   private void initializeComputationStates() {
     onPlanStateChanged(PlanState.State.EXECUTING);
-
-    // Initialize the states for the plan down to task-level.
     physicalPlan.getStageDAG().topologicalDo(stage -> {
-      idToStageStates.put(stage.getId(), new StageState());
-      stage.getTaskIds().forEach(taskId -> {
-        idToTaskStates.put(taskId, new TaskState());
-      });
+      stageIdToState.put(stage.getId(), new StageState());
+      // Initialize task states later.
     });
+  }
+
+  private List<String> getExecutableTaskAttempts(final String stageId) {
+
+
+    final List<String> taskAttempts = new LinkedList<>();
+    for (final String taskId : stageToSchedule.getTaskIds()) {
+      final TaskState.State taskState = planStateManager.getTaskState(taskId);
+
+      switch (taskState) {
+        // Don't schedule these.
+        case COMPLETE:
+        case EXECUTING:
+        case ON_HOLD:
+          break;
+
+        // These are schedulable.
+        case SHOULD_RETRY:
+          planStateManager.onTaskStateChanged(taskId, TaskState.State.READY);
+        case READY:
+          taskAttempts.add(taskId);
+          break;
+
+        // This shouldn't happen.
+        default:
+          throw new SchedulingException(new Throwable("Detected a FAILED Task"));
+      }
+    }
   }
 
   /**
@@ -127,7 +150,8 @@ public final class PlanStateManager {
    */
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
     // Change task state
-    final StateMachine taskState = idToTaskStates.get(taskId).getStateMachine();
+    final int attempt = RuntimeIdManager.getAttemptFromTaskId(taskId);
+    final StateMachine taskState = taskIndexToAttemptStates.get(taskId).get(attempt).getStateMachine();
     LOG.debug("Task State Transition: id {}, from {} to {}",
         new Object[]{taskId, taskState.getCurrentState(), newTaskState});
 
@@ -182,7 +206,7 @@ public final class PlanStateManager {
    */
   private void onStageStateChanged(final String stageId, final StageState.State newStageState) {
     // Change stage state
-    final StateMachine stageStateMachine = idToStageStates.get(stageId).getStateMachine();
+    final StateMachine stageStateMachine = stageIdToState.get(stageId).getStateMachine();
 
     metricStore.getOrCreateMetric(StageMetric.class, stageId)
         .addEvent(getStageState(stageId), newStageState);
@@ -193,7 +217,7 @@ public final class PlanStateManager {
     stageStateMachine.setState(newStageState);
 
     // Change plan state if needed
-    final boolean allStagesCompleted = idToStageStates.values().stream().allMatch(state ->
+    final boolean allStagesCompleted = stageIdToState.values().stream().allMatch(state ->
         state.getStateMachine().getCurrentState().equals(StageState.State.COMPLETE));
     if (allStagesCompleted) {
       onPlanStateChanged(PlanState.State.COMPLETE);
@@ -287,16 +311,17 @@ public final class PlanStateManager {
   }
 
   public synchronized StageState.State getStageState(final String stageId) {
-    return (StageState.State) idToStageStates.get(stageId).getStateMachine().getCurrentState();
+    return (StageState.State) stageIdToState.get(stageId).getStateMachine().getCurrentState();
   }
 
   public synchronized TaskState.State getTaskState(final String taskId) {
-    return (TaskState.State) idToTaskStates.get(taskId).getStateMachine().getCurrentState();
+    final int attempt = RuntimeIdManager.getAttemptFromTaskId(taskId);
+    return (TaskState.State) taskIndexToAttemptStates.get(taskId).get(attempt).getStateMachine().getCurrentState();
   }
 
   @VisibleForTesting
-  public synchronized Map<String, TaskState> getAllTaskStates() {
-    return idToTaskStates;
+  public synchronized Map<String, List<TaskState>> getAllTaskStates() {
+    return taskIndexToAttemptStates;
   }
 
   /**
@@ -339,7 +364,7 @@ public final class PlanStateManager {
         sb.append(", ");
       }
       isFirstStage = false;
-      final StageState stageState = idToStageStates.get(stage.getId());
+      final StageState stageState = stageIdToState.get(stage.getId());
       sb.append("{\"id\": \"").append(stage.getId()).append("\", ");
       sb.append("\"state\": \"").append(stageState.toString()).append("\", ");
       sb.append("\"tasks\": [");
@@ -350,7 +375,7 @@ public final class PlanStateManager {
           sb.append(", ");
         }
         isFirstTask = false;
-        final TaskState taskState = idToTaskStates.get(taskId);
+        final TaskState taskState = taskIndexToAttemptStates.get(taskId);
         sb.append("{\"id\": \"").append(taskId).append("\", ");
         sb.append("\"state\": \"").append(taskState.toString()).append("\"}");
       }

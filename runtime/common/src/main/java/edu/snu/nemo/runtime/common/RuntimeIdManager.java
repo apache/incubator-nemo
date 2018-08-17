@@ -94,12 +94,10 @@ public final class RuntimeIdManager {
    *
    * @param runtimeEdgeId of the block
    * @param producerTaskIndex of the block
-   * @param producerTaskAttempt of the block
    * @return the generated ID
    */
   public static String generateBlockId(final String runtimeEdgeId,
-                                       final int producerTaskIndex,
-                                       final int producerTaskAttempt) {
+                                       final int producerTaskIndex) {
     if (producerTaskIndex < 0 || producerTaskAttempt < 0) {
       throw new IllegalStateException(producerTaskIndex + ", " + producerTaskAttempt);
     }

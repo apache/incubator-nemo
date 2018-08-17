@@ -147,73 +147,60 @@ public final class BatchScheduler implements Scheduler {
                                             final TaskState.State newState,
                                             @Nullable final String vertexPutOnHold,
                                             final TaskState.RecoverableTaskFailureCause failureCause) {
-    final int currentTaskAttemptIndex = planStateManager.getTaskAttempt(taskId);
+    // Do change state, as this notification is for the current task attempt.
+    planStateManager.onTaskStateChanged(taskId, newState);
+    switch (newState) {
+      case COMPLETE:
+        onTaskExecutionComplete(executorId, taskId);
+        break;
+      case SHOULD_RETRY:
+        // SHOULD_RETRY from an executor means that the task ran into a recoverable failure
+        onTaskExecutionFailedRecoverable(executorId, taskId, failureCause);
+        break;
+      case ON_HOLD:
+        onTaskExecutionOnHold(executorId, taskId);
+        break;
+      case FAILED:
+        throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The plan failed on Task #")
+            .append(taskId).append(" in Executor ").append(executorId).toString()));
+      case READY:
+      case EXECUTING:
+        throw new IllegalStateTransitionException(
+            new Exception("The states READY/EXECUTING cannot occur at this point"));
+      default:
+        throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + newState));
+    }
 
-    if (taskAttemptIndex == currentTaskAttemptIndex) {
-      // Do change state, as this notification is for the current task attempt.
-      planStateManager.onTaskStateChanged(taskId, newState);
-      switch (newState) {
-        case COMPLETE:
-          onTaskExecutionComplete(executorId, taskId);
-          break;
-        case SHOULD_RETRY:
-          // SHOULD_RETRY from an executor means that the task ran into a recoverable failure
-          onTaskExecutionFailedRecoverable(executorId, taskId, failureCause);
-          break;
-        case ON_HOLD:
-          onTaskExecutionOnHold(executorId, taskId);
-          break;
-        case FAILED:
-          throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The plan failed on Task #")
-              .append(taskId).append(" in Executor ").append(executorId).toString()));
-        case READY:
-        case EXECUTING:
-          throw new IllegalStateTransitionException(
-              new Exception("The states READY/EXECUTING cannot occur at this point"));
-        default:
-          throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + newState));
-      }
-
-      // Invoke doSchedule()
-      switch (newState) {
-        case COMPLETE:
-        case ON_HOLD:
-          // If the stage has completed
-          final String stageIdForTaskUponCompletion = RuntimeIdManager.getStageIdFromTaskId(taskId);
-          if (planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
-            if (!planStateManager.isPlanDone()) {
-              doSchedule();
-            }
+    // Invoke doSchedule()
+    switch (newState) {
+      case COMPLETE:
+      case ON_HOLD:
+        // If the stage has completed
+        final String stageIdForTaskUponCompletion = RuntimeIdManager.getStageIdFromTaskId(taskId);
+        if (planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
+          if (!planStateManager.isPlanDone()) {
+            doSchedule();
           }
-          break;
-        case SHOULD_RETRY:
-          // Do retry
-          doSchedule();
-          break;
-        default:
-          break;
-      }
+        }
+        break;
+      case SHOULD_RETRY:
+        // Do retry
+        doSchedule();
+        break;
+      default:
+        break;
+    }
 
-      // Invoke taskDispatcher.onExecutorSlotAvailable()
-      switch (newState) {
-        // These three states mean that a slot is made available.
-        case COMPLETE:
-        case ON_HOLD:
-        case SHOULD_RETRY:
-          taskDispatcher.onExecutorSlotAvailable();
-          break;
-        default:
-          break;
-      }
-    } else if (taskAttemptIndex < currentTaskAttemptIndex) {
-      // Do not change state, as this report is from a previous task attempt.
-      // For example, the master can receive a notification that an executor has been removed,
-      // and then a notification that the task that was running in the removed executor has been completed.
-      // In this case, if we do not consider the attempt number, the state changes from SHOULD_RETRY to COMPLETED,
-      // which is illegal.
-      LOG.info("{} state change to {} arrived late, we will ignore this.", new Object[]{taskId, newState});
-    } else {
-      throw new SchedulingException(new Throwable("AttemptIdx for a task cannot be greater than its current index"));
+    // Invoke taskDispatcher.onExecutorSlotAvailable()
+    switch (newState) {
+      // These three states mean that a slot is made available.
+      case COMPLETE:
+      case ON_HOLD:
+      case SHOULD_RETRY:
+        taskDispatcher.onExecutorSlotAvailable();
+        break;
+      default:
+        break;
     }
   }
 
@@ -306,41 +293,15 @@ public final class BatchScheduler implements Scheduler {
     final List<StageEdge> stageOutgoingEdges =
         physicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
 
-    final List<String> taskIdsToSchedule = new LinkedList<>();
-    for (final String taskId : stageToSchedule.getTaskIds()) {
-      final TaskState.State taskState = planStateManager.getTaskState(taskId);
-
-      switch (taskState) {
-        // Don't schedule these.
-        case COMPLETE:
-        case EXECUTING:
-        case ON_HOLD:
-          break;
-
-        // These are schedulable.
-        case SHOULD_RETRY:
-          planStateManager.onTaskStateChanged(taskId, TaskState.State.READY);
-        case READY:
-          taskIdsToSchedule.add(taskId);
-          break;
-
-        // This shouldn't happen.
-        default:
-          throw new SchedulingException(new Throwable("Detected a FAILED Task"));
-      }
-    }
-
     // Create and return tasks.
     final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
     final List<Task> tasks = new ArrayList<>(taskIdsToSchedule.size());
     taskIdsToSchedule.forEach(taskId -> {
       blockManagerMaster.onProducerTaskScheduled(taskId); // Notify the block manager early for push edges.
       final int taskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
-      final int attemptIdx = planStateManager.getTaskAttempt(taskId);
       tasks.add(new Task(
           physicalPlan.getId(),
           taskId,
-          attemptIdx,
           stageToSchedule.getExecutionProperties(),
           stageToSchedule.getSerializedIRDAG(),
           stageIncomingEdges,

@@ -23,11 +23,9 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -72,17 +70,6 @@ public final class Stage extends Vertex {
    */
   public byte[] getSerializedIRDAG() {
     return serializedIRDag;
-  }
-
-  /**
-   * @return the list of the task IDs in this stage.
-   */
-  public List<String> getTaskIds() {
-    final List<String> taskIds = new ArrayList<>();
-    for (int taskIdx = 0; taskIdx < getParallelism(); taskIdx++) {
-      taskIds.add(RuntimeIdManager.generateTaskId(taskIdx, getId()));
-    }
-    return taskIds;
   }
 
   /**
