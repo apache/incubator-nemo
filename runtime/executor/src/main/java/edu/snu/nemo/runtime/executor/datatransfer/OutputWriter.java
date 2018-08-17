@@ -20,7 +20,7 @@ import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.block.Block;
@@ -60,7 +60,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
                final RuntimeEdge<?> runtimeEdge,
                final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
-    this.blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
+    this.blockId = RuntimeIdManager.generateBlockId(getId(), srcTaskIdx);
     this.runtimeEdge = runtimeEdge;
     this.srcVertexId = srcRuntimeVertexId;
     this.dstIrVertex = dstIrVertex;

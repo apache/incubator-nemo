@@ -33,7 +33,7 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -324,8 +324,8 @@ public final class DataTransferTest {
 
     // Initialize states in Master
     srcStage.getTaskIds().forEach(srcTaskId -> {
-      final String blockId = RuntimeIdGenerator.generateBlockId(
-          edgeId, RuntimeIdGenerator.getIndexFromTaskId(srcTaskId));
+      final String blockId = RuntimeIdManager.generateBlockId(
+          edgeId, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
       master.initializeState(blockId, srcTaskId);
       master.onProducerTaskScheduled(srcTaskId);
     });
@@ -421,11 +421,11 @@ public final class DataTransferTest {
         srcStage, dstStage, false);
     // Initialize states in Master
     srcStage.getTaskIds().forEach(srcTaskId -> {
-      final String blockId = RuntimeIdGenerator.generateBlockId(
-          edgeId, RuntimeIdGenerator.getIndexFromTaskId(srcTaskId));
+      final String blockId = RuntimeIdManager.generateBlockId(
+          edgeId, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
       master.initializeState(blockId, srcTaskId);
-      final String blockId2 = RuntimeIdGenerator.generateBlockId(
-          edgeId2, RuntimeIdGenerator.getIndexFromTaskId(srcTaskId));
+      final String blockId2 = RuntimeIdManager.generateBlockId(
+          edgeId2, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
       master.initializeState(blockId2, srcTaskId);
       master.onProducerTaskScheduled(srcTaskId);
     });

@@ -21,7 +21,7 @@ import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
@@ -92,7 +92,7 @@ public final class BlockManagerMaster {
       stageOutgoingEdges.forEach(stageEdge -> {
         final int srcParallelism = taskIdsForStage.size();
         IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-          final String blockId = RuntimeIdGenerator.generateBlockId(stageEdge.getId(), srcTaskIdx);
+          final String blockId = RuntimeIdManager.generateBlockId(stageEdge.getId(), srcTaskIdx);
           initializeState(blockId, taskIdsForStage.get(srcTaskIdx));
         });
       });
@@ -103,8 +103,8 @@ public final class BlockManagerMaster {
         taskInternalDag.getVertices().forEach(task -> {
           final List<RuntimeEdge<IRVertex>> internalOutgoingEdges = taskInternalDag.getOutgoingEdgesOf(task);
           internalOutgoingEdges.forEach(taskRuntimeEdge -> {
-            final int srcTaskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
-            final String blockId = RuntimeIdGenerator.generateBlockId(taskRuntimeEdge.getId(), srcTaskIdx);
+            final int srcTaskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
+            final String blockId = RuntimeIdManager.generateBlockId(taskRuntimeEdge.getId(), srcTaskIdx);
             initializeState(blockId, taskId);
           });
         });
@@ -454,7 +454,7 @@ public final class BlockManagerMaster {
         }
         messageContext.reply(
             ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
+                .setId(RuntimeIdManager.generateMessageId())
                 .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.BlockLocationInfo)
                 .setBlockLocationInfoMsg(infoMsgBuilder.build())

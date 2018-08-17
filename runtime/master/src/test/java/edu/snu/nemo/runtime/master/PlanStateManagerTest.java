@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master;
 
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
@@ -45,16 +45,13 @@ import static org.mockito.Mockito.mock;
  * Tests {@link PlanStateManager}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(MetricMessageHandler.class)
 public final class PlanStateManagerTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
-  private MetricMessageHandler metricMessageHandler;
 
   @Before
   public void setUp() throws Exception {
     final Injector injector = LocalMessageEnvironment.forkInjector(LocalMessageDispatcher.getInjector(),
         MessageEnvironment.MASTER_COMMUNICATION_ID);
-    metricMessageHandler = mock(MetricMessageHandler.class);
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
   }
 
@@ -66,8 +63,7 @@ public final class PlanStateManagerTest {
   public void testPhysicalPlanStateChanges() throws Exception {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
-    final PlanStateManager planStateManager =
-        new PlanStateManager(physicalPlan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+    final PlanStateManager planStateManager = new PlanStateManager(physicalPlan, MAX_SCHEDULE_ATTEMPT);
 
     assertEquals(planStateManager.getPlanId(), "TestPlan");
 
@@ -79,7 +75,7 @@ public final class PlanStateManagerTest {
       taskIds.forEach(taskId -> {
         planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
         planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
-        if (RuntimeIdGenerator.getIndexFromTaskId(taskId) == taskIds.size() - 1) {
+        if (RuntimeIdManager.getIndexFromTaskId(taskId) == taskIds.size() - 1) {
           assertEquals(StageState.State.COMPLETE, planStateManager.getStageState(stage.getId()));
         }
       });
@@ -98,8 +94,7 @@ public final class PlanStateManagerTest {
   public void testWaitUntilFinish() throws Exception {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
-    final PlanStateManager planStateManager =
-        new PlanStateManager(physicalPlan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+    final PlanStateManager planStateManager = new PlanStateManager(physicalPlan, MAX_SCHEDULE_ATTEMPT);
 
     assertFalse(planStateManager.isPlanDone());
 

@@ -23,7 +23,7 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.io.Serializable;
@@ -80,7 +80,7 @@ public final class Stage extends Vertex {
   public List<String> getTaskIds() {
     final List<String> taskIds = new ArrayList<>();
     for (int taskIdx = 0; taskIdx < getParallelism(); taskIdx++) {
-      taskIds.add(RuntimeIdGenerator.generateTaskId(taskIdx, getId()));
+      taskIds.add(RuntimeIdManager.generateTaskId(taskIdx, getId()));
     }
     return taskIds;
   }

@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.common.exception.UnknownFailureCauseException;
@@ -57,7 +57,7 @@ public final class MetricManagerWorker implements MetricMessageSender {
     flushMetricMessageQueueToMaster();
     persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
+            .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.MetricFlushed)
             .build());
@@ -79,7 +79,7 @@ public final class MetricManagerWorker implements MetricMessageSender {
 
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdGenerator.generateMessageId())
+              .setId(RuntimeIdManager.generateMessageId())
               .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
               .setType(ControlMessage.MessageType.MetricMessageReceived)
               .setMetricMsg(metricMsgBuilder.build())

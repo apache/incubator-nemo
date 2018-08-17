@@ -23,7 +23,7 @@ import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -133,7 +133,7 @@ public final class TaskExecutor {
   private Pair<List<DataFetcher>, List<VertexHarness>> prepare(final Task task,
                                                                final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                                                                final DataTransferFactory dataTransferFactory) {
-    final int taskIndex = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
+    final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
 
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
@@ -578,7 +578,7 @@ public final class TaskExecutor {
     vertexHarness.getContext().getSerializedData().ifPresent(data ->
         persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
             ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
+                .setId(RuntimeIdManager.generateMessageId())
                 .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.ExecutorDataCollected)
                 .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(data).build())

@@ -24,7 +24,6 @@ import edu.snu.nemo.runtime.common.state.PlanState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.PlanStateManager;
-import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
@@ -58,7 +57,7 @@ import static org.mockito.Mockito.mock;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({BlockManagerMaster.class, TaskDispatcher.class, SchedulingConstraintRegistry.class,
-    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
+    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class})
 public final class TaskRetryTest {
   @Rule public TestName testName = new TestName();
 
@@ -211,9 +210,8 @@ public final class TaskRetryTest {
   }
 
   private PlanStateManager runPhysicalPlan(final TestPlanGenerator.PlanType planType) throws Exception {
-    final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PhysicalPlan plan = TestPlanGenerator.generatePhysicalPlan(planType, false);
-    final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+    final PlanStateManager planStateManager = new PlanStateManager(plan, MAX_SCHEDULE_ATTEMPT);
     scheduler.schedulePlan(plan, planStateManager);
     return planStateManager;
   }

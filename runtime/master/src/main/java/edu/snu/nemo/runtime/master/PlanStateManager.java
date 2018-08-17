@@ -20,7 +20,7 @@ import edu.snu.nemo.common.exception.IllegalStateTransitionException;
 import edu.snu.nemo.common.exception.SchedulingException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.StateMachine;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.state.PlanState;
@@ -69,12 +69,6 @@ public final class PlanStateManager {
   private final Map<String, TaskState> idToTaskStates;
 
   /**
-   * Maintain the number of schedule attempts for each task.
-   * The attempt numbers are updated only here, and are read-only in other places.
-   */
-  private final Map<String, Integer> taskIdToCurrentAttempt;
-
-  /**
    * Represents the plan to manage.
    */
   private final PhysicalPlan physicalPlan;
@@ -85,24 +79,16 @@ public final class PlanStateManager {
   private final Lock finishLock;
   private final Condition planFinishedCondition;
 
-  /**
-   * For metrics.
-   */
-  private final MetricMessageHandler metricMessageHandler;
-
   private MetricStore metricStore;
 
   public PlanStateManager(final PhysicalPlan physicalPlan,
-                          final MetricMessageHandler metricMessageHandler,
                           final int maxScheduleAttempt) {
     this.planId = physicalPlan.getId();
     this.physicalPlan = physicalPlan;
-    this.metricMessageHandler = metricMessageHandler;
     this.maxScheduleAttempt = maxScheduleAttempt;
     this.planState = new PlanState();
     this.idToStageStates = new HashMap<>();
     this.idToTaskStates = new HashMap<>();
-    this.taskIdToCurrentAttempt = new HashMap<>();
     this.finishLock = new ReentrantLock();
     this.planFinishedCondition = finishLock.newCondition();
     this.metricStore = MetricStore.getStore();
@@ -123,7 +109,6 @@ public final class PlanStateManager {
       idToStageStates.put(stage.getId(), new StageState());
       stage.getTaskIds().forEach(taskId -> {
         idToTaskStates.put(taskId, new TaskState());
-        taskIdToCurrentAttempt.put(taskId, 1);
       });
     });
   }
@@ -152,27 +137,8 @@ public final class PlanStateManager {
 
     taskState.setState(newTaskState);
 
-    switch (newTaskState) {
-      case ON_HOLD:
-      case COMPLETE:
-      case FAILED:
-      case SHOULD_RETRY:
-      case EXECUTING:
-        break;
-      case READY:
-        final int currentAttempt = taskIdToCurrentAttempt.get(taskId) + 1;
-        if (currentAttempt <= maxScheduleAttempt) {
-          taskIdToCurrentAttempt.put(taskId, currentAttempt);
-        } else {
-          throw new SchedulingException(new Throwable("Exceeded max number of scheduling attempts for " + taskId));
-        }
-        break;
-      default:
-        throw new UnknownExecutionStateException(new Throwable("This task state is unknown"));
-    }
-
     // Change stage state, if needed
-    final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
+    final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     final List<String> tasksOfThisStage = physicalPlan.getStageDAG().getVertexById(stageId).getTaskIds();
     final long numOfCompletedOrOnHoldTasksInThisStage = tasksOfThisStage
         .stream()
@@ -326,14 +292,6 @@ public final class PlanStateManager {
 
   public synchronized TaskState.State getTaskState(final String taskId) {
     return (TaskState.State) idToTaskStates.get(taskId).getStateMachine().getCurrentState();
-  }
-
-  public synchronized int getTaskAttempt(final String taskId) {
-    if (taskIdToCurrentAttempt.containsKey(taskId)) {
-      return taskIdToCurrentAttempt.get(taskId);
-    } else {
-      throw new IllegalStateException("No mapping for this task's attemptIdx, an inconsistent state occurred.");
-    }
   }
 
   @VisibleForTesting

@@ -21,19 +21,17 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * ID Generator.
  */
-public final class RuntimeIdGenerator {
+public final class RuntimeIdManager {
   private static AtomicInteger physicalPlanIdGenerator = new AtomicInteger(0);
   private static AtomicInteger executorIdGenerator = new AtomicInteger(0);
   private static AtomicLong messageIdGenerator = new AtomicLong(1L);
   private static AtomicLong resourceSpecIdGenerator = new AtomicLong(0);
-  private static final String BLOCK_PREFIX = "Block-";
-  private static final String BLOCK_ID_SPLITTER = "_";
-  private static final String TASK_INFIX = "-Task-";
+  private static final String SPLITTER = "-";
 
   /**
    * Private constructor which will not be used.
    */
-  private RuntimeIdGenerator() {
+  private RuntimeIdManager() {
   }
 
 
@@ -43,10 +41,9 @@ public final class RuntimeIdGenerator {
    * Generates the ID for physical plan.
    *
    * @return the generated ID
-   * TODO #100: Refactor string-based RuntimeIdGenerator for IR-based DynOpt
    */
   public static String generatePhysicalPlanId() {
-    return "Plan-" + physicalPlanIdGenerator.get();
+    return "Plan" + physicalPlanIdGenerator.getAndIncrement();
   }
 
   /**
@@ -56,7 +53,7 @@ public final class RuntimeIdGenerator {
    * @return the generated ID
    */
   public static String generateStageEdgeId(final String irEdgeId) {
-    return "SEdge-" + irEdgeId;
+    return "SEdge" + irEdgeId;
   }
 
   /**
@@ -65,18 +62,22 @@ public final class RuntimeIdGenerator {
    * @return the generated ID
    */
   public static String generateStageId(final Integer stageId) {
-    return "Stage-" + stageId;
+    return "Stage" + stageId;
   }
 
   /**
    * Generates the ID for a task.
    *
-   * @param index   the index of this task.
    * @param stageId the ID of the stage.
+   * @param index   the index of this task.
+   * @param attempt the attempt of this task.
    * @return the generated ID
    */
-  public static String generateTaskId(final int index, final String stageId) {
-    return stageId + TASK_INFIX + index;
+  public static String generateTaskId(final String stageId, final int index, final int attempt) {
+    if (index < 0 || attempt < 0) {
+      throw new IllegalStateException(index + ", " + attempt);
+    }
+    return stageId + SPLITTER + index + SPLITTER + attempt;
   }
 
   /**
@@ -85,7 +86,7 @@ public final class RuntimeIdGenerator {
    * @return the generated ID
    */
   public static String generateExecutorId() {
-    return "Executor-" + executorIdGenerator.getAndIncrement();
+    return "Executor" + executorIdGenerator.getAndIncrement();
   }
 
   /**
@@ -93,11 +94,16 @@ public final class RuntimeIdGenerator {
    *
    * @param runtimeEdgeId of the block
    * @param producerTaskIndex of the block
+   * @param producerTaskAttempt of the block
    * @return the generated ID
    */
   public static String generateBlockId(final String runtimeEdgeId,
-                                       final int producerTaskIndex) {
-    return BLOCK_PREFIX + runtimeEdgeId + BLOCK_ID_SPLITTER + producerTaskIndex;
+                                       final int producerTaskIndex,
+                                       final int producerTaskAttempt) {
+    if (producerTaskIndex < 0 || producerTaskAttempt < 0) {
+      throw new IllegalStateException(producerTaskIndex + ", " + producerTaskAttempt);
+    }
+    return runtimeEdgeId + SPLITTER + producerTaskIndex + SPLITTER + producerTaskAttempt;
   }
 
   /**
@@ -115,7 +121,7 @@ public final class RuntimeIdGenerator {
    * @return the generated ID
    */
   public static String generateResourceSpecId() {
-    return "ResourceSpec-" + resourceSpecIdGenerator.getAndIncrement();
+    return "ResourceSpec" + resourceSpecIdGenerator.getAndIncrement();
   }
 
   //////////////////////////////////////////////////////////////// Parse IDs
@@ -127,7 +133,7 @@ public final class RuntimeIdGenerator {
    * @return the runtime edge ID.
    */
   public static String getRuntimeEdgeIdFromBlockId(final String blockId) {
-    return parseBlockId(blockId)[0];
+    return split(blockId)[0];
   }
 
   /**
@@ -137,19 +143,7 @@ public final class RuntimeIdGenerator {
    * @return the task index.
    */
   public static String getTaskIndexFromBlockId(final String blockId) {
-    return parseBlockId(blockId)[1];
-  }
-
-  /**
-   * Parses a block id.
-   * The result array will contain runtime edge id and task index in order.
-   *
-   * @param blockId to parse.
-   * @return the array of parsed information.
-   */
-  private static String[] parseBlockId(final String blockId) {
-    final String woPrefix = blockId.split(BLOCK_PREFIX)[1];
-    return woPrefix.split(BLOCK_ID_SPLITTER);
+    return split(blockId)[1];
   }
 
   /**
@@ -159,7 +153,7 @@ public final class RuntimeIdGenerator {
    * @return the stage ID.
    */
   public static String getStageIdFromTaskId(final String taskId) {
-    return parseTaskId(taskId)[0];
+    return split(taskId)[0];
   }
 
   /**
@@ -169,17 +163,20 @@ public final class RuntimeIdGenerator {
    * @return the index.
    */
   public static int getIndexFromTaskId(final String taskId) {
-    return Integer.valueOf(parseTaskId(taskId)[1]);
+    return Integer.valueOf(split(taskId)[1]);
   }
 
   /**
-   * Parses a task id.
-   * The result array will contain the stage id and the index of the task in order.
+   * Extracts the attempt from a task ID.
    *
-   * @param taskId to parse.
-   * @return the array of parsed information.
+   * @param taskId the task ID to extract.
+   * @return the attempt.
    */
-  private static String[] parseTaskId(final String taskId) {
-    return taskId.split(TASK_INFIX);
+  public static int getAttemptFromTaskId(final String taskId) {
+    return Integer.valueOf(split(taskId)[2]);
+  }
+
+  private static String[] split(final String id) {
+    return id.split(SPLITTER);
   }
 }

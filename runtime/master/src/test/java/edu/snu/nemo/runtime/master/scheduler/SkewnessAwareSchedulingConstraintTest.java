@@ -21,7 +21,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternPropert
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.common.HashRange;
 import edu.snu.nemo.common.KeyRange;
 import edu.snu.nemo.runtime.common.plan.Stage;
@@ -77,7 +77,7 @@ public final class SkewnessAwareSchedulingConstraintTest {
 
   private static Task mockTask(final int taskIdx, final List<StageEdge> inEdges) {
     final Task task = mock(Task.class);
-    when(task.getTaskId()).thenReturn(RuntimeIdGenerator.generateTaskId(taskIdx, "Stage-0"));
+    when(task.getTaskId()).thenReturn(RuntimeIdManager.generateTaskId(taskIdx, "Stage-0"));
     when(task.getTaskIncomingEdges()).thenReturn(inEdges);
     return task;
   }

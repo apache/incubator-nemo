@@ -39,10 +39,8 @@ import static org.mockito.Mockito.when;
  * Test {@link ClientEndpoint}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(MetricMessageHandler.class)
 public class ClientEndpointTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
-  private final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
 
   @Test(timeout = 3000)
   public void testState() throws Exception {
@@ -58,8 +56,7 @@ public class ClientEndpointTest {
     // Create a PlanStateManager of a dag and create a DriverEndpoint with it.
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
-    final PlanStateManager planStateManager =
-        new PlanStateManager(physicalPlan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+    final PlanStateManager planStateManager = new PlanStateManager(physicalPlan, MAX_SCHEDULE_ATTEMPT);
 
     final DriverEndpoint driverEndpoint = new DriverEndpoint(planStateManager, clientEndpoint);
 
