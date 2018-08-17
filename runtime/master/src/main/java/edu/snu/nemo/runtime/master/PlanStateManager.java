@@ -19,6 +19,7 @@ import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.exception.IllegalStateTransitionException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.StateMachine;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
@@ -65,7 +66,7 @@ public final class PlanStateManager {
    */
   private final PlanState planState;
   private final Map<String, StageState> stageIdToState;
-  private final Map<String, List<TaskState>> taskIndexToAttemptStates; // sorted by attempt indices
+  private final Map<String, List<List<TaskState>>> stageIdToTaskAttemptStates; // sorted by task idx, and then attempt
 
   /**
    * Represents the plan to manage.
@@ -87,7 +88,7 @@ public final class PlanStateManager {
     this.maxScheduleAttempt = maxScheduleAttempt;
     this.planState = new PlanState();
     this.stageIdToState = new HashMap<>();
-    this.taskIndexToAttemptStates = new HashMap<>();
+    this.stageIdToTaskAttemptStates = new HashMap<>();
     this.finishLock = new ReentrantLock();
     this.planFinishedCondition = finishLock.newCondition();
     this.metricStore = MetricStore.getStore();
@@ -104,36 +105,60 @@ public final class PlanStateManager {
     onPlanStateChanged(PlanState.State.EXECUTING);
     physicalPlan.getStageDAG().topologicalDo(stage -> {
       stageIdToState.put(stage.getId(), new StageState());
-      // Initialize task states later.
+      stageIdToTaskAttemptStates.put(stage.getId(), new ArrayList<>(stage.getParallelism()));
+      for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
+        // for each task idx of this stage
+        stageIdToTaskAttemptStates.get(stage.getId()).add(new ArrayList<>());
+        // task states will be initialized lazily in getExecutableTaskAttempts()
+      }
     });
   }
 
-  private List<String> getExecutableTaskAttempts(final String stageId) {
+  private boolean isTaskDone(final TaskState taskState) {
+    final TaskState.State state = (TaskState.State) taskState.getStateMachine().getCurrentState();
+    return state.equals(TaskState.State.COMPLETE)
+        || state.equals(TaskState.State.SHOULD_RETRY)
+        || state.equals(TaskState.State.FAILED);
+  }
 
+  /**
+   * @param stageId to run
+   * @return executable task attempts
+   */
+  public synchronized List<String> getExecutableTaskAttempts(final String stageId) {
+    if (getStageState(stageId).equals(StageState.State.COMPLETE)) {
+      // This stage is done
+      return new ArrayList<>(0);
+    }
 
-    final List<String> taskAttempts = new LinkedList<>();
-    for (final String taskId : stageToSchedule.getTaskIds()) {
-      final TaskState.State taskState = planStateManager.getTaskState(taskId);
+    final List<String> executableTaskAttempts = new ArrayList<>();
+    final Stage stage = physicalPlan.getStageDAG().getVertexById(stageId);
+    final int numOfClones = stage.getPropertyValue(ClonedSchedulingProperty.class).orElse(1);
 
-      switch (taskState) {
-        // Don't schedule these.
-        case COMPLETE:
-        case EXECUTING:
-        case ON_HOLD:
-          break;
+    // For each task index....
+    for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
+      final List<TaskState> attemptStatesForThisTaskIndex =
+          stageIdToTaskAttemptStates.get(stage.getId()).get(taskIndex);
 
-        // These are schedulable.
-        case SHOULD_RETRY:
-          planStateManager.onTaskStateChanged(taskId, TaskState.State.READY);
-        case READY:
-          taskAttempts.add(taskId);
-          break;
+      // (Step 1) Create new READY attempts, as many as
+      // # of clones - (# of total existing attempts - # of 'done' attempts)
+      final long numOfTotalExistingAttempts = attemptStatesForThisTaskIndex.size();
+      final long numOfDoneAttempts = attemptStatesForThisTaskIndex.stream().filter(this::isTaskDone).count();
+      final long newAttemptsToCreate = numOfClones - (numOfTotalExistingAttempts - numOfDoneAttempts);
+      for (int i = 0; i < newAttemptsToCreate; i++) {
+        attemptStatesForThisTaskIndex.add(new TaskState());
+      }
 
-        // This shouldn't happen.
-        default:
-          throw new SchedulingException(new Throwable("Detected a FAILED Task"));
+      // (Step 2) Return all READY attempts
+      for (int attempt = 0; attempt < attemptStatesForThisTaskIndex.size(); attempt++) {
+        if (attemptStatesForThisTaskIndex.get(attempt).getStateMachine().getCurrentState()
+            .equals(TaskState.State.READY)) {
+          executableTaskAttempts.add(RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt));
+        }
       }
     }
+
+    return executableTaskAttempts;
   }
 
   /**
@@ -150,8 +175,12 @@ public final class PlanStateManager {
    */
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
     // Change task state
-    final int attempt = RuntimeIdManager.getAttemptFromTaskId(taskId);
-    final StateMachine taskState = taskIndexToAttemptStates.get(taskId).get(attempt).getStateMachine();
+    final StateMachine taskState = stageIdToTaskAttemptStates
+        .get(RuntimeIdManager.getStageIdFromTaskId(taskId))
+        .get(RuntimeIdManager.getIndexFromTaskId(taskId))
+        .get(RuntimeIdManager.getAttemptFromTaskId(taskId))
+        .getStateMachine();
+
     LOG.debug("Task State Transition: id {}, from {} to {}",
         new Object[]{taskId, taskState.getCurrentState(), newTaskState});
 
@@ -162,8 +191,9 @@ public final class PlanStateManager {
     taskState.setState(newTaskState);
 
     // Change stage state, if needed
+
+
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
-    final List<String> tasksOfThisStage = physicalPlan.getStageDAG().getVertexById(stageId).getTaskIds();
     final long numOfCompletedOrOnHoldTasksInThisStage = tasksOfThisStage
         .stream()
         .map(this::getTaskState)

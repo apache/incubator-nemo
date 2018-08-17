@@ -295,6 +295,8 @@ public final class BatchScheduler implements Scheduler {
 
     // Create and return tasks.
     final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
+
+    final List<String> taskIdsToSchedule = planStateManager.getExecutableTaskAttempts(stageToSchedule.getId());
     final List<Task> tasks = new ArrayList<>(taskIdsToSchedule.size());
     taskIdsToSchedule.forEach(taskId -> {
       blockManagerMaster.onProducerTaskScheduled(taskId); // Notify the block manager early for push edges.
