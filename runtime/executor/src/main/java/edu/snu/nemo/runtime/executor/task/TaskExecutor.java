@@ -164,10 +164,10 @@ public final class TaskExecutor {
       // Handle writes
       // Main output children task writes
       final List<OutputWriter> mainChildrenTaskWriters = getMainChildrenTaskWriters(
-          taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
+          irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
       // Additional output children task writes
       final Map<String, OutputWriter> additionalChildrenTaskWriters = getAdditionalChildrenTaskWriters(
-          taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
+          irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
       // Find all main vertices and additional vertices
       final List<String> additionalOutputVertices = new ArrayList<>(additionalOutputMap.values());
       final Set<String> mainChildren =
@@ -494,15 +494,13 @@ public final class TaskExecutor {
 
   /**
    * Return inter-task OutputWriters, for single output or output associated with main tag.
-   * @param taskIndex               current task index
    * @param irVertex                source irVertex
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
    * @param dataTransferFactory     dataTransferFactory
    * @param taggedOutputs           tag to vertex id map
    * @return OutputWriters for main children tasks
    */
-  private List<OutputWriter> getMainChildrenTaskWriters(final int taskIndex,
-                                                        final IRVertex irVertex,
+  private List<OutputWriter> getMainChildrenTaskWriters(final IRVertex irVertex,
                                                         final List<StageEdge> outEdgesToChildrenTasks,
                                                         final DataTransferFactory dataTransferFactory,
                                                         final Map<String, String> taggedOutputs) {
@@ -511,21 +509,19 @@ public final class TaskExecutor {
         .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
         .filter(outEdge -> !taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
         .map(outEdgeForThisVertex -> dataTransferFactory
-            .createWriter(taskIndex, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
+            .createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
         .collect(Collectors.toList());
   }
 
   /**
    * Return inter-task OutputWriters associated with additional output tags.
-   * @param taskIndex               current task index
    * @param irVertex                source irVertex
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
    * @param dataTransferFactory     dataTransferFactory
    * @param taggedOutputs           tag to vertex id map
    * @return additional children vertex id to OutputWriters map.
    */
-  private Map<String, OutputWriter> getAdditionalChildrenTaskWriters(final int taskIndex,
-                                                                     final IRVertex irVertex,
+  private Map<String, OutputWriter> getAdditionalChildrenTaskWriters(final IRVertex irVertex,
                                                                      final List<StageEdge> outEdgesToChildrenTasks,
                                                                      final DataTransferFactory dataTransferFactory,
                                                                      final Map<String, String> taggedOutputs) {
@@ -537,7 +533,7 @@ public final class TaskExecutor {
         .filter(outEdge -> taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
         .forEach(outEdgeForThisVertex -> {
           additionalChildrenTaskWriters.put(outEdgeForThisVertex.getDstIRVertex().getId(),
-              dataTransferFactory.createWriter(taskIndex, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex));
+              dataTransferFactory.createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex));
         });
 
     return additionalChildrenTaskWriters;

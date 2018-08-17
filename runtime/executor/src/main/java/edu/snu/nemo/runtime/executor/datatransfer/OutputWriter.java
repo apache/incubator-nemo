@@ -45,18 +45,17 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    * Constructor.
    *
    * @param hashRangeMultiplier the {@link edu.snu.nemo.conf.JobConf.HashRangeMultiplier}.
-   * @param srcTaskIdx          the index of the source task.
+   * @param srcTaskId           the id of the source task.
    * @param dstIrVertex         the destination IR vertex.
    * @param runtimeEdge         the {@link RuntimeEdge}.
    * @param blockManagerWorker  the {@link BlockManagerWorker}.
    */
   OutputWriter(final int hashRangeMultiplier,
-               final int srcTaskIdx,
+               final String srcTaskId,
                final IRVertex dstIrVertex,
                final RuntimeEdge<?> runtimeEdge,
                final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
-    this.blockId = RuntimeIdManager.generateBlockId(getId(), srcTaskIdx);
     this.runtimeEdge = runtimeEdge;
     this.dstIrVertex = dstIrVertex;
     this.blockManagerWorker = blockManagerWorker;
@@ -90,7 +89,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
         throw new UnsupportedPartitionerException(
             new Throwable("Partitioner " + partitionerPropertyValue + " is not supported."));
     }
-    blockToWrite = blockManagerWorker.createBlock(blockId, blockStoreValue);
+    blockToWrite = blockManagerWorker.createBlock(
+        RuntimeIdManager.generateBlockId(getId(), srcTaskId), blockStoreValue);
 
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);

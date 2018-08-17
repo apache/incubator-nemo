@@ -45,7 +45,7 @@ import java.util.stream.StreamSupport;
  * Represents the input data transfer to a task.
  */
 public final class InputReader extends DataTransfer {
-  private final String dstTaskId;
+  private final int dstTaskIndex;
   private final BlockManagerWorker blockManagerWorker;
 
   /**
@@ -54,12 +54,12 @@ public final class InputReader extends DataTransfer {
   private final IRVertex srcVertex;
   private final RuntimeEdge runtimeEdge;
 
-  public InputReader(final String dstTaskId,
+  public InputReader(final int dstTaskIndex,
                      final IRVertex srcVertex,
                      final RuntimeEdge runtimeEdge,
                      final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
-    this.dstTaskId = dstTaskId;
+    this.dstTaskIndex = dstTaskIndex;
     this.srcVertex = srcVertex;
     this.runtimeEdge = runtimeEdge;
     this.blockManagerWorker = blockManagerWorker;
@@ -88,7 +88,7 @@ public final class InputReader extends DataTransfer {
   }
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    final String blockId = getBlockId(dstTaskId);
+    final String blockId = generateWildCardBlockId(dstTaskIndex);
     final Optional<DataStoreProperty.Value> dataStoreProperty
         = runtimeEdge.getPropertyValue(DataStoreProperty.class);
     return blockManagerWorker.readBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all());
@@ -101,7 +101,7 @@ public final class InputReader extends DataTransfer {
 
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockId = getBlockId(srcTaskIdx);
+      final String blockId = generateWildCardBlockId(srcTaskIdx);
       futures.add(blockManagerWorker.readBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all()));
     }
 
@@ -128,7 +128,7 @@ public final class InputReader extends DataTransfer {
     final int numSrcTasks = this.getSourceParallelism();
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockId = getBlockId(srcTaskIdx);
+      final String blockId = generateWildCardBlockId(srcTaskIdx);
       futures.add(
           blockManagerWorker.readBlock(blockId, getId(), dataStoreProperty.get(), hashRangeToRead));
     }
@@ -136,14 +136,18 @@ public final class InputReader extends DataTransfer {
     return futures;
   }
 
-  private String getBlockId(final String taskId) {
+  /**
+   * @param producerTaskIndex to use.
+   * @return wildcard block id that corresponds to "ANY" task attempt of the task index.
+   */
+  private String generateWildCardBlockId(final int producerTaskIndex) {
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     if (!duplicateDataProperty.isPresent() || duplicateDataProperty.get().getGroupSize() <= 1) {
-      return RuntimeIdManager.generateBlockId(getId(), taskId);
+      return RuntimeIdManager.generateBlockIdWildcard(getId(), producerTaskIndex);
     }
     final String duplicateEdgeId = duplicateDataProperty.get().getRepresentativeEdgeId();
-    return RuntimeIdManager.generateBlockId(duplicateEdgeId, taskId);
+    return RuntimeIdManager.generateBlockIdWildcard(duplicateEdgeId, producerTaskIndex);
   }
 
   public IRVertex getSrcIrVertex() {

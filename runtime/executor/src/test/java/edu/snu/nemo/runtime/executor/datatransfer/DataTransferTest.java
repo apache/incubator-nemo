@@ -331,9 +331,9 @@ public final class DataTransferTest {
 
     // Write
     final List<List> dataWrittenList = new ArrayList<>();
-    IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
+    generateTaskIds(srcStage).forEach(srcTaskId -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = transferFactory.createWriter(srcTaskIndex, dstVertex, dummyEdge);
+      final OutputWriter writer = transferFactory.createWriter(srcTaskId, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
@@ -429,14 +429,14 @@ public final class DataTransferTest {
 
     // Write
     final List<List> dataWrittenList = new ArrayList<>();
-    IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
+    generateTaskIds(srcStage).forEach(srcTaskId -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = transferFactory.createWriter(srcTaskIndex, dstVertex, dummyEdge);
+      final OutputWriter writer = transferFactory.createWriter(srcTaskId, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
 
-      final OutputWriter writer2 = transferFactory.createWriter(srcTaskIndex, dstVertex, dummyEdge2);
+      final OutputWriter writer2 = transferFactory.createWriter(srcTaskId, dstVertex, dummyEdge2);
       dataWritten.iterator().forEachRemaining(writer2::write);
       writer2.close();
     });

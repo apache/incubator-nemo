@@ -90,7 +90,7 @@ public final class RuntimeIdManager {
   }
 
   /**
-   * Generates the ID for a block, whose data is the output of a task.
+   * Generates the ID for a block, whose data is the output of a task attempt.
    *
    * @param runtimeEdgeId of the block
    * @param producerTaskId of the block
@@ -100,6 +100,18 @@ public final class RuntimeIdManager {
                                        final String producerTaskId) {
     return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
         + SPLITTER + getAttemptFromTaskId(producerTaskId);
+  }
+
+  /**
+   * Generates the ID for a block, whose data is the output of a task.
+   *
+   * @param runtimeEdgeId of the block
+   * @param producerTaskIndex of the block
+   * @return the generated WILDCARD ID
+   */
+  public static String generateBlockIdWildcard(final String runtimeEdgeId,
+                                               final int producerTaskIndex) {
+    return runtimeEdgeId + SPLITTER + producerTaskIndex + SPLITTER + "*";
   }
 
   /**
