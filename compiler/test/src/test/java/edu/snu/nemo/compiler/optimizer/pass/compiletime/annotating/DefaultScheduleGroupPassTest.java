@@ -48,7 +48,7 @@ public final class DefaultScheduleGroupPassTest {
   @Test
   public void testAnnotatingPass() {
     final AnnotatingPass scheduleGroupPass = new DefaultScheduleGroupPass();
-    assertTrue(scheduleGroupPass.getExecutionPropertyToModify().contains(ScheduleGroupProperty.class));
+    assertTrue(scheduleGroupPass.getExecutionPropertiesToAnnotate().contains(ScheduleGroupProperty.class));
   }
 
   /**

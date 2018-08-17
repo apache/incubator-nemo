@@ -49,9 +49,9 @@ public class DefaultEdgeCoderPassTest {
   @Test
   public void testAnnotatingPass() {
     final AnnotatingPass encoderPass = new DefaultEdgeEncoderPass();
-    assertTrue(encoderPass.getExecutionPropertyToModify().contains(EncoderProperty.class));
+    assertTrue(encoderPass.getExecutionPropertiesToAnnotate().contains(EncoderProperty.class));
     final AnnotatingPass decoderPass = new DefaultEdgeDecoderPass();
-    assertTrue(decoderPass.getExecutionPropertyToModify().contains(DecoderProperty.class));
+    assertTrue(decoderPass.getExecutionPropertiesToAnnotate().contains(DecoderProperty.class));
   }
 
   @Test

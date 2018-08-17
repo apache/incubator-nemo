@@ -28,7 +28,7 @@ import java.util.Set;
  * It is ensured by the compiler that the shape of the IR DAG itself is not modified by an AnnotatingPass.
  */
 public abstract class AnnotatingPass extends CompileTimePass {
-  private final Set<Class<? extends ExecutionProperty>> keyOfExecutionPropertyToModify;
+  private final Set<Class<? extends ExecutionProperty>> executionPropertiesToAnnotate;
   private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
 
   /**
@@ -37,7 +37,7 @@ public abstract class AnnotatingPass extends CompileTimePass {
    */
   public AnnotatingPass(final Class<? extends AnnotatingPass> cls) {
     final Annotates annotates = cls.getAnnotation(Annotates.class);
-    this.keyOfExecutionPropertyToModify = new HashSet<>(Arrays.asList(annotates.value()));
+    this.executionPropertiesToAnnotate = new HashSet<>(Arrays.asList(annotates.value()));
 
     final Requires requires = cls.getAnnotation(Requires.class);
     this.prerequisiteExecutionProperties = requires == null
@@ -45,11 +45,11 @@ public abstract class AnnotatingPass extends CompileTimePass {
   }
 
   /**
-   * Getter for key of execution property to modify.
-   * @return key of execution property to modify.
+   * Getter for the execution properties to annotate through the pass.
+   * @return key of execution properties to annotate through the pass.
    */
-  public final Set<Class<? extends ExecutionProperty>> getExecutionPropertyToModify() {
-    return keyOfExecutionPropertyToModify;
+  public final Set<Class<? extends ExecutionProperty>> getExecutionPropertiesToAnnotate() {
+    return executionPropertiesToAnnotate;
   }
 
   @Override

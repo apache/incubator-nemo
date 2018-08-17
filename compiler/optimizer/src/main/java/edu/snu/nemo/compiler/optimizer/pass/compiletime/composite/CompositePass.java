@@ -41,7 +41,7 @@ public abstract class CompositePass extends CompileTimePass {
     passList.forEach(pass -> prerequisiteExecutionProperties.addAll(pass.getPrerequisiteExecutionProperties()));
     passList.forEach(pass -> {
       if (pass instanceof AnnotatingPass) {
-        prerequisiteExecutionProperties.removeAll(((AnnotatingPass) pass).getExecutionPropertyToModify());
+        prerequisiteExecutionProperties.removeAll(((AnnotatingPass) pass).getExecutionPropertiesToAnnotate());
       }
     });
   }

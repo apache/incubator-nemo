@@ -20,6 +20,7 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecompressionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 
 /**
@@ -27,6 +28,7 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
  * It always
  */
 @Annotates(CompressionProperty.class)
+@Requires(CompressionProperty.class)
 public final class DecompressionPass extends AnnotatingPass {
 
   /**
