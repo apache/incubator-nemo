@@ -163,6 +163,10 @@ public final class PlanStateManager {
     return executableTaskAttempts;
   }
 
+  public synchronized Set<String> getAllTaskAttempts(final String stageId) {
+    return getTaskAttemptIdsToItsState(stageId).keySet();
+  }
+
   /**
    * Updates the state of a task.
    * Task state changes can occur both in master and executor.
@@ -369,11 +373,6 @@ public final class PlanStateManager {
         .get(RuntimeIdManager.getAttemptFromTaskId(taskId));
   }
 
-  @VisibleForTesting
-  public synchronized Map<String, List<List<TaskState>>> getAllTaskStates() {
-    return stageIdToTaskAttemptStates;
-  }
-
   /**
    * Stores JSON representation of plan state into a file.
    * @param directory the directory which JSON representation is saved to
@@ -420,7 +419,7 @@ public final class PlanStateManager {
       sb.append("\"tasks\": [");
 
       boolean isFirstTask = true;
-      for (final Map.Entry<String, TaskState.State> entry : getTaskAttemptToItsState(stage.getId()).entrySet()) {
+      for (final Map.Entry<String, TaskState.State> entry : getTaskAttemptIdsToItsState(stage.getId()).entrySet()) {
         if (!isFirstTask) {
           sb.append(", ");
         }
@@ -434,7 +433,8 @@ public final class PlanStateManager {
     return sb.toString();
   }
 
-  private Map<String, TaskState.State> getTaskAttemptToItsState(final String stageId) {
+  @VisibleForTesting
+  private Map<String, TaskState.State> getTaskAttemptIdsToItsState(final String stageId) {
     final Map<String, TaskState.State> result = new HashMap<>();
     final List<List<TaskState>> taskStates = stageIdToTaskAttemptStates.get(stageId);
     for (int taskIndex = 0; taskIndex < taskStates.size(); taskIndex++) {

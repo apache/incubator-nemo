@@ -53,7 +53,7 @@ public final class TaskState {
     stateMachineBuilder.addTransition(State.ON_HOLD, State.FAILED, "Unrecoverable failure");
 
     // From COMPLETE
-    stateMachineBuilder.addTransition(State.COMPLETE, State.SHOULD_RETRY, "Completed, but should be retried");
+    stateMachineBuilder.addTransition(State.COMPLETE, State.SHOULD_RETRY, "Completed before, but should be retried");
 
     stateMachineBuilder.setInitialState(State.READY);
     return stateMachineBuilder.build();

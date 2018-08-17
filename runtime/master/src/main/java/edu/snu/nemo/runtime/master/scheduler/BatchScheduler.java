@@ -330,10 +330,12 @@ public final class BatchScheduler implements Scheduler {
     });
   }
 
-  public IREdge getEdgeToOptimize(final String taskId) {
+  private IREdge getEdgeToOptimize(final String taskId) {
     // Get a stage including the given task
     final Stage stagePutOnHold = physicalPlan.getStageDAG().getVertices().stream()
-        .filter(stage -> stage.getTaskIds().contains(taskId)).findFirst().get();
+        .filter(stage -> stage.getId().equals(RuntimeIdManager.getStageIdFromTaskId(taskId)))
+        .findFirst()
+        .get();
 
     // Get outgoing edges of that stage with MetricCollectionProperty
     List<StageEdge> stageEdges = physicalPlan.getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
@@ -427,13 +429,30 @@ public final class BatchScheduler implements Scheduler {
       return Collections.emptySet();
     }
 
-    final Set<String> selectedParentTasks = children.stream()
-        .flatMap(child -> getParentTasks(child).stream())
+    final Stream<String> allParents = children.stream()
+        .flatMap(child -> getParentTasks(child).stream());
+
+    final Stream<String> availableParents = allParents
+        .filter(parent -> blockManagerMaster.getIdsOfBlocksProducedBy(parent)
+            .stream()
+            .map(blockManagerMaster::getBlockState)
+            .anyMatch(blockState -> blockState.equals(BlockState.State.AVAILABLE))); // If a block is missing
+
+
+
+
+
+
+    /*
+
+
+
         .filter(parent -> blockManagerMaster.getIdsOfBlocksProducedBy(parent).stream()
             .map(blockManagerMaster::getBlockState)
             .anyMatch(blockState -> blockState.equals(BlockState.State.NOT_AVAILABLE)) // If a block is missing
         )
         .collect(Collectors.toSet());
+        */
 
     // Recursive call
     return Sets.union(selectedParentTasks, recursivelyGetParentTasksForLostBlocks(selectedParentTasks));
@@ -444,15 +463,16 @@ public final class BatchScheduler implements Scheduler {
     return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
         .stream()
         .flatMap(inStageEdge -> {
-          final List<String> tasksOfParentStage = inStageEdge.getSrc().getTaskIds();
+          final Set<String> tasksOfParentStage = planStateManager.getAllTaskAttempts(childTaskId);
           switch (inStageEdge.getDataCommunicationPattern()) {
             case Shuffle:
             case BroadCast:
-              // All of the parent stage's tasks are parents
+              // All of the parent stage's tasks
               return tasksOfParentStage.stream();
             case OneToOne:
-              // Only one of the parent stage's tasks is a parent
-              return Stream.of(tasksOfParentStage.get(RuntimeIdManager.getIndexFromTaskId(childTaskId)));
+              // Same-index tasks of the parent stage
+              return tasksOfParentStage.stream().filter(task ->
+                  RuntimeIdManager.getIndexFromTaskId(task) == RuntimeIdManager.getIndexFromTaskId(childTaskId));
             default:
               throw new IllegalStateException(inStageEdge.toString());
           }
