@@ -30,6 +30,8 @@ import java.util.*;
 /**
  * Traverses through the given Beam pipeline to construct a DAG of Beam Transform,
  * while preserving hierarchy of CompositeTransforms.
+ * Hierarchy is established when a CompositeTransform is expanded to other CompositeTransforms or PrimitiveTransforms,
+ * as the former CompositeTransform becoming 'enclosingVertex' which have the inner transforms as embedded DAG.
  * This DAG will be later translated by {@link PipelineTranslator} into Nemo IR DAG.
  */
 public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
@@ -48,7 +50,7 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
     vertex.getPValuesConsumed()
         .forEach(pValue -> {
           final TransformVertex dst = getDestinationOfDataFlowEdge(vertex, pValue);
-          dst.parent.addDataFlow(new DataFlowEdge(dst.parent.getProducerOf(pValue), dst));
+          dst.enclosingVertex.addDataFlow(new DataFlowEdge(dst.enclosingVertex.getProducerOf(pValue), dst));
         });
   }
 
@@ -77,7 +79,7 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
       }
       rootVertex = vertex;
     } else {
-      // The CompositeTransformVertex is ready; adding it to its parent vertex.
+      // The CompositeTransformVertex is ready; adding it to its enclosing vertex.
       compositeTransformVertexStack.peek().addVertex(vertex);
     }
   }
@@ -97,16 +99,17 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
    */
   public abstract class TransformVertex extends Vertex {
     private final TransformHierarchy.Node node;
-    private final CompositeTransformVertex parent;
+    private final CompositeTransformVertex enclosingVertex;
 
     /**
      * @param node the corresponding Beam node
-     * @param parent the parent {@link CompositeTransformVertex} if any, or {@code null}
+     * @param enclosingVertex the vertex for the transform which inserted this transform as its expansion,
+     *                        or {@code null}
      */
-    private TransformVertex(final TransformHierarchy.Node node, final CompositeTransformVertex parent) {
+    private TransformVertex(final TransformHierarchy.Node node, final CompositeTransformVertex enclosingVertex) {
       super(String.format("%s%d", TRANSFORM, nextIdx++));
       this.node = node;
-      this.parent = parent;
+      this.enclosingVertex = enclosingVertex;
     }
 
     /**
@@ -131,10 +134,10 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
     }
 
     /**
-     * @return the parent {@link CompositeTransformVertex} if any, {@code null} otherwise.
+     * @return the enclosing {@link CompositeTransformVertex} if any, {@code null} otherwise.
      */
-    public CompositeTransformVertex getParent() {
-      return parent;
+    public CompositeTransformVertex getEnclosingVertex() {
+      return enclosingVertex;
     }
   }
 
@@ -145,8 +148,9 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
     private final List<PValue> pValuesProduced = new ArrayList<>();
     private final List<PValue> pValuesConsumed = new ArrayList<>();
 
-    private PrimitiveTransformVertex(final TransformHierarchy.Node node, final CompositeTransformVertex parent) {
-      super(node, parent);
+    private PrimitiveTransformVertex(final TransformHierarchy.Node node,
+                                     final CompositeTransformVertex enclosingVertex) {
+      super(node, enclosingVertex);
       if (node.getTransform() instanceof View.CreatePCollectionView) {
         pValuesProduced.add(((View.CreatePCollectionView) node.getTransform()).getView());
       }
@@ -189,8 +193,9 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
     private final DAGBuilder<TransformVertex, DataFlowEdge> builder = new DAGBuilder<>();
     private DAG<TransformVertex, DataFlowEdge> dag = null;
 
-    private CompositeTransformVertex(final TransformHierarchy.Node node, final CompositeTransformVertex parent) {
-      super(node, parent);
+    private CompositeTransformVertex(final TransformHierarchy.Node node,
+                                     final CompositeTransformVertex enclosingVertex) {
+      super(node, enclosingVertex);
     }
 
     /**
@@ -279,11 +284,11 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
                                                        final PValue pValue) {
     TransformVertex current = primitiveConsumer;
     while (true) {
-      if (current.getParent().getPValuesProduced().contains(pValue)) {
+      if (current.getEnclosingVertex().getPValuesProduced().contains(pValue)) {
         return current;
       }
-      current = current.getParent();
-      if (current.getParent() == null) {
+      current = current.getEnclosingVertex();
+      if (current.getEnclosingVertex() == null) {
         throw new RuntimeException(String.format("Cannot find producer of %s", pValue));
       }
     }
