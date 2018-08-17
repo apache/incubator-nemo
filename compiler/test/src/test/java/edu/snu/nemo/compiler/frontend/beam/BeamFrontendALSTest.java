@@ -38,22 +38,22 @@ public final class BeamFrontendALSTest {
     final DAG<IRVertex, IREdge> producedDAG = CompilerTestUtil.compileALSDAG();
 
     assertEquals(producedDAG.getTopologicalSort(), producedDAG.getTopologicalSort());
-    assertEquals(38, producedDAG.getVertices().size());
+    assertEquals(42, producedDAG.getVertices().size());
 
 //    producedDAG.getTopologicalSort().forEach(v -> System.out.println(v.getId()));
-    final IRVertex vertex4 = producedDAG.getTopologicalSort().get(6);
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex4).size());
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex4.getId()).size());
-    assertEquals(4, producedDAG.getOutgoingEdgesOf(vertex4).size());
+    final IRVertex vertex11 = producedDAG.getTopologicalSort().get(5);
+    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex11).size());
+    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex11.getId()).size());
+    assertEquals(4, producedDAG.getOutgoingEdgesOf(vertex11).size());
 
-    final IRVertex vertex13 = producedDAG.getTopologicalSort().get(11);
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex13).size());
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex13.getId()).size());
-    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex13).size());
+    final IRVertex vertex17 = producedDAG.getTopologicalSort().get(10);
+    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex17).size());
+    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex17.getId()).size());
+    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex17).size());
 
-    final IRVertex vertex14 = producedDAG.getTopologicalSort().get(12);
-    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex14).size());
-    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex14.getId()).size());
-    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex14).size());
+    final IRVertex vertex18 = producedDAG.getTopologicalSort().get(16);
+    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex18).size());
+    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex18.getId()).size());
+    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex18).size());
   }
 }
