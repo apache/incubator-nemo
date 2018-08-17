@@ -31,6 +31,7 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Instant;
 
@@ -241,6 +242,11 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     }
 
     @Override
+    public Row asRow(final String id) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public <T> T sideInput(final PCollectionView<T> view) {
       return (T) sideInputs.get(view);
     }
@@ -355,6 +361,11 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     }
 
     @Override
+    public DoFn.OutputReceiver<Row> outputRowReceiver(final DoFn<I, O> doFn) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public DoFn.MultiOutputReceiver taggedOutputReceiver(final DoFn<I, O> doFn) {
       return new MultiOutputReceiver((OutputCollectorImpl) outputCollector, additionalOutputs);
     }
@@ -431,6 +442,11 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     @Override
     public <T> DoFn.OutputReceiver<T> get(final TupleTag<T> tag) {
       return new OutputReceiver<>(this.outputCollector, tag, tagToVertex);
+    }
+
+    @Override
+    public <T> OutputReceiver<Row> getRowReceiver(final TupleTag<T> tag) {
+      throw new UnsupportedOperationException();
     }
   }
 }

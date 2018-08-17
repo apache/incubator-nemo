@@ -17,9 +17,10 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.collect.Sets;
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.GhostProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
@@ -28,9 +29,10 @@ import edu.snu.nemo.runtime.common.plan.*;
 import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.PlanAppender;
+import edu.snu.nemo.runtime.master.DataSkewDynOptDataHandler;
+import edu.snu.nemo.runtime.master.DynOptDataHandler;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.common.exception.*;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.PlanStateManager;
@@ -76,6 +78,7 @@ public final class BatchScheduler implements Scheduler {
    * The below variables depend on the submitted plan to execute.
    */
   private List<List<Stage>> sortedScheduleGroups;
+  private List<DynOptDataHandler> dynOptDataHandlers;
 
   @Inject
   private BatchScheduler(final TaskDispatcher taskDispatcher,
@@ -96,6 +99,8 @@ public final class BatchScheduler implements Scheduler {
     }
     this.executorRegistry = executorRegistry;
     this.planStateManager = planStateManager;
+    this.dynOptDataHandlers = new ArrayList<>();
+    dynOptDataHandlers.add(new DataSkewDynOptDataHandler());
   }
 
   /**
@@ -164,7 +169,6 @@ public final class BatchScheduler implements Scheduler {
    * @param newState         the state to change to
    * @param vertexPutOnHold  the ID of vertex that is put on hold. It is null otherwise.
    */
-  @Override
   public void onTaskStateReportFromExecutor(final String executorId,
                                             final String taskId,
                                             final int taskAttemptIndex,
@@ -185,7 +189,7 @@ public final class BatchScheduler implements Scheduler {
           onTaskExecutionFailedRecoverable(executorId, taskId, failureCause);
           break;
         case ON_HOLD:
-          onTaskExecutionOnHold(executorId, taskId, vertexPutOnHold);
+          onTaskExecutionOnHold(executorId, taskId);
           break;
         case FAILED:
           throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The plan failed on Task #")
@@ -402,16 +406,42 @@ public final class BatchScheduler implements Scheduler {
   }
 
   /**
+   * @param taskId the metric collected task ID.
+   * @return the edge to optimize.
+   */
+  private IREdge getEdgeToOptimize(final String taskId) {
+    // Get a stage including the given task
+    final PhysicalPlan plan = planStateManager.getPhysicalPlan();
+    final Stage stagePutOnHold = plan.getStageDAG().getVertices().stream()
+        .filter(stage -> stage.getTaskIds().contains(taskId)).findFirst()
+        .orElseThrow(() -> new RuntimeException("There is no task " + taskId + "in the plan."));
+
+    // Get outgoing edges of that stage with MetricCollectionProperty
+    List<StageEdge> stageEdges = plan.getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
+    IREdge targetEdge = null;
+    for (StageEdge edge : stageEdges) {
+      final IRVertex srcIRVertex = edge.getSrcIRVertex();
+      final IRVertex dstIRVertex = edge.getDstIRVertex();
+      targetEdge = plan.getIrDAG().getEdgeBetween(srcIRVertex.getId(), dstIRVertex.getId());
+      if (MetricCollectionProperty.Value.DataSkewRuntimePass
+          .equals(targetEdge.getPropertyValue(MetricCollectionProperty.class)
+              .orElseThrow(() -> new RuntimeException("No metric collection property on the target edge")))) {
+        break;
+      }
+    }
+
+    return targetEdge;
+  }
+
+  /**
    * Action for after task execution is put on hold.
    *
-   * @param executorId      the ID of the executor.
-   * @param taskId          the ID of the task.
-   * @param vertexPutOnHold the ID of vertex that is put on hold.
+   * @param executorId       the ID of the executor.
+   * @param taskId           the ID of the task.
    */
   private void onTaskExecutionOnHold(final String executorId,
-                                     final String taskId,
-                                     final String vertexPutOnHold) {
-    LOG.info("{} put on hold in {}", taskId, executorId);
+                                     final String taskId) {
+    LOG.info("{} put on hold in {}", new Object[]{taskId, executorId});
     executorRegistry.updateExecutor(executorId, (executor, state) -> {
       executor.onTaskExecutionComplete(taskId);
       return Pair.of(executor, state);
@@ -421,21 +451,18 @@ public final class BatchScheduler implements Scheduler {
     final boolean stageComplete =
         planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
 
-    if (stageComplete) {
-      // get optimization vertex from the task.
-      final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
-          getVertexDagById(taskId).getVertices().stream() // get vertex list
-              .filter(irVertex -> irVertex.getId().equals(vertexPutOnHold)) // find it
-              .filter(irVertex -> irVertex instanceof MetricCollectionBarrierVertex)
-              .distinct()
-              .map(irVertex -> (MetricCollectionBarrierVertex) irVertex) // convert types
-              .findFirst().orElseThrow(() -> new RuntimeException(TaskState.State.ON_HOLD.name() // get it
-              + " called with failed task ids by some other task than "
-              + MetricCollectionBarrierVertex.class.getSimpleName()));
-      // and we will use this vertex to perform metric collection and dynamic optimization.
+    final IREdge targetEdge = getEdgeToOptimize(taskId);
+    if (targetEdge == null) {
+      throw new RuntimeException("No edges specified for data skew optimization");
+    }
 
-      pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(new DynamicOptimizationEvent(
-          planStateManager.getPhysicalPlan(), metricCollectionBarrierVertex, taskId, executorId));
+    if (stageComplete) {
+      final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
+          .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
+          .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
+      pubSubEventHandlerWrapper.getPubSubEventHandler()
+          .onNext(new DynamicOptimizationEvent(planStateManager.getPhysicalPlan(), dynOptDataHandler.getDynOptData(),
+              taskId, executorId, targetEdge));
     }
   }
 
@@ -518,15 +545,13 @@ public final class BatchScheduler implements Scheduler {
   }
 
   /**
-   * @param taskId id of the task
-   * @return the IR dag
+   * Update the data for dynamic optimization.
+   * @param dynOptData the data to update.
    */
-  private DAG<IRVertex, RuntimeEdge<IRVertex>> getVertexDagById(final String taskId) {
-    for (final Stage stage : planStateManager.getPhysicalPlan().getStageDAG().getVertices()) {
-      if (stage.getId().equals(RuntimeIdGenerator.getStageIdFromTaskId(taskId))) {
-        return stage.getIRDAG();
-      }
-    }
-    throw new RuntimeException("This taskId does not exist in the plan");
+  public void updateDynOptData(final Object dynOptData) {
+    final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
+        .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
+        .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
+    dynOptDataHandler.updateDynOptData(dynOptData);
   }
 }

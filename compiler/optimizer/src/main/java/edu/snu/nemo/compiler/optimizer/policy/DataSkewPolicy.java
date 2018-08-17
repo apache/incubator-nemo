@@ -44,14 +44,6 @@ public final class DataSkewPolicy implements Policy {
     this.policy = BUILDER.build();
   }
 
-  public DataSkewPolicy(final int skewness) {
-    this.policy = new PolicyBuilder()
-        .registerRuntimePass(new DataSkewRuntimePass().setNumSkewedKeys(skewness), new SkewCompositePass())
-        .registerCompileTimePass(new LoopOptimizationCompositePass())
-        .registerCompileTimePass(new DefaultCompositePass())
-        .build();
-  }
-
   @Override
   public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory) {
     return this.policy.runCompileTimeOptimization(dag, dagDirectory);

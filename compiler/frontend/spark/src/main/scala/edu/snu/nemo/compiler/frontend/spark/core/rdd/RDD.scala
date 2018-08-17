@@ -249,7 +249,7 @@ final class RDD[T: ClassTag] protected[rdd] (
     if (newLevel.useDisk && newLevel.useMemory) {
       actualUseDisk = true
       actualUseMemory = false
-      // TODO #??: enable disk and memory persist
+      // TODO #187: Implement disk and memory persistence (Spill)
       LOG.warn("Cannot persist data in disk and memory at the same time. The data will be persisted in disk only.")
     } else {
       actualUseDisk = newLevel.useDisk
@@ -257,7 +257,7 @@ final class RDD[T: ClassTag] protected[rdd] (
     }
 
     if (newLevel.useOffHeap) {
-      // TODO #??: enable off-heap persist
+      // TODO #188: Implement off-heap memory persistence
       LOG.warn("Cannot persist data using off-heap area. The data will be persisted in heap instead of off-heap.")
     }
 
@@ -270,11 +270,11 @@ final class RDD[T: ClassTag] protected[rdd] (
     }
 
     if (newLevel.replication > 1) {
-      // TODO #??: enable replication for persisted data
+      // TODO #189: Implement replication for persisted data
       LOG.warn("Cannot persist data with replication. The data will not be replicated.")
     }
 
-    // TODO #??: disable changing persist strategy after a RDD is executed.
+    // TODO #190: Disable changing persistence strategy after a RDD is calculated
     val builder = new DAGBuilder[IRVertex, IREdge](dag)
     if (persistedGhostVertex.isDefined) {
       builder.removeVertex(persistedGhostVertex.get)
