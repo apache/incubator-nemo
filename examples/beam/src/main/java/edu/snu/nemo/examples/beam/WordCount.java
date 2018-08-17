@@ -56,8 +56,7 @@ public final class WordCount {
             return KV.of(documentId, count);
           }
         }))
-        .apply(GroupByKey.<String, Long>create())
-        .apply(Combine.<String, Long, Long>groupedValues(Sum.ofLongs()))
+        .apply(Sum.longsPerKey())
         .apply(MapElements.<KV<String, Long>, String>via(new SimpleFunction<KV<String, Long>, String>() {
           @Override
           public String apply(final KV<String, Long> kv) {
