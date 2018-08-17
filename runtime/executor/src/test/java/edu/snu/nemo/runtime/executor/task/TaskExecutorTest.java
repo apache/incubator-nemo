@@ -101,7 +101,7 @@ public final class TaskExecutorTest {
     vertexIdToOutputData = new HashMap<>();
     dataTransferFactory = mock(DataTransferFactory.class);
     when(dataTransferFactory.createReader(anyInt(), any(), any())).then(new ParentTaskReaderAnswer());
-    when(dataTransferFactory.createWriter(any(), anyInt(), any(), any())).then(new ChildTaskWriterAnswer());
+    when(dataTransferFactory.createWriter(any(), any(), any())).then(new ChildTaskWriterAnswer());
 
     // Mock a MetricMessageSender.
     metricMessageSender = mock(MetricMessageSender.class);

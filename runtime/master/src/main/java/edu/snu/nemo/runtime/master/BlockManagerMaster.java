@@ -81,8 +81,8 @@ public final class BlockManagerMaster {
     this.lock = new ReentrantReadWriteLock();
   }
 
-  void initialize(final PhysicalPlan physicalPlan) {
-    this.physicalPlan = physicalPlan;
+  void initialize(final PhysicalPlan plan) {
+    this.physicalPlan = plan;
     // States are initialized lazily.
   }
 
@@ -145,7 +145,7 @@ public final class BlockManagerMaster {
    * @return the handler of block location requests, which completes exceptionally when the block
    * is not {@code IN_PROGRESS} or {@code AVAILABLE}.
    */
-  public BlockIdWildcardLocationRequestHandler getBlockLocationHandler(final String blockId) {
+  public BlockRequestHandler getBlockLocationHandler(final String blockId) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
@@ -160,8 +160,8 @@ public final class BlockManagerMaster {
         return candidates.get(random.nextInt(candidates.size())).getLocationHandler();
       } else {
         // No candidate exists
-        final BlockIdWildcardLocationRequestHandler handler = new BlockIdWildcardLocationRequestHandler(blockId);
-        handler.completeExceptionally(new AbsentBlockException(blockId, state));
+        final BlockRequestHandler handler = new BlockRequestHandler(blockId);
+        handler.completeExceptionally(new AbsentBlockException(blockId, BlockState.State.NOT_AVAILABLE));
         return handler;
       }
     } finally {
@@ -352,7 +352,7 @@ public final class BlockManagerMaster {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      final BlockIdWildcardLocationRequestHandler locationFuture = getBlockLocationHandler(blockId);
+      final BlockRequestHandler locationFuture = getBlockLocationHandler(blockId);
       locationFuture.registerRequest(requestId, messageContext);
     } finally {
       readLock.unlock();
@@ -403,17 +403,17 @@ public final class BlockManagerMaster {
    * The handler of block location requests.
    */
   @VisibleForTesting
-  public static final class BlockIdWildcardLocationRequestHandler {
-    private final String wildcard;
+  public static final class BlockRequestHandler {
+    private final String blockId;
     private final CompletableFuture<String> locationFuture;
 
     /**
      * Constructor.
      *
-     * @param wildcard the wildcard ID of the block.
+     * @param blockId the ID of the block.
      */
-    BlockIdWildcardLocationRequestHandler(final String wildcard) {
-      this.wildcard = wildcard;
+    BlockRequestHandler(final String blockId) {
+      this.blockId = blockId;
       this.locationFuture = new CompletableFuture<>();
     }
 
@@ -449,7 +449,7 @@ public final class BlockManagerMaster {
       final ControlMessage.BlockLocationInfoMsg.Builder infoMsgBuilder =
           ControlMessage.BlockLocationInfoMsg.newBuilder()
               .setRequestId(requestId)
-              .setBlockId(wildcard); // TODO: wildcard->block
+              .setBlockId(blockId);
 
       locationFuture.whenComplete((location, throwable) -> {
         if (throwable == null) {

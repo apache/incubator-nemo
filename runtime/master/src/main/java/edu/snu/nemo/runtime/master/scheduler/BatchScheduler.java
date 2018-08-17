@@ -25,7 +25,6 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
-import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.DataSkewDynOptDataHandler;
 import edu.snu.nemo.runtime.master.DynOptDataHandler;
@@ -43,7 +42,6 @@ import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 
@@ -335,7 +333,7 @@ public final class BatchScheduler implements Scheduler {
     final Stage stagePutOnHold = physicalPlan.getStageDAG().getVertices().stream()
         .filter(stage -> stage.getId().equals(RuntimeIdManager.getStageIdFromTaskId(taskId)))
         .findFirst()
-        .get
+        .orElseThrow(() -> new RuntimeException());
 
     // Get outgoing edges of that stage with MetricCollectionProperty
     List<StageEdge> stageEdges = physicalPlan.getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
@@ -429,33 +427,13 @@ public final class BatchScheduler implements Scheduler {
       return Collections.emptySet();
     }
 
-    final Stream<String> allParents = children.stream()
-        .flatMap(child -> getParentTasks(child).stream());
-
-    final Stream<String> availableParents = allParents
-        .filter(parent -> blockManagerMaster.getIdsOfBlocksProducedBy(parent)
-            .stream()
-            .map(blockManagerMaster::getBlockState)
-            .anyMatch(blockState -> blockState.equals(BlockState.State.AVAILABLE))); // If a block is missing
-
-
-
-
-
-
-    /*
-
-
-
-        .filter(parent -> blockManagerMaster.getIdsOfBlocksProducedBy(parent).stream()
-            .map(blockManagerMaster::getBlockState)
-            .anyMatch(blockState -> blockState.equals(BlockState.State.NOT_AVAILABLE)) // If a block is missing
-        )
+    final Set<String> parentsWithLostBlocks = children.stream()
+        .flatMap(child -> getParentTasks(child).stream())
+        .filter(parent -> blockManagerMaster.getBlockLocationHandler(parent).getLocationFuture().isCancelled())
         .collect(Collectors.toSet());
-        */
 
     // Recursive call
-    return Sets.union(selectedParentTasks, recursivelyGetParentTasksForLostBlocks(selectedParentTasks));
+    return Sets.union(parentsWithLostBlocks, recursivelyGetParentTasksForLostBlocks(parentsWithLostBlocks));
   }
 
   private Set<String> getParentTasks(final String childTaskId) {

@@ -61,7 +61,7 @@ public final class SourceLocationAwareSchedulingConstraint implements Scheduling
               .orElseThrow(() -> new RuntimeException("No comm pattern!")))) {
         final String blockIdToRead =
             RuntimeIdManager.generateBlockId(physicalStageEdge.getId(), task.getTaskId());
-        final BlockManagerMaster.BlockIdWildcardLocationRequestHandler locationHandler =
+        final BlockManagerMaster.BlockRequestHandler locationHandler =
             blockManagerMaster.getBlockLocationHandler(blockIdToRead);
         if (locationHandler.getLocationFuture().isDone()) { // if the location is known.
           try {
