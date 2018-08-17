@@ -19,7 +19,7 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
+import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
@@ -38,10 +38,10 @@ public final class SkewDataStorePass extends AnnotatingPass {
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(v -> {
       // we only care about metric collection barrier vertices.
-      if (v instanceof MetricCollectionBarrierVertex) {
+      if (v instanceof AggregationBarrierVertex) {
         // We use memory for just a single inEdge, to make use of locality of stages: {@link PhysicalPlanGenerator}.
         final IREdge edgeToUseMemory = dag.getIncomingEdgesOf(v).stream().findFirst().orElseThrow(() ->
-            new RuntimeException("This MetricCollectionBarrierVertex doesn't have any incoming edges: " + v.getId()));
+            new RuntimeException("This AggregationBarrierVertex doesn't have any incoming edges: " + v.getId()));
         dag.getIncomingEdgesOf(v).forEach(edge -> {
           // we want it to be in the same stage
           if (edge.equals(edgeToUseMemory)) {

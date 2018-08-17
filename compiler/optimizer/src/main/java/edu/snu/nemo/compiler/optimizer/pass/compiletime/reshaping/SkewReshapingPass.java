@@ -21,8 +21,8 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 
 import java.util.ArrayList;
@@ -31,7 +31,7 @@ import java.util.List;
 
 /**
  * Pass to modify the DAG for a job to perform data skew.
- * It adds a {@link MetricCollectionBarrierVertex} before Shuffle edges, to make a barrier before it,
+ * It adds a {@link AggregationBarrierVertex} before Shuffle edges, to make a barrier before it,
  * and to use the metrics to repartition the skewed data.
  * NOTE: we currently put the SkewCompositePass at the end of the list for each policies, as it needs to take
  * a snapshot at the end of the pass. This could be prevented by modifying other passes to take the snapshot of the
@@ -48,30 +48,30 @@ public final class SkewReshapingPass extends ReshapingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
-    final List<MetricCollectionBarrierVertex> metricCollectionVertices = new ArrayList<>();
+    final List<AggregationBarrierVertex> metricCollectionVertices = new ArrayList<>();
 
     dag.topologicalDo(v -> {
       // We care about OperatorVertices that have any incoming edges that are of type Shuffle.
       if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
           CommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))) {
-        final MetricCollectionBarrierVertex<Integer, Long> metricCollectionBarrierVertex
-            = new MetricCollectionBarrierVertex<>();
-        metricCollectionVertices.add(metricCollectionBarrierVertex);
+        final AggregationBarrierVertex<Integer, Long> aggregationBarrierVertex
+            = new AggregationBarrierVertex<>();
+        metricCollectionVertices.add(aggregationBarrierVertex);
         builder.addVertex(v);
-        builder.addVertex(metricCollectionBarrierVertex);
+        builder.addVertex(aggregationBarrierVertex);
         dag.getIncomingEdgesOf(v).forEach(edge -> {
           // we insert the metric collection vertex when we meet a shuffle edge
           if (CommunicationPatternProperty.Value.Shuffle
                 .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
             // We then insert the dynamicOptimizationVertex between the vertex and incoming vertices.
             final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne,
-                edge.getSrc(), metricCollectionBarrierVertex);
+                edge.getSrc(), aggregationBarrierVertex);
             newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
             newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
 
             final IREdge edgeToGbK = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                metricCollectionBarrierVertex, v, edge.isSideInput());
+                aggregationBarrierVertex, v, edge.isSideInput());
             edge.copyExecutionPropertiesTo(edgeToGbK);
             builder.connectVertices(newEdge);
             builder.connectVertices(edgeToGbK);

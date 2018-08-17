@@ -19,7 +19,10 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.DynamicOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * IRVertex that collects statistics to send them to the optimizer for dynamic optimization.
@@ -28,7 +31,7 @@ import java.util.*;
  * @param <K> type of the key of metric data.
  * @param <V> type of the value of metric data.
  */
-public final class MetricCollectionBarrierVertex<K, V> extends IRVertex {
+public final class MetricCollectionVertex<K, V> extends IRVertex {
   // Metric data used for dynamic optimization.
   private Map<K, V> metricData;
   private final List<String> blockIds;
@@ -40,15 +43,15 @@ public final class MetricCollectionBarrierVertex<K, V> extends IRVertex {
   /**
    * Constructor for dynamic optimization vertex.
    */
-  public MetricCollectionBarrierVertex() {
+  public MetricCollectionVertex() {
     this.metricData = new HashMap<>();
     this.blockIds = new ArrayList<>();
     this.dagSnapshot = null;
   }
 
   @Override
-  public MetricCollectionBarrierVertex getClone() {
-    final MetricCollectionBarrierVertex that = new MetricCollectionBarrierVertex();
+  public MetricCollectionVertex getClone() {
+    final MetricCollectionVertex that = new MetricCollectionVertex();
     that.setDAGSnapshot(dagSnapshot);
     this.copyExecutionPropertiesTo(that);
     return that;
@@ -68,7 +71,7 @@ public final class MetricCollectionBarrierVertex<K, V> extends IRVertex {
    */
   public DAG<IRVertex, IREdge> getDAGSnapshot() {
     if (this.dagSnapshot == null) {
-      throw new DynamicOptimizationException("MetricCollectionBarrierVertex must have been set with a DAG.");
+      throw new DynamicOptimizationException("AggregationBarrierVertex must have been set with a DAG.");
     }
     return this.dagSnapshot;
   }

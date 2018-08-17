@@ -17,8 +17,8 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 
@@ -26,7 +26,7 @@ import java.util.List;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
- * It specifies which optimization to perform on the MetricCollectionBarrierVertex.
+ * It specifies which optimization to perform on the AggregationBarrierVertex.
  */
 public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   /**
@@ -36,11 +36,11 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
     super(DynamicOptimizationProperty.class);
   }
 
-  private boolean hasMetricCollectionBarrierVertexAsParent(final DAG<IRVertex, IREdge> dag,
-                                                           final IRVertex v) {
+  private boolean hasAggregationBarrierVertexAsParent(final DAG<IRVertex, IREdge> dag,
+                                                      final IRVertex v) {
     List<IRVertex> parents = dag.getParents(v.getId());
     for (IRVertex parent : parents) {
-      if (parent instanceof MetricCollectionBarrierVertex) {
+      if (parent instanceof AggregationBarrierVertex) {
         return true;
       }
     }
@@ -50,12 +50,12 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().stream()
-        .filter(v -> v instanceof MetricCollectionBarrierVertex)
+        .filter(v -> v instanceof AggregationBarrierVertex)
         .forEach(v -> v.setProperty(DynamicOptimizationProperty
             .of(DynamicOptimizationProperty.Value.DataSkewRuntimePass)));
 
     dag.getVertices().stream()
-        .filter(v -> hasMetricCollectionBarrierVertexAsParent(dag, v)
+        .filter(v -> hasAggregationBarrierVertexAsParent(dag, v)
             && !v.getExecutionProperties().containsKey(ResourceSkewedDataProperty.class))
         .forEach(childV -> {
           childV.getExecutionProperties().put(ResourceSkewedDataProperty.of(true));

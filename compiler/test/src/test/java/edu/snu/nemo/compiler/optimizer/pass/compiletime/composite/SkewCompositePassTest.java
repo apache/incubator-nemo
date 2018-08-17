@@ -21,8 +21,8 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
+import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.compiler.CompilerTestUtil;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
@@ -74,7 +74,7 @@ public class SkewCompositePassTest {
   }
 
   /**
-   * Test for {@link SkewCompositePass} with MR workload. It must insert a {@link MetricCollectionBarrierVertex}
+   * Test for {@link SkewCompositePass} with MR workload. It must insert a {@link AggregationBarrierVertex}
    * before each shuffle edge.
    * @throws Exception exception on the way.
    */
@@ -95,7 +95,7 @@ public class SkewCompositePassTest {
         .filter(irEdge -> CommunicationPatternProperty.Value.Shuffle
             .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))
         .map(IREdge::getSrc)
-        .forEach(irVertex -> assertTrue(irVertex instanceof MetricCollectionBarrierVertex));
+        .forEach(irVertex -> assertTrue(irVertex instanceof AggregationBarrierVertex));
 
     processedDAG.getVertices().forEach(v -> processedDAG.getOutgoingEdgesOf(v).stream()
         .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
@@ -103,7 +103,7 @@ public class SkewCompositePassTest {
         .forEach(e -> assertEquals(PartitionerProperty.Value.DataSkewHashPartitioner,
             e.getPropertyValue(PartitionerProperty.class).get())));
 
-    processedDAG.filterVertices(v -> v instanceof MetricCollectionBarrierVertex)
+    processedDAG.filterVertices(v -> v instanceof AggregationBarrierVertex)
         .forEach(metricV -> {
           List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());
           reducerV.forEach(rV -> assertTrue(rV.getPropertyValue(ResourceSkewedDataProperty.class).get()));

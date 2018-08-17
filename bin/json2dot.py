@@ -157,9 +157,9 @@ class NormalVertex:
             label += '<BR/>{}:{}'.format(transform_name, class_name)
         except:
             pass
-        if ('class' in self.properties and self.properties['class'] == 'MetricCollectionBarrierVertex'):
+        if ('class' in self.properties and self.properties['class'] == 'AggregationBarrierVertex'):
             shape = ', shape=box'
-            label += '<BR/>MetricCollectionBarrier'
+            label += '<BR/>AggregationBarrier'
         else:
             shape = ''
         try:
