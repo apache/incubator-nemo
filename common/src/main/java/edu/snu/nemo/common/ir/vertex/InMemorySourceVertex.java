@@ -29,18 +29,28 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
   private Iterable<T> initializedSourceData;
 
   /**
-   * Constructor.
+   * Constructor for InMemorySourceVertex.
+   *
    * @param initializedSourceData the initial data object.
    */
   public InMemorySourceVertex(final Iterable<T> initializedSourceData) {
+    super();
     this.initializedSourceData = initializedSourceData;
+  }
+
+  /**
+   * Copy Constructor for InMemorySourceVertex.
+   *
+   * @param that the source object for copying
+   */
+  public InMemorySourceVertex(final InMemorySourceVertex that) {
+    super(that);
+    this.initializedSourceData = that.initializedSourceData;
   }
 
   @Override
   public InMemorySourceVertex<T> getClone() {
-    final InMemorySourceVertex<T> that = new InMemorySourceVertex<>(this.initializedSourceData);
-    this.copyExecutionPropertiesTo(that);
-    return that;
+    return new InMemorySourceVertex<>(this);
   }
 
   @Override

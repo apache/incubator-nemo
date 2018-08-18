@@ -63,27 +63,28 @@ public final class LoopVertex extends IRVertex {
     this.terminationCondition = (IntPredicate & Serializable) (integer -> false); // nothing much yet.
   }
 
+  /**
+   * Copy Constructor for LoopVertex.
+   *
+   * @param that the source object for copying
+   */
+  public LoopVertex(final LoopVertex that) {
+    super(that);
+    this.builder = that.builder;
+    this.compositeTransformFullName = that.compositeTransformFullName;
+    this.dagIncomingEdges = that.dagIncomingEdges;
+    this.iterativeIncomingEdges = that.iterativeIncomingEdges;
+    this.nonIterativeIncomingEdges = that.nonIterativeIncomingEdges;
+    this.dagOutgoingEdges = that.dagOutgoingEdges;
+    this.edgeWithLoopToEdgeWithInternalVertex = that.edgeWithLoopToEdgeWithInternalVertex;
+    this.edgeWithInternalVertexToEdgeWithLoop = that.edgeWithInternalVertexToEdgeWithLoop;
+    this.maxNumberOfIterations = that.maxNumberOfIterations;
+    this.terminationCondition = that.terminationCondition;
+  }
+
   @Override
   public LoopVertex getClone() {
-    final LoopVertex newLoopVertex = new LoopVertex(compositeTransformFullName);
-
-    // Copy all elements to the clone
-    final DAG<IRVertex, IREdge> dagToCopy = this.getDAG();
-    dagToCopy.topologicalDo(v -> {
-      newLoopVertex.getBuilder().addVertex(v, dagToCopy);
-      dagToCopy.getIncomingEdgesOf(v).forEach(newLoopVertex.getBuilder()::connectVertices);
-    });
-    this.dagIncomingEdges.forEach(((v, es) -> es.forEach(newLoopVertex::addDagIncomingEdge)));
-    this.iterativeIncomingEdges.forEach((v, es) -> es.forEach(newLoopVertex::addIterativeIncomingEdge));
-    this.nonIterativeIncomingEdges.forEach((v, es) -> es.forEach(newLoopVertex::addNonIterativeIncomingEdge));
-    this.dagOutgoingEdges.forEach(((v, es) -> es.forEach(newLoopVertex::addDagOutgoingEdge)));
-    this.edgeWithLoopToEdgeWithInternalVertex.forEach((eLoop, eInternal)
-        -> newLoopVertex.mapEdgeWithLoop(eLoop, eInternal));
-    newLoopVertex.setMaxNumberOfIterations(maxNumberOfIterations);
-    newLoopVertex.setTerminationCondition(terminationCondition);
-
-    this.copyExecutionPropertiesTo(newLoopVertex);
-    return newLoopVertex;
+    return new LoopVertex(this);
   }
 
   /**

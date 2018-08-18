@@ -41,6 +41,7 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
    * @param dataset      Dataset to read data from.
    */
   public SparkDatasetBoundedSourceVertex(final SparkSession sparkSession, final Dataset<T> dataset) {
+    super();
     this.readables = new ArrayList<>();
     final RDD rdd = dataset.sparkRDD();
     final Partition[] partitions = rdd.getPartitions();
@@ -54,19 +55,18 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
   }
 
   /**
-   * Constructor for cloning.
+   * Copy Constructor for SparkDatasetBoundedSourceVertex.
    *
-   * @param readables the list of Readables to set.
+   * @param that the source object for copying
    */
-  private SparkDatasetBoundedSourceVertex(final List<Readable<T>> readables) {
-    this.readables = readables;
+  public SparkDatasetBoundedSourceVertex(final SparkDatasetBoundedSourceVertex that) {
+    super(that);
+    this.readables = that.readables;
   }
 
   @Override
   public SparkDatasetBoundedSourceVertex getClone() {
-    final SparkDatasetBoundedSourceVertex<T> that = new SparkDatasetBoundedSourceVertex<>((this.readables));
-    this.copyExecutionPropertiesTo(that);
-    return that;
+    return new SparkDatasetBoundedSourceVertex(this);
   }
 
   @Override
