@@ -275,6 +275,10 @@ limitations under the License.
                         <exclude>examples/resources/**</exclude>
                         <!-- Logs -->
                         <exclude>**/*.log</exclude>
+                        <!-- EditorConfig -->
+                        <exclude>.editorconfig</exclude>
+                        <!-- formatter.xml -->
+                        <exclude>formatter.xml</exclude>
                     </excludes>
                 </configuration>
             </plugin>
