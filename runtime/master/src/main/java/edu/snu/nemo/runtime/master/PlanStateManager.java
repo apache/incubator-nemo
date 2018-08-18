@@ -111,16 +111,9 @@ public final class PlanStateManager {
       for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
         // for each task idx of this stage
         stageIdToTaskAttemptStates.get(stage.getId()).add(new ArrayList<>());
-        // task states will be initialized lazily in getReadyTaskAttempts()
+        // task states will be initialized lazily in getTaskAttemptsToSchedule()
       }
     });
-  }
-
-  private boolean isTaskDone(final TaskState taskState) {
-    final TaskState.State state = (TaskState.State) taskState.getStateMachine().getCurrentState();
-    return state.equals(TaskState.State.COMPLETE)
-        || state.equals(TaskState.State.SHOULD_RETRY)
-        || state.equals(TaskState.State.FAILED);
   }
 
   /**
@@ -128,41 +121,53 @@ public final class PlanStateManager {
    * @param stageId to run
    * @return executable task attempts
    */
-  public synchronized List<String> getReadyTaskAttempts(final String stageId) {
+  public synchronized List<String> getTaskAttemptsToSchedule(final String stageId) {
     if (getStageState(stageId).equals(StageState.State.COMPLETE)) {
       // This stage is done
       return new ArrayList<>(0);
     }
 
-    final List<String> executableTaskAttempts = new ArrayList<>();
-    final Stage stage = physicalPlan.getStageDAG().getVertexById(stageId);
-    final int numOfClones = stage.getPropertyValue(ClonedSchedulingProperty.class).orElse(1);
-
     // For each task index....
+    final List<String> taskAttemptsToSchedule = new ArrayList<>();
+    final Stage stage = physicalPlan.getStageDAG().getVertexById(stageId);
     for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
       final List<TaskState> attemptStatesForThisTaskIndex =
           stageIdToTaskAttemptStates.get(stage.getId()).get(taskIndex);
 
-      // (Step 1) Create new READY attempts, as many as
-      // # of clones - (# of total existing attempts - # of 'done' attempts)
-      final long numOfTotalExistingAttempts = attemptStatesForThisTaskIndex.size();
-      final long numOfDoneAttempts = attemptStatesForThisTaskIndex.stream().filter(this::isTaskDone).count();
-      final long newAttemptsToCreate = numOfClones - (numOfTotalExistingAttempts - numOfDoneAttempts);
-      for (int i = 0; i < newAttemptsToCreate; i++) {
-        attemptStatesForThisTaskIndex.add(new TaskState());
-      }
+      // If one of the attempts is COMPLETE, do not schedule
+      if (attemptStatesForThisTaskIndex
+          .stream()
+          .noneMatch(state -> state.getStateMachine().getCurrentState().equals(TaskState.State.COMPLETE))) {
 
-      // (Step 2) Return all READY attempts
-      for (int attempt = 0; attempt < attemptStatesForThisTaskIndex.size(); attempt++) {
-        if (attemptStatesForThisTaskIndex.get(attempt).getStateMachine().getCurrentState()
-            .equals(TaskState.State.READY)) {
-          executableTaskAttempts.add(RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt));
+        // (Step 1) Create new READY attempts, as many as
+        // # of clones - # of 'not-done' attempts)
+        final int numOfClones = stage.getPropertyValue(ClonedSchedulingProperty.class).orElse(1);
+        final long numOfNotDoneAttempts = attemptStatesForThisTaskIndex.stream().filter(this::isTaskNotDone).count();
+        for (int i = 0; i < numOfClones - numOfNotDoneAttempts; i++) {
+          attemptStatesForThisTaskIndex.add(new TaskState());
         }
+
+        // (Step 2) Return all READY attempts
+        for (int attempt = 0; attempt < attemptStatesForThisTaskIndex.size(); attempt++) {
+          if (attemptStatesForThisTaskIndex.get(attempt).getStateMachine().getCurrentState()
+              .equals(TaskState.State.READY)) {
+            taskAttemptsToSchedule.add(RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt));
+          }
+        }
+
       }
     }
 
-    return executableTaskAttempts;
+    return taskAttemptsToSchedule;
   }
+
+  private boolean isTaskNotDone(final TaskState taskState) {
+    final TaskState.State state = (TaskState.State) taskState.getStateMachine().getCurrentState();
+    return state.equals(TaskState.State.READY)
+        || state.equals(TaskState.State.EXECUTING)
+        || state.equals(TaskState.State.ON_HOLD);
+  }
+
 
   public synchronized Set<String> getAllTaskAttemptsOfStage(final String stageId) {
     return getTaskAttemptIdsToItsState(stageId).keySet();

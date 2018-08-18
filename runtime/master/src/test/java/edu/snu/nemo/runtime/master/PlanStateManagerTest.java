@@ -30,7 +30,6 @@ import org.apache.reef.tang.Injector;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.List;
@@ -71,7 +70,7 @@ public final class PlanStateManagerTest {
 
     for (int stageIdx = 0; stageIdx < stageList.size(); stageIdx++) {
       final Stage stage = stageList.get(stageIdx);
-      final List<String> taskIds = planStateManager.getReadyTaskAttempts(stage.getId());
+      final List<String> taskIds = planStateManager.getTaskAttemptsToSchedule(stage.getId());
       taskIds.forEach(taskId -> {
         planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
         planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
@@ -106,7 +105,7 @@ public final class PlanStateManagerTest {
     // Complete the plan and check the result again.
     // It has to return COMPLETE.
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
-        .flatMap(stage -> planStateManager.getReadyTaskAttempts(stage.getId()).stream())
+        .flatMap(stage -> planStateManager.getTaskAttemptsToSchedule(stage.getId()).stream())
         .collect(Collectors.toList());
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));

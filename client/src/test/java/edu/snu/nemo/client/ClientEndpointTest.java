@@ -18,12 +18,10 @@ package edu.snu.nemo.client;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.PlanState;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.common.plan.TestPlanGenerator;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.List;
@@ -68,7 +66,7 @@ public class ClientEndpointTest {
 
     // Check finish.
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
-        .flatMap(stage -> planStateManager.getReadyTaskAttempts(stage.getId()).stream())
+        .flatMap(stage -> planStateManager.getTaskAttemptsToSchedule(stage.getId()).stream())
         .collect(Collectors.toList());
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));

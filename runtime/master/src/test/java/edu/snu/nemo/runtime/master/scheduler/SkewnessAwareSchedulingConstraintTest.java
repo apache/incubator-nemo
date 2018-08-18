@@ -70,7 +70,7 @@ public final class SkewnessAwareSchedulingConstraintTest {
     final IREdge dummyIREdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, srcMockVertex, dstMockVertex);
     dummyIREdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(taskIdxToKeyRange)));
-    final StageEdge dummyEdge = new StageEdge("Edge-0", dummyIREdge.getExecutionProperties(),
+    final StageEdge dummyEdge = new StageEdge("Edge0", dummyIREdge.getExecutionProperties(),
         srcMockVertex, dstMockVertex, srcMockStage, dstMockStage, false);
 
     return dummyEdge;
@@ -78,7 +78,7 @@ public final class SkewnessAwareSchedulingConstraintTest {
 
   private static Task mockTask(final int taskIdx, final List<StageEdge> inEdges) {
     final Task task = mock(Task.class);
-    when(task.getTaskId()).thenReturn(RuntimeIdManager.generateTaskId("Stage-0", taskIdx, FIRST_ATTEMPT));
+    when(task.getTaskId()).thenReturn(RuntimeIdManager.generateTaskId("Stage0", taskIdx, FIRST_ATTEMPT));
     when(task.getTaskIncomingEdges()).thenReturn(inEdges);
     return task;
   }

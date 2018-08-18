@@ -293,7 +293,7 @@ public final class BatchScheduler implements Scheduler {
     // Create and return tasks.
     final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
 
-    final List<String> taskIdsToSchedule = planStateManager.getReadyTaskAttempts(stageToSchedule.getId());
+    final List<String> taskIdsToSchedule = planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId());
     final List<Task> tasks = new ArrayList<>(taskIdsToSchedule.size());
     taskIdsToSchedule.forEach(taskId -> {
       blockManagerMaster.onProducerTaskScheduled(taskId,
@@ -431,10 +431,25 @@ public final class BatchScheduler implements Scheduler {
       return Collections.emptySet();
     }
 
+    /*
+    final Set<String> loggy = children.stream()
+        .flatMap(child -> getParentTasks(child).stream())
+        .collect(Collectors.toSet());
+        */
+    final Set<BlockManagerMaster.BlockRequestHandler> loggy = children.stream()
+        .flatMap(child -> getParentTasks(child).stream())
+        .map(parent -> blockManagerMaster.getBlockLocationHandler(parent))
+        .collect(Collectors.toSet());
+
+    LOG.info("loggy {}", loggy);
+
     final Set<String> parentsWithLostBlocks = children.stream()
         .flatMap(child -> getParentTasks(child).stream())
         .filter(parent -> blockManagerMaster.getBlockLocationHandler(parent).getLocationFuture().isCancelled())
         .collect(Collectors.toSet());
+
+
+    LOG.info("children: {}, parentsWithLostBlocks {}", children, parentsWithLostBlocks);
 
     // Recursive call
     return Sets.union(parentsWithLostBlocks, recursivelyGetParentTasksForLostBlocks(parentsWithLostBlocks));
@@ -442,18 +457,24 @@ public final class BatchScheduler implements Scheduler {
 
   private Set<String> getParentTasks(final String childTaskId) {
     final String stageIdOfChildTask = RuntimeIdManager.getStageIdFromTaskId(childTaskId);
+    LOG.info("stageIdOfChildTask: {}, childTaskId {}", stageIdOfChildTask, childTaskId);
     return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
         .stream()
         .flatMap(inStageEdge -> {
-          final Set<String> tasksOfParentStage =
-              planStateManager.getAllTaskAttemptsOfStage(RuntimeIdManager.getStageIdFromTaskId(childTaskId));
+          final String parentStageId = inStageEdge.getSrc().getId();
+          final Set<String> tasksOfParentStage = planStateManager.getAllTaskAttemptsOfStage(parentStageId);
+
           switch (inStageEdge.getDataCommunicationPattern()) {
             case Shuffle:
             case BroadCast:
               // All of the parent stage's tasks
+              LOG.info("return complex: {}", tasksOfParentStage);
               return tasksOfParentStage.stream();
             case OneToOne:
               // Same-index tasks of the parent stage
+              LOG.info("return o2o: {}", tasksOfParentStage.stream().filter(task ->
+                  RuntimeIdManager.getIndexFromTaskId(task) == RuntimeIdManager.getIndexFromTaskId(childTaskId))
+              .collect(Collectors.toList()));
               return tasksOfParentStage.stream().filter(task ->
                   RuntimeIdManager.getIndexFromTaskId(task) == RuntimeIdManager.getIndexFromTaskId(childTaskId));
             default:

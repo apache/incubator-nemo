@@ -141,9 +141,11 @@ public final class BlockManagerMaster {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
+      LOG.info("getBlockLocationHandler blockId {}", blockId);
       final Set<BlockMetadata> metadataSet = getBlockWildcardStateSet(RuntimeIdManager.getWildCardFromBlockId(blockId));
 
       LOG.info("metadataSet {}", metadataSet);
+      System.out.println("METADATASET " + metadataSet);
 
       final List<BlockMetadata> candidates = metadataSet.stream()
           .filter(metadata -> metadata.getBlockState().equals(BlockState.State.IN_PROGRESS)
