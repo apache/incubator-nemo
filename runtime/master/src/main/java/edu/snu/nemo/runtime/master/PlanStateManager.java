@@ -105,7 +105,6 @@ public final class PlanStateManager {
   private void initializeComputationStates() {
     onPlanStateChanged(PlanState.State.EXECUTING);
     physicalPlan.getStageDAG().topologicalDo(stage -> {
-      System.out.println("INITIALIZE: " + stage.getId());
       stageIdToState.put(stage.getId(), new StageState());
       stageIdToTaskAttemptStates.put(stage.getId(), new ArrayList<>(stage.getParallelism()));
       for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
@@ -147,7 +146,13 @@ public final class PlanStateManager {
           attemptStatesForThisTaskIndex.add(new TaskState());
         }
 
-        // (Step 2) Return all READY attempts
+        // (Step 2) Check max attempt
+        if (attemptStatesForThisTaskIndex.size() > maxScheduleAttempt) {
+          throw new RuntimeException(
+              attemptStatesForThisTaskIndex.size() + " exceeds max attempt " + maxScheduleAttempt);
+        }
+
+        // (Step 3) Return all READY attempts
         for (int attempt = 0; attempt < attemptStatesForThisTaskIndex.size(); attempt++) {
           if (attemptStatesForThisTaskIndex.get(attempt).getStateMachine().getCurrentState()
               .equals(TaskState.State.READY)) {
@@ -207,11 +212,10 @@ public final class PlanStateManager {
         .map(attempts -> attempts.stream()
             .map(state -> state.getStateMachine().getCurrentState())
             .allMatch(curState -> curState.equals(TaskState.State.COMPLETE)
-                || curState.equals(TaskState.State.SHOULD_RETRY)))
+                || curState.equals(TaskState.State.SHOULD_RETRY)
+                || curState.equals(TaskState.State.ON_HOLD)))
         .filter(bool -> bool.equals(true))
         .count();
-    LOG.info("{} completed indices: {} / {} / {}",
-        stageId, numOfCompletedTaskIndicesInThisStage, newTaskState, taskStatesOfThisStage);
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
       LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",
           taskId, taskStatesOfThisStage.size() - numOfCompletedTaskIndicesInThisStage, taskStatesOfThisStage.size());
@@ -234,8 +238,6 @@ public final class PlanStateManager {
       case ON_HOLD:
         if (numOfCompletedTaskIndicesInThisStage
             == physicalPlan.getStageDAG().getVertexById(stageId).getParallelism()) {
-          System.out.println("CHANGED: " + numOfCompletedTaskIndicesInThisStage + " / "
-              + physicalPlan.getStageDAG().getVertexById(stageId).getParallelism());
           onStageStateChanged(stageId, StageState.State.COMPLETE);
         }
         break;
@@ -472,11 +474,6 @@ public final class PlanStateManager {
   private Map<String, TaskState.State> getTaskAttemptIdsToItsState(final String stageId) {
     final Map<String, TaskState.State> result = new HashMap<>();
     final List<List<TaskState>> taskStates = stageIdToTaskAttemptStates.get(stageId);
-    // System.out.println("stageIdToTaskAttemptStates: " + stageIdToTaskAttemptStates);
-    if (taskStates == null) {
-      System.out.println("BABBBBBBBBBBBBBBBBBBBBBAD: " + taskStates + " for " + stageId);
-
-    }
     for (int taskIndex = 0; taskIndex < taskStates.size(); taskIndex++) {
       final List<TaskState> attemptStates = taskStates.get(taskIndex);
       for (int attempt = 0; attempt < attemptStates.size(); attempt++) {

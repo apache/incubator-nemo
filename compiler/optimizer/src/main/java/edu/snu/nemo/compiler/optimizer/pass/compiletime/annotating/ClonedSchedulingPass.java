@@ -23,7 +23,7 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import java.util.Collections;
 
 /**
- * Set the ClonedScheduling property of all vertices to 2.
+ * Set the ClonedScheduling property of source vertices.
  */
 public final class ClonedSchedulingPass extends AnnotatingPass {
   /**
@@ -36,7 +36,7 @@ public final class ClonedSchedulingPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().stream()
-        .filter(vertex -> !dag.getOutgoingEdgesOf(vertex.getId()).isEmpty()) // Don't clone sink vertices
+        .filter(vertex -> dag.getIncomingEdgesOf(vertex.getId()).isEmpty())
         .forEach(vertex -> vertex.setProperty(ClonedSchedulingProperty.of(2)));
     return dag;
   }

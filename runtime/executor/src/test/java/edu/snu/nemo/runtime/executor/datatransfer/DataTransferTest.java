@@ -71,7 +71,9 @@ import java.io.IOException;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static edu.snu.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 import static edu.snu.nemo.runtime.common.RuntimeTestUtil.getRangedNumList;
@@ -211,7 +213,7 @@ public final class DataTransferTest {
   }
 
   @Test
-  public void testWriteAndRead() throws Exception {
+  public void testWriteAndRead() {
     // test OneToOne same worker
     writeAndRead(worker1, worker1, CommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
 
@@ -318,8 +320,8 @@ public final class DataTransferTest {
 
     final IRVertex srcMockVertex = mock(IRVertex.class);
     final IRVertex dstMockVertex = mock(IRVertex.class);
-    final Stage srcStage = setupStages("srcStage-" + testIndex);
-    final Stage dstStage = setupStages("dstStage-" + testIndex);
+    final Stage srcStage = setupStages("srcStage" + testIndex);
+    final Stage dstStage = setupStages("dstStage" + testIndex);
     dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
         srcStage, dstStage, false);
 
@@ -410,18 +412,18 @@ public final class DataTransferTest {
 
     final IRVertex srcMockVertex = mock(IRVertex.class);
     final IRVertex dstMockVertex = mock(IRVertex.class);
-    final Stage srcStage = setupStages("srcStage-" + testIndex);
-    final Stage dstStage = setupStages("dstStage-" + testIndex);
+    final Stage srcStage = setupStages("srcStage" + testIndex);
+    final Stage dstStage = setupStages("dstStage" + testIndex);
     dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
         srcStage, dstStage, false);
     final IRVertex dstMockVertex2 = mock(IRVertex.class);
-    final Stage dstStage2 = setupStages("dstStage-" + testIndex2);
     dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
         srcStage, dstStage, false);
     // Initialize states in Master
     TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskId);
-      master.onProducerTaskScheduled(srcTaskId, Collections.singleton(blockId));
+      final String blockId2 = RuntimeIdManager.generateBlockId(edgeId2, srcTaskId);
+      master.onProducerTaskScheduled(srcTaskId, Stream.of(blockId, blockId2).collect(Collectors.toSet()));
     });
 
     // Write

@@ -88,10 +88,10 @@ public final class InputReader extends DataTransfer {
   }
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    final String blockId = generateWildCardBlockId(dstTaskIndex);
+    final String blockIdWildcard = generateWildCardBlockId(dstTaskIndex);
     final Optional<DataStoreProperty.Value> dataStoreProperty
         = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    return blockManagerWorker.readBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all());
+    return blockManagerWorker.readBlock(blockIdWildcard, getId(), dataStoreProperty.get(), HashRange.all());
   }
 
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
@@ -101,8 +101,8 @@ public final class InputReader extends DataTransfer {
 
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockId = generateWildCardBlockId(srcTaskIdx);
-      futures.add(blockManagerWorker.readBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all()));
+      final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
+      futures.add(blockManagerWorker.readBlock(blockIdWildcard, getId(), dataStoreProperty.get(), HashRange.all()));
     }
 
     return futures;
@@ -128,9 +128,9 @@ public final class InputReader extends DataTransfer {
     final int numSrcTasks = this.getSourceParallelism();
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockId = generateWildCardBlockId(srcTaskIdx);
+      final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
       futures.add(
-          blockManagerWorker.readBlock(blockId, getId(), dataStoreProperty.get(), hashRangeToRead));
+          blockManagerWorker.readBlock(blockIdWildcard, getId(), dataStoreProperty.get(), hashRangeToRead));
     }
 
     return futures;

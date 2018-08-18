@@ -104,8 +104,6 @@ public final class BatchScheduler implements Scheduler {
    */
   @Override
   public void schedulePlan(final PhysicalPlan submittedPhysicalPlan, final PlanStateManager submittedPlanStateManager) {
-    LOG.info("Scheduled plan");
-
     this.physicalPlan = submittedPhysicalPlan;
     this.planStateManager = submittedPlanStateManager;
 
@@ -296,12 +294,12 @@ public final class BatchScheduler implements Scheduler {
     final List<String> taskIdsToSchedule = planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId());
     final List<Task> tasks = new ArrayList<>(taskIdsToSchedule.size());
     taskIdsToSchedule.forEach(taskId -> {
-      blockManagerMaster.onProducerTaskScheduled(taskId,
-          physicalPlan.getStageDAG().getOutgoingEdgesOf(RuntimeIdManager.getStageIdFromTaskId(taskId))
-              .stream()
-              .map(stageEdge -> RuntimeIdManager.generateBlockId(stageEdge.getId(), taskId))
-              .collect(Collectors.toSet()) // ids of blocks this task will produce
-      );
+      final Set<String> blockIds = physicalPlan.getStageDAG()
+          .getOutgoingEdgesOf(RuntimeIdManager.getStageIdFromTaskId(taskId))
+          .stream()
+          .map(stageEdge -> RuntimeIdManager.generateBlockId(stageEdge.getId(), taskId))
+          .collect(Collectors.toSet()); // ids of blocks this task will produce
+      blockManagerMaster.onProducerTaskScheduled(taskId, blockIds);
       final int taskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
       tasks.add(new Task(
           physicalPlan.getId(),
@@ -431,25 +429,10 @@ public final class BatchScheduler implements Scheduler {
       return Collections.emptySet();
     }
 
-    /*
-    final Set<String> loggy = children.stream()
-        .flatMap(child -> getParentTasks(child).stream())
-        .collect(Collectors.toSet());
-        */
-    final Set<BlockManagerMaster.BlockRequestHandler> loggy = children.stream()
-        .flatMap(child -> getParentTasks(child).stream())
-        .map(parent -> blockManagerMaster.getBlockLocationHandler(parent))
-        .collect(Collectors.toSet());
-
-    LOG.info("loggy {}", loggy);
-
     final Set<String> parentsWithLostBlocks = children.stream()
         .flatMap(child -> getParentTasks(child).stream())
         .filter(parent -> blockManagerMaster.getBlockLocationHandler(parent).getLocationFuture().isCancelled())
         .collect(Collectors.toSet());
-
-
-    LOG.info("children: {}, parentsWithLostBlocks {}", children, parentsWithLostBlocks);
 
     // Recursive call
     return Sets.union(parentsWithLostBlocks, recursivelyGetParentTasksForLostBlocks(parentsWithLostBlocks));
@@ -457,7 +440,6 @@ public final class BatchScheduler implements Scheduler {
 
   private Set<String> getParentTasks(final String childTaskId) {
     final String stageIdOfChildTask = RuntimeIdManager.getStageIdFromTaskId(childTaskId);
-    LOG.info("stageIdOfChildTask: {}, childTaskId {}", stageIdOfChildTask, childTaskId);
     return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
         .stream()
         .flatMap(inStageEdge -> {
@@ -468,13 +450,9 @@ public final class BatchScheduler implements Scheduler {
             case Shuffle:
             case BroadCast:
               // All of the parent stage's tasks
-              LOG.info("return complex: {}", tasksOfParentStage);
               return tasksOfParentStage.stream();
             case OneToOne:
               // Same-index tasks of the parent stage
-              LOG.info("return o2o: {}", tasksOfParentStage.stream().filter(task ->
-                  RuntimeIdManager.getIndexFromTaskId(task) == RuntimeIdManager.getIndexFromTaskId(childTaskId))
-              .collect(Collectors.toList()));
               return tasksOfParentStage.stream().filter(task ->
                   RuntimeIdManager.getIndexFromTaskId(task) == RuntimeIdManager.getIndexFromTaskId(childTaskId));
             default:

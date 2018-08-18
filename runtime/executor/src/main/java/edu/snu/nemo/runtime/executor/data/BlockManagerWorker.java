@@ -139,20 +139,20 @@ public final class BlockManagerWorker {
    * or to the lower data plane.
    * This can be invoked multiple times per blockId (maybe due to failures).
    *
-   * @param blockId       of the block.
-   * @param runtimeEdgeId id of the runtime edge that corresponds to the block.
-   * @param blockStore    for the data storage.
-   * @param keyRange      the key range descriptor
+   * @param blockIdWildcard of the block.
+   * @param runtimeEdgeId   id of the runtime edge that corresponds to the block.
+   * @param blockStore      for the data storage.
+   * @param keyRange        the key range descriptor
    * @return the {@link CompletableFuture} of the block.
    */
   public CompletableFuture<DataUtil.IteratorWithNumBytes> readBlock(
-      final String blockId,
+      final String blockIdWildcard,
       final String runtimeEdgeId,
       final DataStoreProperty.Value blockStore,
       final KeyRange keyRange) {
     // Let's see if a remote worker has it
     final CompletableFuture<ControlMessage.Message> blockLocationFuture =
-        pendingBlockLocationRequest.computeIfAbsent(blockId, blockIdToRequest -> {
+        pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {
           // Ask Master for the location.
           // (IMPORTANT): This 'request' effectively blocks the TaskExecutor thread if the block is IN_PROGRESS.
           // We use this property to make the receiver task of a 'push' edge to wait in an Executor for its input data
@@ -166,13 +166,13 @@ public final class BlockManagerWorker {
                       .setRequestBlockLocationMsg(
                           ControlMessage.RequestBlockLocationMsg.newBuilder()
                               .setExecutorId(executorId)
-                              .setBlockId(blockId)
+                              .setBlockIdWildcard(blockIdWildcard)
                               .build())
                       .build());
           return responseFromMasterFuture;
         });
     blockLocationFuture.whenComplete((message, throwable) -> {
-      pendingBlockLocationRequest.remove(blockId);
+      pendingBlockLocationRequest.remove(blockIdWildcard);
     });
 
     // Using thenCompose so that fetching block data starts after getting response from master.
@@ -185,10 +185,12 @@ public final class BlockManagerWorker {
           responseFromMaster.getBlockLocationInfoMsg();
       if (!blockLocationInfoMsg.hasOwnerExecutorId()) {
         throw new BlockFetchException(new Throwable(
-            "Block " + blockId + " location unknown: "
+            "Block " + blockIdWildcard + " location unknown: "
                 + "The block state is " + blockLocationInfoMsg.getState()));
       }
+
       // This is the executor id that we wanted to know
+      final String blockId = blockLocationInfoMsg.getBlockId();
       final String targetExecutorId = blockLocationInfoMsg.getOwnerExecutorId();
       if (targetExecutorId.equals(executorId) || targetExecutorId.equals(REMOTE_FILE_STORE)) {
         // Block resides in the evaluator

@@ -96,9 +96,6 @@ public final class BlockManagerMaster {
       final String wildCard = RuntimeIdManager.getWildCardFromBlockId(blockId);
       blockIdWildcardToMetadataSet.putIfAbsent(wildCard, new HashSet<>());
       blockIdWildcardToMetadataSet.get(wildCard).add(new BlockMetadata(blockId));
-
-
-      LOG.info("INITIALIE: {}, {}", producerTaskIdToBlockIds, blockIdWildcardToMetadataSet);
     } finally {
       writeLock.unlock();
     }
@@ -133,34 +130,27 @@ public final class BlockManagerMaster {
   /**
    * Returns a handler of block location requests.
    *
-   * @param blockId id of the specified block.
+   * @param blockIdOrWildcard id of the specified block.
    * @return the handler of block location requests, which completes exceptionally when the block
    * is not {@code IN_PROGRESS} or {@code AVAILABLE}.
    */
-  public BlockRequestHandler getBlockLocationHandler(final String blockId) {
+  public BlockRequestHandler getBlockLocationHandler(final String blockIdOrWildcard) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      LOG.info("getBlockLocationHandler blockId {}", blockId);
-      final Set<BlockMetadata> metadataSet = getBlockWildcardStateSet(RuntimeIdManager.getWildCardFromBlockId(blockId));
-
-      LOG.info("metadataSet {}", metadataSet);
-      System.out.println("METADATASET " + metadataSet);
-
+      final Set<BlockMetadata> metadataSet =
+          getBlockWildcardStateSet(RuntimeIdManager.getWildCardFromBlockId(blockIdOrWildcard));
       final List<BlockMetadata> candidates = metadataSet.stream()
           .filter(metadata -> metadata.getBlockState().equals(BlockState.State.IN_PROGRESS)
               || metadata.getBlockState().equals(BlockState.State.AVAILABLE))
           .collect(Collectors.toList());
-
-      LOG.info("Candidates {}", candidates);
-
       if (!candidates.isEmpty()) {
         // Randomly pick one of the candidate handlers.
         return candidates.get(random.nextInt(candidates.size())).getLocationHandler();
       } else {
         // No candidate exists
-        final BlockRequestHandler handler = new BlockRequestHandler(blockId);
-        handler.completeExceptionally(new AbsentBlockException(blockId, BlockState.State.NOT_AVAILABLE));
+        final BlockRequestHandler handler = new BlockRequestHandler(blockIdOrWildcard);
+        handler.completeExceptionally(new AbsentBlockException(blockIdOrWildcard, BlockState.State.NOT_AVAILABLE));
         return handler;
       }
     } finally {
@@ -200,10 +190,7 @@ public final class BlockManagerMaster {
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
-      blockIds.forEach(blockId -> {
-        LOG.info("{} ONPRODUCER: {}, {}", blockId, producerTaskIdToBlockIds, blockIdWildcardToMetadataSet);
-        initializeState(blockId, taskId);
-      });
+      blockIds.forEach(blockId -> initializeState(blockId, taskId));
     } finally {
       writeLock.unlock();
     }
@@ -220,10 +207,9 @@ public final class BlockManagerMaster {
     writeLock.lock();
     try {
       if (producerTaskIdToBlockIds.containsKey(failedTaskId)) {
-        producerTaskIdToBlockIds.get(failedTaskId).forEach(blockId -> {
-          LOG.info("Block lost: {}", blockId);
-          onBlockStateChanged(blockId, BlockState.State.NOT_AVAILABLE, null);
-        });
+        producerTaskIdToBlockIds.get(failedTaskId).forEach(blockId ->
+          onBlockStateChanged(blockId, BlockState.State.NOT_AVAILABLE, null)
+        );
       } // else this task has not produced any block
     } finally {
       writeLock.unlock();
@@ -269,7 +255,6 @@ public final class BlockManagerMaster {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      LOG.info("get wildcard {} from {}", blockIdWildcard, blockIdWildcardToMetadataSet);
       return blockIdWildcardToMetadataSet.getOrDefault(blockIdWildcard, new HashSet<>(0));
     } finally {
       readLock.unlock();
@@ -303,11 +288,9 @@ public final class BlockManagerMaster {
             .stream()
             .filter(meta -> meta.getBlockId().equals(blockId))
             .collect(Collectors.toList());
-
     if (candidates.size() != 1) {
       throw new RuntimeException("BlockId " + blockId + ": " + candidates.toString()); // should match only 1
     }
-
     return candidates.get(0);
   }
 
@@ -320,12 +303,12 @@ public final class BlockManagerMaster {
   void onRequestBlockLocation(final ControlMessage.Message message,
                               final MessageContext messageContext) {
     assert (message.getType() == ControlMessage.MessageType.RequestBlockLocation);
-    final String blockId = message.getRequestBlockLocationMsg().getBlockId();
+    final String blockIdWildcard = message.getRequestBlockLocationMsg().getBlockIdWildcard();
     final long requestId = message.getId();
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      final BlockRequestHandler locationFuture = getBlockLocationHandler(blockId);
+      final BlockRequestHandler locationFuture = getBlockLocationHandler(blockIdWildcard);
       locationFuture.registerRequest(requestId, messageContext);
     } finally {
       readLock.unlock();

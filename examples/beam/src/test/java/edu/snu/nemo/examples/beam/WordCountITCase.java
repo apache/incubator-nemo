@@ -111,6 +111,7 @@ public final class WordCountITCase {
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
         .addJobId(WordCountITCase.class.getSimpleName() + "_clonedscheduling")
+        .addMaxTaskAttempt(Integer.MAX_VALUE)
         .addOptimizationPolicy(ClonedSchedulingPolicyParallelismFive.class.getCanonicalName())
         .build());
   }

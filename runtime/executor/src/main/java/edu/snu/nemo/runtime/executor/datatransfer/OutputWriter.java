@@ -91,7 +91,6 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     }
     blockToWrite = blockManagerWorker.createBlock(
         RuntimeIdManager.generateBlockId(getId(), srcTaskId), blockStoreValue);
-
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     nonDummyBlock = !duplicateDataProperty.isPresent()
