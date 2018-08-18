@@ -326,8 +326,7 @@ public final class DataTransferTest {
     // Initialize states in Master
     TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskId);
-      master.initializeState(blockId, srcTaskId);
-      master.onProducerTaskScheduled(srcTaskId);
+      master.onProducerTaskScheduled(srcTaskId, Collections.singleton(blockId));
     });
 
     // Write
@@ -422,10 +421,7 @@ public final class DataTransferTest {
     // Initialize states in Master
     TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskId);
-      master.initializeState(blockId, srcTaskId);
-      final String blockId2 = RuntimeIdManager.generateBlockId(edgeId2, srcTaskId);
-      master.initializeState(blockId2, srcTaskId);
-      master.onProducerTaskScheduled(srcTaskId);
+      master.onProducerTaskScheduled(srcTaskId, Collections.singleton(blockId));
     });
 
     // Write

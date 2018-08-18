@@ -296,7 +296,12 @@ public final class BatchScheduler implements Scheduler {
     final List<String> taskIdsToSchedule = planStateManager.getReadyTaskAttempts(stageToSchedule.getId());
     final List<Task> tasks = new ArrayList<>(taskIdsToSchedule.size());
     taskIdsToSchedule.forEach(taskId -> {
-      blockManagerMaster.onProducerTaskScheduled(taskId); // Notify the block manager early for push edges.
+      blockManagerMaster.onProducerTaskScheduled(taskId,
+          physicalPlan.getStageDAG().getOutgoingEdgesOf(RuntimeIdManager.getStageIdFromTaskId(taskId))
+              .stream()
+              .map(stageEdge -> RuntimeIdManager.generateBlockId(stageEdge.getId(), taskId))
+              .collect(Collectors.toSet()) // ids of blocks this task will produce
+      );
       final int taskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
       tasks.add(new Task(
           physicalPlan.getId(),

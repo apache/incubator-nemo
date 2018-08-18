@@ -131,7 +131,6 @@ public final class BlockStoreTest {
       // Create a block for each writer task.
       final String blockId = RuntimeIdManager.generateBlockId(shuffleEdge, getTaskId(writeTaskIdx));
       blockIdList.add(blockId);
-      blockManagerMaster.initializeState(blockId, "Unused");
       blockManagerMaster.onBlockStateChanged(
           blockId, BlockState.State.IN_PROGRESS, null);
 
@@ -151,7 +150,6 @@ public final class BlockStoreTest {
 
     // Generates the ids and the data to be used.
     concBlockId = RuntimeIdManager.generateBlockId(concEdge, getTaskId(NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1));
-    blockManagerMaster.initializeState(concBlockId, "unused");
     blockManagerMaster.onBlockStateChanged(
         concBlockId, BlockState.State.IN_PROGRESS, null);
     IntStream.range(0, NUM_CONC_READ_TASKS).forEach(number -> concReadTaskIdList.add("conc_read_IR_vertex"));
@@ -175,7 +173,6 @@ public final class BlockStoreTest {
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writeTaskIdx -> {
       final String blockId = RuntimeIdManager.generateBlockId(hashEdge, getTaskId(NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1 + writeTaskIdx));
       hashedBlockIdList.add(blockId);
-      blockManagerMaster.initializeState(blockId, "Unused");
       blockManagerMaster.onBlockStateChanged(
           blockId, BlockState.State.IN_PROGRESS, null);
       final List<NonSerializedPartition<Integer>> hashedBlock = new ArrayList<>(HASH_RANGE);

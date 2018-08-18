@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
 public final class BlockManagerMaster {
   private static final Logger LOG = LoggerFactory.getLogger(BlockManagerMaster.class.getName());
 
-  private final Map<String, Set<String>> producerTaskIdToBlockIdWildcards; // a task can have multiple out-edges
+  private final Map<String, Set<String>> producerTaskIdToBlockIds; // a task can have multiple out-edges
   private final Map<String, Set<BlockMetadata>> blockIdWildcardToMetadataSet; // a metadata = a task attempt output
 
   // A lock that can be acquired exclusively or not.
@@ -73,7 +73,7 @@ public final class BlockManagerMaster {
     masterMessageEnvironment.setupListener(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID,
         new PartitionManagerMasterControlMessageReceiver());
     this.blockIdWildcardToMetadataSet = new HashMap<>();
-    this.producerTaskIdToBlockIdWildcards = new HashMap<>();
+    this.producerTaskIdToBlockIds = new HashMap<>();
     this.lock = new ReentrantReadWriteLock();
   }
 
@@ -84,23 +84,21 @@ public final class BlockManagerMaster {
    * @param producerTaskId      the id of the producer task.
    */
   @VisibleForTesting
-  public void initializeState(final String blockId,
-                              final String producerTaskId) {
+  private void initializeState(final String blockId, final String producerTaskId) {
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
-      final String wildCard = RuntimeIdManager.getWildCardFromBlockId(blockId);
-
-      // task - to - wildcards
-      producerTaskIdToBlockIdWildcards.putIfAbsent(producerTaskId, new HashSet<>());
-      producerTaskIdToBlockIdWildcards.get(producerTaskId).add(wildCard);
+      // task - to - blockIds
+      producerTaskIdToBlockIds.putIfAbsent(producerTaskId, new HashSet<>());
+      producerTaskIdToBlockIds.get(producerTaskId).add(blockId);
 
       // wildcard - to - metadata
+      final String wildCard = RuntimeIdManager.getWildCardFromBlockId(blockId);
       blockIdWildcardToMetadataSet.putIfAbsent(wildCard, new HashSet<>());
       blockIdWildcardToMetadataSet.get(wildCard).add(new BlockMetadata(blockId));
 
 
-      LOG.info("INITIALIE: {}, {}", producerTaskIdToBlockIdWildcards, blockIdWildcardToMetadataSet);
+      LOG.info("INITIALIE: {}, {}", producerTaskIdToBlockIds, blockIdWildcardToMetadataSet);
     } finally {
       writeLock.unlock();
     }
@@ -145,8 +143,11 @@ public final class BlockManagerMaster {
     try {
       final Set<BlockMetadata> metadataSet = getBlockWildcardStateSet(RuntimeIdManager.getWildCardFromBlockId(blockId));
 
+      LOG.info("metadataSet {}", metadataSet);
+
       final List<BlockMetadata> candidates = metadataSet.stream()
-          .filter(state -> state.equals(BlockState.State.IN_PROGRESS) || state.equals(BlockState.State.AVAILABLE))
+          .filter(metadata -> metadata.getBlockState().equals(BlockState.State.IN_PROGRESS)
+              || metadata.getBlockState().equals(BlockState.State.AVAILABLE))
           .collect(Collectors.toList());
 
       LOG.info("Candidates {}", candidates);
@@ -171,13 +172,12 @@ public final class BlockManagerMaster {
    * @param blockId the id of the block.
    * @return the ids of the producer tasks.
    */
-  @VisibleForTesting
-  public Set<String> getProducerTaskIds(final String blockId) {
+  private Set<String> getProducerTaskIds(final String blockId) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
       final Set<String> producerTaskIds = new HashSet<>();
-      for (Map.Entry<String, Set<String>> entry : producerTaskIdToBlockIdWildcards.entrySet()) {
+      for (Map.Entry<String, Set<String>> entry : producerTaskIdToBlockIds.entrySet()) {
         if (entry.getValue().contains(blockId)) {
           producerTaskIds.add(entry.getKey());
         }
@@ -192,18 +192,16 @@ public final class BlockManagerMaster {
   /**
    * To be called when a potential producer task is scheduled.
    * @param taskId the ID of the scheduled task.
+   * @param blockIds this task will produce
    */
-  public void onProducerTaskScheduled(final String taskId) {
+  public void onProducerTaskScheduled(final String taskId, final Set<String> blockIds) {
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
-      producerTaskIdToBlockIdWildcards.get(taskId).forEach(wildcard -> {
-        final String blockId = RuntimeIdManager.generateBlockId(
-            RuntimeIdManager.getRuntimeEdgeIdFromBlockId(wildcard), taskId);
-        LOG.info("{} ONPRODUCER: {}, {}", blockId, producerTaskIdToBlockIdWildcards, blockIdWildcardToMetadataSet);
+      blockIds.forEach(blockId -> {
+        LOG.info("{} ONPRODUCER: {}, {}", blockId, producerTaskIdToBlockIds, blockIdWildcardToMetadataSet);
         initializeState(blockId, taskId);
       });
-
     } finally {
       writeLock.unlock();
     }
@@ -219,12 +217,12 @@ public final class BlockManagerMaster {
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
-      if (producerTaskIdToBlockIdWildcards.containsKey(failedTaskId)) {
-        producerTaskIdToBlockIdWildcards.get(failedTaskId).forEach(blockId -> {
+      if (producerTaskIdToBlockIds.containsKey(failedTaskId)) {
+        producerTaskIdToBlockIds.get(failedTaskId).forEach(blockId -> {
           LOG.info("Block lost: {}", blockId);
           onBlockStateChanged(blockId, BlockState.State.NOT_AVAILABLE, null);
         });
-      } // else this task does not produce any block
+      } // else this task has not produced any block
     } finally {
       writeLock.unlock();
     }
@@ -263,14 +261,14 @@ public final class BlockManagerMaster {
 
   /**
    * @param blockIdWildcard to query.
-   * @return the {@link BlockState} set for a block wildcard.
+   * @return set of block metadata for the wildcard, empty if none exists.
    */
-  @VisibleForTesting
-  public Set<BlockMetadata> getBlockWildcardStateSet(final String blockIdWildcard) {
+  private Set<BlockMetadata> getBlockWildcardStateSet(final String blockIdWildcard) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      return blockIdWildcardToMetadataSet.get(blockIdWildcard);
+      LOG.info("get wildcard {} from {}", blockIdWildcard, blockIdWildcardToMetadataSet);
+      return blockIdWildcardToMetadataSet.getOrDefault(blockIdWildcard, new HashSet<>(0));
     } finally {
       readLock.unlock();
     }
@@ -305,7 +303,7 @@ public final class BlockManagerMaster {
             .collect(Collectors.toList());
 
     if (candidates.size() != 1) {
-      throw new RuntimeException(candidates.toString()); // should match only 1
+      throw new RuntimeException("BlockId " + blockId + ": " + candidates.toString()); // should match only 1
     }
 
     return candidates.get(0);

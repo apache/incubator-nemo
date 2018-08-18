@@ -205,7 +205,8 @@ public final class PlanStateManager {
                 || curState.equals(TaskState.State.SHOULD_RETRY)))
         .filter(bool -> bool.equals(true))
         .count();
-    LOG.info("{} completed indices: {}", stageId, numOfCompletedTaskIndicesInThisStage);
+    LOG.info("{} completed indices: {} / {} / {}",
+        stageId, numOfCompletedTaskIndicesInThisStage, newTaskState, taskStatesOfThisStage);
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
       LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",
           taskId, taskStatesOfThisStage.size() - numOfCompletedTaskIndicesInThisStage, taskStatesOfThisStage.size());
