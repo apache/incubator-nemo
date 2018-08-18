@@ -105,6 +105,7 @@ public final class PlanStateManager {
   private void initializeComputationStates() {
     onPlanStateChanged(PlanState.State.EXECUTING);
     physicalPlan.getStageDAG().topologicalDo(stage -> {
+      System.out.println("INITIALIZE: " + stage.getId());
       stageIdToState.put(stage.getId(), new StageState());
       stageIdToTaskAttemptStates.put(stage.getId(), new ArrayList<>(stage.getParallelism()));
       for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
@@ -163,7 +164,7 @@ public final class PlanStateManager {
     return executableTaskAttempts;
   }
 
-  public synchronized Set<String> getAllTaskAttempts(final String stageId) {
+  public synchronized Set<String> getAllTaskAttemptsOfStage(final String stageId) {
     return getTaskAttemptIdsToItsState(stageId).keySet();
   }
 
@@ -187,19 +188,27 @@ public final class PlanStateManager {
     metricStore.getOrCreateMetric(TaskMetric.class, taskId)
         .addEvent((TaskState.State) taskState.getCurrentState(), newTaskState);
     metricStore.triggerBroadcast(TaskMetric.class, taskId);
-    taskState.setState(newTaskState);
+
+    try {
+      taskState.setState(newTaskState);
+    } catch (IllegalStateTransitionException e) {
+      throw new RuntimeException(taskId + " - Illegal task state transition ", e);
+    }
 
     // Log not-yet-completed tasks for us humans to track progress
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     final List<List<TaskState>> taskStatesOfThisStage = stageIdToTaskAttemptStates.get(stageId);
-    final long numOfCompletedTasksInThisStage = taskStatesOfThisStage.stream()
-        .map(attempts -> attempts.stream().anyMatch(state ->
-            state.getStateMachine().getCurrentState().equals(TaskState.State.COMPLETE)))
+    final long numOfCompletedTaskIndicesInThisStage = taskStatesOfThisStage.stream()
+        .map(attempts -> attempts.stream()
+            .map(state -> state.getStateMachine().getCurrentState())
+            .allMatch(curState -> curState.equals(TaskState.State.COMPLETE)
+                || curState.equals(TaskState.State.SHOULD_RETRY)))
         .filter(bool -> bool.equals(true))
         .count();
+    LOG.info("{} completed indices: {}", stageId, numOfCompletedTaskIndicesInThisStage);
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
       LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",
-          taskId, taskStatesOfThisStage.size() - numOfCompletedTasksInThisStage, taskStatesOfThisStage.size());
+          taskId, taskStatesOfThisStage.size() - numOfCompletedTaskIndicesInThisStage, taskStatesOfThisStage.size());
     }
 
     // Change stage state, if needed
@@ -217,7 +226,10 @@ public final class PlanStateManager {
       // COMPLETE stage
       case COMPLETE:
       case ON_HOLD:
-        if (numOfCompletedTasksInThisStage == taskStatesOfThisStage.size()) {
+        if (numOfCompletedTaskIndicesInThisStage
+            == physicalPlan.getStageDAG().getVertexById(stageId).getParallelism()) {
+          System.out.println("CHANGED: " + numOfCompletedTaskIndicesInThisStage + " / "
+              + physicalPlan.getStageDAG().getVertexById(stageId).getParallelism());
           onStageStateChanged(stageId, StageState.State.COMPLETE);
         }
         break;
@@ -262,7 +274,11 @@ public final class PlanStateManager {
 
     LOG.debug("Stage State Transition: id {} from {} to {}",
         new Object[]{stageId, stageStateMachine.getCurrentState(), newStageState});
-    stageStateMachine.setState(newStageState);
+    try {
+      stageStateMachine.setState(newStageState);
+    } catch (IllegalStateTransitionException e) {
+      throw new RuntimeException(stageId + " - Illegal stage state transition ", e);
+    }
 
     // Change plan state if needed
     final boolean allStagesCompleted = stageIdToState.values().stream().allMatch(state ->
@@ -282,7 +298,12 @@ public final class PlanStateManager {
         .addEvent((PlanState.State) planState.getStateMachine().getCurrentState(), newState);
     metricStore.triggerBroadcast(JobMetric.class, planId);
 
-    planState.getStateMachine().setState(newState);
+
+    try {
+      planState.getStateMachine().setState(newState);
+    } catch (IllegalStateTransitionException e) {
+      throw new RuntimeException(planId + " - Illegal plan state transition ", e);
+    }
 
     if (newState == PlanState.State.EXECUTING) {
       LOG.debug("Executing Plan ID {}...", this.planId);
@@ -298,7 +319,7 @@ public final class PlanStateManager {
         finishLock.unlock();
       }
     } else {
-      throw new IllegalStateTransitionException(new Exception("Illegal Plan State Transition"));
+      throw new RuntimeException("Illegal Plan State Transition");
     }
   }
 
@@ -445,6 +466,11 @@ public final class PlanStateManager {
   private Map<String, TaskState.State> getTaskAttemptIdsToItsState(final String stageId) {
     final Map<String, TaskState.State> result = new HashMap<>();
     final List<List<TaskState>> taskStates = stageIdToTaskAttemptStates.get(stageId);
+    // System.out.println("stageIdToTaskAttemptStates: " + stageIdToTaskAttemptStates);
+    if (taskStates == null) {
+      System.out.println("BABBBBBBBBBBBBBBBBBBBBBAD: " + taskStates + " for " + stageId);
+
+    }
     for (int taskIndex = 0; taskIndex < taskStates.size(); taskIndex++) {
       final List<TaskState> attemptStates = taskStates.get(taskIndex);
       for (int attempt = 0; attempt < attemptStates.size(); attempt++) {

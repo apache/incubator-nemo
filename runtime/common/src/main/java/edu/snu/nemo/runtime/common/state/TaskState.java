@@ -55,6 +55,10 @@ public final class TaskState {
     // From COMPLETE
     stateMachineBuilder.addTransition(State.COMPLETE, State.SHOULD_RETRY, "Completed before, but should be retried");
 
+    // From SHOULD_RETRY
+    stateMachineBuilder.addTransition(State.SHOULD_RETRY, State.SHOULD_RETRY,
+        "SHOULD_RETRY can be caused by multiple reasons");
+
     stateMachineBuilder.setInitialState(State.READY);
     return stateMachineBuilder.build();
   }

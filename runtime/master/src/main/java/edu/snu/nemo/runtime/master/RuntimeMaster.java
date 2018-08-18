@@ -78,10 +78,8 @@ public final class RuntimeMaster {
   private final ExecutorService runtimeMasterThread;
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
-  private final BlockManagerMaster blockManagerMaster;
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
-  private final MetricStore metricStore;
   private final ClientRPC clientRPC;
   private final MetricManagerMaster metricManagerMaster;
   // For converting json data. This is a thread safe.
@@ -96,7 +94,6 @@ public final class RuntimeMaster {
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
                         final ContainerManager containerManager,
-                        final BlockManagerMaster blockManagerMaster,
                         final MetricMessageHandler metricMessageHandler,
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
@@ -110,7 +107,6 @@ public final class RuntimeMaster {
         Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster thread"));
     this.scheduler = scheduler;
     this.containerManager = containerManager;
-    this.blockManagerMaster = blockManagerMaster;
     this.metricMessageHandler = metricMessageHandler;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
@@ -121,7 +117,6 @@ public final class RuntimeMaster {
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
-    this.metricStore = MetricStore.getStore();
     this.metricServer = startRestMetricServer();
   }
 
@@ -157,7 +152,6 @@ public final class RuntimeMaster {
     final Callable<Pair<PlanStateManager, ScheduledExecutorService>> planExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
-        blockManagerMaster.initialize(plan);
         final PlanStateManager planStateManager = new PlanStateManager(plan, maxScheduleAttempt);
         scheduler.schedulePlan(plan, planStateManager);
         final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(planStateManager);

@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.master;
 
 import edu.snu.nemo.common.StateMachine;
+import edu.snu.nemo.common.exception.IllegalStateTransitionException;
 import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
 import org.slf4j.Logger;
@@ -77,7 +78,11 @@ final class BlockMetadata {
         throw new UnsupportedOperationException(newState.toString());
     }
 
-    stateMachine.setState(newState);
+    try {
+      stateMachine.setState(newState);
+    } catch (IllegalStateTransitionException e) {
+      throw new RuntimeException(blockId + " - Illegal block state transition ", e);
+    }
   }
 
   /**
@@ -99,5 +104,15 @@ final class BlockMetadata {
    */
   synchronized BlockManagerMaster.BlockRequestHandler getLocationHandler() {
     return locationHandler;
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(blockId);
+    sb.append("(");
+    sb.append(blockState);
+    sb.append(")");
+    return sb.toString();
   }
 }

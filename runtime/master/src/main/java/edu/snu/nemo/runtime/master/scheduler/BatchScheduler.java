@@ -163,8 +163,7 @@ public final class BatchScheduler implements Scheduler {
             .append(taskId).append(" in Executor ").append(executorId).toString()));
       case READY:
       case EXECUTING:
-        throw new IllegalStateTransitionException(
-            new Exception("The states READY/EXECUTING cannot occur at this point"));
+        throw new RuntimeException("The states READY/EXECUTING cannot occur at this point");
       default:
         throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + newState));
     }
@@ -441,7 +440,8 @@ public final class BatchScheduler implements Scheduler {
     return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
         .stream()
         .flatMap(inStageEdge -> {
-          final Set<String> tasksOfParentStage = planStateManager.getAllTaskAttempts(childTaskId);
+          final Set<String> tasksOfParentStage =
+              planStateManager.getAllTaskAttemptsOfStage(RuntimeIdManager.getStageIdFromTaskId(childTaskId));
           switch (inStageEdge.getDataCommunicationPattern()) {
             case Shuffle:
             case BroadCast:

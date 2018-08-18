@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.master;
 
-import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.IllegalMessageException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
@@ -24,9 +23,6 @@ import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.state.BlockState;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -54,8 +50,10 @@ import org.slf4j.LoggerFactory;
 @DriverSide
 public final class BlockManagerMaster {
   private static final Logger LOG = LoggerFactory.getLogger(BlockManagerMaster.class.getName());
-  private final Map<String, Set<BlockMetadata>> blockIdWildcardToMetadataSet; // a metadata = a task attempt output
+
   private final Map<String, Set<String>> producerTaskIdToBlockIdWildcards; // a task can have multiple out-edges
+  private final Map<String, Set<BlockMetadata>> blockIdWildcardToMetadataSet; // a metadata = a task attempt output
+
   // A lock that can be acquired exclusively or not.
   // Because the BlockMetadata itself is sufficiently synchronized,
   // operation that runs in a single block can just acquire a (sharable) read lock.
@@ -64,8 +62,6 @@ public final class BlockManagerMaster {
   private final ReadWriteLock lock;
 
   private final Random random = new Random();
-
-  private PhysicalPlan physicalPlan;
 
   /**
    * Constructor.
@@ -79,11 +75,6 @@ public final class BlockManagerMaster {
     this.blockIdWildcardToMetadataSet = new HashMap<>();
     this.producerTaskIdToBlockIdWildcards = new HashMap<>();
     this.lock = new ReentrantReadWriteLock();
-  }
-
-  void initialize(final PhysicalPlan plan) {
-    this.physicalPlan = plan;
-    // States are initialized lazily.
   }
 
   /**
@@ -100,13 +91,16 @@ public final class BlockManagerMaster {
     try {
       final String wildCard = RuntimeIdManager.getWildCardFromBlockId(blockId);
 
-      // metadata
+      // task - to - wildcards
+      producerTaskIdToBlockIdWildcards.putIfAbsent(producerTaskId, new HashSet<>());
+      producerTaskIdToBlockIdWildcards.get(producerTaskId).add(wildCard);
+
+      // wildcard - to - metadata
       blockIdWildcardToMetadataSet.putIfAbsent(wildCard, new HashSet<>());
       blockIdWildcardToMetadataSet.get(wildCard).add(new BlockMetadata(blockId));
 
-      // taskToWildcards
-      producerTaskIdToBlockIdWildcards.putIfAbsent(producerTaskId, new HashSet<>());
-      producerTaskIdToBlockIdWildcards.get(producerTaskId).add(wildCard);
+
+      LOG.info("INITIALIE: {}, {}", producerTaskIdToBlockIdWildcards, blockIdWildcardToMetadataSet);
     } finally {
       writeLock.unlock();
     }
@@ -155,6 +149,8 @@ public final class BlockManagerMaster {
           .filter(state -> state.equals(BlockState.State.IN_PROGRESS) || state.equals(BlockState.State.AVAILABLE))
           .collect(Collectors.toList());
 
+      LOG.info("Candidates {}", candidates);
+
       if (!candidates.isEmpty()) {
         // Randomly pick one of the candidate handlers.
         return candidates.get(random.nextInt(candidates.size())).getLocationHandler();
@@ -193,16 +189,6 @@ public final class BlockManagerMaster {
     }
   }
 
-  public Set<String> getIdsOfBlocksProducedBy(final String taskId) {
-    final Lock readLock = lock.readLock();
-    readLock.lock();
-    try {
-      return producerTaskIdToBlockIdWildcards.get(taskId);
-    } finally {
-      readLock.unlock();
-    }
-  }
-
   /**
    * To be called when a potential producer task is scheduled.
    * @param taskId the ID of the scheduled task.
@@ -211,26 +197,13 @@ public final class BlockManagerMaster {
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
-      final DAG<Stage, StageEdge> stageDAG = physicalPlan.getStageDAG();
-      final Stage stage = stageDAG.getVertexById(RuntimeIdManager.getStageIdFromTaskId(taskId));
-
-      // Inter-stage edges only (Intra-stage edges are skipped)
-      stageDAG.getOutgoingEdgesOf(stage).forEach(stageEdge -> {
-        final String blockId = RuntimeIdManager.generateBlockId(stageEdge.getId(), taskId);
+      producerTaskIdToBlockIdWildcards.get(taskId).forEach(wildcard -> {
+        final String blockId = RuntimeIdManager.generateBlockId(
+            RuntimeIdManager.getRuntimeEdgeIdFromBlockId(wildcard), taskId);
+        LOG.info("{} ONPRODUCER: {}, {}", blockId, producerTaskIdToBlockIdWildcards, blockIdWildcardToMetadataSet);
         initializeState(blockId, taskId);
       });
 
-
-      /*
-      if (producerTaskIdToBlockIdWildcards.containsKey(scheduledTaskId)) {
-        producerTaskIdToBlockIdWildcards.get(scheduledTaskId).forEach(wildcard -> {
-          if (blockIdToMetadata.get(wildcard).getBlockState()
-              .getStateMachine().getCurrentState().equals(NOT_AVAILABLE)) {
-            onBlockStateChanged(wildcard, IN_PROGRESS, null);
-          }
-        });
-      } // else this task does not produce any block
-      */
     } finally {
       writeLock.unlock();
     }
