@@ -16,17 +16,9 @@
 package edu.snu.nemo.runtime.common.optimizer;
 
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlanGenerator;
-import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
-import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.exceptions.InjectionException;
 
 import java.util.*;
 
@@ -48,22 +40,12 @@ public final class RunTimeOptimizer {
   public static synchronized PhysicalPlan dynamicOptimization(
           final PhysicalPlan originalPlan,
           final Object dynOptData,
-          final IREdge targetEdge) {
-    try {
-      final PhysicalPlanGenerator physicalPlanGenerator =
-          Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
-
-      // Data for dynamic optimization used in DataSkewRuntimePass
-      // is a map of <hash value, partition size>.
-      final DAG<IRVertex, IREdge> newIrDAG =
-          new DataSkewRuntimePass()
-              .apply(originalPlan.getIrDAG(), Pair.of(targetEdge, (Map<Integer, Long>) dynOptData));
-      final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(newIrDAG);
-      final PhysicalPlan physicalPlan =
-          new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(), newIrDAG, stageDAG);
-      return physicalPlan;
-    } catch (final InjectionException e) {
-      throw new RuntimeException(e);
-    }
+          final StageEdge targetEdge) {
+    // Data for dynamic optimization used in DataSkewRuntimePass
+    // is a map of <hash value, partition size>.
+    final PhysicalPlan physicalPlan =
+      new DataSkewRuntimePass()
+        .apply(originalPlan, Pair.of(targetEdge, (Map<Integer, Long>) dynOptData));
+    return physicalPlan;
   }
 }

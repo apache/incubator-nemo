@@ -16,11 +16,17 @@
 package edu.snu.nemo.runtime.common.plan;
 
 import com.google.common.annotations.VisibleForTesting;
+import edu.snu.nemo.common.HashRange;
+import edu.snu.nemo.common.KeyRange;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Edge of a stage that connects an IRVertex of the source stage to an IRVertex of the destination stage.
@@ -38,6 +44,11 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    * This belongs to the dstStage.
    */
   private final IRVertex dstVertex;
+
+  /**
+   * The list between the task idx and key range to read.
+   */
+  private Map<Integer, KeyRange> taskIdxToKeyRange;
 
   /**
    * Value for {@link CommunicationPatternProperty}.
@@ -71,6 +82,11 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     super(runtimeEdgeId, edgeProperties, srcStage, dstStage, isSideInput);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
+    // Initialize the key range of each dst task.
+    this.taskIdxToKeyRange = new HashMap<>();
+    for (int taskIdx = 0; taskIdx < dstStage.getTaskIds().size(); taskIdx++) {
+      taskIdxToKeyRange.put(taskIdx, HashRange.of(taskIdx, taskIdx + 1, false));
+    }
     this.dataCommunicationPatternValue = edgeProperties.get(CommunicationPatternProperty.class)
         .orElseThrow(() -> new RuntimeException(String.format(
             "CommunicationPatternProperty not set for %s", runtimeEdgeId)));
@@ -107,6 +123,52 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   @Override
   public String toString() {
     return propertiesToJSON();
+  }
+
+  /**
+   * @return the list between the task idx and key range to read.
+   */
+  public Map<Integer, KeyRange> getTaskIdxToKeyRange() {
+    return taskIdxToKeyRange;
+  }
+
+  /**
+   * Sets the task idx to key range list.
+   *
+   * @param taskIdxToKeyRange the list to set.
+   */
+  public void setTaskIdxToKeyRange(final Map<Integer, KeyRange> taskIdxToKeyRange) {
+    this.taskIdxToKeyRange = taskIdxToKeyRange;
+  }
+
+  /**
+   * @param edge edge to compare.
+   * @return whether or not the edge has the same itinerary
+   */
+  public Boolean hasSameItineraryAs(final StageEdge edge) {
+    return getSrc().equals(edge.getSrc()) && getDst().equals(edge.getDst());
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    final StageEdge stageEdge = (StageEdge) o;
+    return getExecutionProperties().equals(stageEdge.getExecutionProperties()) && hasSameItineraryAs(stageEdge);
+  }
+
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder(17, 37)
+      .append(getSrc().hashCode())
+      .append(getDst().hashCode())
+      .append(getExecutionProperties())
+      .toHashCode();
   }
 
   /**
