@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.resource;
 
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 
 /**
  * Represents the specifications of a resource.
@@ -38,7 +38,7 @@ public final class ResourceSpecification {
                                final int capacity,
                                final int memory,
                                final int poisonSec) {
-    this.resourceSpecId = RuntimeIdGenerator.generateResourceSpecId();
+    this.resourceSpecId = RuntimeIdManager.generateResourceSpecId();
     this.containerType = containerType;
     this.capacity = capacity;
     this.memory = memory;

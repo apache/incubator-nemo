@@ -18,19 +18,19 @@ package edu.snu.nemo.runtime.common.plan;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 
 import java.io.Serializable;
 import java.util.*;
 
 /**
- * A Task is a self-contained executable that can be executed on a machine.
+ * A Task (attempt) is a self-contained executable that can be executed on a machine.
  */
 public final class Task implements Serializable {
   private final String planId;
   private final String taskId;
   private final List<StageEdge> taskIncomingEdges;
   private final List<StageEdge> taskOutgoingEdges;
-  private final int attemptIdx;
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   private final byte[] serializedIRDag;
   private final Map<String, Readable> irVertexIdToReadable;
@@ -39,8 +39,7 @@ public final class Task implements Serializable {
    * Constructor.
    *
    * @param planId               the id of the physical plan.
-   * @param taskId               the ID of the task.
-   * @param attemptIdx           the attempt index.
+   * @param taskId               the ID of this task attempt.
    * @param executionProperties  {@link VertexExecutionProperty} map for the corresponding stage
    * @param serializedIRDag      the serialized DAG of the task.
    * @param taskIncomingEdges    the incoming edges of the task.
@@ -49,7 +48,6 @@ public final class Task implements Serializable {
    */
   public Task(final String planId,
               final String taskId,
-              final int attemptIdx,
               final ExecutionPropertyMap<VertexExecutionProperty> executionProperties,
               final byte[] serializedIRDag,
               final List<StageEdge> taskIncomingEdges,
@@ -57,7 +55,6 @@ public final class Task implements Serializable {
               final Map<String, Readable> irVertexIdToReadable) {
     this.planId = planId;
     this.taskId = taskId;
-    this.attemptIdx = attemptIdx;
     this.executionProperties = executionProperties;
     this.serializedIRDag = serializedIRDag;
     this.taskIncomingEdges = taskIncomingEdges;
@@ -104,7 +101,7 @@ public final class Task implements Serializable {
    * @return the attempt index.
    */
   public int getAttemptIdx() {
-    return attemptIdx;
+    return RuntimeIdManager.getAttemptFromTaskId(taskId);
   }
 
   /**
@@ -141,7 +138,7 @@ public final class Task implements Serializable {
     sb.append(" / taskId: ");
     sb.append(taskId);
     sb.append(" / attempt: ");
-    sb.append(attemptIdx);
+    sb.append(getAttemptIdx());
     sb.append(" / incoming: ");
     sb.append(taskIncomingEdges);
     sb.append(" / outgoing: ");

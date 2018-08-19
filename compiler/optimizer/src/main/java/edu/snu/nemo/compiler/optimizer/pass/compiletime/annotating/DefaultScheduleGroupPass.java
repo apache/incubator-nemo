@@ -252,7 +252,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
      * Constructor.
      */
     ScheduleGroup() {
-      super(String.format("ScheduleGroup-%d", nextScheduleGroupId++));
+      super(String.format("ScheduleGroup%d", nextScheduleGroupId++));
     }
   }
 
