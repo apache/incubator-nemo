@@ -47,9 +47,18 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
    * @param that the source object for copying
    */
   public IRVertex(final IRVertex that) {
-    super(that.getId());
-    this.executionProperties = that.executionProperties;
+    super(IdManager.newVertexId());
+    this.executionProperties = ExecutionPropertyMap.of(this);
+    that.getExecutionProperties().forEachProperties(this::setProperty);
     this.stagePartitioned = that.stagePartitioned;
+  }
+
+  /**
+   * Static function to copy executionProperties from a vertex to the other.
+   * @param thatVertex the edge to copy executionProperties to.
+   */
+  public final void copyExecutionPropertiesTo(final IRVertex thatVertex) {
+    this.getExecutionProperties().forEachProperties(thatVertex::setProperty);
   }
 
   /**

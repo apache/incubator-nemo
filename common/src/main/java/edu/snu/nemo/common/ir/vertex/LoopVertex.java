@@ -31,34 +31,32 @@ import java.util.stream.Collectors;
  * IRVertex that contains a partial DAG that is iterative.
  */
 public final class LoopVertex extends IRVertex {
+
   private static int duplicateEdgeGroupId = 0;
-  private final DAGBuilder<IRVertex, IREdge> builder; // Contains DAG information
+  // Contains DAG information
+  private final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
   private final String compositeTransformFullName;
-
-  private final Map<IRVertex, Set<IREdge>> dagIncomingEdges; // for the initial iteration
-  private final Map<IRVertex, Set<IREdge>> iterativeIncomingEdges; // Edges from previous iterations connected internal.
-  private final Map<IRVertex, Set<IREdge>> nonIterativeIncomingEdges; // Edges from outside previous iterations.
-  private final Map<IRVertex, Set<IREdge>> dagOutgoingEdges; // for the final iteration
-  private final Map<IREdge, IREdge> edgeWithLoopToEdgeWithInternalVertex;
-  private final Map<IREdge, IREdge> edgeWithInternalVertexToEdgeWithLoop;
-
+  // for the initial iteration
+  private final Map<IRVertex, Set<IREdge>> dagIncomingEdges = new HashMap<>();
+  // Edges from previous iterations connected internal.
+  private final Map<IRVertex, Set<IREdge>> iterativeIncomingEdges = new HashMap<>();
+  // Edges from outside previous iterations.
+  private final Map<IRVertex, Set<IREdge>> nonIterativeIncomingEdges = new HashMap<>();
+  // for the final iteration
+  private final Map<IRVertex, Set<IREdge>> dagOutgoingEdges = new HashMap<>();
+  private final Map<IREdge, IREdge> edgeWithLoopToEdgeWithInternalVertex = new HashMap<>();
+  private final Map<IREdge, IREdge> edgeWithInternalVertexToEdgeWithLoop = new HashMap<>();
   private Integer maxNumberOfIterations;
   private IntPredicate terminationCondition;
 
   /**
    * The LoopVertex constructor.
+   *
    * @param compositeTransformFullName full name of the composite transform.
    */
   public LoopVertex(final String compositeTransformFullName) {
     super();
-    this.builder = new DAGBuilder<>();
     this.compositeTransformFullName = compositeTransformFullName;
-    this.dagIncomingEdges = new HashMap<>();
-    this.iterativeIncomingEdges = new HashMap<>();
-    this.nonIterativeIncomingEdges = new HashMap<>();
-    this.dagOutgoingEdges = new HashMap<>();
-    this.edgeWithLoopToEdgeWithInternalVertex = new HashMap<>();
-    this.edgeWithInternalVertexToEdgeWithLoop = new HashMap<>();
     this.maxNumberOfIterations = 1; // 1 is the default number of iterations.
     this.terminationCondition = (IntPredicate & Serializable) (integer -> false); // nothing much yet.
   }
@@ -70,14 +68,18 @@ public final class LoopVertex extends IRVertex {
    */
   public LoopVertex(final LoopVertex that) {
     super(that);
-    this.builder = that.builder;
-    this.compositeTransformFullName = that.compositeTransformFullName;
-    this.dagIncomingEdges = that.dagIncomingEdges;
-    this.iterativeIncomingEdges = that.iterativeIncomingEdges;
-    this.nonIterativeIncomingEdges = that.nonIterativeIncomingEdges;
-    this.dagOutgoingEdges = that.dagOutgoingEdges;
-    this.edgeWithLoopToEdgeWithInternalVertex = that.edgeWithLoopToEdgeWithInternalVertex;
-    this.edgeWithInternalVertexToEdgeWithLoop = that.edgeWithInternalVertexToEdgeWithLoop;
+    this.compositeTransformFullName = new String(that.compositeTransformFullName);
+    // Copy all elements to the clone
+    final DAG<IRVertex, IREdge> dagToCopy = that.getDAG();
+    dagToCopy.topologicalDo(v -> {
+      this.getBuilder().addVertex(v, dagToCopy);
+      dagToCopy.getIncomingEdgesOf(v).forEach(this.getBuilder()::connectVertices);
+    });
+    that.dagIncomingEdges.forEach(((v, es) -> es.forEach(this::addDagIncomingEdge)));
+    that.iterativeIncomingEdges.forEach((v, es) -> es.forEach(this::addIterativeIncomingEdge));
+    that.nonIterativeIncomingEdges.forEach((v, es) -> es.forEach(this::addNonIterativeIncomingEdge));
+    that.dagOutgoingEdges.forEach(((v, es) -> es.forEach(this::addDagOutgoingEdge)));
+    that.edgeWithLoopToEdgeWithInternalVertex.forEach((eLoop, eInternal) -> this.mapEdgeWithLoop(eLoop, eInternal));
     this.maxNumberOfIterations = that.maxNumberOfIterations;
     this.terminationCondition = that.terminationCondition;
   }

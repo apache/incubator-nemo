@@ -60,7 +60,8 @@ public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String>
    */
   private SparkTextFileBoundedSourceVertex(final SparkTextFileBoundedSourceVertex that) {
     super(that);
-    this.readables = that.readables;
+    this.readables = new ArrayList<>();
+    that.readables.forEach(this.readables::add);
   }
 
   @Override

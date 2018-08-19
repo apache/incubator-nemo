@@ -52,10 +52,12 @@ public final class MetricCollectionBarrierVertex<K, V> extends IRVertex {
    *
    * @param that the source object for copying
    */
-  public MetricCollectionBarrierVertex(final MetricCollectionBarrierVertex that) {
+  public MetricCollectionBarrierVertex(final MetricCollectionBarrierVertex<K, V> that) {
     super(that);
-    this.metricData = that.metricData;
-    this.blockIds = that.blockIds;
+    this.metricData = new HashMap<>();
+    that.metricData.forEach(this.metricData::put);
+    this.blockIds = new ArrayList<>();
+    that.blockIds.forEach(this.blockIds::add);
     this.dagSnapshot = that.dagSnapshot;
   }
 

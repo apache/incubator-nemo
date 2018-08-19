@@ -26,7 +26,6 @@ public final class OperatorVertex extends IRVertex {
 
   /**
    * Constructor of OperatorVertex.
-   *
    * @param t transform for the OperatorVertex.
    */
   public OperatorVertex(final Transform t) {
@@ -35,12 +34,11 @@ public final class OperatorVertex extends IRVertex {
   }
 
   /**
-   * Constructor of OperatorVertex.
-   *
+   * Copy Constructor of OperatorVertex.
    * @param that the source object for copying
    */
   public OperatorVertex(final OperatorVertex that) {
-    super(that);
+    super();
     this.transform = that.transform;
   }
 

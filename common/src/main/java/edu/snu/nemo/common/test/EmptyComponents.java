@@ -119,7 +119,7 @@ public final class EmptyComponents {
      * @param that the source object for copying
      */
     public EmptySourceVertex(final EmptySourceVertex that) {
-      this.name = that.name;
+      this.name = new String(that.name);
     }
 
     @Override

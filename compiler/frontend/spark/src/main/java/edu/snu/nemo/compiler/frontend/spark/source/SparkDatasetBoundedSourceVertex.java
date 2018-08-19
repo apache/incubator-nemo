@@ -59,9 +59,10 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
    *
    * @param that the source object for copying
    */
-  public SparkDatasetBoundedSourceVertex(final SparkDatasetBoundedSourceVertex that) {
+  public SparkDatasetBoundedSourceVertex(final SparkDatasetBoundedSourceVertex<T> that) {
     super(that);
-    this.readables = that.readables;
+    this.readables = new ArrayList<>();
+    that.readables.forEach(this.readables::add);
   }
 
   @Override
