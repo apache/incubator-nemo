@@ -25,12 +25,13 @@ import java.util.Collections;
 /**
  * Set the ClonedScheduling property of source vertices.
  */
+@Annotates(ClonedSchedulingProperty.class)
 public final class ClonedSchedulingPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public ClonedSchedulingPass() {
-    super(ClonedSchedulingProperty.class, Collections.emptySet());
+    super(ClonedSchedulingPass.class);
   }
 
   @Override
