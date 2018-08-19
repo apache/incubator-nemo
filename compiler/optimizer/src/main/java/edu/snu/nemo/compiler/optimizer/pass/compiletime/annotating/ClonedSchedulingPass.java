@@ -20,8 +20,6 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 
-import java.util.Collections;
-
 /**
  * Set the ClonedScheduling property of source vertices.
  */
