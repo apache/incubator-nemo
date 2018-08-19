@@ -19,9 +19,7 @@ import com.google.common.collect.Sets;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
@@ -330,27 +328,22 @@ public final class BatchScheduler implements Scheduler {
     });
   }
 
-  private IREdge getEdgeToOptimize(final String taskId) {
+  private StageEdge getEdgeToOptimize(final String taskId) {
     // Get a stage including the given task
     final Stage stagePutOnHold = physicalPlan.getStageDAG().getVertices().stream()
-        .filter(stage -> stage.getId().equals(RuntimeIdManager.getStageIdFromTaskId(taskId)))
-        .findFirst()
-        .orElseThrow(() -> new RuntimeException());
+      .filter(stage -> stage.getId().equals(RuntimeIdManager.getStageIdFromTaskId(taskId)))
+      .findFirst()
+      .orElseThrow(() -> new RuntimeException());
 
     // Get outgoing edges of that stage with MetricCollectionProperty
     List<StageEdge> stageEdges = physicalPlan.getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
-    IREdge targetEdge = null;
     for (StageEdge edge : stageEdges) {
-      final IRVertex srcIRVertex = edge.getSrcIRVertex();
-      final IRVertex dstIRVertex = edge.getDstIRVertex();
-      targetEdge = physicalPlan.getIrDAG().getEdgeBetween(srcIRVertex.getId(), dstIRVertex.getId());
-      if (MetricCollectionProperty.Value.DataSkewRuntimePass
-          .equals(targetEdge.getPropertyValue(MetricCollectionProperty.class).get())) {
-        break;
+      if (edge.getExecutionProperties().containsKey(MetricCollectionProperty.class)) {
+        return edge;
       }
     }
 
-    return targetEdge;
+    return null;
   }
 
   /**
@@ -370,7 +363,7 @@ public final class BatchScheduler implements Scheduler {
     final boolean stageComplete =
         planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
 
-    final IREdge targetEdge = getEdgeToOptimize(taskId);
+    final StageEdge targetEdge = getEdgeToOptimize(taskId);
     if (targetEdge == null) {
       throw new RuntimeException("No edges specified for data skew optimization");
     }
