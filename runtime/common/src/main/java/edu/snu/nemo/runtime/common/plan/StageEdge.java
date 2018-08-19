@@ -84,7 +84,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     this.dstVertex = dstVertex;
     // Initialize the key range of each dst task.
     this.taskIdxToKeyRange = new HashMap<>();
-    for (int taskIdx = 0; taskIdx < dstStage.getTaskIds().size(); taskIdx++) {
+    for (int taskIdx = 0; taskIdx < dstStage.getParallelism(); taskIdx++) {
       taskIdxToKeyRange.put(taskIdx, HashRange.of(taskIdx, taskIdx + 1, false));
     }
     this.dataCommunicationPatternValue = edgeProperties.get(CommunicationPatternProperty.class)

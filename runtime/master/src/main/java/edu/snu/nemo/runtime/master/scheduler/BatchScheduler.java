@@ -334,7 +334,7 @@ public final class BatchScheduler implements Scheduler {
       .filter(stage -> stage.getId().equals(RuntimeIdManager.getStageIdFromTaskId(taskId)))
       .findFirst()
       .orElseThrow(() -> new RuntimeException());
-  
+
     // Get outgoing edges of that stage with MetricCollectionProperty
     List<StageEdge> stageEdges = physicalPlan.getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
     for (StageEdge edge : stageEdges) {
@@ -342,7 +342,7 @@ public final class BatchScheduler implements Scheduler {
         return edge;
       }
     }
-  
+
     return null;
   }
 
