@@ -68,7 +68,7 @@ public final class StateMachine {
    * @throws RuntimeException if the state is unknown state, or the transition
    * from the current state to the specified state is illegal
    */
-  public synchronized void setState(final Enum state) {
+  public synchronized void setState(final Enum state) throws IllegalStateTransitionException {
     if (!stateMap.containsKey(state)) {
       throw new RuntimeException("Unknown state " + state);
     }
@@ -99,7 +99,8 @@ public final class StateMachine {
    * @throws RuntimeException if the state is unknown state, or the transition
    * from the current state to the specified state is illegal
    */
-  public synchronized boolean compareAndSetState(final Enum expectedCurrentState, final Enum state) {
+  public synchronized boolean compareAndSetState(final Enum expectedCurrentState,
+                                                 final Enum state) throws IllegalStateTransitionException {
     final boolean compared = currentState.stateEnum.equals(expectedCurrentState);
     if (compared) {
       setState(state);

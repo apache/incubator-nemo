@@ -58,12 +58,11 @@ import static org.mockito.Mockito.mock;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ContainerManager.class, BlockManagerMaster.class,
-    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
+    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class})
 public final class BatchSchedulerTest {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSchedulerTest.class.getName());
   private Scheduler scheduler;
   private ExecutorRegistry executorRegistry;
-  private final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
 
   private static final int EXECUTOR_CAPACITY = 20;
@@ -134,7 +133,7 @@ public final class BatchSchedulerTest {
   }
 
   private void scheduleAndCheckPlanTermination(final PhysicalPlan plan) throws InjectionException {
-    final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, 1);
+    final PlanStateManager planStateManager = new PlanStateManager(plan, 1);
     scheduler.schedulePlan(plan, planStateManager);
 
     // For each ScheduleGroup, test if the tasks of the next ScheduleGroup are scheduled

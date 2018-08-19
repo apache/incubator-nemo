@@ -17,7 +17,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSiteProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
@@ -57,7 +57,7 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
     }
     try {
       return executor.getNodeName().equals(
-          getNodeName(propertyValue, RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId())));
+          getNodeName(propertyValue, RuntimeIdManager.getIndexFromTaskId(task.getTaskId())));
     } catch (final IllegalStateException e) {
       throw new RuntimeException(String.format("Cannot schedule %s", task.getTaskId(), e));
     }

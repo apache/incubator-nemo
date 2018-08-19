@@ -28,7 +28,7 @@ limitations under the License.
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <beam.version>2.5.0</beam.version>
+        <beam.version>2.6.0</beam.version>
         <spark.version>2.2.0</spark.version>
         <scala.version>2.11.8</scala.version>
         <kryo.version>4.0.1</kryo.version>
@@ -275,6 +275,10 @@ limitations under the License.
                         <exclude>examples/resources/**</exclude>
                         <!-- Logs -->
                         <exclude>**/*.log</exclude>
+                        <!-- EditorConfig -->
+                        <exclude>.editorconfig</exclude>
+                        <!-- formatter.xml -->
+                        <exclude>formatter.xml</exclude>
                     </excludes>
                 </configuration>
             </plugin>
