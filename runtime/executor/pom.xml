@@ -69,5 +69,15 @@ limitations under the License.
             <version>0.1-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <!--
+            This is needed to view the logs when running unit tests.
+            See https://dzone.com/articles/how-configure-slf4j-different for details.
+            -->
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.6.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>

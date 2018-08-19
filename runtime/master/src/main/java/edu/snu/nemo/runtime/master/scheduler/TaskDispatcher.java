@@ -46,7 +46,6 @@ import javax.inject.Inject;
 @NotThreadSafe
 final class TaskDispatcher {
   private static final Logger LOG = LoggerFactory.getLogger(TaskDispatcher.class.getName());
-  private final Map<String, PlanStateManager> planStateManagers;
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorService schedulerThread;
   private boolean isSchedulerRunning;
@@ -57,12 +56,13 @@ final class TaskDispatcher {
   private final SchedulingConstraintRegistry schedulingConstraintRegistry;
   private final SchedulingPolicy schedulingPolicy;
 
+  private PlanStateManager planStateManager;
+
   @Inject
   private TaskDispatcher(final SchedulingConstraintRegistry schedulingConstraintRegistry,
                          final SchedulingPolicy schedulingPolicy,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry) {
-    this.planStateManagers = new HashMap<>();
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable ->
         new Thread(runnable, "TaskDispatcher thread"));
@@ -84,13 +84,12 @@ final class TaskDispatcher {
         doScheduleTaskList();
         schedulingIteration.await();
       }
-      planStateManagers.values().forEach(planStateManager -> {
-        if (planStateManager.isPlanDone()) {
-          LOG.info("{} is complete.", planStateManager.getPlanId());
-        } else {
-          LOG.info("{} is incomplete.", planStateManager.getPlanId());
-        }
-      });
+
+      if (planStateManager.isPlanDone()) {
+        LOG.info("{} is complete.", planStateManager.getPlanId());
+      } else {
+        LOG.info("{} is incomplete.", planStateManager.getPlanId());
+      }
       LOG.info("TaskDispatcher Terminated!");
     }
   }
@@ -106,7 +105,6 @@ final class TaskDispatcher {
     final Collection<Task> taskList = taskListOptional.get();
     final List<Task> couldNotSchedule = new ArrayList<>();
     for (final Task task : taskList) {
-      final PlanStateManager planStateManager = planStateManagers.get(task.getPlanId());
       if (!planStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
         // Guard against race conditions causing duplicate task launches
         LOG.debug("Skipping {} as it is not READY", task.getTaskId());
@@ -163,8 +161,8 @@ final class TaskDispatcher {
   /**
    * Run the dispatcher thread.
    */
-  void run(final PlanStateManager planStateManager) {
-    planStateManagers.put(planStateManager.getPlanId(), planStateManager);
+  void run(final PlanStateManager plan) {
+    this.planStateManager = plan;
     if (!isTerminated && !isSchedulerRunning) {
       schedulerThread.execute(new SchedulerThread());
       schedulerThread.shutdown();
