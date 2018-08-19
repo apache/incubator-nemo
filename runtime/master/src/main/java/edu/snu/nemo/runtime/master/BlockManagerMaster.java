@@ -52,6 +52,10 @@ public final class BlockManagerMaster {
   private static final Logger LOG = LoggerFactory.getLogger(BlockManagerMaster.class.getName());
 
   private final Map<String, Set<String>> producerTaskIdToBlockIds; // a task can have multiple out-edges
+
+  /**
+   * See {@link RuntimeIdManager#generateBlockIdWildcard(String, int)} for information on block wildcards.
+   */
   private final Map<String, Set<BlockMetadata>> blockIdWildcardToMetadataSet; // a metadata = a task attempt output
 
   // A lock that can be acquired exclusively or not.

@@ -137,6 +137,7 @@ public final class InputReader extends DataTransfer {
   }
 
   /**
+   * See {@link RuntimeIdManager#generateBlockIdWildcard(String, int)} for information on block wildcards.
    * @param producerTaskIndex to use.
    * @return wildcard block id that corresponds to "ANY" task attempt of the task index.
    */

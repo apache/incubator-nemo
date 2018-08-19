@@ -223,7 +223,7 @@ public final class PlanStateManager {
 
     // Change stage state, if needed
     switch (newTaskState) {
-      // INCOMPLETE stage `
+      // INCOMPLETE stage
       case SHOULD_RETRY:
         final boolean isAPeerAttemptCompleted = getPeerAttemptsforTheSameTaskIndex(taskId).stream()
             .anyMatch(state -> state.equals(TaskState.State.COMPLETE));

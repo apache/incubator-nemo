@@ -103,7 +103,11 @@ public final class RuntimeIdManager {
   }
 
   /**
-   * Generates the ID for a block, whose data is the output of a task.
+   * The block ID wildcard indicates to use 'ANY' of the available blocks produced by different task attempts.
+   *
+   * Wildcard block id looks like SEdge4-1-* (task index = 1), where the '*' matches with any task attempts.
+   * For this example, the ids of the producer task attempts will look like [Stage1-1-0, Stage1-1-1, Stage1-1-2, ...],
+   * with the (1) task stage id corresponding to the outgoing edge, (2) task index = 1, and (3) all task attempts.
    *
    * @param runtimeEdgeId of the block
    * @param producerTaskIndex of the block
