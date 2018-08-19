@@ -104,6 +104,7 @@ public final class RuntimeIdManager {
 
   /**
    * The block ID wildcard indicates to use 'ANY' of the available blocks produced by different task attempts.
+   * (Notice that a task clone or a task retry leads to a new task attempt)
    *
    * Wildcard block id looks like SEdge4-1-* (task index = 1), where the '*' matches with any task attempts.
    * For this example, the ids of the producer task attempts will look like [Stage1-1-0, Stage1-1-1, Stage1-1-2, ...],
