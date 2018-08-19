@@ -35,18 +35,21 @@ public final class BlockState {
     stateMachineBuilder.addState(State.IN_PROGRESS, "The block is in the progress of being created.");
     stateMachineBuilder.addState(State.AVAILABLE, "The block is available.");
 
-    // Add transitions
-    stateMachineBuilder.addTransition(State.NOT_AVAILABLE, State.IN_PROGRESS,
-        "The task that produces the block is scheduled.");
+    // From IN_PROGRESS
     stateMachineBuilder.addTransition(State.IN_PROGRESS, State.AVAILABLE, "The block is successfully created");
-
     stateMachineBuilder.addTransition(State.IN_PROGRESS, State.NOT_AVAILABLE,
         "The block is lost before being created");
+
+    // From AVAILABLE
     stateMachineBuilder.addTransition(State.AVAILABLE, State.NOT_AVAILABLE, "The block is lost");
+
+    // From NOT_AVAILABLE
+    stateMachineBuilder.addTransition(State.NOT_AVAILABLE, State.IN_PROGRESS,
+        "The task that produces the block is scheduled.");
     stateMachineBuilder.addTransition(State.NOT_AVAILABLE, State.NOT_AVAILABLE,
         "A block can be reported lost from multiple sources");
 
-    stateMachineBuilder.setInitialState(State.NOT_AVAILABLE);
+    stateMachineBuilder.setInitialState(State.IN_PROGRESS);
 
     return stateMachineBuilder.build();
   }

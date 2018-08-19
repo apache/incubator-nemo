@@ -13,18 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.exception;
+package edu.snu.nemo.runtime.executor;
 
-/**
- * IllegalStateTransitionException.
- * Thrown when the execution state transition is illegal.
- */
-public final class IllegalStateTransitionException extends Exception {
-  /**
-   * IllegalStateTransitionException.
-   * @param cause cause
-   */
-  public IllegalStateTransitionException(final Throwable cause) {
-    super(cause);
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
+import edu.snu.nemo.runtime.common.plan.Stage;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public final class TestUtil {
+  public static List<String> generateTaskIds(final Stage stage) {
+    final List<String> result = new ArrayList<>(stage.getParallelism());
+    final int first_attempt = 0;
+    for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
+      result.add(RuntimeIdManager.generateTaskId(stage.getId(), taskIndex, first_attempt));
+    }
+    return result;
   }
 }
