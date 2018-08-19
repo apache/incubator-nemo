@@ -105,4 +105,14 @@ public final class WordCountITCase {
         .addOptimizationPolicy(TransientResourcePolicyParallelismFive.class.getCanonicalName())
         .build());
   }
+
+  @Test (timeout = TIMEOUT)
+  public void testClonedScheduling() throws Exception {
+    JobLauncher.main(builder
+        .addResourceJson(executorResourceFileName)
+        .addJobId(WordCountITCase.class.getSimpleName() + "_clonedscheduling")
+        .addMaxTaskAttempt(Integer.MAX_VALUE)
+        .addOptimizationPolicy(ClonedSchedulingPolicyParallelismFive.class.getCanonicalName())
+        .build());
+  }
 }
