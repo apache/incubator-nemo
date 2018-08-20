@@ -18,18 +18,20 @@ package edu.snu.nemo.common.ir.vertex.executionproperty;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * Attaching this property makes runtime to not schedule this ghost vertex.
+ * A property represents that a vertex annotated with this property should be regarded as a kind of "marker" and
+ * doesn't process any data.
+ * Attaching this property makes runtime to not schedule this vertex.
  * This kind of vertices is needed when some data have to be written before it's usage is not determined yet
  * (e.g., for caching).
  */
-public final class GhostProperty extends VertexExecutionProperty<Boolean> {
+public final class MarkerProperty extends VertexExecutionProperty<Boolean> {
 
-  private static final GhostProperty GHOST_PROPERTY = new GhostProperty();
+  private static final MarkerProperty MARKER_PROPERTY = new MarkerProperty();
 
   /**
    * Constructor.
    */
-  private GhostProperty() {
+  private MarkerProperty() {
     super(true);
   }
 
@@ -38,7 +40,7 @@ public final class GhostProperty extends VertexExecutionProperty<Boolean> {
    *
    * @return the execution property.
    */
-  public static GhostProperty of() {
-    return GHOST_PROPERTY;
+  public static MarkerProperty of() {
+    return MARKER_PROPERTY;
   }
 }

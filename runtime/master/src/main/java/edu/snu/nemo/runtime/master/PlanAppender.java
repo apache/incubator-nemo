@@ -24,7 +24,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.vertex.CachedSourceVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.GhostProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.MarkerProperty;
 import edu.snu.nemo.runtime.common.exception.PlanAppenderException;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -64,7 +64,8 @@ public final class PlanAppender {
     originalPlan.getStageDAG().getVertices().forEach(
         stage -> originalPlan.getStageDAG().getIncomingEdgesOf(stage).stream()
             // Cached edge toward a ghost is a representative edge.
-            .filter(stageEdge -> stageEdge.getDstIRVertex().getPropertyValue(GhostProperty.class).isPresent())
+            .filter(stageEdge ->
+              stageEdge.getDstIRVertex().getPropertyValue(MarkerProperty.class).isPresent())
             .forEach(stageEdge -> stageEdge.getPropertyValue(CacheIDProperty.class)
                 .ifPresent(cacheId -> cachedEdges.put(cacheId, stageEdge))
             ));

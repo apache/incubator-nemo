@@ -65,6 +65,7 @@ public final class PlanStateManager {
   private String planId;
   private int maxScheduleAttempt;
   private boolean initialized;
+  private int dagLogFileIndex = 0;
 
   /**
    * The data structures below track the execution states of this plan.
@@ -496,15 +497,17 @@ public final class PlanStateManager {
       return;
     }
 
-    final File file = new File(dagDirectory, planId + "-" + suffix + ".json");
+    final File file = new File(dagDirectory, planId + "-" + dagLogFileIndex + "-" + suffix + ".json");
     file.getParentFile().mkdirs();
     try (final PrintWriter printWriter = new PrintWriter(file)) {
       printWriter.println(toStringWithPhysicalPlan());
       LOG.debug(String.format("JSON representation of plan state for %s(%s) was saved to %s",
-        planId, suffix, file.getPath()));
+        planId, dagLogFileIndex + "-" + suffix, file.getPath()));
     } catch (final IOException e) {
       LOG.warn(String.format("Cannot store JSON representation of plan state for %s(%s) to %s: %s",
-        planId, suffix, file.getPath(), e.toString()));
+        planId, dagLogFileIndex + "-" + suffix, file.getPath(), e.toString()));
+    } finally {
+      dagLogFileIndex++;
     }
   }
 

@@ -406,10 +406,9 @@ public final class RuntimeMaster {
   private ScheduledExecutorService scheduleDagLogging() {
     final ScheduledExecutorService dagLoggingExecutor = Executors.newSingleThreadScheduledExecutor();
     dagLoggingExecutor.scheduleAtFixedRate(new Runnable() {
-      private int dagLogFileIndex = 0;
 
       public void run() {
-        planStateManager.storeJSON(String.valueOf(dagLogFileIndex++));
+        planStateManager.storeJSON("periodic");
       }
     }, DAG_LOGGING_PERIOD, DAG_LOGGING_PERIOD, TimeUnit.MILLISECONDS);
 

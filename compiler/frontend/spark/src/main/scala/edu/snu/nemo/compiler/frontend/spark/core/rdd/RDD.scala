@@ -23,9 +23,9 @@ import edu.snu.nemo.common.dag.{DAG, DAGBuilder}
 import edu.snu.nemo.common.ir.edge.IREdge
 import edu.snu.nemo.common.ir.edge.executionproperty._
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
-import edu.snu.nemo.common.ir.vertex.executionproperty.GhostProperty
-import edu.snu.nemo.common.ir.vertex.transform.DummyTransform
+import edu.snu.nemo.common.ir.vertex.executionproperty.MarkerProperty
 import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
+import edu.snu.nemo.common.test.EmptyComponents.EmptyTransform
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
 import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
@@ -61,7 +61,7 @@ final class RDD[T: ClassTag] protected[rdd] (
   private val decoderProperty: EdgeExecutionProperty[_ <: Serializable] =
     DecoderProperty.of(new SparkDecoderFactory[T](serializer)).asInstanceOf[EdgeExecutionProperty[_ <: Serializable]]
   private val keyExtractorProperty: KeyExtractorProperty = KeyExtractorProperty.of(new SparkKeyExtractor)
-  private var persistedGhostVertex: Option[IRVertex] = Option.empty
+  private var persistedMarkerVertex: Option[IRVertex] = Option.empty
 
   /**
    * Constructor without dependencies (not needed in Nemo RDD).
@@ -276,12 +276,13 @@ final class RDD[T: ClassTag] protected[rdd] (
 
     // TODO #190: Disable changing persistence strategy after a RDD is calculated
     val builder = new DAGBuilder[IRVertex, IREdge](dag)
-    if (persistedGhostVertex.isDefined) {
-      builder.removeVertex(persistedGhostVertex.get)
+    if (persistedMarkerVertex.isDefined) {
+      builder.removeVertex(persistedMarkerVertex.get)
     }
 
-    val ghostVertex = new OperatorVertex(new DummyTransform[T]())
-    ghostVertex.setProperty(GhostProperty.of())
+    val cacheID = UUID.randomUUID()
+    val ghostVertex = new OperatorVertex(new EmptyTransform[T, T]("CacheMarkerTransform-" + cacheID.toString))
+    ghostVertex.setProperty(MarkerProperty.of())
     builder.addVertex(ghostVertex, loopVertexStack)
 
     val newEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, lastVertex, ghostVertex)
@@ -298,7 +299,6 @@ final class RDD[T: ClassTag] protected[rdd] (
       newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore))
     }
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep))
-    val cacheID = UUID.randomUUID()
     newEdge.setProperty(CacheIDProperty.of(cacheID))
     val dupEdgeVal = new DuplicateEdgeGroupPropertyValue("CacheGroup-" + cacheID)
     dupEdgeVal.setRepresentativeEdgeId(newEdge.getId)
@@ -306,7 +306,7 @@ final class RDD[T: ClassTag] protected[rdd] (
     builder.connectVertices(newEdge)
 
     dag = builder.buildWithoutSourceSinkCheck()
-    persistedGhostVertex = Option.apply(ghostVertex)
+    persistedMarkerVertex = Option.apply(ghostVertex)
     this
   }
 

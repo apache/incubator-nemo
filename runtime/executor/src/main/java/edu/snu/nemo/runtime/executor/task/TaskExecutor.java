@@ -192,8 +192,7 @@ public final class TaskExecutor {
           getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
       parentTaskReaders.forEach(parentTaskReader ->
         dataFetcherList.add(new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
-            vertexHarness, isToSideInput)) // Parent-task read
-      );
+            vertexHarness, isToSideInput))); // Parent-task read
     });
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
