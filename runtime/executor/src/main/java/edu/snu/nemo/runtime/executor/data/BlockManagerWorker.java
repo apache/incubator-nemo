@@ -166,7 +166,7 @@ public final class BlockManagerWorker {
                       .setRequestBlockLocationMsg(
                           ControlMessage.RequestBlockLocationMsg.newBuilder()
                               .setExecutorId(executorId)
-                              .setBlockIdWildcard(blockIdWilBlockManagerMaster.javadcard)
+                              .setBlockIdWildcard(blockIdWildcard)
                               .build())
                       .build());
           return responseFromMasterFuture;
