@@ -209,25 +209,29 @@ public final class BatchScheduler implements Scheduler {
 
         // Only if the ClonedSchedulingProperty is set...
         stage.getPropertyValue(ClonedSchedulingProperty.class).ifPresent(cloneConf -> {
-          final double fractionToWaitFor = cloneConf.getFractionToWaitFor();
-          final int parallelism = stage.getParallelism();
-          final Object[] completedTaskTimes = planStateManager.getCompletedTaskTimeListMs(stageId).toArray();
+          if (!cloneConf.isUpFrontCloning()) { // Upfront cloning is already handled.
+            final double fractionToWaitFor = cloneConf.getFractionToWaitFor();
+            final int parallelism = stage.getParallelism();
+            final Object[] completedTaskTimes = planStateManager.getCompletedTaskTimeListMs(stageId).toArray();
 
-          // Only after the fraction of the tasks are done...
-          if (completedTaskTimes.length > 0
-            && completedTaskTimes.length >= Math.round(parallelism * fractionToWaitFor)) {
-            Arrays.sort(completedTaskTimes);
-            final double medianTime = (double) completedTaskTimes[completedTaskTimes.length / 2];
-            final double medianTimeMultiplier = cloneConf.getMedianTimeMultiplier();
-            final Map<String, Long> execTaskToTime = planStateManager.getExecutingTaskToRunningTimeMs(stageId);
-            for (final Map.Entry<String, Long> entry : execTaskToTime.entrySet()) {
+            // Only after the fraction of the tasks are done...
+            // Delayed cloning (aggressive)
+            if (completedTaskTimes.length >= Math.round(parallelism * fractionToWaitFor)) {
+              Arrays.sort(completedTaskTimes);
+              final double medianTime = completedTaskTimes.length == 0
+                ? 0.0
+                : (double) completedTaskTimes[completedTaskTimes.length / 2];
+              final double medianTimeMultiplier = cloneConf.getMedianTimeMultiplier();
+              final Map<String, Long> execTaskToTime = planStateManager.getExecutingTaskToRunningTimeMs(stageId);
+              for (final Map.Entry<String, Long> entry : execTaskToTime.entrySet()) {
 
-              // Only if the running task is considered a 'straggler'....
-              final double runningTime = entry.getValue();
-              if (runningTime > medianTime * medianTimeMultiplier) {
-                final String taskId = entry.getKey();
-                isNumOfCloneChanged.setValue(planStateManager.setNumOfClones(
-                  stageId, RuntimeIdManager.getIndexFromTaskId(taskId), 2));
+                // Only if the running task is considered a 'straggler'....
+                final double runningTime = entry.getValue();
+                if (runningTime > medianTime * medianTimeMultiplier) {
+                  final String taskId = entry.getKey();
+                  isNumOfCloneChanged.setValue(planStateManager.setNumOfClones(
+                    stageId, RuntimeIdManager.getIndexFromTaskId(taskId), 2));
+                }
               }
             }
           }
@@ -298,6 +302,7 @@ public final class BatchScheduler implements Scheduler {
           .map(Task::getTaskId)
           .map(RuntimeIdManager::getStageIdFromTaskId)
           .collect(Collectors.toSet()));
+        LOG.info(tasksToSchedule.stream().map(Task::getTaskId).collect(Collectors.toList()).toString());
 
         // Set the pointer to the schedulable tasks.
         pendingTaskCollectionPointer.setToOverwrite(tasksToSchedule);

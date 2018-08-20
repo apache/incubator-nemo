@@ -17,28 +17,32 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 
 import java.util.Collections;
 
 /**
- * Set the ClonedScheduling property of source vertices.
+ * Set the ClonedScheduling property of source vertices, aggressively.
  */
-public final class ClonedSchedulingPass extends AnnotatingPass {
+public final class AggressiveCloningPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public ClonedSchedulingPass() {
+  public AggressiveCloningPass() {
     super(ClonedSchedulingProperty.class, Collections.emptySet());
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().stream()
-        .filter(vertex -> dag.getIncomingEdgesOf(vertex.getId()).isEmpty()) // source vertices only
+        .filter(vertex -> dag.getIncomingEdgesOf(vertex.getId())
+          .stream()
+          .anyMatch(edge -> edge.getPropertyValue(CommunicationPatternProperty.class).get()
+            .equals(CommunicationPatternProperty.Value.Shuffle)))
         .forEach(vertex -> vertex.setProperty(
-          ClonedSchedulingProperty.of(new ClonedSchedulingProperty.CloneConf(0.75, 1.5))));
+          ClonedSchedulingProperty.of(new ClonedSchedulingProperty.CloneConf()))); // clone upfront, always
     return dag;
   }
 }

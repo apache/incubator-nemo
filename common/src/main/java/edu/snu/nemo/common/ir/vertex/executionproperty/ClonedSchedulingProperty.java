@@ -40,12 +40,6 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Clon
    * @return the newly created execution property.
    */
   public static ClonedSchedulingProperty of(final CloneConf conf) {
-    if (conf.getFractionToWaitFor() >= 1.0 || conf.getFractionToWaitFor() < 0) {
-      throw new IllegalArgumentException(String.valueOf(conf.getFractionToWaitFor()));
-    }
-    if (conf.getMedianTimeMultiplier() <= 1.0) {
-      throw new IllegalArgumentException(String.valueOf(conf.getMedianTimeMultiplier()));
-    }
     return new ClonedSchedulingProperty(conf);
   }
 
@@ -53,13 +47,38 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Clon
    * Configurations for cloning.
    */
   public static final class CloneConf implements Serializable {
+    // Always clone, upfront.
+    private boolean upFrontCloning;
+
     // Fraction of tasks to wait for completion, before trying to clone.
+    // If this value is 0, then we always clone.
     private final double fractionToWaitFor;
 
     // How many times slower is a task than the median, in order to be cloned.
     private final double medianTimeMultiplier;
 
+    /**
+     * Always clone, upfront.
+     */
+    public CloneConf() {
+      this.upFrontCloning = true;
+      this.fractionToWaitFor = 0.0;
+      this.medianTimeMultiplier = 0.0;
+    }
+
+    /**
+     * Clone stragglers judiciously.
+     * @param fractionToWaitFor before trying to clone.
+     * @param medianTimeMultiplier to identify stragglers.
+     */
     public CloneConf(final double fractionToWaitFor, final double medianTimeMultiplier) {
+      if (fractionToWaitFor >= 1.0 || fractionToWaitFor <= 0) {
+        throw new IllegalArgumentException(String.valueOf(fractionToWaitFor));
+      }
+      if (medianTimeMultiplier < 1.0) {
+        throw new IllegalArgumentException(String.valueOf(medianTimeMultiplier));
+      }
+      this.upFrontCloning = false;
       this.fractionToWaitFor = fractionToWaitFor;
       this.medianTimeMultiplier = medianTimeMultiplier;
     }
@@ -70,6 +89,22 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Clon
 
     public double getMedianTimeMultiplier() {
       return medianTimeMultiplier;
+    }
+
+    public boolean isUpFrontCloning() {
+      return upFrontCloning;
+    }
+
+    @Override
+    public String toString() {
+      final StringBuilder sb = new StringBuilder();
+      sb.append("upfront: ");
+      sb.append(upFrontCloning);
+      sb.append(" / fraction: ");
+      sb.append(fractionToWaitFor);
+      sb.append(" / multiplier: ");
+      sb.append(medianTimeMultiplier);
+      return sb.toString();
     }
   }
 }

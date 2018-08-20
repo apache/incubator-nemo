@@ -111,8 +111,7 @@ public final class SourceLocationAwareSchedulingConstraint implements Scheduling
       return sourceLocations.contains(executor.getNodeName());
     } else { // Non-source task.
       final Optional<String> optionalIntermediateLoc = getIntermediateDataLocation(task);
-
-      if (getIntermediateDataLocation(task).isPresent()) {
+      if (optionalIntermediateLoc.isPresent()) {
         return optionalIntermediateLoc.get().equals(executor.getExecutorId());
       } else {
         return true;

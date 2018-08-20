@@ -20,7 +20,7 @@ import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.ClonedSchedulingPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AggressiveCloningPass;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
 import edu.snu.nemo.compiler.optimizer.policy.PolicyImpl;
@@ -34,7 +34,7 @@ public final class ClonedSchedulingPolicyParallelismFive implements Policy {
   private final Policy policy;
   public ClonedSchedulingPolicyParallelismFive() {
     final List<CompileTimePass> overwritingPasses = DefaultPolicy.BUILDER.getCompileTimePasses();
-    overwritingPasses.add(new ClonedSchedulingPass()); // CLONING!
+    overwritingPasses.add(new AggressiveCloningPass()); // CLONING!
     this.policy = new PolicyImpl(
         PolicyTestUtil.overwriteParallelism(5, overwritingPasses),
         DefaultPolicy.BUILDER.getRuntimePasses());

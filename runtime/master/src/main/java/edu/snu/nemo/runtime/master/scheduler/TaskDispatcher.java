@@ -103,6 +103,7 @@ final class TaskDispatcher {
     }
 
     final Collection<Task> taskList = taskListOptional.get();
+    LOG.info("Dispatcher {}", taskList.stream().map(Task::getTaskId).collect(Collectors.toList()).toString());
     final List<Task> couldNotSchedule = new ArrayList<>();
     for (final Task task : taskList) {
       if (!planStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
