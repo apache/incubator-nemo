@@ -24,13 +24,13 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import java.util.Collections;
 
 /**
- * Set the ClonedScheduling property of source vertices, aggressively.
+ * Set the ClonedScheduling property of source vertices, in an upfront manner.
  */
-public final class AggressiveCloningPass extends AnnotatingPass {
+public final class UpfrontCloningPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public AggressiveCloningPass() {
+  public UpfrontCloningPass() {
     super(ClonedSchedulingProperty.class, Collections.emptySet());
   }
 
@@ -39,6 +39,7 @@ public final class AggressiveCloningPass extends AnnotatingPass {
     dag.getVertices().stream()
         .filter(vertex -> dag.getIncomingEdgesOf(vertex.getId())
           .stream()
+          // shuffle receivers (for now... as particular Beam sink operators fail when cloned)
           .anyMatch(edge -> edge.getPropertyValue(CommunicationPatternProperty.class).get()
             .equals(CommunicationPatternProperty.Value.Shuffle)))
         .forEach(vertex -> vertex.setProperty(

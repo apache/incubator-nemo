@@ -20,6 +20,7 @@ import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AggressiveSpeculativeCloningPass;
 import org.apache.reef.tang.Injector;
 
 /**
@@ -28,6 +29,7 @@ import org.apache.reef.tang.Injector;
 public final class BasicPullPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
       new PolicyBuilder()
+          .registerCompileTimePass(new AggressiveSpeculativeCloningPass())
           .registerCompileTimePass(new DefaultScheduleGroupPass());
   private final Policy policy;
 

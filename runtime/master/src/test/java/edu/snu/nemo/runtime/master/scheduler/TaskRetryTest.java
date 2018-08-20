@@ -106,8 +106,13 @@ public final class TaskRetryTest {
       executorAdded(0.5);
       taskCompleted(0.8);
 
-      // 10ms sleep
-      Thread.sleep(10);
+      // random - trigger speculative execution.
+      if (random.nextBoolean()) {
+        Thread.sleep(10);
+      } else {
+        Thread.sleep(100);
+      }
+      scheduler.onSpeculativeExecutionCheck();
     }
 
     // Plan should COMPLETE
@@ -129,8 +134,13 @@ public final class TaskRetryTest {
       taskCompleted(0.5);
       taskOutputWriteFailed(0.5);
 
-      // 10ms sleep
-      Thread.sleep(10);
+      // random - trigger speculative execution.
+      if (random.nextBoolean()) {
+        Thread.sleep(10);
+      } else {
+        Thread.sleep(100);
+      }
+      scheduler.onSpeculativeExecutionCheck();
     }
 
     // Plan should COMPLETE

@@ -115,4 +115,14 @@ public final class WordCountITCase {
         .addOptimizationPolicy(ClonedSchedulingPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
+
+  @Test (timeout = TIMEOUT)
+  public void testSpeculativeExecution() throws Exception {
+    JobLauncher.main(builder
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WordCountITCase.class.getSimpleName() + "_speculative")
+      .addMaxTaskAttempt(Integer.MAX_VALUE)
+      .addOptimizationPolicy(ClonedSchedulingPolicyParallelismFive.class.getCanonicalName())
+      .build());
+  }
 }

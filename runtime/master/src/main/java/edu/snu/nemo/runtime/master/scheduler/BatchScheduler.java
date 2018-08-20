@@ -213,24 +213,30 @@ public final class BatchScheduler implements Scheduler {
             final double fractionToWaitFor = cloneConf.getFractionToWaitFor();
             final int parallelism = stage.getParallelism();
             final Object[] completedTaskTimes = planStateManager.getCompletedTaskTimeListMs(stageId).toArray();
+            LOG.info(planStateManager.getCompletedTaskTimeListMs(stageId).toString());
 
             // Only after the fraction of the tasks are done...
             // Delayed cloning (aggressive)
-            if (completedTaskTimes.length >= Math.round(parallelism * fractionToWaitFor)) {
+            if (completedTaskTimes.length > 0
+              && completedTaskTimes.length >= Math.round(parallelism * fractionToWaitFor)) {
               Arrays.sort(completedTaskTimes);
-              final double medianTime = completedTaskTimes.length == 0
-                ? 0.0
-                : (double) completedTaskTimes[completedTaskTimes.length / 2];
+              final long medianTime = (long) completedTaskTimes[completedTaskTimes.length / 2];
               final double medianTimeMultiplier = cloneConf.getMedianTimeMultiplier();
               final Map<String, Long> execTaskToTime = planStateManager.getExecutingTaskToRunningTimeMs(stageId);
               for (final Map.Entry<String, Long> entry : execTaskToTime.entrySet()) {
 
                 // Only if the running task is considered a 'straggler'....
-                final double runningTime = entry.getValue();
-                if (runningTime > medianTime * medianTimeMultiplier) {
+                final long runningTime = entry.getValue();
+                if (runningTime > Math.round(medianTime * medianTimeMultiplier)) {
                   final String taskId = entry.getKey();
-                  isNumOfCloneChanged.setValue(planStateManager.setNumOfClones(
-                    stageId, RuntimeIdManager.getIndexFromTaskId(taskId), 2));
+                  final boolean isCloned = planStateManager.setNumOfClones(
+                    stageId, RuntimeIdManager.getIndexFromTaskId(taskId), 2);
+                  if (isCloned) {
+                    LOG.info("Cloned {}, because its running time {} (ms) is bigger than {} tasks' "
+                      + "(median) {} (ms) * (multiplier) {}", taskId, runningTime, completedTaskTimes.length,
+                      medianTime, medianTimeMultiplier);
+                  }
+                  isNumOfCloneChanged.setValue(isCloned);
                 }
               }
             }
