@@ -365,7 +365,6 @@ public final class BlockManagerMaster {
   /**
    * The handler of block location requests.
    */
-  @VisibleForTesting
   public static final class BlockRequestHandler {
     private final String blockId;
     private final CompletableFuture<String> locationFuture;
@@ -434,8 +433,7 @@ public final class BlockManagerMaster {
     /**
      * @return the future of the block location.
      */
-    @VisibleForTesting
-    public Future<String> getLocationFuture() {
+    public CompletableFuture<String> getLocationFuture() {
       return locationFuture;
     }
   }

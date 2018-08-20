@@ -41,6 +41,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -470,7 +471,11 @@ public final class BatchScheduler implements Scheduler {
 
     final Set<String> parentsWithLostBlocks = children.stream()
         .flatMap(child -> getParentTasks(child).stream())
-        .filter(parent -> blockManagerMaster.getBlockLocationHandler(parent).getLocationFuture().isCancelled())
+        .filter(parent -> {
+          final CompletableFuture<String> locationFuture =
+            blockManagerMaster.getBlockLocationHandler(parent).getLocationFuture();
+          return locationFuture.isCompletedExceptionally() || locationFuture.isCancelled();
+        })
         .collect(Collectors.toSet());
 
     // Recursive call
