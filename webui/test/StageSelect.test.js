@@ -26,18 +26,18 @@ test.serial('correctly filter stage list', async t => {
   const vm = new Vue(StageSelect);
 
   vm.metricLookupMap = {
-    'Stage-foo': 'X',
-    'Stage-0': 'O',
-    'Stage-1234': 'O',
-    'Stage-1234-Task-5678': 'X',
-    'fooStage-1': 'X',
+    'Stagefoo': 'X',
+    'Stage0': 'O',
+    'Stage1234': 'O',
+    'Stage1234-10-5678': 'X',
+    'fooStage1': 'X',
   };
   vm.$mount();
 
   t.is(vm.stageList.length, 2, 'stageList should be correctly built');
-  t.is(vm.stageList.sort()[0], 'Stage-0',
+  t.is(vm.stageList.sort()[0], 'Stage0',
     'stageList should be correctly built')
-  t.is(vm.stageList.sort()[1], 'Stage-1234',
+  t.is(vm.stageList.sort()[1], 'Stage1234',
     'stageList should be correctly built')
 
   vm.$destroy();
