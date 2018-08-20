@@ -21,7 +21,6 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * IRVertex that collects statistics to send them to the optimizer for dynamic optimization.
@@ -30,27 +29,34 @@ import java.util.function.Function;
  * @param <K> type of the key of metric data.
  * @param <V> type of the value of metric data.
  */
-public class MetricCollectionVertex<K, V> extends IRVertex {
+public class SkewMetricCollectionVertex<K, V> extends MetricCollectionVertex<K, V> {
   // This DAG snapshot is taken at the end of the DataSkewCompositePass, for the vertex to know the state of the DAG at
   // its optimization, and to be able to figure out exactly where in the DAG the vertex exists.
   private DAG<IRVertex, IREdge> dagSnapshot;
-  private final Map<K, V> dynOptData;
+  private final Map<Integer, Long> dynOptData;
 
   /**
    * Constructor for dynamic optimization vertex.
    */
-  public MetricCollectionVertex() {
+  public SkewMetricCollectionVertex() {
     this.dagSnapshot = null;
     this.dynOptData = new HashMap<>();
   }
-  
+
+  @Override
   public void updateDynOptData(final Map.Entry<K, V> dynOptDataEntry) {
+    final int hashIndex = (int) dynOptDataEntry.getKey();
+    final long partitionSize = (long) dynOptDataEntry.getValue();
+    if (dynOptData.containsKey(hashIndex)) {
+      dynOptData.compute(hashIndex, (originalKey, originalValue) -> originalValue + partitionSize);
+    } else {
+      dynOptData.put(hashIndex, partitionSize);
+    }
   }
-    
-    
-    @Override
-  public MetricCollectionVertex getClone() {
-    final MetricCollectionVertex that = new MetricCollectionVertex();
+
+  @Override
+  public SkewMetricCollectionVertex getClone() {
+    final SkewMetricCollectionVertex that = new SkewMetricCollectionVertex();
     that.setDAGSnapshot(dagSnapshot);
     this.copyExecutionPropertiesTo(that);
     return that;

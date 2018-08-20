@@ -19,10 +19,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.DynamicOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Function;
-
 /**
  * IRVertex that collects statistics to send them to the optimizer for dynamic optimization.
  * This class is generated in the DAG through
@@ -30,27 +26,21 @@ import java.util.function.Function;
  * @param <K> type of the key of metric data.
  * @param <V> type of the value of metric data.
  */
-public class MetricCollectionVertex<K, V> extends IRVertex {
+public final class AggregationBarrierVertex<K, V> extends IRVertex {
   // This DAG snapshot is taken at the end of the DataSkewCompositePass, for the vertex to know the state of the DAG at
   // its optimization, and to be able to figure out exactly where in the DAG the vertex exists.
   private DAG<IRVertex, IREdge> dagSnapshot;
-  private final Map<K, V> dynOptData;
 
   /**
    * Constructor for dynamic optimization vertex.
    */
-  public MetricCollectionVertex() {
+  public AggregationBarrierVertex() {
     this.dagSnapshot = null;
-    this.dynOptData = new HashMap<>();
   }
-  
-  public void updateDynOptData(final Map.Entry<K, V> dynOptDataEntry) {
-  }
-    
-    
-    @Override
-  public MetricCollectionVertex getClone() {
-    final MetricCollectionVertex that = new MetricCollectionVertex();
+
+  @Override
+  public AggregationBarrierVertex getClone() {
+    final AggregationBarrierVertex that = new AggregationBarrierVertex();
     that.setDAGSnapshot(dagSnapshot);
     this.copyExecutionPropertiesTo(that);
     return that;
