@@ -23,6 +23,7 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.*;
 import java.util.function.IntPredicate;
@@ -98,12 +99,13 @@ public final class LoopOptimizations {
   /**
    * Pass for Loop Fusion optimization.
    */
+  @Requires(CommunicationPatternProperty.class)
   public static final class LoopFusionPass extends ReshapingPass {
     /**
      * Default constructor.
      */
     public LoopFusionPass() {
-      super(Collections.singleton(CommunicationPatternProperty.class));
+      super(LoopFusionPass.class);
     }
 
     @Override
@@ -246,12 +248,13 @@ public final class LoopOptimizations {
   /**
    * Pass for Loop Invariant Code Motion optimization.
    */
+  @Requires(CommunicationPatternProperty.class)
   public static final class LoopInvariantCodeMotionPass extends ReshapingPass {
     /**
      * Default constructor.
      */
     public LoopInvariantCodeMotionPass() {
-      super(Collections.singleton(CommunicationPatternProperty.class));
+      super(LoopInvariantCodeMotionPass.class);
     }
 
     @Override

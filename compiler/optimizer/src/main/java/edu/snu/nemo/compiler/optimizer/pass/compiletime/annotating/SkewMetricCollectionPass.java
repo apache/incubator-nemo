@@ -21,20 +21,21 @@ import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternPropert
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
-
-import java.util.Collections;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
  * It specifies the outgoing Shuffle edges from MetricCollectionVertices with a MetricCollection ExecutionProperty
  * which lets the edge to know what metric collection it should perform.
  */
+@Annotates(MetricCollectionProperty.class)
+@Requires(CommunicationPatternProperty.class)
 public final class SkewMetricCollectionPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public SkewMetricCollectionPass() {
-    super(MetricCollectionProperty.class, Collections.singleton(CommunicationPatternProperty.class));
+    super(SkewMetricCollectionPass.class);
   }
 
   @Override

@@ -20,19 +20,20 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-
-import java.util.Collections;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
  * Pass for initiating IREdge data persistence ExecutionProperty with default values.
  */
+@Annotates(DataPersistenceProperty.class)
+@Requires(DataStoreProperty.class)
 public final class DefaultDataPersistencePass extends AnnotatingPass {
 
   /**
    * Default constructor.
    */
   public DefaultDataPersistencePass() {
-    super(DataPersistenceProperty.class, Collections.singleton(DataStoreProperty.class));
+    super(DefaultDataPersistencePass.class);
   }
 
   @Override

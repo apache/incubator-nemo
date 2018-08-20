@@ -20,17 +20,16 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
-import java.util.Collections;
-
 /**
  * Edge data store pass to process inter-stage memory store edges.
  */
+@Annotates(DataStoreProperty.class)
 public final class DefaultDataStorePass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public DefaultDataStorePass() {
-    super(DataStoreProperty.class, Collections.emptySet());
+    super(DefaultDataStorePass.class);
   }
 
   @Override
