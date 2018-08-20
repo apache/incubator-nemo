@@ -33,6 +33,7 @@ import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.LoggerFactory;
 
@@ -195,6 +196,47 @@ public final class BatchScheduler implements Scheduler {
         break;
       default:
         break;
+    }
+  }
+
+  @Override
+  public void onSpeculativeExecutionCheck() {
+    MutableBoolean isNumOfCloneChanged = new MutableBoolean(false);
+
+    selectEarliestSchedulableGroup().ifPresent(scheduleGroup -> {
+      scheduleGroup.stream().map(Stage::getId).forEach(stageId -> {
+        final Stage stage = physicalPlan.getStageDAG().getVertexById(stageId);
+
+        // Only if the ClonedSchedulingProperty is set...
+        stage.getPropertyValue(ClonedSchedulingProperty.class).ifPresent(cloneConf -> {
+          final double fractionToWaitFor = cloneConf.getFractionToWaitFor();
+          final int parallelism = stage.getParallelism();
+          final Object[] completedTaskTimes = planStateManager.getCompletedTaskTimeListMs(stageId).toArray();
+
+          // Only after the fraction of the tasks are done...
+          if (completedTaskTimes.length > 0
+            && completedTaskTimes.length >= Math.round(parallelism * fractionToWaitFor)) {
+            Arrays.sort(completedTaskTimes);
+            final double medianTime = (double) completedTaskTimes[completedTaskTimes.length / 2];
+            final double medianTimeMultiplier = cloneConf.getMedianTimeMultiplier();
+            final Map<String, Long> execTaskToTime = planStateManager.getExecutingTaskToRunningTimeMs(stageId);
+            for (final Map.Entry<String, Long> entry : execTaskToTime.entrySet()) {
+
+              // Only if the running task is considered a 'straggler'....
+              final double runningTime = entry.getValue();
+              if (runningTime > medianTime * medianTimeMultiplier) {
+                final String taskId = entry.getKey();
+                isNumOfCloneChanged.setValue(planStateManager.setNumOfClones(
+                  stageId, RuntimeIdManager.getIndexFromTaskId(taskId), 2));
+              }
+            }
+          }
+        });
+      });
+    });
+
+    if (isNumOfCloneChanged.booleanValue()) {
+      doSchedule(); // Do schedule the new clone.
     }
   }
 
@@ -461,33 +503,5 @@ public final class BatchScheduler implements Scheduler {
         .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
         .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
     dynOptDataHandler.updateDynOptData(dynOptData);
-  }
-
-  @Override
-  public void onSpeculativeExecutionCheck() {
-    selectEarliestSchedulableGroup().ifPresent(scheduleGroup -> {
-      scheduleGroup.stream().map(Stage::getId).forEach(stageId -> {
-        final Stage stage = physicalPlan.getStageDAG().getVertexById(stageId);
-        stage.getPropertyValue(ClonedSchedulingProperty.class).ifPresent(cloneConf -> {
-          // Only if the ClonedSchedulingProperty is set...
-          final double fractionToWaitFor = cloneConf.getFractionToWaitFor();
-          final int parallelism = stage.getParallelism();
-          final Object[] completedTaskTimes = planStateManager.getCompletedTaskTimeListMs(stageId).toArray();
-          if (completedTaskTimes.length > 0
-            && completedTaskTimes.length >= Math.round(parallelism * fractionToWaitFor)) {
-            // Only if the fraction of the tasks are done...
-            Arrays.sort(completedTaskTimes);
-            final double medianTime = (double) completedTaskTimes[completedTaskTimes.length / 2];
-            final double medianTimeMultiplier = cloneConf.getMedianTimeMultiplier();
-
-            // TODO 1: We gotta check the running tasks here
-
-            // TODO 2: if TODO 1 is true, We gotta change some 'variable' here to declare cloning
-            // TODOz: Change STH --> SPECULATIVE EXECUTION
-            doSchedule(); // Do this conditionally..... when there's something to clone...
-          }
-        });
-      });
-    });
   }
 }
