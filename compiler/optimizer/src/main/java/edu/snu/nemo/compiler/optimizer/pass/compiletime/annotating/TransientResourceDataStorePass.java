@@ -21,19 +21,21 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
  * Transient resource pass for tagging edges with DataStore ExecutionProperty.
  */
+@Annotates(DataStoreProperty.class)
+@Requires(ResourcePriorityProperty.class)
 public final class TransientResourceDataStorePass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public TransientResourceDataStorePass() {
-    super(DataStoreProperty.class, Collections.singleton(ResourcePriorityProperty.class));
+    super(TransientResourceDataStorePass.class);
   }
 
   @Override

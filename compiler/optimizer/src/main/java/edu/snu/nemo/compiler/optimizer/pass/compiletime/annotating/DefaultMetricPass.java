@@ -31,12 +31,13 @@ import java.util.Map;
 /**
  * Pass for initiating IREdge Metric ExecutionProperty with default key range.
  */
+@Annotates(DataSkewMetricProperty.class)
 public final class DefaultMetricPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public DefaultMetricPass() {
-    super(DataSkewMetricProperty.class);
+    super(DefaultMetricPass.class);
   }
 
   @Override

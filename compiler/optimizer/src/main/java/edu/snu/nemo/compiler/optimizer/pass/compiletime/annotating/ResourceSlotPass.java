@@ -23,10 +23,11 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 /**
  * Sets {@link ResourceSlotProperty}.
  */
+@Annotates(ResourceSlotProperty.class)
 public final class ResourceSlotPass extends AnnotatingPass {
 
   public ResourceSlotPass() {
-    super(ResourceSlotProperty.class);
+    super(ResourceSlotPass.class);
   }
 
   @Override

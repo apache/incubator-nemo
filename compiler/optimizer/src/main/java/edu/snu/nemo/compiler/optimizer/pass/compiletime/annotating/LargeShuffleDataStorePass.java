@@ -20,19 +20,20 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-
-import java.util.Collections;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
  * A pass to optimize large shuffle by tagging edges.
  * This pass handles the DataStore ExecutionProperty.
  */
+@Annotates(DataStoreProperty.class)
+@Requires(CommunicationPatternProperty.class)
 public final class LargeShuffleDataStorePass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public LargeShuffleDataStorePass() {
-    super(DataStoreProperty.class, Collections.singleton(CommunicationPatternProperty.class));
+    super(LargeShuffleDataStorePass.class);
   }
 
   @Override
