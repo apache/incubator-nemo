@@ -91,7 +91,7 @@ public final class BatchScheduler implements Scheduler {
     updatePhysicalPlanEventHandler.setScheduler(this);
     if (pubSubEventHandlerWrapper.getPubSubEventHandler() != null) {
       pubSubEventHandlerWrapper.getPubSubEventHandler()
-          .subscribe(updatePhysicalPlanEventHandler.getEventClass(), updatePhysicalPlanEventHandler);
+        .subscribe(updatePhysicalPlanEventHandler.getEventClass(), updatePhysicalPlanEventHandler);
     }
     this.executorRegistry = executorRegistry;
     this.dynOptDataHandlers = new ArrayList<>();
@@ -111,11 +111,11 @@ public final class BatchScheduler implements Scheduler {
     LOG.info("Plan to schedule: {}", this.physicalPlan.getId());
 
     this.sortedScheduleGroups = this.physicalPlan.getStageDAG().getVertices().stream()
-        .collect(Collectors.groupingBy(Stage::getScheduleGroup))
-        .entrySet().stream()
-        .sorted(Map.Entry.comparingByKey())
-        .map(Map.Entry::getValue)
-        .collect(Collectors.toList());
+      .collect(Collectors.groupingBy(Stage::getScheduleGroup))
+      .entrySet().stream()
+      .sorted(Map.Entry.comparingByKey())
+      .map(Map.Entry::getValue)
+      .collect(Collectors.toList());
 
     doSchedule();
   }
@@ -158,7 +158,7 @@ public final class BatchScheduler implements Scheduler {
         break;
       case FAILED:
         throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The plan failed on Task #")
-            .append(taskId).append(" in Executor ").append(executorId).toString()));
+          .append(taskId).append(" in Executor ").append(executorId).toString()));
       case READY:
       case EXECUTING:
         throw new RuntimeException("The states READY/EXECUTING cannot occur at this point");
@@ -287,8 +287,8 @@ public final class BatchScheduler implements Scheduler {
 
     if (earliest.isPresent()) {
       final List<Task> tasksToSchedule = earliest.get().stream()
-          .flatMap(stage -> selectSchedulableTasks(stage).stream())
-          .collect(Collectors.toList());
+        .flatMap(stage -> selectSchedulableTasks(stage).stream())
+        .collect(Collectors.toList());
       if (!tasksToSchedule.isEmpty()) {
         // We prefer (but not guarantee) to schedule the 'receiving' tasks first,
         // assuming that tasks within a ScheduleGroup are connected with 'push' edges.
@@ -316,18 +316,18 @@ public final class BatchScheduler implements Scheduler {
     }
 
     return sortedScheduleGroups.stream()
-        .filter(scheduleGroup -> scheduleGroup.stream()
-            .map(Stage::getId)
-            .map(planStateManager::getStageState)
-            .anyMatch(state -> state.equals(StageState.State.INCOMPLETE))) // any incomplete stage in the group
-        .findFirst(); // selects the one with the smallest scheduling group index.
+      .filter(scheduleGroup -> scheduleGroup.stream()
+        .map(Stage::getId)
+        .map(planStateManager::getStageState)
+        .anyMatch(state -> state.equals(StageState.State.INCOMPLETE))) // any incomplete stage in the group
+      .findFirst(); // selects the one with the smallest scheduling group index.
   }
 
   private List<Task> selectSchedulableTasks(final Stage stageToSchedule) {
     final List<StageEdge> stageIncomingEdges =
-        physicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
+      physicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
     final List<StageEdge> stageOutgoingEdges =
-        physicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
+      physicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
 
     // Create and return tasks.
     final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
@@ -336,20 +336,20 @@ public final class BatchScheduler implements Scheduler {
     final List<Task> tasks = new ArrayList<>(taskIdsToSchedule.size());
     taskIdsToSchedule.forEach(taskId -> {
       final Set<String> blockIds = physicalPlan.getStageDAG()
-          .getOutgoingEdgesOf(RuntimeIdManager.getStageIdFromTaskId(taskId))
-          .stream()
-          .map(stageEdge -> RuntimeIdManager.generateBlockId(stageEdge.getId(), taskId))
-          .collect(Collectors.toSet()); // ids of blocks this task will produce
+        .getOutgoingEdgesOf(RuntimeIdManager.getStageIdFromTaskId(taskId))
+        .stream()
+        .map(stageEdge -> RuntimeIdManager.generateBlockId(stageEdge.getId(), taskId))
+        .collect(Collectors.toSet()); // ids of blocks this task will produce
       blockManagerMaster.onProducerTaskScheduled(taskId, blockIds);
       final int taskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
       tasks.add(new Task(
-          physicalPlan.getId(),
-          taskId,
-          stageToSchedule.getExecutionProperties(),
-          stageToSchedule.getSerializedIRDAG(),
-          stageIncomingEdges,
-          stageOutgoingEdges,
-          vertexIdToReadables.get(taskIdx)));
+        physicalPlan.getId(),
+        taskId,
+        stageToSchedule.getExecutionProperties(),
+        stageToSchedule.getSerializedIRDAG(),
+        stageIncomingEdges,
+        stageOutgoingEdges,
+        vertexIdToReadables.get(taskIdx)));
     });
     return tasks;
   }
@@ -404,7 +404,7 @@ public final class BatchScheduler implements Scheduler {
     final String stageIdForTaskUponCompletion = RuntimeIdManager.getStageIdFromTaskId(taskId);
 
     final boolean stageComplete =
-        planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
+      planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
 
     final StageEdge targetEdge = getEdgeToOptimize(taskId);
     if (targetEdge == null) {
@@ -413,11 +413,11 @@ public final class BatchScheduler implements Scheduler {
 
     if (stageComplete) {
       final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
-          .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
-          .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
+        .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
+        .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
       pubSubEventHandlerWrapper.getPubSubEventHandler()
-          .onNext(new DynamicOptimizationEvent(physicalPlan, dynOptDataHandler.getDynOptData(),
-              taskId, executorId, targetEdge));
+        .onNext(new DynamicOptimizationEvent(physicalPlan, dynOptDataHandler.getDynOptData(),
+          taskId, executorId, targetEdge));
     }
   }
 
@@ -457,7 +457,7 @@ public final class BatchScheduler implements Scheduler {
     final Set<String> tasksToRetry = Sets.union(tasks, requiredParents);
     LOG.info("Will be retried: {}", tasksToRetry);
     tasksToRetry.forEach(
-        taskToReExecute -> planStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY));
+      taskToReExecute -> planStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY));
   }
 
   private Set<String> recursivelyGetParentTasksForLostBlocks(final Set<String> children) {
@@ -466,9 +466,9 @@ public final class BatchScheduler implements Scheduler {
     }
 
     final Set<String> parentsWithLostBlocks = children.stream()
-        .flatMap(child -> getParentTasks(child).stream())
-        .filter(parent -> blockManagerMaster.getBlockLocationHandler(parent).getLocationFuture().isCancelled())
-        .collect(Collectors.toSet());
+      .flatMap(child -> getParentTasks(child).stream())
+      .filter(parent -> blockManagerMaster.getBlockLocationHandler(parent).getLocationFuture().isCancelled())
+      .collect(Collectors.toSet());
 
     // Recursive call
     return Sets.union(parentsWithLostBlocks, recursivelyGetParentTasksForLostBlocks(parentsWithLostBlocks));
@@ -477,31 +477,31 @@ public final class BatchScheduler implements Scheduler {
   private Set<String> getParentTasks(final String childTaskId) {
     final String stageIdOfChildTask = RuntimeIdManager.getStageIdFromTaskId(childTaskId);
     return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
-        .stream()
-        .flatMap(inStageEdge -> {
-          final String parentStageId = inStageEdge.getSrc().getId();
-          final Set<String> tasksOfParentStage = planStateManager.getAllTaskAttemptsOfStage(parentStageId);
+      .stream()
+      .flatMap(inStageEdge -> {
+        final String parentStageId = inStageEdge.getSrc().getId();
+        final Set<String> tasksOfParentStage = planStateManager.getAllTaskAttemptsOfStage(parentStageId);
 
-          switch (inStageEdge.getDataCommunicationPattern()) {
-            case Shuffle:
-            case BroadCast:
-              // All of the parent stage's tasks
-              return tasksOfParentStage.stream();
-            case OneToOne:
-              // Same-index tasks of the parent stage
-              return tasksOfParentStage.stream().filter(task ->
-                  RuntimeIdManager.getIndexFromTaskId(task) == RuntimeIdManager.getIndexFromTaskId(childTaskId));
-            default:
-              throw new IllegalStateException(inStageEdge.toString());
-          }
-        })
-        .collect(Collectors.toSet());
+        switch (inStageEdge.getDataCommunicationPattern()) {
+          case Shuffle:
+          case BroadCast:
+            // All of the parent stage's tasks
+            return tasksOfParentStage.stream();
+          case OneToOne:
+            // Same-index tasks of the parent stage
+            return tasksOfParentStage.stream().filter(task ->
+              RuntimeIdManager.getIndexFromTaskId(task) == RuntimeIdManager.getIndexFromTaskId(childTaskId));
+          default:
+            throw new IllegalStateException(inStageEdge.toString());
+        }
+      })
+      .collect(Collectors.toSet());
   }
 
   public void updateDynOptData(final Object dynOptData) {
     final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
-        .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
-        .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
+      .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
+      .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
     dynOptDataHandler.updateDynOptData(dynOptData);
   }
 }
