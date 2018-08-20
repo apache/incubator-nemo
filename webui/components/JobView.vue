@@ -284,8 +284,8 @@ export default {
     /**
      * Handler for adding WebSocket endpoint.
      */
-    handleWebSocketAdd() {
-      this.addJobFromWebSocketEndpoint(this.wsEndpointInput);
+    async handleWebSocketAdd() {
+      await this.addJobFromWebSocketEndpoint(this.wsEndpointInput);
       this.wsEndpointInput = '';
       this.addJobDialogVisible = false;
     },
@@ -334,7 +334,7 @@ export default {
      * Add job from WebSocket endpoint.
      * @param endpoint WebSocket endpoint.
      */
-    addJobFromWebSocketEndpoint(endpoint) {
+    async addJobFromWebSocketEndpoint(endpoint) {
       let alreadyExistsError = false;
       endpoint = endpoint.trim();
 
@@ -348,7 +348,7 @@ export default {
         });
 
       if (alreadyExistsError) {
-        this.notifyError('Endpoint already exists');
+        this.notifyError('Endpoint already exists.');
         return;
       }
 
@@ -356,9 +356,15 @@ export default {
       this._newJob(jobId);
       this.jobs[jobId].endpoint = endpoint;
       this.jobs[jobId].status = JOB_STATUS.NOT_CONNECTED;
-      this.selectJobId(jobId);
+      await this.selectJobId(jobId);
 
-      this.prepareWebSocket(jobId);
+      try {
+        this.prepareWebSocket(jobId);
+      } catch (e) {
+        await this.$nextTick();
+        this.$notify.error('Invalid WebSocket endpoint.')
+        this.deleteJobId(jobId);
+      }
     },
 
     /**
