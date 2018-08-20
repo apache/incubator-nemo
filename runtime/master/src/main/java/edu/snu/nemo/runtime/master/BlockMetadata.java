@@ -115,4 +115,17 @@ final class BlockMetadata {
     sb.append(")");
     return sb.toString();
   }
+
+  @Override
+  public boolean equals(final Object that) {
+    if (!(that instanceof BlockMetadata)) {
+      return false;
+    }
+    return this.blockId.equals(((BlockMetadata) that).getBlockId());
+  }
+
+  @Override
+  public int hashCode() {
+    return blockId.hashCode();
+  }
 }

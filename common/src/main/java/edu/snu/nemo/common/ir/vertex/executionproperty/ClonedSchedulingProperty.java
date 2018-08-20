@@ -43,29 +43,32 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Clon
     if (conf.getFractionToWaitFor() >= 1.0 || conf.getFractionToWaitFor() < 0) {
       throw new IllegalArgumentException(String.valueOf(conf.getFractionToWaitFor()));
     }
-    if (conf.getMedianTimeMultiplier() >= 1.0 || conf.getMedianTimeMultiplier() < 0) {
+    if (conf.getMedianTimeMultiplier() <= 1.0) {
       throw new IllegalArgumentException(String.valueOf(conf.getMedianTimeMultiplier()));
     }
     return new ClonedSchedulingProperty(conf);
   }
 
-  public class CloneConf implements Serializable {
+  /**
+   * Configurations for cloning.
+   */
+  public static final class CloneConf implements Serializable {
     // Fraction of tasks to wait for completion, before trying to clone.
-    private final float fractionToWaitFor;
+    private final double fractionToWaitFor;
 
     // How many times slower is a task than the median, in order to be cloned.
-    private final float medianTimeMultiplier;
+    private final double medianTimeMultiplier;
 
-    public CloneConf(final float fractionToWaitFor, final float medianTimeMultiplier) {
+    public CloneConf(final double fractionToWaitFor, final double medianTimeMultiplier) {
       this.fractionToWaitFor = fractionToWaitFor;
       this.medianTimeMultiplier = medianTimeMultiplier;
     }
 
-    public float getFractionToWaitFor() {
+    public double getFractionToWaitFor() {
       return fractionToWaitFor;
     }
 
-    public float getMedianTimeMultiplier(){
+    public double getMedianTimeMultiplier() {
       return medianTimeMultiplier;
     }
   }

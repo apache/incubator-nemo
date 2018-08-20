@@ -19,7 +19,6 @@ import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.exception.IllegalStateTransitionException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.StateMachine;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
@@ -68,6 +67,12 @@ public final class PlanStateManager {
   private final PlanState planState;
   private final Map<String, StageState> stageIdToState;
   private final Map<String, List<List<TaskState>>> stageIdToTaskAttemptStates; // sorted by task idx, and then attempt
+
+  /**
+   * Used for speculative cloning. (in the unit of milliseconds - ms)
+   */
+  private final Map<String, Long> taskIdToStartTimeMs = new HashMap<>();
+  private final Map<String, List<Long>> stageIdToCompletedTaskTimeMsList = new HashMap<>();
 
   /**
    * Represents the plan to manage.
@@ -140,7 +145,8 @@ public final class PlanStateManager {
 
         // (Step 1) Create new READY attempts, as many as
         // # of clones - # of 'not-done' attempts)
-        final int numOfClones = stage.getPropertyValue(ClonedSchedulingProperty.class).orElse(1);
+        final int numOfClones = 1;
+        // stage.getPropertyValue(ClonedSchedulingProperty.class).orElse(1);
         final long numOfNotDoneAttempts = attemptStatesForThisTaskIndex.stream().filter(this::isTaskNotDone).count();
         for (int i = 0; i < numOfClones - numOfNotDoneAttempts; i++) {
           attemptStatesForThisTaskIndex.add(new TaskState());
@@ -164,6 +170,16 @@ public final class PlanStateManager {
     }
 
     return taskAttemptsToSchedule;
+  }
+
+  /**
+   * List of task times so far for this stage.
+   * @param stageId of the stage.
+   * @return a copy of the list, empty if none completed.
+   */
+  public synchronized List<Long> getCompletedTaskTimeListMs(final String stageId) {
+    // Return a copy
+    return new ArrayList<>(stageIdToCompletedTaskTimeMsList.getOrDefault(stageId, new ArrayList<>(0)));
   }
 
   private boolean isTaskNotDone(final TaskState taskState) {
@@ -211,15 +227,23 @@ public final class PlanStateManager {
     final long numOfCompletedTaskIndicesInThisStage = taskStatesOfThisStage.stream()
         .map(attempts -> attempts.stream()
             .map(state -> state.getStateMachine().getCurrentState())
-            .allMatch(curState -> curState.equals(TaskState.State.COMPLETE)
-                || curState.equals(TaskState.State.SHOULD_RETRY)
-                || curState.equals(TaskState.State.ON_HOLD)))
+            .anyMatch(curState -> curState.equals(TaskState.State.COMPLETE))) // only if one of the attempts is good.
         .filter(bool -> bool.equals(true))
         .count();
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
       LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",
           taskId, taskStatesOfThisStage.size() - numOfCompletedTaskIndicesInThisStage, taskStatesOfThisStage.size());
     }
+
+    // Maintain info for speculative execution
+    if (newTaskState.equals(TaskState.State.EXECUTING)) {
+      taskIdToStartTimeMs.put(taskId, System.currentTimeMillis());
+    } else if (newTaskState.equals(TaskState.State.COMPLETE)) {
+      stageIdToCompletedTaskTimeMsList.putIfAbsent(stageId, new ArrayList<>());
+      stageIdToCompletedTaskTimeMsList.get(stageId).add(System.currentTimeMillis() - taskIdToStartTimeMs.get(taskId));
+      LOG.info("stageIdToCompletedTaskTimeMsList: {}", stageIdToCompletedTaskTimeMsList);
+    }
+
 
     // Change stage state, if needed
     switch (newTaskState) {

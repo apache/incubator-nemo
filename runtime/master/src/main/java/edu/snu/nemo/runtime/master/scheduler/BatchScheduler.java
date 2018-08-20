@@ -20,6 +20,7 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
@@ -243,25 +244,25 @@ public final class BatchScheduler implements Scheduler {
     final Optional<List<Stage>> earliest = selectEarliestSchedulableGroup();
 
     if (earliest.isPresent()) {
-      // Get schedulable tasks.
       final List<Task> tasksToSchedule = earliest.get().stream()
           .flatMap(stage -> selectSchedulableTasks(stage).stream())
           .collect(Collectors.toList());
+      if (!tasksToSchedule.isEmpty()) {
+        // We prefer (but not guarantee) to schedule the 'receiving' tasks first,
+        // assuming that tasks within a ScheduleGroup are connected with 'push' edges.
+        Collections.reverse(tasksToSchedule);
 
-      // We prefer (but not guarantee) to schedule the 'receiving' tasks first,
-      // assuming that tasks within a ScheduleGroup are connected with 'push' edges.
-      Collections.reverse(tasksToSchedule);
-
-      LOG.info("Scheduling some tasks in {}, which are in the same ScheduleGroup", tasksToSchedule.stream()
+        LOG.info("Scheduling some tasks in {}, which are in the same ScheduleGroup", tasksToSchedule.stream()
           .map(Task::getTaskId)
           .map(RuntimeIdManager::getStageIdFromTaskId)
           .collect(Collectors.toSet()));
 
-      // Set the pointer to the schedulable tasks.
-      pendingTaskCollectionPointer.setToOverwrite(tasksToSchedule);
+        // Set the pointer to the schedulable tasks.
+        pendingTaskCollectionPointer.setToOverwrite(tasksToSchedule);
 
-      // Notify the dispatcher that a new collection is available.
-      taskDispatcher.onNewPendingTaskCollectionAvailable();
+        // Notify the dispatcher that a new collection is available.
+        taskDispatcher.onNewPendingTaskCollectionAvailable();
+      }
     } else {
       LOG.info("Skipping this round as no ScheduleGroup is schedulable.");
     }
@@ -460,5 +461,33 @@ public final class BatchScheduler implements Scheduler {
         .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
         .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
     dynOptDataHandler.updateDynOptData(dynOptData);
+  }
+
+  @Override
+  public void onSpeculativeExecutionCheck() {
+    selectEarliestSchedulableGroup().ifPresent(scheduleGroup -> {
+      scheduleGroup.stream().map(Stage::getId).forEach(stageId -> {
+        final Stage stage = physicalPlan.getStageDAG().getVertexById(stageId);
+        stage.getPropertyValue(ClonedSchedulingProperty.class).ifPresent(cloneConf -> {
+          // Only if the ClonedSchedulingProperty is set...
+          final double fractionToWaitFor = cloneConf.getFractionToWaitFor();
+          final int parallelism = stage.getParallelism();
+          final Object[] completedTaskTimes = planStateManager.getCompletedTaskTimeListMs(stageId).toArray();
+          if (completedTaskTimes.length > 0
+            && completedTaskTimes.length >= Math.round(parallelism * fractionToWaitFor)) {
+            // Only if the fraction of the tasks are done...
+            Arrays.sort(completedTaskTimes);
+            final double medianTime = (double) completedTaskTimes[completedTaskTimes.length / 2];
+            final double medianTimeMultiplier = cloneConf.getMedianTimeMultiplier();
+
+            // TODO 1: We gotta check the running tasks here
+
+            // TODO 2: if TODO 1 is true, We gotta change some 'variable' here to declare cloning
+            // TODOz: Change STH --> SPECULATIVE EXECUTION
+            doSchedule(); // Do this conditionally..... when there's something to clone...
+          }
+        });
+      });
+    });
   }
 }

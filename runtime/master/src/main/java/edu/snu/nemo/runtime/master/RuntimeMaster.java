@@ -74,8 +74,11 @@ public final class RuntimeMaster {
   private static final int DAG_LOGGING_PERIOD = 3000;
   private static final int METRIC_ARRIVE_TIMEOUT = 10000;
   private static final int REST_SERVER_PORT = 10101;
+  private static final int SPECULATION_CHECKING_PERIOD_MS = 100;
 
   private final ExecutorService runtimeMasterThread;
+  private final ScheduledExecutorService speculativeExecutionThread;
+
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
   private final MetricMessageHandler metricMessageHandler;
@@ -105,6 +108,15 @@ public final class RuntimeMaster {
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
     this.runtimeMasterThread =
         Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster thread"));
+
+    // Check for speculative execution every second.
+    this.speculativeExecutionThread = Executors.newSingleThreadScheduledExecutor();
+    this.speculativeExecutionThread.scheduleAtFixedRate(
+      () -> this.runtimeMasterThread.submit(scheduler::onSpeculativeExecutionCheck),
+      SPECULATION_CHECKING_PERIOD_MS,
+      SPECULATION_CHECKING_PERIOD_MS,
+      TimeUnit.MILLISECONDS);
+
     this.scheduler = scheduler;
     this.containerManager = containerManager;
     this.metricMessageHandler = metricMessageHandler;
