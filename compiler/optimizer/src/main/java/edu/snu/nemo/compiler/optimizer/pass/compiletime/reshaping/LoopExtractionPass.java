@@ -23,6 +23,7 @@ import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.*;
 
@@ -32,12 +33,13 @@ import java.util.*;
  * Then, it rolls repetitive operators into one root LoopOperator, which contains enough information to produce all
  * other iterative computations.
  */
+@Requires(CommunicationPatternProperty.class)
 public final class LoopExtractionPass extends ReshapingPass {
   /**
    * Default constructor.
    */
   public LoopExtractionPass() {
-    super(Collections.singleton(CommunicationPatternProperty.class));
+    super(LoopExtractionPass.class);
   }
 
   @Override

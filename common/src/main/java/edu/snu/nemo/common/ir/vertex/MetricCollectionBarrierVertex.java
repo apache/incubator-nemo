@@ -41,17 +41,29 @@ public final class MetricCollectionBarrierVertex<K, V> extends IRVertex {
    * Constructor for dynamic optimization vertex.
    */
   public MetricCollectionBarrierVertex() {
+    super();
     this.metricData = new HashMap<>();
     this.blockIds = new ArrayList<>();
     this.dagSnapshot = null;
   }
 
+  /**
+   * Constructor for dynamic optimization vertex.
+   *
+   * @param that the source object for copying
+   */
+  public MetricCollectionBarrierVertex(final MetricCollectionBarrierVertex<K, V> that) {
+    super(that);
+    this.metricData = new HashMap<>();
+    that.metricData.forEach(this.metricData::put);
+    this.blockIds = new ArrayList<>();
+    that.blockIds.forEach(this.blockIds::add);
+    this.dagSnapshot = that.dagSnapshot;
+  }
+
   @Override
   public MetricCollectionBarrierVertex getClone() {
-    final MetricCollectionBarrierVertex that = new MetricCollectionBarrierVertex();
-    that.setDAGSnapshot(dagSnapshot);
-    this.copyExecutionPropertiesTo(that);
-    return that;
+    return new MetricCollectionBarrierVertex(this);
   }
 
   /**

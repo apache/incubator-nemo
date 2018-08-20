@@ -27,6 +27,21 @@ import java.util.List;
 public abstract class SourceVertex<O> extends IRVertex {
 
   /**
+   * Constructor for SourceVertex.
+   */
+  public SourceVertex() {
+    super();
+  }
+
+  /**
+   * Copy Constructor for SourceVertex.
+   *
+   * @param that the source object for copying
+   */
+  public SourceVertex(final SourceVertex that) {
+    super(that);
+  }
+  /**
    * Gets parallel readables.
    *
    * @param desiredNumOfSplits number of splits desired.

@@ -20,17 +20,16 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 
-import java.util.Collections;
-
 /**
  * Speculative execution. (very aggressive, for unit tests)
  */
+@Annotates(ClonedSchedulingProperty.class)
 public final class AggressiveSpeculativeCloningPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public AggressiveSpeculativeCloningPass() {
-    super(ClonedSchedulingProperty.class, Collections.emptySet());
+    super(AggressiveSpeculativeCloningPass.class);
   }
 
   @Override
