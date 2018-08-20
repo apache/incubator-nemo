@@ -112,7 +112,7 @@ export default {
      */
     stageList() {
       return Object.keys(this.metricLookupMap)
-        .filter(id => /^Stage-[0-9]+$/.test(id.trim()));
+        .filter(id => /^Stage[0-9]+$/.test(id.trim()));
     },
   },
 
