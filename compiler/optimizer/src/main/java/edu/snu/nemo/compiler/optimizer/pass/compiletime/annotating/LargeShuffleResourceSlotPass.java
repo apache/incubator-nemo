@@ -20,16 +20,20 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
-
-import java.util.Collections;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
  * Sets {@link ResourceSlotProperty}.
  */
+@Annotates(ResourceSlotProperty.class)
+@Requires(DataFlowProperty.class)
 public final class LargeShuffleResourceSlotPass extends AnnotatingPass {
 
+  /**
+   * Default constructor.
+   */
   public LargeShuffleResourceSlotPass() {
-    super(ResourceSlotProperty.class, Collections.singleton(DataFlowProperty.class));
+    super(LargeShuffleResourceSlotPass.class);
   }
 
   @Override

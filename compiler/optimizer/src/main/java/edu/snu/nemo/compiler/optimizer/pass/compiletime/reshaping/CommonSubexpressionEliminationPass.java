@@ -26,6 +26,7 @@ import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -36,12 +37,13 @@ import java.util.stream.Collectors;
  * they include the same transform, and has incoming edges from an identical set of vertices.
  * Refer to CommonSubexpressionEliminationPassTest for such cases.
  */
+@Requires(CommunicationPatternProperty.class)
 public final class CommonSubexpressionEliminationPass extends ReshapingPass {
   /**
    * Default constructor.
    */
   public CommonSubexpressionEliminationPass() {
-    super(Collections.singleton(CommunicationPatternProperty.class));
+    super(CommonSubexpressionEliminationPass.class);
   }
 
   @Override

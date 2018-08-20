@@ -19,6 +19,7 @@ import edu.snu.nemo.common.ir.IdManager;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.dag.Vertex;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import edu.snu.nemo.common.Cloneable;
 
 import java.io.Serializable;
 import java.util.Optional;
@@ -27,7 +28,7 @@ import java.util.Optional;
  * The basic unit of operation in a dataflow program, as well as the most important data structure in Nemo.
  * An IRVertex is created and modified in the compiler, and executed in the runtime.
  */
-public abstract class IRVertex extends Vertex {
+public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   private boolean stagePartitioned;
 
@@ -41,9 +42,16 @@ public abstract class IRVertex extends Vertex {
   }
 
   /**
-   * @return a clone elemnt of the IRVertex.
+   * Copy Constructor for IRVertex.
+   *
+   * @param that the source object for copying
    */
-  public abstract IRVertex getClone();
+  public IRVertex(final IRVertex that) {
+    super(IdManager.newVertexId());
+    this.executionProperties = ExecutionPropertyMap.of(this);
+    that.getExecutionProperties().forEachProperties(this::setProperty);
+    this.stagePartitioned = that.stagePartitioned;
+  }
 
   /**
    * Static function to copy executionProperties from a vertex to the other.
@@ -55,6 +63,7 @@ public abstract class IRVertex extends Vertex {
 
   /**
    * Set an executionProperty of the IRVertex.
+   *
    * @param executionProperty new execution property.
    * @return the IRVertex with the execution property set.
    */
@@ -65,6 +74,7 @@ public abstract class IRVertex extends Vertex {
 
   /**
    * Set an executionProperty of the IRVertex, permanently.
+   *
    * @param executionProperty new execution property.
    * @return the IRVertex with the execution property set.
    */

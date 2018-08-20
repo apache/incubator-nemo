@@ -27,13 +27,14 @@ import java.util.Optional;
 /**
  * A pass for annotate duplicate data for each edge.
  */
+@Annotates(DuplicateEdgeGroupProperty.class)
 public final class DuplicateEdgeGroupSizePass extends AnnotatingPass {
 
   /**
    * Default constructor.
    */
   public DuplicateEdgeGroupSizePass() {
-    super(DuplicateEdgeGroupProperty.class);
+    super(DuplicateEdgeGroupSizePass.class);
   }
 
   @Override

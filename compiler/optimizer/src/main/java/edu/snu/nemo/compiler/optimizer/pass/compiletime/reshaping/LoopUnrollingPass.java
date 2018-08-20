@@ -27,6 +27,13 @@ import edu.snu.nemo.common.ir.vertex.LoopVertex;
  * Then, it decomposes each of the LoopVertices with the DAG information that each of them contain.
  */
 public final class LoopUnrollingPass extends ReshapingPass {
+  /**
+   * Default constructor.
+   */
+  public LoopUnrollingPass() {
+    super(LoopUnrollingPass.class);
+  }
+
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     return recursivelyUnroll(dag);
