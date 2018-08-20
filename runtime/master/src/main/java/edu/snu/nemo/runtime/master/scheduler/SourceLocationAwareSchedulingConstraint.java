@@ -21,7 +21,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceLocalityProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
@@ -66,9 +66,8 @@ public final class SourceLocationAwareSchedulingConstraint implements Scheduling
         final String representativeEdgeId = dupProp.isPresent()
             ? dupProp.get().getRepresentativeEdgeId() : physicalStageEdge.getId();
         final String blockIdToRead =
-            RuntimeIdGenerator.generateBlockId(representativeEdgeId,
-                RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId()));
-        final BlockManagerMaster.BlockLocationRequestHandler locationHandler =
+            RuntimeIdManager.generateBlockId(representativeEdgeId, task.getTaskId());
+        final BlockManagerMaster.BlockRequestHandler locationHandler =
             blockManagerMaster.getBlockLocationHandler(blockIdToRead);
         if (locationHandler.getLocationFuture().isDone()) { // if the location is known.
           try {

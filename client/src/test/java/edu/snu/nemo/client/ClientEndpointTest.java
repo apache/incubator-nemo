@@ -25,7 +25,6 @@ import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.List;
@@ -41,10 +40,8 @@ import static org.mockito.Mockito.when;
  * Test {@link ClientEndpoint}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(MetricMessageHandler.class)
 public class ClientEndpointTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
-  private final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
 
   @Test(timeout = 3000)
   public void testState() throws Exception {
@@ -61,9 +58,9 @@ public class ClientEndpointTest {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
     final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(MetricMessageHandler.class, metricMessageHandler);
+    injector.bindVolatileInstance(MetricMessageHandler.class, mock(MetricMessageHandler.class));
     final PlanStateManager planStateManager = injector.getInstance(PlanStateManager.class);
-    planStateManager.updatePlan(physicalPlan, 1);
+    planStateManager.updatePlan(physicalPlan, MAX_SCHEDULE_ATTEMPT);
 
     final DriverEndpoint driverEndpoint = new DriverEndpoint(planStateManager, clientEndpoint);
 
@@ -75,7 +72,7 @@ public class ClientEndpointTest {
 
     // Check finish.
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
-        .flatMap(stage -> stage.getTaskIds().stream())
+        .flatMap(stage -> planStateManager.getTaskAttemptsToSchedule(stage.getId()).stream())
         .collect(Collectors.toList());
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));

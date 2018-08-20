@@ -85,6 +85,7 @@ final class TaskDispatcher {
         doScheduleTaskList();
         schedulingIteration.await();
       }
+
       if (planStateManager.isPlanDone()) {
         LOG.info("{} is complete.", planStateManager.getPlanId());
       } else {

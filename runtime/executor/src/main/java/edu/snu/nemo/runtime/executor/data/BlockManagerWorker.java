@@ -24,10 +24,10 @@ import edu.snu.nemo.common.exception.UnsupportedExecutionPropertyException;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
 import edu.snu.nemo.conf.JobConf;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.comm.ControlMessage.ByteTransferContextDescriptor;
 import edu.snu.nemo.common.KeyRange;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.executor.bytetransfer.ByteInputContext;
@@ -139,20 +139,20 @@ public final class BlockManagerWorker {
    * or to the lower data plane.
    * This can be invoked multiple times per blockId (maybe due to failures).
    *
-   * @param blockId       of the block.
-   * @param runtimeEdgeId id of the runtime edge that corresponds to the block.
-   * @param blockStore    for the data storage.
-   * @param keyRange      the key range descriptor
+   * @param blockIdWildcard of the block.
+   * @param runtimeEdgeId   id of the runtime edge that corresponds to the block.
+   * @param blockStore      for the data storage.
+   * @param keyRange        the key range descriptor
    * @return the {@link CompletableFuture} of the block.
    */
   public CompletableFuture<DataUtil.IteratorWithNumBytes> readBlock(
-      final String blockId,
+      final String blockIdWildcard,
       final String runtimeEdgeId,
       final DataStoreProperty.Value blockStore,
       final KeyRange keyRange) {
     // Let's see if a remote worker has it
     final CompletableFuture<ControlMessage.Message> blockLocationFuture =
-        pendingBlockLocationRequest.computeIfAbsent(blockId, blockIdToRequest -> {
+        pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {
           // Ask Master for the location.
           // (IMPORTANT): This 'request' effectively blocks the TaskExecutor thread if the block is IN_PROGRESS.
           // We use this property to make the receiver task of a 'push' edge to wait in an Executor for its input data
@@ -160,19 +160,19 @@ public final class BlockManagerWorker {
           final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
               .getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
                   ControlMessage.Message.newBuilder()
-                      .setId(RuntimeIdGenerator.generateMessageId())
+                      .setId(RuntimeIdManager.generateMessageId())
                       .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
                       .setType(ControlMessage.MessageType.RequestBlockLocation)
                       .setRequestBlockLocationMsg(
                           ControlMessage.RequestBlockLocationMsg.newBuilder()
                               .setExecutorId(executorId)
-                              .setBlockId(blockId)
+                              .setBlockIdWildcard(blockIdWilBlockManagerMaster.javadcard)
                               .build())
                       .build());
           return responseFromMasterFuture;
         });
     blockLocationFuture.whenComplete((message, throwable) -> {
-      pendingBlockLocationRequest.remove(blockId);
+      pendingBlockLocationRequest.remove(blockIdWildcard);
     });
 
     // Using thenCompose so that fetching block data starts after getting response from master.
@@ -185,10 +185,12 @@ public final class BlockManagerWorker {
           responseFromMaster.getBlockLocationInfoMsg();
       if (!blockLocationInfoMsg.hasOwnerExecutorId()) {
         throw new BlockFetchException(new Throwable(
-            "Block " + blockId + " location unknown: "
+            "Block " + blockIdWildcard + " location unknown: "
                 + "The block state is " + blockLocationInfoMsg.getState()));
       }
+
       // This is the executor id that we wanted to know
+      final String blockId = blockLocationInfoMsg.getBlockId();
       final String targetExecutorId = blockLocationInfoMsg.getOwnerExecutorId();
       if (targetExecutorId.equals(executorId) || targetExecutorId.equals(REMOTE_FILE_STORE)) {
         // Block resides in the evaluator
@@ -232,7 +234,6 @@ public final class BlockManagerWorker {
    * @param blockStore           the store to save the block.
    * @param reportPartitionSizes whether report the size of partitions to master or not.
    * @param partitionSizeMap     the map of partition keys and sizes to report.
-   * @param srcIRVertexId        the IR vertex ID of the source task.
    * @param expectedReadTotal    the expected number of read for this block.
    * @param persistence          how to handle the used block.
    */
@@ -240,7 +241,6 @@ public final class BlockManagerWorker {
                          final DataStoreProperty.Value blockStore,
                          final boolean reportPartitionSizes,
                          final Map<Integer, Long> partitionSizeMap,
-                         final String srcIRVertexId,
                          final int expectedReadTotal,
                          final DataPersistenceProperty.Value persistence) {
     final String blockId = block.getId();
@@ -273,7 +273,7 @@ public final class BlockManagerWorker {
 
     persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
         .send(ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
+            .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.BlockStateChanged)
             .setBlockStateChangedMsg(blockStateChangedMsgBuilder.build())
@@ -292,7 +292,7 @@ public final class BlockManagerWorker {
       // TODO #4: Refactor metric aggregation for (general) run-rime optimization.
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
           .send(ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdGenerator.generateMessageId())
+              .setId(RuntimeIdManager.generateMessageId())
               .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
               .setType(ControlMessage.MessageType.DataSizeMetric)
               .setDataSizeMetricMsg(ControlMessage.DataSizeMetricMsg.newBuilder()
@@ -329,7 +329,7 @@ public final class BlockManagerWorker {
 
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
           .send(ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdGenerator.generateMessageId())
+              .setId(RuntimeIdManager.generateMessageId())
               .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
               .setType(ControlMessage.MessageType.BlockStateChanged)
               .setBlockStateChangedMsg(blockStateChangedMsgBuilder)

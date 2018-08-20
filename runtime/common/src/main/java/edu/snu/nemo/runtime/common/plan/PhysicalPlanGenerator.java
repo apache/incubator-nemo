@@ -31,7 +31,7 @@ import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.exception.IllegalVertexOperationException;
 import edu.snu.nemo.common.exception.PhysicalPlanGenerationException;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -147,7 +147,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
 
     for (final int stageId : vertexSetForEachStage.keySet()) {
       final Set<IRVertex> stageVertices = vertexSetForEachStage.get(stageId);
-      final String stageIdentifier = RuntimeIdGenerator.generateStageId(stageId);
+      final String stageIdentifier = RuntimeIdManager.generateStageId(stageId);
       final ExecutionPropertyMap<VertexExecutionProperty> stageProperties = new ExecutionPropertyMap<>(stageIdentifier);
       stagePartitioner.getStageProperties(stageVertices.iterator().next()).forEach(stageProperties::put);
       final int stageParallelism = stageProperties.get(ParallelismProperty.class)

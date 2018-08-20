@@ -78,7 +78,6 @@ public final class RuntimeMaster {
   private final ContainerManager containerManager;
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
-  private final MetricStore metricStore;
   private final ClientRPC clientRPC;
   private final MetricManagerMaster metricManagerMaster;
   private final PlanStateManager planStateManager;
@@ -115,7 +114,6 @@ public final class RuntimeMaster {
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
-    this.metricStore = MetricStore.getStore();
     this.metricServer = startRestMetricServer();
     this.planStateManager = planStateManager;
   }

@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.master;
 
 import edu.snu.nemo.common.StateMachine;
+import edu.snu.nemo.common.exception.IllegalStateTransitionException;
 import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
 import org.slf4j.Logger;
@@ -32,7 +33,7 @@ final class BlockMetadata {
   private static final Logger LOG = LoggerFactory.getLogger(BlockMetadata.class.getName());
   private final String blockId;
   private final BlockState blockState;
-  private volatile BlockManagerMaster.BlockLocationRequestHandler locationHandler;
+  private volatile BlockManagerMaster.BlockRequestHandler locationHandler;
 
   /**
    * Constructs the metadata for a block.
@@ -43,7 +44,7 @@ final class BlockMetadata {
     // Initialize block level metadata.
     this.blockId = blockId;
     this.blockState = new BlockState();
-    this.locationHandler = new BlockManagerMaster.BlockLocationRequestHandler(blockId);
+    this.locationHandler = new BlockManagerMaster.BlockRequestHandler(blockId);
   }
 
   /**
@@ -65,7 +66,7 @@ final class BlockMetadata {
       case NOT_AVAILABLE:
         // Reset the block location and committer information.
         locationHandler.completeExceptionally(new AbsentBlockException(blockId, newState));
-        locationHandler = new BlockManagerMaster.BlockLocationRequestHandler(blockId);
+        locationHandler = new BlockManagerMaster.BlockRequestHandler(blockId);
         break;
       case AVAILABLE:
         if (location == null) {
@@ -77,7 +78,11 @@ final class BlockMetadata {
         throw new UnsupportedOperationException(newState.toString());
     }
 
-    stateMachine.setState(newState);
+    try {
+      stateMachine.setState(newState);
+    } catch (IllegalStateTransitionException e) {
+      throw new RuntimeException(blockId + " - Illegal block state transition ", e);
+    }
   }
 
   /**
@@ -90,14 +95,24 @@ final class BlockMetadata {
   /**
    * @return the state of this block.
    */
-  BlockState getBlockState() {
-    return blockState;
+  BlockState.State getBlockState() {
+    return (BlockState.State) blockState.getStateMachine().getCurrentState();
   }
 
   /**
    * @return the handler of block location requests.
    */
-  synchronized BlockManagerMaster.BlockLocationRequestHandler getLocationHandler() {
+  synchronized BlockManagerMaster.BlockRequestHandler getLocationHandler() {
     return locationHandler;
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(blockId);
+    sb.append("(");
+    sb.append(blockState);
+    sb.append(")");
+    return sb.toString();
   }
 }

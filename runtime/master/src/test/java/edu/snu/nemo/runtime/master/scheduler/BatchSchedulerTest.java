@@ -58,13 +58,12 @@ import static org.mockito.Mockito.mock;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ContainerManager.class, BlockManagerMaster.class,
-    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
+    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class})
 public final class BatchSchedulerTest {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSchedulerTest.class.getName());
   private Scheduler scheduler;
   private PlanStateManager planStateManager;
   private ExecutorRegistry executorRegistry;
-  private final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
 
   private static final int EXECUTOR_CAPACITY = 20;
@@ -81,7 +80,7 @@ public final class BatchSchedulerTest {
     injector.bindVolatileInstance(BlockManagerMaster.class, mock(BlockManagerMaster.class));
     injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
     injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
-    injector.bindVolatileInstance(MetricMessageHandler.class, metricMessageHandler);
+    injector.bindVolatileInstance(MetricMessageHandler.class, mock(MetricMessageHandler.class));
     planStateManager = injector.getInstance(PlanStateManager.class);
     scheduler = injector.getInstance(BatchScheduler.class);
 

@@ -17,14 +17,15 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageSender;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.PlanState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
-import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
@@ -58,7 +59,7 @@ import static org.mockito.Mockito.mock;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({BlockManagerMaster.class, TaskDispatcher.class, SchedulingConstraintRegistry.class,
-    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
+    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class})
 public final class TaskRetryTest {
   @Rule public TestName testName = new TestName();
 
@@ -175,7 +176,7 @@ public final class TaskRetryTest {
       final int randomIndex = random.nextInt(executingTasks.size());
       final String selectedTask = executingTasks.get(randomIndex);
       SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry, selectedTask,
-          TaskState.State.COMPLETE, planStateManager.getTaskAttempt(selectedTask));
+          TaskState.State.COMPLETE, RuntimeIdManager.getAttemptFromTaskId(selectedTask));
     }
   }
 
@@ -189,7 +190,7 @@ public final class TaskRetryTest {
       final int randomIndex = random.nextInt(executingTasks.size());
       final String selectedTask = executingTasks.get(randomIndex);
       SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry, selectedTask,
-          TaskState.State.SHOULD_RETRY, planStateManager.getTaskAttempt(selectedTask),
+          TaskState.State.SHOULD_RETRY, RuntimeIdManager.getAttemptFromTaskId(selectedTask),
           TaskState.RecoverableTaskFailureCause.OUTPUT_WRITE_FAILURE);
     }
   }
@@ -197,8 +198,10 @@ public final class TaskRetryTest {
   ////////////////////////////////////////////////////////////////// Helper methods
 
   private List<String> getTasksInState(final PlanStateManager planStateManager, final TaskState.State state) {
-    return planStateManager.getAllTaskStates().entrySet().stream()
-        .filter(entry -> entry.getValue().getStateMachine().getCurrentState().equals(state))
+    return planStateManager.getAllTaskAttemptIdsToItsState()
+        .entrySet()
+        .stream()
+        .filter(entry -> entry.getValue().equals(state))
         .map(Map.Entry::getKey)
         .collect(Collectors.toList());
   }

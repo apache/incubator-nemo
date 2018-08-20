@@ -19,7 +19,7 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlanGenerator;
@@ -61,7 +61,7 @@ public final class RunTimeOptimizer {
               .apply(originalPlan.getIrDAG(), Pair.of(targetEdge, (Map<Integer, Long>) dynOptData));
       final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(newIrDAG);
       final PhysicalPlan physicalPlan =
-          new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(), newIrDAG, stageDAG);
+          new PhysicalPlan(RuntimeIdManager.generatePhysicalPlanId(), newIrDAG, stageDAG);
       return physicalPlan;
     } catch (final InjectionException e) {
       throw new RuntimeException(e);

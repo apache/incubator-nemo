@@ -23,7 +23,7 @@ import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -134,7 +134,7 @@ public final class TaskExecutor {
   private Pair<List<DataFetcher>, List<VertexHarness>> prepare(final Task task,
                                                                final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                                                                final DataTransferFactory dataTransferFactory) {
-    final int taskIndex = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
+    final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
 
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
@@ -165,10 +165,10 @@ public final class TaskExecutor {
       // Handle writes
       // Main output children task writes
       final List<OutputWriter> mainChildrenTaskWriters = getMainChildrenTaskWriters(
-          taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
+          irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
       // Additional output children task writes
       final Map<String, OutputWriter> additionalChildrenTaskWriters = getAdditionalChildrenTaskWriters(
-          taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
+          irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
       // Find all main vertices and additional vertices
       final List<String> additionalOutputVertices = new ArrayList<>(additionalOutputMap.values());
       final Set<String> mainChildren =
@@ -493,15 +493,13 @@ public final class TaskExecutor {
   /**
    * Return inter-task OutputWriters, for single output or output associated with main tag.
    *
-   * @param taskIndex               current task index
    * @param irVertex                source irVertex
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
    * @param dataTransferFactory     dataTransferFactory
    * @param taggedOutputs           tag to vertex id map
    * @return OutputWriters for main children tasks
    */
-  private List<OutputWriter> getMainChildrenTaskWriters(final int taskIndex,
-                                                        final IRVertex irVertex,
+  private List<OutputWriter> getMainChildrenTaskWriters(final IRVertex irVertex,
                                                         final List<StageEdge> outEdgesToChildrenTasks,
                                                         final DataTransferFactory dataTransferFactory,
                                                         final Map<String, String> taggedOutputs) {
@@ -510,22 +508,20 @@ public final class TaskExecutor {
         .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
         .filter(outEdge -> !taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
         .map(outEdgeForThisVertex -> dataTransferFactory
-            .createWriter(irVertex, taskIndex, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
+            .createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
         .collect(Collectors.toList());
   }
 
   /**
    * Return inter-task OutputWriters associated with additional output tags.
    *
-   * @param taskIndex               current task index
    * @param irVertex                source irVertex
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
    * @param dataTransferFactory     dataTransferFactory
    * @param taggedOutputs           tag to vertex id map
    * @return additional children vertex id to OutputWriters map.
    */
-  private Map<String, OutputWriter> getAdditionalChildrenTaskWriters(final int taskIndex,
-                                                                     final IRVertex irVertex,
+  private Map<String, OutputWriter> getAdditionalChildrenTaskWriters(final IRVertex irVertex,
                                                                      final List<StageEdge> outEdgesToChildrenTasks,
                                                                      final DataTransferFactory dataTransferFactory,
                                                                      final Map<String, String> taggedOutputs) {
@@ -537,9 +533,7 @@ public final class TaskExecutor {
         .filter(outEdge -> taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
         .forEach(outEdgeForThisVertex ->
           additionalChildrenTaskWriters.put(outEdgeForThisVertex.getDstIRVertex().getId(),
-              dataTransferFactory.createWriter(irVertex, taskIndex, outEdgeForThisVertex.getDstIRVertex(),
-                  outEdgeForThisVertex))
-        );
+              dataTransferFactory.createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex)));
 
     return additionalChildrenTaskWriters;
   }
@@ -578,7 +572,7 @@ public final class TaskExecutor {
     vertexHarness.getContext().getSerializedData().ifPresent(data ->
         persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
             ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
+                .setId(RuntimeIdManager.generateMessageId())
                 .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.ExecutorDataCollected)
                 .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(data).build())
