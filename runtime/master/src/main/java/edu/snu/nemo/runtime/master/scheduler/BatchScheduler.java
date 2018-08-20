@@ -19,9 +19,7 @@ import com.google.common.collect.Sets;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.GhostProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
@@ -374,29 +372,22 @@ public final class BatchScheduler implements Scheduler {
    * @param taskId the metric collected task ID.
    * @return the edge to optimize.
    */
-  private IREdge getEdgeToOptimize(final String taskId) {
+  private StageEdge getEdgeToOptimize(final String taskId) {
     // Get a stage including the given task
-    final PhysicalPlan plan = planStateManager.getPhysicalPlan();
-    final Stage stagePutOnHold = plan.getStageDAG().getVertices().stream()
-        .filter(stage -> stage.getId().equals(RuntimeIdManager.getStageIdFromTaskId(taskId)))
-        .findFirst()
-        .orElseThrow(() -> new RuntimeException("No edge to optimize."));
+    final Stage stagePutOnHold = planStateManager.getPhysicalPlan().getStageDAG().getVertices().stream()
+      .filter(stage -> stage.getId().equals(RuntimeIdManager.getStageIdFromTaskId(taskId)))
+      .findFirst()
+      .orElseThrow(() -> new RuntimeException());
 
     // Get outgoing edges of that stage with MetricCollectionProperty
-    List<StageEdge> stageEdges = plan.getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
-    IREdge targetEdge = null;
+    List<StageEdge> stageEdges = planStateManager.getPhysicalPlan().getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
     for (StageEdge edge : stageEdges) {
-      final IRVertex srcIRVertex = edge.getSrcIRVertex();
-      final IRVertex dstIRVertex = edge.getDstIRVertex();
-      targetEdge = plan.getIrDAG().getEdgeBetween(srcIRVertex.getId(), dstIRVertex.getId());
-      if (MetricCollectionProperty.Value.DataSkewRuntimePass
-          .equals(targetEdge.getPropertyValue(MetricCollectionProperty.class)
-              .orElseThrow(() -> new RuntimeException("No metric collection property on the target edge.")))) {
-        break;
+      if (edge.getExecutionProperties().containsKey(MetricCollectionProperty.class)) {
+        return edge;
       }
     }
 
-    return targetEdge;
+    return null;
   }
 
   /**
@@ -417,7 +408,7 @@ public final class BatchScheduler implements Scheduler {
     final boolean stageComplete =
         planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
 
-    final IREdge targetEdge = getEdgeToOptimize(taskId);
+    final StageEdge targetEdge = getEdgeToOptimize(taskId);
     if (targetEdge == null) {
       throw new RuntimeException("No edges specified for data skew optimization");
     }
@@ -513,6 +504,7 @@ public final class BatchScheduler implements Scheduler {
 
   /**
    * Update the data for dynamic optimization.
+   *
    * @param dynOptData the data to update.
    */
   public void updateDynOptData(final Object dynOptData) {

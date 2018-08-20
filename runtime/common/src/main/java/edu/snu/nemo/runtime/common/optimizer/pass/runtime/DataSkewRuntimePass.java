@@ -16,18 +16,17 @@
 package edu.snu.nemo.runtime.common.optimizer.pass.runtime;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.common.DataSkewMetricFactory;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
 
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.KeyRange;
 import edu.snu.nemo.common.HashRange;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEventHandler;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.Stage;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +39,7 @@ import java.util.stream.Collectors;
  * this RuntimePass identifies a number of keys with big partition sizes(skewed key)
  * and evenly redistributes data via overwriting incoming edges of destination tasks.
  */
-public final class DataSkewRuntimePass extends RuntimePass<Pair<IREdge, Map<Integer, Long>>> {
+public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<Integer, Long>>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
   // Skewed keys denote for top n keys in terms of partition size.
@@ -71,10 +70,9 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<IREdge, Map<Inte
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> irDAG,
-                                     final Pair<IREdge, Map<Integer, Long>> metricData) {
-    // get edges to optimize
-    final IREdge targetEdge = metricData.left();
+  public PhysicalPlan apply(final PhysicalPlan originalPlan,
+                            final Pair<StageEdge, Map<Integer, Long>> metricData) {
+    final StageEdge targetEdge = metricData.left();
     // Get number of evaluators of the next stage (number of blocks).
     final Integer dstParallelism = targetEdge.getDst().getPropertyValue(ParallelismProperty.class).
         orElseThrow(() -> new RuntimeException("No parallelism on a vertex"));
@@ -85,9 +83,19 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<IREdge, Map<Inte
     for (int i = 0; i < dstParallelism; i++) {
       taskIdxToKeyRange.put(i, keyRanges.get(i));
     }
+
     // Overwrite the previously assigned key range in the physical DAG with the new range.
-    targetEdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(taskIdxToKeyRange)));
-    return irDAG;
+    final DAG<Stage, StageEdge> stageDAG = originalPlan.getStageDAG();
+    for (Stage stage : stageDAG.getVertices()) {
+      List<StageEdge> stageEdges = stageDAG.getOutgoingEdgesOf(stage);
+      for (StageEdge edge : stageEdges) {
+        if (edge.equals(targetEdge)) {
+          edge.setTaskIdxToKeyRange(taskIdxToKeyRange);
+        }
+      }
+    }
+
+    return new PhysicalPlan(originalPlan.getPlanId(), stageDAG);
   }
 
   public List<Integer> identifySkewedKeys(final Map<Integer, Long> keyValToPartitionSizeMap) {

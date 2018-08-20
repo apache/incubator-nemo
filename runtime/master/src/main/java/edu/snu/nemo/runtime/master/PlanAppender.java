@@ -122,6 +122,6 @@ public final class PlanAppender {
       }
     });
 
-    return new PhysicalPlan(originalPlan.getPlanId(), null, physicalDAGBuilder.build()); // TODO #XX: merge.
+    return new PhysicalPlan(originalPlan.getPlanId(), physicalDAGBuilder.build());
   }
 }
