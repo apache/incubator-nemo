@@ -92,6 +92,7 @@ limitations under the License.
         <el-row class="dialog-row">
           <el-input
             clearable
+            @keyup.enter.native="handleWebSocketAdd"
             placeholder="WebSocket endpoint"
             v-model="wsEndpointInput"/>
         </el-row>
