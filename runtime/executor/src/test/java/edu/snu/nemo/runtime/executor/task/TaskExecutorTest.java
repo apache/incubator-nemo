@@ -30,7 +30,7 @@ import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.Task;
@@ -70,12 +70,15 @@ import static org.mockito.Mockito.*;
 @PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class,
     TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class})
 public final class TaskExecutorTest {
+  private static final AtomicInteger RUNTIME_EDGE_ID = new AtomicInteger(0);
   private static final int DATA_SIZE = 100;
   private static final ExecutionPropertyMap<VertexExecutionProperty> TASK_EXECUTION_PROPERTY_MAP
       = new ExecutionPropertyMap<>("TASK_EXECUTION_PROPERTY_MAP");
   private static final int SOURCE_PARALLELISM = 5;
+  private static final int FIRST_ATTEMPT = 0;
+
   private List<Integer> elements;
-  private Map<String, List> vertexIdToOutputData;
+  private Map<String, List> runtimeEdgeToOutputData;
   private DataTransferFactory dataTransferFactory;
   private TaskStateManager taskStateManager;
   private MetricMessageSender metricMessageSender;
@@ -83,8 +86,8 @@ public final class TaskExecutorTest {
   private AtomicInteger stageId;
 
   private String generateTaskId() {
-    return RuntimeIdGenerator.generateTaskId(0,
-        RuntimeIdGenerator.generateStageId(stageId.getAndIncrement()));
+    return RuntimeIdManager.generateTaskId(
+        RuntimeIdManager.generateStageId(stageId.getAndIncrement()), 0, FIRST_ATTEMPT);
   }
 
   @Before
@@ -96,10 +99,10 @@ public final class TaskExecutorTest {
     taskStateManager = mock(TaskStateManager.class);
 
     // Mock a DataTransferFactory.
-    vertexIdToOutputData = new HashMap<>();
+    runtimeEdgeToOutputData = new HashMap<>();
     dataTransferFactory = mock(DataTransferFactory.class);
     when(dataTransferFactory.createReader(anyInt(), any(), any())).then(new ParentTaskReaderAnswer());
-    when(dataTransferFactory.createWriter(any(), anyInt(), any(), any())).then(new ChildTaskWriterAnswer());
+    when(dataTransferFactory.createWriter(any(), any(), any())).then(new ChildTaskWriterAnswer());
 
     // Mock a MetricMessageSender.
     metricMessageSender = mock(MetricMessageSender.class);
@@ -140,15 +143,15 @@ public final class TaskExecutorTest {
             .addVertex(sourceIRVertex)
             .buildWithoutSourceSinkCheck();
 
+    final StageEdge taskOutEdge = mockStageEdgeFrom(sourceIRVertex);
     final Task task =
         new Task(
             "testSourceVertexDataFetching",
             generateTaskId(),
-            0,
             TASK_EXECUTION_PROPERTY_MAP,
             new byte[0],
             Collections.emptyList(),
-            Collections.singletonList(mockStageEdgeFrom(sourceIRVertex)),
+            Collections.singletonList(taskOutEdge),
             vertexIdToReadable);
 
     // Execute the task.
@@ -157,7 +160,7 @@ public final class TaskExecutorTest {
     taskExecutor.execute();
 
     // Check the output.
-    assertTrue(checkEqualElements(elements, vertexIdToOutputData.get(sourceIRVertex.getId())));
+    assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
   }
 
   /**
@@ -171,14 +174,14 @@ public final class TaskExecutorTest {
         .addVertex(vertex)
         .buildWithoutSourceSinkCheck();
 
+    final StageEdge taskOutEdge = mockStageEdgeFrom(vertex);
     final Task task = new Task(
         "testSourceVertexDataFetching",
         generateTaskId(),
-        0,
         TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
         Collections.singletonList(mockStageEdgeTo(vertex)),
-        Collections.singletonList(mockStageEdgeFrom(vertex)),
+        Collections.singletonList(taskOutEdge),
         Collections.emptyMap());
 
     // Execute the task.
@@ -187,7 +190,7 @@ public final class TaskExecutorTest {
     taskExecutor.execute();
 
     // Check the output.
-    assertTrue(checkEqualElements(elements, vertexIdToOutputData.get(vertex.getId())));
+    assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
   }
 
   /**
@@ -209,14 +212,14 @@ public final class TaskExecutorTest {
         .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, false))
         .buildWithoutSourceSinkCheck();
 
+    final StageEdge taskOutEdge = mockStageEdgeFrom(operatorIRVertex2);
     final Task task = new Task(
         "testSourceVertexDataFetching",
         generateTaskId(),
-        0,
         TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
         Collections.singletonList(mockStageEdgeTo(operatorIRVertex1)),
-        Collections.singletonList(mockStageEdgeFrom(operatorIRVertex2)),
+        Collections.singletonList(taskOutEdge),
         Collections.emptyMap());
 
     // Execute the task.
@@ -225,7 +228,7 @@ public final class TaskExecutorTest {
     taskExecutor.execute();
 
     // Check the output.
-    assertTrue(checkEqualElements(elements, vertexIdToOutputData.get(operatorIRVertex2.getId())));
+    assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
   }
 
   @Test(timeout=5000)
@@ -241,14 +244,14 @@ public final class TaskExecutorTest {
         .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, true))
         .buildWithoutSourceSinkCheck();
 
+    final StageEdge taskOutEdge = mockStageEdgeFrom(operatorIRVertex2);
     final Task task = new Task(
         "testSourceVertexDataFetching",
         generateTaskId(),
-        0,
         TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
         Arrays.asList(mockStageEdgeTo(operatorIRVertex1), mockStageEdgeTo(operatorIRVertex2)),
-        Collections.singletonList(mockStageEdgeFrom(operatorIRVertex2)),
+        Collections.singletonList(taskOutEdge),
         Collections.emptyMap());
 
     // Execute the task.
@@ -257,7 +260,7 @@ public final class TaskExecutorTest {
     taskExecutor.execute();
 
     // Check the output.
-    final List<Pair<List<Integer>, Integer>> pairs = vertexIdToOutputData.get(operatorIRVertex2.getId());
+    final List<Pair<List<Integer>, Integer>> pairs = runtimeEdgeToOutputData.get(taskOutEdge.getId());
     final List<Integer> values = pairs.stream().map(Pair::right).collect(Collectors.toList());
     assertTrue(checkEqualElements(elements, values));
     assertTrue(pairs.stream().map(Pair::left).allMatch(sideInput -> checkEqualElements(sideInput, values)));
@@ -296,16 +299,17 @@ public final class TaskExecutorTest {
         .connectVertices(edge3)
         .buildWithoutSourceSinkCheck();
 
+    final StageEdge outEdge1 = mockStageEdgeFrom(mainVertex);
+    final StageEdge outEdge2 = mockStageEdgeFrom(bonusVertex1);
+    final StageEdge outEdge3 = mockStageEdgeFrom(bonusVertex2);
+
     final Task task = new Task(
         "testAdditionalOutputs",
         generateTaskId(),
-        0,
         TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
         Collections.singletonList(mockStageEdgeTo(routerVertex)),
-        Arrays.asList(mockStageEdgeFrom(mainVertex),
-            mockStageEdgeFrom(bonusVertex1),
-            mockStageEdgeFrom(bonusVertex2)),
+        Arrays.asList(outEdge1, outEdge2, outEdge3),
         Collections.emptyMap());
 
     // Execute the task.
@@ -314,9 +318,9 @@ public final class TaskExecutorTest {
     taskExecutor.execute();
 
     // Check the output.
-    final List<Integer> mainOutputs = vertexIdToOutputData.get(mainVertex.getId());
-    final List<Integer> bonusOutputs1 = vertexIdToOutputData.get(bonusVertex1.getId());
-    final List<Integer> bonusOutputs2 = vertexIdToOutputData.get(bonusVertex1.getId());
+    final List<Integer> mainOutputs = runtimeEdgeToOutputData.get(outEdge1.getId());
+    final List<Integer> bonusOutputs1 = runtimeEdgeToOutputData.get(outEdge2.getId());
+    final List<Integer> bonusOutputs2 = runtimeEdgeToOutputData.get(outEdge3.getId());
     List<Integer> even = elements.stream().filter(i -> i % 2 == 0).collect(Collectors.toList());
     List<Integer> odd = elements.stream().filter(i -> i % 2 != 0).collect(Collectors.toList());
     assertTrue(checkEqualElements(even, mainOutputs));
@@ -345,7 +349,7 @@ public final class TaskExecutorTest {
   }
 
   private StageEdge mockStageEdgeFrom(final IRVertex irVertex) {
-    return new StageEdge("runtime incoming edge id",
+    return new StageEdge("SEdge" + RUNTIME_EDGE_ID.getAndIncrement(),
         ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne),
         irVertex,
         new OperatorVertex(new RelayTransform()),
@@ -394,15 +398,15 @@ public final class TaskExecutorTest {
     @Override
     public OutputWriter answer(final InvocationOnMock invocationOnMock) throws Throwable {
       final Object[] args = invocationOnMock.getArguments();
-      final IRVertex vertex = (IRVertex) args[0];
+      final RuntimeEdge runtimeEdge = (RuntimeEdge) args[2];
       final OutputWriter outputWriter = mock(OutputWriter.class);
       doAnswer(new Answer() {
         @Override
         public Object answer(final InvocationOnMock invocationOnMock) throws Throwable {
           final Object[] args = invocationOnMock.getArguments();
           final Object dataToWrite = args[0];
-          vertexIdToOutputData.computeIfAbsent(vertex.getId(), emptyTaskId -> new ArrayList<>());
-          vertexIdToOutputData.get(vertex.getId()).add(dataToWrite);
+          runtimeEdgeToOutputData.computeIfAbsent(runtimeEdge.getId(), emptyTaskId -> new ArrayList<>());
+          runtimeEdgeToOutputData.get(runtimeEdge.getId()).add(dataToWrite);
           return null;
         }
       }).when(outputWriter).write(any());

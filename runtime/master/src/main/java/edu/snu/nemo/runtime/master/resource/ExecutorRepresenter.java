@@ -17,7 +17,7 @@ package edu.snu.nemo.runtime.master.resource;
 
 import com.google.protobuf.ByteString;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageSender;
@@ -110,7 +110,7 @@ public final class ExecutorRepresenter {
       final byte[] serialized = SerializationUtils.serialize(task);
       sendControlMessage(
           ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdGenerator.generateMessageId())
+              .setId(RuntimeIdManager.generateMessageId())
               .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
               .setType(ControlMessage.MessageType.ScheduleTask)
               .setScheduleTaskMsg(

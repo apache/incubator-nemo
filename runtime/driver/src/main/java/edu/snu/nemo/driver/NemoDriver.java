@@ -18,7 +18,7 @@ package edu.snu.nemo.driver;
 import edu.snu.nemo.common.ir.IdManager;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
 import edu.snu.nemo.runtime.master.ClientRPC;
@@ -146,7 +146,7 @@ public final class NemoDriver {
   public final class AllocatedEvaluatorHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      final String executorId = RuntimeIdGenerator.generateExecutorId();
+      final String executorId = RuntimeIdManager.generateExecutorId();
       runtimeMaster.onContainerAllocated(executorId, allocatedEvaluator,
           getExecutorConfiguration(executorId));
     }

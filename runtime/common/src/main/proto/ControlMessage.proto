@@ -126,7 +126,7 @@ message PartitionSizeEntry {
 
 message RequestBlockLocationMsg {
     required string executorId = 1;
-    required string blockId = 2;
+    required string blockIdWildcard = 2;
 }
 
 message ExecutorFailedMsg {

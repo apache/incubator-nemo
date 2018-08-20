@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.runtime.executor.data.stores;
 
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 
@@ -41,7 +41,7 @@ public abstract class AbstractBlockStore implements BlockStore {
    * @return the coder.
    */
   protected final Serializer getSerializerFromWorker(final String blockId) {
-    final String runtimeEdgeId = RuntimeIdGenerator.getRuntimeEdgeIdFromBlockId(blockId);
+    final String runtimeEdgeId = RuntimeIdManager.getRuntimeEdgeIdFromBlockId(blockId);
     return serializerManager.getSerializer(runtimeEdgeId);
   }
 }

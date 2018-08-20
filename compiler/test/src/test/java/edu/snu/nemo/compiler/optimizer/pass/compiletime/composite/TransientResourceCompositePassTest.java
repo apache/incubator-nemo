@@ -53,37 +53,37 @@ public class TransientResourceCompositePassTest {
     final IRVertex vertex1 = processedDAG.getTopologicalSort().get(0);
     assertEquals(ResourcePriorityProperty.TRANSIENT, vertex1.getPropertyValue(ResourcePriorityProperty.class).get());
 
-    final IRVertex vertex5 = processedDAG.getTopologicalSort().get(1);
-    assertEquals(ResourcePriorityProperty.TRANSIENT, vertex5.getPropertyValue(ResourcePriorityProperty.class).get());
-    processedDAG.getIncomingEdgesOf(vertex5).forEach(irEdge -> {
+    final IRVertex vertex2 = processedDAG.getTopologicalSort().get(11);
+    assertEquals(ResourcePriorityProperty.TRANSIENT, vertex2.getPropertyValue(ResourcePriorityProperty.class).get());
+    processedDAG.getIncomingEdgesOf(vertex2).forEach(irEdge -> {
       assertEquals(DataStoreProperty.Value.MemoryStore, irEdge.getPropertyValue(DataStoreProperty.class).get());
       assertEquals(DataFlowProperty.Value.Pull, irEdge.getPropertyValue(DataFlowProperty.class).get());
     });
 
-    final IRVertex vertex6 = processedDAG.getTopologicalSort().get(2);
-    assertEquals(ResourcePriorityProperty.RESERVED, vertex6.getPropertyValue(ResourcePriorityProperty.class).get());
-    processedDAG.getIncomingEdgesOf(vertex6).forEach(irEdge -> {
+    final IRVertex vertex5 = processedDAG.getTopologicalSort().get(14);
+    assertEquals(ResourcePriorityProperty.RESERVED, vertex5.getPropertyValue(ResourcePriorityProperty.class).get());
+    processedDAG.getIncomingEdgesOf(vertex5).forEach(irEdge -> {
       assertEquals(DataStoreProperty.Value.LocalFileStore, irEdge.getPropertyValue(DataStoreProperty.class).get());
       assertEquals(DataFlowProperty.Value.Push, irEdge.getPropertyValue(DataFlowProperty.class).get());
     });
 
-    final IRVertex vertex4 = processedDAG.getTopologicalSort().get(6);
-    assertEquals(ResourcePriorityProperty.RESERVED, vertex4.getPropertyValue(ResourcePriorityProperty.class).get());
-    processedDAG.getIncomingEdgesOf(vertex4).forEach(irEdge -> {
+    final IRVertex vertex11 = processedDAG.getTopologicalSort().get(5);
+    assertEquals(ResourcePriorityProperty.RESERVED, vertex11.getPropertyValue(ResourcePriorityProperty.class).get());
+    processedDAG.getIncomingEdgesOf(vertex11).forEach(irEdge -> {
       assertEquals(DataStoreProperty.Value.MemoryStore, irEdge.getPropertyValue(DataStoreProperty.class).get());
       assertEquals(DataFlowProperty.Value.Pull, irEdge.getPropertyValue(DataFlowProperty.class).get());
     });
 
-    final IRVertex vertex13 = processedDAG.getTopologicalSort().get(11);
-    assertEquals(ResourcePriorityProperty.TRANSIENT, vertex13.getPropertyValue(ResourcePriorityProperty.class).get());
-    processedDAG.getIncomingEdgesOf(vertex13).forEach(irEdge -> {
+    final IRVertex vertex17 = processedDAG.getTopologicalSort().get(10);
+    assertEquals(ResourcePriorityProperty.TRANSIENT, vertex17.getPropertyValue(ResourcePriorityProperty.class).get());
+    processedDAG.getIncomingEdgesOf(vertex17).forEach(irEdge -> {
       assertEquals(DataStoreProperty.Value.LocalFileStore, irEdge.getPropertyValue(DataStoreProperty.class).get());
       assertEquals(DataFlowProperty.Value.Pull, irEdge.getPropertyValue(DataFlowProperty.class).get());
     });
 
-    final IRVertex vertex15 = processedDAG.getTopologicalSort().get(13);
-    assertEquals(ResourcePriorityProperty.RESERVED, vertex15.getPropertyValue(ResourcePriorityProperty.class).get());
-    processedDAG.getIncomingEdgesOf(vertex15).forEach(irEdge -> {
+    final IRVertex vertex19 = processedDAG.getTopologicalSort().get(17);
+    assertEquals(ResourcePriorityProperty.RESERVED, vertex19.getPropertyValue(ResourcePriorityProperty.class).get());
+    processedDAG.getIncomingEdgesOf(vertex19).forEach(irEdge -> {
       assertEquals(DataStoreProperty.Value.LocalFileStore, irEdge.getPropertyValue(DataStoreProperty.class).get());
       assertEquals(DataFlowProperty.Value.Push, irEdge.getPropertyValue(DataFlowProperty.class).get());
     });
