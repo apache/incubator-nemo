@@ -17,30 +17,56 @@ package edu.snu.nemo.common.ir.vertex.executionproperty;
 
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
+import java.io.Serializable;
+
 /**
  * Specifies cloned execution of a vertex.
  *
  * A major limitations of the current implementation:
  * *ALL* of the clones are always scheduled immediately
  */
-public final class ClonedSchedulingProperty extends VertexExecutionProperty<Integer> {
+public final class ClonedSchedulingProperty extends VertexExecutionProperty<ClonedSchedulingProperty.CloneConf> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private ClonedSchedulingProperty(final Integer value) {
+  private ClonedSchedulingProperty(final CloneConf value) {
     super(value);
   }
 
   /**
    * Static method exposing the constructor.
-   * @param value value of the new execution property.
+   * @param conf value of the new execution property.
    * @return the newly created execution property.
    */
-  public static ClonedSchedulingProperty of(final Integer value) {
-    if (value <= 0) {
-      throw new IllegalStateException(String.valueOf(value));
+  public static ClonedSchedulingProperty of(final CloneConf conf) {
+    if (conf.getFractionToWaitFor() >= 1.0 || conf.getFractionToWaitFor() < 0) {
+      throw new IllegalArgumentException(String.valueOf(conf.getFractionToWaitFor()));
     }
-    return new ClonedSchedulingProperty(value);
+    if (conf.getMedianTimeMultiplier() >= 1.0 || conf.getMedianTimeMultiplier() < 0) {
+      throw new IllegalArgumentException(String.valueOf(conf.getMedianTimeMultiplier()));
+    }
+    return new ClonedSchedulingProperty(conf);
+  }
+
+  public class CloneConf implements Serializable {
+    // Fraction of tasks to wait for completion, before trying to clone.
+    private final float fractionToWaitFor;
+
+    // How many times slower is a task than the median, in order to be cloned.
+    private final float medianTimeMultiplier;
+
+    public CloneConf(final float fractionToWaitFor, final float medianTimeMultiplier) {
+      this.fractionToWaitFor = fractionToWaitFor;
+      this.medianTimeMultiplier = medianTimeMultiplier;
+    }
+
+    public float getFractionToWaitFor() {
+      return fractionToWaitFor;
+    }
+
+    public float getMedianTimeMultiplier(){
+      return medianTimeMultiplier;
+    }
   }
 }
