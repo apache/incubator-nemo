@@ -180,6 +180,9 @@ public final class RuntimeMaster {
   }
 
   public void terminate() {
+    // No need to speculate anymore
+    speculativeExecutionThread.shutdown();
+
     // send metric flush request to all executors
     metricManagerMaster.sendMetricFlushRequest();
     try {
@@ -192,6 +195,7 @@ public final class RuntimeMaster {
       // clean up state...
       Thread.currentThread().interrupt();
     }
+
     runtimeMasterThread.execute(() -> {
       scheduler.terminate();
       try {
