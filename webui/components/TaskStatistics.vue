@@ -49,6 +49,7 @@ export const EXCLUDE_COLUMN = [
   'end',
   'stateTransitionEvents',
   'content',
+  'metricId',
 ];
 
 const NOT_AVAILABLE = -1;
