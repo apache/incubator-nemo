@@ -111,17 +111,23 @@ export default {
       const edges = this.stageGraph.edges();
       const stages = this.stageGraph.nodes();
 
-      const edgeMax = Math.max(...edges
+      const edgesXCoords = edges
         .map(e => this.stageGraph.edge(e))
         .map(edge => edge.points)
         .reduce((acc, curr) => acc.concat(curr))
-        .map(point => point.x));
+        .map(point => point.x)
 
-      const stageMax = Math.max(...stages
+      const stagesXCoordsRight = stages
         .map(node => this.stageGraph.node(node))
-        .map(stage => stage.x + stage.width / 2));
+        .map(stage => stage.x + stage.width / 2)
+      const stagesXCoordsLeft = stages
+        .map(node => this.stageGraph.node(node))
+        .map(stage => stage.x - stage.width / 2)
 
-      return Math.max(edgeMax, stageMax) + EDGE_STROKE_WIDTH * 2;
+      const coordMax = Math.max(...(edgesXCoords.concat(stagesXCoordsRight)));
+      const coordMin = Math.min(...(edgesXCoords.concat(stagesXCoordsLeft)));
+
+      return coordMax - coordMin + EDGE_STROKE_WIDTH * 2;
     },
 
     /**
@@ -134,17 +140,72 @@ export default {
       const edges = this.stageGraph.edges();
       const stages = this.stageGraph.nodes();
 
-      const edgeMax = Math.max(...edges
+      const edgesYCoords = edges
         .map(e => this.stageGraph.edge(e))
         .map(edge => edge.points)
         .reduce((acc, curr) => acc.concat(curr))
-        .map(point => point.y));
+        .map(point => point.y)
 
-      const stageMax = Math.max(...stages
+      const stagesYCoordsBottom = stages
         .map(node => this.stageGraph.node(node))
-        .map(stage => stage.y + stage.height / 2));
+        .map(stage => stage.y + stage.height / 2)
+      const stagesYCoordsTop = stages
+        .map(node => this.stageGraph.node(node))
+        .map(stage => stage.y - stage.height / 2)
+      const coordMax = Math.max(...(edgesYCoords.concat(stagesYCoordsBottom)));
+      const coordMin = Math.min(...(edgesYCoords.concat(stagesYCoordsTop)));
 
-      return Math.max(edgeMax, stageMax) + EDGE_STROKE_WIDTH * 2;
+      return coordMax - coordMin + EDGE_STROKE_WIDTH * 2;
+    },
+
+    /**
+     * x coordinate of DAG viewport origin.
+     */
+    dagOriginX() {
+      if (!this.stageGraph) {
+        return undefined;
+      }
+
+      const edges = this.stageGraph.edges();
+      const stages = this.stageGraph.nodes();
+
+      const edgesXCoords = edges
+        .map(e => this.stageGraph.edge(e))
+        .map(edge => edge.points)
+        .reduce((acc, curr) => acc.concat(curr))
+        .map(point => point.x)
+
+      const stagesXCoordsLeft = stages
+        .map(node => this.stageGraph.node(node))
+        .map(stage => stage.x - stage.width / 2)
+
+      const coordMin = Math.min(...(edgesXCoords.concat(stagesXCoordsLeft)));
+
+      return coordMin - EDGE_STROKE_WIDTH;
+    },
+
+    /**
+     * y coordinate of DAG viewport origin.
+     */
+    dagOriginY() {
+      if (!this.stageGraph) {
+        return undefined;
+      }
+      const edges = this.stageGraph.edges();
+      const stages = this.stageGraph.nodes();
+
+      const edgesYCoords = edges
+        .map(e => this.stageGraph.edge(e))
+        .map(edge => edge.points)
+        .reduce((acc, curr) => acc.concat(curr))
+        .map(point => point.y)
+
+      const stagesYCoordsTop = stages
+        .map(node => this.stageGraph.node(node))
+        .map(stage => stage.y - stage.height / 2)
+      const coordMin = Math.min(...(edgesYCoords.concat(stagesYCoordsTop)));
+
+      return coordMin - EDGE_STROKE_WIDTH;
     },
 
     /**
@@ -388,6 +449,8 @@ export default {
       let heightRatio = this.canvas.height / (this.dagHeight);
       let targetRatio = widthRatio < heightRatio ?
         heightRatio : widthRatio;
+      this.canvas.viewportTransform[4] = -this.dagOriginX * targetRatio;
+      this.canvas.viewportTransform[5] = -this.dagOriginY * targetRatio;
       this.canvas.setZoom(targetRatio);
       this.canvas.renderAll();
     },
