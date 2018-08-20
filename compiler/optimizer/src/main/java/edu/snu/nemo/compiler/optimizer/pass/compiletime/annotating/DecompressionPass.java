@@ -20,19 +20,22 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecompressionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 
 /**
  * A pass for applying decompression algorithm for data flowing between vertices.
  * It always
  */
+@Annotates(CompressionProperty.class)
+@Requires(CompressionProperty.class)
 public final class DecompressionPass extends AnnotatingPass {
 
   /**
    * Constructor.
    */
   public DecompressionPass() {
-    super(CompressionProperty.class);
+    super(DecompressionPass.class);
   }
 
   @Override

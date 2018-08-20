@@ -23,10 +23,11 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceLocalityProperty;
 /**
  * Sets {@link ResourceLocalityProperty}.
  */
+@Annotates(ResourceLocalityProperty.class)
 public final class ResourceLocalityPass extends AnnotatingPass {
 
   public ResourceLocalityPass() {
-    super(ResourceLocalityProperty.class);
+    super(ResourceLocalityPass.class);
   }
 
   @Override

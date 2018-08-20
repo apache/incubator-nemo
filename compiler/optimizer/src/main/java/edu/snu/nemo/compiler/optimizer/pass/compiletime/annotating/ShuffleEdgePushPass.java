@@ -20,20 +20,22 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
  * A pass for tagging shuffle edges different from the default ones.
  * It sets DataFlowModel ExecutionProperty as "push".
  */
+@Annotates(DataFlowProperty.class)
+@Requires(CommunicationPatternProperty.class)
 public final class ShuffleEdgePushPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public ShuffleEdgePushPass() {
-    super(DataFlowProperty.class, Collections.singleton(CommunicationPatternProperty.class));
+    super(ShuffleEdgePushPass.class);
   }
 
   @Override

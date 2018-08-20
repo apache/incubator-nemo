@@ -24,6 +24,7 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 /**
  * Pass for initiating IREdge Decoder ExecutionProperty with default dummy coder.
  */
+@Annotates(DecoderProperty.class)
 public final class DefaultEdgeDecoderPass extends AnnotatingPass {
 
   private static final DecoderProperty DEFAULT_DECODER_PROPERTY =
@@ -33,7 +34,7 @@ public final class DefaultEdgeDecoderPass extends AnnotatingPass {
    * Default constructor.
    */
   public DefaultEdgeDecoderPass() {
-    super(DecoderProperty.class);
+    super(DefaultEdgeDecoderPass.class);
   }
 
   @Override
