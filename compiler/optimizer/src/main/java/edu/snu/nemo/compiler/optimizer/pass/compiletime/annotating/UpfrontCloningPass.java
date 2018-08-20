@@ -38,7 +38,8 @@ public final class UpfrontCloningPass extends AnnotatingPass {
     dag.getVertices().stream()
         .filter(vertex -> dag.getIncomingEdgesOf(vertex.getId())
           .stream()
-          // shuffle receivers (for now... as particular Beam sink operators fail when cloned)
+          // TODO #198: Handle Un-cloneable Beam Sink Operators
+          // only shuffle receivers (for now... as particular Beam sink operators fail when cloned)
           .anyMatch(edge -> edge.getPropertyValue(CommunicationPatternProperty.class).get()
             .equals(CommunicationPatternProperty.Value.Shuffle)))
         .forEach(vertex -> vertex.setProperty(
