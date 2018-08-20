@@ -91,6 +91,7 @@ public final class RuntimeMaster {
   private CountDownLatch metricCountDownLatch;
   // REST API server for web metric visualization ui.
   private final Server metricServer;
+  private final MetricStore metricStore;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
@@ -119,6 +120,7 @@ public final class RuntimeMaster {
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
     this.metricServer = startRestMetricServer();
+    this.metricStore = MetricStore.getStore();
   }
 
   private Server startRestMetricServer() {
