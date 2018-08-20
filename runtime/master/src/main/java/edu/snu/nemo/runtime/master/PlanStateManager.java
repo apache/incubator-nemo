@@ -246,10 +246,18 @@ public final class PlanStateManager {
     // Log not-yet-completed tasks for us humans to track progress
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     final List<List<TaskState>> taskStatesOfThisStage = stageIdToTaskAttemptStates.get(stageId);
+
+
+
     final long numOfCompletedTaskIndicesInThisStage = taskStatesOfThisStage.stream()
-      .map(attempts -> attempts.stream()
-        .map(state -> state.getStateMachine().getCurrentState())
-        .anyMatch(curState -> curState.equals(TaskState.State.COMPLETE))) // only if one of the attempts is good.
+      .map(attempts -> {
+        final List<TaskState.State> states = attempts
+          .stream()
+          .map(state -> (TaskState.State) state.getStateMachine().getCurrentState())
+          .collect(Collectors.toList());
+        return states.stream().allMatch(curState -> curState.equals(TaskState.State.ON_HOLD)) // all of them are ON_HOLD
+          || states.stream().anyMatch(curState -> curState.equals(TaskState.State.COMPLETE)); // one of them is COMPLETE
+      })
       .filter(bool -> bool.equals(true))
       .count();
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
