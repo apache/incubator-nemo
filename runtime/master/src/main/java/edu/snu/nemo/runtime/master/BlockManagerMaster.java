@@ -86,6 +86,7 @@ public final class BlockManagerMaster {
 
   /**
    * Initializes the states of a block which will be produced by a producer task.
+   * This method is idempotent thanks to the 'Set' data structures.
    *
    * @param blockId        the id of the block to initialize.
    * @param producerTaskId the id of the producer task.

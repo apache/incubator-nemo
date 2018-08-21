@@ -119,7 +119,13 @@ public final class LocalitySchedulingConstraint implements SchedulingConstraint 
     } else {
       // Non-source task.
       final List<String> intermediateLocations = getIntermediateDataLocations(task);
-      return intermediateLocations.contains(executor.getExecutorId());
+      if (intermediateLocations.isEmpty()) {
+        // Since there is no known location, we just schedule the task to any executor.
+        return true;
+      } else {
+        // There is a know location(s), so we schedule to it(them).
+        return intermediateLocations.contains(executor.getExecutorId());
+      }
     }
   }
 }
