@@ -107,14 +107,19 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
     }));
 
     edgeGroupToIrEdge.forEach((id, edges) -> {
-      final StageEdge representativeEdge = edges.get(0);
-      final DuplicateEdgeGroupPropertyValue representativeProperty =
-          representativeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class).get();
+      final StageEdge firstEdge = edges.get(0);
+      final DuplicateEdgeGroupPropertyValue firstDuplicateEdgeValue =
+          firstEdge.getPropertyValue(DuplicateEdgeGroupProperty.class).get();
+
       edges.forEach(e -> {
         final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
             e.getPropertyValue(DuplicateEdgeGroupProperty.class).get();
-        duplicateEdgeGroupProperty.setRepresentativeEdgeId(representativeEdge.getId());
-        duplicateEdgeGroupProperty.setGroupSize(representativeProperty.getGroupSize());
+        if (firstDuplicateEdgeValue.isRepresentativeEdgeDecided()) {
+          duplicateEdgeGroupProperty.setRepresentativeEdgeId(firstDuplicateEdgeValue.getRepresentativeEdgeId());
+        } else {
+          duplicateEdgeGroupProperty.setRepresentativeEdgeId(firstEdge.getId());
+        }
+        duplicateEdgeGroupProperty.setGroupSize(edges.size());
       });
     });
   }

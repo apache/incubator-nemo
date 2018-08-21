@@ -40,6 +40,7 @@ public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String>
   public SparkTextFileBoundedSourceVertex(final SparkContext sparkContext,
                                           final String inputPath,
                                           final int numPartitions) {
+    super();
     this.readables = new ArrayList<>();
     final Partition[] partitions = sparkContext.textFile(inputPath, numPartitions).getPartitions();
     for (int i = 0; i < partitions.length; i++) {
@@ -55,17 +56,17 @@ public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String>
   /**
    * Constructor for cloning.
    *
-   * @param readables the list of Readables to set.
+   * @param that the source object for copying
    */
-  private SparkTextFileBoundedSourceVertex(final List<Readable<String>> readables) {
-    this.readables = readables;
+  private SparkTextFileBoundedSourceVertex(final SparkTextFileBoundedSourceVertex that) {
+    super(that);
+    this.readables = new ArrayList<>();
+    that.readables.forEach(this.readables::add);
   }
 
   @Override
   public SparkTextFileBoundedSourceVertex getClone() {
-    final SparkTextFileBoundedSourceVertex that = new SparkTextFileBoundedSourceVertex(this.readables);
-    this.copyExecutionPropertiesTo(that);
-    return that;
+    return new SparkTextFileBoundedSourceVertex(this);
   }
 
   @Override

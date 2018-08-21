@@ -24,11 +24,10 @@ import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternPropert
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.apache.commons.lang3.mutable.MutableInt;
 
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * A pass for assigning each stages in schedule groups.
@@ -49,6 +48,8 @@ import java.util.stream.Stream;
  *   </li>
  * </ul>
  */
+@Annotates(ScheduleGroupProperty.class)
+@Requires({CommunicationPatternProperty.class, DataFlowProperty.class})
 public final class DefaultScheduleGroupPass extends AnnotatingPass {
 
   private final boolean allowBroadcastWithinScheduleGroup;
@@ -71,10 +72,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
   public DefaultScheduleGroupPass(final boolean allowBroadcastWithinScheduleGroup,
                                   final boolean allowShuffleWithinScheduleGroup,
                                   final boolean allowMultipleInEdgesWithinScheduleGroup) {
-    super(ScheduleGroupProperty.class, Stream.of(
-        CommunicationPatternProperty.class,
-        DataFlowProperty.class
-    ).collect(Collectors.toSet()));
+    super(DefaultScheduleGroupPass.class);
     this.allowBroadcastWithinScheduleGroup = allowBroadcastWithinScheduleGroup;
     this.allowShuffleWithinScheduleGroup = allowShuffleWithinScheduleGroup;
     this.allowMultipleInEdgesWithinScheduleGroup = allowMultipleInEdgesWithinScheduleGroup;

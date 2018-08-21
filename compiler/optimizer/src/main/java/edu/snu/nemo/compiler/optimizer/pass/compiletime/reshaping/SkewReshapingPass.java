@@ -20,9 +20,15 @@ import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.*;
+import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.MetricCollectionVertex;
+import edu.snu.nemo.common.ir.vertex.OperatorVertex;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -33,12 +39,13 @@ import java.util.List;
  * a snapshot at the end of the pass. This could be prevented by modifying other passes to take the snapshot of the
  * DAG at the end of each passes for metricCollectionVertices.
  */
+@Requires(CommunicationPatternProperty.class)
 public final class SkewReshapingPass extends ReshapingPass {
   /**
    * Default constructor.
    */
   public SkewReshapingPass() {
-    super(Collections.singleton(CommunicationPatternProperty.class));
+    super(SkewReshapingPass.class);
   }
 
   @Override
@@ -64,14 +71,14 @@ public final class SkewReshapingPass extends ReshapingPass {
           if (CommunicationPatternProperty.Value.Shuffle
                 .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
             // We then insert the dynamicOptimizationVertex between the vertex and incoming vertices.
-            final IREdge edgeToMetricCollectionV = generateEdgeToMCV(edge, metricCollectionVertex);
-            final IREdge edgeToAggregationBarrierV = generateEdgeToAGV(edge, metricCollectionVertex, aggregationBarrierVertex)
+            final IREdge edgeToMCV = generateEdgeToMCV(edge, metricCollectionVertex);
+            final IREdge edgeToABV = generateEdgeToAGV(edge, metricCollectionVertex, aggregationBarrierVertex);
             final IREdge edgeToOriginalV = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
                 aggregationBarrierVertex, v, edge.isSideInput());
-
             edge.copyExecutionPropertiesTo(edgeToOriginalV);
-            builder.connectVertices(edgeToMetricCollectionV);
-            builder.connectVertices(edgeToAggregationBarrierV);
+
+            builder.connectVertices(edgeToMCV);
+            builder.connectVertices(edgeToABV);
             builder.connectVertices(edgeToOriginalV);
           } else {
             builder.connectVertices(edge);

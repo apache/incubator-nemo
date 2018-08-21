@@ -28,12 +28,13 @@ import java.util.List;
  * Pass to annotate the DAG for a job to perform data skew.
  * It specifies which optimization to perform on the AggregationBarrierVertex.
  */
+@Annotates(DynamicOptimizationProperty.class)
 public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public SkewResourceSkewedDataPass() {
-    super(DynamicOptimizationProperty.class);
+    super(SkewResourceSkewedDataPass.class);
   }
 
   private boolean hasAggregationBarrierVertexAsParent(final DAG<IRVertex, IREdge> dag,

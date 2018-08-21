@@ -76,9 +76,10 @@ public final class TaskExecutor {
 
   /**
    * Constructor.
-   * @param task Task with information needed during execution.
-   * @param irVertexDag A DAG of vertices.
-   * @param taskStateManager State manager for this Task.
+   *
+   * @param task                Task with information needed during execution.
+   * @param irVertexDag         A DAG of vertices.
+   * @param taskStateManager    State manager for this Task.
    * @param dataTransferFactory For reading from/writing to data to other tasks.
    * @param metricMessageSender For sending metric with execution stats to Master.
    */
@@ -112,21 +113,21 @@ public final class TaskExecutor {
   /**
    * Converts the DAG of vertices into pointer-based DAG of vertex harnesses.
    * This conversion is necessary for constructing concrete data channels for each vertex's inputs and outputs.
-   *
+   * <p>
    * - Source vertex read: Explicitly handled (SourceVertexDataFetcher)
    * - Sink vertex write: Implicitly handled within the vertex
-   *
+   * <p>
    * - Parent-task read: Explicitly handled (ParentTaskDataFetcher)
    * - Children-task write: Explicitly handled (VertexHarness)
-   *
+   * <p>
    * - Intra-task read: Implicitly handled when performing Intra-task writes
    * - Intra-task write: Explicitly handled (VertexHarness)
-
+   * <p>
    * For element-wise data processing, we traverse vertex harnesses from the roots to the leaves for each element.
    * This means that overheads associated with jumping from one harness to the other should be minimal.
    * For example, we should never perform an expensive hash operation to traverse the harnesses.
    *
-   * @param task task.
+   * @param task        task.
    * @param irVertexDag dag.
    * @return fetchers and harnesses.
    */
@@ -189,10 +190,9 @@ public final class TaskExecutor {
       }
       final List<InputReader> parentTaskReaders =
           getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
-      parentTaskReaders.forEach(parentTaskReader -> {
+      parentTaskReaders.forEach(parentTaskReader ->
         dataFetcherList.add(new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
-            vertexHarness, isToSideInput)); // Parent-task read
-      });
+            vertexHarness, isToSideInput))); // Parent-task read
     });
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
@@ -205,8 +205,9 @@ public final class TaskExecutor {
 
   /**
    * Recursively process a data element down the DAG dependency.
+   *
    * @param vertexHarness VertexHarness of a vertex to execute.
-   * @param dataElement input data element to process.
+   * @param dataElement   input data element to process.
    */
   private void processElementRecursively(final VertexHarness vertexHarness, final Object dataElement) {
     final IRVertex irVertex = vertexHarness.getIRVertex();
@@ -340,11 +341,9 @@ public final class TaskExecutor {
 
   private void handleMainOutputElement(final VertexHarness harness, final Object element) {
     // writes to children tasks
-    harness.getWritersToMainChildrenTasks().forEach(outputWriter -> {
-      outputWriter.write(element);
-    });
+    harness.getWritersToMainChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
     // writes to side input children tasks
-    if (harness.getSideInputChildren().size() > 0) {
+    if (!harness.getSideInputChildren().isEmpty()) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
     }
     // process elements in the next vertices within a task
@@ -355,11 +354,9 @@ public final class TaskExecutor {
     // writes to additional children tasks
     harness.getWritersToAdditionalChildrenTasks().entrySet().stream()
         .filter(kv -> kv.getKey().equals(tag))
-        .forEach(kv -> {
-          kv.getValue().write(element);
-        });
+        .forEach(kv -> kv.getValue().write(element));
     // writes to side input children tasks
-    if (harness.getSideInputChildren().size() > 0) {
+    if (!harness.getSideInputChildren().isEmpty()) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
     }
     // process elements in the next vertices within a task
@@ -397,7 +394,7 @@ public final class TaskExecutor {
           // IOException means that this task should be retried.
           taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
               Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
-          LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e.toString());
+          LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
           return false;
         }
 
@@ -494,6 +491,7 @@ public final class TaskExecutor {
 
   /**
    * Return inter-task OutputWriters, for single output or output associated with main tag.
+   *
    * @param irVertex                source irVertex
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
    * @param dataTransferFactory     dataTransferFactory
@@ -515,6 +513,7 @@ public final class TaskExecutor {
 
   /**
    * Return inter-task OutputWriters associated with additional output tags.
+   *
    * @param irVertex                source irVertex
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
    * @param dataTransferFactory     dataTransferFactory
@@ -531,10 +530,9 @@ public final class TaskExecutor {
         .stream()
         .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
         .filter(outEdge -> taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
-        .forEach(outEdgeForThisVertex -> {
+        .forEach(outEdgeForThisVertex ->
           additionalChildrenTaskWriters.put(outEdgeForThisVertex.getDstIRVertex().getId(),
-              dataTransferFactory.createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex));
-        });
+              dataTransferFactory.createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex)));
 
     return additionalChildrenTaskWriters;
   }
@@ -590,6 +588,7 @@ public final class TaskExecutor {
    * Finalize the output write of this vertex.
    * As element-wise output write is done and the block is in memory,
    * flush the block into the designated data store and commit it.
+   *
    * @param vertexHarness harness.
    */
   private void finalizeOutputWriters(final VertexHarness vertexHarness) {

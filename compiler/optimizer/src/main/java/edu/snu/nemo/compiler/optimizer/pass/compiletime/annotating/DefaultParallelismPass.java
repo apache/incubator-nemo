@@ -22,13 +22,15 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
  * Optimization pass for tagging parallelism execution property.
  */
+@Annotates(ParallelismProperty.class)
+@Requires(CommunicationPatternProperty.class)
 public final class DefaultParallelismPass extends AnnotatingPass {
   private final int desiredSourceParallelism;
   // we decrease the number of parallelism by this number on each shuffle boundary.
@@ -49,7 +51,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
    */
   public DefaultParallelismPass(final int desiredSourceParallelism,
                                 final int shuffleDecreaseFactor) {
-    super(ParallelismProperty.class, Collections.singleton(CommunicationPatternProperty.class));
+    super(DefaultParallelismPass.class);
     this.desiredSourceParallelism = desiredSourceParallelism;
     this.shuffleDecreaseFactor = shuffleDecreaseFactor;
   }

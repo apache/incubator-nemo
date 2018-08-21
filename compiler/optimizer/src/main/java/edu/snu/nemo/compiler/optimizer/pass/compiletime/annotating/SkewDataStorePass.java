@@ -26,12 +26,13 @@ import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
  * It specifies the incoming one-to-one edges to MetricCollectionVertices to have either MemoryStore or LocalFileStore
  * as its DataStore ExecutionProperty.
  */
+@Annotates(DataStoreProperty.class)
 public final class SkewDataStorePass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public SkewDataStorePass() {
-    super(DataStoreProperty.class);
+    super(SkewDataStorePass.class);
   }
 
   @Override

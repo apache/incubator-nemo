@@ -24,6 +24,7 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 /**
  * A pass for applying compression algorithm for data flowing between vertices.
  */
+@Annotates(CompressionProperty.class)
 public final class CompressionPass extends AnnotatingPass {
   private final CompressionProperty.Value compression;
 
@@ -31,8 +32,7 @@ public final class CompressionPass extends AnnotatingPass {
    * Default constructor. Uses LZ4 as default.
    */
   public CompressionPass() {
-    super(CompressionProperty.class);
-    this.compression = CompressionProperty.Value.LZ4;
+    this(CompressionProperty.Value.LZ4);
   }
 
   /**
@@ -40,7 +40,7 @@ public final class CompressionPass extends AnnotatingPass {
    * @param compression Compression to apply on edges.
    */
   public CompressionPass(final CompressionProperty.Value compression) {
-    super(CompressionProperty.class);
+    super(CompressionPass.class);
     this.compression = compression;
   }
 

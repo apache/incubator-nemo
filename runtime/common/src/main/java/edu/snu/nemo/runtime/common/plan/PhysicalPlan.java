@@ -33,8 +33,8 @@ public final class PhysicalPlan implements Serializable {
   /**
    * Constructor.
    *
-   * @param id              ID of the plan.
-   * @param stageDAG        the DAG of stages.
+   * @param id       the ID of the plan.
+   * @param stageDAG the DAG of stages.
    */
   public PhysicalPlan(final String id,
                       final DAG<Stage, StageEdge> stageDAG) {
@@ -50,9 +50,9 @@ public final class PhysicalPlan implements Serializable {
   }
 
   /**
-   * @return id of the plan.
+   * @return the ID of the plan.
    */
-  public String getId() {
+  public String getPlanId() {
     return id;
   }
 

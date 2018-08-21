@@ -26,7 +26,7 @@ import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession
 object SparkWordCount {
   def main(args: Array[String]) {
     if (args.length < 1) {
-      System.err.println("Usage: JavaWordCount <input_file> [<output_file>]")
+      System.err.println("Usage: SparkWordCount <input_file> [<output_file>]")
       System.exit(1)
     }
     val spark = SparkSession

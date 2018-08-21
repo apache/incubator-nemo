@@ -18,8 +18,11 @@ package edu.snu.nemo.client;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.PlanState;
 import edu.snu.nemo.runtime.common.state.TaskState;
+import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.common.plan.TestPlanGenerator;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -54,7 +57,10 @@ public class ClientEndpointTest {
     // Create a PlanStateManager of a dag and create a DriverEndpoint with it.
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
-    final PlanStateManager planStateManager = new PlanStateManager(physicalPlan, MAX_SCHEDULE_ATTEMPT);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(MetricMessageHandler.class, mock(MetricMessageHandler.class));
+    final PlanStateManager planStateManager = injector.getInstance(PlanStateManager.class);
+    planStateManager.updatePlan(physicalPlan, MAX_SCHEDULE_ATTEMPT);
 
     final DriverEndpoint driverEndpoint = new DriverEndpoint(planStateManager, clientEndpoint);
 

@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 @ThreadSafe
 public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, Map<IRVertex, Integer>> {
   private final Set<Class<? extends VertexExecutionProperty>> ignoredPropertyKeys = ConcurrentHashMap.newKeySet();
+  private final MutableInt nextStageIndex = new MutableInt(0);
 
   @Inject
   private StagePartitioner() {
@@ -66,7 +67,6 @@ public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, M
    */
   @Override
   public Map<IRVertex, Integer> apply(final DAG<IRVertex, IREdge> irDAG) {
-    final MutableInt nextStageIndex = new MutableInt(0);
     final Map<IRVertex, Integer> vertexToStageIdMap = new HashMap<>();
     irDAG.topologicalDo(irVertex -> {
       // Base case: for root vertices

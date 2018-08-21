@@ -37,8 +37,7 @@ public final class LargeShufflePolicyParallelismFive implements Policy {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory)
-      throws Exception {
+  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory) {
     return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
 
