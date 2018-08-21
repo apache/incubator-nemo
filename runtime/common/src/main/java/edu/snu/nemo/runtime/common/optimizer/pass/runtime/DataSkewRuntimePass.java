@@ -74,7 +74,8 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<I
                             final Pair<StageEdge, Map<Integer, Long>> metricData) {
     final StageEdge targetEdge = metricData.left();
     // Get number of evaluators of the next stage (number of blocks).
-    final Integer dstParallelism = targetEdge.getDst().getPropertyValue(ParallelismProperty.class).get();
+    final Integer dstParallelism = targetEdge.getDst().getPropertyValue(ParallelismProperty.class).
+        orElseThrow(() -> new RuntimeException("No parallelism on a vertex"));
 
     // Calculate keyRanges.
     final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), dstParallelism);
@@ -94,7 +95,7 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<I
       }
     }
 
-    return new PhysicalPlan(originalPlan.getId(), stageDAG);
+    return new PhysicalPlan(originalPlan.getPlanId(), stageDAG);
   }
 
   public List<Integer> identifySkewedKeys(final Map<Integer, Long> keyValToPartitionSizeMap) {

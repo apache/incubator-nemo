@@ -25,10 +25,8 @@ import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlanGenerator;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -44,7 +42,7 @@ public final class NemoBackendTest<I, O> {
   private final IRVertex groupByKey = new OperatorVertex(new EmptyComponents.EmptyTransform("GroupByKey"));
   private final IRVertex combine = new OperatorVertex(new EmptyComponents.EmptyTransform("Combine"));
   private final IRVertex map2 = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements2"));
-  private PhysicalPlanGenerator physicalPlanGenerator;
+  private NemoBackend nemoBackend;
 
   private final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
   private DAG<IRVertex, IREdge> dag;
@@ -62,17 +60,15 @@ public final class NemoBackendTest<I, O> {
 
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
-    this.physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
+    this.nemoBackend = injector.getInstance(NemoBackend.class);
   }
 
   /**
    * This method uses an IR DAG and tests whether NemoBackend successfully generates an Execution Plan.
-   * @throws Exception during the Execution Plan generation.
    */
   @Test
-  public void testExecutionPlanGeneration() throws InjectionException {
-    final NemoBackend backend = Tang.Factory.getTang().newInjector().getInstance(NemoBackend.class);
-    final PhysicalPlan executionPlan = backend.compile(dag, physicalPlanGenerator);
+  public void testExecutionPlanGeneration() {
+    final PhysicalPlan executionPlan = nemoBackend.compile(dag);
 
     assertEquals(2, executionPlan.getStageDAG().getVertices().size());
     assertEquals(2, executionPlan.getStageDAG().getTopologicalSort().get(0).getIRDAG().getVertices().size());

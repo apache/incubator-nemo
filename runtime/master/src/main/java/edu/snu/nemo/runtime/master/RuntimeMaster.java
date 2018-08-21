@@ -16,9 +16,9 @@
 package edu.snu.nemo.runtime.master;
 
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -83,6 +83,7 @@ public final class RuntimeMaster {
   private final MessageEnvironment masterMessageEnvironment;
   private final ClientRPC clientRPC;
   private final MetricManagerMaster metricManagerMaster;
+  private final PlanStateManager planStateManager;
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
   private final String dagDirectory;
@@ -100,6 +101,7 @@ public final class RuntimeMaster {
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
                         final MetricManagerMaster metricManagerMaster,
+                        final PlanStateManager planStateManager,
                         @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
@@ -121,6 +123,7 @@ public final class RuntimeMaster {
     this.objectMapper = new ObjectMapper();
     this.metricServer = startRestMetricServer();
     this.metricStore = MetricStore.getStore();
+    this.planStateManager = planStateManager;
   }
 
   private Server startRestMetricServer() {
@@ -146,8 +149,9 @@ public final class RuntimeMaster {
 
   /**
    * Submits the {@link PhysicalPlan} to Runtime.
+   * At now, we are assuming that a single job submit multiple plans.
    *
-   * @param plan to execute
+   * @param plan               to execute
    * @param maxScheduleAttempt the max number of times this plan/sub-part of the plan should be attempted.
    */
   public Pair<PlanStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
@@ -155,9 +159,8 @@ public final class RuntimeMaster {
     final Callable<Pair<PlanStateManager, ScheduledExecutorService>> planExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
-        final PlanStateManager planStateManager = new PlanStateManager(plan, maxScheduleAttempt);
-        scheduler.schedulePlan(plan, planStateManager);
-        final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(planStateManager);
+        scheduler.schedulePlan(plan, maxScheduleAttempt);
+        final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging();
         return Pair.of(planStateManager, dagLoggingExecutor);
       } catch (Exception e) {
         throw new RuntimeException(e);
@@ -170,6 +173,9 @@ public final class RuntimeMaster {
     }
   }
 
+  /**
+   * Terminates the RuntimeMaster.
+   */
   public void terminate() {
     // send metric flush request to all executors
     metricManagerMaster.sendMetricFlushRequest();
@@ -205,6 +211,11 @@ public final class RuntimeMaster {
     // Do not shutdown runtimeMasterThread. We need it to clean things up.
   }
 
+  /**
+   * Requests a container with resource specification.
+   *
+   * @param resourceSpecificationString the resource specification.
+   */
   public void requestContainer(final String resourceSpecificationString) {
     final Future<?> containerRequestEventResult = runtimeMasterThread.submit(() -> {
       try {
@@ -397,17 +408,16 @@ public final class RuntimeMaster {
 
   /**
    * Schedules a periodic DAG logging thread.
-   * @param planStateManager for the plan the DAG should be logged.
    * TODO #20: RESTful APIs to Access Job State and Metric.
+   *
    * @return the scheduled executor service.
    */
-  private ScheduledExecutorService scheduleDagLogging(final PlanStateManager planStateManager) {
+  private ScheduledExecutorService scheduleDagLogging() {
     final ScheduledExecutorService dagLoggingExecutor = Executors.newSingleThreadScheduledExecutor();
     dagLoggingExecutor.scheduleAtFixedRate(new Runnable() {
-      private int dagLogFileIndex = 0;
 
       public void run() {
-        planStateManager.storeJSON(dagDirectory, String.valueOf(dagLogFileIndex++));
+        planStateManager.storeJSON("periodic");
       }
     }, DAG_LOGGING_PERIOD, DAG_LOGGING_PERIOD, TimeUnit.MILLISECONDS);
 

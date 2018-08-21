@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.master;
 
+import edu.snu.nemo.common.ir.IdManager;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -76,11 +77,12 @@ public final class BlockManagerMasterTest {
 
   /**
    * Test scenario where block becomes committed and then lost.
+   *
    * @throws Exception
    */
   @Test
   public void testLostAfterCommit() throws Exception {
-    final String edgeId = RuntimeIdManager.generateStageEdgeId("Edge0");
+    final String edgeId = IdManager.newEdgeId();
     final int srcTaskIndex = 0;
     final String taskId = RuntimeIdManager.generateTaskId("Stage0", srcTaskIndex, FIRST_ATTEMPT);
     final String executorId = RuntimeIdManager.generateExecutorId();
@@ -108,11 +110,12 @@ public final class BlockManagerMasterTest {
 
   /**
    * Test scenario where producer task fails.
+   *
    * @throws Exception
    */
   @Test
   public void testBeforeAfterCommit() throws Exception {
-    final String edgeId = RuntimeIdManager.generateStageEdgeId("Edge1");
+    final String edgeId = IdManager.newEdgeId();
     final int srcTaskIndex = 0;
 
     // First attempt

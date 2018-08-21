@@ -238,13 +238,20 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     rdd.saveAsTextFile(path);
   }
 
-  /////////////// UNSUPPORTED TRANSFORMATIONS ///////////////
-  //TODO#92: Implement the unimplemented transformations/actions & dataset initialization methods for Spark frontend.
+  /////////////// CACHING ///////////////
+
+  @Override
+  public JavaRDD<T> persist(final StorageLevel newLevel) {
+    return rdd.persist(newLevel).toJavaRDD();
+  }
 
   @Override
   public JavaRDD<T> cache() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
+    return rdd.cache().toJavaRDD();
   }
+
+  /////////////// UNSUPPORTED TRANSFORMATIONS ///////////////
+  //TODO#92: Implement the unimplemented transformations/actions & dataset initialization methods for Spark frontend.
 
   @Override
   public JavaRDD<T> coalesce(final int numPartitions) {
@@ -289,11 +296,6 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   @Override
   public <R> JavaRDD<R> mapPartitionsWithIndex(final Function2<Integer, Iterator<T>, Iterator<R>> f,
                                                final boolean preservesPartitioning) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
-  }
-
-  @Override
-  public JavaRDD<T> persist(final StorageLevel newLevel) {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 

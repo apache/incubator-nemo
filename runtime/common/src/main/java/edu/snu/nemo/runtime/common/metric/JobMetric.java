@@ -35,7 +35,7 @@ public final class JobMetric implements StateMetric<PlanState.State> {
   private JsonNode stageDagJson;
 
   public JobMetric(final PhysicalPlan physicalPlan) {
-    this.id = physicalPlan.getId();
+    this.id = physicalPlan.getPlanId();
   }
 
   public JobMetric(final String id) {

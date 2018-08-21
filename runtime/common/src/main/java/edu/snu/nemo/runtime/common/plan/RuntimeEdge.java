@@ -28,7 +28,7 @@ import java.util.Optional;
  * @param <V> the vertex type.
  */
 public class RuntimeEdge<V extends Vertex> extends Edge<V> {
-  private final ExecutionPropertyMap executionProperties;
+  private final ExecutionPropertyMap<EdgeExecutionProperty> executionProperties;
   private final Boolean isSideInput;
 
   /**
@@ -41,7 +41,7 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
    * @param isSideInput    Whether or not the RuntimeEdge is a side input edge.
    */
   public RuntimeEdge(final String runtimeEdgeId,
-                     final ExecutionPropertyMap executionProperties,
+                     final ExecutionPropertyMap<EdgeExecutionProperty> executionProperties,
                      final V src,
                      final V dst,
                      final Boolean isSideInput) {
@@ -65,7 +65,7 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
   /**
    * @return the ExecutionPropertyMap of the Runtime Edge.
    */
-  public final ExecutionPropertyMap getExecutionProperties() {
+  public final ExecutionPropertyMap<EdgeExecutionProperty> getExecutionProperties() {
     return executionProperties;
   }
 

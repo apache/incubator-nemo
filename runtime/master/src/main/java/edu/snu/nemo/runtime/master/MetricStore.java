@@ -84,7 +84,7 @@ public final class MetricStore {
   /**
    * Fetch metric by its metric class instance and its id.
    * @param metricClass class instance of metric.
-   * @param id metric id, which can be fetched by getId() method.
+   * @param id metric id, which can be fetched by getPlanId() method.
    * @param <T> class of metric
    * @return a metric object.
    */
@@ -114,7 +114,7 @@ public final class MetricStore {
    * Same as getMetricWithId(), but if there is no such metric, it will try to create new metric object
    * using its constructor, which takes an id as a parameter.
    * @param metricClass class of metric.
-   * @param id metric id, which can be fetched by getId() method.
+   * @param id metric id, which can be fetched by getPlanId() method.
    * @param <T> class of metric
    * @return a metric object. If there was no such metric, newly create one.
    */

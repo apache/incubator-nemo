@@ -16,13 +16,16 @@
 package edu.snu.nemo.compiler.frontend.spark.core.rdd
 
 import java.util
+import java.util.UUID
 
 import edu.snu.nemo.client.JobLauncher
 import edu.snu.nemo.common.dag.{DAG, DAGBuilder}
 import edu.snu.nemo.common.ir.edge.IREdge
-import edu.snu.nemo.common.ir.edge.executionproperty.{DecoderProperty, EncoderProperty, KeyExtractorProperty}
+import edu.snu.nemo.common.ir.edge.executionproperty._
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
+import edu.snu.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty
 import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
+import edu.snu.nemo.common.test.EmptyComponents.EmptyTransform
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
 import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
@@ -35,6 +38,7 @@ import org.apache.spark.rdd.{AsyncRDDActions, DoubleRDDFunctions, OrderedRDDFunc
 import org.apache.spark.serializer.Serializer
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{Dependency, Partition, Partitioner, SparkContext, TaskContext}
+import org.slf4j.LoggerFactory
 
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
@@ -45,9 +49,10 @@ import scala.reflect.ClassTag
 final class RDD[T: ClassTag] protected[rdd] (
     protected[rdd] val _sc: SparkContext,
     private val deps: Seq[Dependency[_]],
-    protected[rdd] val dag: DAG[IRVertex, IREdge],
+    protected[rdd] var dag: DAG[IRVertex, IREdge],
     protected[rdd] val lastVertex: IRVertex,
     private val sourceRDD: Option[org.apache.spark.rdd.RDD[T]]) extends org.apache.spark.rdd.RDD[T](_sc, deps) {
+  private val LOG = LoggerFactory.getLogger(classOf[RDD[T]].getName)
 
   protected[rdd] val serializer: Serializer = SparkFrontendUtils.deriveSerializerFrom(_sc)
   private val loopVertexStack = new util.Stack[LoopVertex]
@@ -56,6 +61,7 @@ final class RDD[T: ClassTag] protected[rdd] (
   private val decoderProperty: EdgeExecutionProperty[_ <: Serializable] =
     DecoderProperty.of(new SparkDecoderFactory[T](serializer)).asInstanceOf[EdgeExecutionProperty[_ <: Serializable]]
   private val keyExtractorProperty: KeyExtractorProperty = KeyExtractorProperty.of(new SparkKeyExtractor)
+  private var persistedMarkerVertex: Option[IRVertex] = Option.empty
 
   /**
    * Constructor without dependencies (not needed in Nemo RDD).
@@ -223,6 +229,98 @@ final class RDD[T: ClassTag] protected[rdd] (
     JobLauncher.launchDAG(builder.build)
   }
 
+  /////////////// CACHING ///////////////
+
+  /**
+   * Set this RDD's storage level to persist its values across operations after the first time
+   * it is computed. This can only be used to assign a new storage level if the RDD does not
+   * have a storage level set yet. Local checkpointing is an exception.
+   */
+  override def persist(newLevel: StorageLevel): RDD.this.type = {
+    var actualUseDisk = false
+    var actualUseMemory = false
+    var actualDeserialized = false
+
+    if (!newLevel.isValid) {
+      throw new RuntimeException("Non-valid StorageLevel: " + newLevel.toString())
+    }
+
+    // Modify un-available options to an available option
+    if (newLevel.useDisk && newLevel.useMemory) {
+      actualUseDisk = true
+      actualUseMemory = false
+      // TODO #187: Implement disk and memory persistence (Spill)
+      LOG.warn("Cannot persist data in disk and memory at the same time. The data will be persisted in disk only.")
+    } else {
+      actualUseDisk = newLevel.useDisk
+      actualUseMemory = newLevel.useMemory
+    }
+
+    if (newLevel.useOffHeap) {
+      // TODO #188: Implement off-heap memory persistence
+      LOG.warn("Cannot persist data using off-heap area. The data will be persisted in heap instead of off-heap.")
+    }
+
+    if (newLevel.deserialized && actualUseDisk) {
+      LOG.warn(
+        "Cannot persist data as deserialized form in disk. The data will be persisted in serialized form instead.")
+      actualDeserialized = false
+    } else {
+      actualDeserialized = newLevel.deserialized
+    }
+
+    if (newLevel.replication > 1) {
+      // TODO #189: Implement replication for persisted data
+      LOG.warn("Cannot persist data with replication. The data will not be replicated.")
+    }
+
+    // TODO #190: Disable changing persistence strategy after a RDD is calculated
+    val builder = new DAGBuilder[IRVertex, IREdge](dag)
+    if (persistedMarkerVertex.isDefined) {
+      builder.removeVertex(persistedMarkerVertex.get)
+    }
+
+    val cacheID = UUID.randomUUID()
+    val ghostVertex = new OperatorVertex(new EmptyTransform[T, T]("CacheMarkerTransform-" + cacheID.toString))
+    ghostVertex.setProperty(IgnoreSchedulingTempDataReceiverProperty.of())
+    builder.addVertex(ghostVertex, loopVertexStack)
+
+    val newEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, lastVertex, ghostVertex)
+    // Setup default properties
+    newEdge.setProperty(encoderProperty)
+    newEdge.setProperty(decoderProperty)
+    newEdge.setProperty(keyExtractorProperty)
+    // Setup cache-related properties
+    if (actualUseDisk) {
+      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore))
+    } else if (actualDeserialized) {
+      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore))
+    } else {
+      newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore))
+    }
+    newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep))
+    newEdge.setProperty(CacheIDProperty.of(cacheID))
+    val dupEdgeVal = new DuplicateEdgeGroupPropertyValue("CacheGroup-" + cacheID)
+    dupEdgeVal.setRepresentativeEdgeId(newEdge.getId)
+    newEdge.setProperty(DuplicateEdgeGroupProperty.of(dupEdgeVal))
+    builder.connectVertices(newEdge)
+
+    dag = builder.buildWithoutSourceSinkCheck()
+    persistedMarkerVertex = Option.apply(ghostVertex)
+    this
+  }
+
+  /**
+   * Persist this RDD with the default storage level (`MEMORY_ONLY`).
+   */
+  override def persist(): RDD.this.type = persist(StorageLevel.MEMORY_ONLY)
+
+  /**
+   * Persist this RDD with the default storage level (`MEMORY_ONLY`).
+   */
+  override def cache(): RDD.this.type = persist()
+
+
   /////////////// UNSUPPORTED METHODS ///////////////
   //TODO#92: Implement the unimplemented transformations/actions & dataset initialization methods for Spark frontend.
 
@@ -235,15 +333,6 @@ final class RDD[T: ClassTag] protected[rdd] (
   override def sparkContext: SparkContext = super.sparkContext
 
   override def setName(_name: String): RDD.this.type =
-    throw new UnsupportedOperationException("Operation not yet implemented.")
-
-  override def persist(newLevel: StorageLevel): RDD.this.type =
-    throw new UnsupportedOperationException("Operation not yet implemented.")
-
-  override def persist(): RDD.this.type =
-    throw new UnsupportedOperationException("Operation not yet implemented.")
-
-  override def cache(): RDD.this.type =
     throw new UnsupportedOperationException("Operation not yet implemented.")
 
   override def unpersist(blocking: Boolean): RDD.this.type =
