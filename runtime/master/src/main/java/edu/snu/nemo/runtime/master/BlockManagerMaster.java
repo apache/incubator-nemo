@@ -121,8 +121,6 @@ public final class BlockManagerMaster {
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
-      LOG.info("{} will be lost", getCommittedBlocksByWorker(executorId));
-
       // Set committed block states to lost
       getCommittedBlocksByWorker(executorId).forEach(blockId -> {
         onBlockStateChanged(blockId, BlockState.State.NOT_AVAILABLE, executorId);
@@ -150,9 +148,6 @@ public final class BlockManagerMaster {
     try {
       final Set<BlockMetadata> metadataSet =
         getBlockWildcardStateSet(RuntimeIdManager.getWildCardFromBlockId(blockIdOrWildcard));
-
-      LOG.info("meta set of {} is {}", blockIdOrWildcard, metadataSet);
-
       return metadataSet.stream()
         .filter(metadata -> metadata.getBlockState().equals(state))
         .map(BlockMetadata::getLocationHandler)

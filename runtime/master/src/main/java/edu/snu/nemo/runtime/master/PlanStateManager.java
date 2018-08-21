@@ -307,9 +307,6 @@ public final class PlanStateManager {
     // Log not-yet-completed tasks for us humans to track progress
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     final List<List<TaskState>> taskStatesOfThisStage = stageIdToTaskAttemptStates.get(stageId);
-
-
-
     final long numOfCompletedTaskIndicesInThisStage = taskStatesOfThisStage.stream()
       .map(attempts -> {
         final List<TaskState.State> states = attempts

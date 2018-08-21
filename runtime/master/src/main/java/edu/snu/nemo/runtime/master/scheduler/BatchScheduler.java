@@ -535,7 +535,6 @@ public final class BatchScheduler implements Scheduler {
         // COMPLETE task attempts of the lostParentBlockWildcard must become SHOULD_RETRY
         final String inEdgeId = RuntimeIdManager.getRuntimeEdgeIdFromBlockId(lostParentBlockWildcard);
         final String parentStageId = idToIncomingEdges.get(inEdgeId).getSrc().getId();
-        LOG.info("Parent stage id to retry: {}", parentStageId);
         final int parentTaskIndex = RuntimeIdManager.getTaskIndexFromBlockId(lostParentBlockWildcard);
         return planStateManager.getAllTaskAttemptsOfStage(parentStageId)
           .stream()
