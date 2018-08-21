@@ -1,4 +1,4 @@
-JIRA: [NEMO-##: TITLE](https://issues.apache.org/jira/projects/NEMO/issues/NEMO-##)
+JIRA: [NEMO-###: TITLE](https://issues.apache.org/jira/projects/NEMO/issues/NEMO-###)
 
 **Major changes:**
 - 
@@ -12,4 +12,4 @@ JIRA: [NEMO-##: TITLE](https://issues.apache.org/jira/projects/NEMO/issues/NEMO-
 **Other comments:**
 - 
 
-resolves [NEMO-##](https://issues.apache.org/jira/projects/NEMO/issues/NEMO-##)
+Closes #GITHUB_PR_NUMBER
