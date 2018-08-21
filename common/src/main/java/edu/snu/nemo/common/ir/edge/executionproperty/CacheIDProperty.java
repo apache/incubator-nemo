@@ -20,7 +20,7 @@ import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import java.util.UUID;
 
 /**
- * Cache ID ExecutionProperty.
+ * Cache ID ExecutionProperty. This property is used for identifying the cached data.
  */
 public final class CacheIDProperty extends EdgeExecutionProperty<UUID> {
   /**

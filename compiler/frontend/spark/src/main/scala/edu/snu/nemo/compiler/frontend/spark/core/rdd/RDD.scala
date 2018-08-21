@@ -23,7 +23,7 @@ import edu.snu.nemo.common.dag.{DAG, DAGBuilder}
 import edu.snu.nemo.common.ir.edge.IREdge
 import edu.snu.nemo.common.ir.edge.executionproperty._
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
-import edu.snu.nemo.common.ir.vertex.executionproperty.MarkerProperty
+import edu.snu.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty
 import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
 import edu.snu.nemo.common.test.EmptyComponents.EmptyTransform
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
@@ -282,7 +282,7 @@ final class RDD[T: ClassTag] protected[rdd] (
 
     val cacheID = UUID.randomUUID()
     val ghostVertex = new OperatorVertex(new EmptyTransform[T, T]("CacheMarkerTransform-" + cacheID.toString))
-    ghostVertex.setProperty(MarkerProperty.of())
+    ghostVertex.setProperty(IgnoreSchedulingTempDataReceiverProperty.of())
     builder.addVertex(ghostVertex, loopVertexStack)
 
     val newEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, lastVertex, ghostVertex)

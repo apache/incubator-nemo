@@ -25,7 +25,7 @@ import edu.snu.nemo.common.ir.vertex.CachedSourceVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.CacheIDProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.MarkerProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
 import edu.snu.nemo.conf.JobConf;
@@ -166,7 +166,7 @@ public final class NemoOptimizer implements Optimizer {
   private void addNonCachedVerticesAndEdges(final DAG<IRVertex, IREdge> dag,
                                             final IRVertex irVertex,
                                             final DAGBuilder<IRVertex, IREdge> builder) {
-    if (irVertex.getPropertyValue(MarkerProperty.class).orElse(false)
+    if (irVertex.getPropertyValue(IgnoreSchedulingTempDataReceiverProperty.class).orElse(false)
         && dag.getIncomingEdgesOf(irVertex).stream()
         .filter(irEdge -> irEdge.getPropertyValue(CacheIDProperty.class).isPresent())
         .anyMatch(irEdge -> cacheIdToParallelism

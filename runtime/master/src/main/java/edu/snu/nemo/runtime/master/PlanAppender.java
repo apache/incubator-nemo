@@ -24,7 +24,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.vertex.CachedSourceVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.MarkerProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
 import edu.snu.nemo.runtime.common.exception.PlanAppenderException;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -49,6 +49,7 @@ public final class PlanAppender {
 
   /**
    * Append to plans regarding to caching.
+   * For more information about caching part, check {@link IgnoreSchedulingTempDataReceiverProperty}.
    *
    * @param originalPlan the original plan.
    * @param planToAppend the plan to append.
@@ -62,13 +63,13 @@ public final class PlanAppender {
     // Scan cached data in the original plan.
     final Map<UUID, StageEdge> cachedEdges = new HashMap<>();
     originalPlan.getStageDAG().getVertices().forEach(
-        stage -> originalPlan.getStageDAG().getIncomingEdgesOf(stage).stream()
-            // Cached edge toward a ghost is a representative edge.
-            .filter(stageEdge ->
-              stageEdge.getDstIRVertex().getPropertyValue(MarkerProperty.class).isPresent())
-            .forEach(stageEdge -> stageEdge.getPropertyValue(CacheIDProperty.class)
-                .ifPresent(cacheId -> cachedEdges.put(cacheId, stageEdge))
-            ));
+      stage -> originalPlan.getStageDAG().getIncomingEdgesOf(stage).stream()
+        // Cached edge toward a temporary data receiver is a representative edge.
+        .filter(stageEdge ->
+          stageEdge.getDstIRVertex().getPropertyValue(IgnoreSchedulingTempDataReceiverProperty.class).isPresent())
+        .forEach(stageEdge -> stageEdge.getPropertyValue(CacheIDProperty.class)
+          .ifPresent(cacheId -> cachedEdges.put(cacheId, stageEdge))
+        ));
 
     // Scan CacheID to a pair of cached source vertex and it's stage from the plan to append.
     final Map<UUID, Pair<IRVertex, Stage>> cacheCandidates = new HashMap<>();
@@ -77,27 +78,27 @@ public final class PlanAppender {
       // Add the stage DAG of the plan to append to the builder.
       physicalDAGBuilder.addVertex(stage);
       dagToAppend.getIncomingEdgesOf(stage).
-          forEach(edge -> {
-            physicalDAGBuilder.connectVertices(edge);
-            // Find cached-data requiring stage edges in the submitted plan.
-            if (edge.getSrcIRVertex() instanceof CachedSourceVertex) {
-              final UUID cacheId = edge.getPropertyValue(CacheIDProperty.class)
-                  .orElseThrow(() -> new PlanAppenderException("No cache id in the cached edge " + edge.getId()));
-              cacheCandidates.put(cacheId, Pair.of(edge.getSrcIRVertex(), edge.getSrc()));
-            }
-          });
+        forEach(edge -> {
+          physicalDAGBuilder.connectVertices(edge);
+          // Find cached-data requiring stage edges in the submitted plan.
+          if (edge.getSrcIRVertex() instanceof CachedSourceVertex) {
+            final UUID cacheId = edge.getPropertyValue(CacheIDProperty.class)
+              .orElseThrow(() -> new PlanAppenderException("No cache id in the cached edge " + edge.getId()));
+            cacheCandidates.put(cacheId, Pair.of(edge.getSrcIRVertex(), edge.getSrc()));
+          }
+        });
 
       // Find cached-data requiring ir edges in the submitted plan.
       final DAG<IRVertex, RuntimeEdge<IRVertex>> stageIRDAG = stage.getIRDAG();
       stageIRDAG.getVertices().stream()
-          .filter(irVertex -> irVertex instanceof CachedSourceVertex)
-          .forEach(cachedSourceVertex ->
-              stageIRDAG.getOutgoingEdgesOf(cachedSourceVertex).forEach(runtimeEdge -> {
-                final UUID cacheId = runtimeEdge.getPropertyValue(CacheIDProperty.class)
-                    .orElseThrow(
-                        () -> new PlanAppenderException("No cache id in the cached edge " + runtimeEdge.getId()));
-                cacheCandidates.put(cacheId, Pair.of(runtimeEdge.getSrc(), stage));
-              }));
+        .filter(irVertex -> irVertex instanceof CachedSourceVertex)
+        .forEach(cachedSourceVertex ->
+          stageIRDAG.getOutgoingEdgesOf(cachedSourceVertex).forEach(runtimeEdge -> {
+            final UUID cacheId = runtimeEdge.getPropertyValue(CacheIDProperty.class)
+              .orElseThrow(
+                () -> new PlanAppenderException("No cache id in the cached edge " + runtimeEdge.getId()));
+            cacheCandidates.put(cacheId, Pair.of(runtimeEdge.getSrc(), stage));
+          }));
     });
 
     // Link the cached data and the stages require the data.
@@ -105,16 +106,16 @@ public final class PlanAppender {
       final StageEdge cachedEdge = cachedEdges.get(cacheId);
       if (cachedEdge != null) {
         final StageEdge newEdge = new StageEdge(
-            IdManager.newEdgeId(),
-            cachedEdge.getExecutionProperties(),
-            cachedEdge.getSrcIRVertex(),
-            vertexStagePair.left(),
-            cachedEdge.getSrc(),
-            vertexStagePair.right(),
-            cachedEdge.isSideInput());
+          IdManager.newEdgeId(),
+          cachedEdge.getExecutionProperties(),
+          cachedEdge.getSrcIRVertex(),
+          vertexStagePair.left(),
+          cachedEdge.getSrc(),
+          vertexStagePair.right(),
+          cachedEdge.isSideInput());
         physicalDAGBuilder.connectVertices(newEdge);
         final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupPropertyValue =
-            cachedEdge.getPropertyValue(DuplicateEdgeGroupProperty.class)
+          cachedEdge.getPropertyValue(DuplicateEdgeGroupProperty.class)
             .orElseThrow(() -> new PlanAppenderException("Cached edge does not have duplicated edge group property."));
         duplicateEdgeGroupPropertyValue.setGroupSize(duplicateEdgeGroupPropertyValue.getGroupSize() + 1);
         newEdge.getExecutionProperties().put(DuplicateEdgeGroupProperty.of(duplicateEdgeGroupPropertyValue));

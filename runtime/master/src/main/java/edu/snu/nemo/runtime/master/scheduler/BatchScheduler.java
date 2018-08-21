@@ -20,7 +20,7 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.MarkerProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
@@ -311,7 +311,7 @@ public final class BatchScheduler implements Scheduler {
   }
 
   private List<Task> selectSchedulableTasks(final Stage stageToSchedule) {
-    if (stageToSchedule.getPropertyValue(MarkerProperty.class).orElse(false)) {
+    if (stageToSchedule.getPropertyValue(IgnoreSchedulingTempDataReceiverProperty.class).orElse(false)) {
       // Ignore ghost stage.
       for (final String taskId : planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId())) {
         planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
