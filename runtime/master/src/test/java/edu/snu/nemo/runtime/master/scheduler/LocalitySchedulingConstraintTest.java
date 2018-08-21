@@ -38,11 +38,11 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 /**
- * Test cases for {@link SourceLocationAwareSchedulingConstraint}.
+ * Test cases for {@link LocalitySchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, Task.class, Readable.class, BlockManagerMaster.class})
-public final class SourceLocationAwareSchedulingConstraintTest {
+public final class LocalitySchedulingConstraintTest {
   private Injector injector;
   private static final String SITE_0 = "SEOUL";
   private static final String SITE_1 = "JINJU";
@@ -53,7 +53,7 @@ public final class SourceLocationAwareSchedulingConstraintTest {
     when(executorRepresenter.getNodeName()).thenReturn(executorId);
     return executorRepresenter;
   }
-  
+
   @Before
   public void setUp() throws Exception {
     injector = Tang.Factory.getTang().newInjector();
@@ -61,13 +61,13 @@ public final class SourceLocationAwareSchedulingConstraintTest {
   }
 
   /**
-   * {@link SourceLocationAwareSchedulingConstraint} should fail to schedule a {@link Task} when
+   * {@link LocalitySchedulingConstraint} should fail to schedule a {@link Task} when
    * there are no executors in appropriate location(s).
    */
   @Test
   public void testSourceLocationAwareSchedulingNotAvailable() throws InjectionException {
     final SchedulingConstraint schedulingConstraint = injector
-        .getInstance(SourceLocationAwareSchedulingConstraint.class);
+        .getInstance(LocalitySchedulingConstraint.class);
 
     // Prepare test scenario
     final Task task = CreateTask.withReadablesWithSourceLocations(
@@ -81,13 +81,13 @@ public final class SourceLocationAwareSchedulingConstraintTest {
   }
 
   /**
-   * {@link SourceLocationAwareSchedulingConstraint} should properly schedule {@link Task}s
+   * {@link LocalitySchedulingConstraint} should properly schedule {@link Task}s
    * with multiple source locations.
    */
   @Test
   public void testSourceLocationAwareSchedulingWithMultiSource() throws InjectionException {
     final SchedulingConstraint schedulingConstraint = injector
-        .getInstance(SourceLocationAwareSchedulingConstraint.class);
+        .getInstance(LocalitySchedulingConstraint.class);
     // Prepare test scenario
     final Task task0 = CreateTask.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_1)));

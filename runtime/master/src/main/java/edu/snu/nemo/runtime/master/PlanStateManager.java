@@ -129,6 +129,8 @@ public final class PlanStateManager {
     if (!initialized) {
       // First scheduling.
       this.initialized = true;
+    } else {
+      LOG.info("Update Plan from {} to {}", physicalPlan.getPlanId(), physicalPlanToUpdate.getPlanId());
     }
     this.planState = new PlanState();
     this.metricStore.getOrCreateMetric(JobMetric.class, planId).setStageDAG(physicalPlanToUpdate.getStageDAG());
@@ -136,20 +138,22 @@ public final class PlanStateManager {
     this.physicalPlan = physicalPlanToUpdate;
     this.planId = physicalPlanToUpdate.getPlanId();
     this.maxScheduleAttempt = maxScheduleAttemptToSet;
-    initializeComputationStates();
+    initializeStates();
   }
 
   /**
    * Initializes the states for the plan/stages/tasks for this plan.
+   * TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
    */
-  private void initializeComputationStates() {
+  private void initializeStates() {
     onPlanStateChanged(PlanState.State.EXECUTING);
     physicalPlan.getStageDAG().topologicalDo(stage -> {
       if (!stageIdToState.containsKey(stage.getId())) {
         stageIdToState.put(stage.getId(), new StageState());
         stageIdToTaskAttemptStates.put(stage.getId(), new ArrayList<>(stage.getParallelism()));
+
+        // for each task idx of this stage
         for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
-          // for each task idx of this stage
           stageIdToTaskAttemptStates.get(stage.getId()).add(new ArrayList<>());
           // task states will be initialized lazily in getTaskAttemptsToSchedule()
         }
@@ -328,7 +332,6 @@ public final class PlanStateManager {
     } else if (newTaskState.equals(TaskState.State.COMPLETE)) {
       stageIdToCompletedTaskTimeMsList.putIfAbsent(stageId, new ArrayList<>());
       stageIdToCompletedTaskTimeMsList.get(stageId).add(System.currentTimeMillis() - taskIdToStartTimeMs.get(taskId));
-      // LOG.info("stageIdToCompletedTaskTimeMsList: {}", stageIdToCompletedTaskTimeMsList);
     }
 
 
