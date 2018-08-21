@@ -23,6 +23,7 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 public final class ParallelismProperty extends VertexExecutionProperty<Integer> {
   /**
    * Constructor.
+   *
    * @param value value of the execution property.
    */
   private ParallelismProperty(final Integer value) {
@@ -31,6 +32,7 @@ public final class ParallelismProperty extends VertexExecutionProperty<Integer> 
 
   /**
    * Static method exposing the constructor.
+   *
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */

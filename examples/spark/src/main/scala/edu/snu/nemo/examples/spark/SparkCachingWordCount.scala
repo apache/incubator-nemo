@@ -23,10 +23,10 @@ import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession
 /**
   * Computes counts of each data key.
   */
-object SparkWordCount {
+object SparkCachingWordCount {
   def main(args: Array[String]) {
-    if (args.length < 1) {
-      System.err.println("Usage: SparkWordCount <input_file> [<output_file>]")
+    if (args.length < 2) {
+      System.err.println("Usage: SparkWordCount <input_file> <output_file1> <output_file2>")
       System.exit(1)
     }
     val spark = SparkSession
@@ -42,11 +42,13 @@ object SparkWordCount {
 
     val counts = ones.reduceByKey((i1, i2) => i1 + i2)
 
-    val parsed = counts.map(tuple => tuple._1 + ": " + tuple._2.toString)
+    val cached = counts.cache()
 
-    val writeMode = args(1) != null // write to file or print
+    val parsed = cached.map(tuple => tuple._1 + ": " + tuple._2.toString)
 
-    if (writeMode) { // print to output file
+    // first collect
+    val writeMode1 = args(1) != null // write to file or print
+    if (writeMode1) { // print to output file
       parsed.saveAsTextFile(args(1))
     } else { // print to console.
       val output = parsed.collect()
@@ -54,6 +56,24 @@ object SparkWordCount {
         println(elem)
       }
     }
+
+    val reversed = cached.map(p => (p._2, p._1))
+
+    val reversedVals = reversed.reduceByKey((string1, string2) => string1 + ", " + string2)
+
+    val parsed2 = reversedVals.map(tuple => tuple._1 + ": " + tuple._2.toString)
+
+    // second collect
+    val writeMode2 = args(2) != null // write to file or print
+    if (writeMode2) { // print to output file
+      parsed2.saveAsTextFile(args(2))
+    } else { // print to console.
+      val output = parsed2.collect()
+      for (elem <- output) {
+        println(elem)
+      }
+    }
+
     spark.stop()
   }
 }

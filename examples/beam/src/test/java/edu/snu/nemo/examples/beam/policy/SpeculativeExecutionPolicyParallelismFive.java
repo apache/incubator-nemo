@@ -41,8 +41,7 @@ public final class SpeculativeExecutionPolicyParallelismFive implements Policy {
         DefaultPolicy.BUILDER.getRuntimePasses());
   }
   @Override
-  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory)
-      throws Exception {
+  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory) {
     return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
   @Override

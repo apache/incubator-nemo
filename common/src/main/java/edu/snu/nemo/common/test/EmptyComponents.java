@@ -62,6 +62,7 @@ public final class EmptyComponents {
 
   /**
    * An empty transform.
+   *
    * @param <I> input type.
    * @param <O> output type.
    */
@@ -70,6 +71,7 @@ public final class EmptyComponents {
 
     /**
      * Default constructor.
+     *
      * @param name name of the empty transform.
      */
     public EmptyTransform(final String name) {
@@ -100,6 +102,7 @@ public final class EmptyComponents {
 
   /**
    * An empty Source Vertex.
+   *
    * @param <T> type of the data.
    */
   public static final class EmptySourceVertex<T> extends SourceVertex<T> {
@@ -107,6 +110,7 @@ public final class EmptyComponents {
 
     /**
      * Constructor.
+     *
      * @param name name for the vertex.
      */
     public EmptySourceVertex(final String name) {
@@ -152,6 +156,7 @@ public final class EmptyComponents {
 
   /**
    * An empty reader.
+   *
    * @param <T> type of the data.
    */
   static final class EmptyReadable<T> implements Readable<T> {
@@ -159,6 +164,7 @@ public final class EmptyComponents {
     public Iterable<T> read() {
       return new ArrayList<>();
     }
+
     @Override
     public List<String> getLocations() {
       throw new UnsupportedOperationException();

@@ -22,9 +22,10 @@ package edu.snu.nemo.common.exception;
 public final class BlockFetchException extends RuntimeException {
   /**
    * BlockFetchException.
-   * @param exception exception
+   *
+   * @param throwable the throwable to throw.
    */
-  public BlockFetchException(final Throwable exception) {
-    super(exception);
+  public BlockFetchException(final Throwable throwable) {
+    super(throwable);
   }
 }

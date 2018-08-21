@@ -32,6 +32,7 @@ public final class DuplicateEdgeGroupPropertyValue implements Serializable {
 
   /**
    * Constructor.
+   *
    * @param groupId Group ID.
    */
   public DuplicateEdgeGroupPropertyValue(final String groupId) {
@@ -42,6 +43,7 @@ public final class DuplicateEdgeGroupPropertyValue implements Serializable {
 
   /**
    * Set physical edge id.
+   *
    * @param representativeEdgeId physical edge id of representative edge.
    */
   public void setRepresentativeEdgeId(final String representativeEdgeId) {
@@ -54,6 +56,7 @@ public final class DuplicateEdgeGroupPropertyValue implements Serializable {
 
   /**
    * Set the group size.
+   *
    * @param groupSize the group size.
    */
   public void setGroupSize(final int groupSize) {
@@ -65,6 +68,7 @@ public final class DuplicateEdgeGroupPropertyValue implements Serializable {
 
   /**
    * Get the physical edge id of the representative edge.
+   *
    * @return physical edge id of the representative edge.
    */
   public String getRepresentativeEdgeId() {
@@ -76,6 +80,7 @@ public final class DuplicateEdgeGroupPropertyValue implements Serializable {
 
   /**
    * Get the data id.
+   *
    * @return data id.
    */
   public String getGroupId() {
@@ -84,6 +89,7 @@ public final class DuplicateEdgeGroupPropertyValue implements Serializable {
 
   /**
    * Get the group size.
+   *
    * @return the group size.
    */
   public int getGroupSize() {
@@ -91,6 +97,13 @@ public final class DuplicateEdgeGroupPropertyValue implements Serializable {
       throw new RuntimeException("groupSize is not decided yet");
     }
     return groupSize;
+  }
+
+  /**
+   * @return whether the representative edge is decided or not.
+   */
+  public boolean isRepresentativeEdgeDecided() {
+    return isRepresentativeEdgeDecided;
   }
 
   @Override

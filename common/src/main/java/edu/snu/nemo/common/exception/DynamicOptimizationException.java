@@ -22,6 +22,7 @@ package edu.snu.nemo.common.exception;
 public class DynamicOptimizationException extends RuntimeException {
   /**
    * Constructor of DynamicOptimizationException.
+   *
    * @param cause cause.
    */
   public DynamicOptimizationException(final Throwable cause) {
@@ -30,6 +31,7 @@ public class DynamicOptimizationException extends RuntimeException {
 
   /**
    * Constructor of DynamicOptimizationException.
+   *
    * @param message message.
    */
   public DynamicOptimizationException(final String message) {

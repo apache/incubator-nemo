@@ -21,11 +21,13 @@ import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageSender;
+import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.PlanState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
+import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -33,7 +35,6 @@ import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
 import edu.snu.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -78,7 +79,8 @@ public final class TaskRetryTest {
   public void setUp() throws Exception {
     // To understand which part of the log belongs to which test
     LOG.info("===== Testing {} =====", testName.getMethodName());
-    final Injector injector = Tang.Factory.getTang().newInjector();
+    final Injector injector = LocalMessageEnvironment.forkInjector(LocalMessageDispatcher.getInjector(),
+      MessageEnvironment.MASTER_COMMUNICATION_ID);
 
     // Get random
     random = new Random(0); // Fixed seed for reproducing test results.
@@ -86,15 +88,8 @@ public final class TaskRetryTest {
     // Get executorRegistry
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
 
-    // Get scheduler
-    injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
-    injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
-    injector.bindVolatileInstance(SchedulingConstraintRegistry.class, mock(SchedulingConstraintRegistry.class));
-    injector.bindVolatileInstance(MessageEnvironment.class, mock(MessageEnvironment.class));
-    scheduler = injector.getInstance(Scheduler.class);
-
     // Get PlanStateManager
-    planStateManager = runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined);
+    runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, injector);
   }
 
   @Test(timeout=7000)
@@ -138,7 +133,7 @@ public final class TaskRetryTest {
       if (random.nextBoolean()) {
         Thread.sleep(10);
       } else {
-        Thread.sleep(100);
+        Thread.sleep(20);
       }
       scheduler.onSpeculativeExecutionCheck();
     }
@@ -224,10 +219,19 @@ public final class TaskRetryTest {
         .collect(Collectors.toList());
   }
 
-  private PlanStateManager runPhysicalPlan(final TestPlanGenerator.PlanType planType) throws Exception {
+  private void runPhysicalPlan(final TestPlanGenerator.PlanType planType,
+                               final Injector injector) throws Exception {
+    final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PhysicalPlan plan = TestPlanGenerator.generatePhysicalPlan(planType, false);
-    final PlanStateManager planStateManager = new PlanStateManager(plan, MAX_SCHEDULE_ATTEMPT);
-    scheduler.schedulePlan(plan, planStateManager);
-    return planStateManager;
+
+    // Get scheduler
+    injector.bindVolatileInstance(MetricMessageHandler.class, metricMessageHandler);
+    injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
+    injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
+    injector.bindVolatileInstance(SchedulingConstraintRegistry.class, mock(SchedulingConstraintRegistry.class));
+    planStateManager = injector.getInstance(PlanStateManager.class);
+    scheduler = injector.getInstance(Scheduler.class);
+
+    scheduler.schedulePlan(plan, MAX_SCHEDULE_ATTEMPT);
   }
 }

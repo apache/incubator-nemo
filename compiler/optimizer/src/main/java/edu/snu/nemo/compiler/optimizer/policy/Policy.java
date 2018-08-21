@@ -31,17 +31,18 @@ import java.io.Serializable;
 public interface Policy extends Serializable {
   /**
    * Optimize the DAG with the compile time optimizations.
-   * @param dag input DAG.
+   *
+   * @param dag          input DAG.
    * @param dagDirectory directory to save the DAG information.
    * @return optimized DAG, reshaped or tagged with execution properties.
-   * @throws Exception throws an exception if there is an exception.
    */
-  DAG<IRVertex, IREdge> runCompileTimeOptimization(DAG<IRVertex, IREdge> dag, String dagDirectory) throws Exception;
+  DAG<IRVertex, IREdge> runCompileTimeOptimization(DAG<IRVertex, IREdge> dag, String dagDirectory);
 
   /**
    * Register runtime optimizations to the event handler.
-   * @param injector Tang Injector, used in the UserApplicationRunner.
-   * @param pubSubWrapper pub-sub event handler, used in the UserApplicationRunner.
+   *
+   * @param injector      Tang Injector which contains the implementations of run-time event handlers.
+   * @param pubSubWrapper pub-sub event handler which managing run-time and compile-time event handling.
    */
   void registerRunTimeOptimizations(Injector injector, PubSubEventHandlerWrapper pubSubWrapper);
 }

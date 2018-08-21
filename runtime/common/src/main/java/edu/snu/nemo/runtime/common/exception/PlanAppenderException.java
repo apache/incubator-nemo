@@ -13,19 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.exception;
+package edu.snu.nemo.runtime.common.exception;
 
 /**
- * BlockWriteException.
- * Thrown when any exception occurs while trying to write a block.
+ * An exception which represents exception during appending plans.
  */
-public final class BlockWriteException extends RuntimeException {
+public final class PlanAppenderException extends RuntimeException {
+
   /**
-   * BlockWriteException.
+   * Constructor with throwable.
    *
    * @param throwable the throwable to throw.
    */
-  public BlockWriteException(final Throwable throwable) {
+  public PlanAppenderException(final Throwable throwable) {
     super(throwable);
+  }
+
+  /**
+   * Constructor with String.
+   *
+   * @param message the exception message.
+   */
+  public PlanAppenderException(final String message) {
+    super(message);
   }
 }

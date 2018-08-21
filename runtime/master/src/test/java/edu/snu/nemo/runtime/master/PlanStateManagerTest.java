@@ -46,12 +46,17 @@ import static org.mockito.Mockito.mock;
 @RunWith(PowerMockRunner.class)
 public final class PlanStateManagerTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
+  private MetricMessageHandler metricMessageHandler;
+  private PlanStateManager planStateManager;
 
   @Before
   public void setUp() throws Exception {
     final Injector injector = LocalMessageEnvironment.forkInjector(LocalMessageDispatcher.getInjector(),
         MessageEnvironment.MASTER_COMMUNICATION_ID);
+    metricMessageHandler = mock(MetricMessageHandler.class);
+    injector.bindVolatileInstance(MetricMessageHandler.class, metricMessageHandler);
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
+    planStateManager = injector.getInstance(PlanStateManager.class);
   }
 
   /**
@@ -62,7 +67,7 @@ public final class PlanStateManagerTest {
   public void testPhysicalPlanStateChanges() throws Exception {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
-    final PlanStateManager planStateManager = new PlanStateManager(physicalPlan, MAX_SCHEDULE_ATTEMPT);
+    planStateManager.updatePlan(physicalPlan, MAX_SCHEDULE_ATTEMPT);
 
     assertEquals(planStateManager.getPlanId(), "TestPlan");
 
@@ -93,7 +98,7 @@ public final class PlanStateManagerTest {
   public void testWaitUntilFinish() throws Exception {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
-    final PlanStateManager planStateManager = new PlanStateManager(physicalPlan, MAX_SCHEDULE_ATTEMPT);
+    planStateManager.updatePlan(physicalPlan, MAX_SCHEDULE_ATTEMPT);
 
     assertFalse(planStateManager.isPlanDone());
 
