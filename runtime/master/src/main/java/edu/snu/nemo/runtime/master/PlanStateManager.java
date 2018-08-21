@@ -139,6 +139,24 @@ public final class PlanStateManager {
     initializeComputationStates();
   }
 
+  /**
+   * Initializes the states for the plan/stages/tasks for this plan.
+   */
+  private void initializeComputationStates() {
+    onPlanStateChanged(PlanState.State.EXECUTING);
+    physicalPlan.getStageDAG().topologicalDo(stage -> {
+      if (!stageIdToState.containsKey(stage.getId())) {
+        stageIdToState.put(stage.getId(), new StageState());
+        stageIdToTaskAttemptStates.put(stage.getId(), new ArrayList<>(stage.getParallelism()));
+        for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
+          // for each task idx of this stage
+          stageIdToTaskAttemptStates.get(stage.getId()).add(new ArrayList<>());
+          // task states will be initialized lazily in getTaskAttemptsToSchedule()
+        }
+      }
+    });
+  }
+
   /////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////// Core scheduling methods
 
@@ -517,24 +535,6 @@ public final class PlanStateManager {
       }
     }
     return result;
-  }
-
-  /**
-   * Initializes the states for the plan/stages/tasks for this plan.
-   */
-  private void initializeComputationStates() {
-    onPlanStateChanged(PlanState.State.EXECUTING);
-    physicalPlan.getStageDAG().topologicalDo(stage -> {
-      if (!stageIdToState.containsKey(stage.getId())) {
-        stageIdToState.put(stage.getId(), new StageState());
-        stageIdToTaskAttemptStates.put(stage.getId(), new ArrayList<>(stage.getParallelism()));
-        for (int taskIndex = 0; taskIndex < stage.getParallelism(); taskIndex++) {
-          // for each task idx of this stage
-          stageIdToTaskAttemptStates.get(stage.getId()).add(new ArrayList<>());
-          // task states will be initialized lazily in getTaskAttemptsToSchedule()
-        }
-      }
-    });
   }
 
   private TaskState getTaskStateHelper(final String taskId) {
