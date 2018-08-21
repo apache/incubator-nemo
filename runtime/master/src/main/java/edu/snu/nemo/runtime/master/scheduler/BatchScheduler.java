@@ -20,10 +20,12 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
 import edu.snu.nemo.runtime.common.state.TaskState;
+import edu.snu.nemo.runtime.master.PlanAppender;
 import edu.snu.nemo.runtime.master.DataSkewDynOptDataHandler;
 import edu.snu.nemo.runtime.master.DynOptDataHandler;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
@@ -39,6 +41,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -60,6 +63,7 @@ public final class BatchScheduler implements Scheduler {
   private final TaskDispatcher taskDispatcher;
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorRegistry executorRegistry;
+  private final PlanStateManager planStateManager;
 
   /**
    * Other necessary components of this {@link edu.snu.nemo.runtime.master.RuntimeMaster}.
@@ -70,8 +74,6 @@ public final class BatchScheduler implements Scheduler {
   /**
    * The below variables depend on the submitted plan to execute.
    */
-  private PhysicalPlan physicalPlan;
-  private PlanStateManager planStateManager;
   private List<List<Stage>> sortedScheduleGroups;
   private List<DynOptDataHandler> dynOptDataHandlers;
 
@@ -81,7 +83,8 @@ public final class BatchScheduler implements Scheduler {
                          final BlockManagerMaster blockManagerMaster,
                          final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                          final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
-                         final ExecutorRegistry executorRegistry) {
+                         final ExecutorRegistry executorRegistry,
+                         final PlanStateManager planStateManager) {
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.blockManagerMaster = blockManagerMaster;
@@ -92,48 +95,75 @@ public final class BatchScheduler implements Scheduler {
           .subscribe(updatePhysicalPlanEventHandler.getEventClass(), updatePhysicalPlanEventHandler);
     }
     this.executorRegistry = executorRegistry;
+    this.planStateManager = planStateManager;
     this.dynOptDataHandlers = new ArrayList<>();
     dynOptDataHandlers.add(new DataSkewDynOptDataHandler());
   }
 
   /**
+   * Schedules a given plan.
+   * If multiple physical plans are submitted, they will be appended and handled as a single plan.
+   * TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
+   *
    * @param submittedPhysicalPlan the physical plan to schedule.
-   * @param submittedPlanStateManager the state manager of the plan.
+   * @param maxScheduleAttempt    the max number of times this plan/sub-part of the plan should be attempted.
    */
   @Override
-  public void schedulePlan(final PhysicalPlan submittedPhysicalPlan, final PlanStateManager submittedPlanStateManager) {
-    this.physicalPlan = submittedPhysicalPlan;
-    this.planStateManager = submittedPlanStateManager;
+  public void schedulePlan(final PhysicalPlan submittedPhysicalPlan,
+                           final int maxScheduleAttempt) {
+    LOG.info("Plan to schedule: {}", submittedPhysicalPlan.getPlanId());
 
-    taskDispatcher.run(this.planStateManager);
-    LOG.info("Plan to schedule: {}", this.physicalPlan.getId());
-
-    this.sortedScheduleGroups = this.physicalPlan.getStageDAG().getVertices().stream()
-        .collect(Collectors.groupingBy(Stage::getScheduleGroup))
-        .entrySet().stream()
-        .sorted(Map.Entry.comparingByKey())
-        .map(Map.Entry::getValue)
-        .collect(Collectors.toList());
+    if (!planStateManager.isInitialized()) {
+      // First scheduling.
+      taskDispatcher.run();
+      updatePlan(submittedPhysicalPlan, maxScheduleAttempt);
+      planStateManager.storeJSON("submitted");
+    } else {
+      // Append the submitted plan to the original plan.
+      final PhysicalPlan appendedPlan =
+          PlanAppender.appendPlan(planStateManager.getPhysicalPlan(), submittedPhysicalPlan);
+      updatePlan(appendedPlan, maxScheduleAttempt);
+      planStateManager.storeJSON("appended");
+    }
 
     doSchedule();
   }
 
   @Override
-  public void updatePlan(final String planId, final PhysicalPlan newPhysicalPlan) {
+  public void updatePlan(final PhysicalPlan newPhysicalPlan) {
     // update the physical plan in the scheduler.
     // NOTE: what's already been executed is not modified in the new physical plan.
-    this.physicalPlan = newPhysicalPlan;
+    // TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
+    updatePlan(newPhysicalPlan, planStateManager.getMaxScheduleAttempt());
+  }
+
+  /**
+   * Update the physical plan in the scheduler.
+   *
+   * @param newPhysicalPlan    the new physical plan to update.
+   * @param maxScheduleAttempt the maximum number of task scheduling attempt.
+   */
+  private void updatePlan(final PhysicalPlan newPhysicalPlan,
+                          final int maxScheduleAttempt) {
+    planStateManager.updatePlan(newPhysicalPlan, maxScheduleAttempt);
+    this.sortedScheduleGroups = newPhysicalPlan.getStageDAG().getVertices().stream()
+        .collect(Collectors.groupingBy(Stage::getScheduleGroup))
+        .entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .map(Map.Entry::getValue)
+        .collect(Collectors.toList());
   }
 
   /**
    * Handles task state transition notifications sent from executors.
    * Note that we can receive notifications for previous task attempts, due to the nature of asynchronous events.
    * We ignore such late-arriving notifications, and only handle notifications for the current task attempt.
-   * @param executorId the id of the executor where the message was sent from.
-   * @param taskId whose state has changed
+   *
+   * @param executorId       the id of the executor where the message was sent from.
+   * @param taskId           whose state has changed
    * @param taskAttemptIndex of the task whose state has changed
-   * @param newState the state to change to
-   * @param vertexPutOnHold the ID of vertex that is put on hold. It is null otherwise.
+   * @param newState         the state to change to
+   * @param vertexPutOnHold  the ID of vertex that is put on hold. It is null otherwise.
    */
   public void onTaskStateReportFromExecutor(final String executorId,
                                             final String taskId,
@@ -234,7 +264,7 @@ public final class BatchScheduler implements Scheduler {
   /**
    * The main entry point for task scheduling.
    * This operation can be invoked at any point during job execution, as it is designed to be free of side-effects.
-   *
+   * <p>
    * These are the reasons why.
    * - We 'reset' {@link PendingTaskCollectionPointer}, and not 'add' new tasks to it
    * - We make {@link TaskDispatcher} dispatch only the tasks that are READY.
@@ -281,10 +311,20 @@ public final class BatchScheduler implements Scheduler {
   }
 
   private List<Task> selectSchedulableTasks(final Stage stageToSchedule) {
+    if (stageToSchedule.getPropertyValue(IgnoreSchedulingTempDataReceiverProperty.class).orElse(false)) {
+      // Ignore ghost stage.
+      for (final String taskId : planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId())) {
+        planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
+        planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
+      }
+
+      return Collections.emptyList();
+    }
+
     final List<StageEdge> stageIncomingEdges =
-        physicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
+        planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
     final List<StageEdge> stageOutgoingEdges =
-        physicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
+        planStateManager.getPhysicalPlan().getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
 
     // Create and return tasks.
     final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
@@ -292,7 +332,7 @@ public final class BatchScheduler implements Scheduler {
     final List<String> taskIdsToSchedule = planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId());
     final List<Task> tasks = new ArrayList<>(taskIdsToSchedule.size());
     taskIdsToSchedule.forEach(taskId -> {
-      final Set<String> blockIds = physicalPlan.getStageDAG()
+      final Set<String> blockIds = planStateManager.getPhysicalPlan().getStageDAG()
           .getOutgoingEdgesOf(RuntimeIdManager.getStageIdFromTaskId(taskId))
           .stream()
           .map(stageEdge -> RuntimeIdManager.generateBlockId(stageEdge.getId(), taskId))
@@ -300,7 +340,7 @@ public final class BatchScheduler implements Scheduler {
       blockManagerMaster.onProducerTaskScheduled(taskId, blockIds);
       final int taskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
       tasks.add(new Task(
-          physicalPlan.getId(),
+          planStateManager.getPhysicalPlan().getPlanId(),
           taskId,
           stageToSchedule.getExecutionProperties(),
           stageToSchedule.getSerializedIRDAG(),
@@ -316,27 +356,32 @@ public final class BatchScheduler implements Scheduler {
   /**
    * Action after task execution has been completed.
    * Note this method should not be invoked when the previous state of the task is ON_HOLD.
+   *
    * @param executorId id of the executor.
-   * @param taskId the ID of the task completed.
+   * @param taskId     the ID of the task completed.
    */
   private void onTaskExecutionComplete(final String executorId,
                                        final String taskId) {
-    LOG.debug("{} completed in {}", new Object[]{taskId, executorId});
+    LOG.debug("{} completed in {}", taskId, executorId);
     executorRegistry.updateExecutor(executorId, (executor, state) -> {
       executor.onTaskExecutionComplete(taskId);
       return Pair.of(executor, state);
     });
   }
 
+  /**
+   * @param taskId the metric collected task ID.
+   * @return the edge to optimize.
+   */
   private StageEdge getEdgeToOptimize(final String taskId) {
     // Get a stage including the given task
-    final Stage stagePutOnHold = physicalPlan.getStageDAG().getVertices().stream()
+    final Stage stagePutOnHold = planStateManager.getPhysicalPlan().getStageDAG().getVertices().stream()
       .filter(stage -> stage.getId().equals(RuntimeIdManager.getStageIdFromTaskId(taskId)))
       .findFirst()
       .orElseThrow(() -> new RuntimeException());
 
     // Get outgoing edges of that stage with MetricCollectionProperty
-    List<StageEdge> stageEdges = physicalPlan.getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
+    List<StageEdge> stageEdges = planStateManager.getPhysicalPlan().getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
     for (StageEdge edge : stageEdges) {
       if (edge.getExecutionProperties().containsKey(MetricCollectionProperty.class)) {
         return edge;
@@ -348,6 +393,7 @@ public final class BatchScheduler implements Scheduler {
 
   /**
    * Action for after task execution is put on hold.
+   *
    * @param executorId       the ID of the executor.
    * @param taskId           the ID of the task.
    */
@@ -373,16 +419,17 @@ public final class BatchScheduler implements Scheduler {
           .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
           .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
       pubSubEventHandlerWrapper.getPubSubEventHandler()
-          .onNext(new DynamicOptimizationEvent(physicalPlan, dynOptDataHandler.getDynOptData(),
+          .onNext(new DynamicOptimizationEvent(planStateManager.getPhysicalPlan(), dynOptDataHandler.getDynOptData(),
               taskId, executorId, targetEdge));
     }
   }
 
   /**
    * Action for after task execution has failed but it's recoverable.
-   * @param executorId    the ID of the executor
-   * @param taskId   the ID of the task
-   * @param failureCause  the cause of failure
+   *
+   * @param executorId   the ID of the executor
+   * @param taskId       the ID of the task
+   * @param failureCause the cause of failure
    */
   private void onTaskExecutionFailedRecoverable(final String executorId,
                                                 final String taskId,
@@ -424,7 +471,11 @@ public final class BatchScheduler implements Scheduler {
 
     final Set<String> parentsWithLostBlocks = children.stream()
         .flatMap(child -> getParentTasks(child).stream())
-        .filter(parent -> blockManagerMaster.getBlockLocationHandler(parent).getLocationFuture().isCancelled())
+        .filter(parent -> {
+          final CompletableFuture<String> locationFuture =
+            blockManagerMaster.getBlockLocationHandler(parent).getLocationFuture();
+          return locationFuture.isCompletedExceptionally() || locationFuture.isCancelled();
+        })
         .collect(Collectors.toSet());
 
     // Recursive call
@@ -432,8 +483,9 @@ public final class BatchScheduler implements Scheduler {
   }
 
   private Set<String> getParentTasks(final String childTaskId) {
+
     final String stageIdOfChildTask = RuntimeIdManager.getStageIdFromTaskId(childTaskId);
-    return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
+    return planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
         .stream()
         .flatMap(inStageEdge -> {
           final String parentStageId = inStageEdge.getSrc().getId();
@@ -455,6 +507,11 @@ public final class BatchScheduler implements Scheduler {
         .collect(Collectors.toSet());
   }
 
+  /**
+   * Update the data for dynamic optimization.
+   *
+   * @param dynOptData the data to update.
+   */
   public void updateDynOptData(final Object dynOptData) {
     final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
         .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)

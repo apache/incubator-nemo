@@ -48,6 +48,7 @@ final class TaskDispatcher {
   private static final Logger LOG = LoggerFactory.getLogger(TaskDispatcher.class.getName());
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorService schedulerThread;
+  private final PlanStateManager planStateManager;
   private boolean isSchedulerRunning;
   private boolean isTerminated;
 
@@ -56,16 +57,16 @@ final class TaskDispatcher {
   private final SchedulingConstraintRegistry schedulingConstraintRegistry;
   private final SchedulingPolicy schedulingPolicy;
 
-  private PlanStateManager planStateManager;
-
   @Inject
   private TaskDispatcher(final SchedulingConstraintRegistry schedulingConstraintRegistry,
                          final SchedulingPolicy schedulingPolicy,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
-                         final ExecutorRegistry executorRegistry) {
+                         final ExecutorRegistry executorRegistry,
+                         final PlanStateManager planStateManager) {
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable ->
         new Thread(runnable, "TaskDispatcher thread"));
+    this.planStateManager = planStateManager;
     this.isSchedulerRunning = false;
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
@@ -161,8 +162,7 @@ final class TaskDispatcher {
   /**
    * Run the dispatcher thread.
    */
-  void run(final PlanStateManager plan) {
-    this.planStateManager = plan;
+  void run() {
     if (!isTerminated && !isSchedulerRunning) {
       schedulerThread.execute(new SchedulerThread());
       schedulerThread.shutdown();

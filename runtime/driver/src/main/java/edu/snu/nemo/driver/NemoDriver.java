@@ -168,9 +168,11 @@ public final class NemoDriver {
   }
 
   /**
-   * Start user DAG.
+   * Start to schedule a submitted user DAG.
+   *
+   * @param dagString  the serialized DAG to schedule.
    */
-  public void startSchedulingUserDAG(final String dagString) {
+  private void startSchedulingUserDAG(final String dagString) {
     runnerThread.execute(() -> {
       userApplicationRunner.run(dagString);
       // send driver notification that user application is done.

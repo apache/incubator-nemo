@@ -34,6 +34,7 @@ public final class RunTimeOptimizer {
 
   /**
    * Dynamic optimization method to process the dag with an appropriate pass, decided by the stats.
+   *
    * @param originalPlan original physical execution plan.
    * @return the newly updated optimized physical plan.
    */
