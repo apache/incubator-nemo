@@ -124,11 +124,11 @@ public final class PlanStateManager {
       this.initialized = true;
     }
     this.planState = new PlanState();
-    this.metricStore.getOrCreateMetric(JobMetric.class, planId).setStageDAG(physicalPlanToUpdate.getStageDAG());
-    this.metricStore.triggerBroadcast(JobMetric.class, planId);
     this.physicalPlan = physicalPlanToUpdate;
     this.planId = physicalPlanToUpdate.getPlanId();
     this.maxScheduleAttempt = maxScheduleAttemptToSet;
+    this.metricStore.getOrCreateMetric(JobMetric.class, planId).setStageDAG(physicalPlanToUpdate.getStageDAG());
+    this.metricStore.triggerBroadcast(JobMetric.class, planId);
     initializeComputationStates();
   }
 
