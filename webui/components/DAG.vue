@@ -482,13 +482,15 @@ export default {
      * Rearrange font size according to the canvas zoom ratio.
      */
     rearrangeFontSize(ratio) {
-      this.stageIdArray.forEach(stageId => {
-        if (this.stageInnerTextObjects[stageId]) {
-          this.stageInnerTextObjects[stageId].forEach(text => {
-            text.set('fontSize', FONT_SIZE * ratio);
-          });
-        }
-      });
+      if (this.stageIdArray) {
+        this.stageIdArray.forEach(stageId => {
+          if (this.stageInnerTextObjects[stageId]) {
+            this.stageInnerTextObjects[stageId].forEach(text => {
+              text.set('fontSize', FONT_SIZE * ratio);
+            });
+          }
+        });
+      }
 
       this.stageEdgeTextObjects.forEach(text => {
         text.set('fontSize', FONT_SIZE * ratio);
