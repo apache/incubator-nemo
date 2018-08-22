@@ -20,11 +20,13 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
  * Set the ClonedScheduling property of source vertices, in an upfront manner.
  */
 @Annotates(ClonedSchedulingProperty.class)
+@Requires(CommunicationPatternProperty.class)
 public final class UpfrontCloningPass extends AnnotatingPass {
   /**
    * Default constructor.
