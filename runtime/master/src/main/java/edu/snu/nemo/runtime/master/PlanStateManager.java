@@ -319,7 +319,7 @@ public final class PlanStateManager {
           .stream()
           .map(state -> (TaskState.State) state.getStateMachine().getCurrentState())
           .collect(Collectors.toList());
-        return states.stream().allMatch(curState -> curState.equals(TaskState.State.ON_HOLD)) // all of them are ON_HOLD
+        return states.stream().anyMatch(curState -> curState.equals(TaskState.State.ON_HOLD)) // one of them is ON_HOLD
           || states.stream().anyMatch(curState -> curState.equals(TaskState.State.COMPLETE)); // one of them is COMPLETE
       })
       .count();
