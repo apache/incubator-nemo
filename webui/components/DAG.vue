@@ -85,6 +85,7 @@ export default {
       resizeDebounceTimer: undefined,
 
       dag: undefined,
+      objectSelected: false,
 
       stageGraph: undefined,
       verticesGraph: {},
@@ -256,6 +257,7 @@ export default {
       this.vertexObjects = {};
       this.stageObjects = {};
       this.stageInnerObjects = {};
+      this.objectSelected = false;
     },
 
     /**
@@ -418,16 +420,27 @@ export default {
      */
     setUpCanvasEventHandler() {
       this.canvas.on('selection:created', options => {
+        this.objectSelected = true;
         this.$eventBus.$emit('metric-select', options.target.metricId);
       });
 
       this.canvas.on('selection:updated', options => {
+        this.objectSelected = true;
         this.$eventBus.$emit('metric-select', options.target.metricId);
       });
 
       this.canvas.on('selection:cleared', () => {
+        this.objectSelected = false;
         this.$eventBus.$emit('metric-deselect');
       });
+
+      this.canvas.on('mouse:over', options => {
+        if (options.target && !this.objectSelected) {
+          this.$eventBus.$emit('metric-select', options.target.metricId);
+        } else if (!options.target && !this.objectSelected) {
+          this.$eventBus.$emit('metric-deselect');
+        }
+      })
     },
 
     /**
