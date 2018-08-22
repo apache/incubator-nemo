@@ -98,6 +98,8 @@ export default {
       // stageId -> inner objects of stage (edges, vertices, text)
       stageInnerObjects: {},
       stageInnerTextObjects: {},
+      // array of stage label text object
+      stageTextObjects: [],
       // array of stage edge label text object
       stageEdgeTextObjects: [],
     };
@@ -263,6 +265,7 @@ export default {
       this.stageInnerObjects = {};
       this.stageInnerTextObjects = {};
       this.stageEdgeTextObjects = [];
+      this.stageTextObjects = [];
       this.objectSelected = false;
     },
 
@@ -490,6 +493,10 @@ export default {
       this.stageEdgeTextObjects.forEach(text => {
         text.set('fontSize', FONT_SIZE * ratio);
       });
+
+      this.stageTextObjects.forEach(text => {
+        text.set('fontSize', FONT_SIZE * ratio);
+      });
     },
 
     /**
@@ -669,9 +676,21 @@ export default {
           lockMovementY: true,
         });
 
+        let stageLabelObj = new fabric.Text(stage.label, {
+          left: stage.x,
+          top: stage.y - stage.height / 2 + FONT_SIZE * 2,
+          fontSize: FONT_SIZE,
+          originX: 'center',
+          originY: 'center',
+          selectable: false,
+        });
+        this.stageTextObjects.push(stageLabelObj);
+
         this.stageObjects[stage.label] = stageRect;
         this.canvas.add(stageRect);
+        this.canvas.add(stageLabelObj);
         stageRect.sendToBack();
+        stageLabelObj.bringToFront();
       });
 
       let stageEdgeObjectArray = [];
@@ -760,6 +779,7 @@ export default {
       };
 
       let d = [
+        { x: -h, y: 0 },
         { x: 0, y: a / 2 },
         { x: h, y: -a / 2 },
         { x: -h, y: -a / 2 },
