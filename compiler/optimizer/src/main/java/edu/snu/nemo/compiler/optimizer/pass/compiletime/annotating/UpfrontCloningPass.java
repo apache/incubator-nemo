@@ -20,11 +20,12 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
  * Set the ClonedScheduling property of source vertices, in an upfront manner.
  */
-@Annotates(ClonedSchedulingProperty.class)
+@Requires(ClonedSchedulingProperty.class)
 public final class UpfrontCloningPass extends AnnotatingPass {
   /**
    * Default constructor.
@@ -40,8 +41,11 @@ public final class UpfrontCloningPass extends AnnotatingPass {
           .stream()
           // TODO #198: Handle Un-cloneable Beam Sink Operators
           // only shuffle receivers (for now... as particular Beam sink operators fail when cloned)
-          .anyMatch(edge -> edge.getPropertyValue(CommunicationPatternProperty.class).get()
-            .equals(CommunicationPatternProperty.Value.Shuffle)))
+          .anyMatch(edge ->
+            edge.getPropertyValue(CommunicationPatternProperty.class)
+              .orElseThrow(() -> new IllegalStateException())
+              .equals(CommunicationPatternProperty.Value.Shuffle))
+          )
         .forEach(vertex -> vertex.setProperty(
           ClonedSchedulingProperty.of(new ClonedSchedulingProperty.CloneConf()))); // clone upfront, always
     return dag;

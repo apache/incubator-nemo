@@ -40,6 +40,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
+import edu.snu.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,6 +88,7 @@ public final class BlockManagerMaster {
   /**
    * Initializes the states of a block which will be produced by a producer task.
    * This method is idempotent thanks to the 'Set' data structures.
+   * See {@link BatchScheduler#doSchedule()} for details on scheduling same task attempts multiple times.
    *
    * @param blockId        the id of the block to initialize.
    * @param producerTaskId the id of the producer task.
@@ -311,6 +313,7 @@ public final class BlockManagerMaster {
       final List<BlockRequestHandler> availableBlocks = getBlockHandlers(blockIdWildcard, BlockState.State.AVAILABLE);
       if (!availableBlocks.isEmpty()) {
         // random pick
+        // TODO #201: Let Executors Try Multiple Input Block Clones
         availableBlocks.get(random.nextInt(availableBlocks.size())).registerRequest(requestId, messageContext);
         return;
       }

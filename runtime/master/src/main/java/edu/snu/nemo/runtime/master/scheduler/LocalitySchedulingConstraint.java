@@ -123,7 +123,7 @@ public final class LocalitySchedulingConstraint implements SchedulingConstraint 
         // Since there is no known location, we just schedule the task to any executor.
         return true;
       } else {
-        // There is a know location(s), so we schedule to it(them).
+        // There is a known location(s), so we schedule to it(them).
         return intermediateLocations.contains(executor.getExecutorId());
       }
     }

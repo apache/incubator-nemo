@@ -75,7 +75,7 @@ public final class RuntimeMaster {
   private static final int SPECULATION_CHECKING_PERIOD_MS = 100;
 
   private final ExecutorService runtimeMasterThread;
-  private final ScheduledExecutorService speculativeExecutionThread;
+  private final ScheduledExecutorService speculativeTaskCloningThread;
 
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
@@ -108,8 +108,9 @@ public final class RuntimeMaster {
         Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster thread"));
 
     // Check for speculative execution every second.
-    this.speculativeExecutionThread = Executors.newSingleThreadScheduledExecutor();
-    this.speculativeExecutionThread.scheduleAtFixedRate(
+    this.speculativeTaskCloningThread = Executors
+      .newSingleThreadScheduledExecutor(runnable -> new Thread(runnable, "SpeculativeTaskCloning thread"));
+    this.speculativeTaskCloningThread.scheduleAtFixedRate(
       () -> this.runtimeMasterThread.submit(scheduler::onSpeculativeExecutionCheck),
       SPECULATION_CHECKING_PERIOD_MS,
       SPECULATION_CHECKING_PERIOD_MS,
@@ -182,7 +183,7 @@ public final class RuntimeMaster {
    */
   public void terminate() {
     // No need to speculate anymore
-    speculativeExecutionThread.shutdown();
+    speculativeTaskCloningThread.shutdown();
 
     // send metric flush request to all executors
     metricManagerMaster.sendMetricFlushRequest();
@@ -422,7 +423,6 @@ public final class RuntimeMaster {
   private ScheduledExecutorService scheduleDagLogging() {
     final ScheduledExecutorService dagLoggingExecutor = Executors.newSingleThreadScheduledExecutor();
     dagLoggingExecutor.scheduleAtFixedRate(new Runnable() {
-
       public void run() {
         planStateManager.storeJSON("periodic");
       }

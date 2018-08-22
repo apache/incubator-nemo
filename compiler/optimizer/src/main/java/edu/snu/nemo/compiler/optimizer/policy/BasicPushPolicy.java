@@ -26,6 +26,7 @@ import org.apache.reef.tang.Injector;
 
 /**
  * Basic push policy.
+ * TODO #200: Maintain Test Passes and Policies Separately
  */
 public final class BasicPushPolicy implements Policy {
   public static final PolicyBuilder BUILDER =

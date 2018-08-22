@@ -20,21 +20,22 @@ import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.UpfrontCloningPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AggressiveSpeculativeCloningPass;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
 import edu.snu.nemo.compiler.optimizer.policy.PolicyImpl;
 import org.apache.reef.tang.Injector;
+
 import java.util.List;
 
 /**
- * A default policy with cloning for tests.
+ * A default policy with (aggressive) speculative execution.
  */
-public final class ClonedSchedulingPolicyParallelismFive implements Policy {
+public final class AggressiveSpeculativeCloningPolicyParallelismFive implements Policy {
   private final Policy policy;
-  public ClonedSchedulingPolicyParallelismFive() {
+  public AggressiveSpeculativeCloningPolicyParallelismFive() {
     final List<CompileTimePass> overwritingPasses = DefaultPolicy.BUILDER.getCompileTimePasses();
-    overwritingPasses.add(new UpfrontCloningPass()); // CLONING!
+    overwritingPasses.add(new AggressiveSpeculativeCloningPass()); // CLONING!
     this.policy = new PolicyImpl(
         PolicyTestUtil.overwriteParallelism(5, overwritingPasses),
         DefaultPolicy.BUILDER.getRuntimePasses());

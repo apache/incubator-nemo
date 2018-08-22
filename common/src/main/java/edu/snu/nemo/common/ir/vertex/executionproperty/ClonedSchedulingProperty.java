@@ -45,10 +45,11 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Clon
 
   /**
    * Configurations for cloning.
+   * TODO #199: Slot-aware cloning
    */
   public static final class CloneConf implements Serializable {
     // Always clone, upfront.
-    private boolean upFrontCloning;
+    private final boolean upFrontCloning;
 
     // Fraction of tasks to wait for completion, before trying to clone.
     // If this value is 0, then we always clone.
@@ -83,14 +84,23 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Clon
       this.medianTimeMultiplier = medianTimeMultiplier;
     }
 
+    /**
+     * @return fractionToWaitFor.
+     */
     public double getFractionToWaitFor() {
       return fractionToWaitFor;
     }
 
+    /**
+     * @return medianTimeMultiplier.
+     */
     public double getMedianTimeMultiplier() {
       return medianTimeMultiplier;
     }
 
+    /**
+     * @return true if it is upfront cloning.
+     */
     public boolean isUpFrontCloning() {
       return upFrontCloning;
     }

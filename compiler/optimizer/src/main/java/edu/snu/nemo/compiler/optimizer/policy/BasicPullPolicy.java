@@ -25,6 +25,7 @@ import org.apache.reef.tang.Injector;
 
 /**
  * Basic pull policy.
+ * TODO #200: Maintain Test Passes and Policies Separately
  */
 public final class BasicPullPolicy implements Policy {
   public static final PolicyBuilder BUILDER =

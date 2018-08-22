@@ -189,15 +189,17 @@ public final class PlanStateManager {
         .noneMatch(state -> state.getStateMachine().getCurrentState().equals(TaskState.State.COMPLETE))) {
 
         // (Step 1) Create new READY attempts, as many as
-        // # of clones - # of 'not-done' attempts
+        // # of numOfConcurrentAttempts(including clones) - # of 'not-done' attempts
         stageIdToTaskIndexToNumOfClones.putIfAbsent(stageId, new HashMap<>());
         final Optional<ClonedSchedulingProperty.CloneConf> cloneConf =
           stage.getPropertyValue(ClonedSchedulingProperty.class);
-        final int numOfClones = cloneConf.isPresent() && cloneConf.get().isUpFrontCloning()
+        final int numOfConcurrentAttempts = cloneConf.isPresent() && cloneConf.get().isUpFrontCloning()
+          // For now we support up to 1 clone (2 concurrent = 1 original + 1 clone)
           ? 2
+          // If the property is not set, then we do not clone (= 1 concurrent)
           : stageIdToTaskIndexToNumOfClones.get(stageId).getOrDefault(stageId, 1);
         final long numOfNotDoneAttempts = attemptStatesForThisTaskIndex.stream().filter(this::isTaskNotDone).count();
-        for (int i = 0; i < numOfClones - numOfNotDoneAttempts; i++) {
+        for (int i = 0; i < numOfConcurrentAttempts - numOfNotDoneAttempts; i++) {
           attemptStatesForThisTaskIndex.add(new TaskState());
         }
 
@@ -221,6 +223,10 @@ public final class PlanStateManager {
     return taskAttemptsToSchedule;
   }
 
+  /**
+   * @param stageId to query.
+   * @return all task attempt ids of the stage.
+   */
   public synchronized Set<String> getAllTaskAttemptsOfStage(final String stageId) {
     return getTaskAttemptIdsToItsState(stageId).keySet();
   }
@@ -308,7 +314,7 @@ public final class PlanStateManager {
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     final List<List<TaskState>> taskStatesOfThisStage = stageIdToTaskAttemptStates.get(stageId);
     final long numOfCompletedTaskIndicesInThisStage = taskStatesOfThisStage.stream()
-      .map(attempts -> {
+      .filter(attempts -> {
         final List<TaskState.State> states = attempts
           .stream()
           .map(state -> (TaskState.State) state.getStateMachine().getCurrentState())
@@ -316,7 +322,6 @@ public final class PlanStateManager {
         return states.stream().allMatch(curState -> curState.equals(TaskState.State.ON_HOLD)) // all of them are ON_HOLD
           || states.stream().anyMatch(curState -> curState.equals(TaskState.State.COMPLETE)); // one of them is COMPLETE
       })
-      .filter(bool -> bool.equals(true))
       .count();
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
       LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",
@@ -330,7 +335,6 @@ public final class PlanStateManager {
       stageIdToCompletedTaskTimeMsList.putIfAbsent(stageId, new ArrayList<>());
       stageIdToCompletedTaskTimeMsList.get(stageId).add(System.currentTimeMillis() - taskIdToStartTimeMs.get(taskId));
     }
-
 
     // Change stage state, if needed
     switch (newTaskState) {
@@ -478,6 +482,9 @@ public final class PlanStateManager {
     return getPlanState();
   }
 
+  /**
+   * @return a map from task attempt id to its current state.
+   */
   @VisibleForTesting
   public synchronized Map<String, TaskState.State> getAllTaskAttemptIdsToItsState() {
     return physicalPlan.getStageDAG().getVertices()

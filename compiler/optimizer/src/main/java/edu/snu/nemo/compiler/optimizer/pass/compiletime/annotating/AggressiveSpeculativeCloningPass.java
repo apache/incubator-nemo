@@ -19,11 +19,13 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
  * Speculative execution. (very aggressive, for unit tests)
+ * TODO #200: Maintain Test Passes and Policies Separately
  */
-@Annotates(ClonedSchedulingProperty.class)
+@Requires(ClonedSchedulingProperty.class)
 public final class AggressiveSpeculativeCloningPass extends AnnotatingPass {
   /**
    * Default constructor.
