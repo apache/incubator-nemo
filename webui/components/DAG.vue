@@ -38,6 +38,7 @@ const RECT_ROUND_RADIUS = 4;
 const RECT_STROKE_WIDTH = 2;
 const EDGE_STROKE_WIDTH = 2;
 const ARROW_SIDE = 3;
+const FONT_SIZE = 2;
 
 const GRAPH_MARGIN = 15;
 
@@ -94,8 +95,11 @@ export default {
       vertexObjects: {},
       // stageId -> fabric.Rect of stage
       stageObjects: {},
-      // stageId -> inner objects of stage (edges, vertices)
+      // stageId -> inner objects of stage (edges, vertices, text)
       stageInnerObjects: {},
+      stageInnerTextObjects: {},
+      // array of stage edge label text object
+      stageEdgeTextObjects: [],
     };
   },
 
@@ -257,6 +261,8 @@ export default {
       this.vertexObjects = {};
       this.stageObjects = {};
       this.stageInnerObjects = {};
+      this.stageInnerTextObjects = {};
+      this.stageEdgeTextObjects = [];
       this.objectSelected = false;
     },
 
@@ -465,7 +471,25 @@ export default {
       this.canvas.viewportTransform[4] = -this.dagOriginX * targetRatio;
       this.canvas.viewportTransform[5] = -this.dagOriginY * targetRatio;
       this.canvas.setZoom(targetRatio);
+      this.rearrangeFontSize(targetRatio);
       this.canvas.renderAll();
+    },
+
+    /**
+     * Rearrange font size according to the canvas zoom ratio.
+     */
+    rearrangeFontSize(ratio) {
+      this.stageIdArray.forEach(stageId => {
+        if (this.stageInnerTextObjects[stageId]) {
+          this.stageInnerTextObjects[stageId].forEach(text => {
+            text.set('fontSize', FONT_SIZE * ratio);
+          });
+        }
+      });
+
+      this.stageEdgeTextObjects.forEach(text => {
+        text.set('fontSize', FONT_SIZE * ratio);
+      });
     },
 
     /**
@@ -516,6 +540,7 @@ export default {
 
         // initialize stage inner object array
         this.stageInnerObjects[stageId] = [];
+        this.stageInnerTextObjects[stageId] = [];
 
         // get inner vertex layout
         this.verticesGraph[stageId] = new Graph();
@@ -535,6 +560,9 @@ export default {
         innerEdges.forEach(edge => {
           g.setEdge(edge.src, edge.dst, {
             label: edge.properties.runtimeEdgeId,
+            width: 10,
+            height: 10,
+            labelpos: 'c',
           });
         });
 
@@ -564,6 +592,16 @@ export default {
 
         g.edges().map(e => g.edge(e)).forEach(edge => {
           let path = this.drawSVGEdgeWithArrow(edge);
+          let edgeLabelObj = new fabric.Text(edge.label, {
+            left: edge.x,
+            top: edge.y,
+            fontSize: FONT_SIZE,
+            originX: 'center',
+            originY: 'center',
+            selectable: false,
+          });
+          objectArray.push(edgeLabelObj);
+          this.stageInnerTextObjects[stageId].push(edgeLabelObj);
 
           let pathObj = new fabric.Path(path);
           pathObj.set({
@@ -602,6 +640,9 @@ export default {
       this.stageEdges.forEach(stageEdge => {
         g.setEdge(stageEdge.src, stageEdge.dst, {
           label: stageEdge.properties.runtimeEdgeId,
+          width: 10,
+          height: 10,
+          labelpos: 'c',
         });
       });
 
@@ -636,6 +677,16 @@ export default {
       let stageEdgeObjectArray = [];
       g.edges().map(e => g.edge(e)).forEach(edge => {
         let path = this.drawSVGEdgeWithArrow(edge);
+        let edgeLabelObj = new fabric.Text(edge.label, {
+          left: edge.x,
+          top: edge.y,
+          fontSize: FONT_SIZE,
+          originX: 'center',
+          originY: 'center',
+          selectable: false,
+        });
+        stageEdgeObjectArray.push(edgeLabelObj);
+        this.stageEdgeTextObjects.push(edgeLabelObj);
 
         let pathObj = new fabric.Path(path);
         pathObj.set({
@@ -661,6 +712,15 @@ export default {
       this.stageIdArray.forEach(stageId => {
         const stageObj = this.stageObjects[stageId];
         this.stageInnerObjects[stageId].forEach(obj => {
+          const dx = obj.get('left') + stageObj.get('left')
+            - stageObj.get('width') / 2;
+          const dy = obj.get('top') + stageObj.get('top')
+            - stageObj.get('height') / 2;
+          obj.set('left', dx);
+          obj.set('top', dy);
+        });
+
+        this.stageInnerTextObjects[stageId].forEach(obj => {
           const dx = obj.get('left') + stageObj.get('left')
             - stageObj.get('width') / 2;
           const dy = obj.get('top') + stageObj.get('top')
