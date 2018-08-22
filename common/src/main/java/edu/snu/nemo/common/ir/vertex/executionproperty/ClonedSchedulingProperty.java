@@ -17,30 +17,104 @@ package edu.snu.nemo.common.ir.vertex.executionproperty;
 
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
+import java.io.Serializable;
+
 /**
  * Specifies cloned execution of a vertex.
  *
  * A major limitations of the current implementation:
  * *ALL* of the clones are always scheduled immediately
  */
-public final class ClonedSchedulingProperty extends VertexExecutionProperty<Integer> {
+public final class ClonedSchedulingProperty extends VertexExecutionProperty<ClonedSchedulingProperty.CloneConf> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private ClonedSchedulingProperty(final Integer value) {
+  private ClonedSchedulingProperty(final CloneConf value) {
     super(value);
   }
 
   /**
    * Static method exposing the constructor.
-   * @param value value of the new execution property.
+   * @param conf value of the new execution property.
    * @return the newly created execution property.
    */
-  public static ClonedSchedulingProperty of(final Integer value) {
-    if (value <= 0) {
-      throw new IllegalStateException(String.valueOf(value));
+  public static ClonedSchedulingProperty of(final CloneConf conf) {
+    return new ClonedSchedulingProperty(conf);
+  }
+
+  /**
+   * Configurations for cloning.
+   * TODO #199: Slot-aware cloning
+   */
+  public static final class CloneConf implements Serializable {
+    // Always clone, upfront.
+    private final boolean upFrontCloning;
+
+    // Fraction of tasks to wait for completion, before trying to clone.
+    // If this value is 0, then we always clone.
+    private final double fractionToWaitFor;
+
+    // How many times slower is a task than the median, in order to be cloned.
+    private final double medianTimeMultiplier;
+
+    /**
+     * Always clone, upfront.
+     */
+    public CloneConf() {
+      this.upFrontCloning = true;
+      this.fractionToWaitFor = 0.0;
+      this.medianTimeMultiplier = 0.0;
     }
-    return new ClonedSchedulingProperty(value);
+
+    /**
+     * Clone stragglers judiciously.
+     * @param fractionToWaitFor before trying to clone.
+     * @param medianTimeMultiplier to identify stragglers.
+     */
+    public CloneConf(final double fractionToWaitFor, final double medianTimeMultiplier) {
+      if (fractionToWaitFor >= 1.0 || fractionToWaitFor <= 0) {
+        throw new IllegalArgumentException(String.valueOf(fractionToWaitFor));
+      }
+      if (medianTimeMultiplier < 1.0) {
+        throw new IllegalArgumentException(String.valueOf(medianTimeMultiplier));
+      }
+      this.upFrontCloning = false;
+      this.fractionToWaitFor = fractionToWaitFor;
+      this.medianTimeMultiplier = medianTimeMultiplier;
+    }
+
+    /**
+     * @return fractionToWaitFor.
+     */
+    public double getFractionToWaitFor() {
+      return fractionToWaitFor;
+    }
+
+    /**
+     * @return medianTimeMultiplier.
+     */
+    public double getMedianTimeMultiplier() {
+      return medianTimeMultiplier;
+    }
+
+    /**
+     * @return true if it is upfront cloning.
+     */
+    public boolean isUpFrontCloning() {
+      return upFrontCloning;
+    }
+
+    @Override
+    public String toString() {
+      final StringBuilder sb = new StringBuilder();
+      sb.append("upfront: ");
+      sb.append(upFrontCloning);
+      sb.append(" / fraction: ");
+      sb.append(fractionToWaitFor);
+      sb.append(" / multiplier: ");
+      sb.append(medianTimeMultiplier);
+      return sb.toString();
+    }
   }
 }
