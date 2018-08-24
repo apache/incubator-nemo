@@ -15,28 +15,32 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.core;
 
+/**
+ * @param <T> type of the broadcast data.
+ */
 public final class SparkBroadcast<T> extends org.apache.spark.broadcast.Broadcast<T> {
-  final Object tag;
+  private final T tag;
 
-  public SparkBroadcast(final Object tag) {
-    this.tag = ta;
+  public SparkBroadcast(final T tag) {
+    super();
+    this.tag = tag;
   }
 
   @Override
   public T getValue() {
-    // TODO: Transform.Context.getSideInputs();
-    // TODO: use the tag (needs wireups...)
+    // Transform.Context.getSideInputs();
+    // use the tag (needs wireups...)
     // Problem: this object resides inside the IRVertex
     return null;
   }
 
   @Override
-  public void doUnpersist(boolean blocking) {
+  public void doUnpersist(final boolean blocking) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void doDestroy(boolean blocking) {
+  public void doDestroy(final boolean blocking) {
     throw new UnsupportedOperationException();
   }
 }

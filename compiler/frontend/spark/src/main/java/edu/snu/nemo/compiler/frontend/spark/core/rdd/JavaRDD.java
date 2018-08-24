@@ -177,7 +177,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
    */
   @Override
   public <O> JavaRDD<O> map(final Function<T, O> func) {
-    // TODO: get the broadcast variables (which ones?)
+    // get the broadcast variables (which ones?)
     return rdd.map(func, ClassTag$.MODULE$.apply(Object.class)).toJavaRDD();
   }
 
