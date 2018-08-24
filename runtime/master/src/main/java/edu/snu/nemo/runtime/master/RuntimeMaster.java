@@ -75,8 +75,11 @@ public final class RuntimeMaster {
   private static final int DAG_LOGGING_PERIOD = 3000;
   private static final int METRIC_ARRIVE_TIMEOUT = 10000;
   private static final int REST_SERVER_PORT = 10101;
+  private static final int SPECULATION_CHECKING_PERIOD_MS = 100;
 
   private final ExecutorService runtimeMasterThread;
+  private final ScheduledExecutorService speculativeTaskCloningThread;
+
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
   private final MetricMessageHandler metricMessageHandler;
@@ -109,6 +112,16 @@ public final class RuntimeMaster {
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
     this.runtimeMasterThread =
         Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster thread"));
+
+    // Check for speculative execution every second.
+    this.speculativeTaskCloningThread = Executors
+      .newSingleThreadScheduledExecutor(runnable -> new Thread(runnable, "SpeculativeTaskCloning thread"));
+    this.speculativeTaskCloningThread.scheduleAtFixedRate(
+      () -> this.runtimeMasterThread.submit(scheduler::onSpeculativeExecutionCheck),
+      SPECULATION_CHECKING_PERIOD_MS,
+      SPECULATION_CHECKING_PERIOD_MS,
+      TimeUnit.MILLISECONDS);
+
     this.scheduler = scheduler;
     this.containerManager = containerManager;
     this.metricMessageHandler = metricMessageHandler;
@@ -177,6 +190,9 @@ public final class RuntimeMaster {
    * Terminates the RuntimeMaster.
    */
   public void terminate() {
+    // No need to speculate anymore
+    speculativeTaskCloningThread.shutdown();
+
     // send metric flush request to all executors
     metricManagerMaster.sendMetricFlushRequest();
     try {
@@ -189,6 +205,7 @@ public final class RuntimeMaster {
       // clean up state...
       Thread.currentThread().interrupt();
     }
+
     runtimeMasterThread.execute(() -> {
       scheduler.terminate();
       try {
@@ -415,7 +432,6 @@ public final class RuntimeMaster {
   private ScheduledExecutorService scheduleDagLogging() {
     final ScheduledExecutorService dagLoggingExecutor = Executors.newSingleThreadScheduledExecutor();
     dagLoggingExecutor.scheduleAtFixedRate(new Runnable() {
-
       public void run() {
         planStateManager.storeJSON("periodic");
       }

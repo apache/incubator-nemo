@@ -31,6 +31,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -85,6 +86,8 @@ public final class BlockManagerMaster {
 
   /**
    * Initializes the states of a block which will be produced by a producer task.
+   * This method is idempotent thanks to the 'Set' data structures.
+   * See BatchScheduler#doSchedule for details on scheduling same task attempts multiple times.
    *
    * @param blockId        the id of the block to initialize.
    * @param producerTaskId the id of the producer task.
@@ -134,31 +137,22 @@ public final class BlockManagerMaster {
   }
 
   /**
-   * Returns a handler of block location requests.
-   *
-   * @param blockIdOrWildcard id of the specified block.
-   * @return the handler of block location requests, which completes exceptionally when the block
-   * is not {@code IN_PROGRESS} or {@code AVAILABLE}.
+   * Get handlers of blocks that are in a particular state.
+   * @param blockIdOrWildcard to query
+   * @param state of the block
+   * @return the handlers, empty if none matches.
    */
-  public BlockRequestHandler getBlockLocationHandler(final String blockIdOrWildcard) {
+  public List<BlockRequestHandler> getBlockHandlers(final String blockIdOrWildcard,
+                                                    final BlockState.State state) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
       final Set<BlockMetadata> metadataSet =
         getBlockWildcardStateSet(RuntimeIdManager.getWildCardFromBlockId(blockIdOrWildcard));
-      final List<BlockMetadata> candidates = metadataSet.stream()
-        .filter(metadata -> metadata.getBlockState().equals(BlockState.State.IN_PROGRESS)
-          || metadata.getBlockState().equals(BlockState.State.AVAILABLE))
+      return metadataSet.stream()
+        .filter(metadata -> metadata.getBlockState().equals(state))
+        .map(BlockMetadata::getLocationHandler)
         .collect(Collectors.toList());
-      if (!candidates.isEmpty()) {
-        // Randomly pick one of the candidate handlers.
-        return candidates.get(random.nextInt(candidates.size())).getLocationHandler();
-      } else {
-        // No candidate exists
-        final BlockRequestHandler handler = new BlockRequestHandler(blockIdOrWildcard);
-        handler.completeExceptionally(new AbsentBlockException(blockIdOrWildcard, BlockState.State.NOT_AVAILABLE));
-        return handler;
-      }
     } finally {
       readLock.unlock();
     }
@@ -170,7 +164,7 @@ public final class BlockManagerMaster {
    * @param blockId the id of the block.
    * @return the ids of the producer tasks.
    */
-  private Set<String> getProducerTaskIds(final String blockId) {
+  public Set<String> getProducerTaskIds(final String blockId) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
@@ -241,7 +235,9 @@ public final class BlockManagerMaster {
             if (location.get().equals(executorId)) {
               blockIds.add(blockMetadata.getBlockId());
             }
-          } catch (final InterruptedException | ExecutionException e) {
+          } catch (final CancellationException | ExecutionException e) {
+            // Don't add (NOT_AVAILABLE)
+          } catch (final InterruptedException e) {
             // Cannot reach here because we check the completion of the future already.
             LOG.error("Exception while getting the location of a block!", e);
             Thread.currentThread().interrupt();
@@ -302,21 +298,37 @@ public final class BlockManagerMaster {
   }
 
   /**
-   * Deals with a request for the location of a block.
-   *
    * @param message        the request message.
    * @param messageContext the message context which will be used for response.
    */
-  void onRequestBlockLocation(final ControlMessage.Message message,
-                              final MessageContext messageContext) {
+  private void registerLocationRequest(final ControlMessage.Message message, final MessageContext messageContext) {
     assert (message.getType() == ControlMessage.MessageType.RequestBlockLocation);
     final String blockIdWildcard = message.getRequestBlockLocationMsg().getBlockIdWildcard();
     final long requestId = message.getId();
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      final BlockRequestHandler locationFuture = getBlockLocationHandler(blockIdWildcard);
-      locationFuture.registerRequest(requestId, messageContext);
+      // (CASE 1) Check AVAILABLE blocks.
+      final List<BlockRequestHandler> availableBlocks = getBlockHandlers(blockIdWildcard, BlockState.State.AVAILABLE);
+      if (!availableBlocks.isEmpty()) {
+        // random pick
+        // TODO #201: Let Executors Try Multiple Input Block Clones
+        availableBlocks.get(random.nextInt(availableBlocks.size())).registerRequest(requestId, messageContext);
+        return;
+      }
+
+      // (CASE 2) Check IN_PROGRESS blocks.
+      final List<BlockRequestHandler> progressBlocks = getBlockHandlers(blockIdWildcard, BlockState.State.IN_PROGRESS);
+      if (!progressBlocks.isEmpty()) {
+        // random pick
+        progressBlocks.get(random.nextInt(progressBlocks.size())).registerRequest(requestId, messageContext);
+        return;
+      }
+
+      // (CASE 3) Unfortunately, there is no good block to use.
+      final BlockRequestHandler absent = new BlockRequestHandler(blockIdWildcard);
+      absent.completeExceptionally(new AbsentBlockException(blockIdWildcard, BlockState.State.NOT_AVAILABLE));
+      absent.registerRequest(requestId, messageContext);
     } finally {
       readLock.unlock();
     }
@@ -352,7 +364,7 @@ public final class BlockManagerMaster {
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
         case RequestBlockLocation:
-          onRequestBlockLocation(message, messageContext);
+          registerLocationRequest(message, messageContext);
           break;
         default:
           throw new IllegalMessageException(
@@ -366,16 +378,16 @@ public final class BlockManagerMaster {
    * The handler of block location requests.
    */
   public static final class BlockRequestHandler {
-    private final String blockId;
+    private final String blockIdOrWildcard;
     private final CompletableFuture<String> locationFuture;
 
     /**
      * Constructor.
      *
-     * @param blockId the ID of the block.
+     * @param blockIdOrWildcard the ID of the block.
      */
-    BlockRequestHandler(final String blockId) {
-      this.blockId = blockId;
+    BlockRequestHandler(final String blockIdOrWildcard) {
+      this.blockIdOrWildcard = blockIdOrWildcard;
       this.locationFuture = new CompletableFuture<>();
     }
 
@@ -411,7 +423,7 @@ public final class BlockManagerMaster {
       final ControlMessage.BlockLocationInfoMsg.Builder infoMsgBuilder =
         ControlMessage.BlockLocationInfoMsg.newBuilder()
           .setRequestId(requestId)
-          .setBlockId(blockId);
+          .setBlockId(blockIdOrWildcard);
 
       locationFuture.whenComplete((location, throwable) -> {
         if (throwable == null) {

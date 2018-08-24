@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 package edu.snu.nemo.runtime.master.scheduler;
-
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
@@ -24,6 +23,7 @@ import edu.snu.nemo.runtime.common.message.MessageSender;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.state.PlanState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
@@ -72,6 +72,7 @@ public final class TaskRetryTest {
   private Scheduler scheduler;
   private ExecutorRegistry executorRegistry;
   private PlanStateManager planStateManager;
+  private BlockManagerMaster blockManagerMaster;
 
   private static final int MAX_SCHEDULE_ATTEMPT = Integer.MAX_VALUE;
 
@@ -96,13 +97,21 @@ public final class TaskRetryTest {
   public void testExecutorRemoved() throws Exception {
     // Until the plan finishes, events happen
     while (!planStateManager.isPlanDone()) {
-      // 50% chance remove, 50% chance add, 80% chance task completed
-      executorRemoved(0.5);
-      executorAdded(0.5);
-      taskCompleted(0.8);
+      // 30% chance executor added, 30% chance executor removed
+      executorAdded(0.3);
+      executorRemoved(0.3);
 
-      // 10ms sleep
-      Thread.sleep(10);
+      // random - trigger speculative execution.
+      if (random.nextBoolean()) {
+        Thread.sleep(10);
+      } else {
+        Thread.sleep(20);
+      }
+
+      // 30% chance task completed,
+      taskCompleted(0.3);
+
+      scheduler.onSpeculativeExecutionCheck();
     }
 
     // Plan should COMPLETE
@@ -120,12 +129,17 @@ public final class TaskRetryTest {
     // Until the plan finishes, events happen
     while (!planStateManager.isPlanDone()) {
       // 50% chance task completed
-      // 50% chance task output write failed
+      // 70% chance task output write failed
       taskCompleted(0.5);
-      taskOutputWriteFailed(0.5);
+      taskOutputWriteFailed(0.7);
 
-      // 10ms sleep
-      Thread.sleep(10);
+      // random - trigger speculative execution.
+      if (random.nextBoolean()) {
+        Thread.sleep(10);
+      } else {
+        Thread.sleep(20);
+      }
+      scheduler.onSpeculativeExecutionCheck();
     }
 
     // Plan should COMPLETE
@@ -178,8 +192,17 @@ public final class TaskRetryTest {
     if (!executingTasks.isEmpty()) {
       final int randomIndex = random.nextInt(executingTasks.size());
       final String selectedTask = executingTasks.get(randomIndex);
-      SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry, selectedTask,
+
+
+      final Optional<ExecutorRepresenter> executor = executorRegistry.findExecutorForTask(selectedTask);
+      if (executor.isPresent()) {
+        SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry, selectedTask,
           TaskState.State.COMPLETE, RuntimeIdManager.getAttemptFromTaskId(selectedTask));
+        getOutputBlockIds(selectedTask).forEach(blockId ->
+          blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE, executor.get().getExecutorId()));
+      } else {
+        throw new RuntimeException(selectedTask);
+      }
     }
   }
 
@@ -221,7 +244,16 @@ public final class TaskRetryTest {
     injector.bindVolatileInstance(SchedulingConstraintRegistry.class, mock(SchedulingConstraintRegistry.class));
     planStateManager = injector.getInstance(PlanStateManager.class);
     scheduler = injector.getInstance(Scheduler.class);
+    blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
 
     scheduler.schedulePlan(plan, MAX_SCHEDULE_ATTEMPT);
+  }
+
+  private Set<String> getOutputBlockIds(final String taskId) {
+    return planStateManager.getPhysicalPlan().getStageDAG()
+      .getOutgoingEdgesOf(RuntimeIdManager.getStageIdFromTaskId(taskId))
+      .stream()
+      .map(stageEdge -> RuntimeIdManager.generateBlockId(stageEdge.getId(), taskId))
+      .collect(Collectors.toSet()); // ids of blocks this task will produce
   }
 }

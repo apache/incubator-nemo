@@ -21,22 +21,27 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 
 /**
- * Set the ClonedScheduling property of source vertices.
+ * Speculative execution. (very aggressive, for unit tests)
+ * TODO #200: Maintain Test Passes and Policies Separately
  */
 @Annotates(ClonedSchedulingProperty.class)
-public final class ClonedSchedulingPass extends AnnotatingPass {
+public final class AggressiveSpeculativeCloningPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public ClonedSchedulingPass() {
-    super(ClonedSchedulingPass.class);
+  public AggressiveSpeculativeCloningPass() {
+    super(AggressiveSpeculativeCloningPass.class);
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().stream()
-        .filter(vertex -> dag.getIncomingEdgesOf(vertex.getId()).isEmpty())
-        .forEach(vertex -> vertex.setProperty(ClonedSchedulingProperty.of(2)));
+    // Speculative execution policy.
+    final double fractionToWaitFor = 0.00000001; // Aggressive
+    final double medianTimeMultiplier = 1.00000001; // Aggressive
+
+    // Apply the policy to ALL vertices
+    dag.getVertices().forEach(vertex -> vertex.setProperty(ClonedSchedulingProperty.of(
+      new ClonedSchedulingProperty.CloneConf(fractionToWaitFor, medianTimeMultiplier))));
     return dag;
   }
 }
