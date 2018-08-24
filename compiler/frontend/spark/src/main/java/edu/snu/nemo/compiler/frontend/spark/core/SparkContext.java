@@ -15,12 +15,17 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.core;
 
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.InMemorySourceVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
 import org.apache.spark.SparkConf;
 import scala.collection.Seq;
 import scala.reflect.ClassTag;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -60,5 +65,15 @@ public final class SparkContext extends org.apache.spark.SparkContext {
                                 final ClassTag<T> evidence) {
     final List<T> javaList = scala.collection.JavaConversions.seqAsJavaList(seq);
     return JavaRDD.of(this.sparkContext, javaList, numSlices).rdd();
+  }
+
+  public <T> RDD<T> broadcast(final T data) {
+    // TODO: register this data (IRVertex -> SourceVertex?)
+    // TODO: create a tag for the data
+
+    final IRVertex inMemoryVertex = new InMemorySourceVertex<>(Collections.singleton(data));
+    inMemoryVertex.setProperty(ParallelismProperty.of(1)); // singleton
+    builder.addVertex(inMemoryVertex);
+    return new SparkBroadcast<>(tag);
   }
 }
