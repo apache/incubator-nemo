@@ -22,16 +22,20 @@ import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
 import org.apache.spark.SparkConf;
 import org.apache.spark.broadcast.Broadcast;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.collection.Seq;
 import scala.reflect.ClassTag;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 /**
  * Spark context wrapper for in Nemo.
  */
 public final class SparkContext extends org.apache.spark.SparkContext {
+  private static final Logger LOG = LoggerFactory.getLogger(SparkContext.class.getName());
   private final org.apache.spark.SparkContext sparkContext;
 
   /**
@@ -67,12 +71,16 @@ public final class SparkContext extends org.apache.spark.SparkContext {
     return JavaRDD.of(this.sparkContext, javaList, numSlices).rdd();
   }
 
-  public <T> Broadcast<T> broadcast(final T data) {
+  @Override
+  public <T> Broadcast<T> broadcast(final T data,
+                                    final ClassTag<T> evidence) {
     // register this data (IRVertex -> SourceVertex?)
     // create a tag for the data
     final IRVertex inMemoryVertex = new InMemorySourceVertex<>(Collections.singleton(data));
     inMemoryVertex.setProperty(ParallelismProperty.of(1)); // singleton
     // builder.addVertex(inMemoryVertex);
-    return new SparkBroadcast(new Object());
+
+    final HashMap serializableHashMap = new HashMap();
+    return new SparkBroadcast(99999, serializableHashMap, serializableHashMap.getClass());
   }
 }

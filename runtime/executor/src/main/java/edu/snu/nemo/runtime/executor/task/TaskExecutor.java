@@ -61,7 +61,7 @@ public final class TaskExecutor {
   private final TaskStateManager taskStateManager;
   private final List<DataFetcher> dataFetchers;
   private final List<VertexHarness> sortedHarnesses;
-  private final Map sideInputMap;
+  private final Map idToBroadcastVariable;
 
   // Metrics information
   private long boundedSourceReadTime = 0;
@@ -104,7 +104,7 @@ public final class TaskExecutor {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
 
     // Prepare data structures
-    this.sideInputMap = new HashMap();
+    this.idToBroadcastVariable = new HashMap();
     final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, dataTransferFactory);
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
@@ -149,12 +149,6 @@ public final class TaskExecutor {
         throw new IllegalStateException(irVertex.toString());
       }
 
-      final List<Boolean> isToSideInputs = children.stream()
-          .map(VertexHarness::getIRVertex)
-          .map(childVertex -> irVertexDag.getEdgeBetween(irVertex.getId(), childVertex.getId()))
-          .map(RuntimeEdge::isSideInput)
-          .collect(Collectors.toList());
-
       final Map<String, String> additionalOutputMap =
           getAdditionalOutputMap(irVertex, task.getTaskOutgoingEdges(), irVertexDag);
       final List<Boolean> isToAdditionalTagOutputs = children.stream()
@@ -176,23 +170,22 @@ public final class TaskExecutor {
       final OutputCollectorImpl oci = new OutputCollectorImpl(mainChildren, additionalOutputVertices);
 
       // intra-vertex writes
-      final VertexHarness vertexHarness = new VertexHarness(irVertex, oci, children,
-          isToSideInputs, isToAdditionalTagOutputs, mainChildrenTaskWriters, additionalChildrenTaskWriters,
-          new ContextImpl(sideInputMap, additionalOutputMap));
+      final VertexHarness vertexHarness = new VertexHarness(
+        irVertex, oci, children, isToAdditionalTagOutputs, mainChildrenTaskWriters, additionalChildrenTaskWriters,
+          new ContextImpl(idToBroadcastVariable, additionalOutputMap));
       prepareTransform(vertexHarness);
       vertexIdToHarness.put(irVertex.getId(), vertexHarness);
 
       // Handle reads
-      final boolean isToSideInput = isToSideInputs.stream().anyMatch(bool -> bool);
       if (irVertex instanceof SourceVertex) {
-        dataFetcherList.add(new SourceVertexDataFetcher(
-            irVertex, sourceReader.get(), vertexHarness, isToSideInput)); // Source vertex read
+        // Source vertex read
+        dataFetcherList.add(new SourceVertexDataFetcher(irVertex, sourceReader.get(), vertexHarness));
       }
+      // Parent-task read
       final List<InputReader> parentTaskReaders =
           getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
-      parentTaskReaders.forEach(parentTaskReader ->
-        dataFetcherList.add(new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
-            vertexHarness, isToSideInput))); // Parent-task read
+      parentTaskReaders.forEach(parentTaskReader -> dataFetcherList.add(
+        new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader, vertexHarness)));
     });
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
@@ -252,9 +245,8 @@ public final class TaskExecutor {
 
   /**
    * The task is executed in the following two phases.
-   * - Phase 1: Consume task-external side-input data
-   * - Phase 2: Consume task-external input data
-   * - Phase 3: Finalize task-internal states and data elements
+   * - Phase 1: Consume task-external input data
+   * - Phase 2: Finalize task-internal states and data elements
    */
   private void doExecute() {
     // Housekeeping stuff
@@ -264,24 +256,8 @@ public final class TaskExecutor {
     LOG.info("{} started", taskId);
     taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
 
-    // Phase 1: Consume task-external side-input related data.
-    final Map<Boolean, List<DataFetcher>> sideInputRelated = dataFetchers.stream()
-        .collect(Collectors.partitioningBy(fetcher -> fetcher.isFromSideInput() || fetcher.isToSideInput()));
-    if (!handleDataFetchers(sideInputRelated.get(true))) {
-      return;
-    }
-    final Set<VertexHarness> finalizeLater = sideInputRelated.get(false).stream()
-        .map(DataFetcher::getChild)
-        .flatMap(vertex -> getAllReachables(vertex).stream())
-        .collect(Collectors.toSet());
-    for (final VertexHarness vertexHarness : sortedHarnesses) {
-      if (!finalizeLater.contains(vertexHarness)) {
-        finalizeVertex(vertexHarness); // finalize early to materialize intra-task side inputs.
-      }
-    }
-
-    // Phase 2: Consume task-external input data.
-    if (!handleDataFetchers(sideInputRelated.get(false))) {
+    // Phase 1: Consume task-external input data.
+    if (!handleDataFetchers(dataFetchers)) {
       return;
     }
 
@@ -292,11 +268,9 @@ public final class TaskExecutor {
     metricMessageSender.send("TaskMetric", taskId,
         "encodedReadBytes", SerializationUtils.serialize(encodedReadBytes));
 
-    // Phase 3: Finalize task-internal states and elements
+    // Phase 2: Finalize task-internal states and elements
     for (final VertexHarness vertexHarness : sortedHarnesses) {
-      if (finalizeLater.contains(vertexHarness)) {
-        finalizeVertex(vertexHarness);
-      }
+      finalizeVertex(vertexHarness);
     }
 
     if (idOfVertexPutOnHold == null) {
@@ -308,18 +282,6 @@ public final class TaskExecutor {
           Optional.empty());
       LOG.info("{} on hold", taskId);
     }
-  }
-
-  private List<VertexHarness> getAllReachables(final VertexHarness src) {
-    final List<VertexHarness> result = new ArrayList<>();
-    result.add(src);
-    result.addAll(src.getNonSideInputChildren().stream()
-        .flatMap(child -> getAllReachables(child).stream()).collect(Collectors.toList()));
-    result.addAll(src.getSideInputChildren().stream()
-        .flatMap(child -> getAllReachables(child).stream()).collect(Collectors.toList()));
-    result.addAll(src.getAdditionalTagOutputChildren().values().stream()
-        .flatMap(child -> getAllReachables(child).stream()).collect(Collectors.toList()));
-    return result;
   }
 
   private void finalizeVertex(final VertexHarness vertexHarness) {
@@ -342,12 +304,8 @@ public final class TaskExecutor {
   private void handleMainOutputElement(final VertexHarness harness, final Object element) {
     // writes to children tasks
     harness.getWritersToMainChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
-    // writes to side input children tasks
-    if (!harness.getSideInputChildren().isEmpty()) {
-      sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
-    }
     // process elements in the next vertices within a task
-    harness.getNonSideInputChildren().forEach(child -> processElementRecursively(child, element));
+    harness.getChildren().forEach(child -> processElementRecursively(child, element));
   }
 
   private void handleAdditionalOutputElement(final VertexHarness harness, final Object element, final String tag) {
@@ -355,10 +313,6 @@ public final class TaskExecutor {
     harness.getWritersToAdditionalChildrenTasks().entrySet().stream()
         .filter(kv -> kv.getKey().equals(tag))
         .forEach(kv -> kv.getValue().write(element));
-    // writes to side input children tasks
-    if (!harness.getSideInputChildren().isEmpty()) {
-      sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
-    }
     // process elements in the next vertices within a task
     harness.getAdditionalTagOutputChildren().entrySet().stream()
         .filter(kv -> kv.getKey().equals(tag))
@@ -399,11 +353,7 @@ public final class TaskExecutor {
         }
 
         // Successfully fetched an element
-        if (dataFetcher.isFromSideInput()) {
-          sideInputMap.put(((OperatorVertex) dataFetcher.getDataSource()).getTransform().getTag(), element);
-        } else {
-          processElementRecursively(dataFetcher.getChild(), element);
-        }
+        processElementRecursively(dataFetcher.getChild(), element);
       }
 
       // Remove the finished fetcher from the list

@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory
 
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
 /**
  * RDD for Nemo.
@@ -102,6 +103,24 @@ final class RDD[T: ClassTag] protected[rdd] (
    * A scala wrapper for map transformation.
    */
   override def map[U](f: (T) => U)(implicit evidence$3: ClassManifest[U]): RDD[U] = {
+    /*
+    val ru = scala.reflect.runtime.universe
+    val m = ru.runtimeMirror(getClass.getClassLoader)
+    val im = m.reflect(f)
+    */
+
+    val rm = scala.reflect.runtime.currentMirror
+    val accessors = rm.classSymbol(f.getClass).toType.members.collect {
+      case m: MethodSymbol if m.isGetter && m.isPublic => m
+    }
+    LOG.info("Doing MAP for {}", f.toString())
+
+    val instanceMirror = rm.reflect(f)
+    for (acc <- accessors) {
+      println(s"$f: ${instanceMirror.reflectMethod(acc).apply()}")
+    }
+    LOG.info("Doing MAP (Next)")
+
     val javaFunc = SparkFrontendUtils.toJavaFunction(f)
     map(javaFunc)
   }

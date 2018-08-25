@@ -15,14 +15,16 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.core;
 
+import scala.reflect.ClassTag$;
+
 /**
  * @param <T> type of the broadcast data.
  */
 public final class SparkBroadcast<T> extends org.apache.spark.broadcast.Broadcast<T> {
   private final T tag;
 
-  public SparkBroadcast(final T tag) {
-    super();
+  public SparkBroadcast(final long id, final T tag, final Class<T> classType) {
+    super(id, ClassTag$.MODULE$.apply(classType));
     this.tag = tag;
   }
 

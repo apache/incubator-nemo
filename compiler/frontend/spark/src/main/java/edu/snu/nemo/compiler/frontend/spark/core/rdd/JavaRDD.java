@@ -33,10 +33,13 @@ import org.apache.spark.api.java.function.*;
 import org.apache.spark.partial.BoundedDouble;
 import org.apache.spark.partial.PartialResult;
 import org.apache.spark.storage.StorageLevel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.Option;
 import scala.Tuple2;
 import scala.reflect.ClassTag$;
 
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -45,6 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @param <T> type of the final element.
  */
 public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
+  private static final Logger LOG = LoggerFactory.getLogger(JavaRDD.class.getName());
 
   private final RDD<T> rdd;
 
@@ -178,6 +182,16 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   @Override
   public <O> JavaRDD<O> map(final Function<T, O> func) {
     // get the broadcast variables (which ones?)
+    LOG.info("FIELDS");
+
+    System.out.println("FIELDS:");
+    final Field[] fields = func.getClass().getFields();
+    for (final Field field : fields) {
+      LOG.info("FIELD {}", field);
+      System.out.println("$$$$$$$$$$$$$$ " + field.toString());
+
+    }
+
     return rdd.map(func, ClassTag$.MODULE$.apply(Object.class)).toJavaRDD();
   }
 

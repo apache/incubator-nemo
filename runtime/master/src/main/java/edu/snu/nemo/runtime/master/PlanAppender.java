@@ -111,8 +111,7 @@ public final class PlanAppender {
           cachedEdge.getSrcIRVertex(),
           vertexStagePair.left(),
           cachedEdge.getSrc(),
-          vertexStagePair.right(),
-          cachedEdge.isSideInput());
+          vertexStagePair.right());
         physicalDAGBuilder.connectVertices(newEdge);
         final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupPropertyValue =
           cachedEdge.getPropertyValue(DuplicateEdgeGroupProperty.class)

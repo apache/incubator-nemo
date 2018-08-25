@@ -69,7 +69,6 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    * @param dstVertex      destination IRVertex in the dstStage of this edge.
    * @param srcStage       source stage.
    * @param dstStage       destination stage.
-   * @param isSideInput    whether or not the edge is a sideInput edge.
    */
   @VisibleForTesting
   public StageEdge(final String runtimeEdgeId,
@@ -77,9 +76,8 @@ public final class StageEdge extends RuntimeEdge<Stage> {
             final IRVertex srcVertex,
             final IRVertex dstVertex,
             final Stage srcStage,
-            final Stage dstStage,
-            final Boolean isSideInput) {
-    super(runtimeEdgeId, edgeProperties, srcStage, dstStage, isSideInput);
+            final Stage dstStage) {
+    super(runtimeEdgeId, edgeProperties, srcStage, dstStage);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
     // Initialize the key range of each dst task.
