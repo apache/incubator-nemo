@@ -30,7 +30,7 @@ public final class SparkBroadcast<T> extends org.apache.spark.broadcast.Broadcas
 
   @Override
   public T getValue() {
-    // Transform.Context.getSideInputs();
+    // Transform.Context.getBroadcastVariables();
     // use the tag (needs wireups...)
     // Problem: this object resides inside the IRVertex
     return null;

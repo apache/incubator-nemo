@@ -72,11 +72,11 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    */
   @VisibleForTesting
   public StageEdge(final String runtimeEdgeId,
-            final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
-            final IRVertex srcVertex,
-            final IRVertex dstVertex,
-            final Stage srcStage,
-            final Stage dstStage) {
+                   final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
+                   final IRVertex srcVertex,
+                   final IRVertex dstVertex,
+                   final Stage srcStage,
+                   final Stage dstStage) {
     super(runtimeEdgeId, edgeProperties, srcStage, dstStage);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
@@ -86,11 +86,11 @@ public final class StageEdge extends RuntimeEdge<Stage> {
       taskIdxToKeyRange.put(taskIdx, HashRange.of(taskIdx, taskIdx + 1, false));
     }
     this.dataCommunicationPatternValue = edgeProperties.get(CommunicationPatternProperty.class)
-        .orElseThrow(() -> new RuntimeException(String.format(
-            "CommunicationPatternProperty not set for %s", runtimeEdgeId)));
+      .orElseThrow(() -> new RuntimeException(String.format(
+        "CommunicationPatternProperty not set for %s", runtimeEdgeId)));
     this.dataFlowModelValue = edgeProperties.get(DataFlowProperty.class)
-        .orElseThrow(() -> new RuntimeException(String.format(
-            "DataFlowProperty not set for %s", runtimeEdgeId)));
+      .orElseThrow(() -> new RuntimeException(String.format(
+        "DataFlowProperty not set for %s", runtimeEdgeId)));
   }
 
   /**

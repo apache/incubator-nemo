@@ -335,7 +335,7 @@ public final class TaskExecutorTest {
     final String runtimeIREdgeId = "Runtime edge between operator tasks";
     ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties = new ExecutionPropertyMap<>(runtimeIREdgeId);
     edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
-    return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst, isSideInput);
+    return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst);
 
   }
 
@@ -345,7 +345,7 @@ public final class TaskExecutorTest {
                                            final String runtimeIREdgeId) {
     ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties = new ExecutionPropertyMap<>(runtimeIREdgeId);
     edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
-    return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst, isSideInput);
+    return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst);
 
   }
 
@@ -355,8 +355,7 @@ public final class TaskExecutorTest {
         irVertex,
         new OperatorVertex(new RelayTransform()),
         mock(Stage.class),
-        mock(Stage.class),
-        false);
+        mock(Stage.class));
   }
 
   private StageEdge mockStageEdgeTo(final IRVertex irVertex) {
@@ -365,8 +364,7 @@ public final class TaskExecutorTest {
         new OperatorVertex(new RelayTransform()),
         irVertex,
         mock(Stage.class),
-        mock(Stage.class),
-        false);
+        mock(Stage.class));
   }
 
   /**
@@ -385,7 +383,6 @@ public final class TaskExecutorTest {
       }
       final InputReader inputReader = mock(InputReader.class);
       when(inputReader.read()).thenReturn(inputFutures);
-      when(inputReader.isSideInputReader()).thenReturn(false);
       when(inputReader.getSourceParallelism()).thenReturn(SOURCE_PARALLELISM);
       return inputReader;
     }
@@ -490,7 +487,7 @@ public final class TaskExecutorTest {
 
     @Override
     public void onData(final Object element) {
-      final Object sideInput = context.getSideInputs().get(sideInputTag);
+      final Object sideInput = context.getBroadcastVariables().get(sideInputTag);
       outputCollector.emit((T) Pair.of(sideInput, element));
     }
 

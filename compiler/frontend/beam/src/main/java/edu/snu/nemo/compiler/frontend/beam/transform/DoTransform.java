@@ -77,7 +77,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     this.startBundleContext = new StartBundleContext(doFn, serializedOptions);
     this.finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
     this.processContext = new ProcessContext(doFn, outputCollector,
-        context.getSideInputs(), context.getTagToAdditionalChildren(), serializedOptions);
+      context.getBroadcastVariables(), context.getTagToAdditionalChildren(), serializedOptions);
     this.invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
@@ -204,20 +204,20 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     /**
      * ProcessContext Constructor.
      *
-     * @param fn                Dofn.
-     * @param outputCollector   OutputCollector.
-     * @param sideInputs        Map for SideInputs.
-     * @param additionalOutputs Map for TaggedOutputs.
-     * @param serializedOptions Options, serialized.
+     * @param fn                 Dofn.
+     * @param outputCollector    OutputCollector.
+     * @param broadcastVariables Map for broadcast variables.
+     * @param additionalOutputs  Map for TaggedOutputs.
+     * @param serializedOptions  Options, serialized.
      */
     ProcessContext(final DoFn<I, O> fn,
                    final OutputCollector<O> outputCollector,
-                   final Map sideInputs,
+                   final Map broadcastVariables,
                    final Map<String, String> additionalOutputs,
                    final String serializedOptions) {
       fn.super();
       this.outputCollector = outputCollector;
-      this.sideInputs = sideInputs;
+      this.sideInputs = broadcastVariables;
       this.additionalOutputs = additionalOutputs;
       this.mapper = new ObjectMapper();
       try {

@@ -42,7 +42,7 @@ public class ContextImplTest {
 
   @Test
   public void testContextImpl() {
-    assertEquals(this.sideInputs, this.context.getSideInputs());
+    assertEquals(this.sideInputs, this.context.getBroadcastVariables());
     assertEquals(this.taggedOutputs, this.context.getTagToAdditionalChildren());
 
     final String sampleText = "test_text";

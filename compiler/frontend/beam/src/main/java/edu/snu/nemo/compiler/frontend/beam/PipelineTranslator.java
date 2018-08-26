@@ -418,7 +418,7 @@ public final class PipelineTranslator
         throw new RuntimeException(String.format("%s have failed to determine communication pattern "
             + "for an edge from %s to %s", communicationPatternSelector, src, dst));
       }
-      final IREdge edge = new IREdge(communicationPattern, src, dst, isSideInput);
+      final IREdge edge = new IREdge(communicationPattern, src, dst);
       final Coder<?> coder;
       if (input instanceof PCollection) {
         coder = ((PCollection) input).getCoder();
@@ -436,6 +436,7 @@ public final class PipelineTranslator
       if (pValueToTag.containsKey(input)) {
         edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
       }
+      edge.setProperty(BroadcastVariableProperty.of(isSideInput));
       edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
       builder.connectVertices(edge);
     }

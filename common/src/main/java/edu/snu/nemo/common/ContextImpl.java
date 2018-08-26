@@ -24,25 +24,25 @@ import java.util.Optional;
  * Transform Context Implementation.
  */
 public final class ContextImpl implements Transform.Context {
-  private final Map sideInputs;
+  private final Map broadcastVariables;
   private final Map<String, String> tagToAdditionalChildren;
   private String data;
 
   /**
    * Constructor of Context Implementation.
-   * @param sideInputs              side inputs.
+   * @param broadcastVariables side inputs.
    * @param tagToAdditionalChildren tag id to additional vertices id map.
    */
-  public ContextImpl(final Map sideInputs,
+  public ContextImpl(final Map broadcastVariables,
                      final Map<String, String> tagToAdditionalChildren) {
-    this.sideInputs = sideInputs;
+    this.broadcastVariables = broadcastVariables;
     this.tagToAdditionalChildren = tagToAdditionalChildren;
     this.data = null;
   }
 
   @Override
-  public Map getSideInputs() {
-    return this.sideInputs;
+  public Map getBroadcastVariables() {
+    return this.broadcastVariables;
   }
 
   @Override

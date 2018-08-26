@@ -21,6 +21,7 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.BroadcastVariableProperty;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
@@ -59,7 +60,7 @@ public final class TaskExecutor {
   private boolean isExecuted;
   private final String taskId;
   private final TaskStateManager taskStateManager;
-  private final List<DataFetcher> dataFetchers;
+  private final List<DataFetcher> nonBroadcastDataFetchers;
   private final List<VertexHarness> sortedHarnesses;
   private final Map idToBroadcastVariable;
 
@@ -106,7 +107,7 @@ public final class TaskExecutor {
     // Prepare data structures
     this.idToBroadcastVariable = new HashMap();
     final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, dataTransferFactory);
-    this.dataFetchers = pair.left();
+    this.nonBroadcastDataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
   }
 
@@ -140,7 +141,7 @@ public final class TaskExecutor {
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
 
     // Create a harness for each vertex
-    final List<DataFetcher> dataFetcherList = new ArrayList<>();
+    final List<DataFetcher> nonBroadcastDataFetcherList = new ArrayList<>();
     final Map<String, VertexHarness> vertexIdToHarness = new HashMap<>();
     reverseTopologicallySorted.forEach(irVertex -> {
       final List<VertexHarness> children = getChildrenHarnesses(irVertex, irVertexDag, vertexIdToHarness);
@@ -179,12 +180,17 @@ public final class TaskExecutor {
       // Handle reads
       if (irVertex instanceof SourceVertex) {
         // Source vertex read
-        dataFetcherList.add(new SourceVertexDataFetcher(irVertex, sourceReader.get(), vertexHarness));
+        nonBroadcastDataFetcherList.add(new SourceVertexDataFetcher(irVertex, sourceReader.get(), vertexHarness));
       }
-      // Parent-task read
-      final List<InputReader> parentTaskReaders =
-          getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
-      parentTaskReaders.forEach(parentTaskReader -> dataFetcherList.add(
+      // Parent-task read (non-broadcasts only)
+      final List<StageEdge> nonBroadcastInEdges = task.getTaskIncomingEdges()
+        .stream()
+        .filter(stageEdge -> stageEdge.getPropertyValue(BroadcastVariableProperty.class).orElse(false))
+        .collect(Collectors.toList());
+      final List<InputReader> nonBroadcastReaders =
+          getParentTaskReaders(taskIndex, irVertex, nonBroadcastInEdges, dataTransferFactory);
+
+      nonBroadcastReaders.forEach(parentTaskReader -> nonBroadcastDataFetcherList.add(
         new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader, vertexHarness)));
     });
 
@@ -193,7 +199,7 @@ public final class TaskExecutor {
         .map(vertex -> vertexIdToHarness.get(vertex.getId()))
         .collect(Collectors.toList());
 
-    return Pair.of(dataFetcherList, sortedHarnessList);
+    return Pair.of(nonBroadcastDataFetcherList, sortedHarnessList);
   }
 
   /**
@@ -245,7 +251,7 @@ public final class TaskExecutor {
 
   /**
    * The task is executed in the following two phases.
-   * - Phase 1: Consume task-external input data
+   * - Phase 1: Consume task-external input data (non-broadcasts)
    * - Phase 2: Finalize task-internal states and data elements
    */
   private void doExecute() {
@@ -256,8 +262,8 @@ public final class TaskExecutor {
     LOG.info("{} started", taskId);
     taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
 
-    // Phase 1: Consume task-external input data.
-    if (!handleDataFetchers(dataFetchers)) {
+    // Phase 1: Consume task-external input data. (non-broadcasts)
+    if (!handleDataFetchers(nonBroadcastDataFetchers)) {
       return;
     }
 
