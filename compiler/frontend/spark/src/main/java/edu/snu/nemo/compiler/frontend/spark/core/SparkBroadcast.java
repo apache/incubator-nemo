@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.core;
 
+import edu.snu.nemo.runtime.executor.data.BroadcastManagerWorker;
 import scala.reflect.ClassTag$;
 
 /**
@@ -23,17 +24,14 @@ import scala.reflect.ClassTag$;
 public final class SparkBroadcast<T> extends org.apache.spark.broadcast.Broadcast<T> {
   private final long tag;
 
-  public SparkBroadcast(final long tag, final Class<T> classType) {
+  SparkBroadcast(final long tag, final Class<T> classType) {
     super(tag, ClassTag$.MODULE$.apply(classType));
     this.tag = tag;
   }
 
   @Override
   public T getValue() {
-    // Transform.Context.getSideInput();
-    // use the tag (needs wireups...)
-    // Problem: this object resides inside the IRVertex
-    return null;
+    return (T) BroadcastManagerWorker.staticReference.get(tag);
   }
 
   @Override

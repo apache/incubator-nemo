@@ -24,30 +24,33 @@ import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
+import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.SerializationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 /**
  */
+@ThreadSafe
 public final class BroadcastManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(BroadcastManagerWorker.class.getName());
+  public static BroadcastManagerWorker staticReference;
 
-  private final Map<Serializable, InputReader> tagToReader;
+  private final ConcurrentHashMap<Serializable, InputReader> tagToReader;
   private final LoadingCache<Serializable, Object> tagToVariableCache;
 
   @Inject
   public BroadcastManagerWorker(final PersistentConnectionToMasterMap toMaster) {
-    this.tagToReader = new HashMap<>();
+    staticReference = this;
+    this.tagToReader = new ConcurrentHashMap<>();
     this.tagToVariableCache = CacheBuilder.newBuilder()
       .maximumSize(100)
       .expireAfterWrite(10, TimeUnit.MINUTES)
@@ -73,10 +76,10 @@ public final class BroadcastManagerWorker {
             } else {
               // Get from master
               final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
-                .getMessageSender(MessageEnvironment.BROADCAST_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
+                .getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).request(
                   ControlMessage.Message.newBuilder()
                     .setId(RuntimeIdManager.generateMessageId())
-                    .setListenerId(MessageEnvironment.BROADCAST_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+                    .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
                     .setType(ControlMessage.MessageType.RequestBroadcastVariable)
                     .setRequestbroadcastVariableMsg(
                       ControlMessage.RequestBroadcastVariableMessage.newBuilder()
@@ -101,6 +104,7 @@ public final class BroadcastManagerWorker {
 
   public Object get(final Serializable tag)  {
     // catch exceptions (e.g., read exceptions)
+    LOG.info("Broadcast: getting {}", tag.toString());
     try {
       return tagToVariableCache.get(tag);
     } catch (ExecutionException e) {

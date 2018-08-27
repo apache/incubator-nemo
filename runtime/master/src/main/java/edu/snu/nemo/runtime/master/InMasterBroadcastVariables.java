@@ -18,6 +18,7 @@ package edu.snu.nemo.runtime.master;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,16 +27,16 @@ import java.util.Map;
  */
 public final class InMasterBroadcastVariables {
   private static final Logger LOG = LoggerFactory.getLogger(InMasterBroadcastVariables.class.getName());
-  private static final Map<Object, Object> TAG_TO_VARIABLE = new HashMap<>();
+  private static final Map<Serializable, Object> TAG_TO_VARIABLE = new HashMap<>();
 
   private InMasterBroadcastVariables() {
   }
 
-  public static Object getBroadcastVariable(final Object tag) {
+  public static Object getBroadcastVariable(final Serializable tag) {
     return TAG_TO_VARIABLE.get(tag);
   }
 
-  public static void registerBroadcastVariable(final Object tag, final Object variable) {
+  public static void registerBroadcastVariable(final Serializable tag, final Object variable) {
     // integrity check
     if (null != TAG_TO_VARIABLE.put(tag, variable)) {
       throw new IllegalArgumentException("Cannot register duplicate tags: " + tag.toString());

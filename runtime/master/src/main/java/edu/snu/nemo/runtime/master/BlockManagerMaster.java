@@ -77,7 +77,7 @@ public final class BlockManagerMaster {
   @Inject
   private BlockManagerMaster(final MessageEnvironment masterMessageEnvironment) {
     masterMessageEnvironment.setupListener(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID,
-      new PartitionManagerMasterControlMessageReceiver());
+      new BlockManagerMasterControlMessageReceiver());
     this.blockIdWildcardToMetadataSet = new HashMap<>();
     this.producerTaskIdToBlockIds = new HashMap<>();
     this.lock = new ReentrantReadWriteLock();
@@ -336,7 +336,7 @@ public final class BlockManagerMaster {
   /**
    * Handler for control messages received.
    */
-  public final class PartitionManagerMasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
+  public final class BlockManagerMasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
 
     @Override
     public void onMessage(final ControlMessage.Message message) {

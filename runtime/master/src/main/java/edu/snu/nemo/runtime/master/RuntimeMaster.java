@@ -15,9 +15,11 @@
  */
 package edu.snu.nemo.runtime.master;
 
+import com.google.protobuf.ByteString;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -46,6 +48,7 @@ import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.inject.Inject;
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -328,6 +331,23 @@ public final class RuntimeMaster {
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
+        case RequestBroadcastVariable:
+          final Serializable tag =
+            SerializationUtils.deserialize(message.getRequestbroadcastVariableMsg().getTag().toByteArray());
+          final Object broadcastVariable = InMasterBroadcastVariables.getBroadcastVariable(tag);
+          if (broadcastVariable == null) {
+            throw new IllegalStateException(tag.toString());
+          }
+          messageContext.reply(
+            ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.InMasterBroadcastVariable)
+              .setBroadcastVariableMsg(ControlMessage.InMasterBroadcastVariableMessage.newBuilder()
+                .setVariabe(ByteString.copyFrom(SerializationUtils.serialize((Serializable) broadcastVariable)))
+                .build())
+              .build());
+          break;
         default:
           throw new IllegalMessageException(
               new Exception("This message should not be requested to Master :" + message.getType()));
