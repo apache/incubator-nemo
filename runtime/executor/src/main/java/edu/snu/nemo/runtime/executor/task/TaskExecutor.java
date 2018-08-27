@@ -16,7 +16,6 @@
 package edu.snu.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
-import edu.snu.nemo.common.ContextImpl;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.Readable;
@@ -34,6 +33,8 @@ import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.executor.MetricMessageSender;
 import edu.snu.nemo.runtime.executor.TaskStateManager;
+import edu.snu.nemo.runtime.executor.TransformContextImpl;
+import edu.snu.nemo.runtime.executor.data.BroadcastManagerWorker;
 import edu.snu.nemo.runtime.executor.datatransfer.*;
 
 import java.io.IOException;
@@ -61,8 +62,8 @@ public final class TaskExecutor {
   private final String taskId;
   private final TaskStateManager taskStateManager;
   private final List<DataFetcher> nonBroadcastDataFetchers;
+  private final BroadcastManagerWorker broadcastManagerWorker;
   private final List<VertexHarness> sortedHarnesses;
-  private final Map idToBroadcastVariable;
 
   // Metrics information
   private long boundedSourceReadTime = 0;
@@ -78,11 +79,11 @@ public final class TaskExecutor {
   /**
    * Constructor.
    *
-   * @param task                Task with information needed during execution.
-   * @param irVertexDag         A DAG of vertices.
-   * @param taskStateManager    State manager for this Task.
-   * @param dataTransferFactory For reading from/writing to data to other tasks.
-   * @param metricMessageSender For sending metric with execution stats to Master.
+   * @param task                   Task with information needed during execution.
+   * @param irVertexDag            A DAG of vertices.
+   * @param taskStateManager       State manager for this Task.
+   * @param dataTransferFactory    For reading from/writing to data to other tasks.
+   * @param metricMessageSender    For sending metric with execution stats to Master.
    */
   public TaskExecutor(final Task task,
                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
@@ -94,6 +95,7 @@ public final class TaskExecutor {
     this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
+    this.broadcastManagerWorker = null;
 
     // Metric sender
     this.metricMessageSender = metricMessageSender;
@@ -105,7 +107,6 @@ public final class TaskExecutor {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
 
     // Prepare data structures
-    this.idToBroadcastVariable = new HashMap();
     final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, dataTransferFactory);
     this.nonBroadcastDataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
@@ -150,54 +151,58 @@ public final class TaskExecutor {
         throw new IllegalStateException(irVertex.toString());
       }
 
+      // Prepare data WRITE
+      // Child-task writes
       final Map<String, String> additionalOutputMap =
-          getAdditionalOutputMap(irVertex, task.getTaskOutgoingEdges(), irVertexDag);
-      final List<Boolean> isToAdditionalTagOutputs = children.stream()
-          .map(harness -> harness.getIRVertex().getId())
-          .map(additionalOutputMap::containsValue)
-          .collect(Collectors.toList());
-
-      // Handle writes
-      // Main output children task writes
+        getAdditionalOutputMap(irVertex, task.getTaskOutgoingEdges(), irVertexDag);
       final List<OutputWriter> mainChildrenTaskWriters = getMainChildrenTaskWriters(
-          irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
-      // Additional output children task writes
+        irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
       final Map<String, OutputWriter> additionalChildrenTaskWriters = getAdditionalChildrenTaskWriters(
-          irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
-      // Find all main vertices and additional vertices
+        irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
+      // Intra-task writes
       final List<String> additionalOutputVertices = new ArrayList<>(additionalOutputMap.values());
       final Set<String> mainChildren =
-          getMainOutputVertices(irVertex, irVertexDag, task.getTaskOutgoingEdges(), additionalOutputVertices);
+        getMainOutputVertices(irVertex, irVertexDag, task.getTaskOutgoingEdges(), additionalOutputVertices);
       final OutputCollectorImpl oci = new OutputCollectorImpl(mainChildren, additionalOutputVertices);
+      final List<Boolean> isToAdditionalTagOutputs = children.stream()
+        .map(harness -> harness.getIRVertex().getId())
+        .map(additionalOutputMap::containsValue)
+        .collect(Collectors.toList());
 
-      // intra-vertex writes
+      // Create VERTEX HARNESS
       final VertexHarness vertexHarness = new VertexHarness(
         irVertex, oci, children, isToAdditionalTagOutputs, mainChildrenTaskWriters, additionalChildrenTaskWriters,
-          new ContextImpl(idToBroadcastVariable, additionalOutputMap));
+        new TransformContextImpl(broadcastManagerWorker, additionalOutputMap));
       prepareTransform(vertexHarness);
       vertexIdToHarness.put(irVertex.getId(), vertexHarness);
 
-      // Handle reads
+      // Prepare data READ
+      // Source read
       if (irVertex instanceof SourceVertex) {
         // Source vertex read
         nonBroadcastDataFetcherList.add(new SourceVertexDataFetcher(irVertex, sourceReader.get(), vertexHarness));
       }
-      // Parent-task read (non-broadcasts only)
+      // Parent-task read (non-broadcasts)
       final List<StageEdge> nonBroadcastInEdges = task.getTaskIncomingEdges()
         .stream()
         .filter(stageEdge -> stageEdge.getPropertyValue(BroadcastVariableProperty.class).orElse(false))
         .collect(Collectors.toList());
       final List<InputReader> nonBroadcastReaders =
-          getParentTaskReaders(taskIndex, irVertex, nonBroadcastInEdges, dataTransferFactory);
-
+        getParentTaskReaders(taskIndex, irVertex, nonBroadcastInEdges, dataTransferFactory);
       nonBroadcastReaders.forEach(parentTaskReader -> nonBroadcastDataFetcherList.add(
         new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader, vertexHarness)));
+      // Parent-task read (broadcasts)
+      final List<StageEdge> broadcastInEdges = new ArrayList<>(task.getTaskIncomingEdges());
+      broadcastInEdges.removeAll(nonBroadcastInEdges);
+      final List<InputReader> broadcastReaders =
+        getParentTaskReaders(taskIndex, irVertex, broadcastInEdges, dataTransferFactory);
+      broadcastReaders.forEach(reader -> broadcastManagerWorker.registerBlock());
     });
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
-        .stream()
-        .map(vertex -> vertexIdToHarness.get(vertex.getId()))
-        .collect(Collectors.toList());
+      .stream()
+      .map(vertex -> vertexIdToHarness.get(vertex.getId()))
+      .collect(Collectors.toList());
 
     return Pair.of(nonBroadcastDataFetcherList, sortedHarnessList);
   }
@@ -231,7 +236,7 @@ public final class TaskExecutor {
     // Recursively process all of the additional output elements.
     vertexHarness.getContext().getTagToAdditionalChildren().values().forEach(tag -> {
       outputCollector.iterateTag(tag).forEach(
-          element -> handleAdditionalOutputElement(vertexHarness, element, tag)); // Recursion
+        element -> handleAdditionalOutputElement(vertexHarness, element, tag)); // Recursion
       outputCollector.clearTag(tag);
     });
   }
@@ -268,11 +273,11 @@ public final class TaskExecutor {
     }
 
     metricMessageSender.send("TaskMetric", taskId,
-        "boundedSourceReadTime", SerializationUtils.serialize(boundedSourceReadTime));
+      "boundedSourceReadTime", SerializationUtils.serialize(boundedSourceReadTime));
     metricMessageSender.send("TaskMetric", taskId,
-        "serializedReadBytes", SerializationUtils.serialize(serializedReadBytes));
+      "serializedReadBytes", SerializationUtils.serialize(serializedReadBytes));
     metricMessageSender.send("TaskMetric", taskId,
-        "encodedReadBytes", SerializationUtils.serialize(encodedReadBytes));
+      "encodedReadBytes", SerializationUtils.serialize(encodedReadBytes));
 
     // Phase 2: Finalize task-internal states and elements
     for (final VertexHarness vertexHarness : sortedHarnesses) {
@@ -284,8 +289,8 @@ public final class TaskExecutor {
       LOG.info("{} completed", taskId);
     } else {
       taskStateManager.onTaskStateChanged(TaskState.State.ON_HOLD,
-          Optional.of(idOfVertexPutOnHold),
-          Optional.empty());
+        Optional.of(idOfVertexPutOnHold),
+        Optional.empty());
       LOG.info("{} on hold", taskId);
     }
   }
@@ -301,7 +306,7 @@ public final class TaskExecutor {
     // handle additional tagged outputs
     vertexHarness.getAdditionalTagOutputChildren().keySet().forEach(tag -> {
       outputCollector.iterateTag(tag).forEach(
-          element -> handleAdditionalOutputElement(vertexHarness, element, tag)); // Recursion
+        element -> handleAdditionalOutputElement(vertexHarness, element, tag)); // Recursion
       outputCollector.clearTag(tag);
     });
     finalizeOutputWriters(vertexHarness);
@@ -317,12 +322,12 @@ public final class TaskExecutor {
   private void handleAdditionalOutputElement(final VertexHarness harness, final Object element, final String tag) {
     // writes to additional children tasks
     harness.getWritersToAdditionalChildrenTasks().entrySet().stream()
-        .filter(kv -> kv.getKey().equals(tag))
-        .forEach(kv -> kv.getValue().write(element));
+      .filter(kv -> kv.getKey().equals(tag))
+      .forEach(kv -> kv.getValue().write(element));
     // process elements in the next vertices within a task
     harness.getAdditionalTagOutputChildren().entrySet().stream()
-        .filter(kv -> kv.getKey().equals(tag))
-        .forEach(kv -> processElementRecursively(kv.getValue(), element));
+      .filter(kv -> kv.getKey().equals(tag))
+      .forEach(kv -> processElementRecursively(kv.getValue(), element));
   }
 
   /**
@@ -353,7 +358,7 @@ public final class TaskExecutor {
         } catch (IOException e) {
           // IOException means that this task should be retried.
           taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
-              Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
+            Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
           LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
           return false;
         }
@@ -379,20 +384,20 @@ public final class TaskExecutor {
 
     // Add all intra-task additional tags to additional output map.
     irVertexDag.getOutgoingEdgesOf(irVertex.getId())
-        .stream()
-        .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-        .map(edge ->
-            Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(), edge.getDst().getId()))
-        .forEach(pair -> additionalOutputMap.put(pair.left(), pair.right()));
+      .stream()
+      .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+      .map(edge ->
+        Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(), edge.getDst().getId()))
+      .forEach(pair -> additionalOutputMap.put(pair.left(), pair.right()));
 
     // Add all inter-task additional tags to additional output map.
     outEdgesToChildrenTasks
-        .stream()
-        .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
-        .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-        .map(edge ->
-            Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(), edge.getDstIRVertex().getId()))
-        .forEach(pair -> additionalOutputMap.put(pair.left(), pair.right()));
+      .stream()
+      .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
+      .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+      .map(edge ->
+        Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(), edge.getDstIRVertex().getId()))
+      .forEach(pair -> additionalOutputMap.put(pair.left(), pair.right()));
 
     return additionalOutputMap;
   }
@@ -415,34 +420,34 @@ public final class TaskExecutor {
                                                  final List<StageEdge> inEdgesFromParentTasks,
                                                  final DataTransferFactory dataTransferFactory) {
     return inEdgesFromParentTasks
-        .stream()
-        .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId()))
-        .map(inEdgeForThisVertex -> dataTransferFactory
-            .createReader(taskIndex, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
-        .collect(Collectors.toList());
+      .stream()
+      .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId()))
+      .map(inEdgeForThisVertex -> dataTransferFactory
+        .createReader(taskIndex, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
+      .collect(Collectors.toList());
   }
 
   private Set<String> getMainOutputVertices(final IRVertex irVertex,
-                                             final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-                                             final List<StageEdge> outEdgesToChildrenTasks,
-                                             final List<String> additionalOutputVertices) {
+                                            final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+                                            final List<StageEdge> outEdgesToChildrenTasks,
+                                            final List<String> additionalOutputVertices) {
     // all intra-task children vertices id
     final List<String> outputVertices = irVertexDag.getOutgoingEdgesOf(irVertex).stream()
-        .filter(edge -> edge.getSrc().getId().equals(irVertex.getId()))
-        .map(edge -> edge.getDst().getId())
-        .collect(Collectors.toList());
+      .filter(edge -> edge.getSrc().getId().equals(irVertex.getId()))
+      .map(edge -> edge.getDst().getId())
+      .collect(Collectors.toList());
 
     // all inter-task children vertices id
     outputVertices
-        .addAll(outEdgesToChildrenTasks.stream()
-            .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
-            .map(edge -> edge.getDstIRVertex().getId())
-            .collect(Collectors.toList()));
+      .addAll(outEdgesToChildrenTasks.stream()
+        .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
+        .map(edge -> edge.getDstIRVertex().getId())
+        .collect(Collectors.toList()));
 
     // return vertices that are not marked as additional tagged outputs
     return new HashSet<>(outputVertices.stream()
-        .filter(vertexId -> !additionalOutputVertices.contains(vertexId))
-        .collect(Collectors.toList()));
+      .filter(vertexId -> !additionalOutputVertices.contains(vertexId))
+      .collect(Collectors.toList()));
   }
 
   /**
@@ -459,12 +464,12 @@ public final class TaskExecutor {
                                                         final DataTransferFactory dataTransferFactory,
                                                         final Map<String, String> taggedOutputs) {
     return outEdgesToChildrenTasks
-        .stream()
-        .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
-        .filter(outEdge -> !taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
-        .map(outEdgeForThisVertex -> dataTransferFactory
-            .createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
-        .collect(Collectors.toList());
+      .stream()
+      .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
+      .filter(outEdge -> !taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
+      .map(outEdgeForThisVertex -> dataTransferFactory
+        .createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
+      .collect(Collectors.toList());
   }
 
   /**
@@ -483,12 +488,12 @@ public final class TaskExecutor {
     final Map<String, OutputWriter> additionalChildrenTaskWriters = new HashMap<>();
 
     outEdgesToChildrenTasks
-        .stream()
-        .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
-        .filter(outEdge -> taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
-        .forEach(outEdgeForThisVertex ->
-          additionalChildrenTaskWriters.put(outEdgeForThisVertex.getDstIRVertex().getId(),
-              dataTransferFactory.createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex)));
+      .stream()
+      .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
+      .filter(outEdge -> taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
+      .forEach(outEdgeForThisVertex ->
+        additionalChildrenTaskWriters.put(outEdgeForThisVertex.getDstIRVertex().getId(),
+          dataTransferFactory.createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex)));
 
     return additionalChildrenTaskWriters;
   }
@@ -497,10 +502,10 @@ public final class TaskExecutor {
                                                    final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                                                    final Map<String, VertexHarness> vertexIdToHarness) {
     final List<VertexHarness> childrenHandlers = irVertexDag.getChildren(irVertex.getId())
-        .stream()
-        .map(IRVertex::getId)
-        .map(vertexIdToHarness::get)
-        .collect(Collectors.toList());
+      .stream()
+      .map(IRVertex::getId)
+      .map(vertexIdToHarness::get)
+      .collect(Collectors.toList());
     if (childrenHandlers.stream().anyMatch(harness -> harness == null)) {
       // Sanity check: there shouldn't be a null harness.
       throw new IllegalStateException(childrenHandlers.toString());
@@ -525,13 +530,13 @@ public final class TaskExecutor {
       transform.close();
     }
     vertexHarness.getContext().getSerializedData().ifPresent(data ->
-        persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdManager.generateMessageId())
-                .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.ExecutorDataCollected)
-                .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(data).build())
-                .build()));
+      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.ExecutorDataCollected)
+          .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(data).build())
+          .build()));
   }
 
   ////////////////////////////////////////////// Misc
@@ -570,6 +575,6 @@ public final class TaskExecutor {
       totalWrittenBytes += writtenBytes;
     }
     metricMessageSender.send("TaskMetric", taskId,
-        "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
+      "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
   }
 }

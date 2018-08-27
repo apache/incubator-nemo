@@ -61,6 +61,8 @@ enum MessageType {
     MetricMessageReceived = 8;
     RequestMetricFlush = 9;
     MetricFlushed = 10;
+    RequestBroadcastVariable = 11;
+    InMasterBroadcastVariable = 12;
 }
 
 message Message {
@@ -77,6 +79,8 @@ message Message {
     optional ContainerFailedMsg containerFailedMsg = 11;
     optional MetricMsg metricMsg = 12;
     optional DataCollectMessage dataCollected = 13;
+    optional RequestBroadcastVariableMessage requestbroadcastVariableMsg = 14;
+    optional InMasterBroadcastVariableMessage broadcastVariableMsg = 15;
 }
 
 // Messages from Master to Executors
@@ -191,4 +195,12 @@ message Metric {
     required string metricId = 2;
     required string metricField = 3;
     required bytes metricValue = 4;
+}
+
+message RequestBroadcastVariableMessage {
+  required bytes tag = 1;
+}
+
+message InMasterBroadcastVariableMessage {
+  required bytes variabe = 1;
 }

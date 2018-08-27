@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package edu.snu.nemo.common;
+package edu.snu.nemo.runtime.executor;
 
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import org.junit.Before;
@@ -27,9 +27,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests {@link ContextImpl}.
+ * Tests {@link TransformContextImpl}.
  */
-public class ContextImplTest {
+public class TransformContextImplTest {
   private Transform.Context context;
   private final Map sideInputs = new HashMap();
   private final Map<String, String> taggedOutputs = new HashMap();
@@ -37,7 +37,7 @@ public class ContextImplTest {
   @Before
   public void setUp() {
     sideInputs.put("a", "b");
-    this.context = new ContextImpl(sideInputs, taggedOutputs);
+    this.context = new TransformContextImpl(null, taggedOutputs);
   }
 
   @Test

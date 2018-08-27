@@ -15,11 +15,10 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.core;
 
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.InMemorySourceVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
+import edu.snu.nemo.runtime.master.InMasterBroadcastVariables;
 import org.apache.spark.SparkConf;
 import org.apache.spark.broadcast.Broadcast;
 import org.slf4j.Logger;
@@ -27,8 +26,6 @@ import org.slf4j.LoggerFactory;
 import scala.collection.Seq;
 import scala.reflect.ClassTag;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -74,13 +71,8 @@ public final class SparkContext extends org.apache.spark.SparkContext {
   @Override
   public <T> Broadcast<T> broadcast(final T data,
                                     final ClassTag<T> evidence) {
-    // register this data (IRVertex -> SourceVertex?)
-    // create a tag for the data
-    final IRVertex inMemoryVertex = new InMemorySourceVertex<>(Collections.singleton(data));
-    inMemoryVertex.setProperty(ParallelismProperty.of(1)); // singleton
-    // builder.addVertex(inMemoryVertex);
-
-    final HashMap serializableHashMap = new HashMap();
-    return new SparkBroadcast(99999, serializableHashMap, serializableHashMap.getClass());
+    final long broadcastVariableId = RuntimeIdManager.generateInMasterBroadcastVariableId();
+    InMasterBroadcastVariables.registerBroadcastVariable(RuntimeIdManager.generateInMasterBroadcastVariableId(), data);
+    return new SparkBroadcast<>(broadcastVariableId, (Class<T>) data.getClass());
   }
 }

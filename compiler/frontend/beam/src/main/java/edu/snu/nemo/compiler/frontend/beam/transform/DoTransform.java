@@ -76,8 +76,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     this.outputCollector = oc;
     this.startBundleContext = new StartBundleContext(doFn, serializedOptions);
     this.finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
-    this.processContext = new ProcessContext(doFn, outputCollector,
-      context.getBroadcastVariables(), context.getTagToAdditionalChildren(), serializedOptions);
+    this.processContext = new ProcessContext(doFn, outputCollector, context, serializedOptions);
     this.invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
@@ -196,8 +195,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       implements DoFnInvoker.ArgumentProvider<I, O> {
     private I input;
     private final OutputCollector<O> outputCollector;
-    private final Map sideInputs;
-    private final Map<String, String> additionalOutputs;
+    private final Context context;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
@@ -206,19 +204,16 @@ public final class DoTransform<I, O> implements Transform<I, O> {
      *
      * @param fn                 Dofn.
      * @param outputCollector    OutputCollector.
-     * @param broadcastVariables Map for broadcast variables.
-     * @param additionalOutputs  Map for TaggedOutputs.
+     * @param context            Context.
      * @param serializedOptions  Options, serialized.
      */
     ProcessContext(final DoFn<I, O> fn,
                    final OutputCollector<O> outputCollector,
-                   final Map broadcastVariables,
-                   final Map<String, String> additionalOutputs,
+                   final Context context,
                    final String serializedOptions) {
       fn.super();
       this.outputCollector = outputCollector;
-      this.sideInputs = broadcastVariables;
-      this.additionalOutputs = additionalOutputs;
+      this.context = context;
       this.mapper = new ObjectMapper();
       try {
         this.options = mapper.readValue(serializedOptions, PipelineOptions.class);
@@ -248,7 +243,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public <T> T sideInput(final PCollectionView<T> view) {
-      return (T) sideInputs.get(view);
+      return null;
     }
 
     @Override
@@ -283,6 +278,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public <T> void output(final TupleTag<T> tupleTag, final T t) {
+      /*
       final Object dstVertexId = additionalOutputs.get(tupleTag.getId());
 
       if (dstVertexId == null) {
@@ -290,6 +286,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       } else {
         outputCollector.emit(additionalOutputs.get(tupleTag.getId()), t);
       }
+      */
     }
 
     @Override
@@ -367,7 +364,10 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public DoFn.MultiOutputReceiver taggedOutputReceiver(final DoFn<I, O> doFn) {
+      return null;
+      /*
       return new MultiOutputReceiver((OutputCollectorImpl) outputCollector, additionalOutputs);
+      */
     }
 
     @Override
