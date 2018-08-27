@@ -52,6 +52,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -382,6 +383,8 @@ public final class TaskExecutorTest {
                 .iterator())));
       }
       final InputReader inputReader = mock(InputReader.class);
+      final IRVertex srcVertex = (IRVertex) invocationOnMock.getArgument(1);
+      when(inputReader.getSrcIrVertex()).thenReturn(srcVertex);
       when(inputReader.read()).thenReturn(inputFutures);
       when(inputReader.getSourceParallelism()).thenReturn(SOURCE_PARALLELISM);
       return inputReader;
@@ -442,7 +445,6 @@ public final class TaskExecutorTest {
   private class CreateSingleListTransform<T> implements Transform<T, List<T>> {
     private List<T> list;
     private OutputCollector<List<T>> outputCollector;
-    private final Object tag = new Object();
 
     @Override
     public void prepare(final Context context, final OutputCollector<List<T>> outputCollector) {
@@ -459,11 +461,6 @@ public final class TaskExecutorTest {
     public void close() {
       outputCollector.emit(list);
     }
-
-    @Override
-    public Object getTag() {
-      return tag;
-    }
   }
 
   /**
@@ -471,11 +468,11 @@ public final class TaskExecutorTest {
    * @param <T> input/output type.
    */
   private class SideInputPairTransform<T> implements Transform<T, T> {
-    private final Object sideInputTag;
+    private final Serializable sideInputTag;
     private Context context;
     private OutputCollector<T> outputCollector;
 
-    public SideInputPairTransform(final Object sideInputTag) {
+    public SideInputPairTransform(final Serializable sideInputTag) {
       this.sideInputTag = sideInputTag;
     }
 
@@ -487,7 +484,7 @@ public final class TaskExecutorTest {
 
     @Override
     public void onData(final Object element) {
-      final Object sideInput = context.getBroadcastVariables().get(sideInputTag);
+      final Object sideInput = context.getSideInput(sideInputTag);
       outputCollector.emit((T) Pair.of(sideInput, element));
     }
 

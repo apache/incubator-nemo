@@ -46,9 +46,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   private long serBytes = 0;
   private long encodedBytes = 0;
 
-  public ParentTaskDataFetcher(final IRVertex dataSource,
-                               final InputReader readerForParentTask,
-                               final VertexHarness child) {
+  ParentTaskDataFetcher(final IRVertex dataSource, final InputReader readerForParentTask, final VertexHarness child) {
     super(dataSource, child);
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;

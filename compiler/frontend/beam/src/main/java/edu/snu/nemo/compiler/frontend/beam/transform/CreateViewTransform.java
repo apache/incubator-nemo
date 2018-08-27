@@ -66,7 +66,7 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
    * @return the PCollectionView of the transform.
    */
   @Override
-  public PCollectionView getTag() {
+  public Serializable getTag() {
     return this.pCollectionView;
   }
 

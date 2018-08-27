@@ -94,13 +94,17 @@ public final class BroadcastManagerWorker {
    * @param tag
    * @param inputReader
    */
-  public void registerBlock(final Serializable tag,
-                            final InputReader inputReader) {
+  public void registerInputReader(final Serializable tag,
+                                  final InputReader inputReader) {
     this.tagToReader.put(tag, inputReader);
   }
 
-  public Object get(final Serializable tag) throws ExecutionException  {
+  public Object get(final Serializable tag)  {
     // catch exceptions (e.g., read exceptions)
-    return tagToVariableCache.get(tag);
+    try {
+      return tagToVariableCache.get(tag);
+    } catch (ExecutionException e) {
+      throw new IllegalStateException(e);
+    }
   }
 }

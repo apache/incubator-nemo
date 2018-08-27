@@ -54,8 +54,6 @@ import org.slf4j.LoggerFactory;
 public final class BlockManagerMaster {
   private static final Logger LOG = LoggerFactory.getLogger(BlockManagerMaster.class.getName());
 
-  private final InMasterBroadcastVariables inMasterBroadcastVariables;
-
   private final Map<String, Set<String>> producerTaskIdToBlockIds; // a task can have multiple out-edges
 
   /**
@@ -74,13 +72,10 @@ public final class BlockManagerMaster {
 
   /**
    * Constructor.
-   * @param inMasterBroadcastVariables the manager for broadcast variables.
    * @param masterMessageEnvironment the message environment.
    */
   @Inject
-  private BlockManagerMaster(final InMasterBroadcastVariables inMasterBroadcastVariables,
-                             final MessageEnvironment masterMessageEnvironment) {
-    this.inMasterBroadcastVariables = inMasterBroadcastVariables;
+  private BlockManagerMaster(final MessageEnvironment masterMessageEnvironment) {
     masterMessageEnvironment.setupListener(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID,
       new PartitionManagerMasterControlMessageReceiver());
     this.blockIdWildcardToMetadataSet = new HashMap<>();

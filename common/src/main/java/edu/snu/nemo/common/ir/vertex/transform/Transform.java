@@ -49,7 +49,7 @@ public interface Transform<I, O> extends Serializable {
   /**
    * @return tag
    */
-  default Object getTag() {
+  default Serializable getTag() {
     return null;
   }
 
@@ -58,9 +58,9 @@ public interface Transform<I, O> extends Serializable {
    */
   interface Context extends Serializable {
     /**
-     * @return sideInputs.
+     * @return the sideinput data.
      */
-    Map getBroadcastVariables();
+    Object getSideInput(Serializable tag);
     Map<String, String> getTagToAdditionalChildren();
 
     /**

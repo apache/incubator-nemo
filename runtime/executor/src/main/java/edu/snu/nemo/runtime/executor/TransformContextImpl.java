@@ -18,6 +18,7 @@ package edu.snu.nemo.runtime.executor;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.executor.data.BroadcastManagerWorker;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;
 
@@ -42,12 +43,8 @@ public final class TransformContextImpl implements Transform.Context {
   }
 
   @Override
-  public Map getBroadcastVariables() {
-    /*
-    broadcastManagerWorker.
-    return this.broadcastVariables;
-    */
-    return null;
+  public Object getSideInput(final Serializable tag) {
+    return broadcastManagerWorker.get(tag);
   }
 
   @Override

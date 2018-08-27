@@ -55,6 +55,8 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   private ProcessContext processContext;
   private DoFnInvoker invoker;
 
+
+
   /**
    * DoTransform Constructor.
    *
@@ -195,6 +197,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       implements DoFnInvoker.ArgumentProvider<I, O> {
     private I input;
     private final OutputCollector<O> outputCollector;
+    private final Map<String, String> additionalOutputs;
     private final Context context;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
@@ -214,6 +217,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       fn.super();
       this.outputCollector = outputCollector;
       this.context = context;
+      this.additionalOutputs = context.getTagToAdditionalChildren();
       this.mapper = new ObjectMapper();
       try {
         this.options = mapper.readValue(serializedOptions, PipelineOptions.class);
@@ -243,7 +247,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public <T> T sideInput(final PCollectionView<T> view) {
-      return null;
+      return (T) context.getSideInput(view);
     }
 
     @Override
@@ -278,7 +282,6 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public <T> void output(final TupleTag<T> tupleTag, final T t) {
-      /*
       final Object dstVertexId = additionalOutputs.get(tupleTag.getId());
 
       if (dstVertexId == null) {
@@ -286,7 +289,6 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       } else {
         outputCollector.emit(additionalOutputs.get(tupleTag.getId()), t);
       }
-      */
     }
 
     @Override
@@ -364,10 +366,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public DoFn.MultiOutputReceiver taggedOutputReceiver(final DoFn<I, O> doFn) {
-      return null;
-      /*
       return new MultiOutputReceiver((OutputCollectorImpl) outputCollector, additionalOutputs);
-      */
     }
 
     @Override

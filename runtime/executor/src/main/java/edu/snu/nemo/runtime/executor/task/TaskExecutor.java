@@ -38,6 +38,7 @@ import edu.snu.nemo.runtime.executor.data.BroadcastManagerWorker;
 import edu.snu.nemo.runtime.executor.datatransfer.*;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -182,21 +183,26 @@ public final class TaskExecutor {
         // Source vertex read
         nonBroadcastDataFetcherList.add(new SourceVertexDataFetcher(irVertex, sourceReader.get(), vertexHarness));
       }
-      // Parent-task read (non-broadcasts)
-      final List<StageEdge> nonBroadcastInEdges = task.getTaskIncomingEdges()
+      // Parent-task read (broadcasts)
+      final List<StageEdge> broadcastInEdges = task.getTaskIncomingEdges()
         .stream()
         .filter(stageEdge -> stageEdge.getPropertyValue(BroadcastVariableProperty.class).orElse(false))
         .collect(Collectors.toList());
+      final List<InputReader> broadcastReaders =
+        getParentTaskReaders(taskIndex, irVertex, broadcastInEdges, dataTransferFactory);
+      broadcastReaders.forEach(reader -> {
+        final Serializable tag = ((OperatorVertex) reader.getSrcIrVertex()).getTransform().getTag();
+        broadcastManagerWorker.registerInputReader(tag, reader);
+      });
+      // Parent-task read (non-broadcasts)
+      final List<StageEdge> nonBroadcastInEdges = new ArrayList<>(task.getTaskIncomingEdges());
+      nonBroadcastInEdges.removeAll(broadcastInEdges);
       final List<InputReader> nonBroadcastReaders =
         getParentTaskReaders(taskIndex, irVertex, nonBroadcastInEdges, dataTransferFactory);
       nonBroadcastReaders.forEach(parentTaskReader -> nonBroadcastDataFetcherList.add(
         new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader, vertexHarness)));
-      // Parent-task read (broadcasts)
-      final List<StageEdge> broadcastInEdges = new ArrayList<>(task.getTaskIncomingEdges());
-      broadcastInEdges.removeAll(nonBroadcastInEdges);
-      final List<InputReader> broadcastReaders =
-        getParentTaskReaders(taskIndex, irVertex, broadcastInEdges, dataTransferFactory);
-      broadcastReaders.forEach(reader -> broadcastManagerWorker.registerBlock());
+
+      LOG.info("nonbroadcasts {}, broadcasts {}", nonBroadcastReaders, broadcastReaders);
     });
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
