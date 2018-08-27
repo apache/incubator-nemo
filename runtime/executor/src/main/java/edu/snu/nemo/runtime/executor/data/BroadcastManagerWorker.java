@@ -46,7 +46,7 @@ public final class BroadcastManagerWorker {
   private final LoadingCache<Serializable, Object> tagToVariableCache;
 
   @Inject
-  private BroadcastManagerWorker(final PersistentConnectionToMasterMap toMaster) {
+  public BroadcastManagerWorker(final PersistentConnectionToMasterMap toMaster) {
     this.tagToReader = new HashMap<>();
     this.tagToVariableCache = CacheBuilder.newBuilder()
       .maximumSize(100)

@@ -19,19 +19,21 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputWriter;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Captures the relationship between a non-source IRVertex's outputCollector, and children vertices.
+ * Captures the relationship between a non-source IRVertex's outputCollector, and mainTagChildren vertices.
  */
 final class VertexHarness {
   // IRVertex and transform-specific information
   private final IRVertex irVertex;
   private final OutputCollectorImpl outputCollector;
   private final Transform.Context context;
-  private final List<VertexHarness> children;
+  private final List<VertexHarness> mainTagChildren;
 
   // These lists can be empty
   private final Map<String, VertexHarness> additionalTagOutputChildren;
@@ -47,7 +49,6 @@ final class VertexHarness {
                 final Transform.Context context) {
     this.irVertex = irVertex;
     this.outputCollector = outputCollector;
-    this.children = children;
     if (children.size() != isAdditionalTagOutputs.size()) {
       throw new IllegalStateException(irVertex.toString());
     }
@@ -62,6 +63,9 @@ final class VertexHarness {
       }
     }
     this.additionalTagOutputChildren = tagged;
+    final List<VertexHarness> mainTagChildrenTmp = new ArrayList<>(children);
+    mainTagChildrenTmp.removeAll(additionalTagOutputChildren.values());
+    this.mainTagChildren = mainTagChildrenTmp;
     this.writersToMainChildrenTasks = writersToMainChildrenTasks;
     this.writersToAdditionalChildrenTasks = writersToAdditionalChildrenTasks;
     this.context = context;
@@ -82,14 +86,14 @@ final class VertexHarness {
   }
 
   /**
-   * @return children harnesses.
+   * @return mainTagChildren harnesses.
    */
-  List<VertexHarness> getChildren() {
-    return children;
+  List<VertexHarness> getMainTagChildren() {
+    return mainTagChildren;
   }
 
   /**
-   * @return map of tagged output children. (empty if none exists)
+   * @return map of tagged output mainTagChildren. (empty if none exists)
    */
   public Map<String, VertexHarness> getAdditionalTagOutputChildren() {
     return additionalTagOutputChildren;

@@ -84,19 +84,21 @@ public final class TaskExecutor {
    * @param irVertexDag            A DAG of vertices.
    * @param taskStateManager       State manager for this Task.
    * @param dataTransferFactory    For reading from/writing to data to other tasks.
+   * @param broadcastManagerWorker For broadcasts.
    * @param metricMessageSender    For sending metric with execution stats to Master.
    */
   public TaskExecutor(final Task task,
                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                       final TaskStateManager taskStateManager,
                       final DataTransferFactory dataTransferFactory,
+                      final BroadcastManagerWorker broadcastManagerWorker,
                       final MetricMessageSender metricMessageSender,
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     // Essential information
     this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
-    this.broadcastManagerWorker = null;
+    this.broadcastManagerWorker = broadcastManagerWorker;
 
     // Metric sender
     this.metricMessageSender = metricMessageSender;
@@ -201,8 +203,6 @@ public final class TaskExecutor {
         getParentTaskReaders(taskIndex, irVertex, nonBroadcastInEdges, dataTransferFactory);
       nonBroadcastReaders.forEach(parentTaskReader -> nonBroadcastDataFetcherList.add(
         new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader, vertexHarness)));
-
-      LOG.info("nonbroadcasts {}, broadcasts {}", nonBroadcastReaders, broadcastReaders);
     });
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
@@ -322,7 +322,7 @@ public final class TaskExecutor {
     // writes to children tasks
     harness.getWritersToMainChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
     // process elements in the next vertices within a task
-    harness.getChildren().forEach(child -> processElementRecursively(child, element));
+    harness.getMainTagChildren().forEach(child -> processElementRecursively(child, element));
   }
 
   private void handleAdditionalOutputElement(final VertexHarness harness, final Object element, final String tag) {
