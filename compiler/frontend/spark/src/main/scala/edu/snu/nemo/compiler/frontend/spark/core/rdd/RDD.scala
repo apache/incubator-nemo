@@ -30,6 +30,7 @@ import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
 import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import edu.snu.nemo.compiler.frontend.spark.transform._
+import org.apache.commons.lang.SerializationUtils
 import org.apache.hadoop.io.WritableFactory
 import org.apache.hadoop.io.compress.CompressionCodec
 import org.apache.spark.api.java.function.{FlatMapFunction, Function, Function2}
@@ -37,12 +38,11 @@ import org.apache.spark.partial.{BoundedDouble, PartialResult}
 import org.apache.spark.rdd.{AsyncRDDActions, DoubleRDDFunctions, OrderedRDDFunctions, PartitionCoalescer, SequenceFileRDDFunctions}
 import org.apache.spark.serializer.Serializer
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.{Dependency, Partition, Partitioner, SparkContext, TaskContext}
+import org.apache.spark.{Dependency, Partition, Partitioner, SparkContext, SparkEnv, TaskContext}
 import org.slf4j.LoggerFactory
 
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
 
 /**
  * RDD for Nemo.
@@ -103,8 +103,20 @@ final class RDD[T: ClassTag] protected[rdd] (
    * A scala wrapper for map transformation.
    */
   override def map[U](f: (T) => U)(implicit evidence$3: ClassManifest[U]): RDD[U] = {
+    LOG.info("MAP MAP {}", f);
+
+
+    SparkEnv.get.closureSerializer.newInstance().serialize(f)
+    println("ser before tojavafunc")
+
+
     val javaFunc = SparkFrontendUtils.toJavaFunction(f)
+
+    SerializationUtils.serialize(javaFunc);
+    println("ser after tojavafunc")
+
     map(javaFunc)
+
   }
 
   /**
@@ -139,10 +151,19 @@ final class RDD[T: ClassTag] protected[rdd] (
    * Return a new RDD by applying a function to all elements of this RDD.
    */
   protected[rdd] def map[U: ClassTag](javaFunc: Function[T, U]): RDD[U] = {
+    LOG.info("MAP MAP {}", javaFunc);
+    println("map - f2")
+
+    SerializationUtils.serialize(javaFunc);
+    println("javafunc 2")
+
     val builder: DAGBuilder[IRVertex, IREdge] = new DAGBuilder[IRVertex, IREdge](dag)
 
     val mapVertex: IRVertex = new OperatorVertex(new MapTransform[T, U](javaFunc))
     builder.addVertex(mapVertex, loopVertexStack)
+
+    SerializationUtils.serialize(mapVertex);
+    println("IRVertex")
 
     val newEdge: IREdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(lastVertex, mapVertex),
       lastVertex, mapVertex)

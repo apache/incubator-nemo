@@ -114,4 +114,14 @@ public final class SparkScala {
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
   }
+
+  @Test(timeout = TIMEOUT)
+  public void testALSTwo() throws Exception {
+    JobLauncher.main(builder
+      .addJobId(SparkALSTwo.class.getSimpleName() + "_test_two")
+      .addUserMain(SparkALSTwo.class.getCanonicalName())
+      .addUserArgs("5", "5", "5", "5")
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
+  }
 }

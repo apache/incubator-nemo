@@ -39,7 +39,6 @@ import scala.Option;
 import scala.Tuple2;
 import scala.reflect.ClassTag$;
 
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -182,16 +181,6 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   @Override
   public <O> JavaRDD<O> map(final Function<T, O> func) {
     // get the broadcast variables (which ones?)
-    LOG.info("FIELDS");
-
-    System.out.println("FIELDS:");
-    final Field[] fields = func.getClass().getFields();
-    for (final Field field : fields) {
-      LOG.info("FIELD {}", field);
-      System.out.println("$$$$$$$$$$$$$$ " + field.toString());
-
-    }
-
     return rdd.map(func, ClassTag$.MODULE$.apply(Object.class)).toJavaRDD();
   }
 

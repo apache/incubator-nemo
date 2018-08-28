@@ -32,6 +32,7 @@ import edu.snu.nemo.compiler.frontend.spark.coder.SparkEncoderFactory;
 import edu.snu.nemo.compiler.frontend.spark.transform.CollectTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.GroupByKeyTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform;
+import org.apache.spark.SparkEnv$;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
@@ -39,11 +40,15 @@ import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.serializer.JavaSerializer;
 import org.apache.spark.serializer.KryoSerializer;
 import org.apache.spark.serializer.Serializer;
+import org.apache.spark.serializer.SerializerInstance;
 import scala.Function1;
 import scala.Tuple2;
 import scala.collection.JavaConverters;
 import scala.collection.TraversableOnce;
+import scala.reflect.ClassTag;
+import scala.reflect.ClassTag$;
 
+import java.nio.ByteBuffer;
 import java.util.*;
 
 /**
@@ -51,6 +56,7 @@ import java.util.*;
  */
 public final class SparkFrontendUtils {
   private static final KeyExtractorProperty SPARK_KEY_EXTRACTOR_PROP = KeyExtractorProperty.of(new SparkKeyExtractor());
+  private static final SerializerInstance SCALA_SERIALIZER = SparkEnv$.MODULE$.get().closureSerializer().newInstance();
 
   /**
    * Private constructor.
@@ -133,9 +139,18 @@ public final class SparkFrontendUtils {
    */
   public static <I, O> Function<I, O> toJavaFunction(final Function1<I, O> scalaFunction) {
     return new Function<I, O>() {
+      private final ClassTag<Function1<I, O>> classTag = ClassTag$.MODULE$.apply(scalaFunction.getClass());
+      private final byte[] serializedFunction =
+        SCALA_SERIALIZER.serialize(scalaFunction, classTag).array();
+      private Function1<I, O> deserializedFunction;
+
+      public void prepare() {
+        deserializedFunction = SCALA_SERIALIZER.deserialize(ByteBuffer.wrap(serializedFunction), classTag);
+      }
+
       @Override
       public O call(final I v1) throws Exception {
-        return scalaFunction.apply(v1);
+        return deserializedFunction.apply(v1);
       }
     };
   }
