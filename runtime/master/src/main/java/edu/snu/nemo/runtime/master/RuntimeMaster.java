@@ -344,6 +344,7 @@ public final class RuntimeMaster {
               .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
               .setType(ControlMessage.MessageType.InMasterBroadcastVariable)
               .setBroadcastVariableMsg(ControlMessage.InMasterBroadcastVariableMessage.newBuilder()
+                .setRequestId(message.getId())
                 .setVariabe(ByteString.copyFrom(SerializationUtils.serialize((Serializable) broadcastVariable)))
                 .build())
               .build());

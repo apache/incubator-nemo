@@ -19,6 +19,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.protobuf.ByteString;
+import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -26,6 +27,7 @@ import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.SerializationUtils;
+import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +50,8 @@ public final class BroadcastManagerWorker {
   private final LoadingCache<Serializable, Object> tagToVariableCache;
 
   @Inject
-  public BroadcastManagerWorker(final PersistentConnectionToMasterMap toMaster) {
+  public BroadcastManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
+                                final PersistentConnectionToMasterMap toMaster) {
     staticReference = this;
     this.tagToReader = new ConcurrentHashMap<>();
     this.tagToVariableCache = CacheBuilder.newBuilder()
@@ -83,6 +86,7 @@ public final class BroadcastManagerWorker {
                     .setType(ControlMessage.MessageType.RequestBroadcastVariable)
                     .setRequestbroadcastVariableMsg(
                       ControlMessage.RequestBroadcastVariableMessage.newBuilder()
+                        .setExecutorId(executorId)
                         .setTag(ByteString.copyFrom(SerializationUtils.serialize(tag)))
                         .build())
                     .build());

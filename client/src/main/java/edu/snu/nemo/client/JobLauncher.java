@@ -22,6 +22,7 @@ import edu.snu.nemo.driver.NemoDriver;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
+import edu.snu.nemo.runtime.master.InMasterBroadcastVariables;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -188,6 +189,7 @@ public final class JobLauncher {
         .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
         .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder()
             .setDag(serializedDAG)
+            .setBraodcastVars(InMasterBroadcastVariables)
             .build())
         .build());
 

@@ -31,6 +31,7 @@ message ClientToDriverMessage {
 
 message LaunchDAGMessage {
     required string dag = 1;
+    required bytes braodcastVars = 2;
 }
 
 message DataCollectMessage {
@@ -198,9 +199,11 @@ message Metric {
 }
 
 message RequestBroadcastVariableMessage {
-  required bytes tag = 1;
+  required string executorId = 1;
+  required bytes tag = 2;
 }
 
 message InMasterBroadcastVariableMessage {
-  required bytes variabe = 1;
+  required int64 requestId = 1; // To find the matching request msg
+  required bytes variabe = 2;
 }

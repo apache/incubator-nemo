@@ -78,7 +78,8 @@ public final class SparkContext extends org.apache.spark.SparkContext {
     System.out.println("broadcast var");
 
     final long broadcastVariableId = RuntimeIdManager.generateInMasterBroadcastVariableId();
-    InMasterBroadcastVariables.registerBroadcastVariable(RuntimeIdManager.generateInMasterBroadcastVariableId(), data);
+    InMasterBroadcastVariables.registerBroadcastVariable(broadcastVariableId, data);
+    LOG.info("Just Put {} with id {}", data, broadcastVariableId);
     return new SparkBroadcast<>(broadcastVariableId, (Class<T>) data.getClass());
   }
 }
