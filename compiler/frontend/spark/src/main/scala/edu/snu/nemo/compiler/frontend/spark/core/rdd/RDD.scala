@@ -41,6 +41,7 @@ import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{Dependency, Partition, Partitioner, SparkContext, SparkEnv, TaskContext}
 import org.slf4j.LoggerFactory
 
+import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
@@ -143,7 +144,7 @@ final class RDD[T: ClassTag] protected[rdd] (
    *       all the data is loaded into the driver's memory.
    */
   override def collect(): Array[T] =
-    collectAsList().toArray().asInstanceOf[Array[T]]
+    collectAsList().asScala.toArray
 
   /////////////// TRANSFORMATIONS ///////////////
 
@@ -151,19 +152,10 @@ final class RDD[T: ClassTag] protected[rdd] (
    * Return a new RDD by applying a function to all elements of this RDD.
    */
   protected[rdd] def map[U: ClassTag](javaFunc: Function[T, U]): RDD[U] = {
-    LOG.info("MAP MAP {}", javaFunc);
-    println("map - f2")
-
-    SerializationUtils.serialize(javaFunc);
-    println("javafunc 2")
-
     val builder: DAGBuilder[IRVertex, IREdge] = new DAGBuilder[IRVertex, IREdge](dag)
 
     val mapVertex: IRVertex = new OperatorVertex(new MapTransform[T, U](javaFunc))
     builder.addVertex(mapVertex, loopVertexStack)
-
-    SerializationUtils.serialize(mapVertex);
-    println("IRVertex")
 
     val newEdge: IREdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(lastVertex, mapVertex),
       lastVertex, mapVertex)

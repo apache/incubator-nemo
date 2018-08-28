@@ -19,7 +19,6 @@ import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.master.InMasterBroadcastVariables;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.broadcast.Broadcast;
 import org.slf4j.Logger;
@@ -27,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import scala.collection.Seq;
 import scala.reflect.ClassTag;
 
-import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -66,7 +64,6 @@ public final class SparkContext extends org.apache.spark.SparkContext {
   public <T> RDD<T> parallelize(final Seq<T> seq,
                                 final int numSlices,
                                 final ClassTag<T> evidence) {
-    System.out.println("sparcontext parallelize begins");
     final List<T> javaList = scala.collection.JavaConversions.seqAsJavaList(seq);
     return JavaRDD.of(this.sparkContext, javaList, numSlices).rdd();
   }
@@ -74,12 +71,8 @@ public final class SparkContext extends org.apache.spark.SparkContext {
   @Override
   public <T> Broadcast<T> broadcast(final T data,
                                     final ClassTag<T> evidence) {
-    SerializationUtils.serialize((Serializable) data);
-    System.out.println("broadcast var");
-
     final long broadcastVariableId = RuntimeIdManager.generateInMasterBroadcastVariableId();
     InMasterBroadcastVariables.registerBroadcastVariable(broadcastVariableId, data);
-    LOG.info("Just Put {} with id {}", data, broadcastVariableId);
     return new SparkBroadcast<>(broadcastVariableId, (Class<T>) data.getClass());
   }
 }

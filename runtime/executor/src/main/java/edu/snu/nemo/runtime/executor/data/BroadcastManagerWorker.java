@@ -44,7 +44,7 @@ import java.util.concurrent.TimeUnit;
 @ThreadSafe
 public final class BroadcastManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(BroadcastManagerWorker.class.getName());
-  public static BroadcastManagerWorker staticReference;
+  private static BroadcastManagerWorker staticReference;
 
   private final ConcurrentHashMap<Serializable, InputReader> tagToReader;
   private final LoadingCache<Serializable, Object> tagToVariableCache;
@@ -114,5 +114,9 @@ public final class BroadcastManagerWorker {
     } catch (ExecutionException e) {
       throw new IllegalStateException(e);
     }
+  }
+
+  public static BroadcastManagerWorker getStaticReference() {
+    return staticReference;
   }
 }

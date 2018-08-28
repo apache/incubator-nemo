@@ -31,7 +31,7 @@ message ClientToDriverMessage {
 
 message LaunchDAGMessage {
     required string dag = 1;
-    required bytes braodcastVars = 2;
+    optional bytes broadcastVars = 2;
 }
 
 message DataCollectMessage {

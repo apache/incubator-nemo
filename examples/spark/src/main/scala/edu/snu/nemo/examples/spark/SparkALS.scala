@@ -129,27 +129,17 @@ object SparkALS {
     var msb = sc.broadcast(ms)
     var usb = sc.broadcast(us)
 
-    SerializationUtils.serialize(Rc)
-    println("RC")
-    SerializationUtils.serialize(msb)
-    println("msb")
-    SerializationUtils.serialize(usb)
-    println("usb")
-
-    val mapf = (x : Int) => update(0, msb.value(0), usb.value, Rc.value)
-    SparkEnv.get.closureSerializer.newInstance().serialize(mapf)
-    println("tried spark serializer")
+    val update_ms = (i : Int) => update(i, msb.value(i), usb.value, Rc.value)
+    val update_us = (i : Int) => update(i, usb.value(i), msb.value, Rc.value.transpose())
 
     for (iter <- 1 to ITERATIONS) {
       println(s"Iteration $iter:")
-      val tmp1 = sc.parallelize(0 until M, slices)
-      val tmp2 = tmp1.map(mapf)
-      // val tmp2 = tmp1.map(i => update(i, null, null, null))
-      ms = tmp2.collect()
-
+      ms = sc.parallelize(0 until M, slices)
+        .map(update_ms)
+        .collect()
       msb = sc.broadcast(ms) // Re-broadcast ms because it was updated
       us = sc.parallelize(0 until U, slices)
-        .map(i => update(i, usb.value(i), msb.value, Rc.value.transpose()))
+        .map(update_us)
         .collect()
       usb = sc.broadcast(us) // Re-broadcast us because it was updated
       println("RMSE = " + rmse(R, ms, us))

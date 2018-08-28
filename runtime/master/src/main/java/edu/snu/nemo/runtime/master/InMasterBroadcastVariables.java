@@ -32,20 +32,15 @@ public final class InMasterBroadcastVariables {
   private InMasterBroadcastVariables() {
   }
 
-  public static void initialize(final Map<Serializable, Object> initialData) {
-    TAG_TO_VARIABLE = initialData;
-  }
-
   public static Object getBroadcastVariable(final Serializable tag) {
-    LOG.info("Get {} from {}", tag, TAG_TO_VARIABLE);
     return TAG_TO_VARIABLE.get(tag);
   }
 
   public static void registerBroadcastVariable(final Serializable tag, final Object variable) {
-    LOG.info("Put {}", tag);
-    // integrity check
-    if (null != TAG_TO_VARIABLE.put(tag, variable)) {
-      throw new IllegalArgumentException("Cannot register duplicate tags: " + tag.toString());
-    }
+    TAG_TO_VARIABLE.put(tag, variable);
+  }
+
+  public static Map<Serializable, Object> getAllVariables() {
+    return TAG_TO_VARIABLE;
   }
 }

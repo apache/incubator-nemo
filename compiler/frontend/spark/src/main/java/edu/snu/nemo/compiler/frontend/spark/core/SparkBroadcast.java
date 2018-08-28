@@ -31,7 +31,7 @@ public final class SparkBroadcast<T> extends org.apache.spark.broadcast.Broadcas
 
   @Override
   public T getValue() {
-    return (T) BroadcastManagerWorker.staticReference.get(tag);
+    return (T) BroadcastManagerWorker.getStaticReference().get(tag);
   }
 
   @Override

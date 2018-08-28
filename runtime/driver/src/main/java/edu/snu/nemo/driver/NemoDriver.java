@@ -22,7 +22,9 @@ import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
 import edu.snu.nemo.runtime.master.ClientRPC;
+import edu.snu.nemo.runtime.master.InMasterBroadcastVariables;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.client.JobMessageObserver;
@@ -49,6 +51,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.io.Serializable;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.LogManager;
@@ -104,8 +108,13 @@ public final class NemoDriver {
     this.clientRPC = clientRPC;
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
-    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message ->
-        startSchedulingUserDAG(message.getLaunchDAG().getDag()));
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
+      startSchedulingUserDAG(message.getLaunchDAG().getDag());
+      final Map<Serializable, Object> broadcastVars =
+        SerializationUtils.deserialize(message.getLaunchDAG().getBroadcastVars().toByteArray());
+      broadcastVars.entrySet().forEach(entry ->
+        InMasterBroadcastVariables.registerBroadcastVariable(entry.getKey(), entry.getValue()));
+    });
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.DriverShutdown, message -> shutdown());
     // Send DriverStarted message to the client
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()

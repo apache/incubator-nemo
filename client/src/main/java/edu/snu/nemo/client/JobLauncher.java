@@ -16,6 +16,7 @@
 package edu.snu.nemo.client;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.ByteString;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.driver.NemoDriver;
@@ -43,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
@@ -51,6 +53,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -183,13 +186,15 @@ public final class JobLauncher {
     }
 
     LOG.info("Launching DAG...");
+    final Map<Serializable, Object> broadcastVariables = InMasterBroadcastVariables.getAllVariables();
+
     serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
     jobDoneLatch = new CountDownLatch(1);
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
         .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
         .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder()
             .setDag(serializedDAG)
-            .setBraodcastVars(InMasterBroadcastVariables)
+            .setBroadcastVars(ByteString.copyFrom(SerializationUtils.serialize((Serializable) broadcastVariables)))
             .build())
         .build());
 
