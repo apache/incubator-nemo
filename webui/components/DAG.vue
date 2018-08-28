@@ -97,11 +97,8 @@ export default {
       stageObjects: {},
       // stageId -> inner objects of stage (edges, vertices, text)
       stageInnerObjects: {},
-      stageInnerTextObjects: {},
       // array of stage label text object
       stageTextObjects: [],
-      // array of stage edge label text object
-      stageEdgeTextObjects: [],
     };
   },
 
@@ -263,8 +260,6 @@ export default {
       this.vertexObjects = {};
       this.stageObjects = {};
       this.stageInnerObjects = {};
-      this.stageInnerTextObjects = {};
-      this.stageEdgeTextObjects = [];
       this.stageTextObjects = [];
       this.objectSelected = false;
     },
@@ -482,20 +477,6 @@ export default {
      * Rearrange font size according to the canvas zoom ratio.
      */
     rearrangeFontSize(ratio) {
-      if (this.stageIdArray) {
-        this.stageIdArray.forEach(stageId => {
-          if (this.stageInnerTextObjects[stageId]) {
-            this.stageInnerTextObjects[stageId].forEach(text => {
-              text.set('fontSize', FONT_SIZE * ratio);
-            });
-          }
-        });
-      }
-
-      this.stageEdgeTextObjects.forEach(text => {
-        text.set('fontSize', FONT_SIZE * ratio);
-      });
-
       this.stageTextObjects.forEach(text => {
         text.set('fontSize', FONT_SIZE * ratio);
       });
@@ -549,7 +530,6 @@ export default {
 
         // initialize stage inner object array
         this.stageInnerObjects[stageId] = [];
-        this.stageInnerTextObjects[stageId] = [];
 
         // get inner vertex layout
         this.verticesGraph[stageId] = new Graph();
@@ -601,16 +581,6 @@ export default {
 
         g.edges().map(e => g.edge(e)).forEach(edge => {
           let path = this.drawSVGEdgeWithArrow(edge);
-          let edgeLabelObj = new fabric.Text(edge.label, {
-            left: edge.x,
-            top: edge.y,
-            fontSize: FONT_SIZE,
-            originX: 'center',
-            originY: 'center',
-            selectable: false,
-          });
-          objectArray.push(edgeLabelObj);
-          this.stageInnerTextObjects[stageId].push(edgeLabelObj);
 
           let pathObj = new fabric.Path(path);
           pathObj.set({
@@ -698,16 +668,6 @@ export default {
       let stageEdgeObjectArray = [];
       g.edges().map(e => g.edge(e)).forEach(edge => {
         let path = this.drawSVGEdgeWithArrow(edge);
-        let edgeLabelObj = new fabric.Text(edge.label, {
-          left: edge.x,
-          top: edge.y,
-          fontSize: FONT_SIZE,
-          originX: 'center',
-          originY: 'center',
-          selectable: false,
-        });
-        stageEdgeObjectArray.push(edgeLabelObj);
-        this.stageEdgeTextObjects.push(edgeLabelObj);
 
         let pathObj = new fabric.Path(path);
         pathObj.set({
@@ -740,15 +700,6 @@ export default {
           obj.set('left', dx);
           obj.set('top', dy);
         });
-
-        this.stageInnerTextObjects[stageId].forEach(obj => {
-          const dx = obj.get('left') + stageObj.get('left')
-            - stageObj.get('width') / 2;
-          const dy = obj.get('top') + stageObj.get('top')
-            - stageObj.get('height') / 2;
-          obj.set('left', dx);
-          obj.set('top', dy);
-        })
       });
 
       objectArray.forEach(obj => {
