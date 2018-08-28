@@ -54,14 +54,25 @@ export const EXCLUDE_COLUMN = [
 
 const NOT_AVAILABLE = -1;
 
+const _bytesToHumanReadable = function(bytes) {
+  var i = bytes === 0 ? 0 :
+    Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(2) * 1
+    + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
+}
+
 // this function will preprocess TaskMetric metric array.
-const _preprocessMetric = function (metric) {
+const _preprocessMetric = function(metric) {
   let newMetric = Object.assign({}, metric);
 
   Object.keys(newMetric).forEach(key => {
     // replace NOT_AVAILBLE to 'N/A'
     if (newMetric[key] === NOT_AVAILABLE) {
       newMetric[key] = 'N/A';
+    }
+
+    if (newMetric[key] !== 'N/A' && key.toLowerCase().endsWith('bytes')) {
+      newMetric[key] = _bytesToHumanReadable(newMetric[key]);
     }
   });
 
@@ -82,7 +93,7 @@ const _preprocessMetric = function (metric) {
   return newMetric;
 };
 
-const _isDoneTaskEvent = function (event) {
+const _isDoneTaskEvent = function(event) {
   if (event.newState === STATE.COMPLETE
     || event.newState === STATE.FAILED) {
     return true;

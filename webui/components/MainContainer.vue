@@ -254,12 +254,22 @@ export default {
           }
         } else {
           let value = metric[key] === -1 ? 'N/A' : metric[key];
+          if (value !== 'N/A' && key.toLowerCase().endsWith('bytes')) {
+            value = this._bytesToHumanReadable(value);
+          }
           this.tableData.push({
             key: key,
             value: value,
           });
         }
       });
+    },
+
+    _bytesToHumanReadable(bytes) {
+      var i = bytes === 0 ? 0 :
+        Math.floor(Math.log(bytes) / Math.log(1024));
+      return (bytes / Math.pow(1024, i)).toFixed(2) * 1
+        + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
     },
 
     /**
