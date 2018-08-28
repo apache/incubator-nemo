@@ -110,7 +110,7 @@ final class RDD[T: ClassTag] protected[rdd] (
     println("ser before tojavafunc")
 
 
-    val javaFunc = SparkFrontendUtils.toJavaFunction(f)
+    val javaFunc = SparkFrontendUtils.toJavaFunction(f, SparkEnv.get.closureSerializer.newInstance())
 
     SerializationUtils.serialize(javaFunc);
     println("ser after tojavafunc")

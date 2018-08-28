@@ -37,10 +37,7 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
-import org.apache.spark.serializer.JavaSerializer;
-import org.apache.spark.serializer.KryoSerializer;
-import org.apache.spark.serializer.Serializer;
-import org.apache.spark.serializer.SerializerInstance;
+import org.apache.spark.serializer.*;
 import scala.Function1;
 import scala.Tuple2;
 import scala.collection.JavaConverters;
@@ -137,19 +134,27 @@ public final class SparkFrontendUtils {
    * @param <O>           the type of output.
    * @return the converted Java function.
    */
-  public static <I, O> Function<I, O> toJavaFunction(final Function1<I, O> scalaFunction) {
-    return new Function<I, O>() {
-      private final ClassTag<Function1<I, O>> classTag = ClassTag$.MODULE$.apply(scalaFunction.getClass());
-      private final byte[] serializedFunction =
-        SCALA_SERIALIZER.serialize(scalaFunction, classTag).array();
-      private Function1<I, O> deserializedFunction;
+  public static <I, O> Function<I, O> toJavaFunction(final Function1<I, O> scalaFunction,
+                                                     final SerializerInstance siz) {
+    final ClassTag<Function1<I, O>> classTag = ClassTag$.MODULE$.apply(scalaFunction.getClass());
 
-      public void prepare() {
-        deserializedFunction = SCALA_SERIALIZER.deserialize(ByteBuffer.wrap(serializedFunction), classTag);
-      }
+    // (IMPORTANT) When Function1 contains broadcast variables, attempting to serialize it with SerializationUtils
+    // results in the following exception.
+    //
+    // org.apache.commons.lang.SerializationException: java.io.NotSerializableException:
+    // edu.snu.nemo.compiler.frontend.spark.core.SparkContext
+    final byte[] serializedFunction = siz.serialize(scalaFunction, classTag).array();
+
+    return new Function<I, O>() {
+      private Function1<I, O> deserializedFunction;
 
       @Override
       public O call(final I v1) throws Exception {
+        if (deserializedFunction == null) {
+          final SerializerInstance js = new JavaSerializer().newInstance();
+          // final SerializerInstance si = SparkEnv$.MODULE$.get().closureSerializer().newInstance();
+          deserializedFunction = js.deserialize(ByteBuffer.wrap(serializedFunction), classTag);
+        }
         return deserializedFunction.apply(v1);
       }
     };
