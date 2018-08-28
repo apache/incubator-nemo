@@ -60,6 +60,7 @@ public final class BroadcastManagerWorker {
       .build(
         new CacheLoader<Serializable, Object>() {
           public Object load(final Serializable tag) throws Exception {
+            LOG.info("Start to load broadcast {}", tag.toString());
             if (tagToReader.containsKey(tag)) {
               // Get from reader
               final InputReader inputReader = tagToReader.get(tag);
@@ -108,7 +109,6 @@ public final class BroadcastManagerWorker {
 
   public Object get(final Serializable tag)  {
     // catch exceptions (e.g., read exceptions)
-    LOG.info("Broadcast: getting {}", tag.toString());
     try {
       return tagToVariableCache.get(tag);
     } catch (ExecutionException e) {

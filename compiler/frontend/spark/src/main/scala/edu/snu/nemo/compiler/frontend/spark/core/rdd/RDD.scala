@@ -104,20 +104,8 @@ final class RDD[T: ClassTag] protected[rdd] (
    * A scala wrapper for map transformation.
    */
   override def map[U](f: (T) => U)(implicit evidence$3: ClassManifest[U]): RDD[U] = {
-    LOG.info("MAP MAP {}", f);
-
-
-    SparkEnv.get.closureSerializer.newInstance().serialize(f)
-    println("ser before tojavafunc")
-
-
     val javaFunc = SparkFrontendUtils.toJavaFunction(f, SparkEnv.get.closureSerializer.newInstance())
-
-    SerializationUtils.serialize(javaFunc);
-    println("ser after tojavafunc")
-
     map(javaFunc)
-
   }
 
   /**
