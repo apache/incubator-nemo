@@ -55,8 +55,6 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   private ProcessContext processContext;
   private DoFnInvoker invoker;
 
-
-
   /**
    * DoTransform Constructor.
    *

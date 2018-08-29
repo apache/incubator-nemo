@@ -33,7 +33,6 @@ import edu.snu.nemo.compiler.frontend.spark.coder.SparkEncoderFactory;
 import edu.snu.nemo.compiler.frontend.spark.transform.CollectTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.GroupByKeyTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform;
-import org.apache.spark.SparkEnv$;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
