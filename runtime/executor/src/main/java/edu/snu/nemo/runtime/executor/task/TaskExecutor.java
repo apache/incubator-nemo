@@ -68,6 +68,7 @@ public final class TaskExecutor {
   private long serializedReadBytes = 0;
   private long encodedReadBytes = 0;
   private final MetricMessageSender metricMessageSender;
+  private boolean containABV = false;
 
   // Dynamic optimization
   private String idOfVertexPutOnHold;
@@ -157,6 +158,10 @@ public final class TaskExecutor {
 
       final Map<String, String> additionalOutputMap =
           getAdditionalOutputMap(irVertex, task.getTaskOutgoingEdges(), irVertexDag);
+
+      additionalOutputMap.forEach((k, v) ->
+        LOG.info("log: addoutprop additionalOutputMap {} {}", k, v));
+
       final List<Boolean> isToAdditionalTagOutputs = children.stream()
           .map(harness -> harness.getIRVertex().getId())
           .map(additionalOutputMap::containsValue)
@@ -173,7 +178,7 @@ public final class TaskExecutor {
       final List<String> additionalOutputVertices = new ArrayList<>(additionalOutputMap.values());
       final Set<String> mainChildren =
           getMainOutputVertices(irVertex, irVertexDag, task.getTaskOutgoingEdges(), additionalOutputVertices);
-      final OutputCollectorImpl oci = new OutputCollectorImpl(mainChildren, additionalOutputVertices);
+      final OutputCollectorImpl oci = new OutputCollectorImpl(mainChildren, additionalOutputMap);
 
       // intra-vertex writes
       final VertexHarness vertexHarness = new VertexHarness(irVertex, oci, children,
@@ -199,6 +204,12 @@ public final class TaskExecutor {
         .stream()
         .map(vertex -> vertexIdToHarness.get(vertex.getId()))
         .collect(Collectors.toList());
+    
+    for (VertexHarness v : sortedHarnessList) {
+      if (v.getIRVertex() instanceof AggregationBarrierVertex) {
+        containABV = true;
+      }
+    }
 
     return Pair.of(dataFetcherList, sortedHarnessList);
   }
@@ -212,27 +223,33 @@ public final class TaskExecutor {
   private void processElementRecursively(final VertexHarness vertexHarness, final Object dataElement) {
     final IRVertex irVertex = vertexHarness.getIRVertex();
     final OutputCollectorImpl outputCollector = vertexHarness.getOutputCollector();
+    
     if (irVertex instanceof SourceVertex) {
       outputCollector.emit(dataElement);
     } else if (irVertex instanceof OperatorVertex) {
       final Transform transform = ((OperatorVertex) irVertex).getTransform();
       transform.onData(dataElement);
+    } else if (irVertex instanceof MetricCollectionVertex) {
+      final Transform transform = ((MetricCollectionVertex) irVertex).getTransform();
+      transform.onData(dataElement);
     } else if (irVertex instanceof AggregationBarrierVertex) {
-      outputCollector.emit(dataElement);
+      final Transform transform = ((AggregationBarrierVertex) irVertex).getTransform();
+      LOG.info("log: ABV dataElement {}", dataElement);
+      transform.onData(dataElement);
       setIRVertexPutOnHold((AggregationBarrierVertex) irVertex);
     } else {
       throw new UnsupportedOperationException("This type of IRVertex is not supported");
     }
 
     // Given a single input element, a vertex can produce many output elements.
-    // Here, we recursively process all of the main oltput elements.
+    // Here, we recursively process all of the main output elements.
     outputCollector.iterateMain().forEach(element -> handleMainOutputElement(vertexHarness, element)); // Recursion
     outputCollector.clearMain();
 
     // Recursively process all of the additional output elements.
-    vertexHarness.getContext().getTagToAdditionalChildren().values().forEach(tag -> {
+    vertexHarness.getAdditionalTagOutputChildren().keySet().forEach(tag -> {
       outputCollector.iterateTag(tag).forEach(
-          element -> handleAdditionalOutputElement(vertexHarness, element, tag)); // Recursion
+          element -> { handleAdditionalOutputElement(vertexHarness, element, tag);}); // Recursion
       outputCollector.clearTag(tag);
     });
   }
@@ -270,6 +287,7 @@ public final class TaskExecutor {
     if (!handleDataFetchers(sideInputRelated.get(true))) {
       return;
     }
+    
     final Set<VertexHarness> finalizeLater = sideInputRelated.get(false).stream()
         .map(DataFetcher::getChild)
         .flatMap(vertex -> getAllReachables(vertex).stream())
@@ -327,21 +345,40 @@ public final class TaskExecutor {
     final OutputCollectorImpl outputCollector = vertexHarness.getOutputCollector();
 
     // handle main outputs
-    outputCollector.iterateMain().forEach(element -> handleMainOutputElement(vertexHarness, element)); // Recursion
+    outputCollector.iterateMain().forEach(element -> {
+      handleMainOutputElement(vertexHarness, element);
+    }); // Recursion
     outputCollector.clearMain();
 
-    // handle additional tagged outputs
+    // handle intra-task additional tagged outputs
     vertexHarness.getAdditionalTagOutputChildren().keySet().forEach(tag -> {
       outputCollector.iterateTag(tag).forEach(
-          element -> handleAdditionalOutputElement(vertexHarness, element, tag)); // Recursion
+          element -> {
+            LOG.info("log: intra-task iterateTag: {} {}", tag, element);
+            handleAdditionalOutputElement(vertexHarness, element, tag);
+          }); // Recursion
       outputCollector.clearTag(tag);
     });
+    
+    // handle inter-task additional tagged outputs
+    vertexHarness.getTagToAdditionalChildrenId().keySet().forEach(tag -> {
+      outputCollector.iterateTag(tag).forEach(
+        element -> {
+          LOG.info("log: inter-task iterateTag: {} {}", tag, element);
+          handleAdditionalOutputElement(vertexHarness, element, tag);
+        }); // Recursion
+      outputCollector.clearTag(tag);
+    });
+    
+    
     finalizeOutputWriters(vertexHarness);
   }
 
   private void handleMainOutputElement(final VertexHarness harness, final Object element) {
     // writes to children tasks
-    harness.getWritersToMainChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
+    harness.getWritersToMainChildrenTasks().forEach(outputWriter -> {
+      outputWriter.write(element);
+    });
     // writes to side input children tasks
     if (!harness.getSideInputChildren().isEmpty()) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
@@ -351,10 +388,18 @@ public final class TaskExecutor {
   }
 
   private void handleAdditionalOutputElement(final VertexHarness harness, final Object element, final String tag) {
+    LOG.info("log: handleAdditional {} {} {}", tag, element, harness.getIRVertex().getClass().getSimpleName());
+    
     // writes to additional children tasks
+    harness.getWritersToAdditionalChildrenTasks().forEach((k, w) -> {
+      LOG.info("log: handleAdditional child {}", k);
+    });
+    
     harness.getWritersToAdditionalChildrenTasks().entrySet().stream()
         .filter(kv -> kv.getKey().equals(tag))
-        .forEach(kv -> kv.getValue().write(element));
+        .forEach(kv -> {
+          LOG.info("handleAdditional Written {}", element);
+          kv.getValue().write(element);});
     // writes to side input children tasks
     if (!harness.getSideInputChildren().isEmpty()) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
@@ -377,7 +422,7 @@ public final class TaskExecutor {
       for (int i = 0; i < availableFetchers.size(); i++) {
         final DataFetcher dataFetcher = availableFetchers.get(i);
         final Object element;
-
+  
         try {
           element = dataFetcher.fetchDataElement();
         } catch (NoSuchElementException e) {
@@ -503,12 +548,12 @@ public final class TaskExecutor {
                                                         final DataTransferFactory dataTransferFactory,
                                                         final Map<String, String> taggedOutputs) {
     return outEdgesToChildrenTasks
-        .stream()
-        .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
-        .filter(outEdge -> !taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
-        .map(outEdgeForThisVertex -> dataTransferFactory
-            .createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
-        .collect(Collectors.toList());
+      .stream()
+      .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
+      .filter(outEdge -> !taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
+      .map(outEdgeForThisVertex -> dataTransferFactory.
+        createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
+      .collect(Collectors.toList());
   }
 
   /**
@@ -518,7 +563,7 @@ public final class TaskExecutor {
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
    * @param dataTransferFactory     dataTransferFactory
    * @param taggedOutputs           tag to vertex id map
-   * @return additional children vertex id to OutputWriters map.
+   * @return additional tag to OutputWriters map.
    */
   private Map<String, OutputWriter> getAdditionalChildrenTaskWriters(final IRVertex irVertex,
                                                                      final List<StageEdge> outEdgesToChildrenTasks,
@@ -530,9 +575,14 @@ public final class TaskExecutor {
         .stream()
         .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
         .filter(outEdge -> taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
-        .forEach(outEdgeForThisVertex ->
-          additionalChildrenTaskWriters.put(outEdgeForThisVertex.getDstIRVertex().getId(),
-              dataTransferFactory.createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex)));
+        .forEach(outEdgeForThisVertex -> {
+          final String tag = taggedOutputs.entrySet().stream()
+            .filter(e -> e.getValue().equals(outEdgeForThisVertex.getDstIRVertex().getId()))
+            .findAny().orElseThrow(() -> new RuntimeException("Unexpected error while finding tag"))
+            .getKey();
+          additionalChildrenTaskWriters.put(tag,
+              dataTransferFactory.createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex));
+        });
 
     return additionalChildrenTaskWriters;
   }
@@ -556,18 +606,36 @@ public final class TaskExecutor {
 
   private void prepareTransform(final VertexHarness vertexHarness) {
     final IRVertex irVertex = vertexHarness.getIRVertex();
+    final Transform transform;
     if (irVertex instanceof OperatorVertex) {
-      final Transform transform = ((OperatorVertex) irVertex).getTransform();
+      transform = ((OperatorVertex) irVertex).getTransform();
+      transform.prepare(vertexHarness.getContext(), vertexHarness.getOutputCollector());
+    } else if (irVertex instanceof MetricCollectionVertex) {
+      transform = ((MetricCollectionVertex) irVertex).getTransform();
+      transform.prepare(vertexHarness.getContext(), vertexHarness.getOutputCollector());
+    } else if (irVertex instanceof AggregationBarrierVertex) {
+      LOG.info("log: preparing ABV");
+      transform = ((AggregationBarrierVertex) irVertex).getTransform();
       transform.prepare(vertexHarness.getContext(), vertexHarness.getOutputCollector());
     }
   }
 
   private void closeTransform(final VertexHarness vertexHarness) {
     final IRVertex irVertex = vertexHarness.getIRVertex();
+    final Transform transform;
     if (irVertex instanceof OperatorVertex) {
-      Transform transform = ((OperatorVertex) irVertex).getTransform();
+      transform = ((OperatorVertex) irVertex).getTransform();
+      transform.close();
+    } else if (irVertex instanceof MetricCollectionVertex) {
+      transform = ((MetricCollectionVertex) irVertex).getTransform();
+      transform.close();
+      LOG.info("log: tag: closing MCV");
+    } else if (irVertex instanceof AggregationBarrierVertex) {
+      LOG.info("log: closing ABV");
+      transform = ((AggregationBarrierVertex) irVertex).getTransform();
       transform.close();
     }
+
     vertexHarness.getContext().getSerializedData().ifPresent(data ->
         persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
             ControlMessage.Message.newBuilder()
@@ -607,6 +675,9 @@ public final class TaskExecutor {
 
       final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
       writtenBytes.ifPresent(writtenBytesList::add);
+      if (writtenBytes.isPresent()) {
+        LOG.info("Written bytes {}", writtenBytes.get());
+      }
     });
 
     long totalWrittenBytes = 0;

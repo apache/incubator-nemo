@@ -16,9 +16,12 @@
 package edu.snu.nemo.runtime.executor.task;
 
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.MetricCollectionVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,6 +32,8 @@ import java.util.Map;
  * Captures the relationship between a non-source IRVertex's outputCollector, and children vertices.
  */
 final class VertexHarness {
+  private static final Logger LOG = LoggerFactory.getLogger(VertexHarness.class.getName());
+  
   // IRVertex and transform-specific information
   private final IRVertex irVertex;
   private final OutputCollectorImpl outputCollector;
@@ -38,6 +43,7 @@ final class VertexHarness {
   private final List<VertexHarness> sideInputChildren;
   private final List<VertexHarness> nonSideInputChildren;
   private final Map<String, VertexHarness> additionalTagOutputChildren;
+  private final Map<String, String> tagToAdditionalChildrenId;
   private final List<OutputWriter> writersToMainChildrenTasks;
   private final Map<String, OutputWriter> writersToAdditionalChildrenTasks;
 
@@ -58,6 +64,8 @@ final class VertexHarness {
     final List<VertexHarness> sides = new ArrayList<>();
     final List<VertexHarness> nonSides = new ArrayList<>();
     final Map<String, VertexHarness> tagged = new HashMap<>();
+
+    // Classify input type for intra-task children
     for (int i = 0; i < children.size(); i++) {
       final VertexHarness child = children.get(i);
       if (isSideInputs.get(i)) {
@@ -70,6 +78,9 @@ final class VertexHarness {
         nonSides.add(child);
       }
     }
+    
+    // TODO #XXX: For additional tag output children, we need to consider inter-task children.
+    this.tagToAdditionalChildrenId = context.getTagToAdditionalChildren();
     this.sideInputChildren = sides;
     this.nonSideInputChildren = nonSides;
     this.additionalTagOutputChildren = tagged;
@@ -112,7 +123,11 @@ final class VertexHarness {
   public Map<String, VertexHarness> getAdditionalTagOutputChildren() {
     return additionalTagOutputChildren;
   }
-
+  
+  public Map<String, String> getTagToAdditionalChildrenId() {
+    return tagToAdditionalChildrenId;
+  }
+  
   /**
    * @return OutputWriters for main outputs of this irVertex. (empty if none exists)
    */

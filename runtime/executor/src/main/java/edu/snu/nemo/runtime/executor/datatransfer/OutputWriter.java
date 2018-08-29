@@ -62,7 +62,6 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class).
         orElseThrow(() -> new RuntimeException("No data store property on the edge"));
 
-
     // Setup partitioner
     final int dstParallelism = dstIrVertex.getPropertyValue(ParallelismProperty.class).
         orElseThrow(() -> new RuntimeException("No parallelism property on the destination vertex"));
@@ -172,5 +171,13 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
         ? 1 : dstIrVertex.getPropertyValue(ParallelismProperty.class).orElseThrow(
             () -> new RuntimeException("No parallelism property on the destination vertex."));
     return readForABlock * duplicatedDataMultiplier;
+  }
+  
+  public String getRuntimeEdgeId() {
+    return runtimeEdge.getId();
+  }
+  
+  public String getDstVertexId() {
+    return dstIrVertex.getId();
   }
 }

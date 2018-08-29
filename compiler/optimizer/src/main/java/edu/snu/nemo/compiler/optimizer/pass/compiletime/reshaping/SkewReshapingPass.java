@@ -15,6 +15,9 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
+import com.sun.org.apache.xml.internal.security.keys.content.keyvalues.KeyValueContent;
+import edu.snu.nemo.common.KeyExtractor;
+import edu.snu.nemo.common.coder.*;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
@@ -26,7 +29,10 @@ import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +47,8 @@ import java.util.List;
  */
 @Requires(CommunicationPatternProperty.class)
 public final class SkewReshapingPass extends ReshapingPass {
+  private static final Logger LOG = LoggerFactory.getLogger(SkewReshapingPass.class.getName());
+
   /**
    * Default constructor.
    */
@@ -58,28 +66,31 @@ public final class SkewReshapingPass extends ReshapingPass {
       if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
           CommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))) {
-        final AggregationBarrierVertex<Integer, Long> aggregationBarrierVertex
-            = new AggregationBarrierVertex<>();
-        final SkewMetricCollectionVertex<Integer, Long> metricCollectionVertex
-          = new SkewMetricCollectionVertex<>();
 
-        metricCollectionVertices.add(metricCollectionVertex);
-        builder.addVertex(v);
-        builder.addVertex(metricCollectionVertex);
         dag.getIncomingEdgesOf(v).forEach(edge -> {
           // we insert the metric collection vertex when we meet a shuffle edge
           if (CommunicationPatternProperty.Value.Shuffle
                 .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+            final AggregationBarrierVertex abv =
+              new AggregationBarrierVertex(edge.getPropertyValue(KeyExtractorProperty.class).get());
+            // abv.setPropertyPermanently(ParallelismProperty.of(1));
+            final MetricCollectionVertex mcv =
+              new MetricCollectionVertex(abv.getId(), edge.getPropertyValue(KeyExtractorProperty.class).get());
+            metricCollectionVertices.add(mcv);
+            builder.addVertex(v);
+            builder.addVertex(mcv);
+            builder.addVertex(abv);
+            
             // We then insert the dynamicOptimizationVertex between the vertex and incoming vertices.
-            final IREdge edgeToMCV = generateEdgeToMCV(edge, metricCollectionVertex);
-            final IREdge edgeToABV = generateEdgeToAGV(edge, metricCollectionVertex, aggregationBarrierVertex);
-            final IREdge edgeToOriginalV = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                aggregationBarrierVertex, v, edge.isSideInput());
-            edge.copyExecutionPropertiesTo(edgeToOriginalV);
-
+            final IREdge edgeToMCV = generateEdgeToMCV(edge, mcv);
+            final IREdge edgeToABV = generateEdgeToABV(edge, mcv, abv);
+            final IREdge edgeToOriginalDstV =
+              new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), mcv, v, edge.isSideInput());
+            edge.copyExecutionPropertiesTo(edgeToOriginalDstV);
+            
             builder.connectVertices(edgeToMCV);
             builder.connectVertices(edgeToABV);
-            builder.connectVertices(edgeToOriginalV);
+            builder.connectVertices(edgeToOriginalDstV);
           } else {
             builder.connectVertices(edge);
           }
@@ -93,23 +104,36 @@ public final class SkewReshapingPass extends ReshapingPass {
     metricCollectionVertices.forEach(v -> v.setDAGSnapshot(newDAG));
     return newDAG;
   }
-  
-  private IREdge generateEdgeToMCV(final IREdge edge, final SkewMetricCollectionVertex mcv) {
-    final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne,
-      edge.getSrc(), mcv);
+
+  private IREdge generateEdgeToMCV(final IREdge edge, final MetricCollectionVertex mcv) {
+    final IREdge newEdge =
+      new IREdge(CommunicationPatternProperty.Value.OneToOne, edge.getSrc(), mcv);
     newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
     newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
     return newEdge;
   }
-  
-  private IREdge generateEdgeToAGV(final IREdge edge,
-                                   final SkewMetricCollectionVertex mcv,
-                                   final AggregationBarrierVertex agv) {
-    final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, mcv, agv);
+
+  private IREdge generateEdgeToABV(final IREdge edge,
+                                   final MetricCollectionVertex mcv,
+                                   final AggregationBarrierVertex abv) {
+    final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mcv, abv);
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
-    newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
-    newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
-    newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
+    newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
+    newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    newEdge.setProperty(KeyExtractorProperty.of(edge.getPropertyValue(KeyExtractorProperty.class).get()));
+    newEdge.setProperty(AdditionalOutputTagProperty.of("DynOptData"));
+  
+    // For sending data to AggregationBarrierVertex,
+    // we need to use coders to encode/decode the keys.
+    final EncoderFactory keyEncoderFactory
+      = edge.getPropertyValue(KeyExtractorProperty.class).get().getKeyEncoderFactory();
+    LOG.info("keyEncoderFactory {}", keyEncoderFactory.getClass().getName());
+    final DecoderFactory keyDecoderFactory
+      = edge.getPropertyValue(KeyExtractorProperty.class).get().getKeyDecoderFactory();
+    LOG.info("keyDecoderFactory {}", keyDecoderFactory.getClass().getName());
+  
+    newEdge.setProperty(EncoderProperty.of(MapEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
+    newEdge.setProperty(DecoderProperty.of(MapDecoderFactory.of(keyDecoderFactory, LongDecoderFactory.of())));
     return newEdge;
   }
 }

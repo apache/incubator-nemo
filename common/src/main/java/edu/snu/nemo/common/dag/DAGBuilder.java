@@ -19,10 +19,7 @@ import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.ir.vertex.SourceVertex;
-import edu.snu.nemo.common.ir.vertex.LoopVertex;
+import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.exception.IllegalVertexOperationException;
 
 import java.io.Serializable;
@@ -244,9 +241,10 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
         .filter(v -> outgoingEdges.get(v).isEmpty())
         .filter(v -> v instanceof IRVertex);
     // They should either be OperatorVertex or LoopVertex
-    if (verticesToObserve.get().anyMatch(v -> !(v instanceof OperatorVertex || v instanceof LoopVertex))) {
+    if (verticesToObserve.get().anyMatch(v ->
+      !(v instanceof OperatorVertex || v instanceof LoopVertex || v instanceof AggregationBarrierVertex))) {
       final String problematicVertices = verticesToObserve.get().filter(v ->
-          !(v instanceof OperatorVertex || v instanceof LoopVertex))
+          !(v instanceof OperatorVertex || v instanceof LoopVertex || v instanceof AggregationBarrierVertex))
           .map(V::getId).collect(Collectors.toList()).toString();
       throw new CompileTimeOptimizationException("DAG sink check failed while building DAG: " + problematicVertices);
     }

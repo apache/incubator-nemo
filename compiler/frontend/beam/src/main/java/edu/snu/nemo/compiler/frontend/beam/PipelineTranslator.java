@@ -15,6 +15,8 @@
  */
 package edu.snu.nemo.compiler.frontend.beam;
 
+import edu.snu.nemo.common.coder.DecoderFactory;
+import edu.snu.nemo.common.coder.EncoderFactory;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
@@ -436,8 +438,27 @@ public final class PipelineTranslator
       if (pValueToTag.containsKey(input)) {
         edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
       }
-      edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
+      
+      if (CommunicationPatternProperty.Value.Shuffle
+        .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+        setKeyExtractorForShuffleProperty(edge, coder);
+      } else {
+        edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor(null, null)));
+      }
+      
       builder.connectVertices(edge);
+    }
+    
+    private void setKeyExtractorForShuffleProperty(final IREdge edge, final Coder beamCoder) {
+      if (beamCoder instanceof KvCoder) {
+        final Coder beamKeyCoder = ((KvCoder)beamCoder).getKeyCoder();
+        final EncoderFactory keyEncoderFactory = new BeamEncoderFactory<>(beamKeyCoder);
+        final DecoderFactory keyDecoderFactory = new BeamDecoderFactory(beamKeyCoder);
+  
+        edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor(keyEncoderFactory, keyDecoderFactory)));
+      } else {
+        throw new RuntimeException("Error in setting KeyExtractorProperty: Beam coder is not an instance of KVCoder");
+      }
     }
 
     /**

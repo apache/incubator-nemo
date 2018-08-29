@@ -41,7 +41,7 @@ public final class SkewMetricCollectionPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(v -> {
-      // we only care about metric collection barrier vertices.
+      // we only care about barrier vertices.
       if (v instanceof AggregationBarrierVertex) {
         dag.getOutgoingEdgesOf(v).forEach(edge -> {
           // double checking.

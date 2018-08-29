@@ -246,6 +246,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
       // Check vertex type.
       if (!(irVertex instanceof  SourceVertex
           || irVertex instanceof OperatorVertex
+          || irVertex instanceof MetricCollectionVertex
           || irVertex instanceof AggregationBarrierVertex)) {
         throw new UnsupportedOperationException(irVertex.toString());
       }

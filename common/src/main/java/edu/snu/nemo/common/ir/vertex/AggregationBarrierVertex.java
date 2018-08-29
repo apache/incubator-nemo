@@ -15,32 +15,47 @@
  */
 package edu.snu.nemo.common.ir.vertex;
 
+import edu.snu.nemo.common.KeyExtractor;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.DynamicOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
+import edu.snu.nemo.common.ir.vertex.transform.AggregateMetricTransform;
+import edu.snu.nemo.common.ir.vertex.transform.Transform;
+
+import java.util.HashMap;
 
 /**
  * IRVertex that collects statistics to send them to the optimizer for dynamic optimization.
  * This class is generated in the DAG through
  * {edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass}.
- * @param <K> type of the key of metric data.
- * @param <V> type of the value of metric data.
  */
-public final class AggregationBarrierVertex<K, V> extends IRVertex {
+public final class AggregationBarrierVertex extends IRVertex {
   // This DAG snapshot is taken at the end of the DataSkewCompositePass, for the vertex to know the state of the DAG at
   // its optimization, and to be able to figure out exactly where in the DAG the vertex exists.
+  private final Transform transform;
   private DAG<IRVertex, IREdge> dagSnapshot;
+  private KeyExtractor keyExtractor;
 
   /**
    * Constructor for dynamic optimization vertex.
    */
-  public AggregationBarrierVertex() {
+  public AggregationBarrierVertex(final KeyExtractor keyExtractor) {
+    this.transform = new AggregateMetricTransform(new HashMap<Object, Long>(), keyExtractor);
     this.dagSnapshot = null;
+    this.keyExtractor = keyExtractor;
+  }
+
+  /**
+   * @return the transform in the OperatorVertex.
+   */
+  public Transform getTransform() {
+    return transform;
   }
 
   @Override
   public AggregationBarrierVertex getClone() {
-    final AggregationBarrierVertex that = new AggregationBarrierVertex();
+    final AggregationBarrierVertex that = new AggregationBarrierVertex(keyExtractor);
     that.setDAGSnapshot(dagSnapshot);
     this.copyExecutionPropertiesTo(that);
     return that;
@@ -64,7 +79,7 @@ public final class AggregationBarrierVertex<K, V> extends IRVertex {
     }
     return this.dagSnapshot;
   }
-  
+
   @Override
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();

@@ -15,42 +15,46 @@
  */
 package edu.snu.nemo.common.ir.vertex;
 
+import edu.snu.nemo.common.KeyExtractor;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.DynamicOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Function;
+import edu.snu.nemo.common.ir.vertex.transform.MetricCollectTransform;
+import edu.snu.nemo.common.ir.vertex.transform.Transform;
 
 /**
  * IRVertex that collects statistics to send them to the optimizer for dynamic optimization.
  * This class is generated in the DAG through
  * {edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass}.
- * @param <K> type of the key of metric data.
- * @param <V> type of the value of metric data.
  */
-public class MetricCollectionVertex<K, V> extends IRVertex {
+public class MetricCollectionVertex extends IRVertex {
   // This DAG snapshot is taken at the end of the DataSkewCompositePass, for the vertex to know the state of the DAG at
   // its optimization, and to be able to figure out exactly where in the DAG the vertex exists.
+  private final Transform transform;
+  private final String dstVertexId;
+  private final KeyExtractor keyExtractor;
   private DAG<IRVertex, IREdge> dagSnapshot;
-  private final Map<K, V> dynOptData;
 
   /**
-   * Constructor for dynamic optimization vertex.
+   * Constructor of MetricCollectionVertex.
    */
-  public MetricCollectionVertex() {
-    this.dagSnapshot = null;
-    this.dynOptData = new HashMap<>();
+  public MetricCollectionVertex(final String dstVertexId, final KeyExtractor keyExtractor) {
+    super();
+    this.dstVertexId = dstVertexId;
+    this.transform = new MetricCollectTransform(dstVertexId, keyExtractor);
+    this.keyExtractor = keyExtractor;
   }
-  
-  public void updateDynOptData(final Map.Entry<K, V> dynOptDataEntry) {
+
+  /**
+   * @return the transform in the OperatorVertex.
+   */
+  public final Transform getTransform() {
+    return transform;
   }
-    
-    
-    @Override
-  public MetricCollectionVertex getClone() {
-    final MetricCollectionVertex that = new MetricCollectionVertex();
+
+  @Override
+  public final MetricCollectionVertex getClone() {
+    final MetricCollectionVertex that = new MetricCollectionVertex(dstVertexId, keyExtractor);
     that.setDAGSnapshot(dagSnapshot);
     this.copyExecutionPropertiesTo(that);
     return that;
@@ -60,7 +64,7 @@ public class MetricCollectionVertex<K, V> extends IRVertex {
    * This is to set the DAG snapshot at the end of the DataSkewCompositePass.
    * @param dag DAG to set on the vertex.
    */
-  public void setDAGSnapshot(final DAG<IRVertex, IREdge> dag) {
+  public final void setDAGSnapshot(final DAG<IRVertex, IREdge> dag) {
     this.dagSnapshot = dag;
   }
 
@@ -68,19 +72,21 @@ public class MetricCollectionVertex<K, V> extends IRVertex {
    * Access the DAG snapshot when triggering dynamic optimization.
    * @return the DAG set to the vertex, or throws an exception otherwise.
    */
-  public DAG<IRVertex, IREdge> getDAGSnapshot() {
+  public final DAG<IRVertex, IREdge> getDAGSnapshot() {
     if (this.dagSnapshot == null) {
-      throw new DynamicOptimizationException("AggregationBarrierVertex must have been set with a DAG.");
+      throw new DynamicOptimizationException("MetricCollectionVertex must have been set with a DAG.");
     }
     return this.dagSnapshot;
   }
-  
+
   @Override
-  public String propertiesToJSON() {
+  public final String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{");
     sb.append(irVertexPropertiesToString());
-    sb.append("}");
+    sb.append(", \"transform\": \"");
+    sb.append(transform);
+    sb.append("\"}");
     return sb.toString();
   }
 }

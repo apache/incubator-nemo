@@ -40,7 +40,7 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
 
   @Override
   public Encoder<byte[]> create(final OutputStream outputStream) {
-    return new BytesEncoder(outputStream);
+    return  new BytesEncoder(outputStream);
   }
 
   /**

@@ -21,8 +21,8 @@ import edu.snu.nemo.common.ir.vertex.transform.Transform;
  * IRVertex that transforms input data.
  * It is to be constructed in the compiler frontend with language-specific data transform logic.
  */
-public final class OperatorVertex extends IRVertex {
-  private final Transform transform;
+public class OperatorVertex extends IRVertex {
+  private Transform transform;
 
   /**
    * Constructor of OperatorVertex.
@@ -43,19 +43,19 @@ public final class OperatorVertex extends IRVertex {
   }
 
   @Override
-  public OperatorVertex getClone() {
+  public final OperatorVertex getClone() {
     return new OperatorVertex(this);
   }
 
   /**
    * @return the transform in the OperatorVertex.
    */
-  public Transform getTransform() {
+  public final Transform getTransform() {
     return transform;
   }
 
   @Override
-  public String propertiesToJSON() {
+  public final String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{");
     sb.append(irVertexPropertiesToString());
