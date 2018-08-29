@@ -40,6 +40,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * Used by tasks to get/fetch (probably remote) broadcast variables.
  */
 @ThreadSafe
 public final class BroadcastManagerWorker {
@@ -99,7 +100,10 @@ public final class BroadcastManagerWorker {
   }
 
   /**
-   * @param tag
+   * When the broadcast variable can be read by an input reader.
+   * (i.e., the variable is expressed as an IREdge, and reside in a executor as a block)
+   *
+   * @param tag of the broadcast variable.
    * @param inputReader
    */
   public void registerInputReader(final Serializable tag,
@@ -107,15 +111,23 @@ public final class BroadcastManagerWorker {
     this.tagToReader.put(tag, inputReader);
   }
 
+  /**
+   * Get the variable with the tag.
+   * @param tag of the variable.
+   * @return the variable.
+   */
   public Object get(final Serializable tag)  {
-    // catch exceptions (e.g., read exceptions)
     try {
       return tagToVariableCache.get(tag);
     } catch (ExecutionException e) {
+      // TODO #207: Handle broadcast variable fetch exceptions
       throw new IllegalStateException(e);
     }
   }
 
+  /**
+   * @return the static reference for those that do not use TANG and cannot access the singleton object.
+   */
   public static BroadcastManagerWorker getStaticReference() {
     return staticReference;
   }

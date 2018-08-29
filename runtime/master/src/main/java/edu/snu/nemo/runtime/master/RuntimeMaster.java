@@ -345,6 +345,7 @@ public final class RuntimeMaster {
               .setType(ControlMessage.MessageType.InMasterBroadcastVariable)
               .setBroadcastVariableMsg(ControlMessage.InMasterBroadcastVariableMessage.newBuilder()
                 .setRequestId(message.getId())
+                // TODO #206: Efficient Broadcast Variable Serialization
                 .setVariabe(ByteString.copyFrom(SerializationUtils.serialize((Serializable) broadcastVariable)))
                 .build())
               .build());

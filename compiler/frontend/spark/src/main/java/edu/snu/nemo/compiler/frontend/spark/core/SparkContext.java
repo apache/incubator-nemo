@@ -15,10 +15,9 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.core;
 
+import edu.snu.nemo.compiler.frontend.spark.SparkBroadcastVariables;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
-import edu.snu.nemo.runtime.master.InMasterBroadcastVariables;
 import org.apache.spark.SparkConf;
 import org.apache.spark.broadcast.Broadcast;
 import org.slf4j.Logger;
@@ -26,7 +25,11 @@ import org.slf4j.LoggerFactory;
 import scala.collection.Seq;
 import scala.reflect.ClassTag;
 
+import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Spark context wrapper for in Nemo.
@@ -34,6 +37,8 @@ import java.util.List;
 public final class SparkContext extends org.apache.spark.SparkContext {
   private static final Logger LOG = LoggerFactory.getLogger(SparkContext.class.getName());
   private final org.apache.spark.SparkContext sparkContext;
+
+  private final AtomicLong broadcastVariableIdGenerator = new AtomicLong(0);
 
   /**
    * Constructor.
@@ -71,8 +76,8 @@ public final class SparkContext extends org.apache.spark.SparkContext {
   @Override
   public <T> Broadcast<T> broadcast(final T data,
                                     final ClassTag<T> evidence) {
-    final long broadcastVariableId = RuntimeIdManager.generateInMasterBroadcastVariableId();
-    InMasterBroadcastVariables.registerBroadcastVariable(broadcastVariableId, data);
+    final long broadcastVariableId = broadcastVariableIdGenerator.getAndIncrement();
+    SparkBroadcastVariables.put(broadcastVariableId, data);
     return new SparkBroadcast<>(broadcastVariableId, (Class<T>) data.getClass());
   }
 }

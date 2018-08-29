@@ -129,6 +129,7 @@ object SparkALS {
     var msb = sc.broadcast(ms)
     var usb = sc.broadcast(us)
 
+    // TODO #205: RDD Closure with Broadcast Variables Serialization Bug
     val update_ms = (i : Int) => update(i, msb.value(i), usb.value, Rc.value)
     val update_us = (i : Int) => update(i, usb.value(i), msb.value, Rc.value.transpose())
 

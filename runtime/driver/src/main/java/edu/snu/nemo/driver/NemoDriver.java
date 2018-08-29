@@ -112,8 +112,7 @@ public final class NemoDriver {
       startSchedulingUserDAG(message.getLaunchDAG().getDag());
       final Map<Serializable, Object> broadcastVars =
         SerializationUtils.deserialize(message.getLaunchDAG().getBroadcastVars().toByteArray());
-      broadcastVars.entrySet().forEach(entry ->
-        InMasterBroadcastVariables.registerBroadcastVariable(entry.getKey(), entry.getValue()));
+      InMasterBroadcastVariables.registerBroadcastVariablesFromClient(broadcastVars);
     });
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.DriverShutdown, message -> shutdown());
     // Send DriverStarted message to the client

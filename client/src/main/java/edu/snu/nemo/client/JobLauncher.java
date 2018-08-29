@@ -50,10 +50,7 @@ import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -175,6 +172,14 @@ public final class JobLauncher {
    */
   // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
   public static void launchDAG(final DAG dag) {
+    launchDAG(dag, Collections.emptyMap());
+  }
+
+  /**
+   * @param dag the application DAG.
+   * @param broadcastVariables broadcast variables (can be empty).
+   */
+  public static void launchDAG(final DAG dag, final Map<Serializable, Object> broadcastVariables) {
     // Wait until the driver is ready.
     try {
       LOG.info("Waiting for the driver to be ready");
@@ -186,8 +191,6 @@ public final class JobLauncher {
     }
 
     LOG.info("Launching DAG...");
-    final Map<Serializable, Object> broadcastVariables = InMasterBroadcastVariables.getAllVariables();
-
     serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
     jobDoneLatch = new CountDownLatch(1);
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()

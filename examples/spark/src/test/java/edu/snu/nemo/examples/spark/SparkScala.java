@@ -110,17 +110,7 @@ public final class SparkScala {
     JobLauncher.main(builder
       .addJobId(SparkALS.class.getSimpleName() + "_test")
       .addUserMain(SparkALS.class.getCanonicalName())
-      .addUserArgs("100")
-      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
-      .build());
-  }
-
-  @Test(timeout = TIMEOUT)
-  public void testALSTwo() throws Exception {
-    JobLauncher.main(builder
-      .addJobId(SparkALSTwo.class.getSimpleName() + "_test_two")
-      .addUserMain(SparkALSTwo.class.getCanonicalName())
-      .addUserArgs("5", "5", "5", "5")
+      .addUserArgs("100") // TODO #202: Bug with empty string user_args
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
   }

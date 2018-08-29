@@ -26,7 +26,7 @@ import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
 import edu.snu.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty
 import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
 import edu.snu.nemo.common.test.EmptyComponents.EmptyTransform
-import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
+import edu.snu.nemo.compiler.frontend.spark.{SparkBroadcastVariables, SparkKeyExtractor}
 import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import edu.snu.nemo.compiler.frontend.spark.transform._
@@ -104,7 +104,7 @@ final class RDD[T: ClassTag] protected[rdd] (
    * A scala wrapper for map transformation.
    */
   override def map[U](f: (T) => U)(implicit evidence$3: ClassManifest[U]): RDD[U] = {
-    val javaFunc = SparkFrontendUtils.toJavaFunction(f, SparkEnv.get.closureSerializer.newInstance())
+    val javaFunc = SparkFrontendUtils.toJavaFunction(f)
     map(javaFunc)
   }
 
@@ -228,7 +228,7 @@ final class RDD[T: ClassTag] protected[rdd] (
     newEdge.setProperty(keyExtractorProperty)
 
     builder.connectVertices(newEdge)
-    JobLauncher.launchDAG(builder.build)
+    JobLauncher.launchDAG(builder.build, SparkBroadcastVariables.getAll)
   }
 
   /////////////// CACHING ///////////////

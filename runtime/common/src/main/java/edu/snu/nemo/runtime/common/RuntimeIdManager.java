@@ -26,7 +26,6 @@ public final class RuntimeIdManager {
   private static AtomicInteger executorIdGenerator = new AtomicInteger(0);
   private static AtomicLong messageIdGenerator = new AtomicLong(1L);
   private static AtomicLong resourceSpecIdGenerator = new AtomicLong(0);
-  private static AtomicLong inMasterBroadcastIdGenerator = new AtomicLong(0);
   private static final String SPLITTER = "-";
 
   /**
@@ -46,14 +45,6 @@ public final class RuntimeIdManager {
    */
   public static String generatePhysicalPlanId() {
     return "Plan" + physicalPlanIdGenerator.getAndIncrement();
-  }
-
-  /**
-   * Generates the ID for broadcast variables..
-   * @return the generated ID
-   */
-  public static long generateInMasterBroadcastVariableId() {
-    return inMasterBroadcastIdGenerator.getAndIncrement();
   }
 
   /**

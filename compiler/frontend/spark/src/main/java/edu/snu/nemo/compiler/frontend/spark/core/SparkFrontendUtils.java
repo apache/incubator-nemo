@@ -26,6 +26,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
+import edu.snu.nemo.compiler.frontend.spark.SparkBroadcastVariables;
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor;
 import edu.snu.nemo.compiler.frontend.spark.coder.SparkDecoderFactory;
 import edu.snu.nemo.compiler.frontend.spark.coder.SparkEncoderFactory;
@@ -53,7 +54,6 @@ import java.util.*;
  */
 public final class SparkFrontendUtils {
   private static final KeyExtractorProperty SPARK_KEY_EXTRACTOR_PROP = KeyExtractorProperty.of(new SparkKeyExtractor());
-  private static final SerializerInstance SCALA_SERIALIZER = SparkEnv$.MODULE$.get().closureSerializer().newInstance();
 
   /**
    * Private constructor.
@@ -103,7 +103,7 @@ public final class SparkFrontendUtils {
     builder.connectVertices(newEdge);
 
     // launch DAG
-    JobLauncher.launchDAG(builder.build());
+    JobLauncher.launchDAG(builder.build(), SparkBroadcastVariables.getAll());
 
     return (List<T>) JobLauncher.getCollectedData();
   }
@@ -134,16 +134,13 @@ public final class SparkFrontendUtils {
    * @param <O>           the type of output.
    * @return the converted Java function.
    */
-  public static <I, O> Function<I, O> toJavaFunction(final Function1<I, O> scalaFunction,
-                                                     final SerializerInstance siz) {
+  public static <I, O> Function<I, O> toJavaFunction(final Function1<I, O> scalaFunction) {
     final ClassTag<Function1<I, O>> classTag = ClassTag$.MODULE$.apply(scalaFunction.getClass());
 
-    // (IMPORTANT) When Function1 contains broadcast variables, attempting to serialize it with SerializationUtils
-    // results in the following exception.
-    //
-    // org.apache.commons.lang.SerializationException: java.io.NotSerializableException:
-    // edu.snu.nemo.compiler.frontend.spark.core.SparkContext
-    final byte[] serializedFunction = siz.serialize(scalaFunction, classTag).array();
+    // TODO #205: RDD Closure with Broadcast Variables Serialization Bug
+    // This 'JavaSerializer' from Spark provides a human-readable NotSerializableException stack traces,
+    // which can be useful when addressing this problem.
+    final byte[] serializedFunction = new JavaSerializer().newInstance().serialize(scalaFunction, classTag).array();
 
     return new Function<I, O>() {
       private Function1<I, O> deserializedFunction;
@@ -151,8 +148,8 @@ public final class SparkFrontendUtils {
       @Override
       public O call(final I v1) throws Exception {
         if (deserializedFunction == null) {
+          // TODO #205: RDD Closure with Broadcast Variables Serialization Bug
           final SerializerInstance js = new JavaSerializer().newInstance();
-          // final SerializerInstance si = SparkEnv$.MODULE$.get().closureSerializer().newInstance();
           deserializedFunction = js.deserialize(ByteBuffer.wrap(serializedFunction), classTag);
         }
         return deserializedFunction.apply(v1);

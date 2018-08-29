@@ -13,31 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+package edu.snu.nemo.compiler.frontend.spark;
 
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Broadcast variables saved in the master.
+ * Broadcast variables of Spark.
  */
-public final class InMasterBroadcastVariables {
-  private static final Logger LOG = LoggerFactory.getLogger(InMasterBroadcastVariables.class.getName());
-
+public final class SparkBroadcastVariables {
   private static final Map<Serializable, Object> TAG_TO_VARIABLE = new HashMap<>();
 
-  private InMasterBroadcastVariables() {
+  private SparkBroadcastVariables() {
   }
 
-  public static void registerBroadcastVariablesFromClient(final Map<Serializable, Object> variables) {
-    TAG_TO_VARIABLE.putAll(variables);
+  public static void put(final Serializable tag, final Object variable) {
+    TAG_TO_VARIABLE.put(tag, variable);
   }
 
-  public static Object getBroadcastVariable(final Serializable tag) {
-    return TAG_TO_VARIABLE.get(tag);
+  public static Map<Serializable, Object> getAll() {
+    return TAG_TO_VARIABLE;
   }
 }
