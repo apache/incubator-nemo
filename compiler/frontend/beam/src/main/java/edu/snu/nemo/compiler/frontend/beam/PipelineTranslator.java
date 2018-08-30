@@ -42,9 +42,11 @@ import java.lang.annotation.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 import java.util.function.BiFunction;
+import java.util.stream.Stream;
 
 /**
  * Converts DAG of Beam pipeline to Nemo IR DAG.
@@ -220,10 +222,20 @@ public final class PipelineTranslator
                                         final CompositeTransformVertex transformVertex,
                                         final PTransform<?, ?> transform) {
     transformVertex.getDAG().topologicalDo(ctx::translate);
-    /*
     final List<TransformVertex> topologicalOrdering = transformVertex.getDAG().getTopologicalSort();
     final TransformVertex groupByKeyBeamTransform = topologicalOrdering.get(0);
     final TransformVertex last = topologicalOrdering.get(topologicalOrdering.size() - 1);
+
+    final boolean handlesBeamRow = Stream
+      .concat(transformVertex.getNode().getInputs().values().stream(),
+        transformVertex.getNode().getOutputs().values().stream())
+      .map(pValue -> (KvCoder) getCoder(pValue, ctx.getPipeline())) // Input and output of combine should be KV
+      .map(kvCoder -> kvCoder.getValueCoder().getEncodedTypeDescriptor()) // We're interested in the 'Value' of KV
+      .anyMatch(valueTypeDescriptor -> TypeDescriptor.of(Row.class).equals(valueTypeDescriptor));
+    if (handlesBeamRow) {
+      transformVertex.getDAG().topologicalDo(ctx::translate);
+      return; // no optimization for the 'Row' types - TODO #209: Enable Local Combiner for BeamSQL
+    }
 
     if (groupByKeyBeamTransform.getNode().getTransform() instanceof GroupByKey) {
       // Translate the given CompositeTransform under OneToOneEdge-enforced context.
@@ -246,7 +258,6 @@ public final class PipelineTranslator
     } else {
       transformVertex.getDAG().topologicalDo(ctx::translate);
     }
-    */
   }
 
   /**
@@ -550,7 +561,6 @@ public final class PipelineTranslator
   private static final class OneToOneCommunicationPatternSelector
       implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
     private static final OneToOneCommunicationPatternSelector INSTANCE = new OneToOneCommunicationPatternSelector();
-
     @Override
     public CommunicationPatternProperty.Value apply(final IRVertex src, final IRVertex dst) {
       return CommunicationPatternProperty.Value.OneToOne;
