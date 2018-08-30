@@ -221,11 +221,10 @@ public final class PipelineTranslator
   private static void combineTranslator(final TranslationContext ctx,
                                         final CompositeTransformVertex transformVertex,
                                         final PTransform<?, ?> transform) {
+    // Handle primitives
     transformVertex.getDAG().topologicalDo(ctx::translate);
-    final List<TransformVertex> topologicalOrdering = transformVertex.getDAG().getTopologicalSort();
-    final TransformVertex groupByKeyBeamTransform = topologicalOrdering.get(0);
-    final TransformVertex last = topologicalOrdering.get(topologicalOrdering.size() - 1);
 
+    // No optimization for BeamSQL
     final boolean handlesBeamRow = Stream
       .concat(transformVertex.getNode().getInputs().values().stream(),
         transformVertex.getNode().getOutputs().values().stream())
@@ -233,10 +232,13 @@ public final class PipelineTranslator
       .map(kvCoder -> kvCoder.getValueCoder().getEncodedTypeDescriptor()) // We're interested in the 'Value' of KV
       .anyMatch(valueTypeDescriptor -> TypeDescriptor.of(Row.class).equals(valueTypeDescriptor));
     if (handlesBeamRow) {
-      transformVertex.getDAG().topologicalDo(ctx::translate);
       return; // no optimization for the 'Row' types - TODO #209: Enable Local Combiner for BeamSQL
     }
 
+    // Local combiner optimization
+    final List<TransformVertex> topologicalOrdering = transformVertex.getDAG().getTopologicalSort();
+    final TransformVertex groupByKeyBeamTransform = topologicalOrdering.get(0);
+    final TransformVertex last = topologicalOrdering.get(topologicalOrdering.size() - 1);
     if (groupByKeyBeamTransform.getNode().getTransform() instanceof GroupByKey) {
       // Translate the given CompositeTransform under OneToOneEdge-enforced context.
       final TranslationContext oneToOneEdgeContext = new TranslationContext(ctx,
