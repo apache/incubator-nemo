@@ -15,6 +15,8 @@
  */
 package edu.snu.nemo.examples.beam;
 
+import edu.snu.nemo.compiler.frontend.beam.NemoPipelineOptions;
+import edu.snu.nemo.compiler.frontend.beam.NemoPipelineRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.extensions.sql.SqlTransform;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -23,10 +25,13 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.*;
 
-import javax.annotation.Nullable;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * A simple SQL application.
+ * (Copied/Refined from the example code in the Beam repository)
  */
 public final class SimpleSQL {
   /**
@@ -39,55 +44,46 @@ public final class SimpleSQL {
    * @param args arguments.
    */
   public static void main(final String[] args) {
-    final PipelineOptions options = PipelineOptionsFactory.fromArgs(args).as(PipelineOptions.class);
+    final String outputFilePath = args[0];
+
+    final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
+    options.setRunner(NemoPipelineRunner.class);
+    options.setJobName("SimpleSQL");
     final Pipeline p = Pipeline.create(options);
 
     // define the input row format
-    final Schema type = Schema.builder()
+    final Schema schema = Schema.builder()
       .addInt32Field("c1")
       .addStringField("c2")
-      .addDoubleField("c3")
-      .build();
+      .addDoubleField("c3").build();
 
-    final Row row1 = Row.withSchema(type).addValues(1, "row", 1.0).build();
-    final Row row2 = Row.withSchema(type).addValues(2, "row", 2.0).build();
-    final Row row3 = Row.withSchema(type).addValues(3, "row", 3.0).build();
+    // 10 rows with 0 ~ 9.
+    final List<Row> rows = IntStream.range(0, 10)
+      .mapToObj(i -> Row.withSchema(schema).addValues(i, "row", (double) i).build())
+      .collect(Collectors.toList());
 
     // Create a source PCollection
-    final PCollection<Row> inputTable =
-      PBegin.in(p)
-        .apply(
-          Create.of(row1, row2, row3)
-            .withSchema(
-              type, SerializableFunctions.identity(), SerializableFunctions.identity()));
+    final PCollection<Row> inputTable = PBegin.in(p).apply(Create.of(rows).withCoder(schema.getRowCoder()));
 
-    // Case 1. run a simple SQL query, and print
-    final PCollection<Row> caseOneResult =
+    // Run 2 SQL queries
+    // ==> Sum of ints larger than 1
+    final PCollection<Row> firstQueryResult =
       inputTable.apply(SqlTransform.query("select c1, c2, c3 from PCOLLECTION where c1 > 1"));
-    caseOneResult.apply(MapElements.via(new SimpleFunction<Row, Void>() {
-      @Override
-      public @Nullable Void apply(Row input) {
-        // expect output:
-        //  PCOLLECTION: [3, row, 3.0]
-        //  PCOLLECTION: [2, row, 2.0]
-        System.out.println("CASE 1: " + input.getValues());
-        return null;
-      }
-    }));
+    final PCollection<Row> secondQueryResult = PCollectionTuple
+      .of(new TupleTag<>("FIRST_QUERY_RESULT"), firstQueryResult)
+      .apply(SqlTransform.query("select c2, sum(c3) from FIRST_QUERY_RESULT group by c2"));
 
-    // Case 2. run another query over CASE1_RESULT, and print
-    final PCollection<Row> outputStream2 = PCollectionTuple.of(new TupleTag<>("CASE1_RESULT"), caseOneResult)
-      .apply(SqlTransform.query("select c2, sum(c3) from CASE1_RESULT group by c2"));
-    outputStream2.apply(MapElements.via(new SimpleFunction<Row, Void>() {
+    // Write results to a file
+    // The result should be 2 + 3 + 4 + ... + 9 = 44
+    GenericSourceSink.write(secondQueryResult.apply(MapElements.via(new SimpleFunction<Row, String>() {
       @Override
-      public @Nullable Void apply(Row input) {
-        // expect output:
-        //  CASE1_RESULT: [row, 5.0]
-        System.out.println("CASE 2: " + input.getValues());
-        return null;
+      public String apply(final Row input) {
+        final String c2 = input.getString(0);
+        final Double c3 = input.getDouble(1);
+        return c2 + " is " + c3;
       }
-    }));
+    })), outputFilePath);
 
-    p.run().waitUntilFinish();
+    p.run();
   }
 }
