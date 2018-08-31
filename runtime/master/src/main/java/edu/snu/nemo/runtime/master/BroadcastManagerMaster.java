@@ -36,6 +36,7 @@ public final class BroadcastManagerMaster {
    * @param variables from the client.
    */
   public static void registerBroadcastVariablesFromClient(final Map<Serializable, Object> variables) {
+    LOG.info("Registered broadcast variable ids {} sent from the client", variables.keySet());
     ID_TO_VARIABLE.putAll(variables);
   }
 

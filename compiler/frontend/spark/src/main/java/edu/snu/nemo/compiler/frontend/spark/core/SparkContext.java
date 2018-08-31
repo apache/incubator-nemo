@@ -70,7 +70,7 @@ public final class SparkContext extends org.apache.spark.SparkContext {
   @Override
   public <T> Broadcast<T> broadcast(final T data,
                                     final ClassTag<T> evidence) {
-    SparkBroadcastVariables.register(data);
-    return new SparkBroadcast<>(broadcastVariableId, (Class<T>) data.getClass());
+    final long id = SparkBroadcastVariables.register(data);
+    return new SparkBroadcast<>(id, (Class<T>) data.getClass());
   }
 }
