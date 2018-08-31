@@ -43,7 +43,7 @@ import static org.mockito.Mockito.when;
 public class ClientEndpointTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
 
-  @Test(timeout = 3000)
+  @Test(timeout = 10000)
   public void testState() throws Exception {
     // Create a simple client endpoint that returns given job state.
     final StateTranslator stateTranslator = mock(StateTranslator.class);

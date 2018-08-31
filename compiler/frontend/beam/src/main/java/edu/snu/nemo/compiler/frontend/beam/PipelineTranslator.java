@@ -109,7 +109,7 @@ public final class PipelineTranslator
                                             final Read.Bounded<?> transform) {
     final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource());
     ctx.addVertex(vertex);
-    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
+    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
@@ -122,8 +122,8 @@ public final class PipelineTranslator
     ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().stream()
         .filter(input -> !transform.getAdditionalInputs().values().contains(input))
-        .forEach(input -> ctx.addEdgeTo(vertex, input, false));
-    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input, true));
+        .forEach(input -> ctx.addEdgeTo(vertex, input));
+    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
@@ -136,8 +136,8 @@ public final class PipelineTranslator
     ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().stream()
         .filter(input -> !transform.getAdditionalInputs().values().contains(input))
-        .forEach(input -> ctx.addEdgeTo(vertex, input, false));
-    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input, true));
+        .forEach(input -> ctx.addEdgeTo(vertex, input));
+    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
     transformVertex.getNode().getOutputs().entrySet().stream()
         .filter(pValueWithTupleTag -> pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
         .forEach(pValueWithTupleTag -> ctx.registerMainOutputFrom(vertex, pValueWithTupleTag.getValue()));
@@ -153,7 +153,7 @@ public final class PipelineTranslator
                                            final GroupByKey<?, ?> transform) {
     final IRVertex vertex = new OperatorVertex(new GroupByKeyTransform());
     ctx.addVertex(vertex);
-    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
+    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
@@ -171,7 +171,7 @@ public final class PipelineTranslator
     }
     final IRVertex vertex = new OperatorVertex(new WindowTransform(windowFn));
     ctx.addVertex(vertex);
-    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
+    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
@@ -181,7 +181,7 @@ public final class PipelineTranslator
                                                       final View.CreatePCollectionView<?, ?> transform) {
     final IRVertex vertex = new OperatorVertex(new CreateViewTransform<>(transform.getView()));
     ctx.addVertex(vertex);
-    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
+    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     ctx.registerMainOutputFrom(vertex, transform.getView());
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
@@ -192,7 +192,7 @@ public final class PipelineTranslator
                                         final Flatten.PCollections<?> transform) {
     final IRVertex vertex = new OperatorVertex(new FlattenTransform());
     ctx.addVertex(vertex);
-    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input, false));
+    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
@@ -249,7 +249,7 @@ public final class PipelineTranslator
       final IRVertex groupByKeyIRVertex = new OperatorVertex(new GroupByKeyTransform());
       ctx.addVertex(groupByKeyIRVertex);
       last.getNode().getOutputs().values().forEach(outputFromCombiner
-          -> ctx.addEdgeTo(groupByKeyIRVertex, outputFromCombiner, false));
+          -> ctx.addEdgeTo(groupByKeyIRVertex, outputFromCombiner));
       groupByKeyBeamTransform.getNode().getOutputs().values()
           .forEach(outputFromGroupByKey -> ctx.registerMainOutputFrom(groupByKeyIRVertex, outputFromGroupByKey));
 
@@ -466,9 +466,8 @@ public final class PipelineTranslator
      *
      * @param dst the destination IR vertex.
      * @param input the {@link PValue} {@code dst} consumes
-     * @param isSideInput whether it is sideInput or not.
      */
-    private void addEdgeTo(final IRVertex dst, final PValue input, final boolean isSideInput) {
+    private void addEdgeTo(final IRVertex dst, final PValue input) {
       final IRVertex src = pValueToProducer.get(input);
       if (src == null) {
         try {
@@ -484,12 +483,15 @@ public final class PipelineTranslator
         throw new RuntimeException(String.format("%s have failed to determine communication pattern "
             + "for an edge from %s to %s", communicationPatternSelector, src, dst));
       }
-      final IREdge edge = new IREdge(communicationPattern, src, dst, isSideInput);
+      final IREdge edge = new IREdge(communicationPattern, src, dst);
       final Coder<?> coder = getCoder(input, pipeline);
       edge.setProperty(EncoderProperty.of(new BeamEncoderFactory<>(coder)));
       edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));
       if (pValueToTag.containsKey(input)) {
         edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
+      }
+      if (input instanceof PCollectionView) {
+        edge.setProperty(BroadcastVariableIdProperty.of((PCollectionView) input));
       }
       edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
       builder.connectVertices(edge);

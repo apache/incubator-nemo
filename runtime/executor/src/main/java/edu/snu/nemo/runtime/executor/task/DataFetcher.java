@@ -25,17 +25,11 @@ import java.io.IOException;
 abstract class DataFetcher {
   private final IRVertex dataSource;
   private final VertexHarness child;
-  private final boolean isToSideInput;
-  private final boolean isFromSideInput;
 
   DataFetcher(final IRVertex dataSource,
-              final VertexHarness child,
-              final boolean isFromSideInput,
-              final boolean isToSideInput) {
+              final VertexHarness child) {
     this.dataSource = dataSource;
     this.child = child;
-    this.isToSideInput = isToSideInput;
-    this.isFromSideInput = isFromSideInput;
   }
 
   /**
@@ -52,13 +46,5 @@ abstract class DataFetcher {
 
   public IRVertex getDataSource() {
     return dataSource;
-  }
-
-  boolean isFromSideInput() {
-    return isFromSideInput;
-  }
-
-  boolean isToSideInput() {
-    return isToSideInput;
   }
 }
