@@ -26,7 +26,6 @@ import scala.collection.Seq;
 import scala.reflect.ClassTag;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Spark context wrapper for in Nemo.
@@ -34,8 +33,6 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class SparkContext extends org.apache.spark.SparkContext {
   private static final Logger LOG = LoggerFactory.getLogger(SparkContext.class.getName());
   private final org.apache.spark.SparkContext sparkContext;
-
-  private final AtomicLong sparkBroadcastVariableIdGenerator = new AtomicLong(0);
 
   /**
    * Constructor.
@@ -73,8 +70,7 @@ public final class SparkContext extends org.apache.spark.SparkContext {
   @Override
   public <T> Broadcast<T> broadcast(final T data,
                                     final ClassTag<T> evidence) {
-    final long broadcastVariableId = sparkBroadcastVariableIdGenerator.getAndIncrement();
-    SparkBroadcastVariables.put(broadcastVariableId, data);
+    SparkBroadcastVariables.register(data);
     return new SparkBroadcast<>(broadcastVariableId, (Class<T>) data.getClass());
   }
 }

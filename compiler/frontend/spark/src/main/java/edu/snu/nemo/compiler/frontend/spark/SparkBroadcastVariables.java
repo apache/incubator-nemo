@@ -18,28 +18,29 @@ package edu.snu.nemo.compiler.frontend.spark;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Broadcast variables of Spark.
  */
 public final class SparkBroadcastVariables {
-  private static final Map<Serializable, Object> TAG_TO_VARIABLE = new HashMap<>();
+  private static final AtomicLong ID_GENERATOR = new AtomicLong(0);
+  private static final Map<Serializable, Object> ID_TO_VARIABLE = new HashMap<>();
 
   private SparkBroadcastVariables() {
   }
 
   /**
-   * @param tag of the broadcast variable.
    * @param variable data.
    */
-  public static void put(final Serializable tag, final Object variable) {
-    TAG_TO_VARIABLE.put(tag, variable);
+  public static void register(final Object variable) {
+    ID_TO_VARIABLE.put(ID_GENERATOR.getAndIncrement(), variable);
   }
 
   /**
-   * @return all the map from tags to variables.
+   * @return all the map from ids to variables.
    */
   public static Map<Serializable, Object> getAll() {
-    return TAG_TO_VARIABLE;
+    return ID_TO_VARIABLE;
   }
 }
