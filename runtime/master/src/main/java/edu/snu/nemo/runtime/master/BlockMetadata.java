@@ -64,9 +64,7 @@ final class BlockMetadata {
       case IN_PROGRESS:
         break;
       case NOT_AVAILABLE:
-        // Reset the block location and committer information.
         locationHandler.completeExceptionally(new AbsentBlockException(blockId, newState));
-        locationHandler = new BlockManagerMaster.BlockRequestHandler(blockId);
         break;
       case AVAILABLE:
         if (location == null) {
@@ -114,5 +112,18 @@ final class BlockMetadata {
     sb.append(blockState);
     sb.append(")");
     return sb.toString();
+  }
+
+  @Override
+  public boolean equals(final Object that) {
+    if (!(that instanceof BlockMetadata)) {
+      return false;
+    }
+    return this.blockId.equals(((BlockMetadata) that).getBlockId());
+  }
+
+  @Override
+  public int hashCode() {
+    return blockId.hashCode();
   }
 }

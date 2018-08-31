@@ -81,6 +81,11 @@ public interface Scheduler {
                                      TaskState.RecoverableTaskFailureCause failureCause);
 
   /**
+   * Called to check for speculative execution.
+   */
+  void onSpeculativeExecutionCheck();
+
+  /**
    * To be called when a job should be terminated.
    * Any clean up code should be implemented in this method.
    */

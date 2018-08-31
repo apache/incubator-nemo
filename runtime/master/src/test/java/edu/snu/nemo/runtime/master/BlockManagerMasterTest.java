@@ -27,6 +27,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import static org.junit.Assert.assertEquals;
@@ -37,8 +38,8 @@ import static org.junit.Assert.assertTrue;
  * Test for {@link BlockManagerMaster}.
  */
 public final class BlockManagerMasterTest {
-  private static int FIRST_ATTEMPT = 0;
-  private static int SECOND_ATTEPMT = 1;
+  private final static int FIRST_ATTEMPT = 0;
+  private final static int SECOND_ATTEMPT = 1;
   private BlockManagerMaster blockManagerMaster;
 
   @Before
@@ -48,9 +49,9 @@ public final class BlockManagerMasterTest {
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
   }
 
-  private static void checkBlockAbsentException(final Future<String> future,
-                                                final String expectedPartitionId,
-                                                final BlockState.State expectedState)
+  private static void checkInProgressToNotAvailableException(final Future<String> future,
+                                                             final String expectedPartitionId,
+                                                             final BlockState.State expectedState)
       throws IllegalStateException, InterruptedException {
     assertTrue(future.isDone());
     try {
@@ -88,24 +89,22 @@ public final class BlockManagerMasterTest {
     final String executorId = RuntimeIdManager.generateExecutorId();
     final String blockId = RuntimeIdManager.generateBlockId(edgeId, taskId);
 
-    // Initially the block state is NOT_AVAILABLE.
-    checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), blockId,
-        BlockState.State.NOT_AVAILABLE);
+    // Initially the block state does not exist.
+    assertTrue(blockManagerMaster.getBlockHandlers(blockId, BlockState.State.IN_PROGRESS).isEmpty());
 
     // The block is being IN_PROGRESS.
     blockManagerMaster.onProducerTaskScheduled(taskId, Collections.singleton(blockId));
-    final Future<String> future = blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture();
+    final Future<String> future = getSingleLocationFuture(blockId, BlockState.State.IN_PROGRESS);
     checkPendingFuture(future);
 
     // The block is AVAILABLE
     blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE, executorId);
     checkBlockLocation(future, executorId); // A future, previously pending on IN_PROGRESS state, is now resolved.
-    checkBlockLocation(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), executorId);
+    checkBlockLocation(getSingleLocationFuture(blockId, BlockState.State.AVAILABLE), executorId);
 
     // We lost the block.
     blockManagerMaster.removeWorker(executorId);
-    checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), blockId,
-        BlockState.State.NOT_AVAILABLE);
+    getSingleLocationFuture(blockId, BlockState.State.NOT_AVAILABLE); // this call should succeed with no error.
   }
 
   /**
@@ -125,38 +124,42 @@ public final class BlockManagerMasterTest {
 
       // The block is being scheduled.
       blockManagerMaster.onProducerTaskScheduled(firstAttemptTaskId, Collections.singleton(firstAttemptBlockId));
-      final Future<String> future0 = blockManagerMaster.getBlockLocationHandler(firstAttemptBlockId).getLocationFuture();
+      final Future<String> future0 = getSingleLocationFuture(firstAttemptBlockId, BlockState.State.IN_PROGRESS);
       checkPendingFuture(future0);
 
       // Producer task fails.
       blockManagerMaster.onProducerTaskFailed(firstAttemptTaskId);
 
       // A future, previously pending on IN_PROGRESS state, is now completed exceptionally.
-      checkBlockAbsentException(future0, firstAttemptBlockId, BlockState.State.NOT_AVAILABLE);
-      checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(firstAttemptBlockId).getLocationFuture(), firstAttemptBlockId,
-          BlockState.State.NOT_AVAILABLE);
+      checkInProgressToNotAvailableException(future0, firstAttemptBlockId, BlockState.State.NOT_AVAILABLE);
+      checkInProgressToNotAvailableException(getSingleLocationFuture(firstAttemptBlockId, BlockState.State.NOT_AVAILABLE), firstAttemptBlockId, BlockState.State.NOT_AVAILABLE);
     }
 
     // Second attempt
     {
-      final String secondAttemptTaskId = RuntimeIdManager.generateTaskId("Stage0", srcTaskIndex, SECOND_ATTEPMT);
+      final String secondAttemptTaskId = RuntimeIdManager.generateTaskId("Stage0", srcTaskIndex, SECOND_ATTEMPT);
       final String secondAttemptBlockId = RuntimeIdManager.generateBlockId(edgeId, secondAttemptTaskId);
       final String executorId = RuntimeIdManager.generateExecutorId();
 
       // Re-scheduling the task.
       blockManagerMaster.onProducerTaskScheduled(secondAttemptTaskId, Collections.singleton(secondAttemptBlockId));
-      final Future<String> future1 = blockManagerMaster.getBlockLocationHandler(secondAttemptBlockId).getLocationFuture();
+      final Future<String> future1 = getSingleLocationFuture(secondAttemptBlockId, BlockState.State.IN_PROGRESS);
       checkPendingFuture(future1);
 
       // Committed.
       blockManagerMaster.onBlockStateChanged(secondAttemptBlockId, BlockState.State.AVAILABLE, executorId);
       checkBlockLocation(future1, executorId); // A future, previously pending on IN_PROGRESS state, is now resolved.
-      checkBlockLocation(blockManagerMaster.getBlockLocationHandler(secondAttemptBlockId).getLocationFuture(), executorId);
+      checkBlockLocation(getSingleLocationFuture(secondAttemptBlockId, BlockState.State.AVAILABLE), executorId);
 
       // Then removed.
       blockManagerMaster.onBlockStateChanged(secondAttemptBlockId, BlockState.State.NOT_AVAILABLE, executorId);
-      checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(secondAttemptBlockId).getLocationFuture(), secondAttemptBlockId,
-          BlockState.State.NOT_AVAILABLE);
+      assertEquals(2, blockManagerMaster.getBlockHandlers(secondAttemptBlockId, BlockState.State.NOT_AVAILABLE).size());
     }
+  }
+
+  private Future<String> getSingleLocationFuture(final String blockId, final BlockState.State state) {
+    final List<BlockManagerMaster.BlockRequestHandler> handlerList = blockManagerMaster.getBlockHandlers(blockId, state);
+    assertEquals(1, handlerList.size());
+    return handlerList.get(0).getLocationFuture();
   }
 }

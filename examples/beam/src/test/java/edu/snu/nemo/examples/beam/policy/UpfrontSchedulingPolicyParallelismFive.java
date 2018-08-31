@@ -13,41 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.optimizer.policy;
+package edu.snu.nemo.examples.beam.policy;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.ShuffleEdgePushPass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AggressiveSpeculativeCloningPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.UpfrontCloningPass;
+import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
+import edu.snu.nemo.compiler.optimizer.policy.Policy;
+import edu.snu.nemo.compiler.optimizer.policy.PolicyImpl;
 import org.apache.reef.tang.Injector;
+import java.util.List;
 
 /**
- * Basic push policy.
- * TODO #200: Maintain Test Passes and Policies Separately
+ * A default policy with upfront cloning.
  */
-public final class BasicPushPolicy implements Policy {
-  public static final PolicyBuilder BUILDER =
-    new PolicyBuilder()
-      .registerCompileTimePass(new AggressiveSpeculativeCloningPass())
-      .registerCompileTimePass(new ShuffleEdgePushPass())
-      .registerCompileTimePass(new DefaultScheduleGroupPass());
+public final class UpfrontSchedulingPolicyParallelismFive implements Policy {
   private final Policy policy;
-
-  /**
-   * Default constructor.
-   */
-  public BasicPushPolicy() {
-    this.policy = BUILDER.build();
+  public UpfrontSchedulingPolicyParallelismFive() {
+    final List<CompileTimePass> overwritingPasses = DefaultPolicy.BUILDER.getCompileTimePasses();
+    overwritingPasses.add(new UpfrontCloningPass()); // CLONING!
+    this.policy = new PolicyImpl(
+        PolicyTestUtil.overwriteParallelism(5, overwritingPasses),
+        DefaultPolicy.BUILDER.getRuntimePasses());
   }
-
   @Override
   public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory) {
     return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
-
   @Override
   public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
     this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
