@@ -43,19 +43,19 @@ public final class OperatorVertex extends IRVertex {
   }
 
   @Override
-  public final OperatorVertex getClone() {
+  public OperatorVertex getClone() {
     return new OperatorVertex(this);
   }
 
   /**
    * @return the transform in the OperatorVertex.
    */
-  public final Transform getTransform() {
+  public Transform getTransform() {
     return transform;
   }
 
   @Override
-  public final String propertiesToJSON() {
+  public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{");
     sb.append(irVertexPropertiesToString());
