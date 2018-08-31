@@ -71,8 +71,8 @@ public final class SkewReshapingPass extends ReshapingPass {
             newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
             newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
 
-            final IREdge edgeToGbK = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                metricCollectionBarrierVertex, v, edge.isSideInput());
+            final IREdge edgeToGbK = new IREdge(
+              edge.getPropertyValue(CommunicationPatternProperty.class).get(), metricCollectionBarrierVertex, v);
             edge.copyExecutionPropertiesTo(edgeToGbK);
             builder.connectVertices(newEdge);
             builder.connectVertices(edgeToGbK);

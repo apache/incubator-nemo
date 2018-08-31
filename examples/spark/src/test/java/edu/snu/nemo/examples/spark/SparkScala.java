@@ -104,4 +104,14 @@ public final class SparkScala {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName2);
     }
   }
+
+  @Test(timeout = TIMEOUT)
+  public void testALS() throws Exception {
+    JobLauncher.main(builder
+      .addJobId(SparkALS.class.getSimpleName() + "_test")
+      .addUserMain(SparkALS.class.getCanonicalName())
+      .addUserArgs("100") // TODO #202: Bug with empty string user_args
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
+  }
 }

@@ -32,11 +32,9 @@ import java.util.Optional;
  */
 public final class IREdge extends Edge<IRVertex> {
   private final ExecutionPropertyMap<EdgeExecutionProperty> executionProperties;
-  private final Boolean isSideInput;
 
   /**
    * Constructor of IREdge.
-   * This constructor assumes that this edge is not for a side input.
    *
    * @param commPattern data communication pattern type of the edge.
    * @param src         source vertex.
@@ -45,23 +43,7 @@ public final class IREdge extends Edge<IRVertex> {
   public IREdge(final CommunicationPatternProperty.Value commPattern,
                 final IRVertex src,
                 final IRVertex dst) {
-    this(commPattern, src, dst, false);
-  }
-
-  /**
-   * Constructor of IREdge.
-   *
-   * @param commPattern data communication pattern type of the edge.
-   * @param src         source vertex.
-   * @param dst         destination vertex.
-   * @param isSideInput flag for whether or not the edge is a sideInput.
-   */
-  public IREdge(final CommunicationPatternProperty.Value commPattern,
-                final IRVertex src,
-                final IRVertex dst,
-                final Boolean isSideInput) {
     super(IdManager.newEdgeId(), src, dst);
-    this.isSideInput = isSideInput;
     this.executionProperties = ExecutionPropertyMap.of(this, commPattern);
   }
 
@@ -102,13 +84,6 @@ public final class IREdge extends Edge<IRVertex> {
    */
   public ExecutionPropertyMap<EdgeExecutionProperty> getExecutionProperties() {
     return executionProperties;
-  }
-
-  /**
-   * @return whether or not the edge is a side input edge.
-   */
-  public Boolean isSideInput() {
-    return isSideInput;
   }
 
   /**

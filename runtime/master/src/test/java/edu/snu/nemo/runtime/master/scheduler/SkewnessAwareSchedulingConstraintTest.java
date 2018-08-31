@@ -71,7 +71,7 @@ public final class SkewnessAwareSchedulingConstraintTest {
     dummyIREdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(taskIdxToKeyRange)));
     final StageEdge dummyEdge = new StageEdge("Edge0", dummyIREdge.getExecutionProperties(),
-        srcMockVertex, dstMockVertex, srcMockStage, dstMockStage, false);
+        srcMockVertex, dstMockVertex, srcMockStage, dstMockStage);
 
     return dummyEdge;
   }
