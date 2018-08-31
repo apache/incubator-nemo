@@ -298,7 +298,7 @@ public final class DataTransferTest {
 
     // Edge setup
     final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex);
-    dummyIREdge.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor(null, null)));
+    dummyIREdge.setProperty(KeyExtractorProperty.of(element -> element));
     dummyIREdge.setProperty(CommunicationPatternProperty.of(commPattern));
     dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
     dummyIREdge.setProperty(DataStoreProperty.of(store));
@@ -387,7 +387,7 @@ public final class DataTransferTest {
     final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex);
     dummyIREdge.setProperty(EncoderProperty.of(ENCODER_FACTORY));
     dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
-    dummyIREdge.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor(null, null)));
+    dummyIREdge.setProperty(KeyExtractorProperty.of(element -> element));
     dummyIREdge.setProperty(CommunicationPatternProperty.of(commPattern));
     dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
     dummyIREdge.setProperty(DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue("dummy")));
@@ -533,45 +533,6 @@ public final class DataTransferTest {
     stageExecutionProperty.put(ParallelismProperty.of(PARALLELISM_TEN));
     stageExecutionProperty.put(ScheduleGroupProperty.of(0));
     return new Stage(stageId, emptyDag, stageExecutionProperty, Collections.emptyList());
-  }
-
-}
-
-final class DummyBeamKeyExtractor implements KeyExtractor {
-  private EncoderFactory keyEncoderFactory;
-  private DecoderFactory keyDecoderFactory;
-  
-  DummyBeamKeyExtractor(final EncoderFactory keyEncoderFactory,
-                   final DecoderFactory keyDecoderFactory) {
-    this.keyEncoderFactory = keyEncoderFactory;
-    this.keyDecoderFactory = keyDecoderFactory;
-  }
-  
-  @Override
-  public Object extractKey(final Object element) {
-    if (element instanceof KV) {
-      // Handle null keys, since Beam allows KV with null keys.
-      final Object key = ((KV) element).getKey();
-      return key == null ? 0 : key;
-    } else {
-      return element;
-    }
-  }
-  
-  @Override
-  public EncoderFactory getKeyEncoderFactory() {
-    if (keyEncoderFactory == null) {
-      throw new RuntimeException("Extracting keyEncoderFactory from non-shuffle edge");
-    }
-    return keyEncoderFactory;
-  }
-  
-  @Override
-  public DecoderFactory getKeyDecoderFactory() {
-    if (keyEncoderFactory == null) {
-      throw new RuntimeException("Extracting keyDecoderFactory from non-shuffle edge");
-    }
-    return keyDecoderFactory;
   }
 }
 

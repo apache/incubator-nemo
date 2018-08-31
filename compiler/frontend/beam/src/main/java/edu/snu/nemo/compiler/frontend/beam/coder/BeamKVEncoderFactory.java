@@ -16,6 +16,7 @@
 package edu.snu.nemo.compiler.frontend.beam.coder;
 
 import edu.snu.nemo.common.coder.EncoderFactory;
+import edu.snu.nemo.common.coder.KVEncoderFactory;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.VoidCoder;
@@ -27,26 +28,33 @@ import java.io.OutputStream;
  * {@link EncoderFactory} from {@link Coder}.
  * @param <T> the type of element to encode.
  */
-public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
-
+public final class BeamKVEncoderFactory<T> implements KVEncoderFactory<T> {
   private final Coder<T> beamCoder;
+  private final EncoderFactory keyEncoderFactory;
 
   /**
    * Constructor of BeamEncoderFactory.
    *
    * @param beamCoder actual Beam coder to use.
    */
-  public BeamEncoderFactory(final Coder<T> beamCoder) {
+  public BeamKVEncoderFactory(final Coder<T> beamCoder,
+                              final EncoderFactory keyEncoderFactory) {
     this.beamCoder = beamCoder;
+    this.keyEncoderFactory = keyEncoderFactory;
   }
 
   @Override
-  public Encoder<T> create(final OutputStream outputStream) {
+  public KVEncoder<T> create(final OutputStream outputStream) {
     if (beamCoder instanceof VoidCoder) {
-      return new BeamVoidEncoder<>(outputStream);
+      return new BeamVoidKVEncoder<>(outputStream);
     } else {
-      return new BeamEncoder<>(outputStream, beamCoder);
+      return new BeamKVEncoder<>(outputStream, beamCoder);
     }
+  }
+
+  @Override
+  public EncoderFactory getKeyEncoderFactory() {
+    return keyEncoderFactory;
   }
 
   /**
@@ -54,7 +62,7 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
    *
    * @param <T2> the type of element to decode.
    */
-  private final class BeamEncoder<T2> implements Encoder<T2> {
+  private final class BeamKVEncoder<T2> implements KVEncoder<T2> {
 
     private final Coder<T2> beamCoder;
     private final OutputStream outputStream;
@@ -65,8 +73,8 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
      * @param outputStream the output stream to store the encoded bytes.
      * @param beamCoder    the actual beam coder to use.
      */
-    private BeamEncoder(final OutputStream outputStream,
-                        final Coder<T2> beamCoder) {
+    private BeamKVEncoder(final OutputStream outputStream,
+                          final Coder<T2> beamCoder) {
       this.outputStream = outputStream;
       this.beamCoder = beamCoder;
     }
@@ -91,7 +99,7 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
    *
    * @param <T2> the type of element to decode.
    */
-  private final class BeamVoidEncoder<T2> implements Encoder<T2> {
+  private final class BeamVoidKVEncoder<T2> implements KVEncoder<T2> {
 
     private final OutputStream outputStream;
 
@@ -100,7 +108,7 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
      *
      * @param outputStream the output stream to store the encoded bytes.
      */
-    private BeamVoidEncoder(final OutputStream outputStream) {
+    private BeamVoidKVEncoder(final OutputStream outputStream) {
       this.outputStream = outputStream;
     }
 

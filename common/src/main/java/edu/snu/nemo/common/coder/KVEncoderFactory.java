@@ -1,5 +1,5 @@
 /*
- * Copyvalue (C) 2018 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,83 +15,74 @@
  */
 package edu.snu.nemo.common.coder;
 
-import org.apache.beam.sdk.values.KV;
-
 import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * An EncoderFactory for {@link KV}. Reference: KvCoder in BEAM.
- * @param <K> type for the key coder.
- * @param <V> type for the value coder.
+ * An kv encoder factory object which generates kv encoders that encode values of type {@code T} into byte streams.
+ * To avoid to generate instance-based coder such as Spark serializer for every encoding,
+ * user need to explicitly instantiate an kv encoder instance and use it.
+ *
+ * @param <T> element type.
  */
-public final class KVEncoderFactory<K, V> implements EncoderFactory<KV<K, V>> {
-  private final EncoderFactory<K> keyEncoderFactory;
-  private final EncoderFactory<V> valueEncoderFactory;
-
-  /**
-   * Private constructor of KVEncoderFactory class.
-   *
-   * @param keyEncoderFactory  coder for key element.
-   * @param valueEncoderFactory coder for value element.
-   */
-  private KVEncoderFactory(final EncoderFactory<K> keyEncoderFactory,
-                           final EncoderFactory<V> valueEncoderFactory) {
-    this.keyEncoderFactory = keyEncoderFactory;
-    this.valueEncoderFactory = valueEncoderFactory;
-  }
-
-  /**
-   * static initializer of the class.
-   *
-   * @param keyEncoderFactory  key coder.
-   * @param valueEncoderFactory value coder.
-   * @param <K>          type of the key element.
-   * @param <V>          type of the value element.
-   * @return the new KVEncoderFactory.
-   */
-  public static <K, V> KVEncoderFactory<K, V> of(final EncoderFactory<K> keyEncoderFactory,
-                                                 final EncoderFactory<V> valueEncoderFactory) {
-    return new KVEncoderFactory<>(keyEncoderFactory, valueEncoderFactory);
-  }
-
+public interface KVEncoderFactory<T> extends EncoderFactory {
   @Override
-  public Encoder<KV<K, V>> create(final OutputStream outputStream) throws IOException {
-    return new KVEncoder<>(outputStream, keyEncoderFactory, valueEncoderFactory);
+  KVEncoder<T> create(OutputStream outputStream) throws IOException;
+  EncoderFactory getKeyEncoderFactory();
+
+  /**
+   * Interface of Encoder.
+   *
+   * @param <T> element type.
+   */
+  interface KVEncoder<T> extends Encoder<T> {
+    /**
+     * Encodes the given value onto the specified output stream.
+     * It has to be able to encode the given stream consequently by calling this method repeatedly.
+     * Because the user can want to keep a single output stream and continuously concatenate elements,
+     * the output stream should not be closed.
+     *
+     * @param element the element to be encoded
+     * @throws IOException if fail to encode
+     */
+    void encode(T element) throws IOException;
   }
 
   /**
-   * KVEncoder.
-   * @param <Key> type for the key coder.
-   * @param <Value> type for the value coder.
+   * Dummy kv encoder factory.
    */
-  private final class KVEncoder<Key, Value> implements Encoder<KV<Key, Value>> {
+  KVEncoderFactory DUMMY_KVENCODER_FACTORY = new DummyKVEncoderFactory();
 
-    private final Encoder<Key> keyEncoder;
-    private final Encoder<Value> valueEncoder;
+  /**
+   * Dummy kv encoder factory implementation which is not supposed to be used.
+   */
+  final class DummyKVEncoderFactory implements KVEncoderFactory {
+    private final EncoderFactory keyEncoderFactory = null;
+    private final KVEncoder dummyKVEncoder = new DummyKVEncoder();
 
     /**
-     * Constructor.
-     *
-     * @param outputStream the output stream to store the encoded bytes.
-     * @param keyEncoderFactory  the actual encoder to use for key elements.
-     * @param valueEncoderFactory the actual encoder to use for value elements.
-     * @throws IOException if fail to instantiate coders.
+     * DummyKVEncoder.
      */
-    private KVEncoder(final OutputStream outputStream,
-                        final EncoderFactory<Key> keyEncoderFactory,
-                        final EncoderFactory<Value> valueEncoderFactory) throws IOException {
-      this.keyEncoder = keyEncoderFactory.create(outputStream);
-      this.valueEncoder = valueEncoderFactory.create(outputStream);
+    private final class DummyKVEncoder implements KVEncoder {
+      @Override
+      public void encode(final Object element) {
+        throw new RuntimeException("DummyKVEncoder is not supposed to be used.");
+      }
     }
 
     @Override
-    public void encode(final KV<Key, Value> kv) throws IOException {
-      if (kv == null) {
-        throw new IOException("cannot encode a null KV");
-      }
-      keyEncoder.encode(kv.getKey());
-      valueEncoder.encode(kv.getValue());
+    public KVEncoder create(final OutputStream outputStream) {
+      return dummyKVEncoder;
+    }
+
+    @Override
+    public EncoderFactory getKeyEncoderFactory() {
+      return keyEncoderFactory;
+    }
+
+    @Override
+    public String toString() {
+      return "DUMMY_KVENCODER_FACTORY";
     }
   }
 }

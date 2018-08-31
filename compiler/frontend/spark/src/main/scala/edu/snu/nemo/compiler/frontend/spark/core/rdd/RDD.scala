@@ -60,7 +60,7 @@ final class RDD[T: ClassTag] protected[rdd] (
     EncoderProperty.of(new SparkEncoderFactory[T](serializer)).asInstanceOf[EdgeExecutionProperty[_ <: Serializable]]
   private val decoderProperty: EdgeExecutionProperty[_ <: Serializable] =
     DecoderProperty.of(new SparkDecoderFactory[T](serializer)).asInstanceOf[EdgeExecutionProperty[_ <: Serializable]]
-  private val keyExtractorProperty: KeyExtractorProperty = KeyExtractorProperty.of(new SparkKeyExtractor(null, null))
+  private val keyExtractorProperty: KeyExtractorProperty = KeyExtractorProperty.of(new SparkKeyExtractor)
   private var persistedMarkerVertex: Option[IRVertex] = Option.empty
 
   /**

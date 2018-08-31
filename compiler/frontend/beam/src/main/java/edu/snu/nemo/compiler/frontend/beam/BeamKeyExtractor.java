@@ -16,8 +16,6 @@
 package edu.snu.nemo.compiler.frontend.beam;
 
 import edu.snu.nemo.common.KeyExtractor;
-import edu.snu.nemo.common.coder.DecoderFactory;
-import edu.snu.nemo.common.coder.EncoderFactory;
 import org.apache.beam.sdk.values.KV;
 
 /**
@@ -25,15 +23,6 @@ import org.apache.beam.sdk.values.KV;
  * For non-KV elements, the elements themselves become the key.
  */
 final class BeamKeyExtractor implements KeyExtractor {
-  private EncoderFactory keyEncoderFactory;
-  private DecoderFactory keyDecoderFactory;
-
-  BeamKeyExtractor(final EncoderFactory keyEncoderFactory,
-                   final DecoderFactory keyDecoderFactory) {
-    this.keyEncoderFactory = keyEncoderFactory;
-    this.keyDecoderFactory = keyDecoderFactory;
-  }
-
   @Override
   public Object extractKey(final Object element) {
     if (element instanceof KV) {
@@ -43,21 +32,5 @@ final class BeamKeyExtractor implements KeyExtractor {
     } else {
       return element;
     }
-  }
-
-  @Override
-  public EncoderFactory getKeyEncoderFactory() {
-    if (keyEncoderFactory == null) {
-      throw new RuntimeException("Extracting keyEncoderFactory from non-shuffle edge");
-    }
-    return keyEncoderFactory;
-  }
-
-  @Override
-  public DecoderFactory getKeyDecoderFactory() {
-    if (keyEncoderFactory == null) {
-      throw new RuntimeException("Extracting keyDecoderFactory from non-shuffle edge");
-    }
-    return keyDecoderFactory;
   }
 }

@@ -15,9 +15,6 @@
  */
 package edu.snu.nemo.common;
 
-import edu.snu.nemo.common.coder.DecoderFactory;
-import edu.snu.nemo.common.coder.EncoderFactory;
-
 import java.io.Serializable;
 
 /**
@@ -32,6 +29,4 @@ public interface KeyExtractor extends Serializable {
    * @return The extracted key of the element.
    */
   Object extractKey(final Object element);
-  EncoderFactory getKeyEncoderFactory();
-  DecoderFactory getKeyDecoderFactory();
 }

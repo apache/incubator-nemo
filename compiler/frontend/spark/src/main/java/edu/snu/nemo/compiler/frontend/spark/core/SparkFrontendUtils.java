@@ -51,7 +51,7 @@ import java.util.*;
  */
 public final class SparkFrontendUtils {
   private static final KeyExtractorProperty SPARK_KEY_EXTRACTOR_PROP =
-    KeyExtractorProperty.of(new SparkKeyExtractor(null, null));
+    KeyExtractorProperty.of(new SparkKeyExtractor());
 
   /**
    * Private constructor.

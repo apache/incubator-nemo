@@ -122,17 +122,20 @@ public final class SkewReshapingPass extends ReshapingPass {
     newEdge.setProperty(KeyExtractorProperty.of(edge.getPropertyValue(KeyExtractorProperty.class).get()));
     newEdge.setProperty(AdditionalOutputTagProperty.of("DynOptData"));
 
-    // For sending data to AggregationBarrierVertex,
-    // we need to use coders to encode/decode the keys.
-    final EncoderFactory keyEncoderFactory
-      = edge.getPropertyValue(KeyExtractorProperty.class).get().getKeyEncoderFactory();
-    LOG.info("keyEncoderFactory {}", keyEncoderFactory.toString());
-    final DecoderFactory keyDecoderFactory
-      = edge.getPropertyValue(KeyExtractorProperty.class).get().getKeyDecoderFactory();
-    LOG.info("keyDecoderFactory {}", keyDecoderFactory.toString());
+    // For sending data to AggregationBarrierVertex, we need to get coders for encoding/decoding the keys.
+    if (edge.getPropertyValue(EncoderProperty.class).get() instanceof KVEncoderFactory
+      && edge.getPropertyValue(DecoderProperty.class).get() instanceof KVDecoderFactory) {
+      final EncoderFactory keyEncoderFactory
+        = ((KVEncoderFactory) edge.getPropertyValue(EncoderProperty.class).get()).getKeyEncoderFactory();
+      final DecoderFactory keyDecoderFactory
+        = ((KVDecoderFactory) edge.getPropertyValue(DecoderProperty.class).get()).getKeyDecoderFactory();
 
-    newEdge.setProperty(EncoderProperty.of(PairEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
-    newEdge.setProperty(DecoderProperty.of(PairDecoderFactory.of(keyDecoderFactory, LongDecoderFactory.of())));
+      newEdge.setProperty(EncoderProperty.of(PairEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
+      newEdge.setProperty(DecoderProperty.of(PairDecoderFactory.of(keyDecoderFactory, LongDecoderFactory.of())));
+    } else {
+      throw new RuntimeException("KeyEncoder/DecoderFactory for skew reshaping pass are not set!");
+    }
+
     return newEdge;
   }
 }

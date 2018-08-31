@@ -28,6 +28,8 @@ import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.PipelineVisitor.*;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
+import edu.snu.nemo.compiler.frontend.beam.coder.BeamKVDecoderFactory;
+import edu.snu.nemo.compiler.frontend.beam.coder.BeamKVEncoderFactory;
 import edu.snu.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
 import edu.snu.nemo.compiler.frontend.beam.transform.*;
 import org.apache.beam.sdk.coders.*;
@@ -433,30 +435,24 @@ public final class PipelineTranslator
         throw new RuntimeException(String.format("While adding an edge from %s, to %s, coder for PValue %s cannot "
             + "be determined", src, dst, input));
       }
-      edge.setProperty(EncoderProperty.of(new BeamEncoderFactory<>(coder)));
-      edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));
+
+      if (coder instanceof KvCoder) {
+        final Coder beamKeyCoder = ((KvCoder) coder).getKeyCoder();
+        final EncoderFactory keyEncoderFactory = new BeamEncoderFactory(beamKeyCoder);
+        final DecoderFactory keyDecoderFactory = new BeamDecoderFactory(beamKeyCoder);
+        edge.setProperty(EncoderProperty.of(new BeamKVEncoderFactory<>(coder, keyEncoderFactory)));
+        edge.setProperty(DecoderProperty.of(new BeamKVDecoderFactory<>(coder, keyDecoderFactory)));
+      } else {
+        edge.setProperty(EncoderProperty.of(new BeamEncoderFactory<>(coder)));
+        edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));
+      }
+
       if (pValueToTag.containsKey(input)) {
         edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
       }
 
-      if (CommunicationPatternProperty.Value.Shuffle
-        .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-        setKeyExtractorPropertyForShuffle(edge, coder);
-      }
-
+      edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
       builder.connectVertices(edge);
-    }
-
-    private void setKeyExtractorPropertyForShuffle(final IREdge edge, final Coder beamCoder) {
-      if (beamCoder instanceof KvCoder) {
-        final Coder beamKeyCoder = ((KvCoder) beamCoder).getKeyCoder();
-        final EncoderFactory keyEncoderFactory = new BeamEncoderFactory(beamKeyCoder);
-        final DecoderFactory keyDecoderFactory = new BeamDecoderFactory(beamKeyCoder);
-
-        edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor(keyEncoderFactory, keyDecoderFactory)));
-      } else {
-        throw new RuntimeException("Error in setting KeyExtractorProperty: Beam coder is not an instance of KVCoder");
-      }
     }
 
     /**
