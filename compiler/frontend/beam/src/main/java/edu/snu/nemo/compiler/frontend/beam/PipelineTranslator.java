@@ -221,10 +221,7 @@ public final class PipelineTranslator
   private static void combineTranslator(final TranslationContext ctx,
                                         final CompositeTransformVertex transformVertex,
                                         final PTransform<?, ?> transform) {
-    // Handle primitives
-    transformVertex.getDAG().topologicalDo(ctx::translate);
-
-    // No optimization for BeamSQL
+    // No optimization for BeamSQL that handles Beam 'Row's.
     final boolean handlesBeamRow = Stream
       .concat(transformVertex.getNode().getInputs().values().stream(),
         transformVertex.getNode().getOutputs().values().stream())
@@ -232,7 +229,8 @@ public final class PipelineTranslator
       .map(kvCoder -> kvCoder.getValueCoder().getEncodedTypeDescriptor()) // We're interested in the 'Value' of KV
       .anyMatch(valueTypeDescriptor -> TypeDescriptor.of(Row.class).equals(valueTypeDescriptor));
     if (handlesBeamRow) {
-      return; // no optimization for the 'Row' types - TODO #209: Enable Local Combiner for BeamSQL
+      transformVertex.getDAG().topologicalDo(ctx::translate);
+      return; // return early and give up optimization - TODO #209: Enable Local Combiner for BeamSQL
     }
 
     // Local combiner optimization
