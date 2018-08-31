@@ -96,14 +96,6 @@ public class SkewCompositePassTest {
     assertEquals(originalVerticesNum + numOfShuffleEdgesWithOutAdditionalOutputTag * 2,
       processedDAG.getVertices().size());
 
-    processedDAG.getVertices().stream().map(processedDAG::getIncomingEdgesOf)
-        .flatMap(List::stream)
-        .filter(irEdge -> CommunicationPatternProperty.Value.Shuffle
-          .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get())
-          && !irEdge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-        .map(IREdge::getSrc)
-        .forEach(irVertex -> assertTrue(irVertex instanceof MetricCollectionVertex));
-
     processedDAG.filterVertices(v -> v instanceof MetricCollectionVertex)
         .forEach(metricV -> {
           List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());

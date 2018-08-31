@@ -52,8 +52,6 @@ public final class MetricCollectTransform<T> implements Transform<T, T> {
 
   @Override
   public void onData(final T element) {
-    outputCollector.emit(element);
-
     // Collect key frequency data, which is used in dynamic optimization.
     Object key = keyExtractor.extractKey(element);
     if (dynOptData.containsKey(key)) {

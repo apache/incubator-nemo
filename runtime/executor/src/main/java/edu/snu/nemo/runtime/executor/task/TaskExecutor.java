@@ -331,7 +331,6 @@ public final class TaskExecutor {
           .build())
     );
 
-    // TODO #4: Refactor metric aggregation for (general) run-rime optimization.
     persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
       .send(ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())

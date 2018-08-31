@@ -79,11 +79,12 @@ public final class SkewReshapingPass extends ReshapingPass {
             builder.addVertex(mcv);
             builder.addVertex(abv);
 
-            // We then insert the dynamicOptimizationVertex between the vertex and incoming vertices.
+            // We then insert the MetricCollectionVertex and AggregationBarrierVertex
+            // between the vertex and incoming vertices.
             final IREdge edgeToMCV = generateEdgeToMCV(edge, mcv);
             final IREdge edgeToABV = generateEdgeToABV(edge, mcv, abv);
             final IREdge edgeToOriginalDstV =
-              new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), mcv, v);
+              new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
             edge.copyExecutionPropertiesTo(edgeToOriginalDstV);
 
             builder.connectVertices(edgeToMCV);
