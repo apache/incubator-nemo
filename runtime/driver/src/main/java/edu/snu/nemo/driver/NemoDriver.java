@@ -22,7 +22,7 @@ import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
 import edu.snu.nemo.runtime.master.ClientRPC;
-import edu.snu.nemo.runtime.master.InMasterBroadcastVariables;
+import edu.snu.nemo.runtime.master.BroadcastManagerMaster;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
@@ -112,7 +112,7 @@ public final class NemoDriver {
       startSchedulingUserDAG(message.getLaunchDAG().getDag());
       final Map<Serializable, Object> broadcastVars =
         SerializationUtils.deserialize(message.getLaunchDAG().getBroadcastVars().toByteArray());
-      InMasterBroadcastVariables.registerBroadcastVariablesFromClient(broadcastVars);
+      BroadcastManagerMaster.registerBroadcastVariablesFromClient(broadcastVars);
     });
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.DriverShutdown, message -> shutdown());
     // Send DriverStarted message to the client

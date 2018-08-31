@@ -17,7 +17,7 @@ package edu.snu.nemo.common.dag;
 
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.BroadcastVariableProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -259,7 +259,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   private void executionPropertyCheck() {
     // SideInput is not compatible with Push
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> e.getPropertyValue(BroadcastVariableProperty.class).orElse(false))
+        .filter(e -> e.getPropertyValue(BroadcastVariableIdProperty.class).isPresent())
         .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
         .forEach(e -> {
           throw new CompileTimeOptimizationException("DAG execution property check: "

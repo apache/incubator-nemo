@@ -35,7 +35,7 @@ public final class SparkContext extends org.apache.spark.SparkContext {
   private static final Logger LOG = LoggerFactory.getLogger(SparkContext.class.getName());
   private final org.apache.spark.SparkContext sparkContext;
 
-  private final AtomicLong broadcastVariableIdGenerator = new AtomicLong(0);
+  private final AtomicLong sparkBroadcastVariableIdGenerator = new AtomicLong(0);
 
   /**
    * Constructor.
@@ -73,7 +73,7 @@ public final class SparkContext extends org.apache.spark.SparkContext {
   @Override
   public <T> Broadcast<T> broadcast(final T data,
                                     final ClassTag<T> evidence) {
-    final long broadcastVariableId = broadcastVariableIdGenerator.getAndIncrement();
+    final long broadcastVariableId = sparkBroadcastVariableIdGenerator.getAndIncrement();
     SparkBroadcastVariables.put(broadcastVariableId, data);
     return new SparkBroadcast<>(broadcastVariableId, (Class<T>) data.getClass());
   }

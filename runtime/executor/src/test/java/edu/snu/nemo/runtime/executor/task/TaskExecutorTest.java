@@ -22,7 +22,7 @@ import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.BroadcastVariableProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
@@ -210,10 +210,11 @@ public final class TaskExecutorTest {
     final IRVertex operatorIRVertex1 = new OperatorVertex(new RelayTransform());
     final IRVertex operatorIRVertex2 = new OperatorVertex(new RelayTransform());
 
+    final String edgeId = "edge";
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(operatorIRVertex1)
         .addVertex(operatorIRVertex2)
-        .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, "edge"))
+        .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, edgeId))
         .buildWithoutSourceSinkCheck();
 
     final StageEdge taskOutEdge = mockStageEdgeFrom(operatorIRVertex2);
@@ -238,19 +239,21 @@ public final class TaskExecutorTest {
   public void testTwoOperatorsWithBroadcastVariable() {
     final Transform singleListTransform = new CreateSingleListTransform();
 
+    final long broadcastId = 0;
     final IRVertex operatorIRVertex1 = new OperatorVertex(new RelayTransform());
-    final IRVertex operatorIRVertex2 = new OperatorVertex(new SideInputPairTransform(singleListTransform.getTag()));
+    final IRVertex operatorIRVertex2 = new OperatorVertex(new BroadcastVariablePairingTransform(broadcastId));
 
+    final String edgeId = "edge";
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(operatorIRVertex1)
         .addVertex(operatorIRVertex2)
-        .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, "edge"))
+        .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, edgeId))
         .buildWithoutSourceSinkCheck();
 
     final StageEdge taskOutEdge = mockStageEdgeFrom(operatorIRVertex2);
 
-    final StageEdge broadcastInEdge =
-      mockBroadcastVariableStageEdgeTo(new OperatorVertex(singleListTransform), operatorIRVertex2, elements);
+    final StageEdge broadcastInEdge = mockBroadcastVariableStageEdgeTo(
+      new OperatorVertex(singleListTransform), operatorIRVertex2, broadcastId, elements);
 
     final Task task = new Task(
         "testSourceVertexDataFetching",
@@ -269,7 +272,7 @@ public final class TaskExecutorTest {
     final List<Pair<List<Integer>, Integer>> pairs = runtimeEdgeToOutputData.get(taskOutEdge.getId());
     final List<Integer> values = pairs.stream().map(Pair::right).collect(Collectors.toList());
     assertTrue(checkEqualElements(elements, values));
-    assertTrue(pairs.stream().map(Pair::left).allMatch(sideInput -> checkEqualElements(sideInput, values)));
+    assertTrue(pairs.stream().map(Pair::left).allMatch(broadcastVar -> checkEqualElements(broadcastVar, values)));
   }
 
   /**
@@ -365,12 +368,13 @@ public final class TaskExecutorTest {
 
   private StageEdge mockBroadcastVariableStageEdgeTo(final IRVertex srcVertex,
                                                      final IRVertex dstVertex,
-                                                     final Object variable) {
-    when(broadcastManagerWorker.get(((OperatorVertex)srcVertex).getTransform().getTag())).thenReturn(variable);
+                                                     final Serializable broadcastVariableId,
+                                                     final Object broadcastVariable) {
+    when(broadcastManagerWorker.get(broadcastVariableId)).thenReturn(broadcastVariable);
 
     final ExecutionPropertyMap executionPropertyMap =
       ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne);
-    executionPropertyMap.put(BroadcastVariableProperty.of(true));
+    executionPropertyMap.put(BroadcastVariableIdProperty.of(broadcastVariableId));
     return new StageEdge("runtime outgoing edge id",
       executionPropertyMap,
       srcVertex,
@@ -454,7 +458,6 @@ public final class TaskExecutorTest {
    * @param <T> input type.
    */
   private class CreateSingleListTransform<T> implements Transform<T, List<T>> {
-    private String tag = "tag";
     private List<T> list;
     private OutputCollector<List<T>> outputCollector;
 
@@ -473,24 +476,19 @@ public final class TaskExecutorTest {
     public void close() {
       outputCollector.emit(list);
     }
-
-    @Override
-    public Serializable getTag() {
-      return tag;
-    }
   }
 
   /**
-   * Pairs data element with a side input.
+   * Pairs data element with a broadcast variable.
    * @param <T> input/output type.
    */
-  private class SideInputPairTransform<T> implements Transform<T, T> {
-    private final Serializable sideInputTag;
+  private class BroadcastVariablePairingTransform<T> implements Transform<T, T> {
+    private final Serializable broadcastVariableId;
     private Context context;
     private OutputCollector<T> outputCollector;
 
-    public SideInputPairTransform(final Serializable sideInputTag) {
-      this.sideInputTag = sideInputTag;
+    public BroadcastVariablePairingTransform(final Serializable broadcastVariableId) {
+      this.broadcastVariableId = broadcastVariableId;
     }
 
     @Override
@@ -501,8 +499,8 @@ public final class TaskExecutorTest {
 
     @Override
     public void onData(final Object element) {
-      final Object sideInput = context.getSideInput(sideInputTag);
-      outputCollector.emit((T) Pair.of(sideInput, element));
+      final Object broadcastVariable = context.getBroadcastVariable(broadcastVariableId);
+      outputCollector.emit((T) Pair.of(broadcastVariable, element));
     }
 
     @Override

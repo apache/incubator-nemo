@@ -20,7 +20,7 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.BroadcastVariableProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
@@ -38,7 +38,6 @@ import edu.snu.nemo.runtime.executor.data.BroadcastManagerWorker;
 import edu.snu.nemo.runtime.executor.datatransfer.*;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -186,21 +185,31 @@ public final class TaskExecutor {
         nonBroadcastDataFetcherList.add(new SourceVertexDataFetcher(irVertex, sourceReader.get(), vertexHarness));
       }
       // Parent-task read (broadcasts)
-      final List<StageEdge> broadcastInEdges = task.getTaskIncomingEdges()
+      final List<StageEdge> inEdgesForThisVertex = task.getTaskIncomingEdges()
         .stream()
-        .filter(stageEdge -> stageEdge.getPropertyValue(BroadcastVariableProperty.class).orElse(false))
+        .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId()))
+        .collect(Collectors.toList());
+      final List<StageEdge> broadcastInEdges = inEdgesForThisVertex
+        .stream()
+        .filter(stageEdge -> stageEdge.getPropertyValue(BroadcastVariableIdProperty.class).isPresent())
         .collect(Collectors.toList());
       final List<InputReader> broadcastReaders =
-        getParentTaskReaders(taskIndex, irVertex, broadcastInEdges, dataTransferFactory);
-      broadcastReaders.forEach(reader -> {
-        final Serializable tag = ((OperatorVertex) reader.getSrcIrVertex()).getTransform().getTag();
-        broadcastManagerWorker.registerInputReader(tag, reader);
-      });
+        getParentTaskReaders(taskIndex, broadcastInEdges, dataTransferFactory);
+      if (broadcastInEdges.size() != broadcastReaders.size()) {
+        throw new IllegalStateException(broadcastInEdges.toString() + ", " + broadcastReaders.toString());
+      }
+      for (int i = 0; i < broadcastInEdges.size(); i++) {
+        final StageEdge inEdge = broadcastInEdges.get(i);
+        broadcastManagerWorker.registerInputReader(
+          inEdge.getPropertyValue(BroadcastVariableIdProperty.class)
+            .orElseThrow(() -> new IllegalStateException(inEdge.toString())),
+          broadcastReaders.get(i));
+      }
       // Parent-task read (non-broadcasts)
-      final List<StageEdge> nonBroadcastInEdges = new ArrayList<>(task.getTaskIncomingEdges());
+      final List<StageEdge> nonBroadcastInEdges = new ArrayList<>(inEdgesForThisVertex);
       nonBroadcastInEdges.removeAll(broadcastInEdges);
       final List<InputReader> nonBroadcastReaders =
-        getParentTaskReaders(taskIndex, irVertex, nonBroadcastInEdges, dataTransferFactory);
+        getParentTaskReaders(taskIndex, nonBroadcastInEdges, dataTransferFactory);
       nonBroadcastReaders.forEach(parentTaskReader -> nonBroadcastDataFetcherList.add(
         new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader, vertexHarness)));
     });
@@ -422,12 +431,10 @@ public final class TaskExecutor {
   }
 
   private List<InputReader> getParentTaskReaders(final int taskIndex,
-                                                 final IRVertex irVertex,
                                                  final List<StageEdge> inEdgesFromParentTasks,
                                                  final DataTransferFactory dataTransferFactory) {
     return inEdgesFromParentTasks
       .stream()
-      .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId()))
       .map(inEdgeForThisVertex -> dataTransferFactory
         .createReader(taskIndex, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
       .collect(Collectors.toList());

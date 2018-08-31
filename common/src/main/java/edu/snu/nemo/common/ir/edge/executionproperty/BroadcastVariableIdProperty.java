@@ -17,25 +17,27 @@ package edu.snu.nemo.common.ir.edge.executionproperty;
 
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
+import java.io.Serializable;
+
 /**
- * This edge fetches a broadcast variable.
+ * Edges with this property fetch a broadcast variable.
  */
-public final class BroadcastVariableProperty extends EdgeExecutionProperty<Boolean> {
+public final class BroadcastVariableIdProperty extends EdgeExecutionProperty<Serializable> {
 
   /**
    * Constructor.
-   * @param value true if it is a broadcast variable.
+   * @param value id.
    */
-  private BroadcastVariableProperty(final Boolean value) {
+  private BroadcastVariableIdProperty(final Serializable value) {
     super(value);
   }
 
   /**
    * Static method exposing constructor.
-   * @param value true if it is a broadcast variable.
+   * @param value id.
    * @return the newly created execution property.
    */
-  public static BroadcastVariableProperty of(final Boolean value) {
-    return new BroadcastVariableProperty(value);
+  public static BroadcastVariableIdProperty of(final Serializable value) {
+    return new BroadcastVariableIdProperty(value);
   }
 }

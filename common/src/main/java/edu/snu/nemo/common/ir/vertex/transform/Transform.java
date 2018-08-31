@@ -47,20 +47,13 @@ public interface Transform<I, O> extends Serializable {
   void close();
 
   /**
-   * @return tag
-   */
-  default Serializable getTag() {
-    return null;
-  }
-
-  /**
    * Context of the transform.
    */
   interface Context extends Serializable {
     /**
-     * @return the sideinput data.
+     * @return the broadcast variable.
      */
-    Object getSideInput(Serializable tag);
+    Object getBroadcastVariable(Serializable id);
     Map<String, String> getTagToAdditionalChildren();
 
     /**

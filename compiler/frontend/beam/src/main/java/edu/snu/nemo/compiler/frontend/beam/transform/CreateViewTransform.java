@@ -61,15 +61,6 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
     }
   }
 
-  /**
-   * get the Tag of the Transform.
-   * @return the PCollectionView of the transform.
-   */
-  @Override
-  public Serializable getTag() {
-    return this.pCollectionView;
-  }
-
   @Override
   public void close() {
     final Object view = viewFn.apply(multiView);

@@ -50,7 +50,7 @@ public class TransformContextImplTest {
 
   @Test
   public void testContextImpl() {
-    assertEquals("b", this.context.getSideInput("a"));
+    assertEquals("b", this.context.getBroadcastVariable("a"));
     assertEquals(this.taggedOutputs, this.context.getTagToAdditionalChildren());
 
     final String sampleText = "test_text";

@@ -200,10 +200,10 @@ message Metric {
 
 message RequestBroadcastVariableMessage {
   required string executorId = 1;
-  required bytes tag = 2;
+  required bytes broadcastId = 2;
 }
 
 message InMasterBroadcastVariableMessage {
   required int64 requestId = 1; // To find the matching request msg
-  required bytes variabe = 2;
+  required bytes variable = 2;
 }

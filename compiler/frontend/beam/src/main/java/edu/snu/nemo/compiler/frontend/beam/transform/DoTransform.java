@@ -245,7 +245,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public <T> T sideInput(final PCollectionView<T> view) {
-      return (T) context.getSideInput(view);
+      return (T) context.getBroadcastVariable(view);
     }
 
     @Override

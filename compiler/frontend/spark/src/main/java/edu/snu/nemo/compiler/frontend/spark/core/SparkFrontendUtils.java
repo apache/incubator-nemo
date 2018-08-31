@@ -128,17 +128,19 @@ public final class SparkFrontendUtils {
   /**
    * Converts a {@link Function1} to a corresponding {@link Function}.
    *
+   * Here, we use the Spark 'JavaSerializer' to facilitate debugging in the future.
+   * TODO #205: RDD Closure with Broadcast Variables Serialization Bug
+   *
    * @param scalaFunction the scala function to convert.
    * @param <I>           the type of input.
    * @param <O>           the type of output.
    * @return the converted Java function.
    */
   public static <I, O> Function<I, O> toJavaFunction(final Function1<I, O> scalaFunction) {
-    final ClassTag<Function1<I, O>> classTag = ClassTag$.MODULE$.apply(scalaFunction.getClass());
-
-    // TODO #205: RDD Closure with Broadcast Variables Serialization Bug
     // This 'JavaSerializer' from Spark provides a human-readable NotSerializableException stack traces,
     // which can be useful when addressing this problem.
+    // Other toJavaFunction can also use this serializer when debugging.
+    final ClassTag<Function1<I, O>> classTag = ClassTag$.MODULE$.apply(scalaFunction.getClass());
     final byte[] serializedFunction = new JavaSerializer().newInstance().serialize(scalaFunction, classTag).array();
 
     return new Function<I, O>() {

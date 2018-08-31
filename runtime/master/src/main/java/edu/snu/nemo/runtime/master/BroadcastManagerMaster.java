@@ -25,19 +25,25 @@ import java.util.Map;
 /**
  * Broadcast variables saved in the master.
  */
-public final class InMasterBroadcastVariables {
-  private static final Logger LOG = LoggerFactory.getLogger(InMasterBroadcastVariables.class.getName());
+public final class BroadcastManagerMaster {
+  private static final Logger LOG = LoggerFactory.getLogger(BroadcastManagerMaster.class.getName());
+  private static final Map<Serializable, Object> ID_TO_VARIABLE = new HashMap<>();
 
-  private static final Map<Serializable, Object> TAG_TO_VARIABLE = new HashMap<>();
-
-  private InMasterBroadcastVariables() {
+  private BroadcastManagerMaster() {
   }
 
+  /**
+   * @param variables from the client.
+   */
   public static void registerBroadcastVariablesFromClient(final Map<Serializable, Object> variables) {
-    TAG_TO_VARIABLE.putAll(variables);
+    ID_TO_VARIABLE.putAll(variables);
   }
 
-  public static Object getBroadcastVariable(final Serializable tag) {
-    return TAG_TO_VARIABLE.get(tag);
+  /**
+   * @param id of the broadcast variable.
+   * @return the requested broadcast variable.
+   */
+  public static Object getBroadcastVariable(final Serializable id) {
+    return ID_TO_VARIABLE.get(id);
   }
 }

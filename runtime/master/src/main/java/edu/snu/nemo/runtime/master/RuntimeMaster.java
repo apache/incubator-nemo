@@ -332,11 +332,11 @@ public final class RuntimeMaster {
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
         case RequestBroadcastVariable:
-          final Serializable tag =
-            SerializationUtils.deserialize(message.getRequestbroadcastVariableMsg().getTag().toByteArray());
-          final Object broadcastVariable = InMasterBroadcastVariables.getBroadcastVariable(tag);
+          final Serializable broadcastId =
+            SerializationUtils.deserialize(message.getRequestbroadcastVariableMsg().getBroadcastId().toByteArray());
+          final Object broadcastVariable = BroadcastManagerMaster.getBroadcastVariable(broadcastId);
           if (broadcastVariable == null) {
-            throw new IllegalStateException(tag.toString());
+            throw new IllegalStateException(broadcastId.toString());
           }
           messageContext.reply(
             ControlMessage.Message.newBuilder()
@@ -346,7 +346,7 @@ public final class RuntimeMaster {
               .setBroadcastVariableMsg(ControlMessage.InMasterBroadcastVariableMessage.newBuilder()
                 .setRequestId(message.getId())
                 // TODO #206: Efficient Broadcast Variable Serialization
-                .setVariabe(ByteString.copyFrom(SerializationUtils.serialize((Serializable) broadcastVariable)))
+                .setVariable(ByteString.copyFrom(SerializationUtils.serialize((Serializable) broadcastVariable)))
                 .build())
               .build());
           break;

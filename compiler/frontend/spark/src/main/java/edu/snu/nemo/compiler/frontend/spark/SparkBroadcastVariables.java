@@ -28,10 +28,17 @@ public final class SparkBroadcastVariables {
   private SparkBroadcastVariables() {
   }
 
+  /**
+   * @param tag of the broadcast variable.
+   * @param variable data.
+   */
   public static void put(final Serializable tag, final Object variable) {
     TAG_TO_VARIABLE.put(tag, variable);
   }
 
+  /**
+   * @return all the map from tags to variables.
+   */
   public static Map<Serializable, Object> getAll() {
     return TAG_TO_VARIABLE;
   }

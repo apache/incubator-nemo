@@ -43,7 +43,7 @@ public final class TransformContextImpl implements Transform.Context {
   }
 
   @Override
-  public Object getSideInput(final Serializable tag) {
+  public Object getBroadcastVariable(final Serializable tag) {
     return broadcastManagerWorker.get(tag);
   }
 

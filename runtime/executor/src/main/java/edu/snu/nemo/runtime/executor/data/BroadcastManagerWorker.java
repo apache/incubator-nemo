@@ -47,35 +47,43 @@ public final class BroadcastManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(BroadcastManagerWorker.class.getName());
   private static BroadcastManagerWorker staticReference;
 
-  private final ConcurrentHashMap<Serializable, InputReader> tagToReader;
-  private final LoadingCache<Serializable, Object> tagToVariableCache;
+  private final ConcurrentHashMap<Serializable, InputReader> idToReader;
+  private final LoadingCache<Serializable, Object> idToVariableCache;
 
+  /**
+   * Initializes the cache for broadcast variables.
+   * This cache handles concurrent cache operations by multiple threads, and is able to fetch data from
+   * remote executors or the master.
+   *
+   * @param executorId of the executor.
+   * @param toMaster connection.
+   */
   @Inject
-  public BroadcastManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
+  private BroadcastManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                                 final PersistentConnectionToMasterMap toMaster) {
     staticReference = this;
-    this.tagToReader = new ConcurrentHashMap<>();
-    this.tagToVariableCache = CacheBuilder.newBuilder()
+    this.idToReader = new ConcurrentHashMap<>();
+    this.idToVariableCache = CacheBuilder.newBuilder()
       .maximumSize(100)
       .expireAfterWrite(10, TimeUnit.MINUTES)
       .build(
         new CacheLoader<Serializable, Object>() {
-          public Object load(final Serializable tag) throws Exception {
-            LOG.info("Start to load broadcast {}", tag.toString());
-            if (tagToReader.containsKey(tag)) {
+          public Object load(final Serializable id) throws Exception {
+            LOG.info("Start to load broadcast {}", id.toString());
+            if (idToReader.containsKey(id)) {
               // Get from reader
-              final InputReader inputReader = tagToReader.get(tag);
+              final InputReader inputReader = idToReader.get(id);
               final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> iterators = inputReader.read();
               if (iterators.size() != 1) {
-                throw new IllegalStateException(tag.toString());
+                throw new IllegalStateException(id.toString());
               }
               final DataUtil.IteratorWithNumBytes iterator = iterators.get(0).get();
               if (!iterator.hasNext()) {
-                throw new IllegalStateException(tag.toString() + " (no element) " + iterator.toString());
+                throw new IllegalStateException(id.toString() + " (no element) " + iterator.toString());
               }
               final Object result = iterator.next();
               if (iterator.hasNext()) {
-                throw new IllegalStateException(tag.toString() + " (more than single element) " + iterator.toString());
+                throw new IllegalStateException(id.toString() + " (more than single element) " + iterator.toString());
               }
               return result;
             } else {
@@ -89,11 +97,11 @@ public final class BroadcastManagerWorker {
                     .setRequestbroadcastVariableMsg(
                       ControlMessage.RequestBroadcastVariableMessage.newBuilder()
                         .setExecutorId(executorId)
-                        .setTag(ByteString.copyFrom(SerializationUtils.serialize(tag)))
+                        .setBroadcastId(ByteString.copyFrom(SerializationUtils.serialize(id)))
                         .build())
                     .build());
               return SerializationUtils.deserialize(
-                responseFromMasterFuture.get().getBroadcastVariableMsg().getVariabe().toByteArray());
+                responseFromMasterFuture.get().getBroadcastVariableMsg().getVariable().toByteArray());
             }
           }
         });
@@ -103,22 +111,22 @@ public final class BroadcastManagerWorker {
    * When the broadcast variable can be read by an input reader.
    * (i.e., the variable is expressed as an IREdge, and reside in a executor as a block)
    *
-   * @param tag of the broadcast variable.
+   * @param id of the broadcast variable.
    * @param inputReader
    */
-  public void registerInputReader(final Serializable tag,
+  public void registerInputReader(final Serializable id,
                                   final InputReader inputReader) {
-    this.tagToReader.put(tag, inputReader);
+    this.idToReader.put(id, inputReader);
   }
 
   /**
-   * Get the variable with the tag.
-   * @param tag of the variable.
+   * Get the variable with the id.
+   * @param id of the variable.
    * @return the variable.
    */
-  public Object get(final Serializable tag)  {
+  public Object get(final Serializable id)  {
     try {
-      return tagToVariableCache.get(tag);
+      return idToVariableCache.get(id);
     } catch (ExecutionException e) {
       // TODO #207: Handle broadcast variable fetch exceptions
       throw new IllegalStateException(e);
