@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * A {@link EncoderFactory} which is used for an long.
+ * A {@link EncoderFactory} which is used for long.
  */
 public final class LongEncoderFactory implements EncoderFactory<Long> {
 

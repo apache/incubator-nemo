@@ -124,8 +124,6 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
         runtimeEdge.getPropertyValue(DataPersistenceProperty.class).
             orElseThrow(() -> new RuntimeException("No data persistence property on the edge"));
 
-    final boolean isDataSizeMetricCollectionEdge = Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
-        .equals(runtimeEdge.getPropertyValue(MetricCollectionProperty.class));
     final Optional<Map<Integer, Long>> partitionSizeMap = blockToWrite.commit();
     // Return the total size of the committed block.
     if (partitionSizeMap.isPresent()) {
@@ -134,13 +132,10 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
         blockSizeTotal += partitionSize;
       }
       this.writtenBytes = blockSizeTotal;
-      blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, isDataSizeMetricCollectionEdge,
-          partitionSizeMap.get(), getExpectedRead(), persistence);
     } else {
       this.writtenBytes = -1; // no written bytes info.
-      blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, isDataSizeMetricCollectionEdge,
-          Collections.emptyMap(), getExpectedRead(), persistence);
     }
+    blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, getExpectedRead(), persistence);
   }
 
   /**
@@ -171,9 +166,5 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
         ? 1 : dstIrVertex.getPropertyValue(ParallelismProperty.class).orElseThrow(
             () -> new RuntimeException("No parallelism property on the destination vertex."));
     return readForABlock * duplicatedDataMultiplier;
-  }
-
-  public String getRuntimeEdgeId() {
-    return runtimeEdge.getId();
   }
 }

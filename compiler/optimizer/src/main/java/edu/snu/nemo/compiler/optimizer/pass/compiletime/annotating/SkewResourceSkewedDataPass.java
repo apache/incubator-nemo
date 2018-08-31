@@ -26,7 +26,7 @@ import java.util.List;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
- * It specifies which optimization to perform on the AggregationBarrierVertex.
+ * It specifies which optimization to perform on the MetricCollectionVertex.
  */
 @Annotates(DynamicOptimizationProperty.class)
 public final class SkewResourceSkewedDataPass extends AnnotatingPass {

@@ -19,8 +19,8 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * An kv decoder factory object which generates kv decoders that decode values of type {@code T} into byte streams.
- * To avoid to generate instance-based coder such as Spark serializer for every decoding,
+ * A kv decoder factory object which generates kv decoders that decode byte streams to values of type {@code T}.
+ * To avoid generating instance-based coder such as Spark serializer for every decoding,
  * user need to explicitly instantiate an kv decoder instance and use it.
  *
  * @param <T> element type.
@@ -31,7 +31,7 @@ public interface KVDecoderFactory<T> extends DecoderFactory {
   DecoderFactory getKeyDecoderFactory();
 
   /**
-   * Interface of Decoder.
+   * Interface of the Decoder.
    *
    * @param <T> element type.
    */

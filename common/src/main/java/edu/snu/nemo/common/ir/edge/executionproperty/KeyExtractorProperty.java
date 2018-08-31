@@ -22,7 +22,6 @@ import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
  * KeyExtractor ExecutionProperty.
  */
 public final class KeyExtractorProperty extends EdgeExecutionProperty<KeyExtractor> {
-
   /**
    * Constructor.
    *

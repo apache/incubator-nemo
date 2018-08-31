@@ -19,7 +19,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * An kv encoder factory object which generates kv encoders that encode values of type {@code T} into byte streams.
+ * A kv encoder factory object which generates kv encoders that encode values of type {@code T} into byte streams.
  * To avoid to generate instance-based coder such as Spark serializer for every encoding,
  * user need to explicitly instantiate an kv encoder instance and use it.
  *
@@ -31,7 +31,7 @@ public interface KVEncoderFactory<T> extends EncoderFactory {
   EncoderFactory getKeyEncoderFactory();
 
   /**
-   * Interface of Encoder.
+   * Interface of the Encoder.
    *
    * @param <T> element type.
    */
@@ -39,7 +39,7 @@ public interface KVEncoderFactory<T> extends EncoderFactory {
     /**
      * Encodes the given value onto the specified output stream.
      * It has to be able to encode the given stream consequently by calling this method repeatedly.
-     * Because the user can want to keep a single output stream and continuously concatenate elements,
+     * Because the user may want to keep a single output stream and continuously concatenate elements,
      * the output stream should not be closed.
      *
      * @param element the element to be encoded

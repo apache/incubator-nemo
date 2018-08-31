@@ -68,7 +68,6 @@ public final class TaskExecutor {
   private long serializedReadBytes = 0;
   private long encodedReadBytes = 0;
   private final MetricMessageSender metricMessageSender;
-  private boolean containABV = false;
 
   // Dynamic optimization
   private String idOfVertexPutOnHold;
@@ -159,9 +158,6 @@ public final class TaskExecutor {
       final Map<String, String> additionalOutputMap =
           getAdditionalOutputMap(irVertex, task.getTaskOutgoingEdges(), irVertexDag);
 
-      additionalOutputMap.forEach((k, v) ->
-        LOG.info("log: addoutprop additionalOutputMap {} {}", k, v));
-
       final List<Boolean> isToAdditionalTagOutputs = children.stream()
           .map(harness -> harness.getIRVertex().getId())
           .map(additionalOutputMap::containsValue)
@@ -205,12 +201,6 @@ public final class TaskExecutor {
         .map(vertex -> vertexIdToHarness.get(vertex.getId()))
         .collect(Collectors.toList());
 
-    for (VertexHarness v : sortedHarnessList) {
-      if (v.getIRVertex() instanceof AggregationBarrierVertex) {
-        containABV = true;
-      }
-    }
-
     return Pair.of(dataFetcherList, sortedHarnessList);
   }
 
@@ -234,7 +224,6 @@ public final class TaskExecutor {
       transform.onData(dataElement);
     } else if (irVertex instanceof AggregationBarrierVertex) {
       final Transform transform = ((AggregationBarrierVertex) irVertex).getTransform();
-      LOG.info("log: ABV dataElement {}", dataElement);
       transform.onData(dataElement);
       setIRVertexPutOnHold((AggregationBarrierVertex) irVertex);
     } else {
@@ -382,20 +371,14 @@ public final class TaskExecutor {
       // handle intra-task additional tagged outputs
       vertexHarness.getAdditionalTagOutputChildren().keySet().forEach(tag -> {
         outputCollector.iterateTag(tag).forEach(
-          element -> {
-            LOG.info("log: intra-task iterateTag: {} {}", tag, element);
-            handleAdditionalOutputElement(vertexHarness, element, tag);
-          }); // Recursion
+          element -> handleAdditionalOutputElement(vertexHarness, element, tag)); // Recursion
         outputCollector.clearTag(tag);
       });
 
       // handle inter-task additional tagged outputs
       vertexHarness.getTagToAdditionalChildrenId().keySet().forEach(tag -> {
         outputCollector.iterateTag(tag).forEach(
-          element -> {
-            LOG.info("log: inter-task iterateTag: {} {}", tag, element);
-            handleAdditionalOutputElement(vertexHarness, element, tag);
-          }); // Recursion
+          element -> handleAdditionalOutputElement(vertexHarness, element, tag)); // Recursion
         outputCollector.clearTag(tag);
       });
 
@@ -405,9 +388,7 @@ public final class TaskExecutor {
 
   private void handleMainOutputElement(final VertexHarness harness, final Object element) {
     // writes to children tasks
-    harness.getWritersToMainChildrenTasks().forEach(outputWriter -> {
-      outputWriter.write(element);
-    });
+    harness.getWritersToMainChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
     // writes to side input children tasks
     if (!harness.getSideInputChildren().isEmpty()) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
@@ -418,16 +399,9 @@ public final class TaskExecutor {
 
   private void handleAdditionalOutputElement(final VertexHarness harness, final Object element, final String tag) {
     // writes to additional children tasks
-    harness.getWritersToAdditionalChildrenTasks().forEach((k, w) -> {
-      LOG.info("log: handleAdditional child {}", k);
-    });
-
     harness.getWritersToAdditionalChildrenTasks().entrySet().stream()
         .filter(kv -> kv.getKey().equals(tag))
-        .forEach(kv -> {
-          LOG.info("handleAdditional Written {}", element);
-          kv.getValue().write(element);
-        });
+        .forEach(kv -> kv.getValue().write(element));
     // writes to side input children tasks
     if (!harness.getSideInputChildren().isEmpty()) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
@@ -641,7 +615,6 @@ public final class TaskExecutor {
       transform = ((MetricCollectionVertex) irVertex).getTransform();
       transform.prepare(vertexHarness.getContext(), vertexHarness.getOutputCollector());
     } else if (irVertex instanceof AggregationBarrierVertex) {
-      LOG.info("log: preparing ABV");
       transform = ((AggregationBarrierVertex) irVertex).getTransform();
       transform.prepare(vertexHarness.getContext(), vertexHarness.getOutputCollector());
     }
@@ -656,9 +629,7 @@ public final class TaskExecutor {
     } else if (irVertex instanceof MetricCollectionVertex) {
       transform = ((MetricCollectionVertex) irVertex).getTransform();
       transform.close();
-      LOG.info("log: closing MCV");
     } else if (irVertex instanceof AggregationBarrierVertex) {
-      LOG.info("log: closing ABV");
       transform = ((AggregationBarrierVertex) irVertex).getTransform();
       transform.close();
     }

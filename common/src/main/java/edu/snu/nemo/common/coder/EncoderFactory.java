@@ -78,6 +78,7 @@ public interface EncoderFactory<T> extends Serializable {
         throw new RuntimeException("DummyEncoder is not supposed to be used.");
       }
     }
+
     @Override
     public Encoder create(final OutputStream outputStream) {
       return dummyEncoder;

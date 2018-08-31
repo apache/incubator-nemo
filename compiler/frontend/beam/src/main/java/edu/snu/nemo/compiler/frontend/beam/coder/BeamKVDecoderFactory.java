@@ -93,8 +93,7 @@ public final class BeamKVDecoderFactory<T> implements KVDecoderFactory<T> {
      */
     protected T2 decodeInternal() throws IOException {
       try {
-        final T2 element = beamCoder.decode(inputStream);
-        return element;
+        return beamCoder.decode(inputStream);
       } catch (final CoderException e) {
         throw new IOException(e);
       }
@@ -129,11 +128,6 @@ public final class BeamKVDecoderFactory<T> implements KVDecoderFactory<T> {
     @Override
     public T2 decode() throws IOException {
       return decodeInternal();
-    }
-
-    @Override
-    public String toString() {
-      return beamCoder.getClass().getName();
     }
   }
 

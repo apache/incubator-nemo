@@ -62,7 +62,6 @@ public final class AggregateMetricTransform<I, O> implements Transform<I, O> {
   @Override
   public void close() {
     Map<Object, Long> aggregatedDynOptDataMap = (Map<Object, Long>) aggregatedDynOptData;
-    aggregatedDynOptDataMap.forEach((k, v) -> LOG.info("log: ABV close() {} {}", k, v));
     outputCollector.emit(aggregatedDynOptData);
   }
 

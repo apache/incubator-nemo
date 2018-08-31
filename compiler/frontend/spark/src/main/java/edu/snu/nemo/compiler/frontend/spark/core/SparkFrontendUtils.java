@@ -50,8 +50,7 @@ import java.util.*;
  * Utility class for RDDs.
  */
 public final class SparkFrontendUtils {
-  private static final KeyExtractorProperty SPARK_KEY_EXTRACTOR_PROP =
-    KeyExtractorProperty.of(new SparkKeyExtractor());
+  private static final KeyExtractorProperty SPARK_KEY_EXTRACTOR_PROP = KeyExtractorProperty.of(new SparkKeyExtractor());
 
   /**
    * Private constructor.

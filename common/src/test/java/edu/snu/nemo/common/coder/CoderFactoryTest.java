@@ -17,17 +17,11 @@
 package edu.snu.nemo.common.coder;
 
 import edu.snu.nemo.common.ContextImpl;
-import edu.snu.nemo.common.Pair;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Tests {@link ContextImpl}.

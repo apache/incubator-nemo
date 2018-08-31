@@ -72,7 +72,6 @@ public final class SkewReshapingPass extends ReshapingPass {
                 .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
             final AggregationBarrierVertex abv =
               new AggregationBarrierVertex();
-            // abv.setPropertyPermanently(ParallelismProperty.of(1));
             final MetricCollectionVertex mcv =
               new MetricCollectionVertex(abv.getId(), edge.getPropertyValue(KeyExtractorProperty.class).get());
             metricCollectionVertices.add(mcv);

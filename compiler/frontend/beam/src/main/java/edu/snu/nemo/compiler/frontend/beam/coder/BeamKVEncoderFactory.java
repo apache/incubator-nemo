@@ -87,11 +87,6 @@ public final class BeamKVEncoderFactory<T> implements KVEncoderFactory<T> {
         throw new IOException(e);
       }
     }
-
-    @Override
-    public String toString() {
-      return beamCoder.getClass().getName();
-    }
   }
 
   /**
