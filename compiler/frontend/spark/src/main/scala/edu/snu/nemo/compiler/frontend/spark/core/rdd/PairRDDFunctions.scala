@@ -77,7 +77,7 @@ final class PairRDDFunctions[K: ClassTag, V: ClassTag] protected[rdd] (
     newEdge.setProperty(
       DecoderProperty.of(new SparkDecoderFactory[Tuple2[K, V]](self.serializer))
         .asInstanceOf[EdgeExecutionProperty[_ <: Serializable]])
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor))
+    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor(null, null)))
     builder.connectVertices(newEdge)
 
     new RDD[(K, V)](self._sc, builder.buildWithoutSourceSinkCheck, reduceByKeyVertex, Option.empty)

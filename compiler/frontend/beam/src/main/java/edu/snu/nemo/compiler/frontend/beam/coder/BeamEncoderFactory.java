@@ -79,6 +79,10 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
         throw new IOException(e);
       }
     }
+    @Override
+    public String toString() {
+      return beamCoder.getClass().getName();
+    }
   }
 
   /**

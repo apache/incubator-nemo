@@ -279,6 +279,7 @@ public final class BlockManagerWorker {
             .setBlockStateChangedMsg(blockStateChangedMsgBuilder.build())
             .build());
 
+    /*
     if (reportPartitionSizes) {
       final List<ControlMessage.PartitionSizeEntry> partitionSizeEntries = new ArrayList<>();
       partitionSizeMap.forEach((key, size) ->
@@ -300,6 +301,7 @@ public final class BlockManagerWorker {
               )
               .build());
     }
+    */
   }
 
   /**

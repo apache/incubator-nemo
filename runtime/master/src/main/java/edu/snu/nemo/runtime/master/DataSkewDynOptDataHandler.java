@@ -25,7 +25,7 @@ import java.util.Map;
  * Handler for aggregating data used in data skew dynamic optimization.
  */
 public class DataSkewDynOptDataHandler implements DynOptDataHandler {
-  private final Map<Integer, Long> aggregatedDynOptData;
+  private final Map<Object, Long> aggregatedDynOptData;
 
   public DataSkewDynOptDataHandler() {
     this.aggregatedDynOptData = new HashMap<>();
@@ -40,12 +40,12 @@ public class DataSkewDynOptDataHandler implements DynOptDataHandler {
     List<ControlMessage.PartitionSizeEntry> partitionSizeInfo
         = (List<ControlMessage.PartitionSizeEntry>) dynOptData;
     partitionSizeInfo.forEach(partitionSizeEntry -> {
-      final int hashIndex = partitionSizeEntry.getKey();
+      final Object key = partitionSizeEntry.getKey();
       final long partitionSize = partitionSizeEntry.getSize();
-      if (aggregatedDynOptData.containsKey(hashIndex)) {
-        aggregatedDynOptData.compute(hashIndex, (originalKey, originalValue) -> originalValue + partitionSize);
+      if (aggregatedDynOptData.containsKey(key)) {
+        aggregatedDynOptData.compute(key, (originalKey, originalValue) -> originalValue + partitionSize);
       } else {
-        aggregatedDynOptData.put(hashIndex, partitionSize);
+        aggregatedDynOptData.put(key, partitionSize);
       }
     });
   }

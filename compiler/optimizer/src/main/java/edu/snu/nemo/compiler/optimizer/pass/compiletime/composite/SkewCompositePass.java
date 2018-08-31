@@ -34,8 +34,7 @@ public final class SkewCompositePass extends CompositePass {
     super(Arrays.asList(
         new SkewReshapingPass(),
         new SkewResourceSkewedDataPass(),
-        new SkewMetricCollectionPass(),
-        new SkewPartitionerPass()
+        new SkewMetricCollectionPass()
     ));
   }
 }

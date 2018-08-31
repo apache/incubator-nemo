@@ -120,7 +120,7 @@ message DataSizeMetricMsg {
 }
 
 message PartitionSizeEntry {
-    required int32 key = 1;
+    required string key = 1;
     required int64 size = 2;
 }
 

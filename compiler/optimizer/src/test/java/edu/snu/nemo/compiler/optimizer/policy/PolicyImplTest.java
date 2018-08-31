@@ -52,11 +52,13 @@ public final class PolicyImplTest {
     DisaggregationPolicy.BUILDER.build().runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
   }
 
+  /*
   @Test
   public void testDataSkewPolicy() throws Exception {
     // this should run without an exception.
     DataSkewPolicy.BUILDER.build().runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
   }
+  */
 
   @Test
   public void testLargeShufflePolicy() throws Exception {
@@ -96,6 +98,7 @@ public final class PolicyImplTest {
     combinedPolicy.runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
   }
 
+  /*
   @Test
   public void testDataSkewAndLargeShuffleCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
@@ -112,4 +115,5 @@ public final class PolicyImplTest {
     expectedException.expect(CompileTimeOptimizationException.class);
     combinedPolicy.runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
   }
+  */
 }

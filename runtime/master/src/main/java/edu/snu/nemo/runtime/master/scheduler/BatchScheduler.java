@@ -380,8 +380,16 @@ public final class BatchScheduler implements Scheduler {
       .findFirst()
       .orElseThrow(() -> new RuntimeException());
 
+    final List<Stage> parentStages = planStateManager.getPhysicalPlan().getStageDAG()
+      .getParents(stagePutOnHold.getId());
+
+    if (parentStages.size() > 1) {
+      throw new RuntimeException("Error in setting metric collection vertex!");
+    }
+
     // Get outgoing edges of that stage with MetricCollectionProperty
-    List<StageEdge> stageEdges = planStateManager.getPhysicalPlan().getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
+    List<StageEdge> stageEdges = planStateManager.getPhysicalPlan().getStageDAG()
+      .getOutgoingEdgesOf(parentStages.get(0));
     for (StageEdge edge : stageEdges) {
       if (edge.getExecutionProperties().containsKey(MetricCollectionProperty.class)) {
         return edge;

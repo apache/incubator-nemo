@@ -15,15 +15,15 @@
  */
 package edu.snu.nemo.common.ir.vertex;
 
-import edu.snu.nemo.common.KeyExtractor;
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.DynamicOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import edu.snu.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * IRVertex that collects statistics to send them to the optimizer for dynamic optimization.
@@ -35,15 +35,13 @@ public final class AggregationBarrierVertex extends IRVertex {
   // its optimization, and to be able to figure out exactly where in the DAG the vertex exists.
   private final Transform transform;
   private DAG<IRVertex, IREdge> dagSnapshot;
-  private KeyExtractor keyExtractor;
 
   /**
    * Constructor for dynamic optimization vertex.
    */
-  public AggregationBarrierVertex(final KeyExtractor keyExtractor) {
-    this.transform = new AggregateMetricTransform(new HashMap<Object, Long>(), keyExtractor);
+  public AggregationBarrierVertex() {
+    this.transform = new AggregateMetricTransform<Pair<Object, Long>, Map<Object, Long>>(new HashMap<>());
     this.dagSnapshot = null;
-    this.keyExtractor = keyExtractor;
   }
 
   /**
@@ -55,7 +53,7 @@ public final class AggregationBarrierVertex extends IRVertex {
 
   @Override
   public AggregationBarrierVertex getClone() {
-    final AggregationBarrierVertex that = new AggregationBarrierVertex(keyExtractor);
+    final AggregationBarrierVertex that = new AggregationBarrierVertex();
     that.setDAGSnapshot(dagSnapshot);
     this.copyExecutionPropertiesTo(that);
     return that;

@@ -438,23 +438,21 @@ public final class PipelineTranslator
       if (pValueToTag.containsKey(input)) {
         edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
       }
-      
+
       if (CommunicationPatternProperty.Value.Shuffle
         .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-        setKeyExtractorForShuffleProperty(edge, coder);
-      } else {
-        edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor(null, null)));
+        setKeyExtractorPropertyForShuffle(edge, coder);
       }
-      
+
       builder.connectVertices(edge);
     }
-    
-    private void setKeyExtractorForShuffleProperty(final IREdge edge, final Coder beamCoder) {
+
+    private void setKeyExtractorPropertyForShuffle(final IREdge edge, final Coder beamCoder) {
       if (beamCoder instanceof KvCoder) {
-        final Coder beamKeyCoder = ((KvCoder)beamCoder).getKeyCoder();
-        final EncoderFactory keyEncoderFactory = new BeamEncoderFactory<>(beamKeyCoder);
+        final Coder beamKeyCoder = ((KvCoder) beamCoder).getKeyCoder();
+        final EncoderFactory keyEncoderFactory = new BeamEncoderFactory(beamKeyCoder);
         final DecoderFactory keyDecoderFactory = new BeamDecoderFactory(beamKeyCoder);
-  
+
         edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor(keyEncoderFactory, keyDecoderFactory)));
       } else {
         throw new RuntimeException("Error in setting KeyExtractorProperty: Beam coder is not an instance of KVCoder");

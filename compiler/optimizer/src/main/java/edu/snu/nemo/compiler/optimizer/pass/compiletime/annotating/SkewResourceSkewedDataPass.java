@@ -17,8 +17,8 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.MetricCollectionVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 
@@ -37,11 +37,11 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
     super(SkewResourceSkewedDataPass.class);
   }
 
-  private boolean hasAggregationBarrierVertexAsParent(final DAG<IRVertex, IREdge> dag,
-                                                      final IRVertex v) {
+  private boolean hasMetricCollectionVertexAsParent(final DAG<IRVertex, IREdge> dag,
+                                                    final IRVertex v) {
     List<IRVertex> parents = dag.getParents(v.getId());
     for (IRVertex parent : parents) {
-      if (parent instanceof AggregationBarrierVertex) {
+      if (parent instanceof MetricCollectionVertex) {
         return true;
       }
     }
@@ -51,12 +51,12 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().stream()
-        .filter(v -> v instanceof AggregationBarrierVertex)
+        .filter(v -> v instanceof MetricCollectionVertex)
         .forEach(v -> v.setProperty(DynamicOptimizationProperty
             .of(DynamicOptimizationProperty.Value.DataSkewRuntimePass)));
 
     dag.getVertices().stream()
-        .filter(v -> hasAggregationBarrierVertexAsParent(dag, v)
+        .filter(v -> hasMetricCollectionVertexAsParent(dag, v)
             && !v.getExecutionProperties().containsKey(ResourceSkewedDataProperty.class))
         .forEach(childV -> {
           childV.getExecutionProperties().put(ResourceSkewedDataProperty.of(true));

@@ -46,7 +46,7 @@ public interface EncoderFactory<T> extends Serializable {
 
     /**
      * Encodes the given value onto the specified output stream.
-     * It have to be able to encode the given stream consequently by calling this method repeatedly.
+     * It has to be able to encode the given stream consequently by calling this method repeatedly.
      * Because the user can want to keep a single output stream and continuously concatenate elements,
      * the output stream should not be closed.
      *
@@ -78,7 +78,6 @@ public interface EncoderFactory<T> extends Serializable {
         throw new RuntimeException("DummyEncoder is not supposed to be used.");
       }
     }
-
     @Override
     public Encoder create(final OutputStream outputStream) {
       return dummyEncoder;

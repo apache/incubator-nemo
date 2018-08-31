@@ -16,8 +16,8 @@
 package edu.snu.nemo.common.ir.vertex.transform;
 
 import edu.snu.nemo.common.KeyExtractor;
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.OutputCollector;
-import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +65,10 @@ public final class MetricCollectTransform<T> implements Transform<T, T> {
 
   @Override
   public void close() {
-    outputCollector.emit(dstvertexId, dynOptData);
+    dynOptData.forEach((k, v) -> {
+      final Pair<Object, Long> pairData = Pair.of(k, v);
+      outputCollector.emit(dstvertexId, pairData);
+    });
   }
 
   @Override

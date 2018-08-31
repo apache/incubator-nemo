@@ -26,6 +26,8 @@ import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.nemo.runtime.executor.data.metadata.PartitionMetadata;
 import edu.snu.nemo.runtime.executor.data.metadata.FileMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.*;
@@ -41,7 +43,7 @@ import java.util.*;
  */
 @NotThreadSafe
 public final class FileBlock<K extends Serializable> implements Block<K> {
-
+  private static final Logger LOG = LoggerFactory.getLogger(FileBlock.class.getName());
   private final String id;
   private final Map<K, SerializedPartition<K>> nonCommittedPartitionsMap;
   private final Serializer serializer;

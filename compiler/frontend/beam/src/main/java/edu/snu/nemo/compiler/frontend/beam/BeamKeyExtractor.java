@@ -27,13 +27,13 @@ import org.apache.beam.sdk.values.KV;
 final class BeamKeyExtractor implements KeyExtractor {
   private EncoderFactory keyEncoderFactory;
   private DecoderFactory keyDecoderFactory;
-  
+
   BeamKeyExtractor(final EncoderFactory keyEncoderFactory,
                    final DecoderFactory keyDecoderFactory) {
     this.keyEncoderFactory = keyEncoderFactory;
     this.keyDecoderFactory = keyDecoderFactory;
   }
-  
+
   @Override
   public Object extractKey(final Object element) {
     if (element instanceof KV) {
@@ -44,14 +44,16 @@ final class BeamKeyExtractor implements KeyExtractor {
       return element;
     }
   }
-  
+
+  @Override
   public EncoderFactory getKeyEncoderFactory() {
     if (keyEncoderFactory == null) {
       throw new RuntimeException("Extracting keyEncoderFactory from non-shuffle edge");
     }
     return keyEncoderFactory;
   }
-  
+
+  @Override
   public DecoderFactory getKeyDecoderFactory() {
     if (keyEncoderFactory == null) {
       throw new RuntimeException("Extracting keyDecoderFactory from non-shuffle edge");

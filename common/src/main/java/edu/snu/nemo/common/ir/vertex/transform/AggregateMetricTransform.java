@@ -15,9 +15,8 @@
  */
 package edu.snu.nemo.common.ir.vertex.transform;
 
-import edu.snu.nemo.common.KeyExtractor;
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.OutputCollector;
-import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,14 +32,12 @@ public final class AggregateMetricTransform<I, O> implements Transform<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(AggregateMetricTransform.class.getName());
   private OutputCollector<O> outputCollector;
   private O aggregatedDynOptData;
-  private KeyExtractor keyExtractor;
 
   /**
    * Default constructor.
    */
-  public AggregateMetricTransform(final O aggregatedDynOptData, final KeyExtractor keyExtractor) {
+  public AggregateMetricTransform(final O aggregatedDynOptData) {
     this.aggregatedDynOptData = aggregatedDynOptData;
-    this.keyExtractor = keyExtractor;
   }
 
   @Override
@@ -51,9 +48,9 @@ public final class AggregateMetricTransform<I, O> implements Transform<I, O> {
   @Override
   public void onData(final I element) {
     // Aggregate key frequency data.
-    Object key = keyExtractor.extractKey(element);
-    Object count = ((Map.Entry<Object, Long>) element).getValue();
-    
+    Object key = ((Pair<Object, Long>) element).left();
+    Object count = ((Pair<Object, Long>) element).right();
+
     Map<Object, Long> aggregatedDynOptDataMap = (Map<Object, Long>) aggregatedDynOptData;
     if (aggregatedDynOptDataMap.containsKey(key)) {
       aggregatedDynOptDataMap.compute(key, (existingKey, accumulatedCount) -> accumulatedCount + (long) count);
@@ -64,8 +61,8 @@ public final class AggregateMetricTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void close() {
-    Map<Integer, Long> aggregatedDynOptDataMap = (Map<Integer, Long>) aggregatedDynOptData;
-    aggregatedDynOptDataMap.forEach((k, v) -> LOG.info("log: ABV {} {}", k, v));
+    Map<Object, Long> aggregatedDynOptDataMap = (Map<Object, Long>) aggregatedDynOptData;
+    aggregatedDynOptDataMap.forEach((k, v) -> LOG.info("log: ABV close() {} {}", k, v));
     outputCollector.emit(aggregatedDynOptData);
   }
 

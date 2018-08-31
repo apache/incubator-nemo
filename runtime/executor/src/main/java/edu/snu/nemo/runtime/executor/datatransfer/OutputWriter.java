@@ -172,12 +172,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
             () -> new RuntimeException("No parallelism property on the destination vertex."));
     return readForABlock * duplicatedDataMultiplier;
   }
-  
+
   public String getRuntimeEdgeId() {
     return runtimeEdge.getId();
-  }
-  
-  public String getDstVertexId() {
-    return dstIrVertex.getId();
   }
 }

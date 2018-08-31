@@ -28,7 +28,7 @@ import java.io.OutputStream;
 public final class KVEncoderFactory<K, V> implements EncoderFactory<KV<K, V>> {
   private final EncoderFactory<K> keyEncoderFactory;
   private final EncoderFactory<V> valueEncoderFactory;
-  
+
   /**
    * Private constructor of KVEncoderFactory class.
    *

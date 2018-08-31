@@ -34,7 +34,7 @@ import static edu.snu.nemo.runtime.executor.data.DataUtil.buildOutputStream;
  */
 public final class SerializedPartition<K> implements Partition<byte[], K> {
   private static final Logger LOG = LoggerFactory.getLogger(SerializedPartition.class.getName());
-  
+
   private final K key;
   private volatile byte[] serializedData;
   private volatile int length;

@@ -19,8 +19,8 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import edu.snu.nemo.common.ir.vertex.MetricCollectionVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
@@ -42,7 +42,7 @@ public final class SkewMetricCollectionPass extends AnnotatingPass {
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(v -> {
       // we only care about barrier vertices.
-      if (v instanceof AggregationBarrierVertex) {
+      if (v instanceof MetricCollectionVertex) {
         dag.getOutgoingEdgesOf(v).forEach(edge -> {
           // double checking.
           if (edge.getPropertyValue(CommunicationPatternProperty.class).get()

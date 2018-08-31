@@ -16,6 +16,8 @@
 package edu.snu.nemo.compiler.frontend.spark;
 
 import edu.snu.nemo.common.KeyExtractor;
+import edu.snu.nemo.common.coder.DecoderFactory;
+import edu.snu.nemo.common.coder.EncoderFactory;
 import scala.Tuple2;
 
 /**
@@ -23,6 +25,15 @@ import scala.Tuple2;
  * For non-KV elements, the elements themselves become the key.
  */
 public final class SparkKeyExtractor implements KeyExtractor {
+  private EncoderFactory keyEncoderFactory;
+  private DecoderFactory keyDecoderFactory;
+
+  public SparkKeyExtractor(final EncoderFactory keyEncoderFactory,
+                   final DecoderFactory keyDecoderFactory) {
+    this.keyEncoderFactory = keyEncoderFactory;
+    this.keyDecoderFactory = keyDecoderFactory;
+  }
+
   @Override
   public Object extractKey(final Object element) {
     if (element instanceof Tuple2) {
@@ -30,5 +41,21 @@ public final class SparkKeyExtractor implements KeyExtractor {
     } else {
       return element;
     }
+  }
+
+  @Override
+  public EncoderFactory getKeyEncoderFactory() {
+    if (keyEncoderFactory == null) {
+      throw new RuntimeException("KeyEncoderFactory is not set");
+    }
+    return keyEncoderFactory;
+  }
+
+  @Override
+  public DecoderFactory getKeyDecoderFactory() {
+    if (keyEncoderFactory == null) {
+      throw new RuntimeException("KeyDecoderFactory is not set");
+    }
+    return keyDecoderFactory;
   }
 }

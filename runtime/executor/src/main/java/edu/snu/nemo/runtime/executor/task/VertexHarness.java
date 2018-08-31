@@ -16,7 +16,6 @@
 package edu.snu.nemo.runtime.executor.task;
 
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputWriter;
@@ -33,7 +32,7 @@ import java.util.Map;
  */
 final class VertexHarness {
   private static final Logger LOG = LoggerFactory.getLogger(VertexHarness.class.getName());
-  
+
   // IRVertex and transform-specific information
   private final IRVertex irVertex;
   private final OutputCollectorImpl outputCollector;
@@ -73,13 +72,12 @@ final class VertexHarness {
       } else if (isAdditionalTagOutputs.get(i)) {
         taggedOutputMap.entrySet().stream()
             .filter(kv -> child.getIRVertex().getId().equals(kv.getValue()))
-            .forEach(kv -> tagged.put(kv.getValue(), child));
+            .forEach(kv -> tagged.put(kv.getKey(), child));
       } else {
         nonSides.add(child);
       }
     }
-    
-    // TODO #XXX: For additional tag output children, we need to consider inter-task children.
+
     this.tagToAdditionalChildrenId = context.getTagToAdditionalChildren();
     this.sideInputChildren = sides;
     this.nonSideInputChildren = nonSides;
@@ -123,11 +121,11 @@ final class VertexHarness {
   public Map<String, VertexHarness> getAdditionalTagOutputChildren() {
     return additionalTagOutputChildren;
   }
-  
+
   public Map<String, String> getTagToAdditionalChildrenId() {
     return tagToAdditionalChildrenId;
   }
-  
+
   /**
    * @return OutputWriters for main outputs of this irVertex. (empty if none exists)
    */

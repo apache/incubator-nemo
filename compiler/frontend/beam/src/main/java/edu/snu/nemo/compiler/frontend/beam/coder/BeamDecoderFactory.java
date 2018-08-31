@@ -19,6 +19,8 @@ import edu.snu.nemo.common.coder.DecoderFactory;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.VoidCoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,6 +30,8 @@ import java.io.InputStream;
  * @param <T> the type of element to encode.
  */
 public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
+  private static final Logger LOG = LoggerFactory.getLogger(BeamDecoderFactory.class);
+
   private final Coder<T> beamCoder;
 
   /**
@@ -77,7 +81,8 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
      */
     protected T2 decodeInternal() throws IOException {
       try {
-        return beamCoder.decode(inputStream);
+        final T2 element = beamCoder.decode(inputStream);
+        return element;
       } catch (final CoderException e) {
         throw new IOException(e);
       }
@@ -111,6 +116,11 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
     @Override
     public T2 decode() throws IOException {
       return decodeInternal();
+    }
+
+    @Override
+    public String toString() {
+      return beamCoder.getClass().getName();
     }
   }
 

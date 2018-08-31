@@ -19,7 +19,6 @@ import org.apache.beam.sdk.coders.CoderException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Iterator;
@@ -32,15 +31,14 @@ import java.util.Map;
  */
 public final class MapEncoderFactory<K, V> implements EncoderFactory<Map<K, V>> {
   private static final Logger LOG = LoggerFactory.getLogger(MapEncoderFactory.class.getName());
-  
   private final EncoderFactory<K> keyEncoderFactory;
   private final EncoderFactory<V> valueEncoderFactory;
 
   /**
    * Private constructor of MapEncoderFactory class.
    *
-   * @param keyEncoderFactory  coder for right element.
-   * @param valueEncoderFactory coder for right element.
+   * @param keyEncoderFactory  coder for key element.
+   * @param valueEncoderFactory coder for value element.
    */
   private MapEncoderFactory(final EncoderFactory<K> keyEncoderFactory,
                             final EncoderFactory<V> valueEncoderFactory) {
@@ -51,10 +49,10 @@ public final class MapEncoderFactory<K, V> implements EncoderFactory<Map<K, V>> 
   /**
    * static initializer of the class.
    *
-   * @param keyEncoderFactory  left coder.
-   * @param valueEncoderFactory right coder.
-   * @param <K>          type of the left element.
-   * @param <V>          type of the right element.
+   * @param keyEncoderFactory  key coder.
+   * @param valueEncoderFactory value coder.
+   * @param <K>          type of the key element.
+   * @param <V>          type of the value element.
    * @return the new PairEncoderFactory.
    */
   public static <K, V> MapEncoderFactory<K, V> of(final EncoderFactory<K> keyEncoderFactory,
@@ -68,20 +66,20 @@ public final class MapEncoderFactory<K, V> implements EncoderFactory<Map<K, V>> 
   }
 
   /**
-   * PairEncoder.
-   * @param <Key> type for the left coder.
-   * @param <Value> type for the right coder.
+   * MapEncoder.
+   * @param <Key> type for the key coder.
+   * @param <Value> type for the value coder.
    */
   private final class MapEncoder<Key, Value> implements Encoder<Map<Key, Value>> {
     private final Encoder<Key> keyEncoder;
     private final Encoder<Value> valueEncoder;
-  
+
     /**
      * Constructor.
      *
      * @param outputStream        the output stream to store the encoded bytes.
-     * @param keyEncoderFactory   the actual encoder to use for left elements.
-     * @param valueEncoderFactory the actual encoder to use for right elements.
+     * @param keyEncoderFactory   the actual encoder to use for key elements.
+     * @param valueEncoderFactory the actual encoder to use for value elements.
      * @throws IOException if fail to instantiate coders.
      */
     private MapEncoder(final OutputStream outputStream,
@@ -91,34 +89,28 @@ public final class MapEncoderFactory<K, V> implements EncoderFactory<Map<K, V>> 
       this.valueEncoder = valueEncoderFactory.create(outputStream);
     }
 
-    public void encode(final Map<Key, Value> map, final OutputStream outputStream) throws IOException {
+    @Override
+    public void encode(final Map<Key, Value> map) throws IOException {
       if (map == null) {
         throw new CoderException("cannot encode a null Map");
       }
-      DataOutputStream dataOutStream = new DataOutputStream(outputStream);
-  
+
       int size = map.size();
-      dataOutStream.writeInt(size);
       if (size == 0) {
         return;
       }
-  
+
       // As map size > 0, entry is guaranteed to exist before and after loop
       Iterator<Map.Entry<Key, Value>> iterator = map.entrySet().iterator();
       Map.Entry<Key, Value> entry = iterator.next();
       while (iterator.hasNext()) {
-        LOG.info("log: MapEncoderFactory encoding {} {}", entry.getKey(), entry.getValue());
         keyEncoder.encode(entry.getKey());
         valueEncoder.encode(entry.getValue());
         entry = iterator.next();
       }
-  
+
       keyEncoder.encode(entry.getKey());
       valueEncoder.encode(entry.getValue());
-    }
-
-    @Override
-    public void encode(final Map<Key, Value> map) throws IOException {
     }
   }
 }

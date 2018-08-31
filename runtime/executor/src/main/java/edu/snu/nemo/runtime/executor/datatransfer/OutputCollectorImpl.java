@@ -49,7 +49,7 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     tagToChildren.forEach((tag, child) ->
       this.additionalTaggedChildToElementsMap.put(Pair.of(tag, child), new ArrayList<>(1)));
   }
-  
+
   public Map<Pair<String, String>, ArrayList<Object>> getAdditionalTaggedChildToElementsMap() {
     return additionalTaggedChildToElementsMap;
   }
@@ -68,16 +68,15 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
       final List<Object> dataElements = getAdditionalTaggedDataFromDstVertexId(dstVertexId);
       dataElements.add(output);
-      printLog();
     }
   }
-  
+
   public void printLog() {
     this.additionalTaggedChildToElementsMap.forEach((k, v) -> {
       final String tag = k.left();
       final String dstVertexId = k.right();
       final List<Object> data = v;
-      data.forEach(d -> LOG.info("printLog: {}:{} {}", tag, dstVertexId, d));
+      data.forEach(d -> LOG.info("printLog: tag {} dstV {} data {}", tag, dstVertexId, d));
     });
   }
 
@@ -90,7 +89,6 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       // This dstVertexId is for the main tag
       return (Iterable<Object>) iterateMain();
     } else {
-      printLog();
       return getAdditionalTaggedDataFromTag(tag);
     }
   }
@@ -138,10 +136,10 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     final Pair<String, String> tagAndChild =
       this.additionalTaggedChildToElementsMap.keySet().stream()
         .filter(key -> key.left().equals(tag))
-        .findAny().orElseThrow(() -> new RuntimeException("Wrong tag passed!"));
+        .findAny().orElseThrow(() -> new RuntimeException("Wrong tag " + tag + " passed!"));
     final List<Object> dataElements = this.additionalTaggedChildToElementsMap.get(tagAndChild);
     if (dataElements == null) {
-      throw new IllegalArgumentException("Wrong tag passed!");
+      throw new IllegalArgumentException("Wrong tag " + tag + " passed!");
     }
     return dataElements;
   }
