@@ -193,8 +193,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
                 irEdge.getId(),
                 irEdge.getExecutionProperties(),
                 irEdge.getSrc(),
-                irEdge.getDst(),
-                irEdge.isSideInput()));
+                irEdge.getDst()));
           } else { // edge comes from another stage
             interStageEdges.add(irEdge);
           }
@@ -226,7 +225,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
             dstStage == null ? String.format(" destination stage for %s", interStageEdge.getDst()) : ""));
       }
       dagOfStagesBuilder.connectVertices(new StageEdge(interStageEdge.getId(), interStageEdge.getExecutionProperties(),
-          interStageEdge.getSrc(), interStageEdge.getDst(), srcStage, dstStage, interStageEdge.isSideInput()));
+          interStageEdge.getSrc(), interStageEdge.getDst(), srcStage, dstStage));
     }
 
     return dagOfStagesBuilder.build();

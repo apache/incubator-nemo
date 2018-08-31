@@ -321,8 +321,7 @@ public final class DataTransferTest {
     final IRVertex dstMockVertex = mock(IRVertex.class);
     final Stage srcStage = setupStages("srcStage" + testIndex);
     final Stage dstStage = setupStages("dstStage" + testIndex);
-    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
-        srcStage, dstStage, false);
+    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex, srcStage, dstStage);
 
     // Initialize states in Master
     TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
@@ -413,11 +412,9 @@ public final class DataTransferTest {
     final IRVertex dstMockVertex = mock(IRVertex.class);
     final Stage srcStage = setupStages("srcStage" + testIndex);
     final Stage dstStage = setupStages("dstStage" + testIndex);
-    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
-        srcStage, dstStage, false);
+    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex, srcStage, dstStage);
     final IRVertex dstMockVertex2 = mock(IRVertex.class);
-    dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
-        srcStage, dstStage, false);
+    dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2, srcStage, dstStage);
     // Initialize states in Master
     TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskId);

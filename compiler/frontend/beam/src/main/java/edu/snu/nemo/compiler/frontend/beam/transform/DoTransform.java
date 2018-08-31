@@ -76,8 +76,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     this.outputCollector = oc;
     this.startBundleContext = new StartBundleContext(doFn, serializedOptions);
     this.finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
-    this.processContext = new ProcessContext(doFn, outputCollector,
-        context.getSideInputs(), context.getTagToAdditionalChildren(), serializedOptions);
+    this.processContext = new ProcessContext(doFn, outputCollector, context, serializedOptions);
     this.invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
@@ -196,29 +195,27 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       implements DoFnInvoker.ArgumentProvider<I, O> {
     private I input;
     private final OutputCollector<O> outputCollector;
-    private final Map sideInputs;
     private final Map<String, String> additionalOutputs;
+    private final Context context;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
     /**
      * ProcessContext Constructor.
      *
-     * @param fn                Dofn.
-     * @param outputCollector   OutputCollector.
-     * @param sideInputs        Map for SideInputs.
-     * @param additionalOutputs Map for TaggedOutputs.
-     * @param serializedOptions Options, serialized.
+     * @param fn                 Dofn.
+     * @param outputCollector    OutputCollector.
+     * @param context            Context.
+     * @param serializedOptions  Options, serialized.
      */
     ProcessContext(final DoFn<I, O> fn,
                    final OutputCollector<O> outputCollector,
-                   final Map sideInputs,
-                   final Map<String, String> additionalOutputs,
+                   final Context context,
                    final String serializedOptions) {
       fn.super();
       this.outputCollector = outputCollector;
-      this.sideInputs = sideInputs;
-      this.additionalOutputs = additionalOutputs;
+      this.context = context;
+      this.additionalOutputs = context.getTagToAdditionalChildren();
       this.mapper = new ObjectMapper();
       try {
         this.options = mapper.readValue(serializedOptions, PipelineOptions.class);
@@ -248,7 +245,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public <T> T sideInput(final PCollectionView<T> view) {
-      return (T) sideInputs.get(view);
+      return (T) context.getBroadcastVariable(view);
     }
 
     @Override

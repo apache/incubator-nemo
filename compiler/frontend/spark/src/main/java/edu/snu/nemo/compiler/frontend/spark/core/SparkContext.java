@@ -15,9 +15,13 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.core;
 
+import edu.snu.nemo.compiler.frontend.spark.SparkBroadcastVariables;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
 import org.apache.spark.SparkConf;
+import org.apache.spark.broadcast.Broadcast;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.collection.Seq;
 import scala.reflect.ClassTag;
 
@@ -27,6 +31,7 @@ import java.util.List;
  * Spark context wrapper for in Nemo.
  */
 public final class SparkContext extends org.apache.spark.SparkContext {
+  private static final Logger LOG = LoggerFactory.getLogger(SparkContext.class.getName());
   private final org.apache.spark.SparkContext sparkContext;
 
   /**
@@ -60,5 +65,12 @@ public final class SparkContext extends org.apache.spark.SparkContext {
                                 final ClassTag<T> evidence) {
     final List<T> javaList = scala.collection.JavaConversions.seqAsJavaList(seq);
     return JavaRDD.of(this.sparkContext, javaList, numSlices).rdd();
+  }
+
+  @Override
+  public <T> Broadcast<T> broadcast(final T data,
+                                    final ClassTag<T> evidence) {
+    final long id = SparkBroadcastVariables.register(data);
+    return new SparkBroadcast<>(id, (Class<T>) data.getClass());
   }
 }

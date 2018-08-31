@@ -83,7 +83,7 @@ public final class SkewReshapingPass extends ReshapingPass {
             final IREdge edgeToMCV = generateEdgeToMCV(edge, mcv);
             final IREdge edgeToABV = generateEdgeToABV(edge, mcv, abv);
             final IREdge edgeToOriginalDstV =
-              new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), mcv, v, edge.isSideInput());
+              new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), mcv, v);
             edge.copyExecutionPropertiesTo(edgeToOriginalDstV);
 
             builder.connectVertices(edgeToMCV);

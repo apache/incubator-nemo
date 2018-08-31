@@ -16,7 +16,6 @@
 
 package edu.snu.nemo.common.coder;
 
-import edu.snu.nemo.common.ContextImpl;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -24,7 +23,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
 /**
- * Tests {@link ContextImpl}.
+ * Tests coder factories.
  */
 public class CoderFactoryTest {
 

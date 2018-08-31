@@ -37,6 +37,7 @@ public final class IdManager {
   public static String newVertexId() {
     return "vertex" + (isDriver ? "(d)" : "") + vertexId.getAndIncrement();
   }
+
   /**
    * @return a new edge ID.
    */

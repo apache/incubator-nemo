@@ -60,8 +60,8 @@ public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
             final OperatorVertex iFileMergerVertex = new OperatorVertex(new RelayTransform());
 
             builder.addVertex(iFileMergerVertex);
-            final IREdge newEdgeToMerger = new IREdge(CommunicationPatternProperty.Value.Shuffle,
-                edge.getSrc(), iFileMergerVertex, edge.isSideInput());
+            final IREdge newEdgeToMerger =
+              new IREdge(CommunicationPatternProperty.Value.Shuffle, edge.getSrc(), iFileMergerVertex);
             edge.copyExecutionPropertiesTo(newEdgeToMerger);
             final IREdge newEdgeFromMerger = new IREdge(CommunicationPatternProperty.Value.OneToOne,
                 iFileMergerVertex, v);
