@@ -393,7 +393,9 @@ public final class PlanStateManager {
     // Change plan state if needed
     final boolean allStagesCompleted = stageIdToState.values().stream().allMatch(state ->
       state.getStateMachine().getCurrentState().equals(StageState.State.COMPLETE));
-    if (allStagesCompleted) {
+
+    // avoid duplicate plan COMPLETE caused by cloning
+    if (allStagesCompleted && !PlanState.State.COMPLETE.equals(getPlanState())) {
       onPlanStateChanged(PlanState.State.COMPLETE);
     }
   }

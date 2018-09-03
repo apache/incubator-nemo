@@ -14,35 +14,43 @@
  * limitations under the License.
  */
 
-package edu.snu.nemo.common;
+package edu.snu.nemo.runtime.executor;
 
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
+import edu.snu.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
- * Tests {@link ContextImpl}.
+ * Tests {@link TransformContextImpl}.
  */
-public class ContextImplTest {
+@RunWith(PowerMockRunner.class)
+@PrepareForTest({BroadcastManagerWorker.class})
+public class TransformContextImplTest {
   private Transform.Context context;
-  private final Map sideInputs = new HashMap();
-  private final Map<String, String> taggedOutputs = new HashMap();
+  private final Map<String, String> taggedOutputs = new HashMap<>();
 
   @Before
   public void setUp() {
-    sideInputs.put("a", "b");
-    this.context = new ContextImpl(sideInputs, taggedOutputs);
+    final BroadcastManagerWorker broadcastManagerWorker = mock(BroadcastManagerWorker.class);
+    when(broadcastManagerWorker.get("a")).thenReturn("b");
+    this.context = new TransformContextImpl(broadcastManagerWorker, taggedOutputs);
   }
 
   @Test
   public void testContextImpl() {
-    assertEquals(this.sideInputs, this.context.getSideInputs());
+    assertEquals("b", this.context.getBroadcastVariable("a"));
     assertEquals(this.taggedOutputs, this.context.getTagToAdditionalChildren());
 
     final String sampleText = "test_text";

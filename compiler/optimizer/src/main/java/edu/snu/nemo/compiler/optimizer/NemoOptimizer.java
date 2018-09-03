@@ -191,8 +191,7 @@ public final class NemoOptimizer implements Optimizer {
             edge.getPropertyValue(CommunicationPatternProperty.class)
                 .orElseThrow(() -> new RuntimeException("No communication pattern on an ir edge")),
             cachedDataRelayVertex,
-            irVertex,
-            edge.isSideInput());
+            irVertex);
         edge.copyExecutionPropertiesTo(newEdge);
         newEdge.setProperty(CacheIDProperty.of(cacheId.get()));
         builder.connectVertices(newEdge);

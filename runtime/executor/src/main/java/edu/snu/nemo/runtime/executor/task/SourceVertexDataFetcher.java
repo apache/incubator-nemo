@@ -34,9 +34,8 @@ class SourceVertexDataFetcher extends DataFetcher {
 
   SourceVertexDataFetcher(final IRVertex dataSource,
                           final Readable readable,
-                          final VertexHarness child,
-                          final boolean isToSideInput) {
-    super(dataSource, child, false, isToSideInput);
+                          final VertexHarness child) {
+    super(dataSource, child);
     this.readable = readable;
   }
 

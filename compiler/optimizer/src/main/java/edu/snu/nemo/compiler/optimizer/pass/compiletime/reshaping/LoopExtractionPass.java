@@ -100,9 +100,8 @@ public final class LoopExtractionPass extends ReshapingPass {
                 // connecting with a loop: loop -> operator.
                 final LoopVertex srcLoopVertex = dag.getAssignedLoopVertexOf(irEdge.getSrc());
                 srcLoopVertex.addDagOutgoingEdge(irEdge);
-                final IREdge edgeFromLoop =
-                    new IREdge(irEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                        srcLoopVertex, operatorVertex, irEdge.isSideInput());
+                final IREdge edgeFromLoop = new IREdge(
+                  irEdge.getPropertyValue(CommunicationPatternProperty.class).get(), srcLoopVertex, operatorVertex);
                 irEdge.copyExecutionPropertiesTo(edgeFromLoop);
                 builder.connectVertices(edgeFromLoop);
                 srcLoopVertex.mapEdgeWithLoop(edgeFromLoop, irEdge);
@@ -150,7 +149,7 @@ public final class LoopExtractionPass extends ReshapingPass {
         } else { // loop -> loop connection
           assignedLoopVertex.addDagIncomingEdge(irEdge);
           final IREdge edgeToLoop = new IREdge(irEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
-              srcLoopVertex, assignedLoopVertex, irEdge.isSideInput());
+              srcLoopVertex, assignedLoopVertex);
           irEdge.copyExecutionPropertiesTo(edgeToLoop);
           builder.connectVertices(edgeToLoop);
           assignedLoopVertex.mapEdgeWithLoop(edgeToLoop, irEdge);
@@ -158,7 +157,7 @@ public final class LoopExtractionPass extends ReshapingPass {
       } else { // operator -> loop
         assignedLoopVertex.addDagIncomingEdge(irEdge);
         final IREdge edgeToLoop = new IREdge(irEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
-            irEdge.getSrc(), assignedLoopVertex, irEdge.isSideInput());
+            irEdge.getSrc(), assignedLoopVertex);
         irEdge.copyExecutionPropertiesTo(edgeToLoop);
         builder.connectVertices(edgeToLoop);
         assignedLoopVertex.mapEdgeWithLoop(edgeToLoop, irEdge);
@@ -229,13 +228,13 @@ public final class LoopExtractionPass extends ReshapingPass {
 
               // add the new IREdge to the iterative incoming edges list.
               final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                  equivalentSrcVertex, equivalentDstVertex, edge.isSideInput());
+                  equivalentSrcVertex, equivalentDstVertex);
               edge.copyExecutionPropertiesTo(newIrEdge);
               finalRootLoopVertex.addIterativeIncomingEdge(newIrEdge);
             } else {
               // src is from outside the previous loop. vertex outside previous loop -> DAG.
               final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                  srcVertex, equivalentDstVertex, edge.isSideInput());
+                  srcVertex, equivalentDstVertex);
               edge.copyExecutionPropertiesTo(newIrEdge);
               finalRootLoopVertex.addNonIterativeIncomingEdge(newIrEdge);
             }
@@ -248,7 +247,7 @@ public final class LoopExtractionPass extends ReshapingPass {
             final IRVertex equivalentSrcVertex = equivalentVertices.get(srcVertex);
 
             final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                equivalentSrcVertex, dstVertex, edge.isSideInput());
+                equivalentSrcVertex, dstVertex);
             edge.copyExecutionPropertiesTo(newIrEdge);
             finalRootLoopVertex.addDagOutgoingEdge(newIrEdge);
             finalRootLoopVertex.mapEdgeWithLoop(loopVertex.getEdgeWithLoop(edge), newIrEdge);
@@ -293,7 +292,7 @@ public final class LoopExtractionPass extends ReshapingPass {
         builder.connectVertices(edge);
       } else {
         final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-            firstEquivalentVertex, irVertex, edge.isSideInput());
+            firstEquivalentVertex, irVertex);
         edge.copyExecutionPropertiesTo(newIrEdge);
         builder.connectVertices(newIrEdge);
       }

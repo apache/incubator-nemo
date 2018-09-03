@@ -152,10 +152,6 @@ public final class InputReader extends DataTransfer {
     return srcVertex;
   }
 
-  public boolean isSideInputReader() {
-    return Boolean.TRUE.equals(runtimeEdge.isSideInput());
-  }
-
   /**
    * Get the parallelism of the source task.
    *

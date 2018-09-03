@@ -163,7 +163,7 @@ public final class LoopOptimizations {
             inEdges.getOrDefault(loopVertex, new ArrayList<>()).forEach(irEdge -> {
               if (builder.contains(irEdge.getSrc())) {
                 final IREdge newIREdge = new IREdge(irEdge.getPropertyValue(CommunicationPatternProperty.class)
-                    .get(), irEdge.getSrc(), newLoopVertex, irEdge.isSideInput());
+                    .get(), irEdge.getSrc(), newLoopVertex);
                 irEdge.copyExecutionPropertiesTo(newIREdge);
                 builder.connectVertices(newIREdge);
               }
@@ -172,7 +172,7 @@ public final class LoopOptimizations {
             outEdges.getOrDefault(loopVertex, new ArrayList<>()).forEach(irEdge -> {
               if (builder.contains(irEdge.getDst())) {
                 final IREdge newIREdge = new IREdge(irEdge.getPropertyValue(CommunicationPatternProperty.class)
-                    .get(), newLoopVertex, irEdge.getDst(), irEdge.isSideInput());
+                    .get(), newLoopVertex, irEdge.getDst());
                 irEdge.copyExecutionPropertiesTo(newIREdge);
                 builder.connectVertices(newIREdge);
               }
@@ -291,7 +291,7 @@ public final class LoopOptimizations {
               .forEach(edge -> {
                 edgesToRemove.add(edge);
                 final IREdge newEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                    candidate.getKey(), edge.getDst(), edge.isSideInput());
+                    candidate.getKey(), edge.getDst());
                 newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
                 newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
                 edgesToAdd.add(newEdge);
