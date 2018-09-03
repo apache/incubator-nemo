@@ -56,7 +56,7 @@ public interface KVDecoderFactory<T> extends DecoderFactory {
    * Dummy kv decoder factory implementation which is not supposed to be used.
    */
   final class DummyKVDecoderFactory implements KVDecoderFactory {
-    private final DecoderFactory keyDecoderFactory = null;
+    private final DecoderFactory keyDecoderFactory = DUMMY_DECODER_FACTORY;
     private final KVDecoder dummyKVDecoder = new DummyKVDecoder();
 
     /**
