@@ -21,7 +21,6 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
-import edu.snu.nemo.compiler.optimizer.util.Util;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 
@@ -135,9 +134,7 @@ public final class LoopOptimizations {
         loopsToBeFused.add(loopVertex);
         independentLoops.forEach(independentLoop -> {
           // add them to the list if those independent loops have equal termination conditions.
-          if (independentLoop.getMaxNumberOfIterations().equals(numberOfIterations)
-              && Util.checkEqualityOfIntPredicates(independentLoop.getTerminationCondition(), terminationCondition,
-              numberOfIterations)) {
+          if (loopVertex.terminationConditionEquals(independentLoop)) {
             loopsToBeFused.add(independentLoop);
           }
         });

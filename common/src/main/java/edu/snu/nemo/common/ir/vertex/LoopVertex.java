@@ -18,6 +18,7 @@ package edu.snu.nemo.common.ir.vertex;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.util.Util;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
@@ -299,6 +300,15 @@ public final class LoopVertex extends IRVertex {
    */
   private void decreaseMaxNumberOfIterations() {
     this.maxNumberOfIterations--;
+  }
+
+  public boolean terminationConditionEquals(final LoopVertex that) {
+    if (this.maxNumberOfIterations.equals(that.getMaxNumberOfIterations()) && Util
+        .checkEqualityOfIntPredicates(this.terminationCondition, that.getTerminationCondition(),
+            this.maxNumberOfIterations)) {
+      return true;
+    }
+    return false;
   }
 
   /**

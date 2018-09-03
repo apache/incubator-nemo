@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.optimizer.util;
+package edu.snu.nemo.common.util;
 
 import static org.junit.Assert.assertEquals;
 
@@ -24,7 +24,7 @@ import org.junit.Test;
 public class UtilTest {
 
     @Test
-    public void testcheckEqualityOfIntPredicates() {
+    public void testCheckEqualityOfIntPredicates() {
 
         IntPredicate firstPredicate = number -> number < 5;
         IntPredicate secondPredicate = number -> number < 10;
