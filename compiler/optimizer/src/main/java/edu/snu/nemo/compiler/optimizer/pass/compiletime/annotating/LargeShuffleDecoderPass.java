@@ -21,8 +21,8 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -30,12 +30,14 @@ import java.util.List;
  * This pass modifies the decoder property toward {@link edu.snu.nemo.common.ir.vertex.transform.RelayTransform}
  * to read data as byte arrays.
  */
+@Annotates(DecoderProperty.class)
+@Requires(CommunicationPatternProperty.class)
 public final class LargeShuffleDecoderPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
   public LargeShuffleDecoderPass() {
-    super(DecoderProperty.class, Collections.singleton(CommunicationPatternProperty.class));
+    super(LargeShuffleDecoderPass.class);
   }
 
   @Override

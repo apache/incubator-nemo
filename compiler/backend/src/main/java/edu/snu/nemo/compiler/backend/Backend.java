@@ -18,15 +18,19 @@ package edu.snu.nemo.compiler.backend;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.compiler.backend.nemo.NemoBackend;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
  * Interface for backend components.
  * @param <Plan> the physical execution plan to compile the DAG into.
  */
+@DefaultImplementation(NemoBackend.class)
 public interface Backend<Plan> {
   /**
    * Compiles a DAG to a physical execution plan.
-   * @param dag DAG to compile.
+   *
+   * @param dag the DAG to compile.
    * @return the execution plan generated.
    * @throws Exception Exception on the way.
    */

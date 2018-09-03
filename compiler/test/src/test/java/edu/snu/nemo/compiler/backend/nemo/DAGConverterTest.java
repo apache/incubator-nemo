@@ -99,8 +99,8 @@ public final class DAGConverterTest {
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage1).size(), 1);
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage2).size(), 0);
 
-    assertEquals(physicalStage1.getTaskIds().size(), 3);
-    assertEquals(physicalStage2.getTaskIds().size(), 2);
+    assertEquals(3, physicalStage1.getParallelism());
+    assertEquals(2, physicalStage2.getParallelism());
   }
 
   @Test
@@ -134,10 +134,6 @@ public final class DAGConverterTest {
     v6.setProperty(ParallelismProperty.of(2));
     v6.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.RESERVED));
 
-//    final IRVertex v7 = new OperatorVertex(t);
-//    v7.setProperty(Parallelism.of(2));
-//    v7.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
-
     final IRVertex v8 = new OperatorVertex(dt);
     v8.setProperty(ParallelismProperty.of(2));
     v8.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
@@ -149,8 +145,6 @@ public final class DAGConverterTest {
     irDAGBuilder.addVertex(v5);
     irDAGBuilder.addVertex(v6);
     irDAGBuilder.addVertex(v8);
-
-//    irDAGBuilder.addVertex(v7);
 
     final IREdge e1 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v1, v2);
     e1.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
@@ -175,76 +169,5 @@ public final class DAGConverterTest {
     final IREdge e6 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v4, v8);
     e6.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     e6.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
-
-//    final IREdge e7 = new IREdge(OneToOne, v7, v5);
-//    e7.setProperty(DataStoreProperty.of(MemoryStore));
-//    e7.setProperty(Attribute.Key.PullOrPush, DataFlowProperty.Value.Push));
-//
-//    final IREdge e8 = new IREdge(OneToOne, v5, v8);
-//    e8.setProperty(DataStoreProperty.of(MemoryStore));
-//    e8.setProperty(Attribute.Key.PullOrPush, DataFlowProperty.Value.Pull));
-
-    // Stage 1 = {v1, v2, v3}
-    irDAGBuilder.connectVertices(e1);
-    irDAGBuilder.connectVertices(e2);
-
-    // Stage 2 = {v4}
-    irDAGBuilder.connectVertices(e3);
-
-    // Stage 3 = {v7}
-    // Commented out since SimpleRuntime does not yet support multi-input.
-//    physicalDAGBuilder.createNewStage();
-//    physicalDAGBuilder.addVertex(v7);
-
-    // Stage 4 = {v5, v8}
-    irDAGBuilder.connectVertices(e4);
-    irDAGBuilder.connectVertices(e6);
-
-    // Commented out since SimpleRuntime does not yet support multi-input.
-//    irDAGBuilder.connectVertices(e7);
-//    irDAGBuilder.connectVertices(e8);
-
-    // Stage 5 = {v6}
-    irDAGBuilder.connectVertices(e5);
-
-    final DAG<IRVertex, IREdge> irDAG = new TestPolicy().runCompileTimeOptimization(irDAGBuilder.build(),
-        DAG.EMPTY_DAG_DIRECTORY);
-    final DAG<Stage, StageEdge> logicalDAG = physicalPlanGenerator.stagePartitionIrDAG(irDAG);
-
-    // Test Logical DAG
-    final List<Stage> sortedLogicalDAG = logicalDAG.getTopologicalSort();
-    final Stage stage1 = sortedLogicalDAG.get(0);
-    final Stage stage2 = sortedLogicalDAG.get(1);
-    final Stage stage3 = sortedLogicalDAG.get(2);
-    final Stage stage4 = sortedLogicalDAG.get(3);
-    final Stage stage5 = sortedLogicalDAG.get(3);
-
-    // The following asserts depend on how stage partitioning is defined; test must be rewritten accordingly.
-//    assertEquals(logicalDAG.getVertices().size(), 5);
-//    assertEquals(logicalDAG.getIncomingEdgesOf(stage1).size(), 0);
-//    assertEquals(logicalDAG.getIncomingEdgesOf(stage2).size(), 1);
-//    assertEquals(logicalDAG.getIncomingEdgesOf(stage3).size(), 1);
-//    assertEquals(logicalDAG.getIncomingEdgesOf(stage4).size(), 1);
-//    assertEquals(logicalDAG.getOutgoingEdgesOf(stage1).size(), 2);
-//    assertEquals(logicalDAG.getOutgoingEdgesOf(stage2).size(), 0);
-//    assertEquals(logicalDAG.getOutgoingEdgesOf(stage3).size(), 1);
-//    assertEquals(logicalDAG.getOutgoingEdgesOf(stage4).size(), 0);
-
-    // Test Physical DAG
-
-//    final DAG<Stage, StageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
-//    final List<Stage> sortedPhysicalDAG = physicalDAG.getTopologicalSort();
-//    final Stage physicalStage1 = sortedPhysicalDAG.get(0);
-//    final Stage physicalStage2 = sortedPhysicalDAG.get(1);
-//    assertEquals(physicalDAG.getVertices().size(), 2);
-//    assertEquals(physicalDAG.getIncomingEdgesOf(physicalStage1).size(), 0);
-//    assertEquals(physicalDAG.getIncomingEdgesOf(physicalStage2).size(), 1);
-//    assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage1).size(), 1);
-//    assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage2).size(), 0);
-//
-//    final List<Task> taskList1 = physicalStage1.getTaskList();
-//    final List<Task> taskList2 = physicalStage2.getTaskList();
-//    assertEquals(taskList1.size(), 3);
-//    assertEquals(taskList2.size(), 2);
   }
 }

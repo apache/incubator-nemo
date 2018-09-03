@@ -35,13 +35,14 @@ public final class IdManager {
    * @return a new operator ID.
    */
   public static String newVertexId() {
-    return "vertex" + (isDriver ? "-d" : "-") + vertexId.getAndIncrement();
+    return "vertex" + (isDriver ? "(d)" : "") + vertexId.getAndIncrement();
   }
+
   /**
    * @return a new edge ID.
    */
   public static String newEdgeId() {
-    return "edge" + (isDriver ? "-d" : "-") + edgeId.getAndIncrement();
+    return "edge" + (isDriver ? "(d)" : "") + edgeId.getAndIncrement();
   }
 
   /**

@@ -19,8 +19,8 @@
 package edu.snu.nemo.runtime.common.eventhandler;
 
 import edu.snu.nemo.common.eventhandler.RuntimeEvent;
-import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 
 /**
  * An event for triggering dynamic optimization.
@@ -30,7 +30,7 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
   private final Object dynOptData;
   private final String taskId;
   private final String executorId;
-  private final IREdge targetEdge;
+  private final StageEdge targetEdge;
 
   /**
    * Default constructor.
@@ -42,7 +42,7 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
                                   final Object dynOptData,
                                   final String taskId,
                                   final String executorId,
-                                  final IREdge targetEdge) {
+                                  final StageEdge targetEdge) {
     this.physicalPlan = physicalPlan;
     this.taskId = taskId;
     this.dynOptData = dynOptData;
@@ -75,7 +75,7 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
     return this.dynOptData;
   }
 
-  public IREdge getTargetEdge() {
+  public StageEdge getTargetEdge() {
     return this.targetEdge;
   }
 }

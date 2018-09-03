@@ -52,8 +52,7 @@ public final class PolicyImpl implements Policy {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory)
-      throws Exception {
+  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory) {
     LOG.info("Launch Compile-time optimizations");
     return process(dag, compileTimePasses.iterator(), dagDirectory);
   }
@@ -68,7 +67,7 @@ public final class PolicyImpl implements Policy {
    */
   private static DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag,
                                                final Iterator<CompileTimePass> passes,
-                                               final String dagDirectory) throws Exception {
+                                               final String dagDirectory) {
     if (passes.hasNext()) {
       final CompileTimePass passToApply = passes.next();
       final DAG<IRVertex, IREdge> processedDAG;

@@ -17,16 +17,18 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.collect.Sets;
 import edu.snu.nemo.common.Pair;
+import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
 import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.state.TaskState;
+import edu.snu.nemo.runtime.master.PlanAppender;
 import edu.snu.nemo.runtime.master.DataSkewDynOptDataHandler;
 import edu.snu.nemo.runtime.master.DynOptDataHandler;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
@@ -35,6 +37,7 @@ import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.LoggerFactory;
 
@@ -42,8 +45,8 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 
@@ -64,6 +67,7 @@ public final class BatchScheduler implements Scheduler {
   private final TaskDispatcher taskDispatcher;
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorRegistry executorRegistry;
+  private final PlanStateManager planStateManager;
 
   /**
    * Other necessary components of this {@link edu.snu.nemo.runtime.master.RuntimeMaster}.
@@ -74,8 +78,6 @@ public final class BatchScheduler implements Scheduler {
   /**
    * The below variables depend on the submitted plan to execute.
    */
-  private PhysicalPlan physicalPlan;
-  private PlanStateManager planStateManager;
   private List<List<Stage>> sortedScheduleGroups;
   private List<DynOptDataHandler> dynOptDataHandlers;
 
@@ -85,7 +87,8 @@ public final class BatchScheduler implements Scheduler {
                          final BlockManagerMaster blockManagerMaster,
                          final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                          final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
-                         final ExecutorRegistry executorRegistry) {
+                         final ExecutorRegistry executorRegistry,
+                         final PlanStateManager planStateManager) {
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.blockManagerMaster = blockManagerMaster;
@@ -93,53 +96,78 @@ public final class BatchScheduler implements Scheduler {
     updatePhysicalPlanEventHandler.setScheduler(this);
     if (pubSubEventHandlerWrapper.getPubSubEventHandler() != null) {
       pubSubEventHandlerWrapper.getPubSubEventHandler()
-          .subscribe(updatePhysicalPlanEventHandler.getEventClass(), updatePhysicalPlanEventHandler);
+        .subscribe(updatePhysicalPlanEventHandler.getEventClass(), updatePhysicalPlanEventHandler);
     }
     this.executorRegistry = executorRegistry;
+    this.planStateManager = planStateManager;
     this.dynOptDataHandlers = new ArrayList<>();
     dynOptDataHandlers.add(new DataSkewDynOptDataHandler());
   }
 
   /**
+   * Schedules a given plan.
+   * If multiple physical plans are submitted, they will be appended and handled as a single plan.
+   * TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
+   *
    * @param submittedPhysicalPlan the physical plan to schedule.
-   * @param submittedPlanStateManager the state manager of the plan.
+   * @param maxScheduleAttempt    the max number of times this plan/sub-part of the plan should be attempted.
    */
   @Override
-  public void schedulePlan(final PhysicalPlan submittedPhysicalPlan, final PlanStateManager submittedPlanStateManager) {
-    LOG.info("Scheduled plan");
+  public void schedulePlan(final PhysicalPlan submittedPhysicalPlan,
+                           final int maxScheduleAttempt) {
+    LOG.info("Plan to schedule: {}", submittedPhysicalPlan.getPlanId());
 
-    this.physicalPlan = submittedPhysicalPlan;
-    this.planStateManager = submittedPlanStateManager;
-
-    taskDispatcher.run(this.planStateManager);
-    LOG.info("Plan to schedule: {}", this.physicalPlan.getId());
-
-    this.sortedScheduleGroups = this.physicalPlan.getStageDAG().getVertices().stream()
-        .collect(Collectors.groupingBy(Stage::getScheduleGroup))
-        .entrySet().stream()
-        .sorted(Map.Entry.comparingByKey())
-        .map(Map.Entry::getValue)
-        .collect(Collectors.toList());
+    if (!planStateManager.isInitialized()) {
+      // First scheduling.
+      taskDispatcher.run();
+      updatePlan(submittedPhysicalPlan, maxScheduleAttempt);
+      planStateManager.storeJSON("submitted");
+    } else {
+      // Append the submitted plan to the original plan.
+      final PhysicalPlan appendedPlan =
+        PlanAppender.appendPlan(planStateManager.getPhysicalPlan(), submittedPhysicalPlan);
+      updatePlan(appendedPlan, maxScheduleAttempt);
+      planStateManager.storeJSON("appended");
+    }
 
     doSchedule();
   }
 
   @Override
-  public void updatePlan(final String planId, final PhysicalPlan newPhysicalPlan) {
+  public void updatePlan(final PhysicalPlan newPhysicalPlan) {
     // update the physical plan in the scheduler.
     // NOTE: what's already been executed is not modified in the new physical plan.
-    this.physicalPlan = newPhysicalPlan;
+    // TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
+    updatePlan(newPhysicalPlan, planStateManager.getMaxScheduleAttempt());
+  }
+
+  /**
+   * Update the physical plan in the scheduler.
+   *
+   * @param newPhysicalPlan    the new physical plan to update.
+   * @param maxScheduleAttempt the maximum number of task scheduling attempt.
+   */
+  private void updatePlan(final PhysicalPlan newPhysicalPlan,
+                          final int maxScheduleAttempt) {
+    planStateManager.updatePlan(newPhysicalPlan, maxScheduleAttempt);
+    this.sortedScheduleGroups = newPhysicalPlan.getStageDAG().getVertices().stream()
+      .collect(Collectors.groupingBy(Stage::getScheduleGroup))
+      .entrySet().stream()
+      .sorted(Map.Entry.comparingByKey())
+      .map(Map.Entry::getValue)
+      .collect(Collectors.toList());
   }
 
   /**
    * Handles task state transition notifications sent from executors.
    * Note that we can receive notifications for previous task attempts, due to the nature of asynchronous events.
    * We ignore such late-arriving notifications, and only handle notifications for the current task attempt.
-   * @param executorId the id of the executor where the message was sent from.
-   * @param taskId whose state has changed
+   *
+   * @param executorId       the id of the executor where the message was sent from.
+   * @param taskId           whose state has changed
    * @param taskAttemptIndex of the task whose state has changed
-   * @param newState the state to change to
-   * @param vertexPutOnHold the ID of vertex that is put on hold. It is null otherwise.
+   * @param newState         the state to change to
+   * @param vertexPutOnHold  the ID of vertex that is put on hold. It is null otherwise.
    */
   public void onTaskStateReportFromExecutor(final String executorId,
                                             final String taskId,
@@ -147,73 +175,109 @@ public final class BatchScheduler implements Scheduler {
                                             final TaskState.State newState,
                                             @Nullable final String vertexPutOnHold,
                                             final TaskState.RecoverableTaskFailureCause failureCause) {
-    final int currentTaskAttemptIndex = planStateManager.getTaskAttempt(taskId);
+    // Do change state, as this notification is for the current task attempt.
+    planStateManager.onTaskStateChanged(taskId, newState);
+    switch (newState) {
+      case COMPLETE:
+        onTaskExecutionComplete(executorId, taskId);
+        break;
+      case SHOULD_RETRY:
+        // SHOULD_RETRY from an executor means that the task ran into a recoverable failure
+        onTaskExecutionFailedRecoverable(executorId, taskId, failureCause);
+        break;
+      case ON_HOLD:
+        onTaskExecutionOnHold(executorId, taskId);
+        break;
+      case FAILED:
+        throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The plan failed on Task #")
+          .append(taskId).append(" in Executor ").append(executorId).toString()));
+      case READY:
+      case EXECUTING:
+        throw new RuntimeException("The states READY/EXECUTING cannot occur at this point");
+      default:
+        throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + newState));
+    }
 
-    if (taskAttemptIndex == currentTaskAttemptIndex) {
-      // Do change state, as this notification is for the current task attempt.
-      planStateManager.onTaskStateChanged(taskId, newState);
-      switch (newState) {
-        case COMPLETE:
-          onTaskExecutionComplete(executorId, taskId);
-          break;
-        case SHOULD_RETRY:
-          // SHOULD_RETRY from an executor means that the task ran into a recoverable failure
-          onTaskExecutionFailedRecoverable(executorId, taskId, failureCause);
-          break;
-        case ON_HOLD:
-          onTaskExecutionOnHold(executorId, taskId);
-          break;
-        case FAILED:
-          throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The plan failed on Task #")
-              .append(taskId).append(" in Executor ").append(executorId).toString()));
-        case READY:
-        case EXECUTING:
-          throw new IllegalStateTransitionException(
-              new Exception("The states READY/EXECUTING cannot occur at this point"));
-        default:
-          throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + newState));
-      }
+    // Invoke doSchedule()
+    switch (newState) {
+      case COMPLETE:
+      case ON_HOLD:
+        // If the stage has completed
+        final String stageIdForTaskUponCompletion = RuntimeIdManager.getStageIdFromTaskId(taskId);
+        if (planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
+          if (!planStateManager.isPlanDone()) {
+            doSchedule();
+          }
+        }
+        break;
+      case SHOULD_RETRY:
+        // Do retry
+        doSchedule();
+        break;
+      default:
+        break;
+    }
 
-      // Invoke doSchedule()
-      switch (newState) {
-        case COMPLETE:
-        case ON_HOLD:
-          // If the stage has completed
-          final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
-          if (planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
-            if (!planStateManager.isPlanDone()) {
-              doSchedule();
+    // Invoke taskDispatcher.onExecutorSlotAvailable()
+    switch (newState) {
+      // These three states mean that a slot is made available.
+      case COMPLETE:
+      case ON_HOLD:
+      case SHOULD_RETRY:
+        taskDispatcher.onExecutorSlotAvailable();
+        break;
+      default:
+        break;
+    }
+  }
+
+  @Override
+  public void onSpeculativeExecutionCheck() {
+    MutableBoolean isNumOfCloneChanged = new MutableBoolean(false);
+
+    selectEarliestSchedulableGroup().ifPresent(scheduleGroup -> {
+      scheduleGroup.stream().map(Stage::getId).forEach(stageId -> {
+        final Stage stage = planStateManager.getPhysicalPlan().getStageDAG().getVertexById(stageId);
+
+        // Only if the ClonedSchedulingProperty is set...
+        stage.getPropertyValue(ClonedSchedulingProperty.class).ifPresent(cloneConf -> {
+          if (!cloneConf.isUpFrontCloning()) { // Upfront cloning is already handled.
+            final double fractionToWaitFor = cloneConf.getFractionToWaitFor();
+            final int parallelism = stage.getParallelism();
+            final Object[] completedTaskTimes = planStateManager.getCompletedTaskTimeListMs(stageId).toArray();
+
+            // Only after the fraction of the tasks are done...
+            // Delayed cloning (aggressive)
+            if (completedTaskTimes.length > 0
+              && completedTaskTimes.length >= Math.round(parallelism * fractionToWaitFor)) {
+              Arrays.sort(completedTaskTimes);
+              final long medianTime = (long) completedTaskTimes[completedTaskTimes.length / 2];
+              final double medianTimeMultiplier = cloneConf.getMedianTimeMultiplier();
+              final Map<String, Long> execTaskToTime = planStateManager.getExecutingTaskToRunningTimeMs(stageId);
+              for (final Map.Entry<String, Long> entry : execTaskToTime.entrySet()) {
+
+                // Only if the running task is considered a 'straggler'....
+                final long runningTime = entry.getValue();
+                if (runningTime > Math.round(medianTime * medianTimeMultiplier)) {
+                  final String taskId = entry.getKey();
+                  final boolean isCloned = planStateManager.setNumOfClones(
+                    stageId, RuntimeIdManager.getIndexFromTaskId(taskId), 2);
+                  if (isCloned) {
+                    LOG.info("Cloned {}, because its running time {} (ms) is bigger than {} tasks' "
+                        + "(median) {} (ms) * (multiplier) {}", taskId, runningTime, completedTaskTimes.length,
+                      medianTime, medianTimeMultiplier);
+                  }
+                  isNumOfCloneChanged.setValue(isCloned);
+                }
+              }
             }
           }
-          break;
-        case SHOULD_RETRY:
-          // Do retry
-          doSchedule();
-          break;
-        default:
-          break;
-      }
+        });
+      });
+    });
 
-      // Invoke taskDispatcher.onExecutorSlotAvailable()
-      switch (newState) {
-        // These three states mean that a slot is made available.
-        case COMPLETE:
-        case ON_HOLD:
-        case SHOULD_RETRY:
-          taskDispatcher.onExecutorSlotAvailable();
-          break;
-        default:
-          break;
-      }
-    } else if (taskAttemptIndex < currentTaskAttemptIndex) {
-      // Do not change state, as this report is from a previous task attempt.
-      // For example, the master can receive a notification that an executor has been removed,
-      // and then a notification that the task that was running in the removed executor has been completed.
-      // In this case, if we do not consider the attempt number, the state changes from SHOULD_RETRY to COMPLETED,
-      // which is illegal.
-      LOG.info("{} state change to {} arrived late, we will ignore this.", new Object[]{taskId, newState});
-    } else {
-      throw new SchedulingException(new Throwable("AttemptIdx for a task cannot be greater than its current index"));
+    if (isNumOfCloneChanged.booleanValue()) {
+      doSchedule(); // Do schedule the new clone.
     }
   }
 
@@ -236,6 +300,9 @@ public final class BatchScheduler implements Scheduler {
       return Pair.of(executor, ExecutorRegistry.ExecutorState.FAILED);
     });
 
+    // Blocks of the interrupted tasks are failed.
+    interruptedTasks.forEach(blockManagerMaster::onProducerTaskFailed);
+
     // Retry the interrupted tasks (and required parents)
     retryTasksAndRequiredParents(interruptedTasks);
 
@@ -254,7 +321,7 @@ public final class BatchScheduler implements Scheduler {
   /**
    * The main entry point for task scheduling.
    * This operation can be invoked at any point during job execution, as it is designed to be free of side-effects.
-   *
+   * <p>
    * These are the reasons why.
    * - We 'reset' {@link PendingTaskCollectionPointer}, and not 'add' new tasks to it
    * - We make {@link TaskDispatcher} dispatch only the tasks that are READY.
@@ -263,25 +330,21 @@ public final class BatchScheduler implements Scheduler {
     final Optional<List<Stage>> earliest = selectEarliestSchedulableGroup();
 
     if (earliest.isPresent()) {
-      // Get schedulable tasks.
       final List<Task> tasksToSchedule = earliest.get().stream()
-          .flatMap(stage -> selectSchedulableTasks(stage).stream())
-          .collect(Collectors.toList());
-
-      // We prefer (but not guarantee) to schedule the 'receiving' tasks first,
-      // assuming that tasks within a ScheduleGroup are connected with 'push' edges.
-      Collections.reverse(tasksToSchedule);
-
-      LOG.info("Scheduling some tasks in {}, which are in the same ScheduleGroup", tasksToSchedule.stream()
+        .flatMap(stage -> selectSchedulableTasks(stage).stream())
+        .collect(Collectors.toList());
+      if (!tasksToSchedule.isEmpty()) {
+        LOG.info("Scheduling some tasks in {}, which are in the same ScheduleGroup", tasksToSchedule.stream()
           .map(Task::getTaskId)
-          .map(RuntimeIdGenerator::getStageIdFromTaskId)
+          .map(RuntimeIdManager::getStageIdFromTaskId)
           .collect(Collectors.toSet()));
 
-      // Set the pointer to the schedulable tasks.
-      pendingTaskCollectionPointer.setToOverwrite(tasksToSchedule);
+        // Set the pointer to the schedulable tasks.
+        pendingTaskCollectionPointer.setToOverwrite(tasksToSchedule);
 
-      // Notify the dispatcher that a new collection is available.
-      taskDispatcher.onNewPendingTaskCollectionAvailable();
+        // Notify the dispatcher that a new collection is available.
+        taskDispatcher.onNewPendingTaskCollectionAvailable();
+      }
     } else {
       LOG.info("Skipping this round as no ScheduleGroup is schedulable.");
     }
@@ -293,59 +356,46 @@ public final class BatchScheduler implements Scheduler {
     }
 
     return sortedScheduleGroups.stream()
-        .filter(scheduleGroup -> scheduleGroup.stream()
-            .map(Stage::getId)
-            .map(planStateManager::getStageState)
-            .anyMatch(state -> state.equals(StageState.State.INCOMPLETE))) // any incomplete stage in the group
-        .findFirst(); // selects the one with the smallest scheduling group index.
+      .filter(scheduleGroup -> scheduleGroup.stream()
+        .map(Stage::getId)
+        .map(planStateManager::getStageState)
+        .anyMatch(state -> state.equals(StageState.State.INCOMPLETE))) // any incomplete stage in the group
+      .findFirst(); // selects the one with the smallest scheduling group index.
   }
 
   private List<Task> selectSchedulableTasks(final Stage stageToSchedule) {
-    final List<StageEdge> stageIncomingEdges =
-        physicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
-    final List<StageEdge> stageOutgoingEdges =
-        physicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
-
-    final List<String> taskIdsToSchedule = new LinkedList<>();
-    for (final String taskId : stageToSchedule.getTaskIds()) {
-      final TaskState.State taskState = planStateManager.getTaskState(taskId);
-
-      switch (taskState) {
-        // Don't schedule these.
-        case COMPLETE:
-        case EXECUTING:
-        case ON_HOLD:
-          break;
-
-        // These are schedulable.
-        case SHOULD_RETRY:
-          planStateManager.onTaskStateChanged(taskId, TaskState.State.READY);
-        case READY:
-          taskIdsToSchedule.add(taskId);
-          break;
-
-        // This shouldn't happen.
-        default:
-          throw new SchedulingException(new Throwable("Detected a FAILED Task"));
+    if (stageToSchedule.getPropertyValue(IgnoreSchedulingTempDataReceiverProperty.class).orElse(false)) {
+      // Ignore ghost stage.
+      for (final String taskId : planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId())) {
+        planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
+        planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
       }
+
+      return Collections.emptyList();
     }
+
+    final List<StageEdge> stageIncomingEdges =
+      planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
+    final List<StageEdge> stageOutgoingEdges =
+      planStateManager.getPhysicalPlan().getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
 
     // Create and return tasks.
     final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
+
+    final List<String> taskIdsToSchedule = planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId());
     final List<Task> tasks = new ArrayList<>(taskIdsToSchedule.size());
     taskIdsToSchedule.forEach(taskId -> {
-      blockManagerMaster.onProducerTaskScheduled(taskId); // Notify the block manager early for push edges.
-      final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
-      final int attemptIdx = planStateManager.getTaskAttempt(taskId);
+      final Set<String> blockIds = getOutputBlockIds(taskId);
+      blockManagerMaster.onProducerTaskScheduled(taskId, blockIds);
+      final int taskIdx = RuntimeIdManager.getIndexFromTaskId(taskId);
       tasks.add(new Task(
-          physicalPlan.getId(),
-          taskId,
-          attemptIdx,
-          stageToSchedule.getExecutionProperties(),
-          stageToSchedule.getSerializedIRDAG(),
-          stageIncomingEdges,
-          stageOutgoingEdges,
-          vertexIdToReadables.get(taskIdx)));
+        planStateManager.getPhysicalPlan().getPlanId(),
+        taskId,
+        stageToSchedule.getExecutionProperties(),
+        stageToSchedule.getSerializedIRDAG(),
+        stageIncomingEdges,
+        stageOutgoingEdges,
+        vertexIdToReadables.get(taskIdx)));
     });
     return tasks;
   }
@@ -355,41 +405,44 @@ public final class BatchScheduler implements Scheduler {
   /**
    * Action after task execution has been completed.
    * Note this method should not be invoked when the previous state of the task is ON_HOLD.
+   *
    * @param executorId id of the executor.
-   * @param taskId the ID of the task completed.
+   * @param taskId     the ID of the task completed.
    */
   private void onTaskExecutionComplete(final String executorId,
                                        final String taskId) {
-    LOG.debug("{} completed in {}", new Object[]{taskId, executorId});
+    LOG.debug("{} completed in {}", taskId, executorId);
     executorRegistry.updateExecutor(executorId, (executor, state) -> {
       executor.onTaskExecutionComplete(taskId);
       return Pair.of(executor, state);
     });
   }
 
-  public IREdge getEdgeToOptimize(final String taskId) {
+  /**
+   * @param taskId the metric collected task ID.
+   * @return the edge to optimize.
+   */
+  private StageEdge getEdgeToOptimize(final String taskId) {
     // Get a stage including the given task
-    final Stage stagePutOnHold = physicalPlan.getStageDAG().getVertices().stream()
-        .filter(stage -> stage.getTaskIds().contains(taskId)).findFirst().get();
+    final Stage stagePutOnHold = planStateManager.getPhysicalPlan().getStageDAG().getVertices().stream()
+      .filter(stage -> stage.getId().equals(RuntimeIdManager.getStageIdFromTaskId(taskId)))
+      .findFirst()
+      .orElseThrow(() -> new RuntimeException());
 
     // Get outgoing edges of that stage with MetricCollectionProperty
-    List<StageEdge> stageEdges = physicalPlan.getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
-    IREdge targetEdge = null;
+    List<StageEdge> stageEdges = planStateManager.getPhysicalPlan().getStageDAG().getOutgoingEdgesOf(stagePutOnHold);
     for (StageEdge edge : stageEdges) {
-      final IRVertex srcIRVertex = edge.getSrcIRVertex();
-      final IRVertex dstIRVertex = edge.getDstIRVertex();
-      targetEdge = physicalPlan.getIrDAG().getEdgeBetween(srcIRVertex.getId(), dstIRVertex.getId());
-      if (MetricCollectionProperty.Value.DataSkewRuntimePass
-          .equals(targetEdge.getPropertyValue(MetricCollectionProperty.class).get())) {
-        break;
+      if (edge.getExecutionProperties().containsKey(MetricCollectionProperty.class)) {
+        return edge;
       }
     }
 
-    return targetEdge;
+    return null;
   }
 
   /**
    * Action for after task execution is put on hold.
+   *
    * @param executorId       the ID of the executor.
    * @param taskId           the ID of the task.
    */
@@ -400,31 +453,32 @@ public final class BatchScheduler implements Scheduler {
       executor.onTaskExecutionComplete(taskId);
       return Pair.of(executor, state);
     });
-    final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
+    final String stageIdForTaskUponCompletion = RuntimeIdManager.getStageIdFromTaskId(taskId);
 
     final boolean stageComplete =
-        planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
+      planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
 
-    final IREdge targetEdge = getEdgeToOptimize(taskId);
+    final StageEdge targetEdge = getEdgeToOptimize(taskId);
     if (targetEdge == null) {
       throw new RuntimeException("No edges specified for data skew optimization");
     }
 
     if (stageComplete) {
       final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
-          .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
-          .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
+        .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
+        .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
       pubSubEventHandlerWrapper.getPubSubEventHandler()
-          .onNext(new DynamicOptimizationEvent(physicalPlan, dynOptDataHandler.getDynOptData(),
-              taskId, executorId, targetEdge));
+        .onNext(new DynamicOptimizationEvent(planStateManager.getPhysicalPlan(), dynOptDataHandler.getDynOptData(),
+          taskId, executorId, targetEdge));
     }
   }
 
   /**
    * Action for after task execution has failed but it's recoverable.
-   * @param executorId    the ID of the executor
-   * @param taskId   the ID of the task
-   * @param failureCause  the cause of failure
+   *
+   * @param executorId   the ID of the executor
+   * @param taskId       the ID of the task
+   * @param failureCause the cause of failure
    */
   private void onTaskExecutionFailedRecoverable(final String executorId,
                                                 final String taskId,
@@ -456,51 +510,88 @@ public final class BatchScheduler implements Scheduler {
     final Set<String> tasksToRetry = Sets.union(tasks, requiredParents);
     LOG.info("Will be retried: {}", tasksToRetry);
     tasksToRetry.forEach(
-        taskToReExecute -> planStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY));
+      taskToReExecute -> planStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY));
   }
 
   private Set<String> recursivelyGetParentTasksForLostBlocks(final Set<String> children) {
     if (children.isEmpty()) {
       return Collections.emptySet();
     }
+    final DAG<Stage, StageEdge> stageDAG = planStateManager.getPhysicalPlan().getStageDAG();
 
-    final Set<String> selectedParentTasks = children.stream()
-        .flatMap(child -> getParentTasks(child).stream())
-        .filter(parent -> blockManagerMaster.getIdsOfBlocksProducedBy(parent).stream()
-            .map(blockManagerMaster::getBlockState)
-            .anyMatch(blockState -> blockState.equals(BlockState.State.NOT_AVAILABLE)) // If a block is missing
-        )
-        .collect(Collectors.toSet());
+    final Map<String, StageEdge> idToIncomingEdges = children.stream()
+      .map(RuntimeIdManager::getStageIdFromTaskId)
+      .flatMap(stageId -> stageDAG.getIncomingEdgesOf(stageId).stream())
+      // Ignore duplicates with the mergeFunction in toMap(_,_,mergeFunction)
+      .collect(Collectors.toMap(StageEdge::getId, Function.identity(), (l, r) -> l));
+
+    final Set<String> parentsWithLostBlocks = children.stream()
+      .flatMap(child -> getInputBlockIds(child).stream()) // child task id -> parent block ids
+      .map(RuntimeIdManager::getWildCardFromBlockId) // parent block id -> parent block wildcard
+      .collect(Collectors.toSet()).stream() // remove duplicate wildcards
+      .filter(parentBlockWildcard -> // lost block = no matching AVAILABLE block attempt for the wildcard
+        blockManagerMaster.getBlockHandlers(parentBlockWildcard, BlockState.State.AVAILABLE).isEmpty())
+      .flatMap(lostParentBlockWildcard -> {
+        // COMPLETE task attempts of the lostParentBlockWildcard must become SHOULD_RETRY
+        final String inEdgeId = RuntimeIdManager.getRuntimeEdgeIdFromBlockId(lostParentBlockWildcard);
+        final String parentStageId = idToIncomingEdges.get(inEdgeId).getSrc().getId();
+        final int parentTaskIndex = RuntimeIdManager.getTaskIndexFromBlockId(lostParentBlockWildcard);
+        return planStateManager.getAllTaskAttemptsOfStage(parentStageId)
+          .stream()
+          .filter(taskId -> RuntimeIdManager.getStageIdFromTaskId(taskId).equals(parentStageId)
+            && RuntimeIdManager.getIndexFromTaskId(taskId) == parentTaskIndex)
+          // COMPLETE -> SHOULD_RETRY
+          .filter(taskId -> planStateManager.getTaskState(taskId).equals(TaskState.State.COMPLETE));
+      })
+      .collect(Collectors.toSet());
+
 
     // Recursive call
-    return Sets.union(selectedParentTasks, recursivelyGetParentTasksForLostBlocks(selectedParentTasks));
+    return Sets.union(parentsWithLostBlocks, recursivelyGetParentTasksForLostBlocks(parentsWithLostBlocks));
   }
 
-  private Set<String> getParentTasks(final String childTaskId) {
-    final String stageIdOfChildTask = RuntimeIdGenerator.getStageIdFromTaskId(childTaskId);
-    return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
-        .stream()
-        .flatMap(inStageEdge -> {
-          final List<String> tasksOfParentStage = inStageEdge.getSrc().getTaskIds();
-          switch (inStageEdge.getDataCommunicationPattern()) {
-            case Shuffle:
-            case BroadCast:
-              // All of the parent stage's tasks are parents
-              return tasksOfParentStage.stream();
-            case OneToOne:
-              // Only one of the parent stage's tasks is a parent
-              return Stream.of(tasksOfParentStage.get(RuntimeIdGenerator.getIndexFromTaskId(childTaskId)));
-            default:
-              throw new IllegalStateException(inStageEdge.toString());
-          }
-        })
-        .collect(Collectors.toSet());
+  private Set<String> getOutputBlockIds(final String taskId) {
+    return planStateManager.getPhysicalPlan().getStageDAG()
+      .getOutgoingEdgesOf(RuntimeIdManager.getStageIdFromTaskId(taskId))
+      .stream()
+      .map(stageEdge -> RuntimeIdManager.generateBlockId(stageEdge.getId(), taskId))
+      .collect(Collectors.toSet()); // ids of blocks this task will produce
   }
 
+  private Set<String> getInputBlockIds(final String childTaskId) {
+    final String stageIdOfChildTask = RuntimeIdManager.getStageIdFromTaskId(childTaskId);
+    return planStateManager.getPhysicalPlan().getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
+      .stream()
+      .flatMap(inStageEdge -> {
+        final Set<String> parentTaskIds = planStateManager.getAllTaskAttemptsOfStage(inStageEdge.getSrc().getId());
+        switch (inStageEdge.getDataCommunicationPattern()) {
+          case Shuffle:
+          case BroadCast:
+            // All of the parent stage's tasks
+            return parentTaskIds.stream()
+              .map(parentTaskId -> RuntimeIdManager.generateBlockId(inStageEdge.getId(), parentTaskId));
+          case OneToOne:
+            // Same-index tasks of the parent stage
+            return parentTaskIds.stream()
+              .filter(parentTaskId ->
+                RuntimeIdManager.getIndexFromTaskId(parentTaskId) == RuntimeIdManager.getIndexFromTaskId(childTaskId))
+              .map(parentTaskId -> RuntimeIdManager.generateBlockId(inStageEdge.getId(), parentTaskId));
+          default:
+            throw new IllegalStateException(inStageEdge.toString());
+        }
+      })
+      .collect(Collectors.toSet());
+  }
+
+  /**
+   * Update the data for dynamic optimization.
+   *
+   * @param dynOptData the data to update.
+   */
   public void updateDynOptData(final Object dynOptData) {
     final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
-        .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
-        .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
+
+      .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
     dynOptDataHandler.updateDynOptData(dynOptData);
   }
 }

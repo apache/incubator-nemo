@@ -17,11 +17,14 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceLocalityProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.Task;
+import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -30,6 +33,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 /**
  * This policy tries to pick the executors where the corresponding source or intermediate data for a task reside.
@@ -37,47 +41,48 @@ import java.util.concurrent.ExecutionException;
 @ThreadSafe
 @DriverSide
 @AssociatedProperty(ResourceLocalityProperty.class)
-public final class SourceLocationAwareSchedulingConstraint implements SchedulingConstraint {
+public final class LocalitySchedulingConstraint implements SchedulingConstraint {
   private final BlockManagerMaster blockManagerMaster;
 
   @Inject
-  private SourceLocationAwareSchedulingConstraint(final BlockManagerMaster blockManagerMaster) {
+  private LocalitySchedulingConstraint(final BlockManagerMaster blockManagerMaster) {
     this.blockManagerMaster = blockManagerMaster;
   }
 
   /**
-   * Find the location of the intermediate data for a task.
+   * Find the locations of the intermediate data for a task.
    * It is only possible if the task receives only one input edge with One-to-One communication pattern, and
    * the location of the input data is known.
    *
    * @param task the task to schedule.
-   * @return the intermediate data location.
+   * @return the intermediate data locations, empty if none exists.
    */
-  private Optional<String> getIntermediateDataLocation(final Task task) {
+  private List<String> getIntermediateDataLocations(final Task task) {
     if (task.getTaskIncomingEdges().size() == 1) {
       final StageEdge physicalStageEdge = task.getTaskIncomingEdges().get(0);
       if (CommunicationPatternProperty.Value.OneToOne.equals(
-          physicalStageEdge.getPropertyValue(CommunicationPatternProperty.class)
-              .orElseThrow(() -> new RuntimeException("No comm pattern!")))) {
-        final String blockIdToRead =
-            RuntimeIdGenerator.generateBlockId(physicalStageEdge.getId(),
-                RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId()));
-        final BlockManagerMaster.BlockLocationRequestHandler locationHandler =
-            blockManagerMaster.getBlockLocationHandler(blockIdToRead);
-        if (locationHandler.getLocationFuture().isDone()) { // if the location is known.
-          try {
-            final String location = locationHandler.getLocationFuture().get();
-            return Optional.of(location);
-          } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
-          } catch (final ExecutionException e) {
-            throw new RuntimeException(e);
-          }
-        }
+        physicalStageEdge.getPropertyValue(CommunicationPatternProperty.class)
+          .orElseThrow(() -> new RuntimeException("No comm pattern!")))) {
+        final Optional<DuplicateEdgeGroupPropertyValue> dupProp =
+          physicalStageEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
+        final String representativeEdgeId = dupProp.isPresent()
+          ? dupProp.get().getRepresentativeEdgeId()
+          : physicalStageEdge.getId();
+
+        final String blockIdToRead = RuntimeIdManager.generateBlockId(representativeEdgeId, task.getTaskId());
+        return blockManagerMaster.getBlockHandlers(blockIdToRead, BlockState.State.AVAILABLE)
+          .stream()
+          .map(handler -> {
+            try {
+              return handler.getLocationFuture().get();
+            } catch (InterruptedException | ExecutionException e) {
+              throw new RuntimeException(e);
+            }
+          })
+          .collect(Collectors.toList());
       }
     }
-    return Optional.empty();
+    return Collections.emptyList();
   }
 
   /**
@@ -85,7 +90,7 @@ public final class SourceLocationAwareSchedulingConstraint implements Scheduling
    * @return Set of source locations from source tasks in {@code taskDAG}
    * @throws Exception for any exception raised during querying source locations for a readable
    */
-  private static Set<String> getSourceLocations(final Collection<Readable> readables) throws Exception {
+  private static Set<String> getSourceDataLocations(final Collection<Readable> readables) throws Exception {
     final List<String> sourceLocations = new ArrayList<>();
     for (final Readable readable : readables) {
       sourceLocations.addAll(readable.getLocations());
@@ -95,10 +100,11 @@ public final class SourceLocationAwareSchedulingConstraint implements Scheduling
 
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    if (task.getTaskIncomingEdges().isEmpty()) { // Source task
+    if (task.getTaskIncomingEdges().isEmpty()) {
+      // Source task
       final Set<String> sourceLocations;
       try {
-        sourceLocations = getSourceLocations(task.getIrVertexIdToReadable().values());
+        sourceLocations = getSourceDataLocations(task.getIrVertexIdToReadable().values());
       } catch (final UnsupportedOperationException e) {
         return true;
       } catch (final Exception e) {
@@ -110,13 +116,15 @@ public final class SourceLocationAwareSchedulingConstraint implements Scheduling
       }
 
       return sourceLocations.contains(executor.getNodeName());
-    } else { // Non-source task.
-      final Optional<String> optionalIntermediateLoc = getIntermediateDataLocation(task);
-
-      if (getIntermediateDataLocation(task).isPresent()) {
-        return optionalIntermediateLoc.get().equals(executor.getExecutorId());
-      } else {
+    } else {
+      // Non-source task.
+      final List<String> intermediateLocations = getIntermediateDataLocations(task);
+      if (intermediateLocations.isEmpty()) {
+        // Since there is no known location, we just schedule the task to any executor.
         return true;
+      } else {
+        // There is a known location(s), so we schedule to it(them).
+        return intermediateLocations.contains(executor.getExecutorId());
       }
     }
   }

@@ -15,10 +15,11 @@
  */
 package edu.snu.nemo.runtime.master;
 
+import com.google.protobuf.ByteString;
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -38,7 +39,6 @@ import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.annotations.Parameter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHandler;
 import org.slf4j.Logger;
@@ -48,6 +48,7 @@ import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.inject.Inject;
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -74,19 +75,20 @@ public final class RuntimeMaster {
   private static final int DAG_LOGGING_PERIOD = 3000;
   private static final int METRIC_ARRIVE_TIMEOUT = 10000;
   private static final int REST_SERVER_PORT = 10101;
+  private static final int SPECULATION_CHECKING_PERIOD_MS = 100;
 
   private final ExecutorService runtimeMasterThread;
+  private final ScheduledExecutorService speculativeTaskCloningThread;
+
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
-  private final BlockManagerMaster blockManagerMaster;
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
-  private final MetricStore metricStore;
   private final ClientRPC clientRPC;
   private final MetricManagerMaster metricManagerMaster;
+  private final PlanStateManager planStateManager;
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
-  private final String dagDirectory;
   private final Set<IRVertex> irVertices;
   private final AtomicInteger resourceRequestCount;
   private CountDownLatch metricCountDownLatch;
@@ -96,33 +98,40 @@ public final class RuntimeMaster {
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
                         final ContainerManager containerManager,
-                        final BlockManagerMaster blockManagerMaster,
                         final MetricMessageHandler metricMessageHandler,
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
                         final MetricManagerMaster metricManagerMaster,
-                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
+                        final PlanStateManager planStateManager) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
     this.runtimeMasterThread =
         Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster thread"));
+
+    // Check for speculative execution every second.
+    this.speculativeTaskCloningThread = Executors
+      .newSingleThreadScheduledExecutor(runnable -> new Thread(runnable, "SpeculativeTaskCloning thread"));
+    this.speculativeTaskCloningThread.scheduleAtFixedRate(
+      () -> this.runtimeMasterThread.submit(scheduler::onSpeculativeExecutionCheck),
+      SPECULATION_CHECKING_PERIOD_MS,
+      SPECULATION_CHECKING_PERIOD_MS,
+      TimeUnit.MILLISECONDS);
+
     this.scheduler = scheduler;
     this.containerManager = containerManager;
-    this.blockManagerMaster = blockManagerMaster;
     this.metricMessageHandler = metricMessageHandler;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
         .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.clientRPC = clientRPC;
     this.metricManagerMaster = metricManagerMaster;
-    this.dagDirectory = dagDirectory;
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
-    this.metricStore = MetricStore.getStore();
     this.metricServer = startRestMetricServer();
+    this.planStateManager = planStateManager;
   }
 
   private Server startRestMetricServer() {
@@ -148,8 +157,9 @@ public final class RuntimeMaster {
 
   /**
    * Submits the {@link PhysicalPlan} to Runtime.
+   * At now, we are assuming that a single job submit multiple plans.
    *
-   * @param plan to execute
+   * @param plan               to execute
    * @param maxScheduleAttempt the max number of times this plan/sub-part of the plan should be attempted.
    */
   public Pair<PlanStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
@@ -157,10 +167,8 @@ public final class RuntimeMaster {
     final Callable<Pair<PlanStateManager, ScheduledExecutorService>> planExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
-        blockManagerMaster.initialize(plan);
-        final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, maxScheduleAttempt);
-        scheduler.schedulePlan(plan, planStateManager);
-        final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(planStateManager);
+        scheduler.schedulePlan(plan, maxScheduleAttempt);
+        final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging();
         return Pair.of(planStateManager, dagLoggingExecutor);
       } catch (Exception e) {
         throw new RuntimeException(e);
@@ -173,7 +181,13 @@ public final class RuntimeMaster {
     }
   }
 
+  /**
+   * Terminates the RuntimeMaster.
+   */
   public void terminate() {
+    // No need to speculate anymore
+    speculativeTaskCloningThread.shutdown();
+
     // send metric flush request to all executors
     metricManagerMaster.sendMetricFlushRequest();
     try {
@@ -186,6 +200,7 @@ public final class RuntimeMaster {
       // clean up state...
       Thread.currentThread().interrupt();
     }
+
     runtimeMasterThread.execute(() -> {
       scheduler.terminate();
       try {
@@ -207,6 +222,11 @@ public final class RuntimeMaster {
     // Do not shutdown runtimeMasterThread. We need it to clean things up.
   }
 
+  /**
+   * Requests a container with resource specification.
+   *
+   * @param resourceSpecificationString the resource specification.
+   */
   public void requestContainer(final String resourceSpecificationString) {
     final Future<?> containerRequestEventResult = runtimeMasterThread.submit(() -> {
       try {
@@ -311,6 +331,25 @@ public final class RuntimeMaster {
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
+        case RequestBroadcastVariable:
+          final Serializable broadcastId =
+            SerializationUtils.deserialize(message.getRequestbroadcastVariableMsg().getBroadcastId().toByteArray());
+          final Object broadcastVariable = BroadcastManagerMaster.getBroadcastVariable(broadcastId);
+          if (broadcastVariable == null) {
+            throw new IllegalStateException(broadcastId.toString());
+          }
+          messageContext.reply(
+            ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.InMasterBroadcastVariable)
+              .setBroadcastVariableMsg(ControlMessage.InMasterBroadcastVariableMessage.newBuilder()
+                .setRequestId(message.getId())
+                // TODO #206: Efficient Broadcast Variable Serialization
+                .setVariable(ByteString.copyFrom(SerializationUtils.serialize((Serializable) broadcastVariable)))
+                .build())
+              .build());
+          break;
         default:
           throw new IllegalMessageException(
               new Exception("This message should not be requested to Master :" + message.getType()));
@@ -399,17 +438,15 @@ public final class RuntimeMaster {
 
   /**
    * Schedules a periodic DAG logging thread.
-   * @param planStateManager for the plan the DAG should be logged.
    * TODO #20: RESTful APIs to Access Job State and Metric.
+   *
    * @return the scheduled executor service.
    */
-  private ScheduledExecutorService scheduleDagLogging(final PlanStateManager planStateManager) {
+  private ScheduledExecutorService scheduleDagLogging() {
     final ScheduledExecutorService dagLoggingExecutor = Executors.newSingleThreadScheduledExecutor();
     dagLoggingExecutor.scheduleAtFixedRate(new Runnable() {
-      private int dagLogFileIndex = 0;
-
       public void run() {
-        planStateManager.storeJSON(dagDirectory, String.valueOf(dagLogFileIndex++));
+        planStateManager.storeJSON("periodic");
       }
     }, DAG_LOGGING_PERIOD, DAG_LOGGING_PERIOD, TimeUnit.MILLISECONDS);
 

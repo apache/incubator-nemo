@@ -21,7 +21,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternPropert
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.common.HashRange;
 import edu.snu.nemo.common.KeyRange;
 import edu.snu.nemo.runtime.common.plan.Stage;
@@ -46,6 +46,7 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({ExecutorRepresenter.class, Task.class, Stage.class, HashRange.class,
 IRVertex.class, IREdge.class})
 public final class SkewnessAwareSchedulingConstraintTest {
+  private final static int FIRST_ATTEMPT = 0;
 
   private static StageEdge mockStageEdge(final int numSkewedHashRange,
                                          final int numTotalHashRange) {
@@ -69,15 +70,15 @@ public final class SkewnessAwareSchedulingConstraintTest {
     final IREdge dummyIREdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, srcMockVertex, dstMockVertex);
     dummyIREdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(taskIdxToKeyRange)));
-    final StageEdge dummyEdge = new StageEdge("Edge-0", dummyIREdge.getExecutionProperties(),
-        srcMockVertex, dstMockVertex, srcMockStage, dstMockStage, false);
+    final StageEdge dummyEdge = new StageEdge("Edge0", dummyIREdge.getExecutionProperties(),
+        srcMockVertex, dstMockVertex, srcMockStage, dstMockStage);
 
     return dummyEdge;
   }
 
   private static Task mockTask(final int taskIdx, final List<StageEdge> inEdges) {
     final Task task = mock(Task.class);
-    when(task.getTaskId()).thenReturn(RuntimeIdGenerator.generateTaskId(taskIdx, "Stage-0"));
+    when(task.getTaskId()).thenReturn(RuntimeIdManager.generateTaskId("Stage0", taskIdx, FIRST_ATTEMPT));
     when(task.getTaskIncomingEdges()).thenReturn(inEdges);
     return task;
   }

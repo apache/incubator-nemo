@@ -17,6 +17,7 @@ package edu.snu.nemo.common.dag;
 
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -57,6 +58,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
 
   /**
    * Constructor of DAGBuilder with a DAG to start from.
+   *
    * @param dag to start the builder from.
    */
   public DAGBuilder(final DAG<V, E> dag) {
@@ -67,6 +69,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
 
   /**
    * Add vertex to the builder.
+   *
    * @param v vertex to add.
    * @return the builder.
    */
@@ -76,11 +79,13 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     outgoingEdges.putIfAbsent(v, new HashSet<>());
     return this;
   }
+
   /**
    * Add vertex to the builder, with assignedLoopVertex and stackDepth information.
-   * @param v vertex to add.
+   *
+   * @param v                  vertex to add.
    * @param assignedLoopVertex the assigned, wrapping loop vertex.
-   * @param stackDepth the stack depth of the loop vertex.
+   * @param stackDepth         the stack depth of the loop vertex.
    * @return the builder.
    */
   private DAGBuilder<V, E> addVertex(final V v, final LoopVertex assignedLoopVertex, final Integer stackDepth) {
@@ -89,9 +94,11 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     this.loopStackDepthMap.put(v, stackDepth);
     return this;
   }
+
   /**
    * Add vertex to the builder, using the LoopVertex stack.
-   * @param v vertex to add.
+   *
+   * @param v               vertex to add.
    * @param loopVertexStack LoopVertex stack to retrieve the information from.
    * @return the builder.
    */
@@ -103,9 +110,11 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     }
     return this;
   }
+
   /**
    * Add vertex to the builder, using the information from the given DAG.
-   * @param v vertex to add.
+   *
+   * @param v   vertex to add.
    * @param dag DAG to observe and get the LoopVertex-related information from.
    * @return the builder.
    */
@@ -120,6 +129,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
 
   /**
    * Remove the vertex from the list.
+   *
    * @param v vertex to remove.
    * @return the builder.
    */
@@ -134,8 +144,9 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
 
   /**
    * Connect vertices at the edge.
+   *
    * @param edge edge to add.
-   * Note: the two vertices of the edge should already be added to the DAGBuilder.
+   *             Note: the two vertices of the edge should already be added to the DAGBuilder.
    * @return the builder.
    */
   public DAGBuilder<V, E> connectVertices(final E edge) {
@@ -157,6 +168,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
 
   /**
    * Checks whether the DAGBuilder is empty.
+   *
    * @return whether the DAGBuilder is empty or not.
    */
   public boolean isEmpty() {
@@ -165,6 +177,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
 
   /**
    * check if the DAGBuilder contains the vertex.
+   *
    * @param vertex vertex that it searches for.
    * @return whether or not the builder contains it.
    */
@@ -174,6 +187,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
 
   /**
    * check if the DAGBuilder contains any vertex that satisfies the predicate.
+   *
    * @param predicate predicate to test each vertices with.
    * @return whether or not the builder contains it.
    */
@@ -182,11 +196,13 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   }
 
   ///////////////////////////INTEGRITY CHECK///////////////////////////
+
   /**
    * Helper method to guarantee that there are no cycles in the DAG.
-   * @param stack stack to push the vertices to.
+   *
+   * @param stack   stack to push the vertices to.
    * @param visited set to keep track of visited vertices.
-   * @param vertex vertex to check.
+   * @param vertex  vertex to check.
    */
   private void cycleCheck(final Stack<V> stack, final Set<V> visited, final V vertex) {
     // We check in a DFS manner.
@@ -243,16 +259,16 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   private void executionPropertyCheck() {
     // SideInput is not compatible with Push
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> Boolean.TRUE.equals(e.isSideInput()))
+        .filter(e -> e.getPropertyValue(BroadcastVariableIdProperty.class).isPresent())
         .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
         .forEach(e -> {
           throw new CompileTimeOptimizationException("DAG execution property check: "
-              + "SideInput edge is not compatible with push" + e.getId());
+              + "Broadcast edge is not compatible with push" + e.getId());
         }));
     // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
         .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
-                      .equals(e.getPropertyValue(MetricCollectionProperty.class)))
+            .equals(e.getPropertyValue(MetricCollectionProperty.class)))
         .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
         .forEach(e -> {
           throw new CompileTimeOptimizationException("DAG execution property check: "
@@ -262,9 +278,10 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
 
   /**
    * DAG integrity check function, that keeps DAG in shape.
-   * @param cycle whether or not to check for cycles.
-   * @param source whether or not to check sources.
-   * @param sink whether or not to check sink.
+   *
+   * @param cycle             whether or not to check for cycles.
+   * @param source            whether or not to check sources.
+   * @param sink              whether or not to check sink.
    * @param executionProperty whether or not to check execution property.
    */
   private void integrityCheck(final boolean cycle,
@@ -289,8 +306,10 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   }
 
   ///////////////////////////BUILD///////////////////////////
+
   /**
-   * Build the DAG for LoopVertex.
+   * Build the DAG without source and sink check.
+   *
    * @return the DAG contained by the builder.
    */
   public DAG<V, E> buildWithoutSourceSinkCheck() {
@@ -299,7 +318,18 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   }
 
   /**
+   * Build the DAG without source check.
+   *
+   * @return the DAG contained by the builder.
+   */
+  public DAG<V, E> buildWithoutSourceCheck() {
+    integrityCheck(true, false, true, true);
+    return new DAG<>(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
+  }
+
+  /**
    * Build the DAG.
+   *
    * @return the DAG contained by the builder.
    */
   public DAG<V, E> build() {

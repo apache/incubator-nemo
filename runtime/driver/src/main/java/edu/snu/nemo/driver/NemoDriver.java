@@ -18,11 +18,13 @@ package edu.snu.nemo.driver;
 import edu.snu.nemo.common.ir.IdManager;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
 import edu.snu.nemo.runtime.master.ClientRPC;
+import edu.snu.nemo.runtime.master.BroadcastManagerMaster;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.client.JobMessageObserver;
@@ -49,6 +51,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.io.Serializable;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.LogManager;
@@ -104,8 +108,12 @@ public final class NemoDriver {
     this.clientRPC = clientRPC;
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
-    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message ->
-        startSchedulingUserDAG(message.getLaunchDAG().getDag()));
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
+      startSchedulingUserDAG(message.getLaunchDAG().getDag());
+      final Map<Serializable, Object> broadcastVars =
+        SerializationUtils.deserialize(message.getLaunchDAG().getBroadcastVars().toByteArray());
+      BroadcastManagerMaster.registerBroadcastVariablesFromClient(broadcastVars);
+    });
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.DriverShutdown, message -> shutdown());
     // Send DriverStarted message to the client
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
@@ -146,7 +154,7 @@ public final class NemoDriver {
   public final class AllocatedEvaluatorHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      final String executorId = RuntimeIdGenerator.generateExecutorId();
+      final String executorId = RuntimeIdManager.generateExecutorId();
       runtimeMaster.onContainerAllocated(executorId, allocatedEvaluator,
           getExecutorConfiguration(executorId));
     }
@@ -168,9 +176,11 @@ public final class NemoDriver {
   }
 
   /**
-   * Start user DAG.
+   * Start to schedule a submitted user DAG.
+   *
+   * @param dagString  the serialized DAG to schedule.
    */
-  public void startSchedulingUserDAG(final String dagString) {
+  private void startSchedulingUserDAG(final String dagString) {
     runnerThread.execute(() -> {
       userApplicationRunner.run(dagString);
       // send driver notification that user application is done.

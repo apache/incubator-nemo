@@ -23,6 +23,7 @@ import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 public final class PartitionerProperty extends EdgeExecutionProperty<PartitionerProperty.Value> {
   /**
    * Constructor.
+   *
    * @param value value of the execution property.
    */
   private PartitionerProperty(final Value value) {
@@ -31,6 +32,7 @@ public final class PartitionerProperty extends EdgeExecutionProperty<Partitioner
 
   /**
    * Static method exposing the constructor.
+   *
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */

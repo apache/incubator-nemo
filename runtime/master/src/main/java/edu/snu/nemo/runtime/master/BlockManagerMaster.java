@@ -15,20 +15,14 @@
  */
 package edu.snu.nemo.runtime.master;
 
-import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.IllegalMessageException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.state.BlockState;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -37,30 +31,36 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.IntStream;
+import java.util.stream.Collectors;
 
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static edu.snu.nemo.runtime.common.state.BlockState.State.IN_PROGRESS;
-import static edu.snu.nemo.runtime.common.state.BlockState.State.NOT_AVAILABLE;
-
 /**
  * Master-side block manager.
+ * This implementation assumes that only a single user application can submit (maybe multiple) plans through
+ * {@link edu.snu.nemo.runtime.master.scheduler.Scheduler}.
  */
 @ThreadSafe
 @DriverSide
 public final class BlockManagerMaster {
   private static final Logger LOG = LoggerFactory.getLogger(BlockManagerMaster.class.getName());
-  private final Map<String, BlockMetadata> blockIdToMetadata;
-  private final Map<String, Set<String>> producerTaskIdToBlockIds;
+
+  private final Map<String, Set<String>> producerTaskIdToBlockIds; // a task can have multiple out-edges
+
+  /**
+   * See {@link RuntimeIdManager#generateBlockIdWildcard(String, int)} for information on block wildcards.
+   */
+  private final Map<String, Set<BlockMetadata>> blockIdWildcardToMetadataSet; // a metadata = a task attempt output
+
   // A lock that can be acquired exclusively or not.
   // Because the BlockMetadata itself is sufficiently synchronized,
   // operation that runs in a single block can just acquire a (sharable) read lock.
@@ -68,65 +68,42 @@ public final class BlockManagerMaster {
   // modifies global variables in this class have to acquire an (exclusive) write lock.
   private final ReadWriteLock lock;
 
+  private final Random random = new Random();
+
   /**
    * Constructor.
-   *
    * @param masterMessageEnvironment the message environment.
    */
   @Inject
   private BlockManagerMaster(final MessageEnvironment masterMessageEnvironment) {
     masterMessageEnvironment.setupListener(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID,
-        new PartitionManagerMasterControlMessageReceiver());
-    this.blockIdToMetadata = new HashMap<>();
+      new BlockManagerMasterControlMessageReceiver());
+    this.blockIdWildcardToMetadataSet = new HashMap<>();
     this.producerTaskIdToBlockIds = new HashMap<>();
     this.lock = new ReentrantReadWriteLock();
   }
 
-  public void initialize(final PhysicalPlan physicalPlan) {
-    final DAG<Stage, StageEdge> stageDAG = physicalPlan.getStageDAG();
-    stageDAG.topologicalDo(stage -> {
-      final List<String> taskIdsForStage = stage.getTaskIds();
-      final List<StageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(stage);
-
-      // Initialize states for blocks of inter-stage edges
-      stageOutgoingEdges.forEach(stageEdge -> {
-        final int srcParallelism = taskIdsForStage.size();
-        IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-          final String blockId = RuntimeIdGenerator.generateBlockId(stageEdge.getId(), srcTaskIdx);
-          initializeState(blockId, taskIdsForStage.get(srcTaskIdx));
-        });
-      });
-
-      // Initialize states for blocks of stage internal edges
-      taskIdsForStage.forEach(taskId -> {
-        final DAG<IRVertex, RuntimeEdge<IRVertex>> taskInternalDag = stage.getIRDAG();
-        taskInternalDag.getVertices().forEach(task -> {
-          final List<RuntimeEdge<IRVertex>> internalOutgoingEdges = taskInternalDag.getOutgoingEdgesOf(task);
-          internalOutgoingEdges.forEach(taskRuntimeEdge -> {
-            final int srcTaskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
-            final String blockId = RuntimeIdGenerator.generateBlockId(taskRuntimeEdge.getId(), srcTaskIdx);
-            initializeState(blockId, taskId);
-          });
-        });
-      });
-    });
-  }
-
   /**
-   * Initializes the states of a block which will be produced by producer task(s).
+   * Initializes the states of a block which will be produced by a producer task.
+   * This method is idempotent thanks to the 'Set' data structures.
+   * See BatchScheduler#doSchedule for details on scheduling same task attempts multiple times.
    *
-   * @param blockId             the id of the block to initialize.
+   * @param blockId        the id of the block to initialize.
    * @param producerTaskId the id of the producer task.
    */
   @VisibleForTesting
-  public void initializeState(final String blockId,
-                              final String producerTaskId) {
+  private void initializeState(final String blockId, final String producerTaskId) {
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
-      blockIdToMetadata.put(blockId, new BlockMetadata(blockId));
+      // task - to - blockIds
       producerTaskIdToBlockIds.putIfAbsent(producerTaskId, new HashSet<>());
       producerTaskIdToBlockIds.get(producerTaskId).add(blockId);
+
+      // wildcard - to - metadata
+      final String wildCard = RuntimeIdManager.getWildCardFromBlockId(blockId);
+      blockIdWildcardToMetadataSet.putIfAbsent(wildCard, new HashSet<>());
+      blockIdWildcardToMetadataSet.get(wildCard).add(new BlockMetadata(blockId));
     } finally {
       writeLock.unlock();
     }
@@ -159,28 +136,22 @@ public final class BlockManagerMaster {
   }
 
   /**
-   * Returns a handler of block location requests.
-   *
-   * @param blockId id of the specified block.
-   * @return the handler of block location requests, which completes exceptionally when the block
-   * is not {@code IN_PROGRESS} or {@code AVAILABLE}.
+   * Get handlers of blocks that are in a particular state.
+   * @param blockIdOrWildcard to query
+   * @param state of the block
+   * @return the handlers, empty if none matches.
    */
-  public BlockLocationRequestHandler getBlockLocationHandler(final String blockId) {
+  public List<BlockRequestHandler> getBlockHandlers(final String blockIdOrWildcard,
+                                                    final BlockState.State state) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      final BlockState.State state = getBlockState(blockId);
-      switch (state) {
-        case IN_PROGRESS:
-        case AVAILABLE:
-          return blockIdToMetadata.get(blockId).getLocationHandler();
-        case NOT_AVAILABLE:
-          final BlockLocationRequestHandler handler = new BlockLocationRequestHandler(blockId);
-          handler.completeExceptionally(new AbsentBlockException(blockId, state));
-          return handler;
-        default:
-          throw new UnsupportedOperationException(state.toString());
-      }
+      final Set<BlockMetadata> metadataSet =
+        getBlockWildcardStateSet(RuntimeIdManager.getWildCardFromBlockId(blockIdOrWildcard));
+      return metadataSet.stream()
+        .filter(metadata -> metadata.getBlockState().equals(state))
+        .map(BlockMetadata::getLocationHandler)
+        .collect(Collectors.toList());
     } finally {
       readLock.unlock();
     }
@@ -192,7 +163,6 @@ public final class BlockManagerMaster {
    * @param blockId the id of the block.
    * @return the ids of the producer tasks.
    */
-  @VisibleForTesting
   public Set<String> getProducerTaskIds(final String blockId) {
     final Lock readLock = lock.readLock();
     readLock.lock();
@@ -210,32 +180,17 @@ public final class BlockManagerMaster {
     }
   }
 
-  public Set<String> getIdsOfBlocksProducedBy(final String taskId) {
-    final Lock readLock = lock.readLock();
-    readLock.lock();
-    try {
-      return producerTaskIdToBlockIds.get(taskId);
-    } finally {
-      readLock.unlock();
-    }
-  }
-
   /**
    * To be called when a potential producer task is scheduled.
-   * @param scheduledTaskId the ID of the scheduled task.
+   *
+   * @param taskId   the ID of the scheduled task.
+   * @param blockIds this task will produce
    */
-  public void onProducerTaskScheduled(final String scheduledTaskId) {
+  public void onProducerTaskScheduled(final String taskId, final Set<String> blockIds) {
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
-      if (producerTaskIdToBlockIds.containsKey(scheduledTaskId)) {
-        producerTaskIdToBlockIds.get(scheduledTaskId).forEach(blockId -> {
-          if (blockIdToMetadata.get(blockId).getBlockState()
-              .getStateMachine().getCurrentState().equals(NOT_AVAILABLE)) {
-            onBlockStateChanged(blockId, IN_PROGRESS, null);
-          }
-        });
-      } // else this task does not produce any block
+      blockIds.forEach(blockId -> initializeState(blockId, taskId));
     } finally {
       writeLock.unlock();
     }
@@ -252,13 +207,10 @@ public final class BlockManagerMaster {
     writeLock.lock();
     try {
       if (producerTaskIdToBlockIds.containsKey(failedTaskId)) {
-        producerTaskIdToBlockIds.get(failedTaskId).forEach(blockId -> {
-          final BlockState.State state = (BlockState.State)
-              blockIdToMetadata.get(blockId).getBlockState().getStateMachine().getCurrentState();
-          LOG.info("Block lost: {}", blockId);
-          onBlockStateChanged(blockId, BlockState.State.NOT_AVAILABLE, null);
-        });
-      } // else this task does not produce any block
+        producerTaskIdToBlockIds.get(failedTaskId).forEach(blockId ->
+          onBlockStateChanged(blockId, BlockState.State.NOT_AVAILABLE, null)
+        );
+      } // else this task has not produced any block
     } finally {
       writeLock.unlock();
     }
@@ -270,20 +222,21 @@ public final class BlockManagerMaster {
    * @param executorId the id of the executor.
    * @return the committed blocks by the executor.
    */
-  @VisibleForTesting
-  Set<String> getCommittedBlocksByWorker(final String executorId) {
+  private Set<String> getCommittedBlocksByWorker(final String executorId) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
       final Set<String> blockIds = new HashSet<>();
-      blockIdToMetadata.values().forEach(blockMetadata -> {
+      blockIdWildcardToMetadataSet.values().stream().flatMap(Set::stream).forEach(blockMetadata -> {
         final Future<String> location = blockMetadata.getLocationHandler().getLocationFuture();
         if (location.isDone()) {
           try {
             if (location.get().equals(executorId)) {
               blockIds.add(blockMetadata.getBlockId());
             }
-          } catch (final InterruptedException | ExecutionException e) {
+          } catch (final CancellationException | ExecutionException e) {
+            // Don't add (NOT_AVAILABLE)
+          } catch (final InterruptedException e) {
             // Cannot reach here because we check the completion of the future already.
             LOG.error("Exception while getting the location of a block!", e);
             Thread.currentThread().interrupt();
@@ -297,15 +250,14 @@ public final class BlockManagerMaster {
   }
 
   /**
-   * @param blockId the id of the block.
-   * @return the {@link BlockState} of a block.
+   * @param blockIdWildcard to query.
+   * @return set of block metadata for the wildcard, empty if none exists.
    */
-  @VisibleForTesting
-  public BlockState.State getBlockState(final String blockId) {
+  private Set<BlockMetadata> getBlockWildcardStateSet(final String blockIdWildcard) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      return (BlockState.State) blockIdToMetadata.get(blockId).getBlockState().getStateMachine().getCurrentState();
+      return blockIdWildcardToMetadataSet.getOrDefault(blockIdWildcard, new HashSet<>(0));
     } finally {
       readLock.unlock();
     }
@@ -326,28 +278,56 @@ public final class BlockManagerMaster {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      blockIdToMetadata.get(blockId).onStateChanged(newState, location);
+      getBlockMetaData(blockId).onStateChanged(newState, location);
     } finally {
       readLock.unlock();
     }
   }
 
+  private BlockMetadata getBlockMetaData(final String blockId) {
+    final List<BlockMetadata> candidates =
+      blockIdWildcardToMetadataSet.get(RuntimeIdManager.getWildCardFromBlockId(blockId))
+        .stream()
+        .filter(meta -> meta.getBlockId().equals(blockId))
+        .collect(Collectors.toList());
+    if (candidates.size() != 1) {
+      throw new RuntimeException("BlockId " + blockId + ": " + candidates.toString()); // should match only 1
+    }
+    return candidates.get(0);
+  }
+
   /**
-   * Deals with a request for the location of a block.
-   *
    * @param message        the request message.
    * @param messageContext the message context which will be used for response.
    */
-  void onRequestBlockLocation(final ControlMessage.Message message,
-                              final MessageContext messageContext) {
+  private void registerLocationRequest(final ControlMessage.Message message, final MessageContext messageContext) {
     assert (message.getType() == ControlMessage.MessageType.RequestBlockLocation);
-    final String blockId = message.getRequestBlockLocationMsg().getBlockId();
+    final String blockIdWildcard = message.getRequestBlockLocationMsg().getBlockIdWildcard();
     final long requestId = message.getId();
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      final BlockLocationRequestHandler locationFuture = getBlockLocationHandler(blockId);
-      locationFuture.registerRequest(requestId, messageContext);
+      // (CASE 1) Check AVAILABLE blocks.
+      final List<BlockRequestHandler> availableBlocks = getBlockHandlers(blockIdWildcard, BlockState.State.AVAILABLE);
+      if (!availableBlocks.isEmpty()) {
+        // random pick
+        // TODO #201: Let Executors Try Multiple Input Block Clones
+        availableBlocks.get(random.nextInt(availableBlocks.size())).registerRequest(requestId, messageContext);
+        return;
+      }
+
+      // (CASE 2) Check IN_PROGRESS blocks.
+      final List<BlockRequestHandler> progressBlocks = getBlockHandlers(blockIdWildcard, BlockState.State.IN_PROGRESS);
+      if (!progressBlocks.isEmpty()) {
+        // random pick
+        progressBlocks.get(random.nextInt(progressBlocks.size())).registerRequest(requestId, messageContext);
+        return;
+      }
+
+      // (CASE 3) Unfortunately, there is no good block to use.
+      final BlockRequestHandler absent = new BlockRequestHandler(blockIdWildcard);
+      absent.completeExceptionally(new AbsentBlockException(blockIdWildcard, BlockState.State.NOT_AVAILABLE));
+      absent.registerRequest(requestId, messageContext);
     } finally {
       readLock.unlock();
     }
@@ -356,7 +336,7 @@ public final class BlockManagerMaster {
   /**
    * Handler for control messages received.
    */
-  public final class PartitionManagerMasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
+  public final class BlockManagerMasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
 
     @Override
     public void onMessage(final ControlMessage.Message message) {
@@ -364,15 +344,15 @@ public final class BlockManagerMaster {
         switch (message.getType()) {
           case BlockStateChanged:
             final ControlMessage.BlockStateChangedMsg blockStateChangedMsg =
-                message.getBlockStateChangedMsg();
+              message.getBlockStateChangedMsg();
             final String blockId = blockStateChangedMsg.getBlockId();
             onBlockStateChanged(blockId, convertBlockState(blockStateChangedMsg.getState()),
-                blockStateChangedMsg.getLocation());
+              blockStateChangedMsg.getLocation());
             break;
           default:
             throw new IllegalMessageException(
-                new Exception("This message should not be received by "
-                    + BlockManagerMaster.class.getName() + ":" + message.getType()));
+              new Exception("This message should not be received by "
+                + BlockManagerMaster.class.getName() + ":" + message.getType()));
         }
       } catch (final Exception e) {
         throw new RuntimeException(e);
@@ -383,12 +363,12 @@ public final class BlockManagerMaster {
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
         case RequestBlockLocation:
-          onRequestBlockLocation(message, messageContext);
+          registerLocationRequest(message, messageContext);
           break;
         default:
           throw new IllegalMessageException(
-              new Exception("This message should not be received by "
-                  + BlockManagerMaster.class.getName() + ":" + message.getType()));
+            new Exception("This message should not be received by "
+              + BlockManagerMaster.class.getName() + ":" + message.getType()));
       }
     }
   }
@@ -396,18 +376,17 @@ public final class BlockManagerMaster {
   /**
    * The handler of block location requests.
    */
-  @VisibleForTesting
-  public static final class BlockLocationRequestHandler {
-    private final String blockId;
+  public static final class BlockRequestHandler {
+    private final String blockIdOrWildcard;
     private final CompletableFuture<String> locationFuture;
 
     /**
      * Constructor.
      *
-     * @param blockId the ID of the block.
+     * @param blockIdOrWildcard the ID of the block.
      */
-    BlockLocationRequestHandler(final String blockId) {
-      this.blockId = blockId;
+    BlockRequestHandler(final String blockIdOrWildcard) {
+      this.blockIdOrWildcard = blockIdOrWildcard;
       this.locationFuture = new CompletableFuture<>();
     }
 
@@ -441,38 +420,38 @@ public final class BlockManagerMaster {
     void registerRequest(final long requestId,
                          final MessageContext messageContext) {
       final ControlMessage.BlockLocationInfoMsg.Builder infoMsgBuilder =
-          ControlMessage.BlockLocationInfoMsg.newBuilder()
-              .setRequestId(requestId)
-              .setBlockId(blockId);
+        ControlMessage.BlockLocationInfoMsg.newBuilder()
+          .setRequestId(requestId)
+          .setBlockId(blockIdOrWildcard);
 
       locationFuture.whenComplete((location, throwable) -> {
         if (throwable == null) {
           infoMsgBuilder.setOwnerExecutorId(location);
         } else {
           infoMsgBuilder.setState(
-              convertBlockState(((AbsentBlockException) throwable).getState()));
+            convertBlockState(((AbsentBlockException) throwable).getState()));
         }
         messageContext.reply(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.BlockLocationInfo)
-                .setBlockLocationInfoMsg(infoMsgBuilder.build())
-                .build());
+          ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdManager.generateMessageId())
+            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+            .setType(ControlMessage.MessageType.BlockLocationInfo)
+            .setBlockLocationInfoMsg(infoMsgBuilder.build())
+            .build());
       });
     }
 
     /**
      * @return the future of the block location.
      */
-    @VisibleForTesting
-    public Future<String> getLocationFuture() {
+    public CompletableFuture<String> getLocationFuture() {
       return locationFuture;
     }
   }
 
   /**
    * Return the corresponding {@link BlockState.State} for the specified {@link ControlMessage.BlockStateFromExecutor}.
+   *
    * @param state {@link ControlMessage.BlockStateFromExecutor}
    * @return the corresponding {@link BlockState.State}
    */
@@ -491,6 +470,7 @@ public final class BlockManagerMaster {
 
   /**
    * Return the corresponding {@link ControlMessage.BlockStateFromExecutor} for the specified {@link BlockState.State}.
+   *
    * @param state {@link BlockState.State}
    * @return the corresponding {@link ControlMessage.BlockStateFromExecutor}
    */
@@ -506,5 +486,4 @@ public final class BlockManagerMaster {
         throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
     }
   }
-
 }

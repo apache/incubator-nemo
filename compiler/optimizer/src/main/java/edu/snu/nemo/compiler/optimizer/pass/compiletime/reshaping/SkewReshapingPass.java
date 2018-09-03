@@ -24,9 +24,9 @@ import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -37,12 +37,13 @@ import java.util.List;
  * a snapshot at the end of the pass. This could be prevented by modifying other passes to take the snapshot of the
  * DAG at the end of each passes for metricCollectionVertices.
  */
+@Requires(CommunicationPatternProperty.class)
 public final class SkewReshapingPass extends ReshapingPass {
   /**
    * Default constructor.
    */
   public SkewReshapingPass() {
-    super(Collections.singleton(CommunicationPatternProperty.class));
+    super(SkewReshapingPass.class);
   }
 
   @Override
@@ -70,8 +71,8 @@ public final class SkewReshapingPass extends ReshapingPass {
             newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
             newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
 
-            final IREdge edgeToGbK = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                metricCollectionBarrierVertex, v, edge.isSideInput());
+            final IREdge edgeToGbK = new IREdge(
+              edge.getPropertyValue(CommunicationPatternProperty.class).get(), metricCollectionBarrierVertex, v);
             edge.copyExecutionPropertiesTo(edgeToGbK);
             builder.connectVertices(newEdge);
             builder.connectVertices(edgeToGbK);

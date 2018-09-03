@@ -14,24 +14,27 @@
  * limitations under the License.
  */
 package edu.snu.nemo.runtime.master.scheduler;
-
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
+import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageSender;
+import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
+import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.state.PlanState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
-import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
+import edu.snu.nemo.runtime.master.PlanStateManager;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
 import edu.snu.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -58,7 +61,7 @@ import static org.mockito.Mockito.mock;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({BlockManagerMaster.class, TaskDispatcher.class, SchedulingConstraintRegistry.class,
-    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
+    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class})
 public final class TaskRetryTest {
   @Rule public TestName testName = new TestName();
 
@@ -69,6 +72,7 @@ public final class TaskRetryTest {
   private Scheduler scheduler;
   private ExecutorRegistry executorRegistry;
   private PlanStateManager planStateManager;
+  private BlockManagerMaster blockManagerMaster;
 
   private static final int MAX_SCHEDULE_ATTEMPT = Integer.MAX_VALUE;
 
@@ -76,7 +80,8 @@ public final class TaskRetryTest {
   public void setUp() throws Exception {
     // To understand which part of the log belongs to which test
     LOG.info("===== Testing {} =====", testName.getMethodName());
-    final Injector injector = Tang.Factory.getTang().newInjector();
+    final Injector injector = LocalMessageEnvironment.forkInjector(LocalMessageDispatcher.getInjector(),
+      MessageEnvironment.MASTER_COMMUNICATION_ID);
 
     // Get random
     random = new Random(0); // Fixed seed for reproducing test results.
@@ -84,28 +89,29 @@ public final class TaskRetryTest {
     // Get executorRegistry
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
 
-    // Get scheduler
-    injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
-    injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
-    injector.bindVolatileInstance(SchedulingConstraintRegistry.class, mock(SchedulingConstraintRegistry.class));
-    injector.bindVolatileInstance(BlockManagerMaster.class, mock(BlockManagerMaster.class));
-    scheduler = injector.getInstance(Scheduler.class);
-
     // Get PlanStateManager
-    planStateManager = runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined);
+    runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, injector);
   }
 
   @Test(timeout=7000)
   public void testExecutorRemoved() throws Exception {
     // Until the plan finishes, events happen
     while (!planStateManager.isPlanDone()) {
-      // 50% chance remove, 50% chance add, 80% chance task completed
-      executorRemoved(0.5);
-      executorAdded(0.5);
-      taskCompleted(0.8);
+      // 30% chance executor added, 30% chance executor removed
+      executorAdded(0.3);
+      executorRemoved(0.3);
 
-      // 10ms sleep
-      Thread.sleep(10);
+      // random - trigger speculative execution.
+      if (random.nextBoolean()) {
+        Thread.sleep(10);
+      } else {
+        Thread.sleep(20);
+      }
+
+      // 30% chance task completed,
+      taskCompleted(0.3);
+
+      scheduler.onSpeculativeExecutionCheck();
     }
 
     // Plan should COMPLETE
@@ -123,12 +129,17 @@ public final class TaskRetryTest {
     // Until the plan finishes, events happen
     while (!planStateManager.isPlanDone()) {
       // 50% chance task completed
-      // 50% chance task output write failed
+      // 70% chance task output write failed
       taskCompleted(0.5);
-      taskOutputWriteFailed(0.5);
+      taskOutputWriteFailed(0.7);
 
-      // 10ms sleep
-      Thread.sleep(10);
+      // random - trigger speculative execution.
+      if (random.nextBoolean()) {
+        Thread.sleep(10);
+      } else {
+        Thread.sleep(20);
+      }
+      scheduler.onSpeculativeExecutionCheck();
     }
 
     // Plan should COMPLETE
@@ -181,8 +192,17 @@ public final class TaskRetryTest {
     if (!executingTasks.isEmpty()) {
       final int randomIndex = random.nextInt(executingTasks.size());
       final String selectedTask = executingTasks.get(randomIndex);
-      SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry, selectedTask,
-          TaskState.State.COMPLETE, planStateManager.getTaskAttempt(selectedTask));
+
+
+      final Optional<ExecutorRepresenter> executor = executorRegistry.findExecutorForTask(selectedTask);
+      if (executor.isPresent()) {
+        SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry, selectedTask,
+          TaskState.State.COMPLETE, RuntimeIdManager.getAttemptFromTaskId(selectedTask));
+        getOutputBlockIds(selectedTask).forEach(blockId ->
+          blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE, executor.get().getExecutorId()));
+      } else {
+        throw new RuntimeException(selectedTask);
+      }
     }
   }
 
@@ -196,7 +216,7 @@ public final class TaskRetryTest {
       final int randomIndex = random.nextInt(executingTasks.size());
       final String selectedTask = executingTasks.get(randomIndex);
       SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry, selectedTask,
-          TaskState.State.SHOULD_RETRY, planStateManager.getTaskAttempt(selectedTask),
+          TaskState.State.SHOULD_RETRY, RuntimeIdManager.getAttemptFromTaskId(selectedTask),
           TaskState.RecoverableTaskFailureCause.OUTPUT_WRITE_FAILURE);
     }
   }
@@ -204,17 +224,36 @@ public final class TaskRetryTest {
   ////////////////////////////////////////////////////////////////// Helper methods
 
   private List<String> getTasksInState(final PlanStateManager planStateManager, final TaskState.State state) {
-    return planStateManager.getAllTaskStates().entrySet().stream()
-        .filter(entry -> entry.getValue().getStateMachine().getCurrentState().equals(state))
+    return planStateManager.getAllTaskAttemptIdsToItsState()
+        .entrySet()
+        .stream()
+        .filter(entry -> entry.getValue().equals(state))
         .map(Map.Entry::getKey)
         .collect(Collectors.toList());
   }
 
-  private PlanStateManager runPhysicalPlan(final TestPlanGenerator.PlanType planType) throws Exception {
+  private void runPhysicalPlan(final TestPlanGenerator.PlanType planType,
+                               final Injector injector) throws Exception {
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PhysicalPlan plan = TestPlanGenerator.generatePhysicalPlan(planType, false);
-    final PlanStateManager planStateManager = new PlanStateManager(plan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
-    scheduler.schedulePlan(plan, planStateManager);
-    return planStateManager;
+
+    // Get scheduler
+    injector.bindVolatileInstance(MetricMessageHandler.class, metricMessageHandler);
+    injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
+    injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
+    injector.bindVolatileInstance(SchedulingConstraintRegistry.class, mock(SchedulingConstraintRegistry.class));
+    planStateManager = injector.getInstance(PlanStateManager.class);
+    scheduler = injector.getInstance(Scheduler.class);
+    blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
+
+    scheduler.schedulePlan(plan, MAX_SCHEDULE_ATTEMPT);
+  }
+
+  private Set<String> getOutputBlockIds(final String taskId) {
+    return planStateManager.getPhysicalPlan().getStageDAG()
+      .getOutgoingEdgesOf(RuntimeIdManager.getStageIdFromTaskId(taskId))
+      .stream()
+      .map(stageEdge -> RuntimeIdManager.generateBlockId(stageEdge.getId(), taskId))
+      .collect(Collectors.toSet()); // ids of blocks this task will produce
   }
 }

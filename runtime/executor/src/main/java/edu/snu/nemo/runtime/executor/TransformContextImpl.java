@@ -13,36 +13,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common;
+package edu.snu.nemo.runtime.executor;
 
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
+import edu.snu.nemo.runtime.executor.data.BroadcastManagerWorker;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;
 
 /**
  * Transform Context Implementation.
  */
-public final class ContextImpl implements Transform.Context {
-  private final Map sideInputs;
+public final class TransformContextImpl implements Transform.Context {
+  private final BroadcastManagerWorker broadcastManagerWorker;
   private final Map<String, String> tagToAdditionalChildren;
   private String data;
 
   /**
    * Constructor of Context Implementation.
-   * @param sideInputs              side inputs.
+   * @param broadcastManagerWorker for broadcast variables.
    * @param tagToAdditionalChildren tag id to additional vertices id map.
    */
-  public ContextImpl(final Map sideInputs,
-                     final Map<String, String> tagToAdditionalChildren) {
-    this.sideInputs = sideInputs;
+  public TransformContextImpl(final BroadcastManagerWorker broadcastManagerWorker,
+                              final Map<String, String> tagToAdditionalChildren) {
+    this.broadcastManagerWorker = broadcastManagerWorker;
     this.tagToAdditionalChildren = tagToAdditionalChildren;
     this.data = null;
   }
 
   @Override
-  public Map getSideInputs() {
-    return this.sideInputs;
+  public Object getBroadcastVariable(final Serializable tag) {
+    return broadcastManagerWorker.get(tag);
   }
 
   @Override

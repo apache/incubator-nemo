@@ -17,15 +17,17 @@ package edu.snu.nemo.runtime.executor.data;
 
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.coder.*;
+import edu.snu.nemo.common.ir.IdManager;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.common.HashRange;
 import edu.snu.nemo.common.KeyRange;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.state.BlockState;
+import edu.snu.nemo.runtime.executor.TestUtil;
 import edu.snu.nemo.runtime.executor.data.block.Block;
 import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import edu.snu.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
@@ -51,6 +53,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -99,6 +102,10 @@ public final class BlockStoreTest {
   private List<KeyRange> readKeyRangeList;
   private List<List<Iterable>> expectedDataInRange;
 
+  private String getTaskId(final int index) {
+    return RuntimeIdManager.generateTaskId("STAGE", index, 0);
+  }
+
   /**
    * Generates the ids and the data which will be used for the block store tests.
    */
@@ -121,14 +128,12 @@ public final class BlockStoreTest {
     IntStream.range(0, NUM_READ_VERTICES).forEach(number -> readTaskIdList.add("Read_IR_vertex"));
 
     // Generates the ids and the data of the blocks to be used.
-    final String shuffleEdge = RuntimeIdGenerator.generateStageEdgeId("shuffle_edge");
+    final String shuffleEdge = IdManager.newEdgeId();
     IntStream.range(0, NUM_WRITE_VERTICES).forEach(writeTaskIdx -> {
       // Create a block for each writer task.
-      final String blockId = RuntimeIdGenerator.generateBlockId(shuffleEdge, writeTaskIdx);
+      final String taskId = getTaskId(writeTaskIdx);
+      final String blockId = RuntimeIdManager.generateBlockId(shuffleEdge, taskId);
       blockIdList.add(blockId);
-      blockManagerMaster.initializeState(blockId, "Unused");
-      blockManagerMaster.onBlockStateChanged(
-          blockId, BlockState.State.IN_PROGRESS, null);
 
       // Create blocks for this block.
       final List<NonSerializedPartition<Integer>> partitionsForBlock = new ArrayList<>(NUM_READ_VERTICES);
@@ -141,15 +146,11 @@ public final class BlockStoreTest {
     });
 
     // Following part is for the concurrent read test.
-    final String writeTaskId = "conc_write_IR_vertex";
     final List<String> concReadTaskIdList = new ArrayList<>(NUM_CONC_READ_TASKS);
-    final String concEdge = RuntimeIdGenerator.generateStageEdgeId("conc_read_edge");
+    final String concEdge = IdManager.newEdgeId();
 
     // Generates the ids and the data to be used.
-    concBlockId = RuntimeIdGenerator.generateBlockId(concEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1);
-    blockManagerMaster.initializeState(concBlockId, "unused");
-    blockManagerMaster.onBlockStateChanged(
-        concBlockId, BlockState.State.IN_PROGRESS, null);
+    concBlockId = RuntimeIdManager.generateBlockId(concEdge, getTaskId(NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1));
     IntStream.range(0, NUM_CONC_READ_TASKS).forEach(number -> concReadTaskIdList.add("conc_read_IR_vertex"));
     concBlockPartition = new NonSerializedPartition(0, getRangedNumList(0, CONC_READ_DATA_SIZE), -1, -1);
 
@@ -165,16 +166,13 @@ public final class BlockStoreTest {
     // Generates the ids of the tasks to be used.
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(number -> writeHashTaskIdList.add("hash_write_IR_vertex"));
     IntStream.range(0, NUM_READ_HASH_TASKS).forEach(number -> readHashTaskIdList.add("hash_read_IR_vertex"));
-    final String hashEdge = RuntimeIdGenerator.generateStageEdgeId("hash_edge");
+    final String hashEdge = IdManager.newEdgeId();
 
     // Generates the ids and the data of the blocks to be used.
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writeTaskIdx -> {
-      final String blockId = RuntimeIdGenerator.generateBlockId(
-          hashEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1 + writeTaskIdx);
+      final String taskId = getTaskId(NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1 + writeTaskIdx);
+      final String blockId = RuntimeIdManager.generateBlockId(hashEdge, taskId);
       hashedBlockIdList.add(blockId);
-      blockManagerMaster.initializeState(blockId, "Unused");
-      blockManagerMaster.onBlockStateChanged(
-          blockId, BlockState.State.IN_PROGRESS, null);
       final List<NonSerializedPartition<Integer>> hashedBlock = new ArrayList<>(HASH_RANGE);
       // Generates the data having each hash value.
       IntStream.range(0, HASH_RANGE).forEach(hashValue ->
@@ -317,6 +315,7 @@ public final class BlockStoreTest {
               }
               block.commit();
               writerSideStore.writeBlock(block);
+              blockManagerMaster.onProducerTaskScheduled(getTaskId(writeTaskIdx), Collections.singleton(blockId));
               blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE,
                   "Writer side of the shuffle edge");
               return true;
@@ -411,6 +410,7 @@ public final class BlockStoreTest {
           data.forEach(element -> block.write(concBlockPartition.getKey(), element));
           block.commit();
           writerSideStore.writeBlock(block);
+          blockManagerMaster.onProducerTaskScheduled(getTaskId(0), Collections.singleton(block.getId()));
           blockManagerMaster.onBlockStateChanged(
               concBlockId, BlockState.State.AVAILABLE, "Writer side of the concurrent read edge");
           return true;
@@ -500,6 +500,7 @@ public final class BlockStoreTest {
               }
               block.commit();
               writerSideStore.writeBlock(block);
+              blockManagerMaster.onProducerTaskScheduled(getTaskId(writeTaskIdx), Collections.singleton(blockId));
               blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE,
                   "Writer side of the shuffle in hash range edge");
               return true;

@@ -16,7 +16,6 @@
 package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.io.Serializable;
@@ -28,21 +27,18 @@ import java.util.Map;
  */
 public final class PhysicalPlan implements Serializable {
   private final String id;
-  private final DAG<IRVertex, IREdge> irDAG;
   private final DAG<Stage, StageEdge> stageDAG;
   private final Map<String, IRVertex> idToIRVertex;
 
   /**
    * Constructor.
    *
-   * @param id              ID of the plan.
-   * @param stageDAG        the DAG of stages.
+   * @param id       the ID of the plan.
+   * @param stageDAG the DAG of stages.
    */
   public PhysicalPlan(final String id,
-                      final DAG<IRVertex, IREdge> irDAG,
                       final DAG<Stage, StageEdge> stageDAG) {
     this.id = id;
-    this.irDAG = irDAG;
     this.stageDAG = stageDAG;
 
     idToIRVertex = new HashMap<>();
@@ -54,9 +50,9 @@ public final class PhysicalPlan implements Serializable {
   }
 
   /**
-   * @return id of the plan.
+   * @return the ID of the plan.
    */
-  public String getId() {
+  public String getPlanId() {
     return id;
   }
 
@@ -72,13 +68,6 @@ public final class PhysicalPlan implements Serializable {
    */
   public Map<String, IRVertex> getIdToIRVertex() {
     return idToIRVertex;
-  }
-
-  /**
-   * @return IR DAG.
-   */
-  public DAG<IRVertex, IREdge> getIrDAG() {
-    return irDAG;
   }
 
   @Override

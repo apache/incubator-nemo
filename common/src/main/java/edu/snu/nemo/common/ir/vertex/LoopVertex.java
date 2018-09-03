@@ -32,59 +32,62 @@ import java.util.stream.Collectors;
  * IRVertex that contains a partial DAG that is iterative.
  */
 public final class LoopVertex extends IRVertex {
+
   private static int duplicateEdgeGroupId = 0;
-  private final DAGBuilder<IRVertex, IREdge> builder; // Contains DAG information
+  // Contains DAG information
+  private final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
   private final String compositeTransformFullName;
-
-  private final Map<IRVertex, Set<IREdge>> dagIncomingEdges; // for the initial iteration
-  private final Map<IRVertex, Set<IREdge>> iterativeIncomingEdges; // Edges from previous iterations connected internal.
-  private final Map<IRVertex, Set<IREdge>> nonIterativeIncomingEdges; // Edges from outside previous iterations.
-  private final Map<IRVertex, Set<IREdge>> dagOutgoingEdges; // for the final iteration
-  private final Map<IREdge, IREdge> edgeWithLoopToEdgeWithInternalVertex;
-  private final Map<IREdge, IREdge> edgeWithInternalVertexToEdgeWithLoop;
-
+  // for the initial iteration
+  private final Map<IRVertex, Set<IREdge>> dagIncomingEdges = new HashMap<>();
+  // Edges from previous iterations connected internal.
+  private final Map<IRVertex, Set<IREdge>> iterativeIncomingEdges = new HashMap<>();
+  // Edges from outside previous iterations.
+  private final Map<IRVertex, Set<IREdge>> nonIterativeIncomingEdges = new HashMap<>();
+  // for the final iteration
+  private final Map<IRVertex, Set<IREdge>> dagOutgoingEdges = new HashMap<>();
+  private final Map<IREdge, IREdge> edgeWithLoopToEdgeWithInternalVertex = new HashMap<>();
+  private final Map<IREdge, IREdge> edgeWithInternalVertexToEdgeWithLoop = new HashMap<>();
   private Integer maxNumberOfIterations;
   private IntPredicate terminationCondition;
 
   /**
    * The LoopVertex constructor.
+   *
    * @param compositeTransformFullName full name of the composite transform.
    */
   public LoopVertex(final String compositeTransformFullName) {
     super();
-    this.builder = new DAGBuilder<>();
     this.compositeTransformFullName = compositeTransformFullName;
-    this.dagIncomingEdges = new HashMap<>();
-    this.iterativeIncomingEdges = new HashMap<>();
-    this.nonIterativeIncomingEdges = new HashMap<>();
-    this.dagOutgoingEdges = new HashMap<>();
-    this.edgeWithLoopToEdgeWithInternalVertex = new HashMap<>();
-    this.edgeWithInternalVertexToEdgeWithLoop = new HashMap<>();
     this.maxNumberOfIterations = 1; // 1 is the default number of iterations.
     this.terminationCondition = (IntPredicate & Serializable) (integer -> false); // nothing much yet.
   }
 
+  /**
+   * Copy Constructor for LoopVertex.
+   *
+   * @param that the source object for copying
+   */
+  public LoopVertex(final LoopVertex that) {
+    super(that);
+    this.compositeTransformFullName = new String(that.compositeTransformFullName);
+    // Copy all elements to the clone
+    final DAG<IRVertex, IREdge> dagToCopy = that.getDAG();
+    dagToCopy.topologicalDo(v -> {
+      this.getBuilder().addVertex(v, dagToCopy);
+      dagToCopy.getIncomingEdgesOf(v).forEach(this.getBuilder()::connectVertices);
+    });
+    that.dagIncomingEdges.forEach(((v, es) -> es.forEach(this::addDagIncomingEdge)));
+    that.iterativeIncomingEdges.forEach((v, es) -> es.forEach(this::addIterativeIncomingEdge));
+    that.nonIterativeIncomingEdges.forEach((v, es) -> es.forEach(this::addNonIterativeIncomingEdge));
+    that.dagOutgoingEdges.forEach(((v, es) -> es.forEach(this::addDagOutgoingEdge)));
+    that.edgeWithLoopToEdgeWithInternalVertex.forEach((eLoop, eInternal) -> this.mapEdgeWithLoop(eLoop, eInternal));
+    this.maxNumberOfIterations = that.maxNumberOfIterations;
+    this.terminationCondition = that.terminationCondition;
+  }
+
   @Override
   public LoopVertex getClone() {
-    final LoopVertex newLoopVertex = new LoopVertex(compositeTransformFullName);
-
-    // Copy all elements to the clone
-    final DAG<IRVertex, IREdge> dagToCopy = this.getDAG();
-    dagToCopy.topologicalDo(v -> {
-      newLoopVertex.getBuilder().addVertex(v, dagToCopy);
-      dagToCopy.getIncomingEdgesOf(v).forEach(newLoopVertex.getBuilder()::connectVertices);
-    });
-    this.dagIncomingEdges.forEach(((v, es) -> es.forEach(newLoopVertex::addDagIncomingEdge)));
-    this.iterativeIncomingEdges.forEach((v, es) -> es.forEach(newLoopVertex::addIterativeIncomingEdge));
-    this.nonIterativeIncomingEdges.forEach((v, es) -> es.forEach(newLoopVertex::addNonIterativeIncomingEdge));
-    this.dagOutgoingEdges.forEach(((v, es) -> es.forEach(newLoopVertex::addDagOutgoingEdge)));
-    this.edgeWithLoopToEdgeWithInternalVertex.forEach((eLoop, eInternal)
-        -> newLoopVertex.mapEdgeWithLoop(eLoop, eInternal));
-    newLoopVertex.setMaxNumberOfIterations(maxNumberOfIterations);
-    newLoopVertex.setTerminationCondition(terminationCondition);
-
-    this.copyExecutionPropertiesTo(newLoopVertex);
-    return newLoopVertex;
+    return new LoopVertex(this);
   }
 
   /**
@@ -218,8 +221,8 @@ public final class LoopVertex extends IRVertex {
       dagBuilder.addVertex(newIrVertex, dagToAdd);
       dagToAdd.getIncomingEdgesOf(irVertex).forEach(edge -> {
         final IRVertex newSrc = originalToNewIRVertex.get(edge.getSrc());
-        final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-            newSrc, newIrVertex, edge.isSideInput());
+        final IREdge newIrEdge =
+          new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), newSrc, newIrVertex);
         edge.copyExecutionPropertiesTo(newIrEdge);
         dagBuilder.connectVertices(newIrEdge);
       });
@@ -228,7 +231,7 @@ public final class LoopVertex extends IRVertex {
     // process DAG incoming edges.
     getDagIncomingEdges().forEach((dstVertex, irEdges) -> irEdges.forEach(edge -> {
       final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-          edge.getSrc(), originalToNewIRVertex.get(dstVertex), edge.isSideInput());
+          edge.getSrc(), originalToNewIRVertex.get(dstVertex));
       edge.copyExecutionPropertiesTo(newIrEdge);
       dagBuilder.connectVertices(newIrEdge);
     }));
@@ -237,7 +240,7 @@ public final class LoopVertex extends IRVertex {
       // if termination condition met, we process the DAG outgoing edge.
       getDagOutgoingEdges().forEach((srcVertex, irEdges) -> irEdges.forEach(edge -> {
         final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-            originalToNewIRVertex.get(srcVertex), edge.getDst(), edge.isSideInput());
+            originalToNewIRVertex.get(srcVertex), edge.getDst());
         edge.copyExecutionPropertiesTo(newIrEdge);
         dagBuilder.addVertex(edge.getDst()).connectVertices(newIrEdge);
       }));
@@ -248,7 +251,7 @@ public final class LoopVertex extends IRVertex {
     this.nonIterativeIncomingEdges.forEach((dstVertex, irEdges) -> irEdges.forEach(this::addDagIncomingEdge));
     this.iterativeIncomingEdges.forEach((dstVertex, irEdges) -> irEdges.forEach(edge -> {
       final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-          originalToNewIRVertex.get(edge.getSrc()), dstVertex, edge.isSideInput());
+          originalToNewIRVertex.get(edge.getSrc()), dstVertex);
       edge.copyExecutionPropertiesTo(newIrEdge);
       this.addDagIncomingEdge(newIrEdge);
     }));

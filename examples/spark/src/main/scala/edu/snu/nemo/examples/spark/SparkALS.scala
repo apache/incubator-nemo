@@ -19,7 +19,9 @@
 package edu.snu.nemo.examples.spark;
 
 import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession
+import org.apache.commons.lang.SerializationUtils
 import org.apache.commons.math3.linear._
+import org.apache.spark.SparkEnv
 
 /**
   * Alternating least squares matrix factorization.
@@ -126,14 +128,19 @@ object SparkALS {
     val Rc = sc.broadcast(R)
     var msb = sc.broadcast(ms)
     var usb = sc.broadcast(us)
+
+    // TODO #205: RDD Closure with Broadcast Variables Serialization Bug
+    val update_ms = (i : Int) => update(i, msb.value(i), usb.value, Rc.value)
+    val update_us = (i : Int) => update(i, usb.value(i), msb.value, Rc.value.transpose())
+
     for (iter <- 1 to ITERATIONS) {
       println(s"Iteration $iter:")
       ms = sc.parallelize(0 until M, slices)
-        .map(i => update(i, msb.value(i), usb.value, Rc.value))
+        .map(update_ms)
         .collect()
       msb = sc.broadcast(ms) // Re-broadcast ms because it was updated
       us = sc.parallelize(0 until U, slices)
-        .map(i => update(i, usb.value(i), msb.value, Rc.value.transpose()))
+        .map(update_us)
         .collect()
       usb = sc.broadcast(us) // Re-broadcast us because it was updated
       println("RMSE = " + rmse(R, ms, us))

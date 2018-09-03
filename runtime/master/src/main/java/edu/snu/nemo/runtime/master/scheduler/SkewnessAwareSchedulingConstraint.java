@@ -20,7 +20,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternPropert
 import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.common.HashRange;
 import edu.snu.nemo.common.KeyRange;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
@@ -45,7 +45,7 @@ public final class SkewnessAwareSchedulingConstraint implements SchedulingConstr
   }
 
   public boolean hasSkewedData(final Task task) {
-    final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
+    final int taskIdx = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
     for (StageEdge inEdge : task.getTaskIncomingEdges()) {
       if (CommunicationPatternProperty.Value.Shuffle
       .equals(inEdge.getDataCommunicationPattern())) {

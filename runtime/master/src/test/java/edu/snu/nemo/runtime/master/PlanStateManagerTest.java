@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master;
 
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
@@ -30,7 +30,6 @@ import org.apache.reef.tang.Injector;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.List;
@@ -45,17 +44,19 @@ import static org.mockito.Mockito.mock;
  * Tests {@link PlanStateManager}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(MetricMessageHandler.class)
 public final class PlanStateManagerTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
   private MetricMessageHandler metricMessageHandler;
+  private PlanStateManager planStateManager;
 
   @Before
   public void setUp() throws Exception {
     final Injector injector = LocalMessageEnvironment.forkInjector(LocalMessageDispatcher.getInjector(),
         MessageEnvironment.MASTER_COMMUNICATION_ID);
     metricMessageHandler = mock(MetricMessageHandler.class);
+    injector.bindVolatileInstance(MetricMessageHandler.class, metricMessageHandler);
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
+    planStateManager = injector.getInstance(PlanStateManager.class);
   }
 
   /**
@@ -66,8 +67,7 @@ public final class PlanStateManagerTest {
   public void testPhysicalPlanStateChanges() throws Exception {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
-    final PlanStateManager planStateManager =
-        new PlanStateManager(physicalPlan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+    planStateManager.updatePlan(physicalPlan, MAX_SCHEDULE_ATTEMPT);
 
     assertEquals(planStateManager.getPlanId(), "TestPlan");
 
@@ -75,11 +75,11 @@ public final class PlanStateManagerTest {
 
     for (int stageIdx = 0; stageIdx < stageList.size(); stageIdx++) {
       final Stage stage = stageList.get(stageIdx);
-      final List<String> taskIds = stage.getTaskIds();
+      final List<String> taskIds = planStateManager.getTaskAttemptsToSchedule(stage.getId());
       taskIds.forEach(taskId -> {
         planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
         planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
-        if (RuntimeIdGenerator.getIndexFromTaskId(taskId) == taskIds.size() - 1) {
+        if (RuntimeIdManager.getIndexFromTaskId(taskId) == taskIds.size() - 1) {
           assertEquals(StageState.State.COMPLETE, planStateManager.getStageState(stage.getId()));
         }
       });
@@ -98,8 +98,7 @@ public final class PlanStateManagerTest {
   public void testWaitUntilFinish() throws Exception {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
-    final PlanStateManager planStateManager =
-        new PlanStateManager(physicalPlan, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+    planStateManager.updatePlan(physicalPlan, MAX_SCHEDULE_ATTEMPT);
 
     assertFalse(planStateManager.isPlanDone());
 
@@ -111,7 +110,7 @@ public final class PlanStateManagerTest {
     // Complete the plan and check the result again.
     // It has to return COMPLETE.
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
-        .flatMap(stage -> stage.getTaskIds().stream())
+        .flatMap(stage -> planStateManager.getTaskAttemptsToSchedule(stage.getId()).stream())
         .collect(Collectors.toList());
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));

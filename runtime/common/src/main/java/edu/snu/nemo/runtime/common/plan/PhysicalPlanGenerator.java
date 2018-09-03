@@ -31,7 +31,7 @@ import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.exception.IllegalVertexOperationException;
 import edu.snu.nemo.common.exception.PhysicalPlanGenerationException;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -107,14 +107,19 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
     }));
 
     edgeGroupToIrEdge.forEach((id, edges) -> {
-      final StageEdge representativeEdge = edges.get(0);
-      final DuplicateEdgeGroupPropertyValue representativeProperty =
-          representativeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class).get();
+      final StageEdge firstEdge = edges.get(0);
+      final DuplicateEdgeGroupPropertyValue firstDuplicateEdgeValue =
+          firstEdge.getPropertyValue(DuplicateEdgeGroupProperty.class).get();
+
       edges.forEach(e -> {
         final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
             e.getPropertyValue(DuplicateEdgeGroupProperty.class).get();
-        duplicateEdgeGroupProperty.setRepresentativeEdgeId(representativeEdge.getId());
-        duplicateEdgeGroupProperty.setGroupSize(representativeProperty.getGroupSize());
+        if (firstDuplicateEdgeValue.isRepresentativeEdgeDecided()) {
+          duplicateEdgeGroupProperty.setRepresentativeEdgeId(firstDuplicateEdgeValue.getRepresentativeEdgeId());
+        } else {
+          duplicateEdgeGroupProperty.setRepresentativeEdgeId(firstEdge.getId());
+        }
+        duplicateEdgeGroupProperty.setGroupSize(edges.size());
       });
     });
   }
@@ -142,7 +147,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
 
     for (final int stageId : vertexSetForEachStage.keySet()) {
       final Set<IRVertex> stageVertices = vertexSetForEachStage.get(stageId);
-      final String stageIdentifier = RuntimeIdGenerator.generateStageId(stageId);
+      final String stageIdentifier = RuntimeIdManager.generateStageId(stageId);
       final ExecutionPropertyMap<VertexExecutionProperty> stageProperties = new ExecutionPropertyMap<>(stageIdentifier);
       stagePartitioner.getStageProperties(stageVertices.iterator().next()).forEach(stageProperties::put);
       final int stageParallelism = stageProperties.get(ParallelismProperty.class)
@@ -188,8 +193,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
                 irEdge.getId(),
                 irEdge.getExecutionProperties(),
                 irEdge.getSrc(),
-                irEdge.getDst(),
-                irEdge.isSideInput()));
+                irEdge.getDst()));
           } else { // edge comes from another stage
             interStageEdges.add(irEdge);
           }
@@ -221,7 +225,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
             dstStage == null ? String.format(" destination stage for %s", interStageEdge.getDst()) : ""));
       }
       dagOfStagesBuilder.connectVertices(new StageEdge(interStageEdge.getId(), interStageEdge.getExecutionProperties(),
-          interStageEdge.getSrc(), interStageEdge.getDst(), srcStage, dstStage, interStageEdge.isSideInput()));
+          interStageEdge.getSrc(), interStageEdge.getDst(), srcStage, dstStage));
     }
 
     return dagOfStagesBuilder.build();

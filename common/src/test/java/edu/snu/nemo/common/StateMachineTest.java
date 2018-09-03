@@ -16,6 +16,7 @@
 package edu.snu.nemo.common;
 
 import edu.snu.nemo.common.StateMachine;
+import edu.snu.nemo.common.exception.IllegalStateTransitionException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,7 +35,7 @@ public final class StateMachineTest {
   }
 
   @Test
-  public void testSimpleStateTransitions() {
+  public void testSimpleStateTransitions() throws IllegalStateTransitionException {
     stateMachineBuilder.addState(CookingState.SHOPPING, "Shopping for ingredients");
     stateMachineBuilder.addState(CookingState.PREPARING, "Washing vegetables, chopping meat...");
     stateMachineBuilder.addState(CookingState.SEASONING, "Adding salt and pepper");

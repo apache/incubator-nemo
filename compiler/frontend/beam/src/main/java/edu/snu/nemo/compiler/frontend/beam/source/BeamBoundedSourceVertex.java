@@ -41,18 +41,29 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
 
   /**
    * Constructor of BeamBoundedSourceVertex.
+   *
    * @param source BoundedSource to read from.
    */
   public BeamBoundedSourceVertex(final BoundedSource<O> source) {
+    super();
     this.source = source;
     this.sourceDescription = source.toString();
   }
 
+  /**
+   * Constructor of BeamBoundedSourceVertex.
+   *
+   * @param that the source object for copying
+   */
+  public BeamBoundedSourceVertex(final BeamBoundedSourceVertex that) {
+    super(that);
+    this.source = that.source;
+    this.sourceDescription = that.source.toString();
+  }
+
   @Override
   public BeamBoundedSourceVertex getClone() {
-    final BeamBoundedSourceVertex that = new BeamBoundedSourceVertex<>(this.source);
-    this.copyExecutionPropertiesTo(that);
-    return that;
+    return new BeamBoundedSourceVertex(this);
   }
 
   @Override

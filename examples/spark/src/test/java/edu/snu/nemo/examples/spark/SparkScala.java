@@ -77,4 +77,41 @@ public final class SparkScala {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
+
+  @Test(timeout = TIMEOUT)
+  public void testCachingWordCount() throws Exception {
+    final String inputFileName = "test_input_wordcount_spark";
+    final String outputFileName1 = "test_output_wordcount_spark";
+    final String outputFileName2 = "test_output_reversed_wordcount_spark";
+    final String expectedOutputFilename1 = "expected_output_wordcount_spark";
+    final String expectedOutputFilename2 = "expected_output_reversed_wordcount_spark";
+    final String inputFilePath = fileBasePath + inputFileName;
+    final String outputFilePath1 = fileBasePath + outputFileName1;
+    final String outputFilePath2 = fileBasePath + outputFileName2;
+
+    JobLauncher.main(builder
+        .addJobId(SparkCachingWordCount.class.getSimpleName() + "_test")
+        .addUserMain(SparkCachingWordCount.class.getCanonicalName())
+        .addUserArgs(inputFilePath, outputFilePath1, outputFilePath2)
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .build());
+
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName1, expectedOutputFilename1);
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName2, expectedOutputFilename2);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName1);
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName2);
+    }
+  }
+
+  @Test(timeout = TIMEOUT)
+  public void testALS() throws Exception {
+    JobLauncher.main(builder
+      .addJobId(SparkALS.class.getSimpleName() + "_test")
+      .addUserMain(SparkALS.class.getCanonicalName())
+      .addUserArgs("100") // TODO #202: Bug with empty string user_args
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
+  }
 }

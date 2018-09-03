@@ -20,14 +20,17 @@ import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AggressiveSpeculativeCloningPass;
 import org.apache.reef.tang.Injector;
 
 /**
  * Basic pull policy.
+ * TODO #200: Maintain Test Passes and Policies Separately
  */
 public final class BasicPullPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
       new PolicyBuilder()
+          .registerCompileTimePass(new AggressiveSpeculativeCloningPass())
           .registerCompileTimePass(new DefaultScheduleGroupPass());
   private final Policy policy;
 
@@ -39,8 +42,7 @@ public final class BasicPullPolicy implements Policy {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory)
-      throws Exception {
+  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory) {
     return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
 

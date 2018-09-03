@@ -44,6 +44,8 @@ public final class StageState {
     stateMachineBuilder.addTransition(State.INCOMPLETE, State.COMPLETE, "All tasks complete");
     stateMachineBuilder.addTransition(State.COMPLETE, State.INCOMPLETE,
         "Completed before, but a task in this stage should be retried");
+    stateMachineBuilder.addTransition(State.COMPLETE, State.COMPLETE,
+      "Completed before, but probably a cloned task has completed again");
 
     stateMachineBuilder.setInitialState(State.INCOMPLETE);
 

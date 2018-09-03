@@ -22,9 +22,10 @@ package edu.snu.nemo.common.exception;
 public final class BlockWriteException extends RuntimeException {
   /**
    * BlockWriteException.
-   * @param exception exception
+   *
+   * @param throwable the throwable to throw.
    */
-  public BlockWriteException(final Throwable exception) {
-    super(exception);
+  public BlockWriteException(final Throwable throwable) {
+    super(throwable);
   }
 }
