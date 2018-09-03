@@ -37,7 +37,7 @@ public final class MetricCollectTransform<I, O> implements Transform<I, O> {
   private BiFunction<O, OutputCollector, O> closer;
 
   /**
-   * Default constructor.
+   * MetricCollectTransform constructor.
    */
   public MetricCollectTransform(final O dynOptData,
                                 final BiFunction<Object, O, O> dynOptDataCollector,

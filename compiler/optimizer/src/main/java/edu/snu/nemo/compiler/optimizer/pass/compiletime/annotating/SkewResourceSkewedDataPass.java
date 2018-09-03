@@ -26,10 +26,11 @@ import edu.snu.nemo.common.ir.vertex.transform.MetricCollectTransform;
 import java.util.List;
 
 /**
- * Pass to annotate the DAG for a job to perform data skew.
- * It specifies which optimization to perform on the OperatorVertex
- * that collects statistics sent to the master side optimizer
- * for dynamic optimization.
+ * Pass to annotate the IR DAG for skew handling.
+ *
+ * It marks children and descendents of vertex with {@link MetricCollectTransform},
+ * which collects task-level statistics used for dynamic optimization,
+ * with {@link ResourceSkewedDataProperty} to perform skewness-aware scheduling.
  */
 @Annotates(DynamicOptimizationProperty.class)
 public final class SkewResourceSkewedDataPass extends AnnotatingPass {

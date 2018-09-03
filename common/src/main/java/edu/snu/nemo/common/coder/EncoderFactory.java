@@ -36,6 +36,7 @@ public interface EncoderFactory<T> extends Serializable {
    * @throws IOException if fail to get the instance.
    */
   Encoder<T> create(OutputStream outputStream) throws IOException;
+  Object getCoder();
 
   /**
    * Interface of Encoder.
@@ -82,6 +83,11 @@ public interface EncoderFactory<T> extends Serializable {
     @Override
     public Encoder create(final OutputStream outputStream) {
       return dummyEncoder;
+    }
+
+    @Override
+    public Object getCoder() {
+      throw new RuntimeException("No coder available - DummyEncoder is not supposed to be used.");
     }
 
     @Override

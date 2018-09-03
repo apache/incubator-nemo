@@ -25,7 +25,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * {@link EncoderFactory} from {@link Coder}.
+ * KVEncoderFactory for Beam.
+ *
  * @param <T> the type of element to encode.
  */
 public final class BeamKVEncoderFactory<T> implements KVEncoderFactory<T> {
@@ -33,7 +34,7 @@ public final class BeamKVEncoderFactory<T> implements KVEncoderFactory<T> {
   private final EncoderFactory keyEncoderFactory;
 
   /**
-   * Constructor of BeamEncoderFactory.
+   * Constructor of BeamKVEncoderFactory.
    *
    * @param beamCoder actual Beam coder to use.
    */
@@ -58,7 +59,7 @@ public final class BeamKVEncoderFactory<T> implements KVEncoderFactory<T> {
   }
 
   /**
-   * Beam Encoder for non void objects.
+   * Beam KV Encoder for non void objects.
    *
    * @param <T2> the type of element to decode.
    */
@@ -90,9 +91,9 @@ public final class BeamKVEncoderFactory<T> implements KVEncoderFactory<T> {
   }
 
   /**
-   * Beam Decoder for {@link VoidCoder}.
+   * Beam KV Decoder for {@link VoidCoder}.
    *
-   * @param <T2> the type of element to decode.
+   * @param <T2> the type of element to encode.
    */
   private final class BeamVoidKVEncoder<T2> implements KVEncoder<T2> {
 

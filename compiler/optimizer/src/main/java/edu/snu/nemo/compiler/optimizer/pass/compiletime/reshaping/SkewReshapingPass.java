@@ -194,6 +194,12 @@ public final class SkewReshapingPass extends ReshapingPass {
       throw new RuntimeException("KeyEncoder/DecoderFactory for skew reshaping pass are not set!");
     }
 
+    final EncoderFactory keyEncoderFactory1
+      = edge.getPropertyValue(EncoderProperty.class).get();
+    if (keyEncoderFactory1 instanceof BeamEncoderFactory) {
+    
+    }
+
     return newEdge;
   }
 }

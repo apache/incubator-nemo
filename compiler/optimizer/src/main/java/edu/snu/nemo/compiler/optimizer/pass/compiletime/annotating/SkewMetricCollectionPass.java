@@ -25,9 +25,11 @@ import edu.snu.nemo.common.ir.vertex.transform.MetricCollectTransform;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
- * Pass to annotate the DAG for a job to perform data skew.
- * It specifies the outgoing Shuffle edges from MetricCollectionVertices with a MetricCollection ExecutionProperty
- * which lets the edge to know what metric collection it should perform.
+ * Pass to annotate the IR DAG for skew handling.
+ *
+ * It specifies the target of dynamic optimization for skew handling
+ * by setting appropriate {@link MetricCollectionProperty} to
+ * outgoing shuffle edges from vertices with {@link MetricCollectTransform}.
  */
 @Annotates(MetricCollectionProperty.class)
 @Requires(CommunicationPatternProperty.class)

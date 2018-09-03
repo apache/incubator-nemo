@@ -45,6 +45,10 @@ public final class EmptyComponents {
   private EmptyComponents() {
   }
 
+  /**
+   * Builds dummy IR DAG for testing.
+   * @return the dummy IR DAG.
+   */
   public static DAG<IRVertex, IREdge> buildEmptyDAG() {
     DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     final IRVertex s = new EmptyComponents.EmptySourceVertex<>("s");
@@ -67,6 +71,12 @@ public final class EmptyComponents {
     return dagBuilder.build();
   }
 
+  /**
+   * Builds dummy IR DAG to test skew handling.
+   * For DataSkewPolicy, shuffle edges needs extra setting for EncoderProperty, DecoderProperty
+   * and KeyExtractorProperty by default.
+   * @return the dummy IR DAG.
+   */
   public static DAG<IRVertex, IREdge> buildEmptyDAGForSkew() {
     DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     final IRVertex s = new EmptyComponents.EmptySourceVertex<>("s");
