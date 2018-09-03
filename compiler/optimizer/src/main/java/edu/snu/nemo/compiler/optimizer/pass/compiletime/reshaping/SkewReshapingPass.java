@@ -15,33 +15,40 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
+import edu.snu.nemo.common.KeyExtractor;
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.coder.*;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
-import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
+import edu.snu.nemo.common.ir.vertex.transform.AggregateMetricTransform;
+import edu.snu.nemo.common.ir.vertex.transform.MetricCollectTransform;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
 
 /**
- * Pass to modify the DAG for a job to perform data skew.
- * It adds a {@link AggregationBarrierVertex} before Shuffle edges, to make a barrier before it,
- * and to use the metrics to repartition the skewed data.
- * NOTE: we currently put the SkewCompositePass at the end of the list for each policies, as it needs to take
- * a snapshot at the end of the pass. This could be prevented by modifying other passes to take the snapshot of the
- * DAG at the end of each passes for metricCollectionVertices.
- */
+ * Pass to reshape the IR DAG for skew handling.
+ *
+ * This pass inserts vertices to perform two-step dynamic optimization for skew handling.
+ * 1) Task-level statistic collection is done via vertex with {@link MetricCollectTransform}
+ * 2) Stage-level statistic aggregation is done via vertex with {@link AggregateMetricTransform}
+ * inserted before shuffle edges.
+ * */
 @Requires(CommunicationPatternProperty.class)
 public final class SkewReshapingPass extends ReshapingPass {
   private static final Logger LOG = LoggerFactory.getLogger(SkewReshapingPass.class.getName());
@@ -56,10 +63,10 @@ public final class SkewReshapingPass extends ReshapingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
-    final List<MetricCollectionVertex> metricCollectionVertices = new ArrayList<>();
+    final List<OperatorVertex> metricCollectVertices = new ArrayList<>();
 
     dag.topologicalDo(v -> {
-      // We care about OperatorVertices that have any incoming edges that are of type Shuffle.
+      // We care about OperatorVertices that have any shuffle incoming edges.
       if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
           CommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))
@@ -67,19 +74,16 @@ public final class SkewReshapingPass extends ReshapingPass {
       irEdge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())) {
 
         dag.getIncomingEdgesOf(v).forEach(edge -> {
-          // we insert the metric collection vertex when we meet a shuffle edge
           if (CommunicationPatternProperty.Value.Shuffle
                 .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-            final AggregationBarrierVertex abv =
-              new AggregationBarrierVertex();
-            final MetricCollectionVertex mcv =
-              new MetricCollectionVertex(abv.getId(), edge.getPropertyValue(KeyExtractorProperty.class).get());
-            metricCollectionVertices.add(mcv);
+            final OperatorVertex abv = generateMetricAggregationVertex();
+            final OperatorVertex mcv = generateMetricCollectVertex(edge, abv);
+            metricCollectVertices.add(mcv);
             builder.addVertex(v);
             builder.addVertex(mcv);
             builder.addVertex(abv);
 
-            // We then insert the MetricCollectionVertex and AggregationBarrierVertex
+            // We then insert the vertex with MetricCollectTransform and vertex with AggregateMetricTransform
             // between the vertex and incoming vertices.
             final IREdge edgeToMCV = generateEdgeToMCV(edge, mcv);
             final IREdge edgeToABV = generateEdgeToABV(edge, mcv, abv);
@@ -100,11 +104,65 @@ public final class SkewReshapingPass extends ReshapingPass {
       }
     });
     final DAG<IRVertex, IREdge> newDAG = builder.build();
-    metricCollectionVertices.forEach(v -> v.setDAGSnapshot(newDAG));
     return newDAG;
   }
 
-  private IREdge generateEdgeToMCV(final IREdge edge, final MetricCollectionVertex mcv) {
+  private OperatorVertex generateMetricAggregationVertex() {
+    // Define a custom data aggregator for skew handling.
+    // Here, the aggregator gathers key frequency data used in shuffle data repartitioning.
+    final BiFunction<Object, Map<Object, Long>, Map<Object, Long>> dynOptDataAggregator =
+      (BiFunction<Object, Map<Object, Long>, Map<Object, Long>> & Serializable)
+      (element, aggregatedDynOptData) -> {
+        final Object key = ((Pair<Object, Long>) element).left();
+        final Long count = ((Pair<Object, Long>) element).right();
+
+        final Map<Object, Long> aggregatedDynOptDataMap = (Map<Object, Long>) aggregatedDynOptData;
+        if (aggregatedDynOptDataMap.containsKey(key)) {
+          aggregatedDynOptDataMap.compute(key, (existingKey, accumulatedCount) -> accumulatedCount + count);
+        } else {
+          aggregatedDynOptDataMap.put(key, count);
+        }
+        return aggregatedDynOptData;
+      };
+    final AggregateMetricTransform abt =
+      new AggregateMetricTransform<Pair<Object, Long>, Map<Object, Long>>(new HashMap<>(), dynOptDataAggregator);
+    return new OperatorVertex(abt);
+  }
+
+  private OperatorVertex generateMetricCollectVertex(final IREdge edge, final OperatorVertex abv) {
+    final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
+    // Define a custom data collector for skew handling.
+    // Here, the collector gathers key frequency data used in shuffle data repartitioning.
+    final BiFunction<Object, Map<Object, Object>, Map<Object, Object>> dynOptDataCollector =
+      (BiFunction<Object, Map<Object, Object>, Map<Object, Object>> & Serializable)
+        (element, dynOptData) -> {
+          Object key = keyExtractor.extractKey(element);
+          if (dynOptData.containsKey(key)) {
+            dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
+          } else {
+            dynOptData.put(key, 1L);
+          }
+          return dynOptData;
+        };
+
+    // Define a custom transform closer for skew handling.
+    // Here, we emit key to frequency data map type data when closing transform.
+    final BiFunction<Map<Object, Object>, OutputCollector, Map<Object, Object>> closer =
+      (BiFunction<Map<Object, Object>, OutputCollector, Map<Object, Object>> & Serializable)
+        (dynOptData, outputCollector)-> {
+          dynOptData.forEach((k, v) -> {
+            final Pair<Object, Object> pairData = Pair.of(k, v);
+            outputCollector.emit(abv.getId(), pairData);
+          });
+          return dynOptData;
+        };
+
+    final MetricCollectTransform mct
+      = new MetricCollectTransform(new HashMap<>(), dynOptDataCollector, closer);
+    return new OperatorVertex(mct);
+  }
+
+  private IREdge generateEdgeToMCV(final IREdge edge, final OperatorVertex mcv) {
     final IREdge newEdge =
       new IREdge(CommunicationPatternProperty.Value.OneToOne, edge.getSrc(), mcv);
     newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
@@ -113,8 +171,8 @@ public final class SkewReshapingPass extends ReshapingPass {
   }
 
   private IREdge generateEdgeToABV(final IREdge edge,
-                                   final MetricCollectionVertex mcv,
-                                   final AggregationBarrierVertex abv) {
+                                   final OperatorVertex mcv,
+                                   final OperatorVertex abv) {
     final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mcv, abv);
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
@@ -122,7 +180,7 @@ public final class SkewReshapingPass extends ReshapingPass {
     newEdge.setProperty(KeyExtractorProperty.of(edge.getPropertyValue(KeyExtractorProperty.class).get()));
     newEdge.setProperty(AdditionalOutputTagProperty.of("DynOptData"));
 
-    // For sending data to AggregationBarrierVertex, we need to get coders for encoding/decoding the keys.
+    // For sending data to vertex with AggregateMetricTransform, we need to get coders for encoding/decoding the keys.
     if (edge.getPropertyValue(EncoderProperty.class).get() instanceof KVEncoderFactory
       && edge.getPropertyValue(DecoderProperty.class).get() instanceof KVDecoderFactory) {
       final EncoderFactory keyEncoderFactory

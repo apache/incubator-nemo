@@ -71,15 +71,6 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     }
   }
 
-  public void printLog() {
-    this.additionalTaggedChildToElementsMap.forEach((k, v) -> {
-      final String tag = k.left();
-      final String dstVertexId = k.right();
-      final List<Object> data = v;
-      data.forEach(d -> LOG.info("printLog: tag {} dstV {} data {}", tag, dstVertexId, d));
-    });
-  }
-
   public Iterable<O> iterateMain() {
     return mainTagElements;
   }

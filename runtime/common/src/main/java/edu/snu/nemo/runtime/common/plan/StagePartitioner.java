@@ -19,7 +19,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import edu.snu.nemo.common.ir.vertex.AggregationBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang3.mutable.MutableInt;
@@ -108,9 +107,6 @@ public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, M
     // If the edge is not OneToOne, return false
     if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
         != CommunicationPatternProperty.Value.OneToOne) {
-      return false;
-    }
-    if (edge.getDst() instanceof AggregationBarrierVertex) {
       return false;
     }
     // Return true if and only if the execution properties of the two vertices are compatible

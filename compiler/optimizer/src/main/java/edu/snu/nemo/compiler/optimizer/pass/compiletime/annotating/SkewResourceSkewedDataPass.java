@@ -18,15 +18,18 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionVertex;
+import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
+import edu.snu.nemo.common.ir.vertex.transform.MetricCollectTransform;
 
 import java.util.List;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
- * It specifies which optimization to perform on the MetricCollectionVertex.
+ * It specifies which optimization to perform on the OperatorVertex
+ * that collects statistics sent to the master side optimizer
+ * for dynamic optimization.
  */
 @Annotates(DynamicOptimizationProperty.class)
 public final class SkewResourceSkewedDataPass extends AnnotatingPass {
@@ -37,11 +40,12 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
     super(SkewResourceSkewedDataPass.class);
   }
 
-  private boolean hasMetricCollectionVertexAsParent(final DAG<IRVertex, IREdge> dag,
-                                                    final IRVertex v) {
+  private boolean hasParentWithMetricCollectTransform(final DAG<IRVertex, IREdge> dag,
+                                                      final IRVertex v) {
     List<IRVertex> parents = dag.getParents(v.getId());
     for (IRVertex parent : parents) {
-      if (parent instanceof MetricCollectionVertex) {
+      if (parent instanceof OperatorVertex
+        && ((OperatorVertex) v).getTransform() instanceof MetricCollectTransform) {
         return true;
       }
     }
@@ -51,12 +55,13 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().stream()
-        .filter(v -> v instanceof MetricCollectionVertex)
-        .forEach(v -> v.setProperty(DynamicOptimizationProperty
+        .filter(v -> v instanceof OperatorVertex
+          && ((OperatorVertex) v).getTransform() instanceof MetricCollectTransform)
+      .forEach(v -> v.setProperty(DynamicOptimizationProperty
             .of(DynamicOptimizationProperty.Value.DataSkewRuntimePass)));
 
     dag.getVertices().stream()
-        .filter(v -> hasMetricCollectionVertexAsParent(dag, v)
+        .filter(v -> hasParentWithMetricCollectTransform(dag, v)
             && !v.getExecutionProperties().containsKey(ResourceSkewedDataProperty.class))
         .forEach(childV -> {
           childV.getExecutionProperties().put(ResourceSkewedDataProperty.of(true));

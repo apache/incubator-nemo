@@ -22,9 +22,6 @@ import java.util.Arrays;
 
 /**
  * Pass to modify the DAG for a job to perform data skew.
- * NOTE: we currently put the SkewCompositePass at the end of the list for each policies, as it needs to take a
- * snapshot at the end of the pass. This could be prevented by modifying other passes to take the snapshot of the DAG
- * at the end of each passes for metricCollectionVertices.
  */
 public final class SkewCompositePass extends CompositePass {
   /**

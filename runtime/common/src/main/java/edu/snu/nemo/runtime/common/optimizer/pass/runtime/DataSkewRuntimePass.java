@@ -43,7 +43,7 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<O
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
   // Skewed keys denote for top n keys in terms of partition size.
-  public static final int DEFAULT_NUM_SKEWED_KEYS = 3;
+  public static final int DEFAULT_NUM_SKEWED_KEYS = 1;
   private int numSkewedKeys;
 
   /**

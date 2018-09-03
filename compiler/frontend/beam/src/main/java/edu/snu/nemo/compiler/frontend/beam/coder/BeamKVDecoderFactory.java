@@ -27,11 +27,8 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * {@link DecoderFactory} from {@link org.apache.beam.sdk.coders.Coder}.
- * @param <T> the type of element to decode.
- */
-/**
- * {@link DecoderFactory} from {@link org.apache.beam.sdk.coders.Coder}.
+ * {@link KVDecoderFactory} from {@link Coder}.
+ *
  * @param <T> the type of element to decode.
  */
 public final class BeamKVDecoderFactory<T> implements KVDecoderFactory<T> {
@@ -40,7 +37,7 @@ public final class BeamKVDecoderFactory<T> implements KVDecoderFactory<T> {
   private final DecoderFactory keyDecoderFactory;
 
   /**
-   * Constructor of BeamDecoderFactory.
+   * Constructor of BeamKVDecoderFactory.
    *
    * @param beamCoder actual Beam coder to use.
    */
@@ -65,7 +62,7 @@ public final class BeamKVDecoderFactory<T> implements KVDecoderFactory<T> {
   }
 
   /**
-   * Abstract class for Beam Decoder.
+   * Abstract class for BeamnKV Decoder.
    *
    * @param <T2> the type of element to decode.
    */

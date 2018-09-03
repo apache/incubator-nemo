@@ -15,58 +15,51 @@
  */
 package edu.snu.nemo.common.ir.vertex.transform;
 
-import edu.snu.nemo.common.KeyExtractor;
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.OutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.function.BiFunction;
 
 /**
- * A {@link Transform} relays input data from upstream vertex to downstream vertex promptly.
- * This transform can be used for merging input data into the {@link OutputCollector}.
- * @param <T> input/output type.
+ * A {@link Transform} that collects task-level statistics used for dynamic optimization.
+ * The collected statistics is sent to vertex with {@link AggregateMetricTransform} as a tagged output
+ * when this transform is closed.
+ *
+ * @param <I> input type.
+ * @param <O> output type.
  */
-public final class MetricCollectTransform<T> implements Transform<T, T> {
+public final class MetricCollectTransform<I, O> implements Transform<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(MetricCollectTransform.class.getName());
-  private OutputCollector<T> outputCollector;
-  private final String dstvertexId;
-  private final KeyExtractor keyExtractor;
-  private Map<Object, Long> dynOptData;
+  private OutputCollector<O> outputCollector;
+  private O dynOptData;
+  private BiFunction<Object, O, O> dynOptDataCollector;
+  private BiFunction<O, OutputCollector, O> closer;
 
   /**
    * Default constructor.
    */
-  public MetricCollectTransform(final String dstVertexId, final KeyExtractor keyExtractor) {
-    this.dynOptData = new HashMap<>();
-    this.dstvertexId = dstVertexId;
-    this.keyExtractor = keyExtractor;
+  public MetricCollectTransform(final O dynOptData,
+                                final BiFunction<Object, O, O> dynOptDataCollector,
+                                final BiFunction<O, OutputCollector, O> closer) {
+    this.dynOptData = dynOptData;
+    this.dynOptDataCollector = dynOptDataCollector;
+    this.closer = closer;
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> oc) {
+  public void prepare(final Context context, final OutputCollector<O> oc) {
     this.outputCollector = oc;
   }
 
   @Override
-  public void onData(final T element) {
-    // Collect key frequency data, which is used in dynamic optimization.
-    Object key = keyExtractor.extractKey(element);
-    if (dynOptData.containsKey(key)) {
-      dynOptData.compute(key, (existingKey, existingCount) -> existingCount + 1L);
-    } else {
-      dynOptData.put(key, 1L);
-    }
+  public void onData(final I element) {
+    dynOptData = dynOptDataCollector.apply(element, dynOptData);
   }
 
   @Override
   public void close() {
-    dynOptData.forEach((k, v) -> {
-      final Pair<Object, Long> pairData = Pair.of(k, v);
-      outputCollector.emit(dstvertexId, pairData);
-    });
+    closer.apply(dynOptData, outputCollector);
   }
 
   @Override

@@ -243,9 +243,9 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
         .filter(v -> v instanceof IRVertex);
     // They should either be OperatorVertex or LoopVertex
     if (verticesToObserve.get().anyMatch(v ->
-      !(v instanceof OperatorVertex || v instanceof LoopVertex || v instanceof AggregationBarrierVertex))) {
+      !(v instanceof OperatorVertex || v instanceof LoopVertex))) {
       final String problematicVertices = verticesToObserve.get().filter(v ->
-          !(v instanceof OperatorVertex || v instanceof LoopVertex || v instanceof AggregationBarrierVertex))
+          !(v instanceof OperatorVertex || v instanceof LoopVertex))
           .map(V::getId).collect(Collectors.toList()).toString();
       throw new CompileTimeOptimizationException("DAG sink check failed while building DAG: " + problematicVertices);
     }

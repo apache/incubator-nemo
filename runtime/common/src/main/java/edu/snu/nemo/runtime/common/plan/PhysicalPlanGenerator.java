@@ -244,9 +244,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
     stage.getIRDAG().getVertices().forEach(irVertex -> {
       // Check vertex type.
       if (!(irVertex instanceof  SourceVertex
-          || irVertex instanceof OperatorVertex
-          || irVertex instanceof MetricCollectionVertex
-          || irVertex instanceof AggregationBarrierVertex)) {
+          || irVertex instanceof OperatorVertex)) {
         throw new UnsupportedOperationException(irVertex.toString());
       }
     });

@@ -15,16 +15,16 @@
  */
 package edu.snu.nemo.common.ir.vertex.transform;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.OutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
+import java.util.function.BiFunction;
 
 /**
- * A {@link Transform} relays input data from upstream vertex to downstream vertex promptly.
- * This transform can be used for merging input data into the {@link OutputCollector}.
+ * A {@link Transform} that aggregates stage-level statistics sent to the master side optimizer
+ * for dynamic optimization.
+ *
  * @param <I> input type.
  * @param <O> output type.
  */
@@ -32,12 +32,15 @@ public final class AggregateMetricTransform<I, O> implements Transform<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(AggregateMetricTransform.class.getName());
   private OutputCollector<O> outputCollector;
   private O aggregatedDynOptData;
+  private BiFunction<Object, O, O> dynOptDataAggregator;
 
   /**
    * Default constructor.
    */
-  public AggregateMetricTransform(final O aggregatedDynOptData) {
+  public AggregateMetricTransform(final O aggregatedDynOptData,
+                                  final BiFunction<Object, O, O> dynOptDataAggregator) {
     this.aggregatedDynOptData = aggregatedDynOptData;
+    this.dynOptDataAggregator = dynOptDataAggregator;
   }
 
   @Override
@@ -47,21 +50,11 @@ public final class AggregateMetricTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void onData(final I element) {
-    // Aggregate key frequency data.
-    Object key = ((Pair<Object, Long>) element).left();
-    Object count = ((Pair<Object, Long>) element).right();
-
-    Map<Object, Long> aggregatedDynOptDataMap = (Map<Object, Long>) aggregatedDynOptData;
-    if (aggregatedDynOptDataMap.containsKey(key)) {
-      aggregatedDynOptDataMap.compute(key, (existingKey, accumulatedCount) -> accumulatedCount + (long) count);
-    } else {
-      aggregatedDynOptDataMap.put(key, (long) count);
-    }
+    aggregatedDynOptData = dynOptDataAggregator.apply(element, aggregatedDynOptData);
   }
 
   @Override
   public void close() {
-    Map<Object, Long> aggregatedDynOptDataMap = (Map<Object, Long>) aggregatedDynOptData;
     outputCollector.emit(aggregatedDynOptData);
   }
 

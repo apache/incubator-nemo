@@ -419,7 +419,14 @@ public final class BatchScheduler implements Scheduler {
   }
 
   /**
-   * @param taskId the metric collected task ID.
+   * Get the target edge of dynamic optimization.
+   * The edge is annotated with {@link MetricCollectionProperty}, which is an outgoing edge of
+   * a parent of the stage put on hold.
+   *
+   * See {@link edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.SkewReshapingPass}
+   * for setting the target edge of dynamic optimization.
+   *
+   * @param taskId the task ID that sent stage-level aggregated metric for dynamic optimization.
    * @return the edge to optimize.
    */
   private StageEdge getEdgeToOptimize(final String taskId) {
@@ -429,11 +436,13 @@ public final class BatchScheduler implements Scheduler {
       .findFirst()
       .orElseThrow(() -> new RuntimeException());
 
+    // Stage put on hold, i.e. stage with vertex containing AggregateMetricTransform
+    // should have a parent stage whose outgoing edges contain the target edge of dynamic optimization.
     final List<Stage> parentStages = planStateManager.getPhysicalPlan().getStageDAG()
       .getParents(stagePutOnHold.getId());
 
     if (parentStages.size() > 1) {
-      throw new RuntimeException("Error in setting metric collection vertex!");
+      throw new RuntimeException("Error in setting target edge of dynamic optimization!");
     }
 
     // Get outgoing edges of that stage with MetricCollectionProperty

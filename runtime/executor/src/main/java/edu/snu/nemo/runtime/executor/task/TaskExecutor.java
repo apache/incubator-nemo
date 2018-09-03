@@ -22,6 +22,7 @@ import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
 import edu.snu.nemo.common.ir.vertex.*;
+import edu.snu.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.common.RuntimeIdManager;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
@@ -56,6 +57,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 public final class TaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutor.class.getName());
   private static final int NONE_FINISHED = -1;
+  private static final String NULL_KEY = "NULL";
 
   // Essential information
   private boolean isExecuted;
@@ -241,13 +243,6 @@ public final class TaskExecutor {
     } else if (irVertex instanceof OperatorVertex) {
       final Transform transform = ((OperatorVertex) irVertex).getTransform();
       transform.onData(dataElement);
-    } else if (irVertex instanceof MetricCollectionVertex) {
-      final Transform transform = ((MetricCollectionVertex) irVertex).getTransform();
-      transform.onData(dataElement);
-    } else if (irVertex instanceof AggregationBarrierVertex) {
-      final Transform transform = ((AggregationBarrierVertex) irVertex).getTransform();
-      transform.onData(dataElement);
-      setIRVertexPutOnHold((AggregationBarrierVertex) irVertex);
     } else {
       throw new UnsupportedOperationException("This type of IRVertex is not supported");
     }
@@ -326,7 +321,7 @@ public final class TaskExecutor {
     dynOptData.forEach((key, size) ->
       partitionSizeEntries.add(
         ControlMessage.PartitionSizeEntry.newBuilder()
-          .setKey(key == null ? "" : String.valueOf(key))
+          .setKey(key == null ? NULL_KEY : String.valueOf(key))
           .setSize(size)
           .build())
     );
@@ -346,10 +341,14 @@ public final class TaskExecutor {
     closeTransform(vertexHarness);
 
     final OutputCollectorImpl outputCollector = vertexHarness.getOutputCollector();
-    if (vertexHarness.getIRVertex() instanceof AggregationBarrierVertex) {
+    final IRVertex v = vertexHarness.getIRVertex();
+    if (v instanceof OperatorVertex
+      && ((OperatorVertex) v).getTransform() instanceof AggregateMetricTransform) {
       // send aggregated dynamic optimization data to master
       final Object aggregatedDynOptData = outputCollector.iterateMain().iterator().next();
       sendDynOptData(aggregatedDynOptData);
+      // set the id of this vertex to mark the corresponding stage as put on hold
+      setIRVertexPutOnHold(v);
     } else {
       // handle main outputs
       outputCollector.iterateMain().forEach(element -> {
@@ -586,12 +585,6 @@ public final class TaskExecutor {
     if (irVertex instanceof OperatorVertex) {
       transform = ((OperatorVertex) irVertex).getTransform();
       transform.prepare(vertexHarness.getContext(), vertexHarness.getOutputCollector());
-    } else if (irVertex instanceof MetricCollectionVertex) {
-      transform = ((MetricCollectionVertex) irVertex).getTransform();
-      transform.prepare(vertexHarness.getContext(), vertexHarness.getOutputCollector());
-    } else if (irVertex instanceof AggregationBarrierVertex) {
-      transform = ((AggregationBarrierVertex) irVertex).getTransform();
-      transform.prepare(vertexHarness.getContext(), vertexHarness.getOutputCollector());
     }
   }
 
@@ -600,12 +593,6 @@ public final class TaskExecutor {
     final Transform transform;
     if (irVertex instanceof OperatorVertex) {
       transform = ((OperatorVertex) irVertex).getTransform();
-      transform.close();
-    } else if (irVertex instanceof MetricCollectionVertex) {
-      transform = ((MetricCollectionVertex) irVertex).getTransform();
-      transform.close();
-    } else if (irVertex instanceof AggregationBarrierVertex) {
-      transform = ((AggregationBarrierVertex) irVertex).getTransform();
       transform.close();
     }
 
@@ -621,7 +608,7 @@ public final class TaskExecutor {
 
   ////////////////////////////////////////////// Misc
 
-  private void setIRVertexPutOnHold(final AggregationBarrierVertex irVertex) {
+  private void setIRVertexPutOnHold(final IRVertex irVertex) {
     idOfVertexPutOnHold = irVertex.getId();
   }
 
