@@ -182,21 +182,9 @@ public final class SkewReshapingPass extends ReshapingPass {
     newEdge.setProperty(KeyExtractorProperty.of(edge.getPropertyValue(KeyExtractorProperty.class).get()));
     newEdge.setProperty(AdditionalOutputTagProperty.of("DynOptData"));
 
-    // For sending data to vertex with AggregateMetricTransform, we need to get coders for encoding/decoding the keys.
-    /*
-    if (edge.getPropertyValue(EncoderProperty.class).get() instanceof KVEncoderFactory
-      && edge.getPropertyValue(DecoderProperty.class).get() instanceof KVDecoderFactory) {
-      final EncoderFactory keyEncoderFactory
-        = ((KVEncoderFactory) edge.getPropertyValue(EncoderProperty.class).get()).getKeyEncoderFactory();
-      final DecoderFactory keyDecoderFactory
-        = ((KVDecoderFactory) edge.getPropertyValue(DecoderProperty.class).get()).getKeyDecoderFactory();
-
-      newEdge.setProperty(EncoderProperty.of(PairEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
-      newEdge.setProperty(DecoderProperty.of(PairDecoderFactory.of(keyDecoderFactory, LongDecoderFactory.of())));
-    } else {
-      throw new RuntimeException("KeyEncoder/DecoderFactory for skew reshaping pass are not set!");
-    }
-    */
+    // Dynamic optimization handles statistics on key-value data by default.
+    // We need to get coders for encoding/decoding the keys to send data to
+    // vertex with AggregateMetricTransform.
     if (edge.getPropertyValue(KeyEncoderFactoryExtractorProperty.class).isPresent()
       && edge.getPropertyValue(KeyDecoderFactoryExtractorProperty.class).isPresent()) {
       final EncoderFactory encoderFactory = edge.getPropertyValue(EncoderProperty.class).get();
@@ -211,6 +199,10 @@ public final class SkewReshapingPass extends ReshapingPass {
 
       newEdge.setProperty(EncoderProperty.of(PairEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
       newEdge.setProperty(DecoderProperty.of(PairDecoderFactory.of(keyDecoderFactory, LongDecoderFactory.of())));
+    } else {
+      // If not specified, follow encoder/decoder of the given shuffle edge.
+      newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
+      newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
     }
 
     return newEdge;

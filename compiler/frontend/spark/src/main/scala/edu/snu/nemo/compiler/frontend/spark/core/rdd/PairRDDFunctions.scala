@@ -19,10 +19,10 @@ import java.util
 
 import edu.snu.nemo.common.dag.DAGBuilder
 import edu.snu.nemo.common.ir.edge.IREdge
-import edu.snu.nemo.common.ir.edge.executionproperty.{DecoderProperty, EncoderProperty, KeyExtractorProperty}
+import edu.snu.nemo.common.ir.edge.executionproperty._
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
 import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
-import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
+import edu.snu.nemo.compiler.frontend.spark.{SparkKeyDecoderFactoryExtractor, SparkKeyEncoderFactoryExtractor, SparkKeyExtractor}
 import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform
