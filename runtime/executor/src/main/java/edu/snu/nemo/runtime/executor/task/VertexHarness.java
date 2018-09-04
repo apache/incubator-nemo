@@ -108,6 +108,9 @@ final class VertexHarness {
     return additionalTagOutputChildren;
   }
 
+  /**
+   * @return map of tag to additional children id.
+   */
   public Map<String, String> getTagToAdditionalChildrenId() {
     return tagToAdditionalChildrenId;
   }

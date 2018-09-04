@@ -315,10 +315,14 @@ public final class TaskExecutor {
     }
   }
 
-  public void sendDynOptData(final Object element) {
-    Map<Object, Long> dynOptData = (Map<Object, Long>) element;
+  /**
+   * Send aggregated statistics for dynamic optimization to master.
+   * @param dynOptData the statistics to send.
+   */
+  public void sendDynOptData(final Object dynOptData) {
+    Map<Object, Long> aggregatedDynOptData = (Map<Object, Long>) dynOptData;
     final List<ControlMessage.PartitionSizeEntry> partitionSizeEntries = new ArrayList<>();
-    dynOptData.forEach((key, size) ->
+    aggregatedDynOptData.forEach((key, size) ->
       partitionSizeEntries.add(
         ControlMessage.PartitionSizeEntry.newBuilder()
           .setKey(key == null ? NULL_KEY : String.valueOf(key))

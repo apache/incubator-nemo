@@ -50,10 +50,6 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       this.additionalTaggedChildToElementsMap.put(Pair.of(tag, child), new ArrayList<>(1)));
   }
 
-  public Map<Pair<String, String>, ArrayList<Object>> getAdditionalTaggedChildToElementsMap() {
-    return additionalTaggedChildToElementsMap;
-  }
-
   @Override
   public void emit(final O output) {
     mainTagElements.add(output);
