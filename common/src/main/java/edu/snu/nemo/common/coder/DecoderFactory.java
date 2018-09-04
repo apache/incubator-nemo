@@ -37,6 +37,7 @@ public interface DecoderFactory<T> extends Serializable {
    * @throws IOException if fail to get the instance.
    */
   Decoder<T> create(InputStream inputStream) throws IOException;
+  Object getCoder();
 
   /**
    * Interface of Decoder.
@@ -82,6 +83,11 @@ public interface DecoderFactory<T> extends Serializable {
     @Override
     public Decoder create(final InputStream inputStream) {
       return dummyDecoder;
+    }
+
+    @Override
+    public Object getCoder() {
+      throw new RuntimeException("No coder specified - DummyDecoder is not supposed to be used.");
     }
 
     @Override

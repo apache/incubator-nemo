@@ -13,28 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package edu.snu.nemo.compiler.frontend.beam;
 
-import edu.snu.nemo.common.KeyCoderExtractor;
+import edu.snu.nemo.common.KeyEncoderFactoryExtractor;
 import edu.snu.nemo.common.coder.EncoderFactory;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.KvCoder;
 
 /**
- * Extracts the key coder from the given coder
+ * Extracts the key from a KV element.
  * For non-KV elements, the elements themselves become the key.
  */
-final class BeamKeyCoderExtractor implements KeyCoderExtractor{
+final class BeamKeyEncoderFactoryExtractor implements KeyEncoderFactoryExtractor {
   @Override
-  public BeamEncoderFactory extractKeyCoder(final EncoderFactory encoderFactory) {
-    final Coder beamCoder = ((BeamEncoderFactory) encoderFactory).getCoder();
-    if (beamCoder instanceof KvCoder) {
-      final Coder beamKeyCoder = ((KvCoder) beamCoder).getKeyCoder();
+  public EncoderFactory extractKeyEncoderFactory(final EncoderFactory encoderFactory) {
+    Coder coder = (Coder) encoderFactory.getCoder();
+    if (coder instanceof KvCoder) {
+      final Coder beamKeyCoder = ((KvCoder) coder).getKeyCoder();
       return new BeamEncoderFactory(beamKeyCoder);
     } else {
-      throw new RuntimeException("Cannot extract key coder - the given Beam coder is not of type KvCoder");
+      throw new RuntimeException("Cannot extract key encoder factory - coder is not of type KvCoder");
     }
   }
 }

@@ -16,8 +16,8 @@
 package edu.snu.nemo.common.test;
 
 import edu.snu.nemo.common.KeyExtractor;
-import edu.snu.nemo.common.coder.KVDecoderFactory;
-import edu.snu.nemo.common.coder.KVEncoderFactory;
+import edu.snu.nemo.common.coder.DecoderFactory;
+import edu.snu.nemo.common.coder.EncoderFactory;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.OutputCollector;
@@ -88,13 +88,13 @@ public final class EmptyComponents {
 
     final IREdge shuffleEdgeBetweenT1AndT2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, t1, t2);
     shuffleEdgeBetweenT1AndT2.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor()));
-    shuffleEdgeBetweenT1AndT2.setProperty(EncoderProperty.of(new KVEncoderFactory.DummyKVEncoderFactory()));
-    shuffleEdgeBetweenT1AndT2.setProperty(DecoderProperty.of(new KVDecoderFactory.DummyKVDecoderFactory()));
+    shuffleEdgeBetweenT1AndT2.setProperty(EncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
+    shuffleEdgeBetweenT1AndT2.setProperty(DecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
 
     final IREdge shuffleEdgeBetweenT3AndT4 = new IREdge(CommunicationPatternProperty.Value.Shuffle, t3, t4);
     shuffleEdgeBetweenT3AndT4.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor()));
-    shuffleEdgeBetweenT3AndT4.setProperty(EncoderProperty.of(new KVEncoderFactory.DummyKVEncoderFactory()));
-    shuffleEdgeBetweenT3AndT4.setProperty(DecoderProperty.of(new KVDecoderFactory.DummyKVDecoderFactory()));
+    shuffleEdgeBetweenT3AndT4.setProperty(EncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
+    shuffleEdgeBetweenT3AndT4.setProperty(DecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
 
     dagBuilder.addVertex(s);
     dagBuilder.addVertex(t1);

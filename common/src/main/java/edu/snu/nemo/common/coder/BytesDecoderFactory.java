@@ -46,6 +46,11 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
     return new BytesDecoder(inputStream);
   }
 
+  @Override
+  public Object getCoder() {
+    throw new RuntimeException("No coder specified for bytes");
+  }
+
   /**
    * BytesDecoder.
    */

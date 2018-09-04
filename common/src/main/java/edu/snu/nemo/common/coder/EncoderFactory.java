@@ -87,7 +87,7 @@ public interface EncoderFactory<T> extends Serializable {
 
     @Override
     public Object getCoder() {
-      throw new RuntimeException("No coder available - DummyEncoder is not supposed to be used.");
+      throw new RuntimeException("No coder specified - DummyEncoder is not supposed to be used.");
     }
 
     @Override

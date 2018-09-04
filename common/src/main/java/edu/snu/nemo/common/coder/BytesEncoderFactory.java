@@ -43,6 +43,11 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
     return new BytesEncoder(outputStream);
   }
 
+  @Override
+  public Object getCoder() {
+    throw new RuntimeException("No coder specified for bytes");
+  }
+
   /**
    * BytesEncoder.
    */

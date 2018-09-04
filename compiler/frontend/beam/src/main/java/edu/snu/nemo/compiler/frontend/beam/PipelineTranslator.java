@@ -15,8 +15,6 @@
  */
 package edu.snu.nemo.compiler.frontend.beam;
 
-import edu.snu.nemo.common.coder.DecoderFactory;
-import edu.snu.nemo.common.coder.EncoderFactory;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
@@ -28,8 +26,6 @@ import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.PipelineVisitor.*;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
-import edu.snu.nemo.compiler.frontend.beam.coder.BeamKVDecoderFactory;
-import edu.snu.nemo.compiler.frontend.beam.coder.BeamKVEncoderFactory;
 import edu.snu.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
 import edu.snu.nemo.compiler.frontend.beam.transform.*;
 import org.apache.beam.sdk.coders.*;
@@ -435,16 +431,14 @@ public final class PipelineTranslator
             + "be determined", src, dst, input));
       }
 
+      edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
+
       if (coder instanceof KvCoder) {
-        final Coder beamKeyCoder = ((KvCoder) coder).getKeyCoder();
-        final EncoderFactory keyEncoderFactory = new BeamEncoderFactory(beamKeyCoder);
-        final DecoderFactory keyDecoderFactory = new BeamDecoderFactory(beamKeyCoder);
-        edge.setProperty(EncoderProperty.of(new BeamKVEncoderFactory<>(coder, keyEncoderFactory)));
-        edge.setProperty(DecoderProperty.of(new BeamKVDecoderFactory<>(coder, keyDecoderFactory)));
-      } else {
-        edge.setProperty(EncoderProperty.of(new BeamEncoderFactory<>(coder)));
-        edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));
+        edge.setProperty(KeyEncoderFactoryExtractorProperty.of(new BeamKeyEncoderFactoryExtractor()));
+        edge.setProperty(KeyDecoderFactoryExtractorProperty.of(new BeamKeyDecoderFactoryExtractor()));
       }
+      edge.setProperty(EncoderProperty.of(new BeamEncoderFactory<>(coder)));
+      edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));
 
       if (pValueToTag.containsKey(input)) {
         edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
@@ -453,7 +447,7 @@ public final class PipelineTranslator
       if (input instanceof PCollectionView) {
         edge.setProperty(BroadcastVariableIdProperty.of((PCollectionView) input));
       }
-      edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
+
       builder.connectVertices(edge);
     }
 

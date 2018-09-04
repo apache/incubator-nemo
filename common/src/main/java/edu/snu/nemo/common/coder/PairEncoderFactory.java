@@ -59,6 +59,11 @@ public final class PairEncoderFactory<A, B> implements EncoderFactory<Pair<A, B>
     return new PairEncoder<>(outputStream, leftEncoderFactory, rightEncoderFactory);
   }
 
+  @Override
+  public Object getCoder() {
+    throw new RuntimeException("No single coder available - PairEncoder has separate coders for left and right.");
+  }
+
   /**
    * PairEncoder.
    * @param <T1> type for the left coder.

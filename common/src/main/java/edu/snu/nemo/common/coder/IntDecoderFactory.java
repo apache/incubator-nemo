@@ -43,6 +43,11 @@ public final class IntDecoderFactory implements DecoderFactory<Integer> {
     return new IntDecoder(inputStream);
   }
 
+  @Override
+  public Object getCoder() {
+    throw new RuntimeException("No coder specified for Integer");
+  }
+
   /**
    * IntDecoder.
    */

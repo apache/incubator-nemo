@@ -48,7 +48,7 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
       return new BeamEncoder<>(outputStream, beamCoder);
     }
   }
-  
+
   @Override
   public Coder getCoder() {
     return beamCoder;

@@ -52,6 +52,11 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
     }
   }
 
+  @Override
+  public Coder getCoder() {
+    return beamCoder;
+  }
+
   /**
    * Abstract class for Beam Decoder.
    * @param <T2> the type of element to decode.

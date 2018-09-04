@@ -15,10 +15,20 @@
  */
 package edu.snu.nemo.common;
 
-import edu.snu.nemo.common.coder.EncoderFactory;
+import edu.snu.nemo.common.coder.DecoderFactory;
 
 import java.io.Serializable;
 
-public interface KeyCoderExtractor extends Serializable {
-  Object extractKeyCoder(final EncoderFactory encoderFactory);
+/**
+ * Extracts a key from an element.
+ * Keys are used for partitioning.
+ */
+public interface KeyDecoderFactoryExtractor extends Serializable {
+  /**
+   * Extracts key.
+   *
+   * @param decoderFactory Element to get the key from.
+   * @return The extracted key of the element.
+   */
+  DecoderFactory extractKeyDecoderFactory(final DecoderFactory decoderFactory);
 }

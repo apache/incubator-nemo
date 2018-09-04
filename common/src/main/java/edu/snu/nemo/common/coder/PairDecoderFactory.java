@@ -60,6 +60,11 @@ public final class PairDecoderFactory<A, B> implements DecoderFactory<Pair<A, B>
     return new PairDecoder<>(inputStream, leftDecoderFactory, rightDecoderFactory);
   }
 
+  @Override
+  public Object getCoder() {
+    throw new RuntimeException("No single coder available - PairDecoder has separate coders for left and right.");
+  }
+
   /**
    * PairDecoder.
    * @param <T1> type for the left coder.

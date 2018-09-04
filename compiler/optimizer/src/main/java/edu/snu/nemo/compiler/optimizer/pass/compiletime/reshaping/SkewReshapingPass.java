@@ -15,6 +15,8 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
+import edu.snu.nemo.common.KeyDecoderFactoryExtractor;
+import edu.snu.nemo.common.KeyEncoderFactoryExtractor;
 import edu.snu.nemo.common.KeyExtractor;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.coder.*;
@@ -66,7 +68,7 @@ public final class SkewReshapingPass extends ReshapingPass {
     final List<OperatorVertex> metricCollectVertices = new ArrayList<>();
 
     dag.topologicalDo(v -> {
-      // We care about OperatorVertices that have any shuffle incoming edges.
+      // We care about OperatorVertices that have shuffle incoming edges with main output.
       if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
           CommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))
@@ -181,6 +183,7 @@ public final class SkewReshapingPass extends ReshapingPass {
     newEdge.setProperty(AdditionalOutputTagProperty.of("DynOptData"));
 
     // For sending data to vertex with AggregateMetricTransform, we need to get coders for encoding/decoding the keys.
+    /*
     if (edge.getPropertyValue(EncoderProperty.class).get() instanceof KVEncoderFactory
       && edge.getPropertyValue(DecoderProperty.class).get() instanceof KVDecoderFactory) {
       final EncoderFactory keyEncoderFactory
@@ -193,11 +196,21 @@ public final class SkewReshapingPass extends ReshapingPass {
     } else {
       throw new RuntimeException("KeyEncoder/DecoderFactory for skew reshaping pass are not set!");
     }
+    */
+    if (edge.getPropertyValue(KeyEncoderFactoryExtractorProperty.class).isPresent()
+      && edge.getPropertyValue(KeyDecoderFactoryExtractorProperty.class).isPresent()) {
+      final EncoderFactory encoderFactory = edge.getPropertyValue(EncoderProperty.class).get();
+      final KeyEncoderFactoryExtractor encoderExtractor
+        = edge.getPropertyValue(KeyEncoderFactoryExtractorProperty.class).get();
+      final EncoderFactory keyEncoderFactory = encoderExtractor.extractKeyEncoderFactory(encoderFactory);
 
-    final EncoderFactory keyEncoderFactory1
-      = edge.getPropertyValue(EncoderProperty.class).get();
-    if (keyEncoderFactory1 instanceof BeamEncoderFactory) {
-    
+      final DecoderFactory decoderFactory = edge.getPropertyValue(DecoderProperty.class).get();
+      final KeyDecoderFactoryExtractor decoderExtractor
+        = edge.getPropertyValue(KeyDecoderFactoryExtractorProperty.class).get();
+      final DecoderFactory keyDecoderFactory = decoderExtractor.extractKeyDecoderFactory(decoderFactory);
+
+      newEdge.setProperty(EncoderProperty.of(PairEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
+      newEdge.setProperty(DecoderProperty.of(PairDecoderFactory.of(keyDecoderFactory, LongDecoderFactory.of())));
     }
 
     return newEdge;
