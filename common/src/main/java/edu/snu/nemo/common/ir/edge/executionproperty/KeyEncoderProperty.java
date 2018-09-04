@@ -13,22 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common;
+package edu.snu.nemo.common.ir.edge.executionproperty;
 
 import edu.snu.nemo.common.coder.EncoderFactory;
-
-import java.io.Serializable;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
- * Extracts a key from an element.
- * Keys are used for partitioning.
+ * KeyEncoder ExecutionProperty.
  */
-public interface KeyEncoderFactoryExtractor extends Serializable {
+public final class KeyEncoderProperty extends EdgeExecutionProperty<EncoderFactory> {
   /**
-   * Extracts key.
+   * Constructor.
    *
-   * @param encoderFactory Element to get the key from.
-   * @return The extracted key of the element.
+   * @param value value of the execution property.
    */
-  EncoderFactory extractKeyEncoderFactory(final EncoderFactory encoderFactory);
+  private KeyEncoderProperty(final EncoderFactory value) {
+    super(value);
+  }
+
+  /**
+   * Static method exposing the constructor.
+   *
+   * @param value value of the new execution property.
+   * @return the newly created execution property.
+   */
+  public static KeyEncoderProperty of(final EncoderFactory value) {
+    return new KeyEncoderProperty(value);
+  }
 }

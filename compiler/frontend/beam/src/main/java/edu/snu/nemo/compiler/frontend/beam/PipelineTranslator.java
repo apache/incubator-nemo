@@ -434,8 +434,9 @@ public final class PipelineTranslator
       edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
 
       if (coder instanceof KvCoder) {
-        edge.setProperty(KeyEncoderFactoryExtractorProperty.of(new BeamKeyEncoderFactoryExtractor()));
-        edge.setProperty(KeyDecoderFactoryExtractorProperty.of(new BeamKeyDecoderFactoryExtractor()));
+        Coder keyCoder = ((KvCoder) coder).getKeyCoder();
+        edge.setProperty(KeyEncoderProperty.of(new BeamEncoderFactory(keyCoder)));
+        edge.setProperty(KeyDecoderProperty.of(new BeamDecoderFactory(keyCoder)));
       }
       edge.setProperty(EncoderProperty.of(new BeamEncoderFactory<>(coder)));
       edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));

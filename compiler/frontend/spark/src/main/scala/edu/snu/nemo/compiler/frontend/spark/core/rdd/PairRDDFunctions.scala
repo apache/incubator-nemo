@@ -22,7 +22,7 @@ import edu.snu.nemo.common.ir.edge.IREdge
 import edu.snu.nemo.common.ir.edge.executionproperty._
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
 import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
-import edu.snu.nemo.compiler.frontend.spark.{SparkKeyDecoderFactoryExtractor, SparkKeyEncoderFactoryExtractor, SparkKeyExtractor}
+import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
 import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform
@@ -77,6 +77,10 @@ final class PairRDDFunctions[K: ClassTag, V: ClassTag] protected[rdd] (
     newEdge.setProperty(
       DecoderProperty.of(new SparkDecoderFactory[Tuple2[K, V]](self.serializer))
         .asInstanceOf[EdgeExecutionProperty[_ <: Serializable]])
+    // For Tuple2 type data, set KeyEn(De)coderFactoryProperty
+    // in case it is subjected to dynamic optimization.
+    newEdge.setProperty(KeyEncoderProperty.of(new SparkEncoderFactory[K](self.serializer)))
+    newEdge.setProperty(KeyDecoderProperty.of(new SparkDecoderFactory[K](self.serializer)))
     newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor))
     builder.connectVertices(newEdge)
 

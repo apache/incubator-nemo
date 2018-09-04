@@ -15,8 +15,6 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
-import edu.snu.nemo.common.KeyDecoderFactoryExtractor;
-import edu.snu.nemo.common.KeyEncoderFactoryExtractor;
 import edu.snu.nemo.common.KeyExtractor;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.coder.*;
@@ -185,18 +183,10 @@ public final class SkewReshapingPass extends ReshapingPass {
     // Dynamic optimization handles statistics on key-value data by default.
     // We need to get coders for encoding/decoding the keys to send data to
     // vertex with AggregateMetricTransform.
-    if (edge.getPropertyValue(KeyEncoderFactoryExtractorProperty.class).isPresent()
-      && edge.getPropertyValue(KeyDecoderFactoryExtractorProperty.class).isPresent()) {
-      final EncoderFactory encoderFactory = edge.getPropertyValue(EncoderProperty.class).get();
-      final KeyEncoderFactoryExtractor encoderExtractor
-        = edge.getPropertyValue(KeyEncoderFactoryExtractorProperty.class).get();
-      final EncoderFactory keyEncoderFactory = encoderExtractor.extractKeyEncoderFactory(encoderFactory);
-
-      final DecoderFactory decoderFactory = edge.getPropertyValue(DecoderProperty.class).get();
-      final KeyDecoderFactoryExtractor decoderExtractor
-        = edge.getPropertyValue(KeyDecoderFactoryExtractorProperty.class).get();
-      final DecoderFactory keyDecoderFactory = decoderExtractor.extractKeyDecoderFactory(decoderFactory);
-
+    if (edge.getPropertyValue(KeyEncoderProperty.class).isPresent()
+      && edge.getPropertyValue(KeyDecoderProperty.class).isPresent()) {
+      final EncoderFactory keyEncoderFactory = edge.getPropertyValue(KeyEncoderProperty.class).get();
+      final DecoderFactory keyDecoderFactory = edge.getPropertyValue(KeyDecoderProperty.class).get();
       newEdge.setProperty(EncoderProperty.of(PairEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
       newEdge.setProperty(DecoderProperty.of(PairDecoderFactory.of(keyDecoderFactory, LongDecoderFactory.of())));
     } else {
