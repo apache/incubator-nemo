@@ -18,12 +18,13 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.composite;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.vertex.OperatorVertex;
+import edu.snu.nemo.common.ir.vertex.transform.MetricCollectTransform;
+import edu.snu.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import edu.snu.nemo.compiler.CompilerTestUtil;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
@@ -35,7 +36,6 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -48,7 +48,7 @@ import static org.junit.Assert.assertTrue;
 @PrepareForTest(JobLauncher.class)
 public class SkewCompositePassTest {
   private DAG<IRVertex, IREdge> mrDAG;
-  private static final long NUM_OF_PASSES_IN_DATA_SKEW_PASS = 5;
+  private static final long NUM_OF_PASSES_IN_DATA_SKEW_PASS = 3;
 
   @Before
   public void setUp() throws Exception {
@@ -74,37 +74,30 @@ public class SkewCompositePassTest {
   }
 
   /**
-   * Test for {@link SkewCompositePass} with MR workload. It must insert a {@link MetricCollectionBarrierVertex}
-   * before each shuffle edge.
+   * Test for {@link SkewCompositePass} with MR workload.
+   * It should have inserted vertex with {@link MetricCollectTransform}
+   * and vertex with {@link AggregateMetricTransform}
+   * before each shuffle edge with no additional output tags.
    * @throws Exception exception on the way.
    */
   @Test
   public void testDataSkewPass() throws Exception {
     mrDAG = CompilerTestUtil.compileWordCountDAG();
     final Integer originalVerticesNum = mrDAG.getVertices().size();
-    final Long numOfShuffleGatherEdges = mrDAG.getVertices().stream().filter(irVertex ->
+    final Long numOfShuffleEdgesWithOutAdditionalOutputTag =
+      mrDAG.getVertices().stream().filter(irVertex ->
         mrDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
-            CommunicationPatternProperty.Value.Shuffle
-            .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get())))
-        .count();
+          CommunicationPatternProperty.Value.Shuffle
+            .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get())
+            && !irEdge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent()))
+      .count();
     final DAG<IRVertex, IREdge> processedDAG = new SkewCompositePass().apply(mrDAG);
+    assertEquals(originalVerticesNum + numOfShuffleEdgesWithOutAdditionalOutputTag * 2,
+      processedDAG.getVertices().size());
 
-    assertEquals(originalVerticesNum + numOfShuffleGatherEdges, processedDAG.getVertices().size());
-    processedDAG.getVertices().stream().map(processedDAG::getIncomingEdgesOf)
-        .flatMap(List::stream)
-        .filter(irEdge -> CommunicationPatternProperty.Value.Shuffle
-            .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))
-        .map(IREdge::getSrc)
-        .forEach(irVertex -> assertTrue(irVertex instanceof MetricCollectionBarrierVertex));
-
-    processedDAG.getVertices().forEach(v -> processedDAG.getOutgoingEdgesOf(v).stream()
-        .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
-                  .equals(e.getPropertyValue(MetricCollectionProperty.class)))
-        .forEach(e -> assertEquals(PartitionerProperty.Value.DataSkewHashPartitioner,
-            e.getPropertyValue(PartitionerProperty.class).get())));
-
-    processedDAG.filterVertices(v -> v instanceof MetricCollectionBarrierVertex)
-        .forEach(metricV -> {
+    processedDAG.filterVertices(v -> v instanceof OperatorVertex
+      && ((OperatorVertex) v).getTransform() instanceof MetricCollectTransform)
+      .forEach(metricV -> {
           List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());
           reducerV.forEach(rV -> assertTrue(rV.getPropertyValue(ResourceSkewedDataProperty.class).get()));
         });

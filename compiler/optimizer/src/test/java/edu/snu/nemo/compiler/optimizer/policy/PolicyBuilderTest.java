@@ -38,7 +38,7 @@ public final class PolicyBuilderTest {
 
   @Test
   public void testDataSkewPolicy() {
-    assertEquals(22, DataSkewPolicy.BUILDER.getCompileTimePasses().size());
+    assertEquals(20, DataSkewPolicy.BUILDER.getCompileTimePasses().size());
     assertEquals(1, DataSkewPolicy.BUILDER.getRuntimePasses().size());
   }
 

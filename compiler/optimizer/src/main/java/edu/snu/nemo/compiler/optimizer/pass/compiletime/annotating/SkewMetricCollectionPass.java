@@ -19,14 +19,17 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import edu.snu.nemo.common.ir.vertex.OperatorVertex;
+import edu.snu.nemo.common.ir.vertex.transform.MetricCollectTransform;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
- * Pass to annotate the DAG for a job to perform data skew.
- * It specifies the outgoing Shuffle edges from MetricCollectionVertices with a MetricCollection ExecutionProperty
- * which lets the edge to know what metric collection it should perform.
+ * Pass to annotate the IR DAG for skew handling.
+ *
+ * It specifies the target of dynamic optimization for skew handling
+ * by setting appropriate {@link MetricCollectionProperty} to
+ * outgoing shuffle edges from vertices with {@link MetricCollectTransform}.
  */
 @Annotates(MetricCollectionProperty.class)
 @Requires(CommunicationPatternProperty.class)
@@ -41,8 +44,9 @@ public final class SkewMetricCollectionPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(v -> {
-      // we only care about metric collection barrier vertices.
-      if (v instanceof MetricCollectionBarrierVertex) {
+      // we only care about metric collection vertices.
+      if (v instanceof OperatorVertex
+        && ((OperatorVertex) v).getTransform() instanceof MetricCollectTransform) {
         dag.getOutgoingEdgesOf(v).forEach(edge -> {
           // double checking.
           if (edge.getPropertyValue(CommunicationPatternProperty.class).get()

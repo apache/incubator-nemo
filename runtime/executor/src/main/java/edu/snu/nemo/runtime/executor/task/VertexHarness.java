@@ -19,6 +19,8 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,6 +31,8 @@ import java.util.Map;
  * Captures the relationship between a non-source IRVertex's outputCollector, and mainTagChildren vertices.
  */
 final class VertexHarness {
+  private static final Logger LOG = LoggerFactory.getLogger(VertexHarness.class.getName());
+
   // IRVertex and transform-specific information
   private final IRVertex irVertex;
   private final OutputCollectorImpl outputCollector;
@@ -37,6 +41,7 @@ final class VertexHarness {
 
   // These lists can be empty
   private final Map<String, VertexHarness> additionalTagOutputChildren;
+  private final Map<String, String> tagToAdditionalChildrenId;
   private final List<OutputWriter> writersToMainChildrenTasks;
   private final Map<String, OutputWriter> writersToAdditionalChildrenTasks;
 
@@ -54,14 +59,18 @@ final class VertexHarness {
     }
     final Map<String, String> taggedOutputMap = context.getTagToAdditionalChildren();
     final Map<String, VertexHarness> tagged = new HashMap<>();
+
+    // Classify input type for intra-task children
     for (int i = 0; i < children.size(); i++) {
       final VertexHarness child = children.get(i);
       if (isAdditionalTagOutputs.get(i)) {
         taggedOutputMap.entrySet().stream()
-            .filter(kv -> child.getIRVertex().getId().equals(kv.getValue()))
-            .forEach(kv -> tagged.put(kv.getValue(), child));
+          .filter(kv -> child.getIRVertex().getId().equals(kv.getValue()))
+          .forEach(kv -> tagged.put(kv.getKey(), child));
       }
     }
+
+    this.tagToAdditionalChildrenId = context.getTagToAdditionalChildren();
     this.additionalTagOutputChildren = tagged;
     final List<VertexHarness> mainTagChildrenTmp = new ArrayList<>(children);
     mainTagChildrenTmp.removeAll(additionalTagOutputChildren.values());
@@ -97,6 +106,13 @@ final class VertexHarness {
    */
   public Map<String, VertexHarness> getAdditionalTagOutputChildren() {
     return additionalTagOutputChildren;
+  }
+
+  /**
+   * @return map of tag to additional children id.
+   */
+  public Map<String, String> getTagToAdditionalChildrenId() {
+    return tagToAdditionalChildrenId;
   }
 
   /**

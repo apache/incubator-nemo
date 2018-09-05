@@ -18,6 +18,8 @@ package edu.snu.nemo.runtime.executor.data.partition;
 import edu.snu.nemo.common.DirectByteArrayOutputStream;
 import edu.snu.nemo.common.coder.EncoderFactory;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -31,6 +33,8 @@ import static edu.snu.nemo.runtime.executor.data.DataUtil.buildOutputStream;
  * @param <K> the key type of its partitions.
  */
 public final class SerializedPartition<K> implements Partition<byte[], K> {
+  private static final Logger LOG = LoggerFactory.getLogger(SerializedPartition.class.getName());
+
   private final K key;
   private volatile byte[] serializedData;
   private volatile int length;

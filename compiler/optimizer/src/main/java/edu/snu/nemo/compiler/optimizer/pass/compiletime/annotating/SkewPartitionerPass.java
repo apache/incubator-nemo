@@ -19,8 +19,9 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
+import edu.snu.nemo.common.ir.vertex.OperatorVertex;
+import edu.snu.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.List;
@@ -40,9 +41,10 @@ public final class SkewPartitionerPass extends AnnotatingPass {
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().forEach(vertex -> {
-      if (vertex instanceof MetricCollectionBarrierVertex) {
-        final List<IREdge> outEdges = dag.getOutgoingEdgesOf(vertex);
+    dag.getVertices().forEach(v -> {
+      if (v instanceof OperatorVertex
+        && ((OperatorVertex) v).getTransform() instanceof AggregateMetricTransform) {
+        final List<IREdge> outEdges = dag.getOutgoingEdgesOf(v);
         outEdges.forEach(edge -> {
           // double checking.
           if (MetricCollectionProperty.Value.DataSkewRuntimePass

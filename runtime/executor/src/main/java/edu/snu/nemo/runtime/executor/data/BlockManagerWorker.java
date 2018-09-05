@@ -232,15 +232,11 @@ public final class BlockManagerWorker {
    *
    * @param block                the block to write.
    * @param blockStore           the store to save the block.
-   * @param reportPartitionSizes whether report the size of partitions to master or not.
-   * @param partitionSizeMap     the map of partition keys and sizes to report.
    * @param expectedReadTotal    the expected number of read for this block.
    * @param persistence          how to handle the used block.
    */
   public void writeBlock(final Block block,
                          final DataStoreProperty.Value blockStore,
-                         final boolean reportPartitionSizes,
-                         final Map<Integer, Long> partitionSizeMap,
                          final int expectedReadTotal,
                          final DataPersistenceProperty.Value persistence) {
     final String blockId = block.getId();
@@ -278,28 +274,6 @@ public final class BlockManagerWorker {
             .setType(ControlMessage.MessageType.BlockStateChanged)
             .setBlockStateChangedMsg(blockStateChangedMsgBuilder.build())
             .build());
-
-    if (reportPartitionSizes) {
-      final List<ControlMessage.PartitionSizeEntry> partitionSizeEntries = new ArrayList<>();
-      partitionSizeMap.forEach((key, size) ->
-          partitionSizeEntries.add(
-              ControlMessage.PartitionSizeEntry.newBuilder()
-                  .setKey(key)
-                  .setSize(size)
-                  .build())
-      );
-
-      // TODO #4: Refactor metric aggregation for (general) run-rime optimization.
-      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-          .send(ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.DataSizeMetric)
-              .setDataSizeMetricMsg(ControlMessage.DataSizeMetricMsg.newBuilder()
-                  .addAllPartitionSize(partitionSizeEntries)
-              )
-              .build());
-    }
   }
 
   /**

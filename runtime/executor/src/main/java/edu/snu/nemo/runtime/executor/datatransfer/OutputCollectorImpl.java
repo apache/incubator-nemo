@@ -15,7 +15,10 @@
  */
 package edu.snu.nemo.runtime.executor.datatransfer;
 
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.OutputCollector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -25,22 +28,26 @@ import java.util.*;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
+  private static final Logger LOG = LoggerFactory.getLogger(OutputCollectorImpl.class.getName());
   private final Set<String> mainTagOutputChildren;
   // Use ArrayList (not Queue) to allow 'null' values
   private final ArrayList<O> mainTagElements;
-  private final Map<String, ArrayList<Object>> additionalTagElementsMap;
+  // Key: Pair of tag and destination vertex id
+  // Value: data elements which will be input to the tagged destination vertex
+  private final Map<Pair<String, String>, ArrayList<Object>> additionalTaggedChildToElementsMap;
 
   /**
    * Constructor of a new OutputCollectorImpl with tagged outputs.
    * @param mainChildren   main children vertices
-   * @param taggedChildren additional children vertices
+   * @param tagToChildren additional children vertices
    */
   public OutputCollectorImpl(final Set<String> mainChildren,
-                             final List<String> taggedChildren) {
+                             final Map<String, String> tagToChildren) {
     this.mainTagOutputChildren = mainChildren;
     this.mainTagElements = new ArrayList<>(1);
-    this.additionalTagElementsMap = new HashMap<>();
-    taggedChildren.forEach(child -> this.additionalTagElementsMap.put(child, new ArrayList<>(1)));
+    this.additionalTaggedChildToElementsMap = new HashMap<>();
+    tagToChildren.forEach((tag, child) ->
+      this.additionalTaggedChildToElementsMap.put(Pair.of(tag, child), new ArrayList<>(1)));
   }
 
   @Override
@@ -55,10 +62,7 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       emit((O) output);
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      final List<Object> dataElements = this.additionalTagElementsMap.get(dstVertexId);
-      if (dataElements == null) {
-        throw new IllegalArgumentException("Wrong destination vertex id passed!");
-      }
+      final List<Object> dataElements = getAdditionalTaggedDataFromDstVertexId(dstVertexId);
       dataElements.add(output);
     }
   }
@@ -72,11 +76,7 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       // This dstVertexId is for the main tag
       return (Iterable<Object>) iterateMain();
     } else {
-      final List<Object> dataElements = this.additionalTagElementsMap.get(tag);
-      if (dataElements == null) {
-        throw new IllegalArgumentException("Wrong destination vertex id passed!");
-      }
-      return dataElements;
+      return getAdditionalTaggedDataFromTag(tag);
     }
   }
 
@@ -90,10 +90,7 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       clearMain();
     } else {
       // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
-      final List<Object> dataElements = this.additionalTagElementsMap.get(tag);
-      if (dataElements == null) {
-        throw new IllegalArgumentException("Wrong destination vertex id passed!");
-      }
+      final List<Object> dataElements = getAdditionalTaggedDataFromTag(tag);
       dataElements.clear();
     }
   }
@@ -106,11 +103,31 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     if (this.mainTagOutputChildren.contains(dstVertexId)) {
       return (List<Object>) this.mainTagElements;
     } else {
-      final List<Object> dataElements = this.additionalTagElementsMap.get(dstVertexId);
-      if (dataElements == null) {
-        throw new IllegalArgumentException("Wrong destination vertex id passed!");
-      }
-      return dataElements;
+      return getAdditionalTaggedDataFromDstVertexId(dstVertexId);
     }
+  }
+
+  private List<Object> getAdditionalTaggedDataFromDstVertexId(final String dstVertexId) {
+    final Pair<String, String> tagAndChild =
+      this.additionalTaggedChildToElementsMap.keySet().stream()
+        .filter(key -> key.right().equals(dstVertexId))
+        .findAny().orElseThrow(() -> new RuntimeException("Wrong destination vertex id passed!"));
+    final List<Object> dataElements = this.additionalTaggedChildToElementsMap.get(tagAndChild);
+    if (dataElements == null) {
+      throw new IllegalArgumentException("Wrong destination vertex id passed!");
+    }
+    return dataElements;
+  }
+
+  private List<Object> getAdditionalTaggedDataFromTag(final String tag) {
+    final Pair<String, String> tagAndChild =
+      this.additionalTaggedChildToElementsMap.keySet().stream()
+        .filter(key -> key.left().equals(tag))
+        .findAny().orElseThrow(() -> new RuntimeException("Wrong tag " + tag + " passed!"));
+    final List<Object> dataElements = this.additionalTaggedChildToElementsMap.get(tagAndChild);
+    if (dataElements == null) {
+      throw new IllegalArgumentException("Wrong tag " + tag + " passed!");
+    }
+    return dataElements;
   }
 }

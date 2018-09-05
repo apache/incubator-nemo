@@ -20,8 +20,8 @@ import java.io.InputStream;
 import java.io.Serializable;
 
 /**
- * A decoder factory object which generates decoders that decode values of type {@code T} into byte streams.
- * To avoid to generate instance-based coder such as Spark serializer for every decoding,
+ * A decoder factory object which generates decoders that decode byte streams into values of type {@code T}.
+ * To avoid generating instance-based coder such as Spark serializer for every decoding,
  * user need to instantiate a decoder instance and use it.
  *
  * @param <T> element type.

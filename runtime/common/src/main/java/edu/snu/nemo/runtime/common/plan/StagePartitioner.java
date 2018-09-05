@@ -75,7 +75,7 @@ public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, M
       }
       // Get stage id of irVertex
       final int stageId = vertexToStageIdMap.get(irVertex);
-      // Step case: inductively assign stage ids based on mergability with irVertex
+      // Step case: inductively assign stage ids based on mergeability with irVertex
       for (final IREdge edge : irDAG.getOutgoingEdgesOf(irVertex)) {
         final IRVertex connectedIRVertex = edge.getDst();
         // Skip if it already has been assigned stageId

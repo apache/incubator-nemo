@@ -30,7 +30,6 @@ import edu.snu.nemo.compiler.frontend.spark.{SparkBroadcastVariables, SparkKeyEx
 import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import edu.snu.nemo.compiler.frontend.spark.transform._
-import org.apache.commons.lang.SerializationUtils
 import org.apache.hadoop.io.WritableFactory
 import org.apache.hadoop.io.compress.CompressionCodec
 import org.apache.spark.api.java.function.{FlatMapFunction, Function, Function2}

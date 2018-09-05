@@ -430,15 +430,25 @@ public final class PipelineTranslator
         throw new RuntimeException(String.format("While adding an edge from %s, to %s, coder for PValue %s cannot "
             + "be determined", src, dst, input));
       }
+
+      edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
+
+      if (coder instanceof KvCoder) {
+        Coder keyCoder = ((KvCoder) coder).getKeyCoder();
+        edge.setProperty(KeyEncoderProperty.of(new BeamEncoderFactory(keyCoder)));
+        edge.setProperty(KeyDecoderProperty.of(new BeamDecoderFactory(keyCoder)));
+      }
       edge.setProperty(EncoderProperty.of(new BeamEncoderFactory<>(coder)));
       edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));
+
       if (pValueToTag.containsKey(input)) {
         edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
       }
+
       if (input instanceof PCollectionView) {
         edge.setProperty(BroadcastVariableIdProperty.of((PCollectionView) input));
       }
-      edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
+
       builder.connectVertices(edge);
     }
 

@@ -39,11 +39,11 @@ import java.util.stream.Collectors;
  * this RuntimePass identifies a number of keys with big partition sizes(skewed key)
  * and evenly redistributes data via overwriting incoming edges of destination tasks.
  */
-public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<Integer, Long>>> {
+public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<Object, Long>>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
   // Skewed keys denote for top n keys in terms of partition size.
-  public static final int DEFAULT_NUM_SKEWED_KEYS = 3;
+  public static final int DEFAULT_NUM_SKEWED_KEYS = 1;
   private int numSkewedKeys;
 
   /**
@@ -71,7 +71,7 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<I
 
   @Override
   public PhysicalPlan apply(final PhysicalPlan originalPlan,
-                            final Pair<StageEdge, Map<Integer, Long>> metricData) {
+                            final Pair<StageEdge, Map<Object, Long>> metricData) {
     final StageEdge targetEdge = metricData.left();
     // Get number of evaluators of the next stage (number of blocks).
     final Integer dstParallelism = targetEdge.getDst().getPropertyValue(ParallelismProperty.class).
@@ -98,27 +98,29 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<I
     return new PhysicalPlan(originalPlan.getPlanId(), stageDAG);
   }
 
-  public List<Integer> identifySkewedKeys(final Map<Integer, Long> keyValToPartitionSizeMap) {
+  public List<Long> identifySkewedKeys(final List<Long> partitionSizeList) {
     // Identify skewed keys.
-    List<Map.Entry<Integer, Long>> sortedMetricData = keyValToPartitionSizeMap.entrySet().stream()
-        .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+    List<Long> sortedMetricData = partitionSizeList.stream()
+        .sorted(Comparator.reverseOrder())
         .collect(Collectors.toList());
-    List<Integer> skewedKeys = new ArrayList<>();
+    List<Long> skewedSizes = new ArrayList<>();
     for (int i = 0; i < numSkewedKeys; i++) {
-      skewedKeys.add(sortedMetricData.get(i).getKey());
-      LOG.info("Skewed key: Key {} Size {}", sortedMetricData.get(i).getKey(), sortedMetricData.get(i).getValue());
+      skewedSizes.add(sortedMetricData.get(i));
+      LOG.info("Skewed size: {}", sortedMetricData.get(i));
     }
 
-    return skewedKeys;
+    return skewedSizes;
   }
 
-  private boolean containsSkewedKey(final List<Integer> skewedKeys,
-                                    final int startingKey, final int finishingKey) {
-    for (int k = startingKey; k < finishingKey; k++) {
-      if (skewedKeys.contains(k)) {
+  private boolean containsSkewedSize(final List<Long> partitionSizeList,
+                                     final List<Long> skewedKeys,
+                                     final int startingKey, final int finishingKey) {
+    for (int i = startingKey; i < finishingKey; i++) {
+      if (skewedKeys.contains(partitionSizeList.get(i))) {
         return true;
       }
     }
+
     return false;
   }
 
@@ -133,24 +135,25 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<I
    * @return the list of key ranges calculated.
    */
   @VisibleForTesting
-  public List<KeyRange> calculateKeyRanges(final Map<Integer, Long> keyToPartitionSizeMap,
+  public List<KeyRange> calculateKeyRanges(final Map<Object, Long> keyToPartitionSizeMap,
                                            final Integer dstParallelism) {
-    // Get the last key.
-    final int lastKey = keyToPartitionSizeMap.keySet().stream()
-        .max(Integer::compareTo)
-        .get();
+    final List<Long> partitionSizeList = new ArrayList<>();
+    keyToPartitionSizeMap.forEach((k, v) -> partitionSizeList.add(v));
 
-    // Identify skewed keys, which is top numSkewedKeys number of keys.
-    List<Integer> skewedKeys = identifySkewedKeys(keyToPartitionSizeMap);
+    // Get the last index.
+    final int lastKey = partitionSizeList.size() - 1;
+
+    // Identify skewed sizes, which is top numSkewedKeys number of keys.
+    List<Long> skewedSizes = identifySkewedKeys(partitionSizeList);
 
     // Calculate the ideal size for each destination task.
-    final Long totalSize = keyToPartitionSizeMap.values().stream().mapToLong(n -> n).sum(); // get total size
+    final Long totalSize = partitionSizeList.stream().mapToLong(n -> n).sum(); // get total size
     final Long idealSizePerTask = totalSize / dstParallelism; // and derive the ideal size per task
 
     final List<KeyRange> keyRanges = new ArrayList<>(dstParallelism);
     int startingKey = 0;
     int finishingKey = 1;
-    Long currentAccumulatedSize = keyToPartitionSizeMap.getOrDefault(startingKey, 0L);
+    Long currentAccumulatedSize = partitionSizeList.get(startingKey);
     Long prevAccumulatedSize = 0L;
     for (int i = 1; i <= dstParallelism; i++) {
       if (i != dstParallelism) {
@@ -158,21 +161,21 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<I
         final Long idealAccumulatedSize = idealSizePerTask * i;
         // By adding partition sizes, find the accumulated size nearest to the given ideal size.
         while (currentAccumulatedSize < idealAccumulatedSize) {
-          currentAccumulatedSize += keyToPartitionSizeMap.getOrDefault(finishingKey, 0L);
+          currentAccumulatedSize += partitionSizeList.get(finishingKey);
           finishingKey++;
         }
 
         final Long oneStepBack =
-            currentAccumulatedSize - keyToPartitionSizeMap.getOrDefault(finishingKey - 1, 0L);
+            currentAccumulatedSize - partitionSizeList.get(finishingKey - 1);
         final Long diffFromIdeal = currentAccumulatedSize - idealAccumulatedSize;
         final Long diffFromIdealOneStepBack = idealAccumulatedSize - oneStepBack;
         // Go one step back if we came too far.
         if (diffFromIdeal > diffFromIdealOneStepBack) {
           finishingKey--;
-          currentAccumulatedSize -= keyToPartitionSizeMap.getOrDefault(finishingKey, 0L);
+          currentAccumulatedSize -= partitionSizeList.get(finishingKey);
         }
 
-        boolean isSkewedKey = containsSkewedKey(skewedKeys, startingKey, finishingKey);
+        boolean isSkewedKey = containsSkewedSize(partitionSizeList, skewedSizes, startingKey, finishingKey);
         keyRanges.add(i - 1, HashRange.of(startingKey, finishingKey, isSkewedKey));
         LOG.debug("KeyRange {}~{}, Size {}", startingKey, finishingKey - 1,
             currentAccumulatedSize - prevAccumulatedSize);
@@ -180,12 +183,12 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<I
         prevAccumulatedSize = currentAccumulatedSize;
         startingKey = finishingKey;
       } else { // last one: we put the range of the rest.
-        boolean isSkewedKey = containsSkewedKey(skewedKeys, startingKey, lastKey + 1);
+        boolean isSkewedKey = containsSkewedSize(partitionSizeList, skewedSizes, startingKey, lastKey + 1);
         keyRanges.add(i - 1,
             HashRange.of(startingKey, lastKey + 1, isSkewedKey));
 
         while (finishingKey <= lastKey) {
-          currentAccumulatedSize += keyToPartitionSizeMap.getOrDefault(finishingKey, 0L);
+          currentAccumulatedSize += partitionSizeList.get(finishingKey);
           finishingKey++;
         }
         LOG.debug("KeyRange {}~{}, Size {}", startingKey, lastKey + 1,

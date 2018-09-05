@@ -46,7 +46,7 @@ public final class RunTimeOptimizer {
     // is a map of <hash value, partition size>.
     final PhysicalPlan physicalPlan =
       new DataSkewRuntimePass()
-        .apply(originalPlan, Pair.of(targetEdge, (Map<Integer, Long>) dynOptData));
+        .apply(originalPlan, Pair.of(targetEdge, (Map<Object, Long>) dynOptData));
     return physicalPlan;
   }
 }

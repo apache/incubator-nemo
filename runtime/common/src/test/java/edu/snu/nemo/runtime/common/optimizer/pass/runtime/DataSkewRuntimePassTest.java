@@ -28,7 +28,7 @@ import static org.junit.Assert.assertEquals;
  * Test {@link DataSkewRuntimePass}.
  */
 public class DataSkewRuntimePassTest {
-  private final Map<Integer, Long> testMetricData = new HashMap<>();
+  private final Map<Object, Long> testMetricData = new HashMap<>();
 
   @Before
   public void setUp() {

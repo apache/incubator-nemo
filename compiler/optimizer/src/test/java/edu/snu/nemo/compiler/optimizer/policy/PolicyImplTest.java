@@ -18,6 +18,9 @@ package edu.snu.nemo.compiler.optimizer.policy;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
@@ -31,10 +34,12 @@ import java.util.List;
 
 public final class PolicyImplTest {
   private DAG dag;
+  private DAG dagForSkew;
 
   @Before
   public void setUp() {
     this.dag = EmptyComponents.buildEmptyDAG();
+    this.dagForSkew = EmptyComponents.buildEmptyDAGForSkew();
   }
 
   @Rule
@@ -55,7 +60,7 @@ public final class PolicyImplTest {
   @Test
   public void testDataSkewPolicy() throws Exception {
     // this should run without an exception.
-    DataSkewPolicy.BUILDER.build().runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
+    DataSkewPolicy.BUILDER.build().runCompileTimeOptimization(dagForSkew, DAG.EMPTY_DAG_DIRECTORY);
   }
 
   @Test
@@ -110,6 +115,6 @@ public final class PolicyImplTest {
     // This should throw an exception.
     // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection).
     expectedException.expect(CompileTimeOptimizationException.class);
-    combinedPolicy.runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
+    combinedPolicy.runCompileTimeOptimization(dagForSkew, DAG.EMPTY_DAG_DIRECTORY);
   }
 }

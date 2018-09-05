@@ -19,15 +19,19 @@ import edu.snu.nemo.common.coder.DecoderFactory;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.VoidCoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 
 /**
  * {@link DecoderFactory} from {@link org.apache.beam.sdk.coders.Coder}.
- * @param <T> the type of element to encode.
+ * @param <T> the type of element to decode.
  */
 public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
+  private static final Logger LOG = LoggerFactory.getLogger(BeamDecoderFactory.class);
+
   private final Coder<T> beamCoder;
 
   /**
