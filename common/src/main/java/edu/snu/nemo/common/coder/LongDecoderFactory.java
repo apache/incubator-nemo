@@ -45,11 +45,6 @@ public final class LongDecoderFactory implements DecoderFactory<Long> {
     return new LongDecoder(inputStream);
   }
 
-  @Override
-  public Object getCoder() {
-    throw new RuntimeException("No coder specified for Long");
-  }
-
   /**
    * LongDecoder.
    */

@@ -49,11 +49,6 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
     }
   }
 
-  @Override
-  public Coder getCoder() {
-    return beamCoder;
-  }
-
   /**
    * Beam Encoder for non void objects.
    *

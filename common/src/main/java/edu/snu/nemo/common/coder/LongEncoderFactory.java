@@ -45,11 +45,6 @@ public final class LongEncoderFactory implements EncoderFactory<Long> {
     return new LongEncoder(outputStream);
   }
 
-  @Override
-  public Object getCoder() {
-    throw new RuntimeException("No coder specified for Long");
-  }
-
   /**
    * LongEncoder.
    */

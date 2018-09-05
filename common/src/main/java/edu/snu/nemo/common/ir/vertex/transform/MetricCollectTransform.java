@@ -33,8 +33,8 @@ public final class MetricCollectTransform<I, O> implements Transform<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(MetricCollectTransform.class.getName());
   private OutputCollector<O> outputCollector;
   private O dynOptData;
-  private BiFunction<Object, O, O> dynOptDataCollector;
-  private BiFunction<O, OutputCollector, O> closer;
+  private final BiFunction<Object, O, O> dynOptDataCollector;
+  private final BiFunction<O, OutputCollector, O> closer;
 
   /**
    * MetricCollectTransform constructor.

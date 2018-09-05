@@ -44,11 +44,6 @@ public final class SparkEncoderFactory<T> implements EncoderFactory<T> {
     return new SparkEncoder<>(outputStream, serializer.newInstance());
   }
 
-  @Override
-  public Serializer getCoder() {
-    return serializer;
-  }
-
   /**
    * SparkEncoder.
    * @param <T2> type of the object to serialize.

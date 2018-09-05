@@ -32,7 +32,7 @@ public final class AggregateMetricTransform<I, O> implements Transform<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(AggregateMetricTransform.class.getName());
   private OutputCollector<O> outputCollector;
   private O aggregatedDynOptData;
-  private BiFunction<Object, O, O> dynOptDataAggregator;
+  private final BiFunction<Object, O, O> dynOptDataAggregator;
 
   /**
    * Default constructor.
