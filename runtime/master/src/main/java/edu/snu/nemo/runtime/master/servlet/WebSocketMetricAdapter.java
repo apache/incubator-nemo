@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.servlet;
+package org.apache.nemo.runtime.master.servlet;
 
-import edu.snu.nemo.runtime.master.MetricBroadcaster;
+import org.apache.nemo.runtime.master.MetricBroadcaster;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.StatusCode;
 import org.eclipse.jetty.websocket.api.WebSocketAdapter;

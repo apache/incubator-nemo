@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master;
+package org.apache.nemo.runtime.master;
 
-import edu.snu.nemo.common.exception.IllegalMessageException;
-import edu.snu.nemo.common.exception.UnknownExecutionStateException;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
-import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
-import edu.snu.nemo.runtime.common.message.MessageContext;
-import edu.snu.nemo.runtime.common.message.MessageEnvironment;
-import edu.snu.nemo.runtime.common.message.MessageListener;
-import edu.snu.nemo.runtime.common.state.BlockState;
+import org.apache.nemo.common.exception.IllegalMessageException;
+import org.apache.nemo.common.exception.UnknownExecutionStateException;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.exception.AbsentBlockException;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.message.MessageContext;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.common.state.BlockState;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Master-side block manager.
  * This implementation assumes that only a single user application can submit (maybe multiple) plans through
- * {@link edu.snu.nemo.runtime.master.scheduler.Scheduler}.
+ * {@link org.apache.nemo.runtime.master.scheduler.Scheduler}.
  */
 @ThreadSafe
 @DriverSide

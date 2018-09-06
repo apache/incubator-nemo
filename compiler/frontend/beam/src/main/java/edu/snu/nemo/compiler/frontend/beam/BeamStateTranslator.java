@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.beam;
+package org.apache.nemo.compiler.frontend.beam;
 
-import edu.snu.nemo.client.StateTranslator;
-import edu.snu.nemo.runtime.common.state.PlanState;
+import org.apache.nemo.client.StateTranslator;
+import org.apache.nemo.runtime.common.state.PlanState;
 
 import static org.apache.beam.sdk.PipelineResult.State.*;
 
 /**
- * A {@link edu.snu.nemo.client.StateTranslator} for Beam.
+ * A {@link org.apache.nemo.client.StateTranslator} for Beam.
  * It provides the translation between the state of job and Beam pipeline.
  */
 public final class BeamStateTranslator implements StateTranslator {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package edu.snu.nemo.common.coder;
+package org.apache.nemo.common.coder;
 
 import org.junit.Assert;
 import org.junit.Test;

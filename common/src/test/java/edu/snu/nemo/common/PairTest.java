@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common;
+package org.apache.nemo.common;
 
-import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.test.EmptyComponents;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

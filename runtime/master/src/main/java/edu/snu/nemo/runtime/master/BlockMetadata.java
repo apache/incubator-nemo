@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master;
+package org.apache.nemo.runtime.master;
 
-import edu.snu.nemo.common.StateMachine;
-import edu.snu.nemo.common.exception.IllegalStateTransitionException;
-import edu.snu.nemo.runtime.common.state.BlockState;
-import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
+import org.apache.nemo.common.StateMachine;
+import org.apache.nemo.common.exception.IllegalStateTransitionException;
+import org.apache.nemo.runtime.common.state.BlockState;
+import org.apache.nemo.runtime.common.exception.AbsentBlockException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

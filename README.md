@@ -78,8 +78,8 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ./bin/run_beam.sh \
 	-job_id mr_default \
 	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
-	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy \
-	-user_main edu.snu.nemo.examples.beam.WordCount \
+	-optimization_policy org.apache.nemo.compiler.optimizer.policy.DefaultPolicy \
+	-user_main org.apache.nemo.examples.beam.WordCount \
 	-user_args "`pwd`/examples/resources/test_input_wordcount `pwd`/examples/resources/test_output_wordcount"
 
 ## YARN cluster example
@@ -87,8 +87,8 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 	-deploy_mode yarn \
  	-job_id mr_transient \
 	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
- 	-user_main edu.snu.nemo.examples.beam.WordCount \
- 	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy \
+ 	-user_main org.apache.nemo.examples.beam.WordCount \
+ 	-optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
 	-user_args "hdfs://v-m:9000/test_input_wordcount hdfs://v-m:9000/test_output_wordcount"
 ```
 ## Resource Configuration
@@ -134,8 +134,8 @@ Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 ./bin/run_beam.sh \
 	-job_id als \
 	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
-  	-user_main edu.snu.nemo.examples.beam.AlternatingLeastSquare \
-  	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy \
+  	-user_main org.apache.nemo.examples.beam.AlternatingLeastSquare \
+  	-optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
   	-dag_dir "./dag/als" \
   	-user_args "`pwd`/examples/resources/test_input_als 10 3"
 ```

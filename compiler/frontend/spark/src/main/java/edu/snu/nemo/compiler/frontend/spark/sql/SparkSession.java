@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.sql;
+package org.apache.nemo.compiler.frontend.spark.sql;
 
-import edu.snu.nemo.client.JobLauncher;
-import edu.snu.nemo.compiler.frontend.spark.core.SparkContext;
-import edu.snu.nemo.conf.JobConf;
+import org.apache.nemo.client.JobLauncher;
+import org.apache.nemo.compiler.frontend.spark.core.SparkContext;
+import org.apache.nemo.conf.JobConf;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -340,7 +340,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
         }
       }
       options.forEach(sparkConf::set);
-      final SparkContext sparkContext = new edu.snu.nemo.compiler.frontend.spark.core.SparkContext(sparkConf);
+      final SparkContext sparkContext = new org.apache.nemo.compiler.frontend.spark.core.SparkContext(sparkConf);
       super.sparkContext(sparkContext);
 
       return SparkSession.from(super.getOrCreate(), this.options);

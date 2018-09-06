@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.exception;
+package org.apache.nemo.runtime.common.exception;
 
 /**
  * An exception which represents exception during appending plans.

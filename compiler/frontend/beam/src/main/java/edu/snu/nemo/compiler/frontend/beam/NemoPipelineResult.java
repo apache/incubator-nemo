@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.beam;
+package org.apache.nemo.compiler.frontend.beam;
 
-import edu.snu.nemo.client.ClientEndpoint;
+import org.apache.nemo.client.ClientEndpoint;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.metrics.MetricResults;
 import org.joda.time.Duration;

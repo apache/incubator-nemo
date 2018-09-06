@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir.vertex;
+package org.apache.nemo.common.ir.vertex;
 
-import edu.snu.nemo.common.ir.IdManager;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import edu.snu.nemo.common.dag.Vertex;
-import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import edu.snu.nemo.common.Cloneable;
+import org.apache.nemo.common.ir.IdManager;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
+import org.apache.nemo.common.dag.Vertex;
+import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import org.apache.nemo.common.Cloneable;
 
 import java.io.Serializable;
 import java.util.Optional;

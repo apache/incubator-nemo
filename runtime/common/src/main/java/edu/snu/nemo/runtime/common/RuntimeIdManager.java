@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common;
+package org.apache.nemo.runtime.common;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -48,7 +48,7 @@ public final class RuntimeIdManager {
   }
 
   /**
-   * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.Stage}.
+   * Generates the ID for {@link org.apache.nemo.runtime.common.plan.Stage}.
    *
    * @param stageId stage ID in numeric form.
    * @return the generated ID

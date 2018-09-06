@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir.executionproperty;
+package org.apache.nemo.common.ir.executionproperty;
 
 import java.io.Serializable;
 
 /**
- * {@link ExecutionProperty} for {@link edu.snu.nemo.common.ir.edge.IREdge}.
+ * {@link ExecutionProperty} for {@link org.apache.nemo.common.ir.edge.IREdge}.
  * @param <T> Type of the value.
  */
 public abstract class EdgeExecutionProperty<T extends Serializable> extends ExecutionProperty<T> {

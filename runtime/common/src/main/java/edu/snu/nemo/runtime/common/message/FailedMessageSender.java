@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.message;
+package org.apache.nemo.runtime.common.message;
 
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
 
 import java.util.concurrent.CompletableFuture;
 

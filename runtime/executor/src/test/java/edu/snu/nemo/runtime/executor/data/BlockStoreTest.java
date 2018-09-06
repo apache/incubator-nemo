@@ -13,29 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data;
+package org.apache.nemo.runtime.executor.data;
 
-import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.coder.*;
-import edu.snu.nemo.common.ir.IdManager;
-import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
-import edu.snu.nemo.common.HashRange;
-import edu.snu.nemo.common.KeyRange;
-import edu.snu.nemo.runtime.common.message.MessageEnvironment;
-import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
-import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
-import edu.snu.nemo.runtime.common.state.BlockState;
-import edu.snu.nemo.runtime.executor.TestUtil;
-import edu.snu.nemo.runtime.executor.data.block.Block;
-import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
-import edu.snu.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
-import edu.snu.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer;
-import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
-import edu.snu.nemo.runtime.executor.data.stores.*;
-import edu.snu.nemo.runtime.master.BlockManagerMaster;
-import edu.snu.nemo.runtime.master.RuntimeMaster;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.coder.*;
+import org.apache.nemo.common.ir.IdManager;
+import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
+import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
+import org.apache.nemo.runtime.common.state.BlockState;
+import org.apache.nemo.runtime.executor.TestUtil;
+import org.apache.nemo.runtime.executor.data.block.Block;
+import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import org.apache.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
+import org.apache.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.runtime.executor.data.stores.*;
+import org.apache.nemo.runtime.master.BlockManagerMaster;
+import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.io.FileUtils;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -59,7 +59,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static edu.snu.nemo.runtime.common.RuntimeTestUtil.getRangedNumList;
+import static org.apache.nemo.runtime.common.RuntimeTestUtil.getRangedNumList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;

@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.plan;
+package org.apache.nemo.runtime.common.plan;
 
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import java.io.Serializable;
 import java.util.HashMap;

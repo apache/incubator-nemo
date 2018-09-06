@@ -16,4 +16,4 @@
 /**
  * Responsible for transferring block content from one executor to another.
  */
-package edu.snu.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.bytetransfer;

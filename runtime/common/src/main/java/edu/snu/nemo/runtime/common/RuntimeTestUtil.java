@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common;
+package org.apache.nemo.runtime.common;
 
-import edu.snu.nemo.common.Pair;
+import org.apache.nemo.common.Pair;
 
 import java.util.*;
 import java.util.stream.Collectors;

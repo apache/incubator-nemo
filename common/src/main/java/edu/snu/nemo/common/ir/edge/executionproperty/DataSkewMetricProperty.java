@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir.edge.executionproperty;
+package org.apache.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.DataSkewMetricFactory;
-import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.DataSkewMetricFactory;
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
  * DataSkewMetric ExecutionProperty.

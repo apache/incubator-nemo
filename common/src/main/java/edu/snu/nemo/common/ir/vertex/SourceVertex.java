@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir.vertex;
+package org.apache.nemo.common.ir.vertex;
 
-import edu.snu.nemo.common.ir.Readable;
+import org.apache.nemo.common.ir.Readable;
 
 import java.util.List;
 

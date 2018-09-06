@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core.rdd;
+package org.apache.nemo.compiler.frontend.spark.core.rdd;
 
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.dag.DAGBuilder;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.InMemorySourceVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils;
-import edu.snu.nemo.compiler.frontend.spark.source.SparkDatasetBoundedSourceVertex;
-import edu.snu.nemo.compiler.frontend.spark.source.SparkTextFileBoundedSourceVertex;
-import edu.snu.nemo.compiler.frontend.spark.sql.Dataset;
-import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.InMemorySourceVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.compiler.frontend.spark.core.SparkFrontendUtils;
+import org.apache.nemo.compiler.frontend.spark.source.SparkDatasetBoundedSourceVertex;
+import org.apache.nemo.compiler.frontend.spark.source.SparkTextFileBoundedSourceVertex;
+import org.apache.nemo.compiler.frontend.spark.sql.Dataset;
+import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
 import org.apache.spark.*;
 import org.apache.spark.api.java.JavaFutureAction;
 import org.apache.spark.api.java.Optional;

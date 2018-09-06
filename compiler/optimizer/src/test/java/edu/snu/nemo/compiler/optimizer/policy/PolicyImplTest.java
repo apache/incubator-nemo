@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package edu.snu.nemo.compiler.optimizer.policy;
+package org.apache.nemo.compiler.optimizer.policy;
 
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.test.EmptyComponents;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.exception.CompileTimeOptimizationException;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.test.EmptyComponents;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
+import org.apache.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;

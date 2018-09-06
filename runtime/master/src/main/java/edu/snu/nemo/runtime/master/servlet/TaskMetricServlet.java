@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.servlet;
+package org.apache.nemo.runtime.master.servlet;
 
-import edu.snu.nemo.runtime.master.MetricStore;
-import edu.snu.nemo.runtime.common.metric.TaskMetric;
+import org.apache.nemo.runtime.master.MetricStore;
+import org.apache.nemo.runtime.common.metric.TaskMetric;
 
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;

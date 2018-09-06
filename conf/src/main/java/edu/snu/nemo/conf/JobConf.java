@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.conf;
+package org.apache.nemo.conf;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
@@ -95,7 +95,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * The name of the optimization policy.
    */
   @NamedParameter(doc = "The canonical name of the optimization policy", short_name = "optimization_policy",
-      default_value = "edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy")
+      default_value = "org.apache.nemo.compiler.optimizer.policy.DefaultPolicy")
   public final class OptimizationPolicy implements Name<String> {
   }
 

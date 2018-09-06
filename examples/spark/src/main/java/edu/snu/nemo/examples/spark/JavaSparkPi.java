@@ -14,11 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.examples.spark;
+package org.apache.nemo.examples.spark;
 
-import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
-import edu.snu.nemo.compiler.frontend.spark.core.JavaSparkContext;
-import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import org.apache.nemo.compiler.frontend.spark.core.JavaSparkContext;
+import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
 
 import java.util.ArrayList;
 import java.util.List;

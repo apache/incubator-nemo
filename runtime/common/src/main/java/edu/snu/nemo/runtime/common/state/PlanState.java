@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.state;
+package org.apache.nemo.runtime.common.state;
 
-import edu.snu.nemo.common.StateMachine;
+import org.apache.nemo.common.StateMachine;
 
 /**
  * Represents the states and their transitions of a physical plan.

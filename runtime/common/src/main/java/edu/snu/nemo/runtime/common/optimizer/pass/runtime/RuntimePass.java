@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.optimizer.pass.runtime;
+package org.apache.nemo.runtime.common.optimizer.pass.runtime;
 
-import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
-import edu.snu.nemo.common.pass.Pass;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.common.eventhandler.RuntimeEventHandler;
+import org.apache.nemo.common.pass.Pass;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 
 import java.util.Set;
 import java.util.function.BiFunction;

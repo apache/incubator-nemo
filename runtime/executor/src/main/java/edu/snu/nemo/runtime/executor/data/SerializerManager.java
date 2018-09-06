@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data;
+package org.apache.nemo.runtime.executor.data;
 
-import edu.snu.nemo.common.coder.DecoderFactory;
-import edu.snu.nemo.common.coder.EncoderFactory;
-import edu.snu.nemo.runtime.executor.data.streamchainer.*;
-import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
+import org.apache.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.runtime.executor.data.streamchainer.*;
+import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

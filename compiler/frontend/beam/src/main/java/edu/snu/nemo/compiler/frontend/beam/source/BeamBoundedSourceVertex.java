@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.beam.source;
+package org.apache.nemo.compiler.frontend.beam.source;
 
-import edu.snu.nemo.common.ir.Readable;
+import org.apache.nemo.common.ir.Readable;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import edu.snu.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.io.hadoop.inputformat.HadoopInputFormatIO;
 import org.apache.hadoop.mapreduce.InputSplit;

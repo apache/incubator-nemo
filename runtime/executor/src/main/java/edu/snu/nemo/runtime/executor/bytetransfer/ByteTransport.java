@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.bytetransfer;
 
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.NettyChannelImplementationSelector;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.NettyChannelImplementationSelector;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -232,7 +232,7 @@ final class ByteTransport implements AutoCloseable {
     /**
      * Creates a {@link ByteTransportIdentifier}.
      *
-     * @param executorId id of the {@link edu.snu.nemo.runtime.executor.Executor}
+     * @param executorId id of the {@link org.apache.nemo.runtime.executor.Executor}
      */
     private ByteTransportIdentifier(final String executorId) {
       this.executorId = executorId;

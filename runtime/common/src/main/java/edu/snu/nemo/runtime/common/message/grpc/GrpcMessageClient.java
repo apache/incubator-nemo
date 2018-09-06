@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.message.grpc;
+package org.apache.nemo.runtime.common.message.grpc;
 
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
-import edu.snu.nemo.runtime.common.comm.MessageServiceGrpc;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.comm.MessageServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
@@ -35,8 +35,8 @@ import java.util.concurrent.CompletableFuture;
  * ip address of the target receiver, and then tries to connect to that receiver. After the connection established,
  * callers can communicates with the receiver with two methods, send and request.
  *
- * @see edu.snu.nemo.runtime.common.message.MessageSender#send(Object)
- * @see edu.snu.nemo.runtime.common.message.MessageSender#request(Object)
+ * @see org.apache.nemo.runtime.common.message.MessageSender#send(Object)
+ * @see org.apache.nemo.runtime.common.message.MessageSender#request(Object)
  */
 final class GrpcMessageClient {
 
@@ -92,7 +92,7 @@ final class GrpcMessageClient {
   }
 
   /**
-   * Issue {@link edu.snu.nemo.runtime.common.message.MessageSender#send(Object)} rpc call.
+   * Issue {@link org.apache.nemo.runtime.common.message.MessageSender#send(Object)} rpc call.
    *
    * @param message a message to send
    */
@@ -108,7 +108,7 @@ final class GrpcMessageClient {
   }
 
   /**
-   * Issue {@link edu.snu.nemo.runtime.common.message.MessageSender#request(Object)} rpc call.
+   * Issue {@link org.apache.nemo.runtime.common.message.MessageSender#request(Object)} rpc call.
    *
    * @param message a message to request
    * @return a future containing response message

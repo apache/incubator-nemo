@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.datatransfer;
 
 
 /**
  * Contains common parts involved in {@link InputReader} and {@link OutputWriter}.
  * The two classes are involved in
- * intermediate data transfer between {@link edu.snu.nemo.runtime.common.plan.physical.Task}.
+ * intermediate data transfer between {@link org.apache.nemo.runtime.common.plan.physical.Task}.
  */
 public abstract class DataTransfer {
   private final String id;

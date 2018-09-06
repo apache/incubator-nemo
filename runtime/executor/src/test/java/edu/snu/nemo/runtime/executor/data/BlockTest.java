@@ -13,18 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data;
+package org.apache.nemo.runtime.executor.data;
 
-import edu.snu.nemo.common.HashRange;
-import edu.snu.nemo.common.coder.IntDecoderFactory;
-import edu.snu.nemo.common.coder.IntEncoderFactory;
-import edu.snu.nemo.runtime.executor.data.block.Block;
-import edu.snu.nemo.runtime.executor.data.block.FileBlock;
-import edu.snu.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
-import edu.snu.nemo.runtime.executor.data.block.SerializedMemoryBlock;
-import edu.snu.nemo.runtime.executor.data.metadata.LocalFileMetadata;
-import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
-import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.coder.IntDecoderFactory;
+import org.apache.nemo.common.coder.IntEncoderFactory;
+import org.apache.nemo.runtime.executor.data.block.Block;
+import org.apache.nemo.runtime.executor.data.block.FileBlock;
+import org.apache.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
+import org.apache.nemo.runtime.executor.data.block.SerializedMemoryBlock;
+import org.apache.nemo.runtime.executor.data.metadata.LocalFileMetadata;
+import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Before;
@@ -67,7 +67,7 @@ public final class BlockTest {
   }
 
   /**
-   * Test {@link edu.snu.nemo.runtime.executor.data.block.SerializedMemoryBlock}.
+   * Test {@link org.apache.nemo.runtime.executor.data.block.SerializedMemoryBlock}.
    */
   @Test(timeout = 10000)
   public void testSerializedMemoryBlock() throws Exception {

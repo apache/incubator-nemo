@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark;
+package org.apache.nemo.compiler.frontend.spark;
 
-import edu.snu.nemo.common.KeyExtractor;
+import org.apache.nemo.common.KeyExtractor;
 import scala.Tuple2;
 
 /**

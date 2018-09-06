@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common;
+package org.apache.nemo.common;
 
-import edu.snu.nemo.common.StateMachine;
-import edu.snu.nemo.common.exception.IllegalStateTransitionException;
+import org.apache.nemo.common.StateMachine;
+import org.apache.nemo.common.exception.IllegalStateTransitionException;
 import org.junit.Before;
 import org.junit.Test;
 

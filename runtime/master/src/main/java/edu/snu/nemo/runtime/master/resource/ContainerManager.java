@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.resource;
+package org.apache.nemo.runtime.master.resource;
 
-import edu.snu.nemo.common.exception.ContainerException;
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.message.FailedMessageSender;
-import edu.snu.nemo.runtime.common.message.MessageEnvironment;
-import edu.snu.nemo.runtime.common.message.MessageSender;
+import org.apache.nemo.common.exception.ContainerException;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.message.FailedMessageSender;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;

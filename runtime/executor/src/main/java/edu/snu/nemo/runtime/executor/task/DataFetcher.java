@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.task;
+package org.apache.nemo.runtime.executor.task;
 
-import edu.snu.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import java.io.IOException;
 

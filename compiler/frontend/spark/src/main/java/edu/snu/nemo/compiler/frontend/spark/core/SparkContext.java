@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core;
+package org.apache.nemo.compiler.frontend.spark.core;
 
-import edu.snu.nemo.compiler.frontend.spark.SparkBroadcastVariables;
-import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
-import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
+import org.apache.nemo.compiler.frontend.spark.SparkBroadcastVariables;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.RDD;
 import org.apache.spark.SparkConf;
 import org.apache.spark.broadcast.Broadcast;
 import org.slf4j.Logger;

@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master;
+package org.apache.nemo.runtime.master;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.common.exception.IllegalStateTransitionException;
-import edu.snu.nemo.common.exception.UnknownExecutionStateException;
-import edu.snu.nemo.common.StateMachine;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.state.PlanState;
-import edu.snu.nemo.runtime.common.state.StageState;
+import org.apache.nemo.common.exception.IllegalStateTransitionException;
+import org.apache.nemo.common.exception.UnknownExecutionStateException;
+import org.apache.nemo.common.StateMachine;
+import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.runtime.common.state.PlanState;
+import org.apache.nemo.runtime.common.state.StageState;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,10 +37,10 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.common.metric.JobMetric;
-import edu.snu.nemo.runtime.common.metric.StageMetric;
-import edu.snu.nemo.runtime.common.metric.TaskMetric;
+import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.runtime.common.metric.JobMetric;
+import org.apache.nemo.runtime.common.metric.StageMetric;
+import org.apache.nemo.runtime.common.metric.TaskMetric;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -49,7 +49,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 
-import static edu.snu.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
+import static org.apache.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 
 /**
  * Maintains three levels of state machines (PlanState, StageState, and TaskState) of a physical plan.
@@ -287,9 +287,9 @@ public final class PlanStateManager {
    * Updates the state of a task.
    * Task state changes can occur both in master and executor.
    * State changes that occur in master are
-   * initiated in {@link edu.snu.nemo.runtime.master.scheduler.BatchScheduler}.
+   * initiated in {@link org.apache.nemo.runtime.master.scheduler.BatchScheduler}.
    * State changes that occur in executors are sent to master as a control message,
-   * and the call to this method is initiated in {@link edu.snu.nemo.runtime.master.scheduler.BatchScheduler}
+   * and the call to this method is initiated in {@link org.apache.nemo.runtime.master.scheduler.BatchScheduler}
    * when the message/event is received.
    *
    * @param taskId       the ID of the task.

@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package edu.snu.nemo.compiler.optimizer.pass.compiletime;
+package org.apache.nemo.compiler.optimizer.pass.compiletime;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 
 import java.lang.annotation.*;
 

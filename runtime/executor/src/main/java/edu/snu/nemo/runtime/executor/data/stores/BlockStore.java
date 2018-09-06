@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.stores;
+package org.apache.nemo.runtime.executor.data.stores;
 
-import edu.snu.nemo.common.exception.BlockFetchException;
-import edu.snu.nemo.common.exception.BlockWriteException;
-import edu.snu.nemo.runtime.executor.data.block.Block;
+import org.apache.nemo.common.exception.BlockFetchException;
+import org.apache.nemo.common.exception.BlockWriteException;
+import org.apache.nemo.runtime.executor.data.block.Block;
 
 import java.util.Optional;
 
 /**
- * Interface for {@link edu.snu.nemo.runtime.executor.data.block.Block} placement.
+ * Interface for {@link org.apache.nemo.runtime.executor.data.block.Block} placement.
  */
 public interface BlockStore {
   /**
@@ -33,7 +33,7 @@ public interface BlockStore {
    * @return the created block.
    * @throws BlockWriteException for any error occurred while trying to create a block.
    *                             (This exception will be thrown to the scheduler
-   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
   Block createBlock(String blockId) throws BlockWriteException;
@@ -44,7 +44,7 @@ public interface BlockStore {
    * @param block the block to write.
    * @throws BlockWriteException if fail to write.
    *                             (This exception will be thrown to the scheduler
-   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
   void writeBlock(Block block) throws BlockWriteException;
@@ -56,7 +56,7 @@ public interface BlockStore {
    * @return the target block (if it exists).
    * @throws BlockFetchException for any error occurred while trying to fetch a block.
    *                             (This exception will be thrown to the scheduler
-   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
   Optional<Block> readBlock(String blockId) throws BlockFetchException;
@@ -68,7 +68,7 @@ public interface BlockStore {
    * @return whether the partition exists or not.
    * @throws BlockFetchException for any error occurred while trying to remove a block.
    *                             (This exception will be thrown to the scheduler
-   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             through {@link org.apache.nemo.runtime.executor.Executor} and
    *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
   boolean deleteBlock(String blockId);

@@ -13,32 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data;
+package org.apache.nemo.runtime.executor.data;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import edu.snu.nemo.common.exception.BlockFetchException;
-import edu.snu.nemo.common.exception.BlockWriteException;
-import edu.snu.nemo.common.exception.UnsupportedBlockStoreException;
-import edu.snu.nemo.common.exception.UnsupportedExecutionPropertyException;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
-import edu.snu.nemo.runtime.common.comm.ControlMessage.ByteTransferContextDescriptor;
-import edu.snu.nemo.common.KeyRange;
-import edu.snu.nemo.runtime.common.message.MessageEnvironment;
-import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import edu.snu.nemo.runtime.executor.bytetransfer.ByteInputContext;
-import edu.snu.nemo.runtime.executor.bytetransfer.ByteOutputContext;
-import edu.snu.nemo.runtime.executor.bytetransfer.ByteTransfer;
-import edu.snu.nemo.runtime.executor.data.block.Block;
-import edu.snu.nemo.runtime.executor.data.block.FileBlock;
-import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
-import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
-import edu.snu.nemo.runtime.executor.data.stores.BlockStore;
-import edu.snu.nemo.runtime.executor.data.stores.*;
+import org.apache.nemo.common.exception.BlockFetchException;
+import org.apache.nemo.common.exception.BlockWriteException;
+import org.apache.nemo.common.exception.UnsupportedBlockStoreException;
+import org.apache.nemo.common.exception.UnsupportedExecutionPropertyException;
+import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextDescriptor;
+import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
+import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
+import org.apache.nemo.runtime.executor.data.block.Block;
+import org.apache.nemo.runtime.executor.data.block.FileBlock;
+import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
+import org.apache.nemo.runtime.executor.data.stores.BlockStore;
+import org.apache.nemo.runtime.executor.data.stores.*;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -318,7 +318,7 @@ public final class BlockManagerWorker {
   /**
    * Respond to a block request by another executor.
    * <p>
-   * This method is executed by {edu.snu.nemo.runtime.executor.data.blocktransfer.BlockTransport} thread. \
+   * This method is executed by {org.apache.nemo.runtime.executor.data.blocktransfer.BlockTransport} thread. \
    * Never execute a blocking call in this method!
    *
    * @param outputContext {@link ByteOutputContext}
@@ -371,7 +371,7 @@ public final class BlockManagerWorker {
   /**
    * Respond to a block notification by another executor.
    * <p>
-   * This method is executed by {edu.snu.nemo.runtime.executor.data.blocktransfer.BlockTransport}
+   * This method is executed by {org.apache.nemo.runtime.executor.data.blocktransfer.BlockTransport}
    * thread. Never execute a blocking call in this method!
    *
    * @param inputContext {@link ByteInputContext}
@@ -430,7 +430,7 @@ public final class BlockManagerWorker {
 
 
   /**
-   * Handles used {@link edu.snu.nemo.runtime.executor.data.block.Block}.
+   * Handles used {@link org.apache.nemo.runtime.executor.data.block.Block}.
    *
    * @param blockStore the store which contains the block.
    * @param blockId    the ID of the block.

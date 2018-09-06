@@ -13,30 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.task;
+package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
-import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
-import edu.snu.nemo.common.ir.vertex.*;
-import edu.snu.nemo.common.ir.vertex.transform.AggregateMetricTransform;
-import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
-import edu.snu.nemo.runtime.common.message.MessageEnvironment;
-import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import edu.snu.nemo.runtime.common.plan.Task;
-import edu.snu.nemo.runtime.common.plan.StageEdge;
-import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.executor.MetricMessageSender;
-import edu.snu.nemo.runtime.executor.TaskStateManager;
-import edu.snu.nemo.runtime.executor.TransformContextImpl;
-import edu.snu.nemo.runtime.executor.data.BroadcastManagerWorker;
-import edu.snu.nemo.runtime.executor.datatransfer.*;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.Readable;
+import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
+import org.apache.nemo.common.ir.vertex.*;
+import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
+import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.runtime.executor.MetricMessageSender;
+import org.apache.nemo.runtime.executor.TaskStateManager;
+import org.apache.nemo.runtime.executor.TransformContextImpl;
+import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
+import org.apache.nemo.runtime.executor.datatransfer.*;
 
 import java.io.IOException;
 import java.util.*;

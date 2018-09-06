@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.examples.beam.policy;
+package org.apache.nemo.examples.beam.policy;
 
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.compiler.optimizer.policy.DisaggregationPolicy;
-import edu.snu.nemo.compiler.optimizer.policy.Policy;
-import edu.snu.nemo.compiler.optimizer.policy.PolicyImpl;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.compiler.optimizer.policy.DisaggregationPolicy;
+import org.apache.nemo.compiler.optimizer.policy.Policy;
+import org.apache.nemo.compiler.optimizer.policy.PolicyImpl;
 import org.apache.reef.tang.Injector;
 
 /**

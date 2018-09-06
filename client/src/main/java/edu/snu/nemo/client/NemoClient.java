@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.client;
+package org.apache.nemo.client;
 
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.client.JobMessage;

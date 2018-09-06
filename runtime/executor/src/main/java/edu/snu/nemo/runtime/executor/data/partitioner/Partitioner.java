@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.partitioner;
+package org.apache.nemo.runtime.executor.data.partitioner;
 
 import java.io.Serializable;
 
 /**
  * This interface represents the way of partitioning output data from a source task.
- * It takes an element and designates key of {@link edu.snu.nemo.runtime.executor.data.partition.Partition}
+ * It takes an element and designates key of {@link org.apache.nemo.runtime.executor.data.partition.Partition}
  * to write the element, according to the number of destination tasks, the key of each element, etc.
  * @param <K> the key type of the partition to write.
  */

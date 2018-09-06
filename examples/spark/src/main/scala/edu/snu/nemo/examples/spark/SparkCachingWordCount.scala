@@ -16,9 +16,9 @@
  */
 
 // scalastyle:off println
-package edu.snu.nemo.examples.spark
+package org.apache.nemo.examples.spark
 
-import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession
+import org.apache.nemo.compiler.frontend.spark.sql.SparkSession
 
 /**
   * Computes counts of each data key.

@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir.vertex;
+package org.apache.nemo.common.ir.vertex;
 
-import edu.snu.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.ir.vertex.transform.Transform;
 
 /**
  * IRVertex that transforms input data.

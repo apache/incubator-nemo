@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.partitioner;
+package org.apache.nemo.runtime.executor.data.partitioner;
 
-import edu.snu.nemo.common.KeyExtractor;
+import org.apache.nemo.common.KeyExtractor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +29,7 @@ import java.math.BigInteger;
  * When we need to split or recombine the output data from a task after it is stored,
  * we multiply the hash range with a multiplier, which is commonly-known by the source and destination tasks,
  * to prevent the extra deserialize - rehash - serialize process.
- * For more information, please check {@link edu.snu.nemo.conf.JobConf.HashRangeMultiplier}.
+ * For more information, please check {@link org.apache.nemo.conf.JobConf.HashRangeMultiplier}.
  */
 public final class DataSkewHashPartitioner implements Partitioner<Integer> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewHashPartitioner.class.getName());

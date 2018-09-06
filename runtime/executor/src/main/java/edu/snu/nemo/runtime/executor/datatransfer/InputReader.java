@@ -13,24 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.datatransfer;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
-import edu.snu.nemo.common.KeyRange;
-import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.StageEdge;
-import edu.snu.nemo.common.exception.BlockFetchException;
-import edu.snu.nemo.common.exception.UnsupportedCommPatternException;
-import edu.snu.nemo.common.HashRange;
-import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
-import edu.snu.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.common.exception.BlockFetchException;
+import org.apache.nemo.common.exception.UnsupportedCommPatternException;
+import org.apache.nemo.common.HashRange;
+import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
+import org.apache.nemo.runtime.executor.data.DataUtil;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;

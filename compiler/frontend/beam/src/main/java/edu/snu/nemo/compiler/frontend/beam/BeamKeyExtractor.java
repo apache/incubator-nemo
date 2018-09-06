@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.beam;
+package org.apache.nemo.compiler.frontend.beam;
 
-import edu.snu.nemo.common.KeyExtractor;
+import org.apache.nemo.common.KeyExtractor;
 import org.apache.beam.sdk.values.KV;
 
 /**

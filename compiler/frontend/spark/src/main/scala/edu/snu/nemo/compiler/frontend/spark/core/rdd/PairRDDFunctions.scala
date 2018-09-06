@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core.rdd
+package org.apache.nemo.compiler.frontend.spark.core.rdd
 
 import java.util
 
-import edu.snu.nemo.common.dag.DAGBuilder
-import edu.snu.nemo.common.ir.edge.IREdge
-import edu.snu.nemo.common.ir.edge.executionproperty._
-import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
-import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
-import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
-import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
-import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
-import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform
+import org.apache.nemo.common.dag.DAGBuilder
+import org.apache.nemo.common.ir.edge.IREdge
+import org.apache.nemo.common.ir.edge.executionproperty._
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty
+import org.apache.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
+import org.apache.nemo.compiler.frontend.spark.SparkKeyExtractor
+import org.apache.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
+import org.apache.nemo.compiler.frontend.spark.core.SparkFrontendUtils
+import org.apache.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.compress.CompressionCodec
 import org.apache.hadoop.mapred.{JobConf, OutputFormat}

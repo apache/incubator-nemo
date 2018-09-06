@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package edu.snu.nemo.examples.spark;
+package org.apache.nemo.examples.spark;
 
-import edu.snu.nemo.client.JobLauncher;
-import edu.snu.nemo.common.test.ArgBuilder;
-import edu.snu.nemo.common.test.ExampleTestUtil;
-import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
+import org.apache.nemo.client.JobLauncher;
+import org.apache.nemo.common.test.ArgBuilder;
+import org.apache.nemo.common.test.ExampleTestUtil;
+import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

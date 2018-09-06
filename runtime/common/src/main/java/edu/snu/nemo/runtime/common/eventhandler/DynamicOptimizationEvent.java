@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package edu.snu.nemo.runtime.common.eventhandler;
+package org.apache.nemo.runtime.common.eventhandler;
 
-import edu.snu.nemo.common.eventhandler.RuntimeEvent;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.common.eventhandler.RuntimeEvent;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 
 /**
  * An event for triggering dynamic optimization.

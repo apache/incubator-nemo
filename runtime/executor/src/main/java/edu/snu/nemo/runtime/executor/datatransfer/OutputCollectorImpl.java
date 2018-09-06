@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.datatransfer;
 
-import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.OutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

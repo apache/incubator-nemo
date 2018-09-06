@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.beam.coder;
+package org.apache.nemo.compiler.frontend.beam.coder;
 
-import edu.snu.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.VoidCoder;

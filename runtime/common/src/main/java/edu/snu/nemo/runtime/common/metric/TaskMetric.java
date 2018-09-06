@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.metric;
+package org.apache.nemo.runtime.common.metric;
 
-import edu.snu.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.ArrayList;
@@ -25,7 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Metric class for {@link edu.snu.nemo.runtime.common.plan.Task}.
+ * Metric class for {@link org.apache.nemo.runtime.common.plan.Task}.
  */
 public class TaskMetric implements StateMetric<TaskState.State> {
   private String id;

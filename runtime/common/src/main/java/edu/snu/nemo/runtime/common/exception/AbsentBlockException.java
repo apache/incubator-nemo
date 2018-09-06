@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.exception;
+package org.apache.nemo.runtime.common.exception;
 
-import edu.snu.nemo.runtime.common.state.BlockState;
+import org.apache.nemo.runtime.common.state.BlockState;
 
 /**
  * An exception which represents the requested block is neither AVAILABLE nor IN_PROGRESS.

@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package edu.snu.nemo.common.pass;
+package org.apache.nemo.common.pass;
 
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import java.io.Serializable;
 import java.util.function.Predicate;
