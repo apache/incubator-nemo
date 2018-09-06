@@ -20,7 +20,7 @@
 
 ## Viewing the YARN/HDFS Web UI (when the nodes can't be directly accessed from the internet)
 * This is the case for our cmslab cluster
-* Use ssh tunneling: `ssh -D 8123 -f -C -q -N johnyangk@cmscluster.snu.ac.kr`
+* Use ssh tunneling: `ssh -D 8123 -f -C -q -N username@gateway`
 * Turn on SOCKS proxy in chrome(web browser) advanced settings
 * Set your mac's `/etc/hosts`
 * Go to `v-m:8088` and `v-m:50070`
