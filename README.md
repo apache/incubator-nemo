@@ -127,7 +127,7 @@ This example configuration specifies
 ## Monitoring your job using web UI
 Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 * `-dag_dir` command line option is used to specify the directory where the JSON files are stored. The default directory is `./dag`.
-  Using our [online visualizer](http://cmscluster.snu.ac.kr:50080/nemo-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
+  Using our [online visualizer](https:/nemo.snuspl.snu.ac.kr:50443/nemo-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
 
 ### Examples
 ```bash
