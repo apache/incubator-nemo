@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.scheduler;
+package org.apache.nemo.runtime.master.scheduler;
 
-import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.state.StageState;
-import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.PlanStateManager;
-import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.runtime.common.state.StageState;
+import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.runtime.master.PlanStateManager;
+import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 
 import java.util.Optional;
 

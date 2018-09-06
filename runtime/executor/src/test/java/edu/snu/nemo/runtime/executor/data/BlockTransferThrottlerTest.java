@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data;
+package org.apache.nemo.runtime.executor.data;
 
-import edu.snu.nemo.conf.JobConf;
+import org.apache.nemo.conf.JobConf;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;

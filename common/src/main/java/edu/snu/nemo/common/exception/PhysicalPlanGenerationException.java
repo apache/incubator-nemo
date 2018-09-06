@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.exception;
+package org.apache.nemo.common.exception;
 
 /**
  * PhysicalPlanGenerationException.
  * Thrown when any exception occurs during the conversion
- * from {@link edu.snu.nemo.common.dag.DAG}
- * to {edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan}
+ * from {@link org.apache.nemo.common.dag.DAG}
+ * to {org.apache.nemo.runtime.common.plan.physical.PhysicalPlan}
  */
 public final class PhysicalPlanGenerationException extends RuntimeException {
   /**

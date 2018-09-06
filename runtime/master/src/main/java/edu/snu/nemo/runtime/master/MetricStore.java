@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master;
+package org.apache.nemo.runtime.master;
 
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.snu.nemo.common.exception.UnsupportedMetricException;
-import edu.snu.nemo.runtime.common.metric.*;
+import org.apache.nemo.common.exception.UnsupportedMetricException;
+import org.apache.nemo.runtime.common.metric.*;
 
 import java.io.*;
 import java.util.*;

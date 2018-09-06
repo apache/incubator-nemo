@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.optimizer;
+package org.apache.nemo.runtime.common.optimizer;
 
-import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 
 import java.util.*;
 

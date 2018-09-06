@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.stores;
+package org.apache.nemo.runtime.executor.data.stores;
 
-import edu.snu.nemo.common.exception.BlockFetchException;
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.common.exception.BlockWriteException;
-import edu.snu.nemo.runtime.executor.data.*;
-import edu.snu.nemo.runtime.executor.data.block.Block;
-import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
-import edu.snu.nemo.runtime.executor.data.metadata.RemoteFileMetadata;
-import edu.snu.nemo.runtime.executor.data.block.FileBlock;
+import org.apache.nemo.common.exception.BlockFetchException;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.common.exception.BlockWriteException;
+import org.apache.nemo.runtime.executor.data.*;
+import org.apache.nemo.runtime.executor.data.block.Block;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.runtime.executor.data.metadata.RemoteFileMetadata;
+import org.apache.nemo.runtime.executor.data.block.FileBlock;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;

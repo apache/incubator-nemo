@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.streamchainer;
+package org.apache.nemo.runtime.executor.data.streamchainer;
 
-import edu.snu.nemo.common.exception.UnsupportedCompressionException;
-import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
+import org.apache.nemo.common.exception.UnsupportedCompressionException;
+import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import net.jpountz.lz4.LZ4BlockOutputStream;
 
 import java.io.IOException;

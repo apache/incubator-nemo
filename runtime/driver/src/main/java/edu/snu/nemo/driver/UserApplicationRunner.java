@@ -13,18 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.driver;
+package org.apache.nemo.driver;
 
-import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.compiler.backend.Backend;
-import edu.snu.nemo.compiler.optimizer.Optimizer;
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.master.PlanStateManager;
-import edu.snu.nemo.runtime.master.RuntimeMaster;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.compiler.backend.Backend;
+import org.apache.nemo.compiler.optimizer.Optimizer;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.master.PlanStateManager;
+import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;

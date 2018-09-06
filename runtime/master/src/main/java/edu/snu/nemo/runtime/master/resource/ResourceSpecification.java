@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.resource;
+package org.apache.nemo.runtime.master.resource;
 
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
 
 /**
  * Represents the specifications of a resource.

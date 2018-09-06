@@ -13,20 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.optimizer.pass.runtime;
+package org.apache.nemo.runtime.common.optimizer.pass.runtime;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.eventhandler.RuntimeEventHandler;
 
-import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.KeyRange;
-import edu.snu.nemo.common.HashRange;
-import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEventHandler;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.common.HashRange;
+import org.apache.nemo.runtime.common.eventhandler.DynamicOptimizationEventHandler;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.metadata;
+package org.apache.nemo.runtime.executor.data.metadata;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * This class represents a metadata for a {@link edu.snu.nemo.runtime.executor.data.block.Block}.
+ * This class represents a metadata for a {@link org.apache.nemo.runtime.executor.data.block.Block}.
  * The writer and reader determine the status of a file block
  * (such as accessibility, how many bytes are written, etc.) by using this metadata.
  * @param <K> the key type of its partitions.

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package edu.snu.nemo.common.eventhandler;
+package org.apache.nemo.common.eventhandler;
 
 import org.apache.reef.wake.EventHandler;
 

@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir.edge;
+package org.apache.nemo.common.ir.edge;
 
-import edu.snu.nemo.common.dag.Edge;
-import edu.snu.nemo.common.ir.IdManager;
-import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.dag.Edge;
+import org.apache.nemo.common.ir.IdManager;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 

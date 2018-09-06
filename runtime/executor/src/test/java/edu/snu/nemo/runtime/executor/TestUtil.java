@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor;
+package org.apache.nemo.runtime.executor;
 
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
-import edu.snu.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.plan.Stage;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.metric;
+package org.apache.nemo.runtime.common.metric;
 
-import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.state.StageState;
+import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.runtime.common.state.StageState;
 
 import java.util.ArrayList;
 import java.util.List;

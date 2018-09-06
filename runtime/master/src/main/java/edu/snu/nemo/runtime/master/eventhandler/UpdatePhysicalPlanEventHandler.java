@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package edu.snu.nemo.runtime.master.eventhandler;
+package org.apache.nemo.runtime.master.eventhandler;
 
-import edu.snu.nemo.common.eventhandler.CompilerEventHandler;
-import edu.snu.nemo.runtime.common.eventhandler.UpdatePhysicalPlanEvent;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.master.scheduler.Scheduler;
+import org.apache.nemo.common.eventhandler.CompilerEventHandler;
+import org.apache.nemo.runtime.common.eventhandler.UpdatePhysicalPlanEvent;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.master.scheduler.Scheduler;
 
 import javax.inject.Inject;
 

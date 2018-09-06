@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.examples.beam.policy;
+package org.apache.nemo.examples.beam.policy;
 
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 
 import java.util.List;
 

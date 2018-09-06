@@ -13,21 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.optimizer.examples;
+package org.apache.nemo.compiler.optimizer.examples;
 
-import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.dag.DAGBuilder;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.test.EmptyComponents;
-import edu.snu.nemo.compiler.optimizer.policy.DisaggregationPolicy;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.test.EmptyComponents;
+import org.apache.nemo.compiler.optimizer.policy.DisaggregationPolicy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static edu.snu.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
+import static org.apache.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 
 /**
  * A sample MapReduceDisaggregationOptimization application.

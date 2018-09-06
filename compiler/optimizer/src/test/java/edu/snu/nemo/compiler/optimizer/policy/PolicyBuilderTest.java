@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.optimizer.policy;
+package org.apache.nemo.compiler.optimizer.policy;
 
-import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.TransientResourceCompositePass;
+import org.apache.nemo.common.exception.CompileTimeOptimizationException;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.TransientResourceCompositePass;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

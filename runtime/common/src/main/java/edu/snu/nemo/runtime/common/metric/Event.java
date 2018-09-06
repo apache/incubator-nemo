@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.metric;
+package org.apache.nemo.runtime.common.metric;
 
 import java.io.Serializable;
 

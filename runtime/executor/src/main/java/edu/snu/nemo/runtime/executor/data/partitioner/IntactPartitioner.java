@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.partitioner;
+package org.apache.nemo.runtime.executor.data.partitioner;
 
 /**
  * An implementation of {@link Partitioner} which makes an output data
- * from a source task to a single {@link edu.snu.nemo.runtime.executor.data.partition.Partition}.
+ * from a source task to a single {@link org.apache.nemo.runtime.executor.data.partition.Partition}.
  */
 public final class IntactPartitioner implements Partitioner<Integer> {
 

@@ -13,26 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core;
+package org.apache.nemo.compiler.frontend.spark.core;
 
-import edu.snu.nemo.client.JobLauncher;
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.dag.DAGBuilder;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.LoopVertex;
-import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.compiler.frontend.spark.SparkBroadcastVariables;
-import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor;
-import edu.snu.nemo.compiler.frontend.spark.coder.SparkDecoderFactory;
-import edu.snu.nemo.compiler.frontend.spark.coder.SparkEncoderFactory;
-import edu.snu.nemo.compiler.frontend.spark.transform.CollectTransform;
-import edu.snu.nemo.compiler.frontend.spark.transform.GroupByKeyTransform;
-import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform;
+import org.apache.nemo.client.JobLauncher;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.LoopVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.compiler.frontend.spark.SparkBroadcastVariables;
+import org.apache.nemo.compiler.frontend.spark.SparkKeyExtractor;
+import org.apache.nemo.compiler.frontend.spark.coder.SparkDecoderFactory;
+import org.apache.nemo.compiler.frontend.spark.coder.SparkEncoderFactory;
+import org.apache.nemo.compiler.frontend.spark.transform.CollectTransform;
+import org.apache.nemo.compiler.frontend.spark.transform.GroupByKeyTransform;
+import org.apache.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;

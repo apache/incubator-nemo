@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.source;
+package org.apache.nemo.compiler.frontend.spark.source;
 
-import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.Readable;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.spark.*;
 import org.apache.spark.rdd.RDD;
 import scala.collection.JavaConverters;

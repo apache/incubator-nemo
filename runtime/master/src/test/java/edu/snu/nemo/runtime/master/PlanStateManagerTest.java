@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master;
+package org.apache.nemo.runtime.master;
 
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
-import edu.snu.nemo.runtime.common.message.MessageEnvironment;
-import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
-import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.state.PlanState;
-import edu.snu.nemo.runtime.common.state.StageState;
-import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.common.plan.TestPlanGenerator;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
+import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.runtime.common.state.PlanState;
+import org.apache.nemo.runtime.common.state.StageState;
+import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.reef.tang.Injector;
 import org.junit.Before;
 import org.junit.Test;

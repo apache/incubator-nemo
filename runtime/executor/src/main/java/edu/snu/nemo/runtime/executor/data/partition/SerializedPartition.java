@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.partition;
+package org.apache.nemo.runtime.executor.data.partition;
 
-import edu.snu.nemo.common.DirectByteArrayOutputStream;
-import edu.snu.nemo.common.coder.EncoderFactory;
-import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.common.DirectByteArrayOutputStream;
+import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,11 +25,11 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import static edu.snu.nemo.runtime.executor.data.DataUtil.buildOutputStream;
+import static org.apache.nemo.runtime.executor.data.DataUtil.buildOutputStream;
 
 /**
  * A collection of data elements. The data is stored as an array of bytes.
- * This is a unit of read / write towards {@link edu.snu.nemo.runtime.executor.data.block.Block}s.
+ * This is a unit of read / write towards {@link org.apache.nemo.runtime.executor.data.block.Block}s.
  * @param <K> the key type of its partitions.
  */
 public final class SerializedPartition<K> implements Partition<byte[], K> {

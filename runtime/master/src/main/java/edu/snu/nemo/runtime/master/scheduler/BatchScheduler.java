@@ -13,30 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.scheduler;
+package org.apache.nemo.runtime.master.scheduler;
 
 import com.google.common.collect.Sets;
-import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
-import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
-import edu.snu.nemo.runtime.common.plan.*;
-import edu.snu.nemo.runtime.common.state.BlockState;
-import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.PlanAppender;
-import edu.snu.nemo.runtime.master.DataSkewDynOptDataHandler;
-import edu.snu.nemo.runtime.master.DynOptDataHandler;
-import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
-import edu.snu.nemo.common.exception.*;
-import edu.snu.nemo.runtime.common.state.StageState;
-import edu.snu.nemo.runtime.master.BlockManagerMaster;
-import edu.snu.nemo.runtime.master.PlanStateManager;
-import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import org.apache.nemo.common.ir.Readable;
+import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
+import org.apache.nemo.runtime.common.plan.*;
+import org.apache.nemo.runtime.common.state.BlockState;
+import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.runtime.master.PlanAppender;
+import org.apache.nemo.runtime.master.DataSkewDynOptDataHandler;
+import org.apache.nemo.runtime.master.DynOptDataHandler;
+import org.apache.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
+import org.apache.nemo.common.exception.*;
+import org.apache.nemo.runtime.common.state.StageState;
+import org.apache.nemo.runtime.master.BlockManagerMaster;
+import org.apache.nemo.runtime.master.PlanStateManager;
+import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.LoggerFactory;
@@ -70,7 +70,7 @@ public final class BatchScheduler implements Scheduler {
   private final PlanStateManager planStateManager;
 
   /**
-   * Other necessary components of this {@link edu.snu.nemo.runtime.master.RuntimeMaster}.
+   * Other necessary components of this {@link org.apache.nemo.runtime.master.RuntimeMaster}.
    */
   private final BlockManagerMaster blockManagerMaster;
   private final PubSubEventHandlerWrapper pubSubEventHandlerWrapper;
@@ -423,7 +423,7 @@ public final class BatchScheduler implements Scheduler {
    * The edge is annotated with {@link MetricCollectionProperty}, which is an outgoing edge of
    * a parent of the stage put on hold.
    *
-   * See {@link edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.SkewReshapingPass}
+   * See {@link org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.SkewReshapingPass}
    * for setting the target edge of dynamic optimization.
    *
    * @param taskId the task ID that sent stage-level aggregated metric for dynamic optimization.

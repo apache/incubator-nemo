@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor;
+package org.apache.nemo.runtime.executor;
 
-import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.runtime.executor.data.BroadcastManagerWorker;
+import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 
 import java.io.Serializable;
 import java.util.Map;

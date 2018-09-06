@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.streamchainer;
+package org.apache.nemo.runtime.executor.data.streamchainer;
 
-import edu.snu.nemo.common.coder.DecoderFactory;
-import edu.snu.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.coder.EncoderFactory;
 
 import java.util.List;
 

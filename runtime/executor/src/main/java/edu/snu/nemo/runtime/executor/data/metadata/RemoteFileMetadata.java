@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.metadata;
+package org.apache.nemo.runtime.executor.data.metadata;
 
 import org.apache.commons.lang3.SerializationUtils;
 

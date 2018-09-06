@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.client;
+package org.apache.nemo.client;
 
-import edu.snu.nemo.runtime.master.ClientRPC;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.master.ClientRPC;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;

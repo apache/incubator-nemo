@@ -13,23 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core.rdd
+package org.apache.nemo.compiler.frontend.spark.core.rdd
 
 import java.util
 import java.util.UUID
 
-import edu.snu.nemo.client.JobLauncher
-import edu.snu.nemo.common.dag.{DAG, DAGBuilder}
-import edu.snu.nemo.common.ir.edge.IREdge
-import edu.snu.nemo.common.ir.edge.executionproperty._
-import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
-import edu.snu.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty
-import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
-import edu.snu.nemo.common.test.EmptyComponents.EmptyTransform
-import edu.snu.nemo.compiler.frontend.spark.{SparkBroadcastVariables, SparkKeyExtractor}
-import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
-import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
-import edu.snu.nemo.compiler.frontend.spark.transform._
+import org.apache.nemo.client.JobLauncher
+import org.apache.nemo.common.dag.{DAG, DAGBuilder}
+import org.apache.nemo.common.ir.edge.IREdge
+import org.apache.nemo.common.ir.edge.executionproperty._
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty
+import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty
+import org.apache.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
+import org.apache.nemo.common.test.EmptyComponents.EmptyTransform
+import org.apache.nemo.compiler.frontend.spark.{SparkBroadcastVariables, SparkKeyExtractor}
+import org.apache.nemo.compiler.frontend.spark.coder.{SparkDecoderFactory, SparkEncoderFactory}
+import org.apache.nemo.compiler.frontend.spark.core.SparkFrontendUtils
+import org.apache.nemo.compiler.frontend.spark.transform._
 import org.apache.hadoop.io.WritableFactory
 import org.apache.hadoop.io.compress.CompressionCodec
 import org.apache.spark.api.java.function.{FlatMapFunction, Function, Function2}

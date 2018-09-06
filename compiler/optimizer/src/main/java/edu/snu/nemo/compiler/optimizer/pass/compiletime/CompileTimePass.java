@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.optimizer.pass.compiletime;
+package org.apache.nemo.compiler.optimizer.pass.compiletime;
 
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
-import edu.snu.nemo.common.pass.Pass;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
+import org.apache.nemo.common.pass.Pass;
 
 import java.util.Set;
 import java.util.function.Function;

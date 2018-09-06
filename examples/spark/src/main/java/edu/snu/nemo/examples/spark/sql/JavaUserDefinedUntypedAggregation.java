@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-package edu.snu.nemo.examples.spark.sql;
+package org.apache.nemo.examples.spark.sql;
 
-import edu.snu.nemo.compiler.frontend.spark.sql.Dataset;
-import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession;
+import org.apache.nemo.compiler.frontend.spark.sql.Dataset;
+import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.expressions.MutableAggregationBuffer;
 import org.apache.spark.sql.expressions.UserDefinedAggregateFunction;

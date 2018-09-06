@@ -13,24 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.backend.nemo;
+package org.apache.nemo.compiler.backend.nemo;
 
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.dag.DAGBuilder;
-import edu.snu.nemo.common.test.EmptyComponents;
-import edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy;
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.test.EmptyComponents;
+import org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 
-import static edu.snu.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
+import static org.apache.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 import static org.junit.Assert.assertEquals;
 
 /**

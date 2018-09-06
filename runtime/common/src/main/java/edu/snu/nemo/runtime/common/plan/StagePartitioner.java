@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.plan;
+package org.apache.nemo.runtime.common.plan;
 
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.reef.annotations.audience.DriverSide;

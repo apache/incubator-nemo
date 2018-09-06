@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data;
+package org.apache.nemo.runtime.executor.data;
 
 import com.google.common.io.CountingInputStream;
-import edu.snu.nemo.common.DirectByteArrayOutputStream;
-import edu.snu.nemo.common.coder.DecoderFactory;
-import edu.snu.nemo.common.coder.EncoderFactory;
-import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
-import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
-import edu.snu.nemo.runtime.executor.data.streamchainer.DecodeStreamChainer;
-import edu.snu.nemo.runtime.executor.data.streamchainer.EncodeStreamChainer;
-import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.common.DirectByteArrayOutputStream;
+import org.apache.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
+import org.apache.nemo.runtime.executor.data.streamchainer.DecodeStreamChainer;
+import org.apache.nemo.runtime.executor.data.streamchainer.EncodeStreamChainer;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,7 +94,7 @@ public final class DataUtil {
   }
 
   /**
-   * Converts the non-serialized {@link edu.snu.nemo.runtime.executor.data.partition.Partition}s
+   * Converts the non-serialized {@link org.apache.nemo.runtime.executor.data.partition.Partition}s
    * in an iterable to serialized partitions.
    *
    * @param serializer          the serializer for serialization.
@@ -126,7 +126,7 @@ public final class DataUtil {
   }
 
   /**
-   * Converts the serialized {@link edu.snu.nemo.runtime.executor.data.partition.Partition}s
+   * Converts the serialized {@link org.apache.nemo.runtime.executor.data.partition.Partition}s
    * in an iterable to non-serialized partitions.
    *
    * @param serializer          the serializer for deserialization.
@@ -176,7 +176,7 @@ public final class DataUtil {
   }
 
   /**
-   * Concatenates an iterable of non-serialized {@link edu.snu.nemo.runtime.executor.data.partition.Partition}s
+   * Concatenates an iterable of non-serialized {@link org.apache.nemo.runtime.executor.data.partition.Partition}s
    * into a single iterable of elements.
    *
    * @param partitionsToConcat the partitions to concatenate.

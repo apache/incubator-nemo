@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master;
+package org.apache.nemo.runtime.master;
 
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.snu.nemo.runtime.common.metric.JobMetric;
+import org.apache.nemo.runtime.common.metric.JobMetric;
 import org.junit.Test;
 
 import java.io.IOException;

@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.driver;
+package org.apache.nemo.driver;
 
-import edu.snu.nemo.common.ir.IdManager;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
-import edu.snu.nemo.runtime.common.message.MessageParameters;
-import edu.snu.nemo.runtime.master.ClientRPC;
-import edu.snu.nemo.runtime.master.BroadcastManagerMaster;
-import edu.snu.nemo.runtime.master.RuntimeMaster;
+import org.apache.nemo.common.ir.IdManager;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageParameters;
+import org.apache.nemo.runtime.master.ClientRPC;
+import org.apache.nemo.runtime.master.BroadcastManagerMaster;
+import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.reef.annotations.audience.DriverSide;

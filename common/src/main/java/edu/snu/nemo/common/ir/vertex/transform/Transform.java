@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir.vertex.transform;
+package org.apache.nemo.common.ir.vertex.transform;
 
-import edu.snu.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.OutputCollector;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;

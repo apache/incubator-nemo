@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.partitioner;
+package org.apache.nemo.runtime.executor.data.partitioner;
 
-import edu.snu.nemo.common.KeyExtractor;
+import org.apache.nemo.common.KeyExtractor;
 
 /**
  * An implementation of {@link Partitioner} which hashes output data from a source task

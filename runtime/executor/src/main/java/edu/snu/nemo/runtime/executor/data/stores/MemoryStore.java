@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.stores;
+package org.apache.nemo.runtime.executor.data.stores;
 
-import edu.snu.nemo.common.exception.BlockWriteException;
-import edu.snu.nemo.runtime.executor.data.SerializerManager;
-import edu.snu.nemo.runtime.executor.data.block.Block;
-import edu.snu.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
-import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
-import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.common.exception.BlockWriteException;
+import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.data.block.Block;
+import org.apache.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
+import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;

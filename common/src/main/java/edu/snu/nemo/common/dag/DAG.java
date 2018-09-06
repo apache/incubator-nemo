@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.dag;
+package org.apache.nemo.common.dag;
 
-import edu.snu.nemo.common.exception.IllegalEdgeOperationException;
-import edu.snu.nemo.common.exception.IllegalVertexOperationException;
-import edu.snu.nemo.common.ir.vertex.LoopVertex;
+import org.apache.nemo.common.exception.IllegalEdgeOperationException;
+import org.apache.nemo.common.exception.IllegalVertexOperationException;
+import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

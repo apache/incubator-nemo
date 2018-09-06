@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.dag;
+package org.apache.nemo.common.dag;
 
-import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
-import edu.snu.nemo.common.ir.vertex.*;
-import edu.snu.nemo.common.exception.IllegalVertexOperationException;
+import org.apache.nemo.common.exception.CompileTimeOptimizationException;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import org.apache.nemo.common.ir.vertex.*;
+import org.apache.nemo.common.exception.IllegalVertexOperationException;
 
 import java.io.Serializable;
 import java.util.*;

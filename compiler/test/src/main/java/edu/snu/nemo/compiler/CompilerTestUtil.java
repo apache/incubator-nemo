@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler;
+package org.apache.nemo.compiler;
 
-import edu.snu.nemo.common.test.ArgBuilder;
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.client.JobLauncher;
-import edu.snu.nemo.common.dag.DAG;
+import org.apache.nemo.common.test.ArgBuilder;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.client.JobLauncher;
+import org.apache.nemo.common.dag.DAG;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -92,7 +92,7 @@ public final class CompilerTestUtil {
   public static DAG<IRVertex, IREdge> compileWordCountDAG() throws Exception {
     final String input = ROOT_DIR + "/examples/resources/test_input_wordcount";
     final String output = ROOT_DIR + "/examples/resources/test_output";
-    final String main = "edu.snu.nemo.examples.beam.WordCount";
+    final String main = "org.apache.nemo.examples.beam.WordCount";
 
     final ArgBuilder mrArgBuilder = new ArgBuilder()
         .addJobId("WordCount")
@@ -105,7 +105,7 @@ public final class CompilerTestUtil {
     final String input = ROOT_DIR + "/examples/resources/test_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
-    final String main = "edu.snu.nemo.examples.beam.AlternatingLeastSquare";
+    final String main = "org.apache.nemo.examples.beam.AlternatingLeastSquare";
 
     final ArgBuilder alsArgBuilder = new ArgBuilder()
         .addJobId("AlternatingLeastSquare")
@@ -118,7 +118,7 @@ public final class CompilerTestUtil {
     final String input = ROOT_DIR + "/examples/resources/test_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
-    final String main = "edu.snu.nemo.examples.beam.AlternatingLeastSquareInefficient";
+    final String main = "org.apache.nemo.examples.beam.AlternatingLeastSquareInefficient";
 
     final ArgBuilder alsArgBuilder = new ArgBuilder()
         .addJobId("AlternatingLeastSquareInefficient")
@@ -132,7 +132,7 @@ public final class CompilerTestUtil {
     final String numFeatures = "100";
     final String numClasses = "5";
     final String numIteration = "3";
-    final String main = "edu.snu.nemo.examples.beam.MultinomialLogisticRegression";
+    final String main = "org.apache.nemo.examples.beam.MultinomialLogisticRegression";
 
     final ArgBuilder mlrArgBuilder = new ArgBuilder()
         .addJobId("MultinomialLogisticRegression")

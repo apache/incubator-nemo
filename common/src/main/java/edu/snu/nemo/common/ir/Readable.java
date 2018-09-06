@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir;
+package org.apache.nemo.common.ir;
 
 import java.io.IOException;
 import java.io.Serializable;

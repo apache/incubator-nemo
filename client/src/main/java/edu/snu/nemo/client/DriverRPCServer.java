@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.client;
+package org.apache.nemo.client;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;

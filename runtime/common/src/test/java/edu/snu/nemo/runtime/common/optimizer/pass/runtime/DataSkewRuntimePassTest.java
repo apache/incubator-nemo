@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.optimizer.pass.runtime;
+package org.apache.nemo.runtime.common.optimizer.pass.runtime;
 
-import edu.snu.nemo.common.HashRange;
-import edu.snu.nemo.common.KeyRange;
+import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.KeyRange;
 import org.junit.Before;
 import org.junit.Test;
 

@@ -13,25 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master;
+package org.apache.nemo.runtime.master;
 
 import com.google.protobuf.ByteString;
-import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.exception.*;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.runtime.common.RuntimeIdManager;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
-import edu.snu.nemo.runtime.common.message.MessageContext;
-import edu.snu.nemo.runtime.common.message.MessageEnvironment;
-import edu.snu.nemo.runtime.common.message.MessageListener;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.scheduler.BatchScheduler;
-import edu.snu.nemo.runtime.master.servlet.*;
-import edu.snu.nemo.runtime.master.resource.ContainerManager;
-import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
-import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
-import edu.snu.nemo.runtime.master.scheduler.Scheduler;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.exception.*;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageContext;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
+import org.apache.nemo.runtime.master.servlet.*;
+import org.apache.nemo.runtime.master.resource.ContainerManager;
+import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.nemo.runtime.master.resource.ResourceSpecification;
+import org.apache.nemo.runtime.master.scheduler.Scheduler;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -53,8 +53,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static edu.snu.nemo.runtime.common.state.TaskState.State.COMPLETE;
-import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
+import static org.apache.nemo.runtime.common.state.TaskState.State.COMPLETE;
+import static org.apache.nemo.runtime.common.state.TaskState.State.ON_HOLD;
 
 /**
  * (WARNING) Use runtimeMasterThread for all public methods to avoid race conditions.

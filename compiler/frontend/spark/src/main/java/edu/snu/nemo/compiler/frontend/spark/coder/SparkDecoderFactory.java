@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.coder;
+package org.apache.nemo.compiler.frontend.spark.coder;
 
-import edu.snu.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.spark.serializer.DeserializationStream;
 import org.apache.spark.serializer.Serializer;
 import org.apache.spark.serializer.SerializerInstance;

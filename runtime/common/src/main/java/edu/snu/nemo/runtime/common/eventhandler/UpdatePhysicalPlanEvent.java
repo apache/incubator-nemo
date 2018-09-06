@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.eventhandler;
+package org.apache.nemo.runtime.common.eventhandler;
 
-import edu.snu.nemo.common.eventhandler.CompilerEvent;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.common.eventhandler.CompilerEvent;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 
 /**
  * An event for updating the physical plan in the scheduler.

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.stores;
+package org.apache.nemo.runtime.executor.data.stores;
 
 import org.apache.reef.tang.annotations.DefaultImplementation;
 

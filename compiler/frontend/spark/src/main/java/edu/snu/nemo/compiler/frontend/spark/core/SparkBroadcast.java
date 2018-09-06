@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core;
+package org.apache.nemo.compiler.frontend.spark.core;
 
-import edu.snu.nemo.runtime.executor.data.BroadcastManagerWorker;
+import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import scala.reflect.ClassTag$;
 
 /**

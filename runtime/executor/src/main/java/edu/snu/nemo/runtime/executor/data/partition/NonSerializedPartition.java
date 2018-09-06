@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.partition;
+package org.apache.nemo.runtime.executor.data.partition;
 
-import edu.snu.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.runtime.executor.data.DataUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,7 +23,7 @@ import java.util.List;
 
 /**
  * A collection of data elements. The data is stored as an iterable of elements.
- * This is a unit of read / write towards {@link edu.snu.nemo.runtime.executor.data.block.Block}s.
+ * This is a unit of read / write towards {@link org.apache.nemo.runtime.executor.data.block.Block}s.
  * @param <K> the key type of its partitions.
  */
 public final class NonSerializedPartition<K> implements Partition<Iterable, K> {
@@ -92,7 +92,7 @@ public final class NonSerializedPartition<K> implements Partition<Iterable, K> {
 
   /**
    * @return the number of bytes in serialized form (which is, for example, encoded and compressed)
-   * @throws edu.snu.nemo.runtime.executor.data.DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException
+   * @throws org.apache.nemo.runtime.executor.data.DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException
    *         when then information is not available
    */
   public long getNumSerializedBytes() throws DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException {
@@ -104,7 +104,7 @@ public final class NonSerializedPartition<K> implements Partition<Iterable, K> {
 
   /**
    * @return the number of bytes in encoded form (which is ready to be decoded)
-   * @throws edu.snu.nemo.runtime.executor.data.DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException
+   * @throws org.apache.nemo.runtime.executor.data.DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException
    *         when then information is not available
    */
   public long getNumEncodedBytes() throws DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException {

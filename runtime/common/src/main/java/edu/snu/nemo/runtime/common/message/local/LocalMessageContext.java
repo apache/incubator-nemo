@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.message.local;
+package org.apache.nemo.runtime.common.message.local;
 
-import edu.snu.nemo.runtime.common.message.MessageContext;
+import org.apache.nemo.runtime.common.message.MessageContext;
 
 import java.util.Optional;
 

@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.beam.transform;
+package org.apache.nemo.compiler.frontend.beam.transform;
 
-import edu.snu.nemo.common.ir.OutputCollector;
-import edu.snu.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.vertex.transform.Transform;
 
 import java.util.ArrayList;
 

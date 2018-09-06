@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package edu.snu.nemo.runtime.common.eventhandler;
+package org.apache.nemo.runtime.common.eventhandler;
 
-import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
-import edu.snu.nemo.runtime.common.optimizer.RunTimeOptimizer;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import org.apache.nemo.common.eventhandler.RuntimeEventHandler;
+import org.apache.nemo.runtime.common.optimizer.RunTimeOptimizer;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.reef.wake.impl.PubSubEventHandler;
 
 import javax.inject.Inject;

@@ -13,22 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.optimizer;
+package org.apache.nemo.compiler.optimizer;
 
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.dag.DAGBuilder;
-import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
-import edu.snu.nemo.common.exception.DynamicOptimizationException;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.CachedSourceVertex;
-import edu.snu.nemo.common.ir.edge.executionproperty.CacheIDProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.compiler.optimizer.policy.Policy;
-import edu.snu.nemo.conf.JobConf;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import org.apache.nemo.common.exception.CompileTimeOptimizationException;
+import org.apache.nemo.common.exception.DynamicOptimizationException;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.vertex.CachedSourceVertex;
+import org.apache.nemo.common.ir.edge.executionproperty.CacheIDProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.compiler.optimizer.policy.Policy;
+import org.apache.nemo.conf.JobConf;
 import net.jcip.annotations.NotThreadSafe;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;

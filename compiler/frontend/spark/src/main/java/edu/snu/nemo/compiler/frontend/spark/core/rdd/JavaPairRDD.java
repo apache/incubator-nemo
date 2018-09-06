@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core.rdd;
+package org.apache.nemo.compiler.frontend.spark.core.rdd;
 
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.spark.Partitioner;

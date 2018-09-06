@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.sql;
+package org.apache.nemo.compiler.frontend.spark.sql;
 
-import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
-import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import org.apache.nemo.compiler.frontend.spark.core.rdd.RDD;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.api.java.function.MapPartitionsFunction;
 import org.apache.spark.sql.Column;

@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.examples.beam;
+package org.apache.nemo.examples.beam;
 
-import edu.snu.nemo.client.JobLauncher;
-import edu.snu.nemo.common.test.ArgBuilder;
-import edu.snu.nemo.common.test.ExampleTestUtil;
-import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
-import edu.snu.nemo.examples.beam.policy.TransientResourcePolicyParallelismFive;
+import org.apache.nemo.client.JobLauncher;
+import org.apache.nemo.common.test.ArgBuilder;
+import org.apache.nemo.common.test.ExampleTestUtil;
+import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
+import org.apache.nemo.examples.beam.policy.TransientResourcePolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

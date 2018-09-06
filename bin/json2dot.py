@@ -133,7 +133,7 @@ class NormalVertex:
     def dot(self):
         color = 'black'
         try:
-            placement = self.properties['executionProperties']['edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty']
+            placement = self.properties['executionProperties']['org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty']
             if (placement == 'Transient'):
                 color = 'orange'
             if (placement == 'Reserved'):

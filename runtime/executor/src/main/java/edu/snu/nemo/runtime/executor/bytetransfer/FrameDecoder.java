@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.bytetransfer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import edu.snu.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
-import edu.snu.nemo.runtime.common.comm.ControlMessage.ByteTransferDataDirection;
+import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
+import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferDataDirection;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;

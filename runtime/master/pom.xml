@@ -19,7 +19,7 @@ limitations under the License.
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>edu.snu.nemo</groupId>
+        <groupId>org.apache.nemo</groupId>
         <artifactId>nemo-project</artifactId>
         <version>0.1-SNAPSHOT</version>
         <relativePath>../../</relativePath>
@@ -37,17 +37,17 @@ limitations under the License.
 
     <dependencies>
         <dependency>
-            <groupId>edu.snu.nemo</groupId>
+            <groupId>org.apache.nemo</groupId>
             <artifactId>nemo-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.nemo</groupId>
+            <groupId>org.apache.nemo</groupId>
             <artifactId>nemo-runtime-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.nemo</groupId>
+            <groupId>org.apache.nemo</groupId>
             <artifactId>nemo-runtime-test</artifactId>
             <version>${project.version}</version>
         </dependency>

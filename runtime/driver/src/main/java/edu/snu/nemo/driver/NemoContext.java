@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.driver;
+package org.apache.nemo.driver;
 
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.executor.Executor;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.executor.Executor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.evaluator.context.events.ContextStop;

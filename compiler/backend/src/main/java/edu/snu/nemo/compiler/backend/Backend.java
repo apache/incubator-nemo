@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.backend;
+package org.apache.nemo.compiler.backend;
 
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.compiler.backend.nemo.NemoBackend;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.compiler.backend.nemo.NemoBackend;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**

@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data.metadata;
+package org.apache.nemo.runtime.executor.data.metadata;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.Serializable;
 
 /**
- * This class represents a metadata for a local file {@link edu.snu.nemo.runtime.executor.data.block.Block}.
+ * This class represents a metadata for a local file {@link org.apache.nemo.runtime.executor.data.block.Block}.
  * It resides in local only, and does not synchronize globally.
  * @param <K> the key type of its partitions.
  */

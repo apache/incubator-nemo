@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.client;
+package org.apache.nemo.client;
 
-import edu.snu.nemo.runtime.common.state.PlanState;
-import edu.snu.nemo.runtime.master.PlanStateManager;
+import org.apache.nemo.runtime.common.state.PlanState;
+import org.apache.nemo.runtime.master.PlanStateManager;
 
 import java.util.concurrent.TimeUnit;
 

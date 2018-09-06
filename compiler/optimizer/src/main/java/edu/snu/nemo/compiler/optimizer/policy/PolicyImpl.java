@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package edu.snu.nemo.compiler.optimizer.policy;
+package org.apache.nemo.compiler.optimizer.policy;
 
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
-import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.ReshapingPass;
-import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import org.apache.nemo.common.eventhandler.RuntimeEventHandler;
+import org.apache.nemo.common.exception.CompileTimeOptimizationException;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.ReshapingPass;
+import org.apache.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 import org.apache.reef.tang.Injector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
