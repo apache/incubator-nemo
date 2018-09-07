@@ -65,8 +65,6 @@ public final class PlanState {
 
   @Override
   public String toString() {
-    final StringBuffer sb = new StringBuffer();
-    sb.append(stateMachine.getCurrentState());
-    return sb.toString();
+    return stateMachine.getCurrentState().toString();
   }
 }
