@@ -364,6 +364,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
       final ObjectNode vertexNode = mapper.createObjectNode();
       vertexNode.put("id", vertex.getId());
       vertexNode.set("properties", vertex.getPropertiesAsJsonNode());
+      verticesNode.add(vertexNode);
     }
     node.set("vertices", verticesNode);
 
@@ -373,7 +374,8 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
         final ObjectNode edgeNode = mapper.createObjectNode();
         edgeNode.put("src", edge.getSrc().getId());
         edgeNode.put("dst", edge.getDst().getId());
-        edgeNode.put("properties", edge.getPropertiesAsJsonNode());
+        edgeNode.set("properties", edge.getPropertiesAsJsonNode());
+        edgesNode.add(edgeNode);
       }
 
     }
