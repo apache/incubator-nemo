@@ -18,7 +18,7 @@ limitations under the License.
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>edu.snu.nemo</groupId>
+    <groupId>org.apache.nemo</groupId>
     <artifactId>nemo-project</artifactId>
     <version>0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
@@ -230,7 +230,7 @@ limitations under the License.
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.0.0</version>
                 <configuration>
-                    <excludePackageNames>*.edu.snu.nemo.runtime.common.comm</excludePackageNames>
+                    <excludePackageNames>*.org.apache.nemo.runtime.common.comm</excludePackageNames>
                     <outputDirectory>docs/apidocs</outputDirectory>
                     <reportOutputDirectory>docs/apidocs</reportOutputDirectory>
                 </configuration>

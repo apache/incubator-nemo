@@ -20,7 +20,7 @@
 
 ## Viewing the YARN/HDFS Web UI (when the nodes can't be directly accessed from the internet)
 * This is the case for our cmslab cluster
-* Use ssh tunneling: `ssh -D 8123 -f -C -q -N johnyangk@cmscluster.snu.ac.kr`
+* Use ssh tunneling: `ssh -D 8123 -f -C -q -N username@gateway`
 * Turn on SOCKS proxy in chrome(web browser) advanced settings
 * Set your mac's `/etc/hosts`
 * Go to `v-m:8088` and `v-m:50070`
@@ -29,7 +29,7 @@
 * git clone Nemo on v-m and install
 * Upload a local input file to HDFS with `hdfs -put`
 * Launch a Nemo job with `-deploy_mode yarn`, and hdfs paths as the input/output
-* Example: `./bin/run.sh -deploy_mode yarn -job_id mr -user_main edu.snu.nemo.examples.beam.WordCount -user_args "hdfs://v-m:9000/test_input_wordcount hdfs://v-m:9000/test_output_wordcount"`
+* Example: `./bin/run.sh -deploy_mode yarn -job_id mr -user_main org.apache.nemo.examples.beam.WordCount -user_args "hdfs://v-m:9000/test_input_wordcount hdfs://v-m:9000/test_output_wordcount"`
 
 ## And you're all set.....?
 * I hope so
