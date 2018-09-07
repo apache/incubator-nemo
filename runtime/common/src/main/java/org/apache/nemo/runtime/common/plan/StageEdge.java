@@ -15,6 +15,8 @@
  */
 package org.apache.nemo.runtime.common.plan;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
@@ -108,19 +110,18 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   }
 
   @Override
-  public String propertiesToJSON() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("{\"runtimeEdgeId\": \"").append(getId());
-    sb.append("\", \"executionProperties\": ").append(getExecutionProperties());
-    sb.append(", \"externalSrcVertexId\": \"").append(srcVertex.getId());
-    sb.append("\", \"externalDstVertexId\": \"").append(dstVertex.getId());
-    sb.append("\"}");
-    return sb.toString();
+    public ObjectNode getPropertiesAsJsonNode() {
+    final ObjectNode node = JsonNodeFactory.instance.objectNode();
+    node.put("runtimeEdgeId", getId());
+    node.set("executionProperties", getExecutionProperties().asJsonNode());
+    node.put("externalSrcVertexId", srcVertex.getId());
+    node.put("externalDstVertexId", dstVertex.getId());
+    return node;
   }
 
   @Override
   public String toString() {
-    return propertiesToJSON();
+    return getPropertiesAsJsonNode().toString();
   }
 
   /**
