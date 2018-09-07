@@ -225,7 +225,7 @@ public final class PipelineTranslator
     final boolean handlesBeamRow = Stream
       .concat(transformVertex.getNode().getInputs().values().stream(),
         transformVertex.getNode().getOutputs().values().stream())
-      .map(pValue -> (KvCoder) getCoder(pValue, ctx.getPipeline())) // Input and output of combine should be KV
+      .map(pValue -> (KvCoder) getCoder(pValue, ctx.pipeline)) // Input and output of combine should be KV
       .map(kvCoder -> kvCoder.getValueCoder().getEncodedTypeDescriptor()) // We're interested in the 'Value' of KV
       .anyMatch(valueTypeDescriptor -> TypeDescriptor.of(Row.class).equals(valueTypeDescriptor));
     if (handlesBeamRow) {
@@ -312,9 +312,6 @@ public final class PipelineTranslator
     } else if (input instanceof PCollectionView) {
       coder = getCoderForView((PCollectionView) input, pipeline);
     } else {
-      coder = null;
-    }
-    if (coder == null) {
       throw new RuntimeException(String.format("Coder for PValue %s cannot be determined", input));
     }
     return coder;
@@ -386,10 +383,6 @@ public final class PipelineTranslator
       this.compositeTransformToTranslator = compositeTransformToTranslator;
       this.communicationPatternSelector = selector;
       this.pipelineOptions = pipelineOptions;
-    }
-
-    public CompositeTransformVertex getPipeline() {
-      return this.pipeline;
     }
 
     /**

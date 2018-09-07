@@ -33,11 +33,11 @@ import java.util.stream.IntStream;
  * A simple SQL application.
  * (Copied/Refined from the example code in the Beam repository)
  */
-public final class SimpleSQL {
+public final class SimpleSumSQL {
   /**
    * Private Constructor.
    */
-  private SimpleSQL() {
+  private SimpleSumSQL() {
   }
 
   /**
@@ -48,7 +48,7 @@ public final class SimpleSQL {
 
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
     options.setRunner(NemoPipelineRunner.class);
-    options.setJobName("SimpleSQL");
+    options.setJobName("SimpleSumSQL");
     final Pipeline p = Pipeline.create(options);
 
     // define the input row format

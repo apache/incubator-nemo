@@ -31,7 +31,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class BeamSQLITCase {
+public final class BeamSimpleSumSQLITCase {
   private static final int TIMEOUT = 180000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
@@ -44,7 +44,7 @@ public final class BeamSQLITCase {
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addUserMain(SimpleSQL.class.getCanonicalName())
+        .addUserMain(SimpleSumSQL.class.getCanonicalName())
         .addUserArgs(outputFilePath)
         .addResourceJson(executorResourceFileName);
   }
@@ -59,9 +59,9 @@ public final class BeamSQLITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testSimpleSQL() throws Exception {
+  public void test() throws Exception {
     JobLauncher.main(builder
-        .addJobId(BeamSQLITCase.class.getSimpleName())
+        .addJobId(BeamSimpleSumSQLITCase.class.getSimpleName())
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
