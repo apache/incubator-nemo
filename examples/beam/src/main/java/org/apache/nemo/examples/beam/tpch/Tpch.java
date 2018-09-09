@@ -41,7 +41,7 @@ import static org.apache.beam.sdk.extensions.sql.impl.schema.BeamTableUtils.beam
 
 /**
  * A simple SQL application.
- * (Copied/Refined from the example code in the Beam repository)
+ * (Copied and adapted from https://github.com/apache/beam/pull/6240)
  */
 public final class Tpch {
   private static final Logger LOG = LoggerFactory.getLogger(Tpch.class.getName());
@@ -161,11 +161,14 @@ public final class Tpch {
   private Tpch() {
   }
 
+  /**
+   * Row csv formats.
+   */
   static class RowToCsv extends PTransform<PCollection<Row>, PCollection<String>> implements Serializable {
 
-    private CSVFormat csvFormat;
+    private final CSVFormat csvFormat;
 
-    public RowToCsv(CSVFormat csvFormat) {
+    RowToCsv(final CSVFormat csvFormat) {
       this.csvFormat = csvFormat;
     }
 
@@ -174,7 +177,7 @@ public final class Tpch {
     }
 
     @Override
-    public PCollection<String> expand(PCollection<Row> input) {
+    public PCollection<String> expand(final PCollection<Row> input) {
       return input.apply(
         "rowToCsv",
         MapElements.into(TypeDescriptors.strings()).via(row -> beamRow2CsvLine(row, csvFormat)));
@@ -185,22 +188,24 @@ public final class Tpch {
                                              final CSVFormat csvFormat,
                                              final String inputDirectory) {
     final ImmutableMap<String, Schema> hSchemas = ImmutableMap.<String, Schema>builder()
-      //.put("customer", Schemas.CUSTOMER_SCHEMA)
       .put("lineitem", Schemas.LINEITEM_SCHEMA)
-      //.put("nation", Schemas.NATION_SCHEMA)
-      //.put("orders", Schemas.ORDER_SCHEMA)
-      //.put("part", Schemas.PART_SCHEMA)
-      //.put("partsupp", Schemas.PARTSUPP_SCHEMA)
-      //.put("region", Schemas.REGION_SCHEMA)
-      //.put("supplier", Schemas.SUPPLIER_SCHEMA)
-      //              .put("store_sales", Schemas.storeSalesSchema)
-      //              .put("catalog_sales", Schemas.catalogSalesSchema)
-      //              .put("item", Schemas.itemSchema)
-      //              .put("date_dim", Schemas.dateDimSchema)
-      //              .put("promotion", Schemas.promotionSchema)
-      //              .put("customer_demographics", Schemas.customerDemographicsSchema)
-      //              .put("web_sales", Schemas.webSalesSchema)
-      //              .put("inventory", Schemas.inventorySchema)
+      /*
+      .put("customer", Schemas.CUSTOMER_SCHEMA)
+      .put("nation", Schemas.NATION_SCHEMA)
+      .put("orders", Schemas.ORDER_SCHEMA)
+      .put("part", Schemas.PART_SCHEMA)
+      .put("partsupp", Schemas.PARTSUPP_SCHEMA)
+      .put("region", Schemas.REGION_SCHEMA)
+      .put("supplier", Schemas.SUPPLIER_SCHEMA)
+      .put("store_sales", Schemas.STORE_SALES_SCHEMA)
+      .put("catalog_sales", Schemas.CATALOG_SALES_SCHEMA)
+      .put("item", Schemas.ITEM_SCHEMA)
+      .put("date_dim", Schemas.DATE_DIM_SCHEMA)
+      .put("promotion", Schemas.PROMOTION_SCHEMA)
+      .put("customer_demographics", Schemas.CUSTOMER_DEMOGRAPHIC_SCHEMA)
+      .put("web_sales", Schemas.WEB_SALES_SCHEMA)
+      .put("inventory", Schemas.INVENTORY_SCHEMA)
+      */
       .build();
 
     PCollectionTuple tables = PCollectionTuple.empty(pipeline);
