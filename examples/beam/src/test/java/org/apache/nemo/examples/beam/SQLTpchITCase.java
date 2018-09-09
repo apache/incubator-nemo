@@ -17,6 +17,7 @@ package org.apache.nemo.examples.beam;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
+import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.apache.nemo.examples.beam.tpch.Tpch;
 import org.junit.After;
@@ -36,8 +37,8 @@ public final class SQLTpchITCase {
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
-  private static final String outputFileName = "test_output_simplesql";
-  private static final String expectedOutputFileName = "expected_output_simplesql";
+  private static final String outputFileName = "test_output_tpch";
+  private static final String expectedOutputFileName = "expected_output_tpch";
   private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
@@ -49,13 +50,11 @@ public final class SQLTpchITCase {
 
   @After
   public void tearDown() throws Exception {
-    /*
     try {
       ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
-    */
   }
 
   @Test (timeout = TIMEOUT)

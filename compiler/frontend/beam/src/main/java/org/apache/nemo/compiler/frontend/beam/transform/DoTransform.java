@@ -16,6 +16,7 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.beam.sdk.state.ValueState;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
@@ -35,7 +36,9 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Instant;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -200,6 +203,37 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
+    private final Map<String, TmpIntegerValueState> idToValueState;
+    private final Map<String, Integer> idToInteger;
+    private class TmpIntegerValueState implements ValueState<Integer> {
+      final String stateId;
+
+      public TmpIntegerValueState(final String stateId) {
+        this.stateId = stateId;
+      }
+
+      @Override
+      public void write(final Integer state) {
+        idToInteger.put(stateId, state);
+      }
+
+      @Nullable
+      @Override
+      public Integer read() {
+        return idToInteger.get(stateId);
+      }
+
+      @Override
+      public ValueState<Integer> readLater() {
+        return this;
+      }
+
+      @Override
+      public void clear() {
+        // Do nothing.
+      }
+    }
+
     /**
      * ProcessContext Constructor.
      *
@@ -222,6 +256,8 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
+      this.idToValueState = new HashMap<>(1);
+      this.idToInteger = new HashMap<>(1);
     }
 
     /**
@@ -369,7 +405,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public State state(final String stateId) {
-      throw new UnsupportedOperationException("state() in ProcessContext under DoTransform");
+      return idToValueState.computeIfAbsent(stateId, TmpIntegerValueState::new);
     }
 
     @Override

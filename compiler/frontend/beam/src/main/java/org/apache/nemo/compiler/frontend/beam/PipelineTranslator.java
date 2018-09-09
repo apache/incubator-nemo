@@ -117,6 +117,18 @@ public final class PipelineTranslator
   private static void parDoSingleOutputTranslator(final TranslationContext ctx,
                                                   final PrimitiveTransformVertex transformVertex,
                                                   final ParDo.SingleOutput<?, ?> transform) {
+    /*
+    final DoFnSignature signature = DoFnSignatures.getSignature(transform.getFn().getClass());
+    final Map<String, DoFnSignature.StateDeclaration> stateDeclarationMap = signature.stateDeclarations();
+    for (final DoFnSignature.StateDeclaration declaration : stateDeclarationMap.values()) {
+      final TypeDescriptor<? extends State> stateType = declaration.stateType();
+      if (stateType.isSubtypeOf(TypeDescriptor.of(ValueState.class))) {
+        declaration.field()
+      } else {
+        throw new UnsupportedOperationException("Only ValueState is supported at the moment");
+      }
+    }
+    */
     final DoTransform doTransform = new DoTransform(transform.getFn(), ctx.pipelineOptions);
     final IRVertex vertex = new OperatorVertex(doTransform);
     ctx.addVertex(vertex);

@@ -26,10 +26,12 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.*;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineRunner;
+import org.apache.nemo.examples.beam.GenericSourceSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -250,24 +252,25 @@ public final class Tpch {
     final Pipeline p = Pipeline.create(options);
 
     // Create tables
-    final CSVFormat csvFormat = CSVFormat.MYSQL.withDelimiter('|').withNullString("");
+    final CSVFormat csvFormat = CSVFormat.MYSQL
+      .withDelimiter('|')
+      .withNullString("")
+      .withTrailingDelimiter();
     final PCollectionTuple tables = getHTables(p, csvFormat, inputDirectory);
 
     // Run the TPC-H query
     final PCollection<Row> result = tables.apply(SqlTransform.query(idToQuery.get(queryId)));
 
-    /*
     final PCollection<String> resultToWrite = result.apply(MapElements.into(TypeDescriptors.strings()).via(
       new SerializableFunction<Row, String>() {
         @Override
-        public String apply(Row input) {
+        public String apply(final Row input) {
           System.out.println("row: " + input.getValues());
           return "row: " + input.getValues();
         }
       }));
 
     GenericSourceSink.write(resultToWrite, outputFilePath);
-    */
 
     // Then run
     p.run();
