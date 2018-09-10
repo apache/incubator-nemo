@@ -191,14 +191,16 @@ public final class Tpch {
                                              final String inputDirectory) {
     final ImmutableMap<String, Schema> hSchemas = ImmutableMap.<String, Schema>builder()
       .put("lineitem", Schemas.LINEITEM_SCHEMA)
-      /*
       .put("customer", Schemas.CUSTOMER_SCHEMA)
-      .put("nation", Schemas.NATION_SCHEMA)
       .put("orders", Schemas.ORDER_SCHEMA)
+
+      .put("supplier", Schemas.SUPPLIER_SCHEMA)
+      .put("nation", Schemas.NATION_SCHEMA)
+      .put("region", Schemas.REGION_SCHEMA)
+
+      /*
       .put("part", Schemas.PART_SCHEMA)
       .put("partsupp", Schemas.PARTSUPP_SCHEMA)
-      .put("region", Schemas.REGION_SCHEMA)
-      .put("supplier", Schemas.SUPPLIER_SCHEMA)
       .put("store_sales", Schemas.STORE_SALES_SCHEMA)
       .put("catalog_sales", Schemas.CATALOG_SALES_SCHEMA)
       .put("item", Schemas.ITEM_SCHEMA)
@@ -248,7 +250,7 @@ public final class Tpch {
 
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
     options.setRunner(NemoPipelineRunner.class);
-    options.setJobName("SimpleSQL");
+    options.setJobName("TPC-H");
     final Pipeline p = Pipeline.create(options);
 
     // Create tables
@@ -265,8 +267,8 @@ public final class Tpch {
       new SerializableFunction<Row, String>() {
         @Override
         public String apply(final Row input) {
-          System.out.println("row: " + input.getValues());
-          return "row: " + input.getValues();
+          System.out.println(input.getValues().toString());
+          return input.getValues().toString();
         }
       }));
 

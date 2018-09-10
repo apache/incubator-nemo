@@ -58,10 +58,44 @@ public final class SQLTpchITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testSix() throws Exception {
+  public void testThree() throws Exception {
+    final int queryNum = 3;
     JobLauncher.main(builder
       .addUserMain(Tpch.class.getCanonicalName())
-      .addUserArgs("6", "/home/johnyangk/Desktop/tpc-concat-tbls/", outputFilePath)
+      .addUserArgs(String.valueOf(queryNum), "/home/johnyangk/Desktop/tpc-concat-tbls/", outputFilePath)
+      .addJobId(SQLTpchITCase.class.getSimpleName())
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void testFour() throws Exception {
+    final int queryNum = 4;
+    JobLauncher.main(builder
+      .addUserMain(Tpch.class.getCanonicalName())
+      .addUserArgs(String.valueOf(queryNum), "/home/johnyangk/Desktop/tpc-concat-tbls/", outputFilePath)
+      .addJobId(SQLTpchITCase.class.getSimpleName())
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void testFive() throws Exception {
+    final int queryNum = 5;
+    JobLauncher.main(builder
+      .addUserMain(Tpch.class.getCanonicalName())
+      .addUserArgs(String.valueOf(queryNum), "/home/johnyangk/Desktop/tpc-concat-tbls/", outputFilePath)
+      .addJobId(SQLTpchITCase.class.getSimpleName())
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void testSix() throws Exception {
+    final int queryNum = 6;
+    JobLauncher.main(builder
+      .addUserMain(Tpch.class.getCanonicalName())
+      .addUserArgs(String.valueOf(queryNum), "/home/johnyangk/Desktop/tpc-concat-tbls/", outputFilePath)
       .addJobId(SQLTpchITCase.class.getSimpleName())
       .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
       .build());
