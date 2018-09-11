@@ -189,8 +189,8 @@ public final class BatchScheduler implements Scheduler {
         onTaskExecutionOnHold(executorId, taskId);
         break;
       case FAILED:
-        throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The plan failed on Task #")
-          .append(taskId).append(" in Executor ").append(executorId).toString()));
+        throw new UnrecoverableFailureException(new Exception(String.format("The plan failed on %s in %s",
+          taskId, executorId)));
       case READY:
       case EXECUTING:
         throw new RuntimeException("The states READY/EXECUTING cannot occur at this point");

@@ -15,6 +15,9 @@
  */
 package org.apache.nemo.common.dag;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+
 import java.io.Serializable;
 
 /**
@@ -47,7 +50,7 @@ public abstract class Vertex implements Serializable {
    * @return JSON representation of additional properties
    */
   @SuppressWarnings("checkstyle:designforextension")
-  public String propertiesToJSON() {
-    return "{}";
+  public JsonNode getPropertiesAsJsonNode() {
+    return JsonNodeFactory.instance.objectNode();
   }
 }
