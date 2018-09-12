@@ -214,13 +214,9 @@ public final class Tpch {
 
     PCollectionTuple tables = PCollectionTuple.empty(pipeline);
     for (final Map.Entry<String, Schema> tableSchema : hSchemas.entrySet()) {
-      final String filePattern = inputDirectory + tableSchema.getKey() + ".tbl";
-      final PCollection<Row> table = new TextTable(
-        tableSchema.getValue(),
-        filePattern,
-        new TextTableProvider.CsvToRow(tableSchema.getValue(), csvFormat),
-        new RowToCsv(csvFormat))
-        .buildIOReader(pipeline.begin())
+      final String filePattern = inputDirectory + tableSchema.getKey() + ".tbl*";
+      final PCollection<Row> table = GenericSourceSink.read(pipeline, filePattern)
+        .apply("StringToRow", new TextTableProvider.CsvToRow(tableSchema.getValue(), csvFormat))
         .setCoder(tableSchema.getValue().getRowCoder())
         .setName(tableSchema.getKey());
       tables = tables.and(new TupleTag<>(tableSchema.getKey()), table);
