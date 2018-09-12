@@ -28,13 +28,6 @@ limitations under the License.
     <artifactId>nemo-compiler-frontend-beam</artifactId>
     <name>Nemo Compiler Frontend: Beam</name>
 
-    <repositories>
-        <repository>
-            <id>Bundled Maven Repository</id>
-            <url>file://${basedir}/../../common/src/main/resources/repository</url>
-        </repository>
-    </repositories>
-
     <dependencies>
 	    <dependency>
             <groupId>org.apache.nemo</groupId>

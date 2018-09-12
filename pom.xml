@@ -180,6 +180,7 @@ limitations under the License.
                             <encoding>UTF-8</encoding>
                             <consoleOutput>true</consoleOutput>
                             <failsOnError>true</failsOnError>
+                            <excludes>**/org/apache/reef/**/*</excludes>
                         </configuration>
                         <goals>
                             <goal>check</goal>
