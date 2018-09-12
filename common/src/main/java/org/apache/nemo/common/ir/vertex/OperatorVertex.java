@@ -15,6 +15,7 @@
  */
 package org.apache.nemo.common.ir.vertex;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 
 /**
@@ -55,13 +56,9 @@ public final class OperatorVertex extends IRVertex {
   }
 
   @Override
-  public String propertiesToJSON() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("{");
-    sb.append(irVertexPropertiesToString());
-    sb.append(", \"transform\": \"");
-    sb.append(transform);
-    sb.append("\"}");
-    return sb.toString();
+  public ObjectNode getPropertiesAsJsonNode() {
+    final ObjectNode node = getIRVertexPropertiesAsJsonNode();
+    node.put("transform", transform.toString());
+    return node;
   }
 }

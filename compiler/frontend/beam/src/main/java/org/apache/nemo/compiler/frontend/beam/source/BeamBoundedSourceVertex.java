@@ -15,6 +15,7 @@
  */
 package org.apache.nemo.compiler.frontend.beam.source;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.ir.Readable;
 
 import java.io.IOException;
@@ -82,14 +83,10 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
   }
 
   @Override
-  public String propertiesToJSON() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("{");
-    sb.append(irVertexPropertiesToString());
-    sb.append(", \"source\": \"");
-    sb.append(sourceDescription);
-    sb.append("\"}");
-    return sb.toString();
+  public ObjectNode getPropertiesAsJsonNode() {
+    final ObjectNode node = getIRVertexPropertiesAsJsonNode();
+    node.put("source", sourceDescription);
+    return node;
   }
 
   /**
