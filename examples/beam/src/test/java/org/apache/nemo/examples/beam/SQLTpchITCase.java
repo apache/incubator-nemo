@@ -27,6 +27,15 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 /**
  * Test TPC-H program with JobLauncher.
  */
@@ -55,6 +64,17 @@ public final class SQLTpchITCase {
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void testXX() throws Exception {
+    final int queryNum = 12;
+    JobLauncher.main(builder
+      .addUserMain(Tpch.class.getCanonicalName())
+      .addUserArgs(String.valueOf(queryNum), "/home/johnyangk/Desktop/tpc-concat-tbls/", outputFilePath)
+      .addJobId(SQLTpchITCase.class.getSimpleName())
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 
   @Test (timeout = TIMEOUT)
