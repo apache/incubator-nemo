@@ -15,6 +15,8 @@
  */
 package org.apache.nemo.common.ir.vertex;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.dag.Vertex;
@@ -109,12 +111,13 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
   }
 
   /**
-   * @return IRVertex properties in String form.
+   * @return IRVertex properties as JSON node.
    */
-  protected final String irVertexPropertiesToString() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("\"class\": \"").append(this.getClass().getSimpleName());
-    sb.append("\", \"executionProperties\": ").append(executionProperties);
-    return sb.toString();
+  protected final ObjectNode getIRVertexPropertiesAsJsonNode() {
+    final ObjectMapper mapper = new ObjectMapper();
+    final ObjectNode node = mapper.createObjectNode();
+    node.put("class", getClass().getSimpleName());
+    node.set("executionProperties", executionProperties.asJsonNode());
+    return node;
   }
 }

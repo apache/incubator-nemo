@@ -15,6 +15,8 @@
  */
 package org.apache.nemo.common.ir.executionproperty;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
@@ -186,22 +188,16 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
 
   @Override
   public String toString() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("{");
-    boolean isFirstPair = true;
+    return asJsonNode().toString();
+  }
+
+  public ObjectNode asJsonNode() {
+    final ObjectMapper mapper = new ObjectMapper();
+    final ObjectNode node = mapper.createObjectNode();
     for (final Map.Entry<Class<? extends ExecutionProperty>, T> entry : properties.entrySet()) {
-      if (!isFirstPair) {
-        sb.append(", ");
-      }
-      isFirstPair = false;
-      sb.append("\"");
-      sb.append(entry.getKey().getCanonicalName());
-      sb.append("\": \"");
-      sb.append(entry.getValue().getValue());
-      sb.append("\"");
+      node.put(entry.getKey().getCanonicalName(), entry.getValue().getValue().toString());
     }
-    sb.append("}");
-    return sb.toString();
+    return node;
   }
 
   // Apache commons-lang 3 Equals/HashCodeBuilder template.

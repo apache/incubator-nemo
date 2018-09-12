@@ -15,6 +15,8 @@
  */
 package org.apache.nemo.runtime.common.plan;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.Readable;
@@ -115,13 +117,12 @@ public final class Stage extends Vertex {
   }
 
   @Override
-  public String propertiesToJSON() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("{\"scheduleGroup\": ").append(getScheduleGroup());
-    sb.append(", \"irDag\": ").append(irDag);
-    sb.append(", \"parallelism\": ").append(getParallelism());
-    sb.append(", \"executionProperties\": ").append(executionProperties);
-    sb.append('}');
-    return sb.toString();
+  public ObjectNode getPropertiesAsJsonNode() {
+    final ObjectNode node = JsonNodeFactory.instance.objectNode();
+    node.put("scheduleGroup", getScheduleGroup());
+    node.set("irDag", irDag.asJsonNode());
+    node.put("parallelism", getParallelism());
+    node.set("executionProperties", executionProperties.asJsonNode());
+    return node;
   }
 }

@@ -15,6 +15,8 @@
  */
 package org.apache.nemo.common.ir.edge;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -127,11 +129,11 @@ public final class IREdge extends Edge<IRVertex> {
   }
 
   @Override
-  public String propertiesToJSON() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("{\"id\": \"").append(getId());
-    sb.append("\", \"executionProperties\": ").append(executionProperties);
-    sb.append("}");
-    return sb.toString();
+  public ObjectNode getPropertiesAsJsonNode() {
+    final ObjectMapper mapper = new ObjectMapper();
+    final ObjectNode node = mapper.createObjectNode();
+    node.put("id", getId());
+    node.set("executionProperties", executionProperties.asJsonNode());
+    return node;
   }
 }
