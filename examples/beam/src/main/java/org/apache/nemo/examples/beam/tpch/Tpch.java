@@ -237,7 +237,7 @@ public final class Tpch {
    * @param args arguments.
    */
   public static void main(final String[] args) {
-    final int queryId = Integer.valueOf(args[0]);
+    final String queryFilePath = args[0];
     final String inputDirectory = args[1];
     final String outputFilePath = args[2];
 
@@ -248,7 +248,7 @@ public final class Tpch {
     idToQuery.put(5, QUERY5);
     idToQuery.put(6, QUERY6);
 
-    LOG.info("{} / {} / {}", queryId, inputDirectory, outputFilePath);
+    LOG.info("{} / {} / {}", queryFilePath, inputDirectory, outputFilePath);
 
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
     options.setRunner(NemoPipelineRunner.class);
@@ -263,7 +263,7 @@ public final class Tpch {
     final PCollectionTuple tables = getHTables(p, csvFormat, inputDirectory);
 
     // Run the TPC-H query
-    final PCollection<Row> result = tables.apply(SqlTransform.query(getQueryString(queryId)));
+    final PCollection<Row> result = tables.apply(SqlTransform.query(getQueryString(queryFilePath)));
 
     final PCollection<String> resultToWrite = result.apply(MapElements.into(TypeDescriptors.strings()).via(
       new SerializableFunction<Row, String>() {
@@ -280,15 +280,10 @@ public final class Tpch {
     p.run();
   }
 
-  private static String getQueryString(final int queryNum) {
+  private static String getQueryString(final String queryFilePath) {
     boolean isStarted = false;
     final List<String> lines = new ArrayList<>();
-
-
-    final String path =
-      "/Users/johnyang/Documents/workspace/hive-testbench/sample-queries-tpch/tpch_query" + queryNum + ".sql";
-
-    try (final Stream<String> stream  = Files.lines(Paths.get(path))) {
+    try (final Stream<String> stream  = Files.lines(Paths.get(queryFilePath))) {
       for (final String line : stream.collect(Collectors.toList())) {
         if (line.equals("select")) {
           isStarted = true;
@@ -298,7 +293,6 @@ public final class Tpch {
           lines.add(line);
         }
       }
-
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
