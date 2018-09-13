@@ -111,10 +111,7 @@ public final class Tpch {
     for (final Map.Entry<String, Schema> tableSchema : hSchemas.entrySet()) {
       final String tableName = tableSchema.getKey();
 
-      final List<String> tokens = Arrays.asList(query.split(" "));
-      LOG.info("Tokens are {}", tokens);
-
-      if (tokens.contains(tableName)) {
+      if (query.contains(tableName)) {
         LOG.info("HIT: tablename {}", tableName);
 
         final String filePattern = inputDirectory + tableSchema.getKey() + ".tbl*";
