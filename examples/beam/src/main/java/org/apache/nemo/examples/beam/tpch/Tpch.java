@@ -93,9 +93,9 @@ public final class Tpch {
       .put("nation", Schemas.NATION_SCHEMA)
       .put("region", Schemas.REGION_SCHEMA)
 
-      /*
       .put("part", Schemas.PART_SCHEMA)
       .put("partsupp", Schemas.PARTSUPP_SCHEMA)
+      /*
       .put("store_sales", Schemas.STORE_SALES_SCHEMA)
       .put("catalog_sales", Schemas.CATALOG_SALES_SCHEMA)
       .put("item", Schemas.ITEM_SCHEMA)
@@ -117,7 +117,7 @@ public final class Tpch {
       if (tokens.contains(tableName)) {
         LOG.info("HIT: tablename {}", tableName);
 
-        final String filePattern = inputDirectory + tableSchema.getKey() + ".tbl";
+        final String filePattern = inputDirectory + tableSchema.getKey() + ".tbl*";
         final PCollection<Row> table = GenericSourceSink.read(pipeline, filePattern)
           .apply("StringToRow", new TextTableProvider.CsvToRow(tableSchema.getValue(), csvFormat))
           .setCoder(tableSchema.getValue().getRowCoder())
