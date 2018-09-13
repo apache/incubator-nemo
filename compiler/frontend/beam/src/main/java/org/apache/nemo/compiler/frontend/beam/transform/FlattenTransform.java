@@ -18,8 +18,6 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 
-import java.util.ArrayList;
-
 /**
  * Flatten transform implementation.
  * @param <T> input/output type.
