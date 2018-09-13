@@ -175,24 +175,14 @@ public final class Tpch {
   }
 
   private static String getQueryString(final String queryFilePath) {
-    boolean isStarted = false;
     final List<String> lines = new ArrayList<>();
     try (final Stream<String> stream  = Files.lines(Paths.get(queryFilePath))) {
-      for (final String line : stream.collect(Collectors.toList())) {
-        if (line.equals("select")) {
-          isStarted = true;
-        }
-
-        if (isStarted) {
-          lines.add(line);
-        }
-      }
+      stream.forEach(lines::add);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
 
     System.out.println(lines);
-    lines.remove(lines.size() - 1);
 
     final StringBuilder sb = new StringBuilder();
     lines.forEach(line -> {

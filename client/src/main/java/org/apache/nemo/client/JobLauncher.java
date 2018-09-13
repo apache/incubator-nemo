@@ -151,6 +151,7 @@ public final class JobLauncher {
       throw new RuntimeException(e);
     } finally {
       // Close everything that's left
+
       driverRPCServer.shutdown();
       driverLauncher.close();
       final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
