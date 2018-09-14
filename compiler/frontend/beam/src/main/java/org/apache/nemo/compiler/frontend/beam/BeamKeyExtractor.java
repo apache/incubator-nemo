@@ -26,6 +26,7 @@ import org.apache.beam.sdk.values.KV;
 final class BeamKeyExtractor implements KeyExtractor {
   @Override
   public Object extractKey(final Object element) {
+    // TODO #: do not dynamically check the types for performance improvement
     if (element instanceof WindowedValue) {
       final WindowedValue windowedValue = (WindowedValue) element;
       final Object value = windowedValue.getValue();
