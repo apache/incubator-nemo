@@ -227,7 +227,7 @@ public final class MultinomialLogisticRegression {
     @FinishBundle
     public void finishBundle(final FinishBundleContext c) {
       for (Integer i = 0; i < gradients.size(); i++) {
-        c.output(KV.of(i, gradients.get(i)), BoundedWindow.TIMESTAMP_MAX_VALUE, GlobalWindow.INSTANCE);
+        c.output(KV.of(i, gradients.get(i)), BoundedWindow.TIMESTAMP_MIN_VALUE, GlobalWindow.INSTANCE);
       }
       LOG.info("stats: " + gradients.get(numClasses - 1).toString());
     }
