@@ -16,13 +16,8 @@
 package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.beam.sdk.io.BoundedSource;
-import org.apache.beam.sdk.io.hadoop.inputformat.HadoopInputFormatIO;
-import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.common.ir.vertex.SourceVertex;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -30,12 +25,19 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.beam.sdk.io.BoundedSource;
+import org.apache.beam.sdk.io.hadoop.inputformat.HadoopInputFormatIO;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * SourceVertex implementation for BoundedSource.
  * @param <O> output type.
  */
-public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
-  private static final Logger LOG = LoggerFactory.getLogger(BeamBoundedSourceVertex.class.getName());
+public final class BeamBoundedWindowSourceVertex<O> extends SourceVertex<WindowedValue<O>> {
+  private static final Logger LOG = LoggerFactory.getLogger(BeamBoundedWindowSourceVertex.class.getName());
   private BoundedSource<O> source;
   private final String sourceDescription;
 
@@ -44,7 +46,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
    *
    * @param source BoundedSource to read from.
    */
-  public BeamBoundedSourceVertex(final BoundedSource<O> source) {
+  public BeamBoundedWindowSourceVertex(final BoundedSource<O> source) {
     super();
     this.source = source;
     this.sourceDescription = source.toString();
@@ -55,20 +57,20 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
    *
    * @param that the source object for copying
    */
-  public BeamBoundedSourceVertex(final BeamBoundedSourceVertex that) {
+  public BeamBoundedWindowSourceVertex(final BeamBoundedWindowSourceVertex that) {
     super(that);
     this.source = that.source;
     this.sourceDescription = that.source.toString();
   }
 
   @Override
-  public BeamBoundedSourceVertex getClone() {
-    return new BeamBoundedSourceVertex(this);
+  public BeamBoundedWindowSourceVertex getClone() {
+    return new BeamBoundedWindowSourceVertex(this);
   }
 
   @Override
-  public List<Readable<O>> getReadables(final int desiredNumOfSplits) throws Exception {
-    final List<Readable<O>> readables = new ArrayList<>();
+  public List<Readable<WindowedValue<O>>> getReadables(final int desiredNumOfSplits) throws Exception {
+    final List<Readable<WindowedValue<O>>> readables = new ArrayList<>();
     LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
     LOG.info("desired: {}", desiredNumOfSplits);
     source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null)
@@ -92,7 +94,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
    * BoundedSourceReadable class.
    * @param <T> type.
    */
-  private static final class BoundedSourceReadable<T> implements Readable<T> {
+  private static final class BoundedSourceReadable<T> implements Readable<WindowedValue<T>> {
     private final BoundedSource<T> boundedSource;
 
     /**
@@ -104,12 +106,27 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
     }
 
     @Override
-    public Iterable<T> read() throws IOException {
-      final ArrayList<T> elements = new ArrayList<>();
+    public Iterable<WindowedValue<T>> read() throws IOException {
+      boolean started = false;
+      boolean windowed = false;
+
+      final ArrayList<WindowedValue<T>> elements = new ArrayList<>();
       try (BoundedSource.BoundedReader<T> reader = boundedSource.createReader(null)) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
           final T elem = reader.getCurrent();
-          elements.add(elem);
+
+          if (!started) {
+            started = true;
+            if (elem instanceof WindowedValue) {
+              windowed = true;
+            }
+          }
+
+          if (!windowed) {
+            elements.add(WindowedValue.valueInGlobalWindow(reader.getCurrent()));
+          } else {
+            elements.add((WindowedValue<T>) elem);
+          }
         }
       }
       return elements;

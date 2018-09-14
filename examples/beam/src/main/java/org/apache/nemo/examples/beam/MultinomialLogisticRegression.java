@@ -15,6 +15,8 @@
  */
 package org.apache.nemo.examples.beam;
 
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineRunner;
 import org.apache.nemo.common.Pair;
@@ -225,7 +227,7 @@ public final class MultinomialLogisticRegression {
     @FinishBundle
     public void finishBundle(final FinishBundleContext c) {
       for (Integer i = 0; i < gradients.size(); i++) {
-        c.output(KV.of(i, gradients.get(i)), null, null);
+        c.output(KV.of(i, gradients.get(i)), BoundedWindow.TIMESTAMP_MAX_VALUE, GlobalWindow.INSTANCE);
       }
       LOG.info("stats: " + gradients.get(numClasses - 1).toString());
     }

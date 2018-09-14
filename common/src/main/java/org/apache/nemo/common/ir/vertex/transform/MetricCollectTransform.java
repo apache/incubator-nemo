@@ -54,12 +54,16 @@ public final class MetricCollectTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void onData(final I element) {
+    System.out.println("Metric transform: " + element);
     dynOptData = dynOptDataCollector.apply(element, dynOptData);
+    System.out.println("Metric transform result: " + dynOptData);
   }
 
   @Override
   public void close() {
+    System.out.println("Closer before apply: " + dynOptData);
     closer.apply(dynOptData, outputCollector);
+    System.out.println("Closer after apply: " + dynOptData);
   }
 
   @Override

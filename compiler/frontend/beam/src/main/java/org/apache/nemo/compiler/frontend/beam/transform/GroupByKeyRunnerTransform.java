@@ -15,55 +15,52 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
-import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.KV;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Group Beam KVs.
  * @param <I> input type.
  */
-public final class GroupByKeyTransform<I> implements Transform<I, WindowedValue<KV<Object, List>>> {
-  private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyTransform.class.getName());
+public final class GroupByKeyRunnerTransform<I> implements Transform<I, KV<Object, List>> {
+  private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyRunnerTransform.class.getName());
   private final Map<Object, List> keyToValues;
-  private OutputCollector<WindowedValue<KV<Object, List>>> outputCollector;
+  private OutputCollector<KV<Object, List>> outputCollector;
 
   /**
    * GroupByKey constructor.
    */
-  public GroupByKeyTransform() {
+  public GroupByKeyRunnerTransform() {
     this.keyToValues = new HashMap<>();
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<WindowedValue<KV<Object, List>>> oc) {
+  public void prepare(final Context context, final OutputCollector<KV<Object, List>> oc) {
     this.outputCollector = oc;
   }
 
   @Override
   public void onData(final I element) {
-    // TODO #: support window in group by key
     System.out.println("Group by key!!");
-    final WindowedValue<KV> windowedValue = (WindowedValue<KV>) element;
-    final KV kv = windowedValue.getValue();
-    //final KV kv = (KV) element;
+    final KV kv = (KV) element;
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
     keyToValues.get(kv.getKey()).add(kv.getValue());
   }
 
   @Override
   public void close() {
-    // TODO #: support window in group by key
     if (keyToValues.isEmpty()) {
       LOG.warn("Beam GroupByKeyTransform received no data!");
     } else {
-      keyToValues.entrySet().stream().map(entry ->
-        WindowedValue.valueInGlobalWindow(KV.of(entry.getKey(), entry.getValue())))
+      keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
           .forEach(outputCollector::emit);
       keyToValues.clear();
     }
