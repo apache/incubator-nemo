@@ -55,10 +55,8 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
   @Override
   public void onData(final I element) {
     // Since CreateViewTransform takes KV(Void, value), this is okay
-    if (element instanceof KV) {
-      final KV<?, ?> kv = (KV<?, ?>) element;
-      multiView.getDataList().add(kv.getValue());
-    }
+    final KV<?, ?> kv = (KV<?, ?>) element; // It will throw a type cast exception if the element is not KV
+    multiView.getDataList().add(kv.getValue());
   }
 
   @Override
