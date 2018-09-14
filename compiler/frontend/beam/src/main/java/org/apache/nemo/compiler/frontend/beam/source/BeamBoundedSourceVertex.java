@@ -16,19 +16,20 @@
 package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.beam.sdk.io.BoundedSource;
-import org.apache.beam.sdk.io.hadoop.inputformat.HadoopInputFormatIO;
-import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.common.ir.vertex.SourceVertex;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.beam.sdk.io.BoundedSource;
+import org.apache.beam.sdk.io.hadoop.inputformat.HadoopInputFormatIO;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * SourceVertex implementation for BoundedSource.
@@ -40,7 +41,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
   private final String sourceDescription;
 
   /**
-   * Constructor of BeamBoundedWindowSourceVertex.
+   * Constructor of BeamBoundedSourceVertex.
    *
    * @param source BoundedSource to read from.
    */
@@ -51,7 +52,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
   }
 
   /**
-   * Constructor of BeamBoundedWindowSourceVertex.
+   * Constructor of BeamBoundedSourceVertex.
    *
    * @param that the source object for copying
    */
@@ -72,7 +73,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
     LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
     LOG.info("desired: {}", desiredNumOfSplits);
     source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null)
-        .forEach(boundedSource -> readables.add(new BoundedSourceReadable<>(boundedSource)));
+      .forEach(boundedSource -> readables.add(new BoundedSourceReadable<>(boundedSource)));
     return readables;
   }
 
@@ -108,8 +109,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
       final ArrayList<T> elements = new ArrayList<>();
       try (BoundedSource.BoundedReader<T> reader = boundedSource.createReader(null)) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
-          final T elem = reader.getCurrent();
-          elements.add(elem);
+          elements.add(reader.getCurrent());
         }
       }
       return elements;
@@ -121,7 +121,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
         final Field inputSplitField = boundedSource.getClass().getDeclaredField("inputSplit");
         inputSplitField.setAccessible(true);
         final InputSplit inputSplit = ((HadoopInputFormatIO.SerializableSplit) inputSplitField
-            .get(boundedSource)).getSplit();
+          .get(boundedSource)).getSplit();
         return Arrays.asList(inputSplit.getLocations());
       } else {
         throw new UnsupportedOperationException();

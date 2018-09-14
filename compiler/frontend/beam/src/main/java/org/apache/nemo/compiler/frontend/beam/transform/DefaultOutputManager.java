@@ -42,7 +42,6 @@ public final class DefaultOutputManager<OutputT> implements DoFnRunners.OutputMa
 
   @Override
   public <T> void output(final TupleTag<T> tag, final WindowedValue<T> output) {
-    System.out.println("Output from " + tag + ", out: " + output);
     if (tag.equals(mainOutputTag)) {
       outputCollector.emit((WindowedValue<OutputT>) output);
     } else {

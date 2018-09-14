@@ -92,15 +92,5 @@ public final class PairEncoderFactory<A, B> implements EncoderFactory<Pair<A, B>
       leftEncoder.encode(pair.left());
       rightEncoder.encode(pair.right());
     }
-
-    @Override
-    public String toString() {
-      final StringBuilder sb = new StringBuilder();
-      sb.append("left: ");
-      sb.append(leftEncoder.toString());
-      sb.append("right: ");
-      sb.append(rightEncoder.toString());
-      return sb.toString();
-    }
   }
 }

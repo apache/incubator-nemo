@@ -38,6 +38,8 @@ import java.util.Map;
 
 /**
  * Stateful DoFn transform implementation.
+ * This implementation supposes that the inputs are KV.
+ * We then process the inputs that have the same key in the same doFnRunner for stateful processing.
  *
  * @param <K> key type.
  * @param <InputT> input type.

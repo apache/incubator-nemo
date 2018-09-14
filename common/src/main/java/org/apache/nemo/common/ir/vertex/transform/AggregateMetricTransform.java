@@ -50,14 +50,11 @@ public final class AggregateMetricTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void onData(final I element) {
-    System.out.println("Aggregate metric transform: " + element);
     aggregatedDynOptData = dynOptDataAggregator.apply(element, aggregatedDynOptData);
-    System.out.println("Aggregate metric transform result: " + aggregatedDynOptData);
   }
 
   @Override
   public void close() {
-    System.out.println("Aggregate metric closer result: " + aggregatedDynOptData);
     outputCollector.emit(aggregatedDynOptData);
   }
 

@@ -53,7 +53,6 @@ public final class WindowDoFnTransform<T, W extends BoundedWindow>
 
   @Override
   public void onData(final WindowedValue<T> windowedValue) {
-    System.out.println("Window doTransform of " + windowFn + ", input: " + windowedValue);
     final BoundedWindow boundedWindow = Iterables.getOnlyElement(windowedValue.getWindows());
     final T element = windowedValue.getValue();
     final Instant timestamp = windowedValue.getTimestamp();

@@ -55,13 +55,6 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
 
   @Override
   public void onData(final WindowedValue<I> element) {
-    // Since CreateViewTransform takes KV(Void, value), this is okay
-    /*
-    if (element instanceof KV) {
-      final KV<?, ?> kv = (KV<?, ?>) element;
-      multiView.getDataList().add(kv.getValue());
-    }
-    */
     // TODO #: support window in view
     final KV kv = ((WindowedValue<KV>) element).getValue();
     multiView.getDataList().add(kv.getValue());

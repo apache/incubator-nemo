@@ -48,10 +48,8 @@ public final class GroupByKeyTransform<I> implements Transform<I, WindowedValue<
   @Override
   public void onData(final I element) {
     // TODO #: support window in group by key
-    System.out.println("Group by key!!");
     final WindowedValue<KV> windowedValue = (WindowedValue<KV>) element;
     final KV kv = windowedValue.getValue();
-    //final KV kv = (KV) element;
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
     keyToValues.get(kv.getKey()).add(kv.getValue());
   }
