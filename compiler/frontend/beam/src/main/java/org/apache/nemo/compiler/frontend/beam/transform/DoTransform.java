@@ -35,6 +35,8 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -49,6 +51,7 @@ import java.util.Map;
  * @param <O> output type.
  */
 public final class DoTransform<I, O> implements Transform<I, O> {
+  private static final Logger LOG = LoggerFactory.getLogger(DoTransform.class.getName());
   private final DoFn doFn;
   private final ObjectMapper mapper;
   private final String serializedOptions;
@@ -214,12 +217,14 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
       @Override
       public void write(final Integer state) {
+        LOG.info("WRITE STATE {} to {}", state, idToInteger);
         idToInteger.put(stateId, state);
       }
 
       @Nullable
       @Override
       public Integer read() {
+        LOG.info("READ STATE {} from {}", stateId, idToInteger);
         return idToInteger.get(stateId);
       }
 

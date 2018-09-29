@@ -39,7 +39,6 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.beam.sdk.extensions.sql.impl.schema.BeamTableUtils.beamRow2CsvLine;
@@ -163,6 +162,7 @@ public final class Tpch {
       new SerializableFunction<Row, String>() {
         @Override
         public String apply(final Row input) {
+          System.out.println("ROW INPUT VISITED");
           System.out.println(input.getValues().toString());
           return input.getValues().toString();
         }
