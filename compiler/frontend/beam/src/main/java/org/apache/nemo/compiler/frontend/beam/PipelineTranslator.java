@@ -32,7 +32,7 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.PipelineVisitor.*;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
-import org.apache.nemo.compiler.frontend.beam.source.BeamBoundedWindowSourceVertex;
+import org.apache.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.*;
 import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.io.Read;
@@ -121,7 +121,7 @@ public final class PipelineTranslator
   private static void boundedReadTranslator(final TranslationContext ctx,
                                             final PrimitiveTransformVertex transformVertex,
                                             final Read.Bounded<?> transform) {
-    final IRVertex vertex = new BeamBoundedWindowSourceVertex<>(transform.getSource());
+    final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource());
     ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
