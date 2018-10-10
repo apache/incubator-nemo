@@ -198,67 +198,6 @@ public final class DoFnTransformTest {
     doFnTransform.close();
   }
 
-  @Test
-  public void testStatefulFn() {
-
-    final DoFn<KV<String, Long>, KV<String, Long>> filterElementsEqualToCountFn =
-      new DoFn<KV<String, Long>, KV<String, Long>>() {
-
-        @StateId("counter")
-        private final StateSpec<ValueState<Long>> counterSpec =
-          StateSpecs.value(VarLongCoder.of());
-
-        @ProcessElement
-        public void processElement(
-          ProcessContext context, @StateId("counter") ValueState<Long> count) {
-          long currentCount = Optional.ofNullable(count.read()).orElse(0L);
-          currentCount = currentCount + 1;
-          count.write(currentCount);
-
-          KV<String, Long> currentElement = context.element();
-          if (currentCount == currentElement.getValue()) {
-            context.output(currentElement);
-          }
-        }
-      };
-
-    final TupleTag<KV<String, Long>> outputTag = new TupleTag<>("main-output");
-
-    final StatefulDoFnTransform<String, Long, KV<String, Long>> statefulDoFnTransform =
-      new StatefulDoFnTransform<>(
-        filterElementsEqualToCountFn,
-        NULL_INPUT_CODER,
-        NULL_OUTPUT_CODERS,
-        outputTag,
-        Collections.emptyList(),
-        WindowingStrategy.globalDefault(),
-        emptyList(), /* side inputs */
-        PipelineOptionsFactory.as(NemoPipelineOptions.class));
-
-
-    final Transform.Context context = mock(Transform.Context.class);
-    final OutputCollector<WindowedValue<KV<String, Long>>> oc = new TestOutputCollector<>();
-    statefulDoFnTransform.prepare(context, oc);
-
-    // count: 3 for key "a"
-    statefulDoFnTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("a", 100L)));
-    statefulDoFnTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("a", 100L)));
-    statefulDoFnTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("a", 3L)));
-
-    // count: 4 for key "b"
-    statefulDoFnTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("b", 100L)));
-    statefulDoFnTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("b", 100L)));
-    statefulDoFnTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("b", 100L)));
-    statefulDoFnTransform.onData(WindowedValue.valueInGlobalWindow(KV.of("b", 4L)));
-
-    assertEquals(ImmutableList.of(
-      WindowedValue.valueInGlobalWindow(KV.of("a", 3L)),
-      WindowedValue.valueInGlobalWindow(KV.of("b", 4L))),
-      ((TestOutputCollector<KV<String,Long>>) oc).getOutput());
-
-    statefulDoFnTransform.close();
-  }
-
   private static final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> {
     private final List<WindowedValue<T>> outputs;
     private final List<Tuple<String, WindowedValue<T>>> taggedOutputs;
