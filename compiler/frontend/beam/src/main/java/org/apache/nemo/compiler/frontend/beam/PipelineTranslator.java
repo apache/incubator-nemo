@@ -219,7 +219,7 @@ public final class PipelineTranslator
     } else {
       throw new UnsupportedOperationException(String.format("%s is not supported", transform));
     }
-    final IRVertex vertex = new OperatorVertex(new WindowDoFnTransform(windowFn));
+    final IRVertex vertex = new OperatorVertex(new WindowFnTransform(windowFn));
     ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));

@@ -29,11 +29,11 @@ import java.util.Collection;
 /**
  * Windowing transform implementation.
  * This transform simply windows the given elements into
- * finite windows according to a user-specified WindowDoFnTransform.
+ * finite windows according to a user-specified WindowFnTransform.
  * @param <T> input/output type.
  * @param <W> window type
  */
-public final class WindowDoFnTransform<T, W extends BoundedWindow>
+public final class WindowFnTransform<T, W extends BoundedWindow>
   implements Transform<WindowedValue<T>, WindowedValue<T>> {
   private final WindowFn windowFn;
   private OutputCollector<WindowedValue<T>> outputCollector;
@@ -42,7 +42,7 @@ public final class WindowDoFnTransform<T, W extends BoundedWindow>
    * Default Constructor.
    * @param windowFn windowFn for the Transform.
    */
-  public WindowDoFnTransform(final WindowFn windowFn) {
+  public WindowFnTransform(final WindowFn windowFn) {
     this.windowFn = windowFn;
   }
 
@@ -92,7 +92,7 @@ public final class WindowDoFnTransform<T, W extends BoundedWindow>
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("WindowDoFnTransform:" + windowFn);
+    sb.append("WindowFnTransform:" + windowFn);
     return sb.toString();
   }
 }
