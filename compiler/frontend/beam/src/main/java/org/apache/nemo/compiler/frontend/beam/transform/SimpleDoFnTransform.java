@@ -57,7 +57,7 @@ public final class SimpleDoFnTransform<InputT, OutputT> implements
   private final Map<TupleTag<?>, Coder<?>> outputCoders;
 
   /**
-   * DoTransform Constructor.
+   * SimpleDoFnTransform Constructor.
    *
    * @param doFn    doFn.
    * @param options Pipeline options.
@@ -136,6 +136,10 @@ public final class SimpleDoFnTransform<InputT, OutputT> implements
     doFnRunner.processElement(data);
   }
 
+  public DoFn getDoFn() {
+    return doFn;
+  }
+
   @Override
   public void close() {
     doFnRunner.finishBundle();
@@ -145,7 +149,7 @@ public final class SimpleDoFnTransform<InputT, OutputT> implements
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("DoTransform:" + doFn);
+    sb.append("SimpleDoTransform:" + doFn);
     return sb.toString();
   }
 

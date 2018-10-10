@@ -152,7 +152,6 @@ public final class PipelineTranslator
           sideInputs,
           ctx.pipelineOptions);
 
-      //final DoTransform doTransform = new DoTransform(transform.getFn(), ctx.pipelineOptions);
       final IRVertex vertex = new OperatorVertex(doFnTransform);
 
       ctx.addVertex(vertex);
@@ -200,7 +199,6 @@ public final class PipelineTranslator
           sideInputs,
           ctx.pipelineOptions);
 
-      //final DoTransform doTransform = new DoTransform(transform.getFn(), ctx.pipelineOptions);
       final IRVertex vertex = new OperatorVertex(doFnTransform);
       ctx.addVertex(vertex);
       transformVertex.getNode().getInputs().values().stream()
@@ -630,7 +628,8 @@ public final class PipelineTranslator
 
       final Transform srcTransform = src instanceof OperatorVertex ? ((OperatorVertex) src).getTransform() : null;
       final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
-      final DoFn srcDoFn = srcTransform instanceof DoTransform ? ((DoTransform) srcTransform).getDoFn() : null;
+      final DoFn srcDoFn = srcTransform instanceof SimpleDoFnTransform ?
+          ((SimpleDoFnTransform) srcTransform).getDoFn() : null;
 
       if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
         return CommunicationPatternProperty.Value.Shuffle;

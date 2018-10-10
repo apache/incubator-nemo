@@ -27,7 +27,6 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.compiler.frontend.beam.transform.DoTransform;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.plan.PhysicalPlanGenerator;
@@ -66,7 +65,7 @@ public final class DAGConverterTest {
     v1.setProperty(ParallelismProperty.of(3));
     irDAGBuilder.addVertex(v1);
 
-    final IRVertex v2 = new OperatorVertex(new DoTransform(null, null));
+    final IRVertex v2 = new OperatorVertex(mock(Transform.class));
     v2.setProperty(ParallelismProperty.of(2));
     irDAGBuilder.addVertex(v2);
 
@@ -113,7 +112,7 @@ public final class DAGConverterTest {
     v1.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     final Transform t = mock(Transform.class);
-    final DoTransform dt = new DoTransform(null, null);
+    final Transform dt = mock(Transform.class);
     final IRVertex v2 = new OperatorVertex(t);
     v2.setProperty(ParallelismProperty.of(3));
     v2.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
