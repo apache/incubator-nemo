@@ -116,7 +116,8 @@ public final class DoFnTransform<InputT, OutputT> implements
     doFnInvoker = DoFnInvokers.invokerFor(doFn);
     doFnInvoker.invokeSetup();
 
-    // runner
+    // DoFnRunners.simpleRunner takes care of all the hard stuff of running the DoFn
+    // and that this approach is the standard used by most of the Beam runners
     doFnRunner = DoFnRunners.simpleRunner(
       options,
       doFn,
