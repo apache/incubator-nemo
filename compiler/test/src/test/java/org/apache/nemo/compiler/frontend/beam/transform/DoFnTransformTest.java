@@ -18,6 +18,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.state.StateSpec;
@@ -53,6 +54,9 @@ public final class DoFnTransformTest {
   private PCollectionView<Iterable<String>> view1;
   private PCollectionView<Iterable<String>> view2;
 
+  private final static Coder NULL_INPUT_CODER = null;
+  private final static Map<TupleTag<?>, Coder<?>> NULL_OUTPUT_CODERS = null;
+
   @Before
   public void setUp() {
     Pipeline.create().apply(Create.of("1"));
@@ -69,8 +73,8 @@ public final class DoFnTransformTest {
     final DoFnTransform<String, String> doFnTransform =
       new DoFnTransform<>(
         new IdentityDoFn<>(),
-        null,
-        null,
+        NULL_INPUT_CODER,
+        NULL_OUTPUT_CODERS,
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
@@ -107,8 +111,8 @@ public final class DoFnTransformTest {
     final DoFnTransform<String, String> doFnTransform =
       new DoFnTransform<>(
         new MultiOutputDoFn(additionalOutput1, additionalOutput2),
-        null,
-        null,
+        NULL_INPUT_CODER,
+        NULL_OUTPUT_CODERS,
         mainOutput,
         tags,
         WindowingStrategy.globalDefault(),
@@ -171,8 +175,8 @@ public final class DoFnTransformTest {
     final DoFnTransform<String, Tuple<String, Iterable<String>>> doFnTransform =
       new DoFnTransform<>(
         new SimpleSideInputDoFn<>(eventAndViewMap),
-        null,
-        null,
+        NULL_INPUT_CODER,
+        NULL_OUTPUT_CODERS,
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
@@ -223,8 +227,8 @@ public final class DoFnTransformTest {
     final StatefulDoFnTransform<String, Long, KV<String, Long>> statefulDoFnTransform =
       new StatefulDoFnTransform<>(
         filterElementsEqualToCountFn,
-        null,
-        null,
+        NULL_INPUT_CODER,
+        NULL_OUTPUT_CODERS,
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),

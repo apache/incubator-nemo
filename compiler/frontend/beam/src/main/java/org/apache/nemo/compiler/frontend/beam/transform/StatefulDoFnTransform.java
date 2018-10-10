@@ -105,7 +105,7 @@ public final class StatefulDoFnTransform<K, InputT, OutputT> implements
     // create side input reader
     sideInputReader = NullSideInputReader.of(sideInputs);
     if (!sideInputs.isEmpty()) {
-      sideInputReader = new BroadcastGlobalValueSideInputReader(context, sideInputs);
+      sideInputReader = new BroadcastVariableSideInputReader(context, sideInputs);
     }
   }
 
@@ -115,7 +115,6 @@ public final class StatefulDoFnTransform<K, InputT, OutputT> implements
     DoFnRunner<KV<K, InputT>, OutputT> doFnRunner = doFnRunnerMap.get(key);
 
     if (doFnRunner == null) {
-      // TODO #: Implement stateInternalFactory
       final StateInternals stateInternals = InMemoryStateInternals.forKey(key);
       final TimerInternals timerInternals = new InMemoryTimerInternals();
       final StepContext stepContext = new StepContext() {

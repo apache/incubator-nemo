@@ -92,9 +92,10 @@ public final class DoFnTransform<InputT, OutputT> implements
       outputCollector, context, mainOutputTag);
 
     // create side input reader
-    sideInputReader = NullSideInputReader.of(sideInputs);
     if (!sideInputs.isEmpty()) {
-      sideInputReader = new BroadcastGlobalValueSideInputReader(context, sideInputs);
+      sideInputReader = new BroadcastVariableSideInputReader(context, sideInputs);
+    } else {
+      sideInputReader = NullSideInputReader.of(sideInputs);
     }
 
     // create step context
@@ -152,5 +153,4 @@ public final class DoFnTransform<InputT, OutputT> implements
     sb.append("DoTransform:" + doFn);
     return sb.toString();
   }
-
 }

@@ -227,6 +227,8 @@ public final class MultinomialLogisticRegression {
     @FinishBundle
     public void finishBundle(final FinishBundleContext c) {
       for (Integer i = 0; i < gradients.size(); i++) {
+        // this enforces a global window (batching),
+        // where all data elements of the corresponding PCollection are grouped and emitted downstream together
         c.output(KV.of(i, gradients.get(i)), BoundedWindow.TIMESTAMP_MIN_VALUE, GlobalWindow.INSTANCE);
       }
       LOG.info("stats: " + gradients.get(numClasses - 1).toString());

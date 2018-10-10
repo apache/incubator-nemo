@@ -127,42 +127,45 @@ public final class PipelineTranslator
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
-  @PrimitiveTransformTranslator(ParDo.SingleOutput.class)
-  private static void parDoSingleOutputTranslator(final TranslationContext ctx,
-                                                  final PrimitiveTransformVertex transformVertex,
-                                                  final ParDo.SingleOutput<?, ?> transform) {
+  private static DoFnTransform createDoFnTransform(final TranslationContext ctx,
+                                                   final PrimitiveTransformVertex transformVertex) {
     try {
       final AppliedPTransform pTransform = transformVertex.getNode().toAppliedPTransform(PIPELINE.get());
-      final DoFn doFn = (DoFn) ParDoTranslation.getDoFn(pTransform);
-      final TupleTag mainOutputTag = (TupleTag) ParDoTranslation.getMainOutputTag(pTransform);
+      final DoFn doFn = ParDoTranslation.getDoFn(pTransform);
+      final TupleTag mainOutputTag = ParDoTranslation.getMainOutputTag(pTransform);
       final List<PCollectionView<?>> sideInputs = ParDoTranslation.getSideInputs(pTransform);
       final TupleTagList additionalOutputTags = ParDoTranslation.getAdditionalOutputTags(pTransform);
 
       final PCollection<?> mainInput = (PCollection<?>)
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
-      final DoFnTransform doFnTransform =
-        new DoFnTransform(
-          doFn,
-          mainInput.getCoder(),
-          getOutputCoders(pTransform),
-          mainOutputTag,
-          additionalOutputTags.getAll(),
-          mainInput.getWindowingStrategy(),
-          sideInputs,
-          ctx.pipelineOptions);
-
-      final IRVertex vertex = new OperatorVertex(doFnTransform);
-
-      ctx.addVertex(vertex);
-      transformVertex.getNode().getInputs().values().stream()
-        .filter(input -> !transform.getAdditionalInputs().values().contains(input))
-        .forEach(input -> ctx.addEdgeTo(vertex, input));
-      transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
-      transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
+      return new DoFnTransform(
+        doFn,
+        mainInput.getCoder(),
+        getOutputCoders(pTransform),
+        mainOutputTag,
+        additionalOutputTags.getAll(),
+        mainInput.getWindowingStrategy(),
+        sideInputs,
+        ctx.pipelineOptions);
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @PrimitiveTransformTranslator(ParDo.SingleOutput.class)
+  private static void parDoSingleOutputTranslator(final TranslationContext ctx,
+                                                  final PrimitiveTransformVertex transformVertex,
+                                                  final ParDo.SingleOutput<?, ?> transform) {
+    final DoFnTransform doFnTransform = createDoFnTransform(ctx, transformVertex);
+    final IRVertex vertex = new OperatorVertex(doFnTransform);
+
+    ctx.addVertex(vertex);
+    transformVertex.getNode().getInputs().values().stream()
+      .filter(input -> !transform.getAdditionalInputs().values().contains(input))
+      .forEach(input -> ctx.addEdgeTo(vertex, input));
+    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
+    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
   private static Map<TupleTag<?>, Coder<?>> getOutputCoders(final AppliedPTransform<?, ?, ?> ptransform) {
@@ -178,43 +181,20 @@ public final class PipelineTranslator
   private static void parDoMultiOutputTranslator(final TranslationContext ctx,
                                                  final PrimitiveTransformVertex transformVertex,
                                                  final ParDo.MultiOutput<?, ?> transform) {
-    try {
-      final AppliedPTransform pTransform = transformVertex.getNode().toAppliedPTransform(PIPELINE.get());
-      final DoFn doFn = (DoFn) ParDoTranslation.getDoFn(pTransform);
-      final TupleTag mainOutputTag = (TupleTag) ParDoTranslation.getMainOutputTag(pTransform);
-      final List<PCollectionView<?>> sideInputs = ParDoTranslation.getSideInputs(pTransform);
-      final TupleTagList additionalOutputTags = ParDoTranslation.getAdditionalOutputTags(pTransform);
-
-      final PCollection<?> mainInput = (PCollection<?>)
-        Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
-
-      final DoFnTransform doFnTransform =
-        new DoFnTransform(
-          doFn,
-          mainInput.getCoder(),
-          getOutputCoders(pTransform),
-          mainOutputTag,
-          additionalOutputTags.getAll(),
-          mainInput.getWindowingStrategy(),
-          sideInputs,
-          ctx.pipelineOptions);
-
-      final IRVertex vertex = new OperatorVertex(doFnTransform);
-      ctx.addVertex(vertex);
-      transformVertex.getNode().getInputs().values().stream()
-        .filter(input -> !transform.getAdditionalInputs().values().contains(input))
-        .forEach(input -> ctx.addEdgeTo(vertex, input));
-      transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
-      transformVertex.getNode().getOutputs().entrySet().stream()
-        .filter(pValueWithTupleTag -> pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
-        .forEach(pValueWithTupleTag -> ctx.registerMainOutputFrom(vertex, pValueWithTupleTag.getValue()));
-      transformVertex.getNode().getOutputs().entrySet().stream()
-        .filter(pValueWithTupleTag -> !pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
-        .forEach(pValueWithTupleTag -> ctx.registerAdditionalOutputFrom(vertex, pValueWithTupleTag.getValue(),
-          pValueWithTupleTag.getKey()));
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
+    final DoFnTransform doFnTransform = createDoFnTransform(ctx, transformVertex);
+    final IRVertex vertex = new OperatorVertex(doFnTransform);
+    ctx.addVertex(vertex);
+    transformVertex.getNode().getInputs().values().stream()
+      .filter(input -> !transform.getAdditionalInputs().values().contains(input))
+      .forEach(input -> ctx.addEdgeTo(vertex, input));
+    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
+    transformVertex.getNode().getOutputs().entrySet().stream()
+      .filter(pValueWithTupleTag -> pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
+      .forEach(pValueWithTupleTag -> ctx.registerMainOutputFrom(vertex, pValueWithTupleTag.getValue()));
+    transformVertex.getNode().getOutputs().entrySet().stream()
+      .filter(pValueWithTupleTag -> !pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
+      .forEach(pValueWithTupleTag -> ctx.registerAdditionalOutputFrom(vertex, pValueWithTupleTag.getValue(),
+        pValueWithTupleTag.getKey()));
   }
 
   @PrimitiveTransformTranslator(GroupByKey.class)
@@ -628,8 +608,7 @@ public final class PipelineTranslator
 
       final Transform srcTransform = src instanceof OperatorVertex ? ((OperatorVertex) src).getTransform() : null;
       final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
-      final DoFn srcDoFn = srcTransform instanceof DoFnTransform ?
-          ((DoFnTransform) srcTransform).getDoFn() : null;
+      final DoFn srcDoFn = srcTransform instanceof DoFnTransform ? ((DoFnTransform) srcTransform).getDoFn() : null;
 
       if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
         return CommunicationPatternProperty.Value.Shuffle;

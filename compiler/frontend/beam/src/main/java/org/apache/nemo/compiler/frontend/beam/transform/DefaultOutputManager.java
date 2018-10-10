@@ -45,7 +45,7 @@ public final class DefaultOutputManager<OutputT> implements DoFnRunners.OutputMa
     if (tag.equals(mainOutputTag)) {
       outputCollector.emit((WindowedValue<OutputT>) output);
     } else {
-      outputCollector.emit(additionalOutputs.get(tag.getId()), (WindowedValue<OutputT>) output);
+      outputCollector.emit(additionalOutputs.get(tag.getId()), output);
     }
   }
 }

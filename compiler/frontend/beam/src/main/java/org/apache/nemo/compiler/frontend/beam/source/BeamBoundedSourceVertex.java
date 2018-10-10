@@ -115,6 +115,8 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
         for (boolean available = reader.start(); available; available = reader.advance()) {
           final T elem = reader.getCurrent();
 
+          // Check whether the element is windowed or not
+          // We only have to check the first element.
           if (!started) {
             started = true;
             if (elem instanceof WindowedValue) {

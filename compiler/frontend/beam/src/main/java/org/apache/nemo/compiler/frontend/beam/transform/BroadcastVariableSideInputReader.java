@@ -27,7 +27,7 @@ import java.util.Collection;
 /**
  * A sideinput reader that reads/writes side input values to context.
  */
-public final class BroadcastGlobalValueSideInputReader implements SideInputReader {
+public final class BroadcastVariableSideInputReader implements SideInputReader {
 
   // Nemo context for storing/getting side inputs
   private final Transform.Context context;
@@ -35,8 +35,8 @@ public final class BroadcastGlobalValueSideInputReader implements SideInputReade
   // The list of side inputs that we're handling
   private final Collection<PCollectionView<?>> sideInputs;
 
-  BroadcastGlobalValueSideInputReader(final Transform.Context context,
-                                      final Collection<PCollectionView<?>> sideInputs) {
+  BroadcastVariableSideInputReader(final Transform.Context context,
+                                   final Collection<PCollectionView<?>> sideInputs) {
     this.context = context;
     this.sideInputs = sideInputs;
   }
