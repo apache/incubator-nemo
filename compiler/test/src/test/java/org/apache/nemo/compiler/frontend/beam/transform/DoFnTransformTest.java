@@ -66,8 +66,8 @@ public final class DoFnTransformTest {
 
     final TupleTag<String> outputTag = new TupleTag<>("main-output");
 
-    final SimpleDoFnTransform<String, String> simpleDoFnTransform =
-      new SimpleDoFnTransform<>(
+    final DoFnTransform<String, String> doFnTransform =
+      new DoFnTransform<>(
         new IdentityDoFn<>(),
         null,
         null,
@@ -79,13 +79,13 @@ public final class DoFnTransformTest {
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
-    simpleDoFnTransform.prepare(context, oc);
+    doFnTransform.prepare(context, oc);
 
-    simpleDoFnTransform.onData(WindowedValue.valueInGlobalWindow("Hello"));
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow("Hello"));
 
     assertEquals(((TestOutputCollector<String>) oc).outputs.get(0), WindowedValue.valueInGlobalWindow("Hello"));
 
-    simpleDoFnTransform.close();
+    doFnTransform.close();
   }
 
   @Test
@@ -104,8 +104,8 @@ public final class DoFnTransformTest {
         .put(additionalOutput2.getId(), additionalOutput2.getId())
         .build();
 
-    final SimpleDoFnTransform<String, String> simpleDoFnTransform =
-      new SimpleDoFnTransform<>(
+    final DoFnTransform<String, String> doFnTransform =
+      new DoFnTransform<>(
         new MultiOutputDoFn(additionalOutput1, additionalOutput2),
         null,
         null,
@@ -120,11 +120,11 @@ public final class DoFnTransformTest {
     when(context.getTagToAdditionalChildren()).thenReturn(tagsMap);
 
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
-    simpleDoFnTransform.prepare(context, oc);
+    doFnTransform.prepare(context, oc);
 
-    simpleDoFnTransform.onData(WindowedValue.valueInGlobalWindow("one"));
-    simpleDoFnTransform.onData(WindowedValue.valueInGlobalWindow("two"));
-    simpleDoFnTransform.onData(WindowedValue.valueInGlobalWindow("hello"));
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow("one"));
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow("two"));
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow("hello"));
 
     // main output
     assertEquals(WindowedValue.valueInGlobalWindow("got: hello"),
@@ -146,7 +146,7 @@ public final class DoFnTransformTest {
       new Tuple<>(additionalOutput2.getId(), WindowedValue.valueInGlobalWindow("got: hello"))
     ));
 
-    simpleDoFnTransform.close();
+    doFnTransform.close();
   }
 
 
@@ -168,8 +168,8 @@ public final class DoFnTransformTest {
     final Map<String, PCollectionView<Iterable<String>>> eventAndViewMap =
       ImmutableMap.of(first.getValue(), view1, second.getValue(), view2);
 
-    final SimpleDoFnTransform<String, Tuple<String, Iterable<String>>> simpleDoFnTransform =
-      new SimpleDoFnTransform<>(
+    final DoFnTransform<String, Tuple<String, Iterable<String>>> doFnTransform =
+      new DoFnTransform<>(
         new SimpleSideInputDoFn<>(eventAndViewMap),
         null,
         null,
@@ -180,10 +180,10 @@ public final class DoFnTransformTest {
         PipelineOptionsFactory.as(NemoPipelineOptions.class));
 
     final OutputCollector<WindowedValue<Tuple<String, Iterable<String>>>> oc = new TestOutputCollector<>();
-    simpleDoFnTransform.prepare(context, oc);
+    doFnTransform.prepare(context, oc);
 
-    simpleDoFnTransform.onData(first);
-    simpleDoFnTransform.onData(second);
+    doFnTransform.onData(first);
+    doFnTransform.onData(second);
 
     assertEquals(WindowedValue.valueInGlobalWindow(new Tuple<>("first", ImmutableList.of("1"))),
       ((TestOutputCollector<Tuple<String,Iterable<String>>>) oc).getOutput().get(0));
@@ -191,7 +191,7 @@ public final class DoFnTransformTest {
     assertEquals(WindowedValue.valueInGlobalWindow(new Tuple<>("second", ImmutableList.of("2"))),
       ((TestOutputCollector<Tuple<String,Iterable<String>>>) oc).getOutput().get(1));
 
-    simpleDoFnTransform.close();
+    doFnTransform.close();
   }
 
   @Test

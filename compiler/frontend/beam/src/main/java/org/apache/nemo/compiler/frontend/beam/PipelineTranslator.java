@@ -141,8 +141,8 @@ public final class PipelineTranslator
       final PCollection<?> mainInput = (PCollection<?>)
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
-      final SimpleDoFnTransform doFnTransform =
-        new SimpleDoFnTransform(
+      final DoFnTransform doFnTransform =
+        new DoFnTransform(
           doFn,
           mainInput.getCoder(),
           getOutputCoders(pTransform),
@@ -188,8 +188,8 @@ public final class PipelineTranslator
       final PCollection<?> mainInput = (PCollection<?>)
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
-      final SimpleDoFnTransform doFnTransform =
-        new SimpleDoFnTransform(
+      final DoFnTransform doFnTransform =
+        new DoFnTransform(
           doFn,
           mainInput.getCoder(),
           getOutputCoders(pTransform),
@@ -628,8 +628,8 @@ public final class PipelineTranslator
 
       final Transform srcTransform = src instanceof OperatorVertex ? ((OperatorVertex) src).getTransform() : null;
       final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
-      final DoFn srcDoFn = srcTransform instanceof SimpleDoFnTransform ?
-          ((SimpleDoFnTransform) srcTransform).getDoFn() : null;
+      final DoFn srcDoFn = srcTransform instanceof DoFnTransform ?
+          ((DoFnTransform) srcTransform).getDoFn() : null;
 
       if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
         return CommunicationPatternProperty.Value.Shuffle;

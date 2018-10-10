@@ -40,7 +40,7 @@ import java.util.Map;
  * @param <InputT> input type.
  * @param <OutputT> output type.
  */
-public final class SimpleDoFnTransform<InputT, OutputT> implements
+public final class DoFnTransform<InputT, OutputT> implements
   Transform<WindowedValue<InputT>, WindowedValue<OutputT>> {
 
   private OutputCollector<WindowedValue<OutputT>> outputCollector;
@@ -57,19 +57,19 @@ public final class SimpleDoFnTransform<InputT, OutputT> implements
   private final Map<TupleTag<?>, Coder<?>> outputCoders;
 
   /**
-   * SimpleDoFnTransform Constructor.
+   * DoFnTransform Constructor.
    *
    * @param doFn    doFn.
    * @param options Pipeline options.
    */
-  public SimpleDoFnTransform(final DoFn<InputT, OutputT> doFn,
-                             final Coder<InputT> inputCoder,
-                             final Map<TupleTag<?>, Coder<?>> outputCoders,
-                             final TupleTag<OutputT> mainOutputTag,
-                             final List<TupleTag<?>> additionalOutputTags,
-                             final WindowingStrategy<?, ?> windowingStrategy,
-                             final Collection<PCollectionView<?>> sideInputs,
-                             final PipelineOptions options) {
+  public DoFnTransform(final DoFn<InputT, OutputT> doFn,
+                       final Coder<InputT> inputCoder,
+                       final Map<TupleTag<?>, Coder<?>> outputCoders,
+                       final TupleTag<OutputT> mainOutputTag,
+                       final List<TupleTag<?>> additionalOutputTags,
+                       final WindowingStrategy<?, ?> windowingStrategy,
+                       final Collection<PCollectionView<?>> sideInputs,
+                       final PipelineOptions options) {
     this.doFn = doFn;
     this.inputCoder = inputCoder;
     this.outputCoders = outputCoders;
@@ -102,12 +102,12 @@ public final class SimpleDoFnTransform<InputT, OutputT> implements
     final StepContext stepContext = new StepContext() {
       @Override
       public StateInternals stateInternals() {
-        throw new UnsupportedOperationException("Not support stateInternals in SimpleDoFnTransform");
+        throw new UnsupportedOperationException("Not support stateInternals in DoFnTransform");
       }
 
       @Override
       public TimerInternals timerInternals() {
-        throw new UnsupportedOperationException("Not support timerInternals in SimpleDoFnTransform");
+        throw new UnsupportedOperationException("Not support timerInternals in DoFnTransform");
       }
     };
 
@@ -149,7 +149,7 @@ public final class SimpleDoFnTransform<InputT, OutputT> implements
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("SimpleDoTransform:" + doFn);
+    sb.append("DoTransform:" + doFn);
     return sb.toString();
   }
 
