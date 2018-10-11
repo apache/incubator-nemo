@@ -99,7 +99,7 @@ final class GenericSourceSink {
       // to properly handle the FileResult (Beam's file metadata information), and hang the job.
       // The root cause is that the Nemo runtime currently only supports batch applications, and
       // does not use the Beam's WindowedValue by default.
-      return dataToWrite.apply(TextIO.write().to(path).withWindowedWrites());
+      return dataToWrite.apply(TextIO.write().to(path));
     }
   }
 
