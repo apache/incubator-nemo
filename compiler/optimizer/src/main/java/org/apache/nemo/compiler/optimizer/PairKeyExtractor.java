@@ -13,27 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nemo.compiler.frontend.beam;
+package org.apache.nemo.compiler.optimizer;
 
-import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.KeyExtractor;
-import org.apache.beam.sdk.values.KV;
+import org.apache.nemo.common.Pair;
 
 /**
- * Extracts the key from a KV element.
- * For non-KV elements, the elements themselves become the key.
+ * Extracts the key from a pair element.
  */
-final class BeamKeyExtractor implements KeyExtractor {
+public final class PairKeyExtractor implements KeyExtractor {
   @Override
   public Object extractKey(final Object element) {
-    final WindowedValue windowedValue = (WindowedValue) element;
-    final Object value = windowedValue.getValue();
-    if (value instanceof KV) {
-      // Handle null keys, since Beam allows KV with null keys.
-      final Object key = ((KV) value).getKey();
-      return key == null ? 0 : key;
+    if (element instanceof Pair) {
+      return ((Pair) element).left();
     } else {
-      return element;
+      throw new IllegalStateException(element.toString());
     }
   }
 }

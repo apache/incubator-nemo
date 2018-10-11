@@ -15,6 +15,7 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.transforms.Materializations;
@@ -31,9 +32,9 @@ import java.util.ArrayList;
  * @param <I> input type.
  * @param <O> output type.
  */
-public final class CreateViewTransform<I, O> implements Transform<I, O> {
+public final class CreateViewTransform<I, O> implements Transform<WindowedValue<I>, WindowedValue<O>> {
   private final PCollectionView pCollectionView;
-  private OutputCollector<O> outputCollector;
+  private OutputCollector<WindowedValue<O>> outputCollector;
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final MultiView<Object> multiView;
 
@@ -48,21 +49,22 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> oc) {
+  public void prepare(final Context context, final OutputCollector<WindowedValue<O>> oc) {
     this.outputCollector = oc;
   }
 
   @Override
-  public void onData(final I element) {
-    // Since CreateViewTransform takes KV(Void, value), this is okay
-    final KV<?, ?> kv = (KV<?, ?>) element; // It will throw a type cast exception if the element is not KV
+  public void onData(final WindowedValue<I> element) {
+    // TODO #216: support window in view
+    final KV kv = ((WindowedValue<KV>) element).getValue();
     multiView.getDataList().add(kv.getValue());
   }
 
   @Override
   public void close() {
     final Object view = viewFn.apply(multiView);
-    outputCollector.emit((O) view);
+    // TODO #216: support window in view
+    outputCollector.emit(WindowedValue.valueInGlobalWindow((O) view));
   }
 
   @Override
