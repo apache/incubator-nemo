@@ -93,7 +93,7 @@ public final class TaskRetryTest {
     runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, injector);
   }
 
-  @Test(timeout=7000)
+  @Test(timeout=60000)
   public void testExecutorRemoved() throws Exception {
     // Until the plan finishes, events happen
     while (!planStateManager.isPlanDone()) {
@@ -119,7 +119,7 @@ public final class TaskRetryTest {
     assertTrue(planStateManager.isPlanDone());
   }
 
-  @Test(timeout=7000)
+  @Test(timeout=60000)
   public void testTaskOutputWriteFailure() throws Exception {
     // Three executors are used
     executorAdded(1.0);
