@@ -73,6 +73,7 @@ public final class PipelineTranslator
   private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator = new HashMap<>();
   private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator = new HashMap<>();
 
+  // TODO #220: Move this variable to TranslationContext
   private static final AtomicReference<Pipeline> PIPELINE = new AtomicReference<>();
 
   /**
