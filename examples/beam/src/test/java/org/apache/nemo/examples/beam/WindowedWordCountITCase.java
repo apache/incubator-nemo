@@ -29,7 +29,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 /**
- * Test WordCount program with JobLauncher.
+ * Test Windowed word count program with JobLauncher.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
@@ -42,7 +42,6 @@ public final class WindowedWordCountITCase {
   private static final String outputFileName = "test_output_windowed_wordcount";
   private static final String expectedOutputFileName = "expected_output_windowed_wordcount";
   private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
-  private static final String oneExecutorResourceFileName = fileBasePath + "beam_test_one_executor_resources.json";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
@@ -69,61 +68,5 @@ public final class WindowedWordCountITCase {
         .addJobId(WindowedWordCountITCase.class.getSimpleName())
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testLargeShuffle() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(WindowedWordCountITCase.class.getSimpleName() + "_largeShuffle")
-        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testLargeShuffleInOneExecutor() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(oneExecutorResourceFileName)
-        .addJobId(WindowedWordCountITCase.class.getSimpleName() + "_largeshuffleInOneExecutor")
-        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testConditionalLargeShuffle() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(WindowedWordCountITCase.class.getSimpleName() + "_conditionalLargeShuffle")
-        .addOptimizationPolicy(ConditionalLargeShufflePolicy.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testTransientResource() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(WindowedWordCountITCase.class.getSimpleName() + "_transient")
-        .addOptimizationPolicy(TransientResourcePolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testClonedScheduling() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(WindowedWordCountITCase.class.getSimpleName() + "_clonedscheduling")
-        .addMaxTaskAttempt(Integer.MAX_VALUE)
-        .addOptimizationPolicy(UpfrontSchedulingPolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testSpeculativeExecution() throws Exception {
-    JobLauncher.main(builder
-      .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "_speculative")
-      .addMaxTaskAttempt(Integer.MAX_VALUE)
-      .addOptimizationPolicy(AggressiveSpeculativeCloningPolicyParallelismFive.class.getCanonicalName())
-      .build());
   }
 }
