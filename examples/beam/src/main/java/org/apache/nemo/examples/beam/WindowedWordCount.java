@@ -15,6 +15,7 @@
  */
 package org.apache.nemo.examples.beam;
 
+import org.apache.beam.examples.common.WriteOneFilePerWindow;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -28,7 +29,7 @@ import org.joda.time.Duration;
 import org.joda.time.Instant;
 
 /**
- * WordCount application.
+ * A Windowed WordCount application.
  */
 public final class WindowedWordCount {
   /**
@@ -76,7 +77,6 @@ public final class WindowedWordCount {
           }
         }))
         .apply(new WriteOneFilePerWindow(outputFilePath, null));
-    //GenericSourceSink.write(result, outputFilePath);
     p.run();
   }
 }

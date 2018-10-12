@@ -57,7 +57,7 @@ public final class WindowedWordCountITCase {
     try {
       ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      //ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 
@@ -66,7 +66,7 @@ public final class WindowedWordCountITCase {
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
         .addJobId(WindowedWordCountITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
   }
 }

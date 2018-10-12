@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * DoFn transform implementation.
+ * This is an abstract transform.
  *
  * @param <InputT> input type.
  * @param <InterT> intermediate type.
@@ -44,25 +44,31 @@ import java.util.Map;
 public abstract class AbstractTransform<InputT, InterT, OutputT> implements
   Transform<WindowedValue<InputT>, WindowedValue<OutputT>> {
 
-  private OutputCollector<WindowedValue<OutputT>> outputCollector;
   private final TupleTag<OutputT> mainOutputTag;
   private final List<TupleTag<?>> additionalOutputTags;
   private final Collection<PCollectionView<?>> sideInputs;
   private final WindowingStrategy<?, ?> windowingStrategy;
   private final DoFn<InterT, OutputT> doFn;
   private final SerializablePipelineOptions serializedOptions;
+  private final Coder<InputT> inputCoder;
+  private final Map<TupleTag<?>, Coder<?>> outputCoders;
+
+  private transient OutputCollector<WindowedValue<OutputT>> outputCollector;
   private transient DoFnRunner<InterT, OutputT> doFnRunner;
   private transient SideInputReader sideInputReader;
   private transient DoFnInvoker<InterT, OutputT> doFnInvoker;
-  private final Coder<InputT> inputCoder;
-  private final Map<TupleTag<?>, Coder<?>> outputCoders;
   private transient DoFnRunners.OutputManager outputManager;
 
   /**
-   * DoFnTransform Constructor.
-   *
-   * @param doFn    doFn.
-   * @param options Pipeline options.
+   * AbstractTransform constructor.
+   * @param doFn doFn
+   * @param inputCoder input coder
+   * @param outputCoders output coders
+   * @param mainOutputTag main output tag
+   * @param additionalOutputTags additional output tags
+   * @param windowingStrategy windowing strategy
+   * @param sideInputs side inputs
+   * @param options pipeline options
    */
   public AbstractTransform(final DoFn<InterT, OutputT> doFn,
                            final Coder<InputT> inputCoder,
@@ -100,6 +106,10 @@ public abstract class AbstractTransform<InputT, InterT, OutputT> implements
 
   final DoFnRunner<InterT, OutputT> getDoFnRunner() {
     return doFnRunner;
+  }
+
+  public final DoFn getDoFn() {
+    return doFn;
   }
 
   @Override
@@ -156,17 +166,6 @@ public abstract class AbstractTransform<InputT, InterT, OutputT> implements
     doFnRunner.startBundle();
   }
 
-  abstract DoFn wrapDoFn(final DoFn initDoFn);
-
-  @Override
-  public abstract void onData(final WindowedValue<InputT> data);
-
-  public final DoFn getDoFn() {
-    return doFn;
-  }
-
-  abstract void beforeClose();
-
   @Override
   public final void close() {
     beforeClose();
@@ -175,6 +174,18 @@ public abstract class AbstractTransform<InputT, InterT, OutputT> implements
     doFnInvoker.invokeTeardown();
   }
 
+  /**
+   * An abstract function that wraps the original doFn.
+   * @param originalDoFn the original doFn.
+   * @return wrapped doFn.
+   */
+  abstract DoFn wrapDoFn(final DoFn originalDoFn);
+
   @Override
-  public abstract String toString();
+  public abstract void onData(final WindowedValue<InputT> data);
+
+  /**
+   * An abstract function that is called before close.
+   */
+  abstract void beforeClose();
 }

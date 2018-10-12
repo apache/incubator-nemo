@@ -199,9 +199,7 @@ public final class PipelineTranslator
   private static GroupByKeyTransform createGBKTransform(
     final TranslationContext ctx,
     final TransformVertex transformVertex) {
-
     final AppliedPTransform pTransform = transformVertex.getNode().toAppliedPTransform(PIPELINE.get());
-
     final PCollection<?> mainInput = (PCollection<?>)
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
     final TupleTag mainOutputTag = new TupleTag<>("main output");

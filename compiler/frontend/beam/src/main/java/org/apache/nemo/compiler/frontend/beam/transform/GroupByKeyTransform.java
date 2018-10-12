@@ -52,8 +52,8 @@ public final class GroupByKeyTransform<K, InputT>
                              final Collection<PCollectionView<?>> sideInputs,
                              final PipelineOptions options,
                              final SystemReduceFn reduceFn) {
-    super(null,
-      null,
+    super(null, /* doFn */
+      null, /* inputCoder */
       outputCoders,
       mainOutputTag,
       additionalOutputTags,
@@ -63,6 +63,11 @@ public final class GroupByKeyTransform<K, InputT>
     this.reduceFn = reduceFn;
   }
 
+  /**
+   * This creates a new DoFn that groups elements by key and window.
+   * @param doFn original doFn.
+   * @return GroupAlsoByWindowViaWindowSetNewDoFn
+   */
   @Override
   protected DoFn wrapDoFn(final DoFn doFn) {
     timerInternalsFactory = new InMemoryTimerInternalsFactory();
@@ -79,7 +84,8 @@ public final class GroupByKeyTransform<K, InputT>
 
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-    // TODO #129: support window in group by key for windowed groupByKey
+    // The GroupAlsoByWindowViaWindowSetNewDoFn requires KeyedWorkItem,
+    // so we convert the KV to KeyedWorkItem
     final KV<K, InputT> kv = element.getValue();
     final KeyedWorkItem<K, InputT> keyedWorkItem =
       KeyedWorkItems.elementsWorkItem(kv.getKey(),
@@ -88,6 +94,10 @@ public final class GroupByKeyTransform<K, InputT>
     getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
   }
 
+  /**
+   * This advances the input watermark and processing time to the timestamp max value
+   * in order to emit all data.
+   */
   @Override
   protected void beforeClose() {
     final InMemoryTimerInternalsFactory imTimerFactory =
@@ -122,7 +132,6 @@ public final class GroupByKeyTransform<K, InputT>
 
   private void fireEligibleTimers(final K key,
                                   final InMemoryTimerInternals timerInternals) {
-
     while (true) {
       TimerInternals.TimerData timer;
       boolean hasFired = false;
