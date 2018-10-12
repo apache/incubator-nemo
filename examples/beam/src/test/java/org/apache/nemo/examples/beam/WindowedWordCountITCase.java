@@ -41,32 +41,47 @@ public final class WindowedWordCountITCase {
   private static final String inputFileName = "test_input_windowed_wordcount";
   private static final String outputFileName = "test_output_windowed_wordcount";
   private static final String expectedOutputFileName = "expected_output_windowed_wordcount";
+  private static final String expectedSlidingWindowOutputFileName = "expected_output_sliding_windowed_wordcount";
   private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
-  @Before
-  public void setUp() throws Exception {
-    builder = new ArgBuilder()
-        .addUserMain(WindowedWordCount.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath);
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
-    } finally {
-      //ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
-    }
-  }
-
   @Test (timeout = TIMEOUT)
-  public void test() throws Exception {
+  public void testFixedWindow() throws Exception {
+    builder = new ArgBuilder()
+      .addUserMain(WindowedWordCount.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath, "fixed");
+
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
         .addJobId(WindowedWordCountITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
+
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
+  }
+
+
+  @Test (timeout = TIMEOUT)
+  public void testSlidingWindow() throws Exception {
+    builder = new ArgBuilder()
+      .addUserMain(WindowedWordCount.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath, "sliding");
+
+    JobLauncher.main(builder
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WindowedWordCountITCase.class.getSimpleName())
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
+
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedSlidingWindowOutputFileName);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
   }
 }

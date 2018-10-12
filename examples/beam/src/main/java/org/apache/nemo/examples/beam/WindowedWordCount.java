@@ -15,12 +15,12 @@
  */
 package org.apache.nemo.examples.beam;
 
-import org.apache.beam.examples.common.WriteOneFilePerWindow;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.SlidingWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
@@ -45,6 +45,15 @@ public final class WindowedWordCount {
   public static void main(final String[] args) {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];
+    final String windowType = args[2];
+    final Window<String> windowFn;
+    if (windowType.equals("fixed")) {
+      windowFn = Window.<String>into(FixedWindows.of(Duration.standardSeconds(5)));
+    } else {
+      windowFn = Window.<String>into(SlidingWindows.of(Duration.standardSeconds(10))
+        .every(Duration.standardSeconds(5)));
+    }
+
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
     options.setRunner(NemoPipelineRunner.class);
     options.setJobName("WindowedWordCount");
@@ -59,7 +68,7 @@ public final class WindowedWordCount {
               out.outputWithTimestamp(splitt[0], new Instant(Long.valueOf(splitt[1])));
             }
         }))
-        .apply(Window.<String>into(FixedWindows.of(Duration.standardSeconds(5))))
+        .apply(windowFn)
         .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
           @Override
           public KV<String, Long> apply(final String line) {
