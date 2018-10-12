@@ -54,11 +54,6 @@ limitations under the License.
         </dependency>
         <dependency>
           <groupId>org.apache.beam</groupId>
-          <artifactId>beam-examples-java</artifactId>
-          <version>${beam.version}</version>
-        </dependency>
-        <dependency>
-          <groupId>org.apache.beam</groupId>
           <artifactId>beam-sdks-java-extensions-sql</artifactId>
           <version>${beam.version}</version>
         </dependency>
