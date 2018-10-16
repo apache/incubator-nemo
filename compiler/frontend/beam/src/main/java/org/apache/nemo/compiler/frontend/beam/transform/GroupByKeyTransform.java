@@ -41,6 +41,8 @@ public final class GroupByKeyTransform<K, InputT>
 
   private final SystemReduceFn reduceFn;
   private transient TimerInternalsFactory timerInternalsFactory;
+  private transient StateInternalsFactory stateInternalsFactory;
+  private final Map<K, List<WindowedValue<InputT>>> keyToValues;
 
   /**
    * GroupByKey constructor.
@@ -60,6 +62,7 @@ public final class GroupByKeyTransform<K, InputT>
       windowingStrategy,
       sideInputs,
       options);
+    this.keyToValues = new HashMap<>();
     this.reduceFn = reduceFn;
   }
 
@@ -71,10 +74,11 @@ public final class GroupByKeyTransform<K, InputT>
   @Override
   protected DoFn wrapDoFn(final DoFn doFn) {
     timerInternalsFactory = new InMemoryTimerInternalsFactory();
+    stateInternalsFactory = new InMemoryStateInternalsFactory();
     return
       GroupAlsoByWindowViaWindowSetNewDoFn.create(
         getWindowingStrategy(),
-        new InMemoryStateInternalsFactory(),
+        stateInternalsFactory,
         timerInternalsFactory,
         getSideInputReader(),
         reduceFn,
@@ -86,12 +90,20 @@ public final class GroupByKeyTransform<K, InputT>
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     // The GroupAlsoByWindowViaWindowSetNewDoFn requires KeyedWorkItem,
     // so we convert the KV to KeyedWorkItem
+
+    final KV<K, InputT> kv = element.getValue();
+    keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
+    keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
+
+
+    /*
     final KV<K, InputT> kv = element.getValue();
     final KeyedWorkItem<K, InputT> keyedWorkItem =
       KeyedWorkItems.elementsWorkItem(kv.getKey(),
         Collections.singletonList(element.withValue(kv.getValue())));
 
     getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
+    */
   }
 
   /**
@@ -100,27 +112,35 @@ public final class GroupByKeyTransform<K, InputT>
    */
   @Override
   protected void beforeClose() {
+
     final InMemoryTimerInternalsFactory imTimerFactory =
       (InMemoryTimerInternalsFactory) timerInternalsFactory;
 
-    imTimerFactory.internalsMap.entrySet().stream()
-      .forEach(entry -> {
-        final K key = entry.getKey();
-        final InMemoryTimerInternals timerInternals = entry.getValue();
+    final InMemoryTimerInternals timerInternals = imTimerFactory.timerInternals;
+    try {
+      // Finish any pending windows by advancing the input watermark to infinity.
+      timerInternals.advanceInputWatermark(BoundedWindow.TIMESTAMP_MAX_VALUE);
 
-        try {
-          // Finish any pending windows by advancing the input watermark to infinity.
-          timerInternals.advanceInputWatermark(BoundedWindow.TIMESTAMP_MAX_VALUE);
+      // Finally, advance the processing time to infinity to fire any timers.
+      timerInternals.advanceProcessingTime(BoundedWindow.TIMESTAMP_MAX_VALUE);
+      timerInternals.advanceSynchronizedProcessingTime(BoundedWindow.TIMESTAMP_MAX_VALUE);
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
 
-          // Finally, advance the processing time to infinity to fire any timers.
-          timerInternals.advanceProcessingTime(BoundedWindow.TIMESTAMP_MAX_VALUE);
-          timerInternals.advanceSynchronizedProcessingTime(BoundedWindow.TIMESTAMP_MAX_VALUE);
+    if (keyToValues.isEmpty()) {
+      LOG.warn("Beam GroupByKeyTransform received no data!");
+    } else {
+      // timer
+      final Iterable<TimerInternals.TimerData> timerData = getTimers(timerInternals);
 
-          fireEligibleTimers(key, timerInternals);
-        } catch (final Exception e) {
-          e.printStackTrace();
-        }
+      keyToValues.entrySet().stream().forEach(entry -> {
+        final KeyedWorkItem<K, InputT> keyedWorkItem =
+          KeyedWorkItems.workItem(entry.getKey(), timerData, entry.getValue());
+        getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
       });
+      keyToValues.clear();
+    }
   }
 
   @Override
@@ -130,35 +150,41 @@ public final class GroupByKeyTransform<K, InputT>
     return sb.toString();
   }
 
-  private void fireEligibleTimers(final K key,
-                                  final InMemoryTimerInternals timerInternals) {
+  private Iterable<TimerInternals.TimerData> getTimers(final InMemoryTimerInternals timerInternals) {
+    final List<TimerInternals.TimerData> timerData = new LinkedList<>();
+
     while (true) {
       TimerInternals.TimerData timer;
       boolean hasFired = false;
 
       while ((timer = timerInternals.removeNextEventTimer()) != null) {
         hasFired = true;
-        fireTimer(key, timer);
+        timerData.add(timer);
       }
       while ((timer = timerInternals.removeNextProcessingTimer()) != null) {
         hasFired = true;
-        fireTimer(key, timer);
+        timerData.add(timer);
       }
       while ((timer = timerInternals.removeNextSynchronizedProcessingTimer()) != null) {
         hasFired = true;
-        fireTimer(key, timer);
+        timerData.add(timer);
       }
       if (!hasFired) {
         break;
       }
     }
+
+    return timerData;
   }
 
-  private void fireTimer(final K key,
-                         final TimerInternals.TimerData timer) {
-    getDoFnRunner().processElement(
-      WindowedValue.valueInGlobalWindow(
-        KeyedWorkItems.timersWorkItem(key, Collections.singletonList(timer))));
+  private void fireTimer(final TimerInternals.TimerData timer) {
+    System.out.println("Fire " + timer);
+    final Iterable<TimerInternals.TimerData> timers = Collections.singletonList(timer);
+    for (final K key : ((InMemoryStateInternalsFactory) stateInternalsFactory).internalsMap.keySet()) {
+      getDoFnRunner().processElement(
+        WindowedValue.valueInGlobalWindow(
+          KeyedWorkItems.timersWorkItem(key, timers)));
+    }
   }
 
   /**
@@ -185,17 +211,14 @@ public final class GroupByKeyTransform<K, InputT>
    * InMemoryTimerInternalsFactory.
    */
   final class InMemoryTimerInternalsFactory implements TimerInternalsFactory<K> {
-    private final Map<K, InMemoryTimerInternals> internalsMap;
+    private final InMemoryTimerInternals timerInternals;
 
     InMemoryTimerInternalsFactory() {
-      this.internalsMap = new HashMap<>();
+      this.timerInternals = new InMemoryTimerInternals();
     }
 
     @Override
     public TimerInternals timerInternalsForKey(final K key) {
-      final InMemoryTimerInternals timerInternals =
-        internalsMap.getOrDefault(key, new InMemoryTimerInternals());
-      internalsMap.putIfAbsent(key, timerInternals);
       return timerInternals;
     }
   }
