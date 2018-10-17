@@ -15,6 +15,9 @@
  */
 package org.apache.nemo.common.ir.vertex;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -25,7 +28,6 @@ import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProper
 import java.io.Serializable;
 import java.util.*;
 import java.util.function.IntPredicate;
-import java.util.stream.Collectors;
 
 /**
  * IRVertex that contains a partial DAG that is iterative.
@@ -313,22 +315,16 @@ public final class LoopVertex extends IRVertex {
   }
 
   @Override
-  public String propertiesToJSON() {
-    final List<String> edgeMappings = edgeWithLoopToEdgeWithInternalVertex.entrySet().stream()
-        .map(entry -> String.format("\"%s\": \"%s\"", entry.getKey().getId(), entry.getValue().getId()))
-        .collect(Collectors.toList());
-    final StringBuilder sb = new StringBuilder();
-    sb.append("{");
-    sb.append(irVertexPropertiesToString());
-    sb.append(", \"remainingIteration\": ");
-    sb.append(this.maxNumberOfIterations);
-    sb.append(", \"DAG\": ");
-    sb.append(getDAG());
-    sb.append(", \"dagIncomingEdges\": ").append(crossingEdgesToJSON(dagIncomingEdges));
-    sb.append(", \"dagOutgoingEdges\": ").append(crossingEdgesToJSON(dagOutgoingEdges));
-    sb.append(", \"edgeWithLoopToEdgeWithInternalVertex\": {").append(String.join(", ", edgeMappings));
-    sb.append("}}");
-    return sb.toString();
+  public ObjectNode getPropertiesAsJsonNode() {
+    final ObjectNode node = getIRVertexPropertiesAsJsonNode();
+    node.put("remainingIteration", maxNumberOfIterations);
+    node.set("DAG", getDAG().asJsonNode());
+    node.set("dagIncomingEdges", crossingEdgesToJSON(dagIncomingEdges));
+    node.set("dagOutgoingEdges", crossingEdgesToJSON(dagOutgoingEdges));
+    final ObjectNode edgeMappings = node.putObject("edgeWithLoopToEdgeWithInternalVertex");
+    edgeWithLoopToEdgeWithInternalVertex.entrySet()
+      .forEach(entry -> edgeMappings.put(entry.getKey().getId(), entry.getValue().getId()));
+    return node;
   }
 
   /**
@@ -336,15 +332,12 @@ public final class LoopVertex extends IRVertex {
    * @param map map of the crossing edges.
    * @return a string of JSON showing the crossing edges.
    */
-  private static String crossingEdgesToJSON(final Map<IRVertex, Set<IREdge>> map) {
-    final ArrayList<String> vertices = new ArrayList<>();
+  private static ObjectNode crossingEdgesToJSON(final Map<IRVertex, Set<IREdge>> map) {
+    final ObjectNode node = JsonNodeFactory.instance.objectNode();
     map.forEach(((irVertex, irEdges) -> {
-      final StringBuilder sb = new StringBuilder();
-      sb.append("\"").append(irVertex.getId()).append("\": [");
-      final List<String> edges = irEdges.stream().map(e -> "\"" + e.getId() + "\"").collect(Collectors.toList());
-      sb.append(String.join(", ", edges)).append("]");
-      vertices.add(sb.toString());
+      final ArrayNode vertexNode = node.putArray(irVertex.getId());
+      irEdges.forEach(e -> vertexNode.add(e.getId()));
     }));
-    return "{" + String.join(", ", vertices) + "}";
+    return node;
   }
 }

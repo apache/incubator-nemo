@@ -15,6 +15,8 @@
  */
 package org.apache.nemo.runtime.master.resource;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.protobuf.ByteString;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -215,12 +217,12 @@ public final class ExecutorRepresenter {
 
   @Override
   public String toString() {
-    final StringBuffer sb = new StringBuffer("ExecutorRepresenter{");
-    sb.append("executorId='").append(executorId).append('\'');
-    sb.append(", runningTasks=").append(getRunningTasks());
-    sb.append(", failedTasks=").append(failedTasks);
-    sb.append('}');
-    return sb.toString();
+    final ObjectMapper mapper = new ObjectMapper();
+    final ObjectNode node = mapper.createObjectNode();
+    node.put("executorId", executorId);
+    node.put("runningTasks", getRunningTasks().toString());
+    node.put("failedTasks", failedTasks.toString());
+    return node.toString();
   }
 
   /**

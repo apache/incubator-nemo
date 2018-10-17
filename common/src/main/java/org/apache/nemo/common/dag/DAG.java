@@ -15,6 +15,9 @@
  */
 package org.apache.nemo.common.dag;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.exception.IllegalEdgeOperationException;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
@@ -349,36 +352,40 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
     return this.loopStackDepthMap.get(v.getId());
   }
 
+  /**
+   * @return {@link com.fasterxml.jackson.databind.JsonNode} for this DAG.
+   */
+  public ObjectNode asJsonNode() {
+    final ObjectMapper mapper = new ObjectMapper();
+    final ObjectNode node = mapper.createObjectNode();
+
+    final ArrayNode verticesNode = mapper.createArrayNode();
+    for (final V vertex : vertices) {
+      final ObjectNode vertexNode = mapper.createObjectNode();
+      vertexNode.put("id", vertex.getId());
+      vertexNode.set("properties", vertex.getPropertiesAsJsonNode());
+      verticesNode.add(vertexNode);
+    }
+    node.set("vertices", verticesNode);
+
+    final ArrayNode edgesNode = mapper.createArrayNode();
+    for (final List<E> edges : incomingEdges.values()) {
+      for (final E edge : edges) {
+        final ObjectNode edgeNode = mapper.createObjectNode();
+        edgeNode.put("src", edge.getSrc().getId());
+        edgeNode.put("dst", edge.getDst().getId());
+        edgeNode.set("properties", edge.getPropertiesAsJsonNode());
+        edgesNode.add(edgeNode);
+      }
+
+    }
+    node.set("edges", edgesNode);
+    return node;
+  }
+
   @Override
   public String toString() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("{\"vertices\": [");
-    boolean isFirstVertex = true;
-    for (final V vertex : vertices) {
-      if (!isFirstVertex) {
-        sb.append(", ");
-      }
-      isFirstVertex = false;
-      sb.append("{\"id\": \"").append(vertex.getId());
-      sb.append("\", \"properties\": ").append(vertex.propertiesToJSON());
-      sb.append("}");
-    }
-    sb.append("], \"edges\": [");
-    boolean isFirstEdge = true;
-    for (final List<E> edgeList : incomingEdges.values()) {
-      for (final E edge : edgeList) {
-        if (!isFirstEdge) {
-          sb.append(", ");
-        }
-        isFirstEdge = false;
-        sb.append("{\"src\": \"").append(edge.getSrc().getId());
-        sb.append("\", \"dst\": \"").append(edge.getDst().getId());
-        sb.append("\", \"properties\": ").append(edge.propertiesToJSON());
-        sb.append("}");
-      }
-    }
-    sb.append("]}");
-    return sb.toString();
+    return asJsonNode().toString();
   }
 
   public static final String EMPTY_DAG_DIRECTORY = "";
