@@ -33,7 +33,7 @@ import java.util.Map;
  * @param <InputT> input type.
  * @param <OutputT> output type.
  */
-public final class DoFnTransform<InputT, OutputT> extends AbstractTransform<InputT, InputT, OutputT> {
+public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<InputT, InputT, OutputT> {
 
   /**
    * DoFnTransform Constructor.

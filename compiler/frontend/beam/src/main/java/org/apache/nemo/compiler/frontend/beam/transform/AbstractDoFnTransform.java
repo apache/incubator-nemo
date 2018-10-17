@@ -35,13 +35,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This is an abstract transform.
+ * This is a base class for Beam DoFn Transforms.
  *
  * @param <InputT> input type.
  * @param <InterT> intermediate type.
  * @param <OutputT> output type.
  */
-public abstract class AbstractTransform<InputT, InterT, OutputT> implements
+public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   Transform<WindowedValue<InputT>, WindowedValue<OutputT>> {
 
   private final TupleTag<OutputT> mainOutputTag;
@@ -60,7 +60,7 @@ public abstract class AbstractTransform<InputT, InterT, OutputT> implements
   private transient DoFnRunners.OutputManager outputManager;
 
   /**
-   * AbstractTransform constructor.
+   * AbstractDoFnTransform constructor.
    * @param doFn doFn
    * @param inputCoder input coder
    * @param outputCoders output coders
@@ -70,14 +70,14 @@ public abstract class AbstractTransform<InputT, InterT, OutputT> implements
    * @param sideInputs side inputs
    * @param options pipeline options
    */
-  public AbstractTransform(final DoFn<InterT, OutputT> doFn,
-                           final Coder<InputT> inputCoder,
-                           final Map<TupleTag<?>, Coder<?>> outputCoders,
-                           final TupleTag<OutputT> mainOutputTag,
-                           final List<TupleTag<?>> additionalOutputTags,
-                           final WindowingStrategy<?, ?> windowingStrategy,
-                           final Collection<PCollectionView<?>> sideInputs,
-                           final PipelineOptions options) {
+  public AbstractDoFnTransform(final DoFn<InterT, OutputT> doFn,
+                               final Coder<InputT> inputCoder,
+                               final Map<TupleTag<?>, Coder<?>> outputCoders,
+                               final TupleTag<OutputT> mainOutputTag,
+                               final List<TupleTag<?>> additionalOutputTags,
+                               final WindowingStrategy<?, ?> windowingStrategy,
+                               final Collection<PCollectionView<?>> sideInputs,
+                               final PipelineOptions options) {
     this.doFn = doFn;
     this.inputCoder = inputCoder;
     this.outputCoders = outputCoders;
@@ -88,23 +88,23 @@ public abstract class AbstractTransform<InputT, InterT, OutputT> implements
     this.windowingStrategy = windowingStrategy;
   }
 
-  final DoFnRunners.OutputManager getOutputManager() {
+  protected final DoFnRunners.OutputManager getOutputManager() {
     return outputManager;
   }
 
-  final WindowingStrategy getWindowingStrategy() {
+  protected final WindowingStrategy getWindowingStrategy() {
     return windowingStrategy;
   }
 
-  final SideInputReader getSideInputReader() {
+  protected final SideInputReader getSideInputReader() {
     return sideInputReader;
   }
 
-  final TupleTag<OutputT> getMainOutputTag() {
+  protected final TupleTag<OutputT> getMainOutputTag() {
     return mainOutputTag;
   }
 
-  final DoFnRunner<InterT, OutputT> getDoFnRunner() {
+  protected final DoFnRunner<InterT, OutputT> getDoFnRunner() {
     return doFnRunner;
   }
 

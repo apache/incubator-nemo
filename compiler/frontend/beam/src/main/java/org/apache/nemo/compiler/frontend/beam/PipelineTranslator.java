@@ -196,22 +196,33 @@ public final class PipelineTranslator
         pValueWithTupleTag.getKey()));
   }
 
-  private static GroupByKeyTransform createGBKTransform(
+  /**
+   * Create a group by key transform.
+   * It returns GroupByKeyAndWindowDoFnTransform if window function is not default.
+   * @param ctx translation context
+   * @param transformVertex transform vertex
+   * @return group by key transform
+   */
+  private static Transform createGBKTransform(
     final TranslationContext ctx,
     final TransformVertex transformVertex) {
     final AppliedPTransform pTransform = transformVertex.getNode().toAppliedPTransform(PIPELINE.get());
     final PCollection<?> mainInput = (PCollection<?>)
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
-    final TupleTag mainOutputTag = new TupleTag<>("main output");
+    final TupleTag mainOutputTag = new TupleTag<>();
 
-    return new GroupByKeyTransform(
-      getOutputCoders(pTransform),
-      mainOutputTag,
-      Collections.emptyList(),
-      mainInput.getWindowingStrategy(),
-      Collections.emptyList(), /* side inputs */
-      ctx.pipelineOptions,
-      SystemReduceFn.buffering(mainInput.getCoder()));
+    if (mainInput.getWindowingStrategy() == WindowingStrategy.globalDefault()) {
+      return new GroupByKeyTransform();
+    } else {
+      return new GroupByKeyAndWindowDoFnTransform(
+        getOutputCoders(pTransform),
+        mainOutputTag,
+        Collections.emptyList(),  /*  GBK does not have additional outputs */
+        mainInput.getWindowingStrategy(),
+        Collections.emptyList(), /*  GBK does not have additional side inputs */
+        ctx.pipelineOptions,
+        SystemReduceFn.buffering(mainInput.getCoder()));
+    }
   }
 
   @PrimitiveTransformTranslator(GroupByKey.class)
@@ -633,7 +644,8 @@ public final class PipelineTranslator
       if (srcTransform instanceof FlattenTransform) {
         return CommunicationPatternProperty.Value.OneToOne;
       }
-      if (dstTransform instanceof GroupByKeyTransform) {
+      if (dstTransform instanceof GroupByKeyAndWindowDoFnTransform
+        || dstTransform instanceof GroupByKeyTransform) {
         return CommunicationPatternProperty.Value.Shuffle;
       }
       if (dstTransform instanceof CreateViewTransform) {
