@@ -88,22 +88,9 @@ public final class GroupByKeyTransform<K, InputT>
 
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-    // The GroupAlsoByWindowViaWindowSetNewDoFn requires KeyedWorkItem,
-    // so we convert the KV to KeyedWorkItem
-
     final KV<K, InputT> kv = element.getValue();
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
     keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
-
-
-    /*
-    final KV<K, InputT> kv = element.getValue();
-    final KeyedWorkItem<K, InputT> keyedWorkItem =
-      KeyedWorkItems.elementsWorkItem(kv.getKey(),
-        Collections.singletonList(element.withValue(kv.getValue())));
-
-    getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
-    */
   }
 
   /**
@@ -135,6 +122,8 @@ public final class GroupByKeyTransform<K, InputT>
       final Iterable<TimerInternals.TimerData> timerData = getTimers(timerInternals);
 
       keyToValues.entrySet().stream().forEach(entry -> {
+        // The GroupAlsoByWindowViaWindowSetNewDoFn requires KeyedWorkItem,
+        // so we convert the KV to KeyedWorkItem
         final KeyedWorkItem<K, InputT> keyedWorkItem =
           KeyedWorkItems.workItem(entry.getKey(), timerData, entry.getValue());
         getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
@@ -177,33 +166,25 @@ public final class GroupByKeyTransform<K, InputT>
     return timerData;
   }
 
-  private void fireTimer(final TimerInternals.TimerData timer) {
-    System.out.println("Fire " + timer);
-    final Iterable<TimerInternals.TimerData> timers = Collections.singletonList(timer);
-    for (final K key : ((InMemoryStateInternalsFactory) stateInternalsFactory).internalsMap.keySet()) {
-      getDoFnRunner().processElement(
-        WindowedValue.valueInGlobalWindow(
-          KeyedWorkItems.timersWorkItem(key, timers)));
-    }
-  }
-
   /**
    * InMemoryStateInternalsFactory.
    */
   final class InMemoryStateInternalsFactory implements StateInternalsFactory<K> {
-
-    private final Map<K, StateInternals> internalsMap;
+    private final InMemoryStateInternals inMemoryStateInternals;
 
     InMemoryStateInternalsFactory() {
-      this.internalsMap = new HashMap<>();
+      this.inMemoryStateInternals = InMemoryStateInternals.forKey(null);
     }
 
     @Override
     public StateInternals stateInternalsForKey(final K key) {
+      return inMemoryStateInternals;
+      /*
       final StateInternals stateInternals =
         internalsMap.getOrDefault(key, InMemoryStateInternals.forKey(key));
       internalsMap.putIfAbsent(key, stateInternals);
       return stateInternals;
+      */
     }
   }
 
