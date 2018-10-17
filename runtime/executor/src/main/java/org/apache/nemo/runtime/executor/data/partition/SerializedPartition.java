@@ -97,7 +97,6 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       try {
         encoder.encode(element);
       } catch (final IOException e) {
-        e.getStackTrace();
         wrappedStream.close();
       }
     }
