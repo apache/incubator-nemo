@@ -55,7 +55,7 @@ public final class WindowedWordCountITCase {
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
         .addJobId(WindowedWordCountITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
 
     try {
