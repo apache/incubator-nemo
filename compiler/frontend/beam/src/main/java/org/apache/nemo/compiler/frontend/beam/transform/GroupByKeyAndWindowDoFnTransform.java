@@ -41,9 +41,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   private final SystemReduceFn reduceFn;
   private final Map<K, List<WindowedValue<InputT>>> keyToValues;
-
-  private transient TimerInternalsFactory timerInternalsFactory;
-  private transient StateInternalsFactory stateInternalsFactory;
+  private transient InMemoryTimerInternalsFactory timerInternalsFactory;
 
   /**
    * GroupByKey constructor.
@@ -75,11 +73,11 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   protected DoFn wrapDoFn(final DoFn doFn) {
     timerInternalsFactory = new InMemoryTimerInternalsFactory();
-    stateInternalsFactory = new InMemoryStateInternalsFactory();
+    // This function performs group by key and window operation
     return
       GroupAlsoByWindowViaWindowSetNewDoFn.create(
         getWindowingStrategy(),
-        stateInternalsFactory,
+        new InMemoryStateInternalsFactory(),
         timerInternalsFactory,
         getSideInputReader(),
         reduceFn,
@@ -100,11 +98,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   @Override
   protected void beforeClose() {
-
-    final InMemoryTimerInternalsFactory imTimerFactory =
-      (InMemoryTimerInternalsFactory) timerInternalsFactory;
-
-    final InMemoryTimerInternals timerInternals = imTimerFactory.timerInternals;
+    final InMemoryTimerInternals timerInternals = timerInternalsFactory.timerInternals;
     try {
       // Finish any pending windows by advancing the input watermark to infinity.
       timerInternals.advanceInputWatermark(BoundedWindow.TIMESTAMP_MAX_VALUE);
