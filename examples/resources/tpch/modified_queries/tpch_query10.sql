@@ -15,9 +15,6 @@ from
 where
 	c_custkey = o_custkey
 	and l_orderkey = o_orderkey
-	and o_orderdate >= '1993-07-01'
-	and o_orderdate < '1993-10-01'
-	and l_returnflag = 'R'
 	and c_nationkey = n_nationkey
 group by
 	c_custkey,

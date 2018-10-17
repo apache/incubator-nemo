@@ -4,9 +4,7 @@ select
 from
 	orders as o
 where
-	o_orderdate >= '1996-05-01'
-	and o_orderdate < '1996-08-01'
-	and exists (
+	exists (
 		select
 			*
 		from

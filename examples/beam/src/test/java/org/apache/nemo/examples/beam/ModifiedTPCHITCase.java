@@ -32,33 +32,30 @@ import java.util.Arrays;
 import java.util.Collection;
 
 /**
- * Test TPC-H program with JobLauncher.
+ * Test modified TPC-H queries.
+ * (1) Queries: 'WHERE' clauses with constant values have been removed to ensure the final query result is non-null.
+ * (2) Tables: Some rows are modified such that the results of joins are non-null.
  */
 @RunWith(PowerMockRunner.class)
 @PowerMockRunnerDelegate(Parameterized.class)
 @PrepareForTest(JobLauncher.class)
-public final class SQLTpchQueryRunnerITCase {
+public final class ModifiedTPCHITCase {
   private static final int TIMEOUT = 180000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
+  private static final String tpchTestPath = fileBasePath + "tpch/";
   private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
   private static final String tableDirectoryPath = fileBasePath + "tpch/tables/";
 
   @Parameterized.Parameters
   public static Collection<Integer> queries() {
-    return Arrays.asList(3);
-    /*
-    return Arrays.asList(3, 4, 5, 6, 10, 12, 13, 14);
-    */
+    return Arrays.asList(3, 4, 6, 10, 12, 13, 14);
   }
 
-  private final String queryFilePath;
-  private final String outputFilePath;
+  private final int queryNum;
 
-
-  public SQLTpchQueryRunnerITCase(final int queryNum) {
-    this.queryFilePath = String.format("%stpch/queries/tpch_query%d.sql", fileBasePath, queryNum);
-    this.outputFilePath = String.format("%stpch/test_output_%d", fileBasePath, queryNum);
+  public ModifiedTPCHITCase(final int queryNum) {
+    this.queryNum = queryNum;
   }
 
   @Before
@@ -71,9 +68,9 @@ public final class SQLTpchQueryRunnerITCase {
   public void tearDown() throws Exception {
     /*
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
+      ExampleTestUtil.ensureOutputValidity(tpchTestPath, getOutputFileName(), getExpectedOutputFileName());
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(tpchTestPath, getOutputFileName());
     }
     */
   }
@@ -82,9 +79,21 @@ public final class SQLTpchQueryRunnerITCase {
   public void test() throws Exception {
     JobLauncher.main(builder
       .addUserMain(TpchQueryRunner.class.getCanonicalName())
-      .addUserArgs(queryFilePath, tableDirectoryPath, outputFilePath)
-      .addJobId(SQLTpchQueryRunnerITCase.class.getSimpleName())
+      .addUserArgs(getQueryFilePath(), tableDirectoryPath, tpchTestPath + getOutputFileName())
+      .addJobId(ModifiedTPCHITCase.class.getSimpleName())
       .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
       .build());
+  }
+
+  private String getQueryFilePath() {
+    return String.format("%smodified_queries/tpch_query%d.sql", tpchTestPath, queryNum);
+  }
+
+  private String getOutputFileName() {
+    return String.format("test_output_%d_", queryNum);
+  }
+
+  private String getExpectedOutputFileName() {
+    return String.format("expected_output_%d", queryNum);
   }
 }

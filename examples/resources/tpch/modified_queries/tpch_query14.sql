@@ -9,5 +9,3 @@ from
 	part
 where
 	l_partkey = p_partkey
-	and l_shipdate >= '1995-08-01'
-	and l_shipdate < '1995-09-01'

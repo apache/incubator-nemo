@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -70,7 +71,7 @@ public final class TpchQueryRunner {
     for (final Map.Entry<String, Schema> tableSchema : hSchemas.entrySet()) {
       final String tableName = tableSchema.getKey();
       if (query.contains(tableName)) {
-        final String filePattern = inputDirectory + tableSchema.getKey() + "*";
+        final String filePattern = inputDirectory + tableSchema.getKey() + ".*";
         final PCollection<Row> table = GenericSourceSink.read(pipeline, filePattern)
           .apply("StringToRow", new TextTableProvider.CsvToRow(tableSchema.getValue(), csvFormat))
           .setCoder(tableSchema.getValue().getRowCoder())
@@ -111,7 +112,11 @@ public final class TpchQueryRunner {
 
     // Write the results.
     final PCollection<String> resultToWrite = result
-      .apply(MapElements.into(TypeDescriptors.strings()).via(input -> input.getValues().toString()));
+      .apply(MapElements.into(TypeDescriptors.strings()).via(input -> {
+        final List<String> stringRow =
+          input.getValues().stream().map(val -> val.toString()).collect(Collectors.toList());
+        return String.join("|", stringRow);
+      }));
     GenericSourceSink.write(resultToWrite, outputFilePath);
 
     // Run the pipeline.
