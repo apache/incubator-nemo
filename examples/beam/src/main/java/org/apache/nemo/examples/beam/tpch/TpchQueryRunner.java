@@ -42,19 +42,19 @@ import java.util.stream.Stream;
  * TPC-H query runner.
  * (Copied and adapted from https://github.com/apache/beam/pull/6240)
  */
-public final class Tpch {
-  private static final Logger LOG = LoggerFactory.getLogger(Tpch.class.getName());
+public final class TpchQueryRunner {
+  private static final Logger LOG = LoggerFactory.getLogger(TpchQueryRunner.class.getName());
 
   /**
    * Private Constructor.
    */
-  private Tpch() {
+  private TpchQueryRunner() {
   }
 
-  private static PCollectionTuple getHTables(final Pipeline pipeline,
-                                             final CSVFormat csvFormat,
-                                             final String inputDirectory,
-                                             final String query) {
+  private static PCollectionTuple loadTable(final Pipeline pipeline,
+                                            final CSVFormat csvFormat,
+                                            final String inputDirectory,
+                                            final String query) {
     final ImmutableMap<String, Schema> hSchemas = ImmutableMap.<String, Schema>builder()
       .put("lineitem", Schemas.LINEITEM_SCHEMA)
       .put("customer", Schemas.CUSTOMER_SCHEMA)
@@ -70,7 +70,7 @@ public final class Tpch {
     for (final Map.Entry<String, Schema> tableSchema : hSchemas.entrySet()) {
       final String tableName = tableSchema.getKey();
       if (query.contains(tableName)) {
-        final String filePattern = inputDirectory + tableSchema.getKey() + ".tbl(|*)";
+        final String filePattern = inputDirectory + tableSchema.getKey() + "*";
         final PCollection<Row> table = GenericSourceSink.read(pipeline, filePattern)
           .apply("StringToRow", new TextTableProvider.CsvToRow(tableSchema.getValue(), csvFormat))
           .setCoder(tableSchema.getValue().getRowCoder())
@@ -81,7 +81,6 @@ public final class Tpch {
     }
     return tables;
   }
-
 
   /**
    * @param args arguments.
@@ -105,7 +104,7 @@ public final class Tpch {
       .withDelimiter('|')
       .withNullString("")
       .withTrailingDelimiter();
-    final PCollectionTuple tables = getHTables(p, csvFormat, inputDirectory, queryString);
+    final PCollectionTuple tables = loadTable(p, csvFormat, inputDirectory, queryString);
 
     // Run the TPC-H query.
     final PCollection<Row> result = tables.apply(SqlTransform.query(queryString));
