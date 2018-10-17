@@ -17,6 +17,7 @@ package org.apache.nemo.examples.beam;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
+import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.apache.nemo.examples.beam.tpch.TpchQueryRunner;
 import org.junit.After;
@@ -66,13 +67,11 @@ public final class ModifiedTPCHITCase {
 
   @After
   public void tearDown() throws Exception {
-    /*
     try {
       ExampleTestUtil.ensureOutputValidity(tpchTestPath, getOutputFileName(), getExpectedOutputFileName());
     } finally {
       ExampleTestUtil.deleteOutputFile(tpchTestPath, getOutputFileName());
     }
-    */
   }
 
   @Test (timeout = TIMEOUT)
