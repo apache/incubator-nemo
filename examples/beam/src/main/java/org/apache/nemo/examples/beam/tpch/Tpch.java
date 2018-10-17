@@ -24,8 +24,6 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.*;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
@@ -35,16 +33,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static org.apache.beam.sdk.extensions.sql.impl.schema.BeamTableUtils.beamRow2CsvLine;
-
 /**
- * A simple SQL application.
+ * TPC-H query runner.
  * (Copied and adapted from https://github.com/apache/beam/pull/6240)
  */
 public final class Tpch {
@@ -56,29 +51,6 @@ public final class Tpch {
   private Tpch() {
   }
 
-  /**
-   * Row csv formats.
-   */
-  static class RowToCsv extends PTransform<PCollection<Row>, PCollection<String>> implements Serializable {
-
-    private final CSVFormat csvFormat;
-
-    RowToCsv(final CSVFormat csvFormat) {
-      this.csvFormat = csvFormat;
-    }
-
-    public CSVFormat getCsvFormat() {
-      return csvFormat;
-    }
-
-    @Override
-    public PCollection<String> expand(final PCollection<Row> input) {
-      return input.apply(
-        "rowToCsv",
-        MapElements.into(TypeDescriptors.strings()).via(row -> beamRow2CsvLine(row, csvFormat)));
-    }
-  }
-
   private static PCollectionTuple getHTables(final Pipeline pipeline,
                                              final CSVFormat csvFormat,
                                              final String inputDirectory,
@@ -87,46 +59,25 @@ public final class Tpch {
       .put("lineitem", Schemas.LINEITEM_SCHEMA)
       .put("customer", Schemas.CUSTOMER_SCHEMA)
       .put("orders", Schemas.ORDER_SCHEMA)
-
       .put("supplier", Schemas.SUPPLIER_SCHEMA)
       .put("nation", Schemas.NATION_SCHEMA)
       .put("region", Schemas.REGION_SCHEMA)
-
       .put("part", Schemas.PART_SCHEMA)
       .put("partsupp", Schemas.PARTSUPP_SCHEMA)
-      /*
-      .put("store_sales", Schemas.STORE_SALES_SCHEMA)
-      .put("catalog_sales", Schemas.CATALOG_SALES_SCHEMA)
-      .put("item", Schemas.ITEM_SCHEMA)
-      .put("date_dim", Schemas.DATE_DIM_SCHEMA)
-      .put("promotion", Schemas.PROMOTION_SCHEMA)
-      .put("customer_demographics", Schemas.CUSTOMER_DEMOGRAPHIC_SCHEMA)
-      .put("web_sales", Schemas.WEB_SALES_SCHEMA)
-      .put("inventory", Schemas.INVENTORY_SCHEMA)
-      */
       .build();
 
     PCollectionTuple tables = PCollectionTuple.empty(pipeline);
     for (final Map.Entry<String, Schema> tableSchema : hSchemas.entrySet()) {
       final String tableName = tableSchema.getKey();
-
       if (query.contains(tableName)) {
-        LOG.info("HIT: tablename {}", tableName);
-
-        final String filePattern = inputDirectory + tableSchema.getKey() + ".tbl*";
+        final String filePattern = inputDirectory + tableSchema.getKey() + ".tbl(|*)";
         final PCollection<Row> table = GenericSourceSink.read(pipeline, filePattern)
           .apply("StringToRow", new TextTableProvider.CsvToRow(tableSchema.getValue(), csvFormat))
           .setCoder(tableSchema.getValue().getRowCoder())
           .setName(tableSchema.getKey());
         tables = tables.and(new TupleTag<>(tableSchema.getKey()), table);
-
-        LOG.info("FilePattern {} / Tables {}", filePattern, tables);
+        LOG.info("Will load table {} from {}", tableName, filePattern);
       }
-
-
-
-
-
     }
     return tables;
   }
@@ -148,29 +99,23 @@ public final class Tpch {
     final Pipeline p = Pipeline.create(options);
 
     final String queryString = getQueryString(queryFilePath);
-    // Create tables
+
+    // Create tables.
     final CSVFormat csvFormat = CSVFormat.MYSQL
       .withDelimiter('|')
       .withNullString("")
       .withTrailingDelimiter();
     final PCollectionTuple tables = getHTables(p, csvFormat, inputDirectory, queryString);
 
-    // Run the TPC-H query
+    // Run the TPC-H query.
     final PCollection<Row> result = tables.apply(SqlTransform.query(queryString));
 
-    final PCollection<String> resultToWrite = result.apply(MapElements.into(TypeDescriptors.strings()).via(
-      new SerializableFunction<Row, String>() {
-        @Override
-        public String apply(final Row input) {
-          System.out.println("ROW INPUT VISITED");
-          System.out.println(input.getValues().toString());
-          return input.getValues().toString();
-        }
-      }));
-
+    // Write the results.
+    final PCollection<String> resultToWrite = result
+      .apply(MapElements.into(TypeDescriptors.strings()).via(input -> input.getValues().toString()));
     GenericSourceSink.write(resultToWrite, outputFilePath);
 
-    // Then run
+    // Run the pipeline.
     p.run();
   }
 
@@ -182,20 +127,17 @@ public final class Tpch {
       throw new RuntimeException(e);
     }
 
-    System.out.println(lines);
-
     final StringBuilder sb = new StringBuilder();
     lines.forEach(line -> {
       sb.append(" ");
       sb.append(line);
     });
-
     final String concate = sb.toString();
-    System.out.println(concate);
+
     final String cleanOne = concate.replaceAll("\n", " ");
-    System.out.println(cleanOne);
     final String cleanTwo = cleanOne.replaceAll("\t", " ");
-    System.out.println(cleanTwo);
+
+    LOG.info("Will execute SQL file {} with query: {}", queryFilePath, cleanTwo);
 
     return cleanTwo;
   }
