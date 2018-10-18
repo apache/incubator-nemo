@@ -16,8 +16,11 @@
 package org.apache.nemo.compiler.frontend.beam;
 
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.Row;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.beam.sdk.values.KV;
+
+import java.util.Arrays;
 
 /**
  * Extracts the key from a KV element.
@@ -31,7 +34,14 @@ final class BeamKeyExtractor implements KeyExtractor {
     if (value instanceof KV) {
       // Handle null keys, since Beam allows KV with null keys.
       final Object key = ((KV) value).getKey();
-      return key == null ? 0 : key;
+      if (key == null) {
+        return 0;
+      } else if (key instanceof Row) {
+        // TODO #223: Use Row.hashCode in BeamKeyExtractor
+        return Arrays.hashCode(((Row) key).getValues().toArray());
+      } else {
+        return key;
+      }
     } else {
       return element;
     }

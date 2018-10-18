@@ -48,8 +48,9 @@ public final class ModifiedTPCHITCase {
   private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
   private static final String tableDirectoryPath = fileBasePath + "tpch/tables/";
 
-  @Parameterized.Parameters
+  @Parameterized.Parameters(name = "Query{0}")
   public static Collection<Integer> queries() {
+    // return Arrays.asList(12);
     return Arrays.asList(3, 4, 6, 10, 12, 13, 14);
   }
 
@@ -67,13 +68,11 @@ public final class ModifiedTPCHITCase {
 
   @After
   public void tearDown() throws Exception {
-    /*
     try {
       ExampleTestUtil.ensureSQLOutputValidity(tpchTestPath, getOutputFileName(), getExpectedOutputFileName());
     } finally {
       ExampleTestUtil.deleteOutputFile(tpchTestPath, getOutputFileName());
     }
-    */
   }
 
   @Test (timeout = TIMEOUT)
@@ -81,7 +80,7 @@ public final class ModifiedTPCHITCase {
     JobLauncher.main(builder
       .addUserMain(TpchQueryRunner.class.getCanonicalName())
       .addUserArgs(getQueryFilePath(), tableDirectoryPath, tpchTestPath + getOutputFileName())
-      .addJobId(ModifiedTPCHITCase.class.getSimpleName())
+      .addJobId(ModifiedTPCHITCase.class.getSimpleName() + "-Query" + queryNum)
       .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
       .build());
   }

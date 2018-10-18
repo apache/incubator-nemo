@@ -29,7 +29,8 @@ import java.util.stream.Stream;
  * Test Utils for Examples.
  */
 public final class ExampleTestUtil {
-  private static final Double ERROR = 1e-8;
+  private static final Double ERROR_ALS = 1e-8;
+  private static final Double ERROR_SQL = 1e-2;
   /**
    * Private constructor.
    */
@@ -48,9 +49,9 @@ public final class ExampleTestUtil {
                                           final String outputFileName,
                                           final String expectedFileName) throws IOException {
     final String testOutput =
-      getSortedLineStream(resourcePath, outputFileName).reduce("", (p, q) -> (p + "\n" + q));
+      getSortedLineStream(resourcePath, outputFileName, false).reduce("", (p, q) -> (p + "\n" + q));
     final String expectedOutput =
-      getSortedLineStream(resourcePath, expectedFileName).reduce("", (p, q) -> (p + "\n" + q));
+      getSortedLineStream(resourcePath, expectedFileName, true).reduce("", (p, q) -> (p + "\n" + q));
     if (!testOutput.equals(expectedOutput)) {
       final String outputMsg =
         "Test output mismatch while comparing [" + outputFileName + "] from [" + expectedFileName + "] under "
@@ -78,13 +79,13 @@ public final class ExampleTestUtil {
   public static void ensureALSOutputValidity(final String resourcePath,
                                              final String outputFileName,
                                              final String expectedFileName) throws IOException {
-    final List<List<Double>> testOutput = getSortedLineStream(resourcePath, outputFileName)
+    final List<List<Double>> testOutput = getSortedLineStream(resourcePath, outputFileName, false)
       .filter(line -> !line.trim().equals(""))
       .map(line -> Arrays.asList(line.split("\\s*,\\s*"))
         .stream().map(s -> Double.valueOf(s)).collect(Collectors.toList()))
       .collect(Collectors.toList());
 
-    final List<List<Double>> expectedOutput = getSortedLineStream(resourcePath, expectedFileName)
+    final List<List<Double>> expectedOutput = getSortedLineStream(resourcePath, expectedFileName, true)
       .filter(line -> !line.trim().equals(""))
       .map(line -> Arrays.asList(line.split("\\s*,\\s*"))
         .stream().map(s -> Double.valueOf(s)).collect(Collectors.toList()))
@@ -98,7 +99,7 @@ public final class ExampleTestUtil {
       for (int j = 0; j < testOutput.get(i).size(); j++) {
         final Double testElement = testOutput.get(i).get(j);
         final Double expectedElement = expectedOutput.get(i).get(j);
-        if (Math.abs(testElement - expectedElement) / expectedElement > ERROR) {
+        if (Math.abs(testElement - expectedElement) / expectedElement > ERROR_ALS) {
           throw new RuntimeException("output mismatch");
         }
       }
@@ -108,11 +109,11 @@ public final class ExampleTestUtil {
   public static void ensureSQLOutputValidity(final String resourcePath,
                                              final String outputFileName,
                                              final String expectedFileName) throws IOException {
-    final List<List<String>> testOutput = getSortedLineStream(resourcePath, outputFileName)
+    final List<List<String>> testOutput = getSortedLineStream(resourcePath, outputFileName, false)
       .map(line -> Arrays.asList(line.split("\\|")))
       .collect(Collectors.toList());
 
-    final List<List<String>> expectedOutput = getSortedLineStream(resourcePath, expectedFileName)
+    final List<List<String>> expectedOutput = getSortedLineStream(resourcePath, expectedFileName, true)
       .map(line -> Arrays.asList(line.split("\\|")))
       .collect(Collectors.toList());
 
@@ -129,7 +130,7 @@ public final class ExampleTestUtil {
           // This element is double: Account for floating errors
           final double testElementDouble = Double.valueOf(testElement);
           final double expectedElementDouble = Double.valueOf(expectedElement);
-          if (Math.abs(testElementDouble - expectedElementDouble) / expectedElementDouble > ERROR) {
+          if (Math.abs(testElementDouble - expectedElementDouble) / expectedElementDouble > ERROR_SQL) {
             throw new RuntimeException(testElement + " is not " + expectedElement);
           }
         } catch (NumberFormatException e) {
@@ -162,21 +163,31 @@ public final class ExampleTestUtil {
     }
   }
 
-  private static Stream<String> getSortedLineStream(final String directory, final String fileNameStartsWith) {
+  private static Stream<String> getSortedLineStream(final String directory,
+                                                    final String fileName,
+                                                    final boolean isExactMatch) {
     try {
-      return Files.list(Paths.get(directory))
-        .filter(Files::isRegularFile)
-        .filter(path -> path.getFileName().toString().startsWith(fileNameStartsWith))
-        .flatMap(path -> {
-          try {
-            return Files.lines(path);
-          } catch (final IOException e) {
-            throw new RuntimeException(e);
-          }
-        })
-        .sorted();
+      final Stream<Path> files;
+      if (isExactMatch) {
+        files = Files.list(Paths.get(directory))
+          .filter(Files::isRegularFile)
+          .filter(path -> path.getFileName().toString().equals(fileName));
+      } else {
+        files = Files.list(Paths.get(directory))
+          .filter(Files::isRegularFile)
+          .filter(path -> path.getFileName().toString().startsWith(fileName));
+      }
+
+      return files.flatMap(file -> {
+        try {
+          return Files.lines(file);
+        } catch (final IOException e) {
+          throw new RuntimeException(e);
+        }
+      }).sorted();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+
   }
 }
