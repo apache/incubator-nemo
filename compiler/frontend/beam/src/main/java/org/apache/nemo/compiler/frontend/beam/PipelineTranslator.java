@@ -16,6 +16,7 @@
 package org.apache.nemo.compiler.frontend.beam;
 
 import com.google.common.collect.Iterables;
+import org.apache.beam.runners.core.SystemReduceFn;
 import org.apache.beam.runners.core.construction.ParDoTranslation;
 import org.apache.beam.runners.core.construction.TransformInputs;
 import org.apache.beam.sdk.Pipeline;
@@ -48,10 +49,7 @@ import java.io.IOException;
 import java.lang.annotation.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -198,11 +196,40 @@ public final class PipelineTranslator
         pValueWithTupleTag.getKey()));
   }
 
+  /**
+   * Create a group by key transform.
+   * It returns GroupByKeyAndWindowDoFnTransform if window function is not default.
+   * @param ctx translation context
+   * @param transformVertex transform vertex
+   * @return group by key transform
+   */
+  private static Transform createGBKTransform(
+    final TranslationContext ctx,
+    final TransformVertex transformVertex) {
+    final AppliedPTransform pTransform = transformVertex.getNode().toAppliedPTransform(PIPELINE.get());
+    final PCollection<?> mainInput = (PCollection<?>)
+      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+    final TupleTag mainOutputTag = new TupleTag<>();
+
+    if (mainInput.getWindowingStrategy() == WindowingStrategy.globalDefault()) {
+      return new GroupByKeyTransform();
+    } else {
+      return new GroupByKeyAndWindowDoFnTransform(
+        getOutputCoders(pTransform),
+        mainOutputTag,
+        Collections.emptyList(),  /*  GBK does not have additional outputs */
+        mainInput.getWindowingStrategy(),
+        Collections.emptyList(), /*  GBK does not have additional side inputs */
+        ctx.pipelineOptions,
+        SystemReduceFn.buffering(mainInput.getCoder()));
+    }
+  }
+
   @PrimitiveTransformTranslator(GroupByKey.class)
   private static void groupByKeyTranslator(final TranslationContext ctx,
                                            final PrimitiveTransformVertex transformVertex,
                                            final GroupByKey<?, ?> transform) {
-    final IRVertex vertex = new OperatorVertex(new GroupByKeyTransform());
+    final IRVertex vertex = new OperatorVertex(createGBKTransform(ctx, transformVertex));
     ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
@@ -297,7 +324,7 @@ public final class PipelineTranslator
       // Attempt to translate the CompositeTransform again.
       // Add GroupByKey, which is the first transform in the given CompositeTransform.
       // Make sure it consumes the output from the last vertex in OneToOneEdge-translated hierarchy.
-      final IRVertex groupByKeyIRVertex = new OperatorVertex(new GroupByKeyTransform());
+      final IRVertex groupByKeyIRVertex = new OperatorVertex(createGBKTransform(ctx, transformVertex));
       ctx.addVertex(groupByKeyIRVertex);
       last.getNode().getOutputs().values().forEach(outputFromCombiner
           -> ctx.addEdgeTo(groupByKeyIRVertex, outputFromCombiner));
@@ -617,7 +644,8 @@ public final class PipelineTranslator
       if (srcTransform instanceof FlattenTransform) {
         return CommunicationPatternProperty.Value.OneToOne;
       }
-      if (dstTransform instanceof GroupByKeyTransform) {
+      if (dstTransform instanceof GroupByKeyAndWindowDoFnTransform
+        || dstTransform instanceof GroupByKeyTransform) {
         return CommunicationPatternProperty.Value.Shuffle;
       }
       if (dstTransform instanceof CreateViewTransform) {
