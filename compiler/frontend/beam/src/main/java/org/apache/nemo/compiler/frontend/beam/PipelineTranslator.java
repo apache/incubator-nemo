@@ -33,6 +33,7 @@ import org.apache.nemo.compiler.frontend.beam.PipelineVisitor.*;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
 import org.apache.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
+import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.*;
 import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.io.Read;
@@ -116,6 +117,16 @@ public final class PipelineTranslator
         }
       }
     }
+  }
+
+  @PrimitiveTransformTranslator(Read.Unbounded.class)
+  private static void unboundedReadTranslator(final TranslationContext ctx,
+                                              final PrimitiveTransformVertex transformVertex,
+                                              final Read.Unbounded<?> transform) {
+    final IRVertex vertex = new BeamUnboundedSourceVertex<>(transform.getSource());
+    ctx.addVertex(vertex);
+    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
+    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
   @PrimitiveTransformTranslator(Read.Bounded.class)
