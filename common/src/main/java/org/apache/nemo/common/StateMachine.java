@@ -49,15 +49,8 @@ public final class StateMachine {
    */
   public synchronized void checkState(final Enum expectedCurrentState) {
     if (!currentState.stateEnum.equals(expectedCurrentState)) {
-      final String exceptionMessage = new StringBuilder()
-          .append("The expected current state is ")
-          .append(expectedCurrentState)
-          .append(" but the actual state is ")
-          .append(currentState).append('\n')
-          .append(getPossibleTransitionsFromCurrentState())
-          .toString();
-
-      throw new IllegalStateException(exceptionMessage);
+      throw new IllegalStateException(String.format("The expected state is %s but the actual state is %s\n%s",
+        expectedCurrentState, currentState, getPossibleTransitionsFromCurrentState()));
     }
   }
 
@@ -75,14 +68,8 @@ public final class StateMachine {
 
     final State toState = stateMap.get(state);
     if (!currentState.isLegalTransition(state)) {
-      final String exceptionMessage = new StringBuilder()
-          .append("Illegal transition from ")
-          .append(currentState)
-          .append(" to ")
-          .append(toState).append('\n')
-          .append(getPossibleTransitionsFromCurrentState())
-          .toString();
-      throw new IllegalStateTransitionException(new Exception(exceptionMessage));
+      throw new IllegalStateTransitionException(new Exception(String.format("Illegal transition from %s to %s\n%s",
+        currentState, toState, getPossibleTransitionsFromCurrentState())));
     }
 
     currentState = toState;

@@ -18,21 +18,17 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 
-import java.util.ArrayList;
-
 /**
  * Flatten transform implementation.
  * @param <T> input/output type.
  */
 public final class FlattenTransform<T> implements Transform<T, T> {
-  private final ArrayList<T> collectedElements;
   private OutputCollector<T> outputCollector;
 
   /**
    * FlattenTransform Constructor.
    */
   public FlattenTransform() {
-    this.collectedElements = new ArrayList<>();
   }
 
   @Override
@@ -42,13 +38,11 @@ public final class FlattenTransform<T> implements Transform<T, T> {
 
   @Override
   public void onData(final T element) {
-    collectedElements.add(element);
+    outputCollector.emit(element);
   }
 
   @Override
   public void close() {
-    collectedElements.forEach(outputCollector::emit);
-    collectedElements.clear();
   }
 
   @Override

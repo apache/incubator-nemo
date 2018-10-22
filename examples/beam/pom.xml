@@ -46,6 +46,11 @@ limitations under the License.
             <version>${beam.version}</version>
         </dependency>
         <dependency>
+          <groupId>org.apache.beam</groupId>
+          <artifactId>beam-sdks-java-extensions-sql</artifactId>
+          <version>${beam.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-mapreduce-client-core</artifactId>
             <version>${hadoop.version}</version>

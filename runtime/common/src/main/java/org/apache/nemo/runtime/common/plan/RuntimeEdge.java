@@ -15,6 +15,8 @@
  */
 package org.apache.nemo.runtime.common.plan;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
@@ -70,11 +72,10 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
    */
   @Override
   @SuppressWarnings("checkstyle:designforextension")
-  public String propertiesToJSON() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("{\"runtimeEdgeId\": \"").append(getId());
-    sb.append("\", \"executionProperties\": ").append(executionProperties);
-    sb.append("}");
-    return sb.toString();
+  public ObjectNode getPropertiesAsJsonNode() {
+    final ObjectNode node = JsonNodeFactory.instance.objectNode();
+    node.put("runtimeEdgeId", getId());
+    node.set("executionProperties", executionProperties.asJsonNode());
+    return node;
   }
 }

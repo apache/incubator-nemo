@@ -15,6 +15,8 @@
  */
 package org.apache.nemo.compiler.frontend.beam.source;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
 
 import java.io.IOException;
@@ -34,7 +36,7 @@ import org.slf4j.LoggerFactory;
  * SourceVertex implementation for BoundedSource.
  * @param <O> output type.
  */
-public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
+public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue<O>> {
   private static final Logger LOG = LoggerFactory.getLogger(BeamBoundedSourceVertex.class.getName());
   private BoundedSource<O> source;
   private final String sourceDescription;
@@ -67,8 +69,8 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
   }
 
   @Override
-  public List<Readable<O>> getReadables(final int desiredNumOfSplits) throws Exception {
-    final List<Readable<O>> readables = new ArrayList<>();
+  public List<Readable<WindowedValue<O>>> getReadables(final int desiredNumOfSplits) throws Exception {
+    final List<Readable<WindowedValue<O>>> readables = new ArrayList<>();
     LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
     LOG.info("desired: {}", desiredNumOfSplits);
     source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null)
@@ -82,21 +84,17 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
   }
 
   @Override
-  public String propertiesToJSON() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("{");
-    sb.append(irVertexPropertiesToString());
-    sb.append(", \"source\": \"");
-    sb.append(sourceDescription);
-    sb.append("\"}");
-    return sb.toString();
+  public ObjectNode getPropertiesAsJsonNode() {
+    final ObjectNode node = getIRVertexPropertiesAsJsonNode();
+    node.put("source", sourceDescription);
+    return node;
   }
 
   /**
    * BoundedSourceReadable class.
    * @param <T> type.
    */
-  private static final class BoundedSourceReadable<T> implements Readable<T> {
+  private static final class BoundedSourceReadable<T> implements Readable<WindowedValue<T>> {
     private final BoundedSource<T> boundedSource;
 
     /**
@@ -108,11 +106,29 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
     }
 
     @Override
-    public Iterable<T> read() throws IOException {
-      final ArrayList<T> elements = new ArrayList<>();
+    public Iterable<WindowedValue<T>> read() throws IOException {
+      boolean started = false;
+      boolean windowed = false;
+
+      final ArrayList<WindowedValue<T>> elements = new ArrayList<>();
       try (BoundedSource.BoundedReader<T> reader = boundedSource.createReader(null)) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
-          elements.add(reader.getCurrent());
+          final T elem = reader.getCurrent();
+
+          // Check whether the element is windowed or not
+          // We only have to check the first element.
+          if (!started) {
+            started = true;
+            if (elem instanceof WindowedValue) {
+              windowed = true;
+            }
+          }
+
+          if (!windowed) {
+            elements.add(WindowedValue.valueInGlobalWindow(reader.getCurrent()));
+          } else {
+            elements.add((WindowedValue<T>) elem);
+          }
         }
       }
       return elements;

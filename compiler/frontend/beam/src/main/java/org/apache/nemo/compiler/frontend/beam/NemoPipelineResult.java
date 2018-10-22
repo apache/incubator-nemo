@@ -21,7 +21,6 @@ import org.apache.beam.sdk.metrics.MetricResults;
 import org.joda.time.Duration;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Beam result.
@@ -47,12 +46,18 @@ public final class NemoPipelineResult extends ClientEndpoint implements Pipeline
 
   @Override
   public State waitUntilFinish(final Duration duration) {
-    return (State) super.waitUntilJobFinish(duration.getMillis(), TimeUnit.MILLISECONDS);
+    throw new UnsupportedOperationException();
+    // TODO #208: NemoPipelineResult#waitUntilFinish hangs
+    // Previous code that hangs the job:
+    // return (State) super.waitUntilJobFinish(duration.getMillis(), TimeUnit.MILLISECONDS);
   }
 
   @Override
   public State waitUntilFinish() {
-    return (State) super.waitUntilJobFinish();
+    throw new UnsupportedOperationException();
+    // TODO #208: NemoPipelineResult#waitUntilFinish hangs
+    // Previous code that hangs the job:
+    // return (State) super.waitUntilJobFinish();
   }
 
   @Override
