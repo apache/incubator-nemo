@@ -56,10 +56,18 @@ public final class PipeManagerWorker extends  {
 
   //////////////////////////////////////////////////////////// Main public methods
 
-  public void write(final String runtimeEdgeId, final int producerTaskIndex, final Object element) {
-    // TODO: Sender just sends XX assuming that receivers are there waiting
+  public void write(final String runtimeEdgeId,
+                    final int producerTaskIndex,
+                    final Object element,
+                    final int destIndex) {
+    // TODO: Get the proper 'Pipe' ByteOutputStream (the one that was saved)
+    outputStream = savedOnes.get(destIndex) (list indices)
 
+    // TODO: Writes and flushes (element-wise)
+    outputStream.write(element);
+  }
 
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> readPipe(final String runtimeEdgeId) {
     // (1) Get locations of destination tasks
     // PipeManagerMaster
     // Send runtimeEdgeId
@@ -84,28 +92,15 @@ public final class PipeManagerWorker extends  {
         return responseFromMasterFuture;
       });
 
-    // (2) partitioning (in outputwriter?)
-    final PartitionerProperty.Value partitionerPropertyValue =
-      runtimeEdge.getPropertyValue(PartitionerProperty.class).
-        orElseThrow(() -> new RuntimeException("No partitioner property on the edge"));
-    final Partitioner partitioner;
-    final int dstTaskIndex = (Integer) partitioner.partition(element);
-
-    // (3) Write to dst tasks
-    // TODO: reuse transfer context?
     // RuntimeEdgeId+X ==> ByteOutputContext
     final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.newBuilder()
       .setRuntimeEdgeId(runtimeEdgeId)
       .build();
+
     final CompletableFuture<ByteOutputContext> outputContext =
       byteTransfer.newOutputContext(targetExecutorId, descriptor.toByteArray());
     final ByteOutputContext.ByteOutputStream outputStream = contextFuture.get().newOutputStream();
 
-    // Writes and flushes (element-wise)
-    outputStream.write(element);
-  }
-
-  public CompletableFuture<DataUtil.IteratorWithNumBytes> readPipe(final String runtimeEdgeId) {
     // Wait for onInputContext...?
     return contextFuture
       .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),

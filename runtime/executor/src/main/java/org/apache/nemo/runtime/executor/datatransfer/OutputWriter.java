@@ -20,10 +20,7 @@ import org.apache.nemo.common.exception.*;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
-import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
-import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.partitioner.*;
 
 import java.util.*;
@@ -31,36 +28,25 @@ import java.util.*;
 /**
  * Represents the output data transfer from a task.
  */
-public final class OutputWriter extends DataTransfer implements AutoCloseable {
-  private final RuntimeEdge<?> runtimeEdge;
-  private final IRVertex dstIrVertex;
-  private final DataStoreProperty.Value blockStoreValue;
-  private final BlockManagerWorker blockManagerWorker;
-  private final boolean nonDummyBlock;
-  private final Block blockToWrite;
-  private long writtenBytes;
-  private Partitioner partitioner;
+public abstract class OutputWriter extends DataTransfer implements AutoCloseable {
+  final RuntimeEdge<?> runtimeEdge;
+  final IRVertex dstIrVertex;
+  long writtenBytes;
+  Partitioner partitioner;
 
   /**
    * Constructor.
    *
    * @param hashRangeMultiplier the {@link org.apache.nemo.conf.JobConf.HashRangeMultiplier}.
-   * @param srcTaskId           the id of the source task.
    * @param dstIrVertex         the destination IR vertex.
    * @param runtimeEdge         the {@link RuntimeEdge}.
-   * @param blockManagerWorker  the {@link BlockManagerWorker}.
    */
   OutputWriter(final int hashRangeMultiplier,
-               final String srcTaskId,
                final IRVertex dstIrVertex,
-               final RuntimeEdge<?> runtimeEdge,
-               final BlockManagerWorker blockManagerWorker) {
+               final RuntimeEdge<?> runtimeEdge) {
     super(runtimeEdge.getId());
     this.runtimeEdge = runtimeEdge;
     this.dstIrVertex = dstIrVertex;
-    this.blockManagerWorker = blockManagerWorker;
-    this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class).
-        orElseThrow(() -> new RuntimeException("No data store property on the edge"));
 
     // Setup partitioner
     final int dstParallelism = dstIrVertex.getPropertyValue(ParallelismProperty.class).
@@ -88,13 +74,6 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
         throw new UnsupportedPartitionerException(
             new Throwable("Partitioner " + partitionerPropertyValue + " is not supported."));
     }
-    blockToWrite = blockManagerWorker.createBlock(
-        RuntimeIdManager.generateBlockId(getId(), srcTaskId), blockStoreValue);
-    final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
-        runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
-    nonDummyBlock = !duplicateDataProperty.isPresent()
-        || duplicateDataProperty.get().getRepresentativeEdgeId().equals(runtimeEdge.getId())
-        || duplicateDataProperty.get().getGroupSize() <= 1;
   }
 
   /**
@@ -102,41 +81,12 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    *
    * @param element the element to write.
    */
-  public void write(final Object element) {
-    if (nonDummyBlock) {
-      blockToWrite.write(partitioner.partition(element), element);
-
-      final DedicatedKeyPerElement dedicatedKeyPerElement =
-          partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
-      if (dedicatedKeyPerElement != null) {
-        blockToWrite.commitPartitions();
-      }
-    } // If else, does not need to write because the data is duplicated.
-  }
+  public abstract void write(final Object element);
 
   /**
-   * Notifies that all writes for a block is end.
-   * Further write about a committed block will throw an exception.
+   * Notifies that all writes are done.
    */
-  public void close() {
-    // Commit block.
-    final DataPersistenceProperty.Value persistence =
-        runtimeEdge.getPropertyValue(DataPersistenceProperty.class).
-            orElseThrow(() -> new RuntimeException("No data persistence property on the edge"));
-
-    final Optional<Map<Integer, Long>> partitionSizeMap = blockToWrite.commit();
-    // Return the total size of the committed block.
-    if (partitionSizeMap.isPresent()) {
-      long blockSizeTotal = 0;
-      for (final long partitionSize : partitionSizeMap.get().values()) {
-        blockSizeTotal += partitionSize;
-      }
-      this.writtenBytes = blockSizeTotal;
-    } else {
-      this.writtenBytes = -1; // no written bytes info.
-    }
-    blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, getExpectedRead(), persistence);
-  }
+  public abstract void close();
 
   /**
    * @return the total written bytes.
@@ -155,7 +105,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    *
    * @return the expected number of data read.
    */
-  private int getExpectedRead() {
+  protected int getExpectedRead() {
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     final int duplicatedDataMultiplier =
