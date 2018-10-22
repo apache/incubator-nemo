@@ -45,9 +45,9 @@ public abstract class InputReader extends DataTransfer {
   final IRVertex srcVertex;
   final RuntimeEdge runtimeEdge;
 
-  public InputReader(final int dstTaskIndex,
-                     final IRVertex srcVertex,
-                     final RuntimeEdge runtimeEdge) {
+  InputReader(final int dstTaskIndex,
+              final IRVertex srcVertex,
+              final RuntimeEdge runtimeEdge) {
     super(runtimeEdge.getId());
     this.dstTaskIndex = dstTaskIndex;
     this.srcVertex = srcVertex;

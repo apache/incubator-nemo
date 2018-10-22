@@ -28,7 +28,7 @@ import java.util.*;
 /**
  * Represents the output data transfer from a task.
  */
-public abstract class OutputWriter extends DataTransfer implements AutoCloseable {
+abstract class OutputWriter extends DataTransfer implements AutoCloseable {
   final RuntimeEdge<?> runtimeEdge;
   final IRVertex dstIrVertex;
   long writtenBytes;

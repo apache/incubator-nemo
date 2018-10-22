@@ -55,9 +55,9 @@ public final class IntermediateDataIOFactory {
                                    final IRVertex dstIRVertex,
                                    final RuntimeEdge<?> runtimeEdge) {
     if (isStreaming(runtimeEdge)) {
-      return new OutputWriter(pipeManagerWorker)
+      return new PipeOutputWriter(pipeManagerWorker);
     } else {
-      return new BlockInputReader(hashRangeMultiplier, srcTaskId, dstIRVertex, runtimeEdge, blockManagerWorker);
+      return new BlockOutputWriter(hashRangeMultiplier, srcTaskId, dstIRVertex, runtimeEdge, blockManagerWorker);
     }
   }
 
@@ -73,9 +73,9 @@ public final class IntermediateDataIOFactory {
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge) {
     if (isStreaming(runtimeEdge)) {
-      return new InputReader(pipeManagerWorker)
+      return new PipeInputReader(pipeManagerWorker);
     } else {
-      return new InputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
+      return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
     }
   }
 

@@ -68,9 +68,7 @@ public final class PipeManagerWorker extends  {
   }
 
   public CompletableFuture<DataUtil.IteratorWithNumBytes> readPipe(final String runtimeEdgeId) {
-    // (1) Get locations of destination tasks
-    // PipeManagerMaster
-    // Send runtimeEdgeId
+    // TODO: Get locations
     final CompletableFuture<ControlMessage.Message> pipeLocationFuture =
       pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {
         // Ask Master for the location.
@@ -92,28 +90,9 @@ public final class PipeManagerWorker extends  {
         return responseFromMasterFuture;
       });
 
-    // RuntimeEdgeId+X ==> ByteOutputContext
-    final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.newBuilder()
-      .setRuntimeEdgeId(runtimeEdgeId)
-      .build();
-
-    final CompletableFuture<ByteOutputContext> outputContext =
-      byteTransfer.newOutputContext(targetExecutorId, descriptor.toByteArray());
-    final ByteOutputContext.ByteOutputStream outputStream = contextFuture.get().newOutputStream();
-
-    // Wait for onInputContext...?
+    // TODO: Connect to the executor and get iterator.
     return contextFuture
       .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
         serializerManager.getSerializer(runtimeEdgeId)));
-  }
-
-  public void onInputContext(final ByteInputContext inputContext) {
-    // TODO: Receiver waits for sth that may have not come yet.
-    final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.PARSER
-      .parseFrom(outputContext.getContextDescriptor());
-    descriptor.getBlockId(); // Exact destination and stuff
-    descriptor.getRuntimeEdgeId();
-    inputContext.getContextDescriptor()
-    inputContext.getInputStreams();
   }
 }
