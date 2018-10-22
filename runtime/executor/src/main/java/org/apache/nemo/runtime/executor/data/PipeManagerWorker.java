@@ -45,6 +45,8 @@ public final class PipeManagerWorker extends  {
   // To-Executor connections
   private final ByteTransfer byteTransfer;
 
+  private final SavedConnections savedConnections;
+
   @Inject
   private PipeManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                             final ByteTransfer byteTransfer,
@@ -67,7 +69,7 @@ public final class PipeManagerWorker extends  {
     outputStream.write(element);
   }
 
-  public CompletableFuture<DataUtil.IteratorWithNumBytes> readPipe(final String runtimeEdgeId) {
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final String runtimeEdgeId) {
     // TODO: Get locations
     final CompletableFuture<ControlMessage.Message> pipeLocationFuture =
       pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {

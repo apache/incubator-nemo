@@ -16,6 +16,7 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -24,25 +25,28 @@ import java.util.concurrent.CompletableFuture;
  * Represents the input data transfer to a task.
  */
 public final class PipeInputReader extends InputReader {
-  public PipeInputReader() {
+  final PipeManagerWorker pipeManagerWorker;
+
+  public PipeInputReader(final PipeManagerWorker pipeManagerWorker) {
     super();
+    this.pipeManagerWorker = pipeManagerWorker;
   }
 
   @Override
   CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
     // read one pipe
-    pipeManagerWorker.readPipe();
+    pipeManagerWorker.read();
   }
 
   @Override
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
     // read many broadcast pipes
-    pipeManagerWorker.readPipe();
+    pipeManagerWorker.read();
   }
 
   @Override
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
     // read many shuffle pipes
-    pipeManagerWorker.readPipe();
+    pipeManagerWorker.read();
   }
 }

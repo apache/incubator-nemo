@@ -67,6 +67,7 @@ public final class BlockOutputWriter extends OutputWriter {
    *
    * @param element the element to write.
    */
+  @Override
   public void write(final Object element) {
     if (nonDummyBlock) {
       blockToWrite.write(partitioner.partition(element), element);
@@ -83,6 +84,7 @@ public final class BlockOutputWriter extends OutputWriter {
    * Notifies that all writes for a block is end.
    * Further write about a committed block will throw an exception.
    */
+  @Override
   public void close() {
     // Commit block.
     final DataPersistenceProperty.Value persistence =

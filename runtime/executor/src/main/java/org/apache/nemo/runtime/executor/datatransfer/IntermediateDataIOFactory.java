@@ -55,7 +55,7 @@ public final class IntermediateDataIOFactory {
                                    final IRVertex dstIRVertex,
                                    final RuntimeEdge<?> runtimeEdge) {
     if (isStreaming(runtimeEdge)) {
-      return new PipeOutputWriter(pipeManagerWorker);
+      return new PipeOutputWriter(hashRangeMultiplier, srcTaskId, dstIRVertex, runtimeEdge, pipeManagerWorker);
     } else {
       return new BlockOutputWriter(hashRangeMultiplier, srcTaskId, dstIRVertex, runtimeEdge, blockManagerWorker);
     }

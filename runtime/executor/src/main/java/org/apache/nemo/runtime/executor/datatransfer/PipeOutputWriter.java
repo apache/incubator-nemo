@@ -25,6 +25,8 @@ import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
  */
 public final class PipeOutputWriter extends OutputWriter {
   private final PipeManagerWorker pipeManagerWorker;
+  private final String srcTaskId;
+  private final RuntimeEdge runtimeEdge;
 
   /**
    * Constructor.
@@ -41,18 +43,22 @@ public final class PipeOutputWriter extends OutputWriter {
                    final RuntimeEdge<?> runtimeEdge,
                    final PipeManagerWorker pipeManagerWorker) {
     super(hashRangeMultiplier, dstIrVertex, runtimeEdge);
+    this.pipeManagerWorker = pipeManagerWorker;
+    this.srcTaskId = srcTaskId;
+    this.runtimeEdge = runtimeEdge;
   }
 
   /**
    * Writes output element depending on the communication pattern of the edge.
    * @param element the element to write.
    */
+  @Override
   public void write(final Object element) {
-    final Object index = partitioner.partition(element);
-
-    pipeManagerWorker.write(index);
+    final int index = (Integer) partitioner.partition(element);
+    pipeManagerWorker.write(runtimeEdge.getId(), srcTaskId, element, index);
   }
 
+  @Override
   public void close() {
     // Assume this never stops.
   }
