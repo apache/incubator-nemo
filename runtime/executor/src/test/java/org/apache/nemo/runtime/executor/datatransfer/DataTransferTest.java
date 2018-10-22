@@ -45,7 +45,6 @@ import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.master.*;
 import org.apache.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
-import org.apache.beam.sdk.values.KV;
 import org.apache.commons.io.FileUtils;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;
@@ -66,7 +65,6 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -113,7 +111,7 @@ public final class DataTransferTest {
 
   private BlockManagerMaster master;
   private BlockManagerWorker worker1;
-  private DataTransferFactory transferFactory;
+  private IntermediateDataIOFactory transferFactory;
   private BlockManagerWorker worker2;
   private HashMap<BlockManagerWorker, SerializerManager> serializerManagers = new HashMap<>();
 
@@ -144,7 +142,7 @@ public final class DataTransferTest {
     nameClientInjector.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
 
     this.master = master;
-    final Pair<BlockManagerWorker, DataTransferFactory> pair1 = createWorker(
+    final Pair<BlockManagerWorker, IntermediateDataIOFactory> pair1 = createWorker(
         EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector, nameClientInjector);
     this.worker1 = pair1.left();
     this.transferFactory = pair1.right();
@@ -158,7 +156,7 @@ public final class DataTransferTest {
     FileUtils.deleteDirectory(new File(TMP_REMOTE_FILE_DIRECTORY));
   }
 
-  private Pair<BlockManagerWorker, DataTransferFactory> createWorker(
+  private Pair<BlockManagerWorker, IntermediateDataIOFactory> createWorker(
       final String executorId,
       final Injector dispatcherInjector,
       final Injector nameClientInjector) throws InjectionException {
@@ -177,12 +175,12 @@ public final class DataTransferTest {
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_REMOTE_FILE_DIRECTORY);
     final BlockManagerWorker blockManagerWorker;
     final SerializerManager serializerManager;
-    final DataTransferFactory dataTransferFactory;
+    final IntermediateDataIOFactory intermediateDataIOFactory;
     try {
       blockManagerWorker = injector.getInstance(BlockManagerWorker.class);
       serializerManager = injector.getInstance(SerializerManager.class);
       serializerManagers.put(blockManagerWorker, serializerManager);
-      dataTransferFactory = injector.getInstance(DataTransferFactory.class);
+      intermediateDataIOFactory = injector.getInstance(IntermediateDataIOFactory.class);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -190,7 +188,7 @@ public final class DataTransferTest {
     // Unused, but necessary for wiring up the message environments
     injector.getInstance(Executor.class);
 
-    return Pair.of(blockManagerWorker, dataTransferFactory);
+    return Pair.of(blockManagerWorker, intermediateDataIOFactory);
   }
 
   private Injector createNameClientInjector() {

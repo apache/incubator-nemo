@@ -29,15 +29,15 @@ import java.util.Optional;
 /**
  * A factory that produces {@link InputReader} and {@link OutputWriter}.
  */
-public final class DataTransferFactory {
+public final class IntermediateDataIOFactory {
   private final PipeManagerWorker pipeManagerWorker;
   private final BlockManagerWorker blockManagerWorker;
   private final int hashRangeMultiplier;
 
   @Inject
-  private DataTransferFactory(@Parameter(JobConf.HashRangeMultiplier.class) final int hashRangeMultiplier,
-                              final BlockManagerWorker blockManagerWorker,
-                              final PipeManagerWorker pipeManagerWorker) {
+  private IntermediateDataIOFactory(@Parameter(JobConf.HashRangeMultiplier.class) final int hashRangeMultiplier,
+                                    final BlockManagerWorker blockManagerWorker,
+                                    final PipeManagerWorker pipeManagerWorker) {
     this.hashRangeMultiplier = hashRangeMultiplier;
     this.blockManagerWorker = blockManagerWorker;
     this.pipeManagerWorker = pipeManagerWorker;
@@ -57,7 +57,7 @@ public final class DataTransferFactory {
     if (isStreaming(runtimeEdge)) {
       return new OutputWriter(pipeManagerWorker)
     } else {
-      return new OutputWriter(hashRangeMultiplier, srcTaskId, dstIRVertex, runtimeEdge, blockManagerWorker);
+      return new BlockInputReader(hashRangeMultiplier, srcTaskId, dstIRVertex, runtimeEdge, blockManagerWorker);
     }
   }
 

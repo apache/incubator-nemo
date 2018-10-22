@@ -84,14 +84,14 @@ public final class TaskExecutor {
    * @param task                   Task with information needed during execution.
    * @param irVertexDag            A DAG of vertices.
    * @param taskStateManager       State manager for this Task.
-   * @param dataTransferFactory    For reading from/writing to data to other tasks.
+   * @param intermediateDataIOFactory    For reading from/writing to data to other tasks.
    * @param broadcastManagerWorker For broadcasts.
    * @param metricMessageSender    For sending metric with execution stats to Master.
    */
   public TaskExecutor(final Task task,
                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                       final TaskStateManager taskStateManager,
-                      final DataTransferFactory dataTransferFactory,
+                      final IntermediateDataIOFactory intermediateDataIOFactory,
                       final BroadcastManagerWorker broadcastManagerWorker,
                       final MetricMessageSender metricMessageSender,
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
@@ -111,7 +111,7 @@ public final class TaskExecutor {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
 
     // Prepare data structures
-    final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, dataTransferFactory);
+    final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, intermediateDataIOFactory);
     this.nonBroadcastDataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
   }
@@ -139,7 +139,7 @@ public final class TaskExecutor {
    */
   private Pair<List<DataFetcher>, List<VertexHarness>> prepare(final Task task,
                                                                final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-                                                               final DataTransferFactory dataTransferFactory) {
+                                                               final IntermediateDataIOFactory intermediateDataIOFactory) {
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
 
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
@@ -168,9 +168,9 @@ public final class TaskExecutor {
       // Handle writes
       // Main output children task writes
       final List<OutputWriter> mainChildrenTaskWriters = getMainChildrenTaskWriters(
-        irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
+        irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, additionalOutputMap);
       final Map<String, OutputWriter> additionalChildrenTaskWriters = getAdditionalChildrenTaskWriters(
-        irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
+        irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, additionalOutputMap);
       // Intra-task writes
       final List<String> additionalOutputVertices = new ArrayList<>(additionalOutputMap.values());
       final Set<String> mainChildren =
@@ -200,7 +200,7 @@ public final class TaskExecutor {
         .filter(stageEdge -> stageEdge.getPropertyValue(BroadcastVariableIdProperty.class).isPresent())
         .collect(Collectors.toList());
       final List<InputReader> broadcastReaders =
-        getParentTaskReaders(taskIndex, broadcastInEdges, dataTransferFactory);
+        getParentTaskReaders(taskIndex, broadcastInEdges, intermediateDataIOFactory);
       if (broadcastInEdges.size() != broadcastReaders.size()) {
         throw new IllegalStateException(broadcastInEdges.toString() + ", " + broadcastReaders.toString());
       }
@@ -215,7 +215,7 @@ public final class TaskExecutor {
       final List<StageEdge> nonBroadcastInEdges = new ArrayList<>(inEdgesForThisVertex);
       nonBroadcastInEdges.removeAll(broadcastInEdges);
       final List<InputReader> nonBroadcastReaders =
-        getParentTaskReaders(taskIndex, nonBroadcastInEdges, dataTransferFactory);
+        getParentTaskReaders(taskIndex, nonBroadcastInEdges, intermediateDataIOFactory);
       nonBroadcastReaders.forEach(parentTaskReader -> nonBroadcastDataFetcherList.add(
         new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader, vertexHarness)));
     });
@@ -482,10 +482,10 @@ public final class TaskExecutor {
 
   private List<InputReader> getParentTaskReaders(final int taskIndex,
                                                  final List<StageEdge> inEdgesFromParentTasks,
-                                                 final DataTransferFactory dataTransferFactory) {
+                                                 final IntermediateDataIOFactory intermediateDataIOFactory) {
     return inEdgesFromParentTasks
       .stream()
-      .map(inEdgeForThisVertex -> dataTransferFactory
+      .map(inEdgeForThisVertex -> intermediateDataIOFactory
         .createReader(taskIndex, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
       .collect(Collectors.toList());
   }
@@ -518,19 +518,19 @@ public final class TaskExecutor {
    *
    * @param irVertex                source irVertex
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
-   * @param dataTransferFactory     dataTransferFactory
+   * @param intermediateDataIOFactory     intermediateDataIOFactory
    * @param taggedOutputs           tag to vertex id map
    * @return OutputWriters for main children tasks
    */
   private List<OutputWriter> getMainChildrenTaskWriters(final IRVertex irVertex,
                                                         final List<StageEdge> outEdgesToChildrenTasks,
-                                                        final DataTransferFactory dataTransferFactory,
+                                                        final IntermediateDataIOFactory intermediateDataIOFactory,
                                                         final Map<String, String> taggedOutputs) {
     return outEdgesToChildrenTasks
       .stream()
       .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
       .filter(outEdge -> !taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
-      .map(outEdgeForThisVertex -> dataTransferFactory
+      .map(outEdgeForThisVertex -> intermediateDataIOFactory
         .createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
       .collect(Collectors.toList());
   }
@@ -540,13 +540,13 @@ public final class TaskExecutor {
    *
    * @param irVertex                source irVertex
    * @param outEdgesToChildrenTasks outgoing edges to child tasks
-   * @param dataTransferFactory     dataTransferFactory
+   * @param intermediateDataIOFactory     intermediateDataIOFactory
    * @param taggedOutputs           tag to vertex id map
    * @return additional tag to OutputWriters map.
    */
   private Map<String, OutputWriter> getAdditionalChildrenTaskWriters(final IRVertex irVertex,
                                                                      final List<StageEdge> outEdgesToChildrenTasks,
-                                                                     final DataTransferFactory dataTransferFactory,
+                                                                     final IntermediateDataIOFactory intermediateDataIOFactory,
                                                                      final Map<String, String> taggedOutputs) {
     final Map<String, OutputWriter> additionalChildrenTaskWriters = new HashMap<>();
 
@@ -560,7 +560,7 @@ public final class TaskExecutor {
             .findAny().orElseThrow(() -> new RuntimeException("Unexpected error while finding tag"))
             .getKey();
           additionalChildrenTaskWriters.put(tag,
-              dataTransferFactory.createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex));
+              intermediateDataIOFactory.createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex));
         });
 
     return additionalChildrenTaskWriters;

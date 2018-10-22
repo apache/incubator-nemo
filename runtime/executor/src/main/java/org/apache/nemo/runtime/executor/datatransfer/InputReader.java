@@ -17,19 +17,13 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
-import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
-import org.apache.nemo.common.HashRange;
-import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 
 import java.util.*;
@@ -42,25 +36,22 @@ import java.util.stream.StreamSupport;
 /**
  * Represents the input data transfer to a task.
  */
-public final class InputReader extends DataTransfer {
-  private final int dstTaskIndex;
-  private final BlockManagerWorker blockManagerWorker;
+public abstract class InputReader extends DataTransfer {
+  final int dstTaskIndex;
 
   /**
    * Attributes that specify how we should read the input.
    */
-  private final IRVertex srcVertex;
-  private final RuntimeEdge runtimeEdge;
+  final IRVertex srcVertex;
+  final RuntimeEdge runtimeEdge;
 
   public InputReader(final int dstTaskIndex,
                      final IRVertex srcVertex,
-                     final RuntimeEdge runtimeEdge,
-                     final BlockManagerWorker blockManagerWorker) {
+                     final RuntimeEdge runtimeEdge) {
     super(runtimeEdge.getId());
     this.dstTaskIndex = dstTaskIndex;
     this.srcVertex = srcVertex;
     this.runtimeEdge = runtimeEdge;
-    this.blockManagerWorker = blockManagerWorker;
   }
 
   /**
@@ -85,60 +76,16 @@ public final class InputReader extends DataTransfer {
     }
   }
 
-  private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    final String blockIdWildcard = generateWildCardBlockId(dstTaskIndex);
-    final Optional<DataStoreProperty.Value> dataStoreProperty
-        = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    return blockManagerWorker.readBlock(blockIdWildcard, getId(), dataStoreProperty.get(), HashRange.all());
-  }
-
-  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
-    final int numSrcTasks = this.getSourceParallelism();
-    final Optional<DataStoreProperty.Value> dataStoreProperty
-        = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
-    for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
-      futures.add(blockManagerWorker.readBlock(blockIdWildcard, getId(), dataStoreProperty.get(), HashRange.all()));
-    }
-
-    return futures;
-  }
-
-  /**
-   * Read data in the assigned range of hash value.
-   *
-   * @return the list of the completable future of the data.
-   */
-  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
-    assert (runtimeEdge instanceof StageEdge);
-    final Optional<DataStoreProperty.Value> dataStoreProperty
-        = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
-    final KeyRange hashRangeToRead = ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
-    if (hashRangeToRead == null) {
-      throw new BlockFetchException(
-          new Throwable("The hash range to read is not assigned to " + dstTaskIndex + "'th task"));
-    }
-
-    final int numSrcTasks = this.getSourceParallelism();
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
-    for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
-      futures.add(
-          blockManagerWorker.readBlock(blockIdWildcard, getId(), dataStoreProperty.get(), hashRangeToRead));
-    }
-
-    return futures;
-  }
+  abstract CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne();
+  abstract List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast();
+  abstract List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange();
 
   /**
    * See {@link RuntimeIdManager#generateBlockIdWildcard(String, int)} for information on block wildcards.
    * @param producerTaskIndex to use.
    * @return wildcard block id that corresponds to "ANY" task attempt of the task index.
    */
-  private String generateWildCardBlockId(final int producerTaskIndex) {
+  String generateWildCardBlockId(final int producerTaskIndex) {
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     if (!duplicateDataProperty.isPresent() || duplicateDataProperty.get().getGroupSize() <= 1) {
