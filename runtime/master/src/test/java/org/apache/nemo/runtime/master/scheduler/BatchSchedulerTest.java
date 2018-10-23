@@ -27,7 +27,6 @@ import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.MetricMessageHandler;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
 import org.apache.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
-import org.apache.nemo.runtime.master.resource.ContainerManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.nemo.common.dag.DAG;
@@ -57,11 +56,10 @@ import static org.mockito.Mockito.mock;
  * Tests {@link BatchScheduler}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ContainerManager.class, BlockManagerMaster.class,
-    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class})
+@PrepareForTest({BlockManagerMaster.class, PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class})
 public final class BatchSchedulerTest {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSchedulerTest.class.getName());
-  private Scheduler scheduler;
+  private BatchScheduler scheduler;
   private PlanStateManager planStateManager;
   private ExecutorRegistry executorRegistry;
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
