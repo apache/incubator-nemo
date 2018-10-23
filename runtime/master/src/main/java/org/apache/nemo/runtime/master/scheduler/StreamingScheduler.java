@@ -16,6 +16,7 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import com.google.common.collect.Lists;
+import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
@@ -101,13 +102,25 @@ public final class StreamingScheduler implements Scheduler {
     throw new UnsupportedOperationException();
   }
 
+  @Override
   public void onTaskStateReportFromExecutor(final String executorId,
                                             final String taskId,
                                             final int taskAttemptIndex,
                                             final TaskState.State newState,
                                             @Nullable final String vertexPutOnHold,
                                             final TaskState.RecoverableTaskFailureCause failureCause) {
-    throw new UnsupportedOperationException();
+    switch (newState) {
+      case COMPLETE:
+      case SHOULD_RETRY:
+      case ON_HOLD:
+      case FAILED:
+        throw new UnsupportedOperationException(); // Not yet supported for streaming.
+      case READY:
+      case EXECUTING:
+        throw new RuntimeException("The states READY/EXECUTING cannot occur at this point");
+      default:
+        throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + newState));
+    }
   }
 
   @Override
