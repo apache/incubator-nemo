@@ -41,6 +41,8 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
   private UnboundedSource<O, M> source;
   private final String sourceDescription;
 
+  private static final long POLLING_INTERVAL = 10L;
+
   /**
    * The default constructor for beam unbounded source.
    * @param source unbounded source.
@@ -102,7 +104,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
     @Override
     public List<String> getLocations() throws Exception {
-      return null;
+      return new ArrayList<>();
     }
   }
 
@@ -154,10 +156,9 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
       try {
         while (true) {
           if (!available) {
-            Thread.sleep(10);
+            Thread.sleep(POLLING_INTERVAL);
           } else {
             final O element = unboundedReader.getCurrent();
-            available = unboundedReader.advance();
             final boolean windowed = element instanceof WindowedValue;
             if (!windowed) {
               return WindowedValue.valueInGlobalWindow(element);
@@ -165,11 +166,12 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
               return (WindowedValue<O>) element;
             }
           }
+          available = unboundedReader.advance();
         }
       } catch (final InterruptedException | IOException e) {
         LOG.error("Exception occurred while waiting for the events...");
         e.printStackTrace();
-        return null;
+        throw new RuntimeException(e);
       }
     }
   }
