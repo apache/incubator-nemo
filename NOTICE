@@ -1,2 +1,5 @@
-client/src/main/java/org/apache/reef/runtime/yarn/ClassPathBuilder.java
-drawn from Apache REEF
+Apache Nemo
+Copyright 2018 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
