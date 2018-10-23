@@ -16,10 +16,9 @@
 package org.apache.nemo.runtime.executor.data;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.reef.tang.annotations.Parameter;
@@ -28,7 +27,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Executor-side block manager.
@@ -45,6 +46,9 @@ public final class PipeManagerWorker {
 
   // private final SavedConnections savedConnections;
 
+  private final Map<Pair<String, Long>, List<ByteOutputContext>> edgeSrcIndexToContexts;
+  private final Map<Pair<String, Long>, CountDownLatch> edgeSrcIndexToLatch;
+
   @Inject
   private PipeManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                             final ByteTransfer byteTransfer,
@@ -52,26 +56,16 @@ public final class PipeManagerWorker {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
     this.serializerManager = serializerManager;
+    this.edgeSrcIndexToContexts = new HashMap<>();
+    this.edgeSrcIndexToLatch = new HashMap<>();
   }
 
   //////////////////////////////////////////////////////////// Main public methods
 
-  public void write(final String runtimeEdgeId,
-                    final int producerTaskIndex,
-                    final Object element,
-                    final int destIndex) {
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final int srcTaskIndex,
+                                                                   final String runtimeEdgeId,
+                                                                   final int dstTaskIndex) {
     /*
-    // TODO: Get the proper 'Pipe' ByteOutputStream (the one that was saved)
-    outputStream = savedOnes.get(destIndex) (list indices)
-
-    // TODO: Writes and flushes (element-wise)
-    outputStream.write(element);
-    */
-  }
-
-  public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final String srcTaskId,
-                                                               final String runtimeEdgeId,
-                                                               final int dstTaskIndex) {
     // Get the location of the src task
     final CompletableFuture<ControlMessage.Message> pipeLocationFuture =
       pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {
@@ -104,15 +98,47 @@ public final class PipeManagerWorker {
     // TODO: Connect to the executor and get iterator.
     return  byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray())
       .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
-        serializerManager.getSerializer(runtimeEdgeId)));
+
+        */
+    return null;
   }
 
-  public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
+  public synchronized List<ByteOutputContext> getContexts(final String runtimeEdgeId,
+                                                          final long srcTaskIndex,
+                                                          final int expectedDstParallelism) {
+    final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
+    final int numAvailableContexts = edgeSrcIndexToContexts.getOrDefault(pairKey, Collections.emptyList()).size();
+    if (numAvailableContexts < expectedDstParallelism) {
+      // Block
+      final CountDownLatch latch = new CountDownLatch(expectedDstParallelism - numAvailableContexts);
+      edgeSrcIndexToLatch.put(pairKey, latch);
+      try {
+        latch.await();
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+      return edgeSrcIndexToContexts.get(pairKey);
+    } else if (numAvailableContexts == expectedDstParallelism) {
+      return edgeSrcIndexToContexts.get(pairKey);
+    } else {
+      throw new IllegalStateException(numAvailableContexts + " != " + expectedDstParallelism);
+    }
+  }
+
+  public synchronized void onOutputContext(final ByteOutputContext outputContext)
+    throws InvalidProtocolBufferException {
     final ControlMessage.PipeTransferContextDescriptor descriptor =
       ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(outputContext.getContextDescriptor());
-    final String srcTaskId = descriptor.getSrcTaskId();
+    final long srcTaskIndex = descriptor.getSrcTaskIndex();
     final String runtimeEdgeId = descriptor.getRuntimeEdgeId();
-    final String dstTaskIndex = descriptor.getDstTaskIndex();
+    final long dstTaskIndex = descriptor.getDstTaskIndex();
 
+    // Get context list
+    final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
+    edgeSrcIndexToContexts.putIfAbsent(pairKey, new ArrayList<>());
+    final List<ByteOutputContext> contexts = edgeSrcIndexToContexts.get(pairKey);
+
+    // Add the context to the list
+    contexts.set((int) dstTaskIndex, outputContext);
   }
 }

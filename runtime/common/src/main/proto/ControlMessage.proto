@@ -168,8 +168,9 @@ message BlockTransferContextDescriptor {
 }
 
 message PipeTransferContextDescriptor {
-  required string runtimeEdgeId = 1;
-  required int64 dstTaskIndex = 2;
+  required int64 srcTaskIndex = 1;
+  required string runtimeEdgeId = 2;
+  required int64 dstTaskIndex = 3;
 }
 
 enum TaskStateFromExecutor {

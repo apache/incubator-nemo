@@ -20,6 +20,7 @@ import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -30,8 +31,8 @@ public final class PipeOutputWriter extends OutputWriter {
   private final String srcTaskId;
   private final RuntimeEdge runtimeEdge;
 
-  private final List<ByteOutputContext.ByteOutputStream> pipesToDestinationTasks;
-  private final List<ByteOutputContext> pipesToDestinationTasks;
+  private final List<ByteOutputContext.ByteOutputStream> streams;
+  private final List<ByteOutputContext> contexts;
 
   /**
    * Constructor.
@@ -50,6 +51,8 @@ public final class PipeOutputWriter extends OutputWriter {
     this.pipeManagerWorker = pipeManagerWorker;
     this.srcTaskId = srcTaskId;
     this.runtimeEdge = runtimeEdge;
+    this.streams = new ArrayList<>();
+    this.contexts = new ArrayList<>();
   }
 
   /**

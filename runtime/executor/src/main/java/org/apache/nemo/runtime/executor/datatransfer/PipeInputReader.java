@@ -20,6 +20,7 @@ import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -27,9 +28,8 @@ import java.util.concurrent.CompletableFuture;
  * Represents the input data transfer to a task.
  */
 public final class PipeInputReader extends InputReader {
-  final PipeManagerWorker pipeManagerWorker;
-
-  final String runtimeEdgeId;
+  private final PipeManagerWorker pipeManagerWorker;
+  private final String runtimeEdgeId;
 
   public PipeInputReader(final int dstTaskIdx,
                          final IRVertex srcIRVertex,
@@ -42,22 +42,26 @@ public final class PipeInputReader extends InputReader {
 
   @Override
   CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    // read one pipe
-    pipeManagerWorker.read(getSrcIrVertex().getId(), runtimeEdgeId, dstTaskIndex);
-    return null;
+    return pipeManagerWorker.read(dstTaskIndex, runtimeEdgeId, dstTaskIndex);
   }
 
   @Override
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
-    // read many broadcast pipes
-    pipeManagerWorker.read(getSrcIrVertex().getId(), runtimeEdgeId, dstTaskIndex);
-    return null;
+    final int numSrcTasks = this.getSourceParallelism();
+    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
+    for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
+      futures.add(pipeManagerWorker.read(srcTaskIdx, getId(), dstTaskIndex));
+    }
+    return futures;
   }
 
   @Override
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
-    // read many shuffle pipes
-    pipeManagerWorker.read(getSrcIrVertex().getId(), runtimeEdgeId, dstTaskIndex);
-    return null;
+    final int numSrcTasks = this.getSourceParallelism();
+    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
+    for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
+      futures.add(pipeManagerWorker.read(srcTaskIdx, getId(), dstTaskIndex));
+    }
+    return futures;
   }
 }
