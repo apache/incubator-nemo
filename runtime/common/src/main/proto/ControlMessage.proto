@@ -171,6 +171,7 @@ message PipeTransferContextDescriptor {
   required int64 srcTaskIndex = 1;
   required string runtimeEdgeId = 2;
   required int64 dstTaskIndex = 3;
+  required int64 dstParallelism = 4;
 }
 
 enum TaskStateFromExecutor {

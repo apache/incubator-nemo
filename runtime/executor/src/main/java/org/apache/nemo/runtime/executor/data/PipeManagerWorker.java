@@ -18,7 +18,9 @@ package org.apache.nemo.runtime.executor.data;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
@@ -51,6 +53,7 @@ public final class PipeManagerWorker {
   // To-Executor connections
   private final ByteTransfer byteTransfer;
 
+  // Thread-safe container
   private final PipeContainer pipeContainer;
 
   @Inject
@@ -67,8 +70,8 @@ public final class PipeManagerWorker {
 
   public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final int srcTaskIndex,
                                                                final String runtimeEdgeId,
-                                                               final int dstTaskIndex) {
-    /*
+                                                               final int dstTaskIndex,
+                                                               final int dstParallelism) {
     // Get the location of the src task
     final CompletableFuture<ControlMessage.Message> pipeLocationFuture =
       pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {
@@ -96,14 +99,12 @@ public final class PipeManagerWorker {
       ControlMessage.PipeTransferContextDescriptor.newBuilder()
         .setRuntimeEdgeId(runtimeEdgeId)
         .setDstTaskIndex(dstTaskIndex)
+        .setDstParallelism(dstParallelism)
         .build();
 
     // TODO: Connect to the executor and get iterator.
     return  byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray())
       .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
-
-        */
-    return null;
   }
 
   /**
@@ -111,16 +112,16 @@ public final class PipeManagerWorker {
    *
    * @param runtimeEdgeId
    * @param srcTaskIndex
-   * @param expectedDstParallelism
+   * @param dstParallelism
    * @return
    */
   public List<ByteOutputContext> retrieveOutgoingPipes(final String runtimeEdgeId,
                                                        final long srcTaskIndex,
-                                                       final int expectedDstParallelism) {
+                                                       final int dstParallelism) {
     final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
 
     // First, initialize the pair key
-    pipeContainer.putPipeListIfAbsent(pairKey, expectedDstParallelism);
+    pipeContainer.putPipeListIfAbsent(pairKey, dstParallelism);
 
     // Then, do stuff
     return pipeContainer.getPipes(pairKey); // blocking call
@@ -142,11 +143,12 @@ public final class PipeManagerWorker {
 
     final long srcTaskIndex = descriptor.getSrcTaskIndex();
     final String runtimeEdgeId = descriptor.getRuntimeEdgeId();
-    final long dstTaskIndex = descriptor.getDstTaskIndex();
+    final int dstTaskIndex = (int) descriptor.getDstTaskIndex();
+    final int dstParallelism = (int) descriptor.getDstParallelism();
     final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
 
     // First, initialize the pair key
-    pipeContainer.putPipeListIfAbsent(pairKey, expectedDstParallelism);
+    pipeContainer.putPipeListIfAbsent(pairKey, dstParallelism);
 
     // Then, do stuff
     pipeContainer.putPipe(pairKey, dstTaskIndex, outputContext);
