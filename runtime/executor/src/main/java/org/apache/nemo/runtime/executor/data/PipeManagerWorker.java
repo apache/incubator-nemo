@@ -21,6 +21,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,6 +124,10 @@ public final class PipeManagerWorker {
 
     // Then, do stuff
     return pipeContainer.getPipes(pairKey); // blocking call
+  }
+
+  public Serializer getSerializer(final String runtimeEdgeId) {
+    return serializerManager.getSerializer(runtimeEdgeId);
   }
 
   /**
