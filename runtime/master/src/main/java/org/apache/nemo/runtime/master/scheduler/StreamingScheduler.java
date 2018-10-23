@@ -99,6 +99,7 @@ public final class StreamingScheduler implements Scheduler {
 
   @Override
   public void updatePlan(final PhysicalPlan newPhysicalPlan) {
+    // TODO #227: StreamingScheduler Dynamic Optimization
     throw new UnsupportedOperationException();
   }
 
@@ -114,7 +115,8 @@ public final class StreamingScheduler implements Scheduler {
       case SHOULD_RETRY:
       case ON_HOLD:
       case FAILED:
-        throw new UnsupportedOperationException(); // Not yet supported for streaming.
+        // TODO #226: StreamingScheduler Fault Tolerance
+        throw new UnsupportedOperationException();
       case READY:
       case EXECUTING:
         throw new RuntimeException("The states READY/EXECUTING cannot occur at this point");
@@ -125,6 +127,7 @@ public final class StreamingScheduler implements Scheduler {
 
   @Override
   public void onSpeculativeExecutionCheck() {
+    // TODO #228: StreamingScheduler Speculative Execution
     throw new UnsupportedOperationException();
   }
 
@@ -136,6 +139,7 @@ public final class StreamingScheduler implements Scheduler {
 
   @Override
   public void onExecutorRemoved(final String executorId) {
+    // TODO #226: StreamingScheduler Fault Tolerance
     throw new UnsupportedOperationException();
   }
 
