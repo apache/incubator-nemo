@@ -341,7 +341,7 @@ public final class DataTransferTest {
     final List<List> dataReadList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
-          new InputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+          new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
 
       assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
 
@@ -439,9 +439,9 @@ public final class DataTransferTest {
     final List<List> dataReadList2 = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
-          new InputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+          new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
       final InputReader reader2 =
-          new InputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
+          new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
 
       assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
 

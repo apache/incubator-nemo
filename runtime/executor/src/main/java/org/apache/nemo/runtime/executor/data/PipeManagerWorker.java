@@ -36,7 +36,7 @@ import java.util.concurrent.CompletableFuture;
  * Executor-side block manager.
  */
 @ThreadSafe
-public final class PipeManagerWorker extends  {
+public final class PipeManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(PipeManagerWorker.class.getName());
 
   private final String executorId;
@@ -45,7 +45,7 @@ public final class PipeManagerWorker extends  {
   // To-Executor connections
   private final ByteTransfer byteTransfer;
 
-  private final SavedConnections savedConnections;
+  // private final SavedConnections savedConnections;
 
   @Inject
   private PipeManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -62,14 +62,17 @@ public final class PipeManagerWorker extends  {
                     final int producerTaskIndex,
                     final Object element,
                     final int destIndex) {
+    /*
     // TODO: Get the proper 'Pipe' ByteOutputStream (the one that was saved)
     outputStream = savedOnes.get(destIndex) (list indices)
 
     // TODO: Writes and flushes (element-wise)
     outputStream.write(element);
+    */
   }
 
   public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final String runtimeEdgeId) {
+    /*
     // TODO: Get locations
     final CompletableFuture<ControlMessage.Message> pipeLocationFuture =
       pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {
@@ -96,5 +99,7 @@ public final class PipeManagerWorker extends  {
     return contextFuture
       .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
         serializerManager.getSerializer(runtimeEdgeId)));
+        */
+    return null;
   }
 }

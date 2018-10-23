@@ -28,7 +28,7 @@ import java.util.*;
 /**
  * Represents the output data transfer from a task.
  */
-abstract class OutputWriter extends DataTransfer implements AutoCloseable {
+public abstract class OutputWriter extends DataTransfer implements AutoCloseable {
   final RuntimeEdge<?> runtimeEdge;
   final IRVertex dstIrVertex;
   long writtenBytes;
@@ -41,9 +41,7 @@ abstract class OutputWriter extends DataTransfer implements AutoCloseable {
    * @param dstIrVertex         the destination IR vertex.
    * @param runtimeEdge         the {@link RuntimeEdge}.
    */
-  OutputWriter(final int hashRangeMultiplier,
-               final IRVertex dstIrVertex,
-               final RuntimeEdge<?> runtimeEdge) {
+  OutputWriter(final int hashRangeMultiplier, final IRVertex dstIrVertex, final RuntimeEdge<?> runtimeEdge) {
     super(runtimeEdge.getId());
     this.runtimeEdge = runtimeEdge;
     this.dstIrVertex = dstIrVertex;

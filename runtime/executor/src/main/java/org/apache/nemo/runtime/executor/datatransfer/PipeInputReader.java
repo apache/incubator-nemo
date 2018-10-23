@@ -15,6 +15,8 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
@@ -26,27 +28,35 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class PipeInputReader extends InputReader {
   final PipeManagerWorker pipeManagerWorker;
+  final String runtimeEdgeId;
 
-  public PipeInputReader(final PipeManagerWorker pipeManagerWorker) {
-    super();
+  public PipeInputReader(final int dstTaskIdx,
+                         final IRVertex srcIRVertex,
+                         final RuntimeEdge runtimeEdge,
+                         final PipeManagerWorker pipeManagerWorker) {
+    super(dstTaskIdx, srcIRVertex, runtimeEdge);
     this.pipeManagerWorker = pipeManagerWorker;
+    this.runtimeEdgeId = runtimeEdge.getId();
   }
 
   @Override
   CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
     // read one pipe
-    pipeManagerWorker.read();
+    pipeManagerWorker.read(runtimeEdgeId);
+    return null;
   }
 
   @Override
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
     // read many broadcast pipes
-    pipeManagerWorker.read();
+    pipeManagerWorker.read(runtimeEdgeId);
+    return null;
   }
 
   @Override
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
     // read many shuffle pipes
-    pipeManagerWorker.read();
+    pipeManagerWorker.read(runtimeEdgeId);
+    return null;
   }
 }

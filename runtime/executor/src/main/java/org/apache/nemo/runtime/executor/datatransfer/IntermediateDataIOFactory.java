@@ -73,7 +73,7 @@ public final class IntermediateDataIOFactory {
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge) {
     if (isStreaming(runtimeEdge)) {
-      return new PipeInputReader(pipeManagerWorker);
+      return new PipeInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker);
     } else {
       return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
     }

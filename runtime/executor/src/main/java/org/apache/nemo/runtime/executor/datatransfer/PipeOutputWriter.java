@@ -17,7 +17,6 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
-import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
 /**
@@ -35,7 +34,6 @@ public final class PipeOutputWriter extends OutputWriter {
    * @param srcTaskId           the id of the source task.
    * @param dstIrVertex         the destination IR vertex.
    * @param runtimeEdge         the {@link RuntimeEdge}.
-   * @param blockManagerWorker  the {@link BlockManagerWorker}.
    */
   PipeOutputWriter(final int hashRangeMultiplier,
                    final String srcTaskId,
@@ -55,7 +53,7 @@ public final class PipeOutputWriter extends OutputWriter {
   @Override
   public void write(final Object element) {
     final int index = (Integer) partitioner.partition(element);
-    pipeManagerWorker.write(runtimeEdge.getId(), srcTaskId, element, index);
+    pipeManagerWorker.write(runtimeEdge.getId(), 0, element, index);
   }
 
   @Override
