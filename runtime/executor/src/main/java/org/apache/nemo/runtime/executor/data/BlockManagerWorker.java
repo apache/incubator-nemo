@@ -26,7 +26,6 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextDescriptor;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -196,7 +195,8 @@ public final class BlockManagerWorker {
         // Block resides in the evaluator
         return getDataFromLocalBlock(blockId, blockStore, keyRange);
       } else {
-        final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.newBuilder()
+        final ControlMessage.BlockTransferContextDescriptor descriptor =
+          ControlMessage.BlockTransferContextDescriptor.newBuilder()
             .setBlockId(blockId)
             .setBlockStore(convertBlockStore(blockStore))
             .setRuntimeEdgeId(runtimeEdgeId)
@@ -325,8 +325,8 @@ public final class BlockManagerWorker {
    * @throws InvalidProtocolBufferException from errors during parsing context descriptor
    */
   public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
-    final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.PARSER
-        .parseFrom(outputContext.getContextDescriptor());
+    final ControlMessage.BlockTransferContextDescriptor descriptor =
+      ControlMessage.BlockTransferContextDescriptor.PARSER.parseFrom(outputContext.getContextDescriptor());
     final DataStoreProperty.Value blockStore = convertBlockStore(descriptor.getBlockStore());
     final String blockId = descriptor.getBlockId();
     final KeyRange keyRange = SerializationUtils.deserialize(descriptor.getKeyRange().toByteArray());

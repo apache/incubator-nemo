@@ -28,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class PipeInputReader extends InputReader {
   final PipeManagerWorker pipeManagerWorker;
+
   final String runtimeEdgeId;
 
   public PipeInputReader(final int dstTaskIdx,
@@ -42,21 +43,21 @@ public final class PipeInputReader extends InputReader {
   @Override
   CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
     // read one pipe
-    pipeManagerWorker.read(runtimeEdgeId);
+    pipeManagerWorker.read(getSrcIrVertex().getId(), runtimeEdgeId, dstTaskIndex);
     return null;
   }
 
   @Override
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
     // read many broadcast pipes
-    pipeManagerWorker.read(runtimeEdgeId);
+    pipeManagerWorker.read(getSrcIrVertex().getId(), runtimeEdgeId, dstTaskIndex);
     return null;
   }
 
   @Override
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
     // read many shuffle pipes
-    pipeManagerWorker.read(runtimeEdgeId);
+    pipeManagerWorker.read(getSrcIrVertex().getId(), runtimeEdgeId, dstTaskIndex);
     return null;
   }
 }

@@ -17,7 +17,10 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+
+import java.util.List;
 
 /**
  * Represents the output data transfer from a task.
@@ -26,6 +29,9 @@ public final class PipeOutputWriter extends OutputWriter {
   private final PipeManagerWorker pipeManagerWorker;
   private final String srcTaskId;
   private final RuntimeEdge runtimeEdge;
+
+  private final List<ByteOutputContext.ByteOutputStream> pipesToDestinationTasks;
+  private final List<ByteOutputContext> pipesToDestinationTasks;
 
   /**
    * Constructor.
@@ -52,6 +58,8 @@ public final class PipeOutputWriter extends OutputWriter {
    */
   @Override
   public void write(final Object element) {
+    // TODO: Load pipes
+
     final int index = (Integer) partitioner.partition(element);
     pipeManagerWorker.write(runtimeEdge.getId(), 0, element, index);
   }

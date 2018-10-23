@@ -160,11 +160,16 @@ message ByteTransferContextSetupMessage {
     required bytes contextDescriptor = 4;
 }
 
-message ByteTransferContextDescriptor {
+message BlockTransferContextDescriptor {
     required string blockId = 1;
     required BlockStore blockStore = 2;
     required string runtimeEdgeId = 3;
     optional bytes keyRange = 4;
+}
+
+message PipeTransferContextDescriptor {
+  required string runtimeEdgeId = 1;
+  required int64 dstTaskIndex = 2;
 }
 
 enum TaskStateFromExecutor {

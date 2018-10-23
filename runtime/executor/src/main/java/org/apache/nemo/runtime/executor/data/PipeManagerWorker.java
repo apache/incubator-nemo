@@ -15,15 +15,13 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextDescriptor;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
-import org.apache.nemo.runtime.executor.data.partitioner.Partitioner;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,9 +69,10 @@ public final class PipeManagerWorker {
     */
   }
 
-  public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final String runtimeEdgeId) {
-    /*
-    // TODO: Get locations
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final String srcTaskId,
+                                                               final String runtimeEdgeId,
+                                                               final int dstTaskIndex) {
+    // Get the location of the src task
     final CompletableFuture<ControlMessage.Message> pipeLocationFuture =
       pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {
         // Ask Master for the location.
@@ -95,11 +94,25 @@ public final class PipeManagerWorker {
         return responseFromMasterFuture;
       });
 
+    // Descriptor
+    final ControlMessage.PipeTransferContextDescriptor descriptor =
+      ControlMessage.PipeTransferContextDescriptor.newBuilder()
+        .setRuntimeEdgeId(runtimeEdgeId)
+        .setDstTaskIndex(dstTaskIndex)
+        .build();
+
     // TODO: Connect to the executor and get iterator.
-    return contextFuture
+    return  byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray())
       .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
         serializerManager.getSerializer(runtimeEdgeId)));
-        */
-    return null;
+  }
+
+  public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
+    final ControlMessage.PipeTransferContextDescriptor descriptor =
+      ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(outputContext.getContextDescriptor());
+    final String srcTaskId = descriptor.getSrcTaskId();
+    final String runtimeEdgeId = descriptor.getRuntimeEdgeId();
+    final String dstTaskIndex = descriptor.getDstTaskIndex();
+
   }
 }
