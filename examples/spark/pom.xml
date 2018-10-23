@@ -26,13 +26,6 @@ limitations under the License.
     </parent>
 
     <artifactId>nemo-examples-spark</artifactId>
-
-    <repositories>
-        <repository>
-            <id>Bundled Maven Repository</id>
-            <url>file://${basedir}/../common/src/main/resources/repository</url>
-        </repository>
-    </repositories>
     <name>Nemo Examples: Spark</name>
 
     <dependencies>
