@@ -20,7 +20,6 @@ import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -31,7 +30,6 @@ public final class PipeOutputWriter extends OutputWriter {
   private final String srcTaskId;
   private final RuntimeEdge runtimeEdge;
 
-  private final List<ByteOutputContext.ByteOutputStream> streams;
   private final List<ByteOutputContext> contexts;
 
   /**
@@ -51,8 +49,9 @@ public final class PipeOutputWriter extends OutputWriter {
     this.pipeManagerWorker = pipeManagerWorker;
     this.srcTaskId = srcTaskId;
     this.runtimeEdge = runtimeEdge;
-    this.streams = new ArrayList<>();
-    this.contexts = new ArrayList<>();
+
+    // Blocking call
+    this.contexts = pipeManagerWorker.retrieveOutgoingPipes(srcTaskId, runtimeEdge, my);
   }
 
   /**
@@ -61,14 +60,14 @@ public final class PipeOutputWriter extends OutputWriter {
    */
   @Override
   public void write(final Object element) {
-    // TODO: Load pipes
-
+    // TODO: comm pattern
     final int index = (Integer) partitioner.partition(element);
-    pipeManagerWorker.write(runtimeEdge.getId(), 0, element, index);
+
+    // TODO runtime edge
   }
 
   @Override
   public void close() {
-    // Assume this never stops.
+    throw new UnsupportedOperationException("Assumes pipes never close");
   }
 }

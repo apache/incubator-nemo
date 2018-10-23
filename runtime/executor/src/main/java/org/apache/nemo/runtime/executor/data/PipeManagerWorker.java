@@ -29,10 +29,16 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Executor-side block manager.
+ * Two threads use this class
+ * - Network thread: Saves pipe connections created from destination tasks.
+ * - Task executor thread: Creates new pipe connections to destination tasks (read),
+ *                         or retrieves a saved pipe connection (write)
  */
 @ThreadSafe
 public final class PipeManagerWorker {
@@ -44,10 +50,7 @@ public final class PipeManagerWorker {
   // To-Executor connections
   private final ByteTransfer byteTransfer;
 
-  // private final SavedConnections savedConnections;
-
-  private final Map<Pair<String, Long>, List<ByteOutputContext>> edgeSrcIndexToContexts;
-  private final Map<Pair<String, Long>, CountDownLatch> edgeSrcIndexToLatch;
+  private final PipeContainer pipeContainer;
 
   @Inject
   private PipeManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -56,15 +59,14 @@ public final class PipeManagerWorker {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
     this.serializerManager = serializerManager;
-    this.edgeSrcIndexToContexts = new HashMap<>();
-    this.edgeSrcIndexToLatch = new HashMap<>();
+    this.pipeContainer = new PipeContainer();
   }
 
   //////////////////////////////////////////////////////////// Main public methods
 
   public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final int srcTaskIndex,
-                                                                   final String runtimeEdgeId,
-                                                                   final int dstTaskIndex) {
+                                                               final String runtimeEdgeId,
+                                                               final int dstTaskIndex) {
     /*
     // Get the location of the src task
     final CompletableFuture<ControlMessage.Message> pipeLocationFuture =
@@ -103,42 +105,45 @@ public final class PipeManagerWorker {
     return null;
   }
 
-  public synchronized List<ByteOutputContext> getContexts(final String runtimeEdgeId,
-                                                          final long srcTaskIndex,
-                                                          final int expectedDstParallelism) {
+  /**
+   * (SYNCHRONIZATION) Called by task threads.
+   *
+   * @param runtimeEdgeId
+   * @param srcTaskIndex
+   * @param expectedDstParallelism
+   * @return
+   */
+  public List<ByteOutputContext> retrieveOutgoingPipes(final String runtimeEdgeId,
+                                                       final long srcTaskIndex,
+                                                       final int expectedDstParallelism) {
     final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
-    final int numAvailableContexts = edgeSrcIndexToContexts.getOrDefault(pairKey, Collections.emptyList()).size();
-    if (numAvailableContexts < expectedDstParallelism) {
-      // Block
-      final CountDownLatch latch = new CountDownLatch(expectedDstParallelism - numAvailableContexts);
-      edgeSrcIndexToLatch.put(pairKey, latch);
-      try {
-        latch.await();
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-      return edgeSrcIndexToContexts.get(pairKey);
-    } else if (numAvailableContexts == expectedDstParallelism) {
-      return edgeSrcIndexToContexts.get(pairKey);
-    } else {
-      throw new IllegalStateException(numAvailableContexts + " != " + expectedDstParallelism);
-    }
+
+    // First, initialize the pair key
+    pipeContainer.putPipeListIfAbsent(pairKey, expectedDstParallelism);
+
+    // Then, do stuff
+    return pipeContainer.getPipes(pairKey); // blocking call
   }
 
-  public synchronized void onOutputContext(final ByteOutputContext outputContext)
-    throws InvalidProtocolBufferException {
+  /**
+   * (SYNCHRONIZATION) Called by network threads.
+   *
+   * @param outputContext
+   * @throws InvalidProtocolBufferException
+   */
+  public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
     final ControlMessage.PipeTransferContextDescriptor descriptor =
       ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(outputContext.getContextDescriptor());
+
     final long srcTaskIndex = descriptor.getSrcTaskIndex();
     final String runtimeEdgeId = descriptor.getRuntimeEdgeId();
     final long dstTaskIndex = descriptor.getDstTaskIndex();
-
-    // Get context list
     final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
-    edgeSrcIndexToContexts.putIfAbsent(pairKey, new ArrayList<>());
-    final List<ByteOutputContext> contexts = edgeSrcIndexToContexts.get(pairKey);
 
-    // Add the context to the list
-    contexts.set((int) dstTaskIndex, outputContext);
+    // First, initialize the pair key
+    pipeContainer.putPipeListIfAbsent(pairKey, expectedDstParallelism);
+
+    // Then, do stuff
+    pipeContainer.putPipe(pairKey, dstTaskIndex, outputContext);
   }
 }
