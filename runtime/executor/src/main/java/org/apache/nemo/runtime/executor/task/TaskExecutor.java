@@ -151,7 +151,6 @@ public final class TaskExecutor {
     final List<DataFetcher> nonBroadcastDataFetcherList = new ArrayList<>();
     final Map<String, VertexHarness> vertexIdToHarness = new HashMap<>();
     reverseTopologicallySorted.forEach(irVertex -> {
-      final List<VertexHarness> children = getChildrenHarnesses(irVertex, irVertexDag, vertexIdToHarness);
       final Optional<Readable> sourceReader = getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
       if (sourceReader.isPresent() != irVertex instanceof SourceVertex) {
         throw new IllegalStateException(irVertex.toString());
@@ -448,21 +447,6 @@ public final class TaskExecutor {
       .map(inEdgeForThisVertex -> dataTransferFactory
         .createReader(taskIndex, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
       .collect(Collectors.toList());
-  }
-
-  private List<VertexHarness> getChildrenHarnesses(final IRVertex irVertex,
-                                                   final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-                                                   final Map<String, VertexHarness> vertexIdToHarness) {
-    final List<VertexHarness> childrenHandlers = irVertexDag.getChildren(irVertex.getId())
-      .stream()
-      .map(IRVertex::getId)
-      .map(vertexIdToHarness::get)
-      .collect(Collectors.toList());
-    if (childrenHandlers.stream().anyMatch(harness -> harness == null)) {
-      // Sanity check: there shouldn't be a null harness.
-      throw new IllegalStateException(childrenHandlers.toString());
-    }
-    return childrenHandlers;
   }
 
   ////////////////////////////////////////////// Transform-specific helper methods
