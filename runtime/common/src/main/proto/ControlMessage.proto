@@ -234,5 +234,6 @@ message RequestPipeLocationMessage {
 }
 
 message PipeLocationInfoMessage {
-  required string executorId = 1;
+  required int64 requestId = 1; // To find the matching request msg
+  required string executorId = 2;
 }

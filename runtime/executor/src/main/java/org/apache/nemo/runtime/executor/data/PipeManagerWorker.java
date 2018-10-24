@@ -102,6 +102,7 @@ public final class PipeManagerWorker {
       final ControlMessage.PipeTransferContextDescriptor descriptor =
         ControlMessage.PipeTransferContextDescriptor.newBuilder()
           .setRuntimeEdgeId(runtimeEdgeId)
+          .setSrcTaskIndex(srcTaskIndex)
           .setDstTaskIndex(dstTaskIndex)
           .setDstParallelism(dstParallelism)
           .build();

@@ -32,6 +32,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -42,7 +44,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class PipeManagerMaster {
   private static final Logger LOG = LoggerFactory.getLogger(PipeManagerMaster.class.getName());
   private final Map<Pair<String, Long>, String> runtimeEdgeSrcIndexToExecutor;
-  private final Map<Pair<String, Long>, Object> runtimeEdgeSrcIndexToLock;
+  private final Map<Pair<String, Long>, Lock> runtimeEdgeSrcIndexToLock;
+  private final Map<Pair<String, Long>, Condition> runtimeEdgeSrcIndexToCondition;
   private final ExecutorService waitForPipe;
 
   /**
@@ -55,12 +58,16 @@ public final class PipeManagerMaster {
       new PipeManagerMasterControlMessageReceiver());
     this.runtimeEdgeSrcIndexToExecutor = new ConcurrentHashMap<>();
     this.runtimeEdgeSrcIndexToLock = new ConcurrentHashMap<>();
+    this.runtimeEdgeSrcIndexToCondition = new ConcurrentHashMap<>();
     this.waitForPipe = Executors.newCachedThreadPool();
   }
 
   public void onTaskScheduled(final String edgeId, final long srcIndex) {
     final Pair<String, Long> keyPair = Pair.of(edgeId, srcIndex);
     if (null != runtimeEdgeSrcIndexToLock.put(keyPair, new ReentrantLock())) {
+      throw new IllegalStateException(keyPair.toString());
+    }
+    if (null != runtimeEdgeSrcIndexToCondition.put(keyPair, runtimeEdgeSrcIndexToLock.get(keyPair).newCondition())) {
       throw new IllegalStateException(keyPair.toString());
     }
   }
@@ -77,20 +84,28 @@ public final class PipeManagerMaster {
           final Pair<String, Long> keyPair =
             Pair.of(pipeInitMessage.getRuntimeEdgeId(), pipeInitMessage.getSrcTaskIndex());
 
+          LOG.info("INIT-START {}", keyPair);
+
           // Allow to put at most once
-          final Object lock = runtimeEdgeSrcIndexToLock.get(keyPair);
-          synchronized (lock) {
+          final Lock lock = runtimeEdgeSrcIndexToLock.get(keyPair);
+          lock.lock();
+          try {
             if (null != runtimeEdgeSrcIndexToExecutor.put(keyPair, pipeInitMessage.getExecutorId())) {
               throw new RuntimeException(keyPair.toString());
             }
-            lock.notifyAll();
+            runtimeEdgeSrcIndexToCondition.get(keyPair).signalAll();
+          } finally {
+            lock.unlock();
           }
+
+          LOG.info("INIT-DONE {}", keyPair);
 
           break;
         default:
           throw new IllegalMessageException(new Exception(message.toString()));
       }
-      throw new UnsupportedOperationException(message.toString());
+
+
     }
 
     @Override
@@ -103,29 +118,43 @@ public final class PipeManagerMaster {
           waitForPipe.submit(() -> {
             final Pair<String, Long> keyPair =
               Pair.of(pipeLocRequest.getRuntimeEdgeId(), pipeLocRequest.getSrcTaskIndex());
+            LOG.info("Request-START {}", keyPair);
 
-            final Object lock = runtimeEdgeSrcIndexToLock.get(keyPair);
-            synchronized (lock) {
-              try {
-                final String location = runtimeEdgeSrcIndexToExecutor.get(keyPair);
-                // Reply the location
-                messageContext.reply(
-                  ControlMessage.Message.newBuilder()
-                    .setId(RuntimeIdManager.generateMessageId())
-                    .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-                    .setType(ControlMessage.MessageType.PipeLocInfo)
-                    .setPipeLocInfoMsg(ControlMessage.PipeLocationInfoMessage.newBuilder()
-                      .setExecutorId(location)
-                      .build()
-                    )
-                    .build());
-                lock.wait();
-              } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            final Lock lock = runtimeEdgeSrcIndexToLock.get(keyPair);
+            lock.lock();
+            try {
+              if (!runtimeEdgeSrcIndexToExecutor.containsKey(keyPair)) {
+                LOG.info("Request-AWAIT {}", keyPair);
+                runtimeEdgeSrcIndexToCondition.get(keyPair).await();
+                LOG.info("Request-AWAIT-DONE {}", keyPair);
               }
-            }
 
+              final String location = runtimeEdgeSrcIndexToExecutor.get(keyPair);
+              if (location == null) {
+                throw new IllegalStateException(keyPair.toString());
+              }
+
+              // Reply the location
+              LOG.info("Request-REPLY {}", keyPair);
+              messageContext.reply(
+                ControlMessage.Message.newBuilder()
+                  .setId(RuntimeIdManager.generateMessageId())
+                  .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+                  .setType(ControlMessage.MessageType.PipeLocInfo)
+                  .setPipeLocInfoMsg(ControlMessage.PipeLocationInfoMessage.newBuilder()
+                    .setRequestId(message.getId())
+                    .setExecutorId(location)
+                    .build())
+                  .build());
+              LOG.info("Request-REPLY-DONE {}", keyPair);
+            } catch (InterruptedException e) {
+              throw new RuntimeException(e);
+            } finally {
+              lock.unlock();
+            }
+            LOG.info("Request-DONE {}", keyPair);
           });
+
 
           break;
         default:

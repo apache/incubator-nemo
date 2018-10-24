@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
+import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -54,6 +55,7 @@ public final class StreamingScheduler implements Scheduler {
   private final PlanStateManager planStateManager;
   private final PipeManagerMaster pipeManagerMaster;
 
+  @Inject
   StreamingScheduler(final TaskDispatcher taskDispatcher,
                      final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                      final ExecutorRegistry executorRegistry,
@@ -87,7 +89,6 @@ public final class StreamingScheduler implements Scheduler {
 
       taskIdsToSchedule.forEach(taskId -> {
         final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
-        stageIncomingEdges.forEach(inEdge -> pipeManagerMaster.onTaskScheduled(inEdge.getId(), index));
         stageOutgoingEdges.forEach(outEdge -> pipeManagerMaster.onTaskScheduled(outEdge.getId(), index));
       });
 
@@ -104,6 +105,7 @@ public final class StreamingScheduler implements Scheduler {
 
     // Schedule everything at once
     pendingTaskCollectionPointer.setToOverwrite(reverseTopoTasks);
+    taskDispatcher.onNewPendingTaskCollectionAvailable();
   }
 
   @Override
@@ -143,6 +145,7 @@ public final class StreamingScheduler implements Scheduler {
   @Override
   public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
     LOG.info("{} added (node: {})", executorRepresenter.getExecutorId(), executorRepresenter.getNodeName());
+    taskDispatcher.onExecutorSlotAvailable();
     executorRegistry.registerExecutor(executorRepresenter);
   }
 
