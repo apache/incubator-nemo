@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -43,7 +42,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class PipeManagerMaster {
   private static final Logger LOG = LoggerFactory.getLogger(PipeManagerMaster.class.getName());
   private final Map<Pair<String, Long>, String> runtimeEdgeSrcIndexToExecutor;
-  private final Map<Pair<String, Long>, Lock> runtimeEdgeSrcIndexToLock;
+  private final Map<Pair<String, Long>, Object> runtimeEdgeSrcIndexToLock;
   private final ExecutorService waitForPipe;
 
   /**
@@ -79,15 +78,12 @@ public final class PipeManagerMaster {
             Pair.of(pipeInitMessage.getRuntimeEdgeId(), pipeInitMessage.getSrcTaskIndex());
 
           // Allow to put at most once
-          final Lock lock = runtimeEdgeSrcIndexToLock.get(keyPair);
-          lock.lock();
-          try {
+          final Object lock = runtimeEdgeSrcIndexToLock.get(keyPair);
+          synchronized (lock) {
             if (null != runtimeEdgeSrcIndexToExecutor.put(keyPair, pipeInitMessage.getExecutorId())) {
               throw new RuntimeException(keyPair.toString());
             }
-          } finally {
             lock.notifyAll();
-            lock.unlock();
           }
 
           break;
@@ -107,27 +103,28 @@ public final class PipeManagerMaster {
           waitForPipe.submit(() -> {
             final Pair<String, Long> keyPair =
               Pair.of(pipeLocRequest.getRuntimeEdgeId(), pipeLocRequest.getSrcTaskIndex());
-            final Lock lock = runtimeEdgeSrcIndexToLock.get(keyPair);
-            lock.lock();
-            try {
-              final String location = runtimeEdgeSrcIndexToExecutor.get(keyPair);
-              // Reply the location
-              messageContext.reply(
-                ControlMessage.Message.newBuilder()
-                  .setId(RuntimeIdManager.generateMessageId())
-                  .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-                  .setType(ControlMessage.MessageType.PipeLocInfo)
-                  .setPipeLocInfoMsg(ControlMessage.PipeLocationInfoMessage.newBuilder()
-                    .setExecutorId(location)
-                    .build()
-                  )
-                  .build());
-              lock.wait();
-            } catch (InterruptedException e) {
-              throw new RuntimeException(e);
-            } finally {
-              lock.unlock();
+
+            final Object lock = runtimeEdgeSrcIndexToLock.get(keyPair);
+            synchronized (lock) {
+              try {
+                final String location = runtimeEdgeSrcIndexToExecutor.get(keyPair);
+                // Reply the location
+                messageContext.reply(
+                  ControlMessage.Message.newBuilder()
+                    .setId(RuntimeIdManager.generateMessageId())
+                    .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+                    .setType(ControlMessage.MessageType.PipeLocInfo)
+                    .setPipeLocInfoMsg(ControlMessage.PipeLocationInfoMessage.newBuilder()
+                      .setExecutorId(location)
+                      .build()
+                    )
+                    .build());
+                lock.wait();
+              } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+              }
             }
+
           });
 
           break;
