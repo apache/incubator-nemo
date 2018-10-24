@@ -45,8 +45,8 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.nemo.runtime.executor.task.outputcollector.DynOptDataOutputCollector;
-import org.apache.nemo.runtime.executor.task.outputcollector.OutputCollectorImpl;
+import org.apache.nemo.runtime.executor.datatransfer.DynOptDataOutputCollector;
+import org.apache.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

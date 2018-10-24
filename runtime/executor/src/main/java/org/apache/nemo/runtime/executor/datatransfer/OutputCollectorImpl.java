@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nemo.runtime.executor.task.outputcollector;
+package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
