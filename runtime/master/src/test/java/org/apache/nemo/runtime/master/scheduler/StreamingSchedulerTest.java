@@ -20,6 +20,7 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
+import org.apache.nemo.runtime.master.PipeManagerMaster;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import org.junit.Before;
@@ -57,13 +58,15 @@ public final class StreamingSchedulerTest {
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     final ExecutorRegistry executorRegistry = mock(ExecutorRegistry.class);
     final PlanStateManager planStateManager = mock(PlanStateManager.class);
+    final PipeManagerMaster pipeManagerMaster = mock(PipeManagerMaster.class);
 
     when(planStateManager.getTaskAttemptsToSchedule(any())).thenAnswer(invocationOnMock -> {
       final String stageId = invocationOnMock.getArgument(0);
       return generateAttempts(stageId);
     });
 
-    scheduler = new StreamingScheduler(taskDispatcher, pendingTaskCollectionPointer, executorRegistry, planStateManager);
+    scheduler = new StreamingScheduler(
+      taskDispatcher, pendingTaskCollectionPointer, executorRegistry, planStateManager, pipeManagerMaster);
   }
 
   private List<String> generateAttempts(final String stageId) {

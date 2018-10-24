@@ -21,6 +21,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
@@ -33,10 +34,6 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Two threads use this class
@@ -57,55 +54,63 @@ public final class PipeManagerWorker {
   // Thread-safe container
   private final PipeContainer pipeContainer;
 
+  private final PersistentConnectionToMasterMap toMaster;
+
   @Inject
   private PipeManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                             final ByteTransfer byteTransfer,
-                            final SerializerManager serializerManager) {
+                            final SerializerManager serializerManager,
+                            final PersistentConnectionToMasterMap toMaster) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
     this.serializerManager = serializerManager;
     this.pipeContainer = new PipeContainer();
+    this.toMaster = toMaster;
   }
-
-  //////////////////////////////////////////////////////////// Main public methods
 
   public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final int srcTaskIndex,
                                                                final String runtimeEdgeId,
                                                                final int dstTaskIndex,
                                                                final int dstParallelism) {
-    // Get the location of the src task
-    final CompletableFuture<ControlMessage.Message> pipeLocationFuture =
-      pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {
-        // Ask Master for the location.
-        // (IMPORTANT): This 'request' effectively blocks the TaskExecutor thread if the block is IN_PROGRESS.
-        // We use this property to make the receiver task of a 'push' edge to wait in an Executor for its input data
-        // to become available.
-        final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
-          .getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
-            ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.RequestBlockLocation)
-              .setRequestBlockLocationMsg(
-                ControlMessage.RequestBlockLocationMsg.newBuilder()
-                  .setExecutorId(executorId)
-                  .setBlockIdWildcard(blockIdWildcard)
-                  .build())
-              .build());
-        return responseFromMasterFuture;
-      });
+    // Get the location of the src task (blocking call)
+    final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
+      .getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.RequestPipeLoc)
+          .setRequestPipeLocMsg(
+            ControlMessage.RequestPipeLocationMessage.newBuilder()
+              .setExecutorId(executorId)
+              .setRuntimeEdgeId(runtimeEdgeId)
+              .setSrcTaskIndex(srcTaskIndex)
+              .build())
+          .build());
 
-    // Descriptor
-    final ControlMessage.PipeTransferContextDescriptor descriptor =
-      ControlMessage.PipeTransferContextDescriptor.newBuilder()
-        .setRuntimeEdgeId(runtimeEdgeId)
-        .setDstTaskIndex(dstTaskIndex)
-        .setDstParallelism(dstParallelism)
-        .build();
+    return responseFromMasterFuture.thenCompose(responseFromMaster -> {
+      // Get executor id
+      if (responseFromMaster.getType() != ControlMessage.MessageType.PipeLocInfo) {
+        throw new RuntimeException("Response message type mismatch!");
+      }
+      final ControlMessage.PipeLocationInfoMessage pipeLocInfo = responseFromMaster.getPipeLocInfoMsg();
+      if (!pipeLocInfo.hasExecutorId()) {
+        throw new IllegalStateException();
+      }
+      final String targetExecutorId = responseFromMaster.getPipeLocInfoMsg().getExecutorId();
 
-    // TODO: Connect to the executor and get iterator.
-    return  byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
-      .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
+      // Descriptor
+      final ControlMessage.PipeTransferContextDescriptor descriptor =
+        ControlMessage.PipeTransferContextDescriptor.newBuilder()
+          .setRuntimeEdgeId(runtimeEdgeId)
+          .setDstTaskIndex(dstTaskIndex)
+          .setDstParallelism(dstParallelism)
+          .build();
+
+      // Connect to the executor
+      return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
+        .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
+          serializerManager.getSerializer(runtimeEdgeId)));
+    });
   }
 
   /**
@@ -116,12 +121,24 @@ public final class PipeManagerWorker {
    * @param dstParallelism
    * @return
    */
-  public List<ByteOutputContext> retrieveOutgoingPipes(final String runtimeEdgeId,
-                                                       final long srcTaskIndex,
-                                                       final int dstParallelism) {
-    final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
+  public List<ByteOutputContext> initializeOutgoingPipes(final String runtimeEdgeId,
+                                                         final long srcTaskIndex,
+                                                         final int dstParallelism) {
+    // Notify the master that we're using this pipe.
+    toMaster.getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
+      ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.PipeInit)
+        .setPipeInitMsg(ControlMessage.PipeInitMessage.newBuilder()
+          .setRuntimeEdgeId(runtimeEdgeId)
+          .setSrcTaskIndex(srcTaskIndex)
+          .setExecutorId(executorId)
+          .build())
+        .build());
 
     // First, initialize the pair key
+    final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
     pipeContainer.putPipeListIfAbsent(pairKey, dstParallelism);
 
     // Then, do stuff

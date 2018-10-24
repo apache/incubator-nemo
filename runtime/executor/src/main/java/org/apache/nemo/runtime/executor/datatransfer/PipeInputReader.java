@@ -16,7 +16,9 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
@@ -30,6 +32,7 @@ import java.util.concurrent.CompletableFuture;
 public final class PipeInputReader extends InputReader {
   private final PipeManagerWorker pipeManagerWorker;
   private final String runtimeEdgeId;
+  private final int dstParallelism;
 
   public PipeInputReader(final int dstTaskIdx,
                          final IRVertex srcIRVertex,
@@ -38,11 +41,13 @@ public final class PipeInputReader extends InputReader {
     super(dstTaskIdx, srcIRVertex, runtimeEdge);
     this.pipeManagerWorker = pipeManagerWorker;
     this.runtimeEdgeId = runtimeEdge.getId();
+    this.dstParallelism = ((StageEdge) runtimeEdge).getDstIRVertex().getPropertyValue(ParallelismProperty.class)
+      .orElseThrow(() -> new IllegalStateException());
   }
 
   @Override
   CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    return pipeManagerWorker.read(dstTaskIndex, runtimeEdgeId, dstTaskIndex);
+    return pipeManagerWorker.read(dstTaskIndex, runtimeEdgeId, dstTaskIndex, dstParallelism);
   }
 
   @Override
@@ -50,7 +55,7 @@ public final class PipeInputReader extends InputReader {
     final int numSrcTasks = this.getSourceParallelism();
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      futures.add(pipeManagerWorker.read(srcTaskIdx, getId(), dstTaskIndex));
+      futures.add(pipeManagerWorker.read(srcTaskIdx, getId(), dstTaskIndex, dstParallelism));
     }
     return futures;
   }
@@ -60,7 +65,7 @@ public final class PipeInputReader extends InputReader {
     final int numSrcTasks = this.getSourceParallelism();
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      futures.add(pipeManagerWorker.read(srcTaskIdx, getId(), dstTaskIndex));
+      futures.add(pipeManagerWorker.read(srcTaskIdx, getId(), dstTaskIndex, dstParallelism));
     }
     return futures;
   }

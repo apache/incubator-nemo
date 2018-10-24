@@ -22,7 +22,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
-import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
@@ -49,17 +49,18 @@ public final class PipeOutputWriter extends OutputWriter {
   PipeOutputWriter(final int hashRangeMultiplier,
                    final String srcTaskId,
                    final IRVertex dstIrVertex,
-                   final RuntimeEdge<Stage> runtimeEdge,
+                   final RuntimeEdge runtimeEdge,
                    final PipeManagerWorker pipeManagerWorker) {
     super(hashRangeMultiplier, dstIrVertex, runtimeEdge);
-
-    // Blocking call
-    final int dstParallelism = runtimeEdge
+    final int dstParallelism = ((StageEdge) runtimeEdge)
       .getDst()
       .getPropertyValue(ParallelismProperty.class)
       .orElseThrow(() -> new IllegalStateException());
+
+    // Blocking call
     final List<ByteOutputContext> contexts = pipeManagerWorker
-      .retrieveOutgoingPipes(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId), dstParallelism);
+      .initializeOutgoingPipes(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId), dstParallelism);
+
     this.pipes = contexts.stream()
       .map(collect -> {
         try {

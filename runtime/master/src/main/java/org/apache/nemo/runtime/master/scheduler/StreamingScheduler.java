@@ -51,15 +51,18 @@ public final class StreamingScheduler implements Scheduler {
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorRegistry executorRegistry;
   private final PlanStateManager planStateManager;
+  private final PipeManagerMaster pipeManagerMaster;
 
   StreamingScheduler(final TaskDispatcher taskDispatcher,
                      final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                      final ExecutorRegistry executorRegistry,
-                     final PlanStateManager planStateManager) {
+                     final PlanStateManager planStateManager,
+                     final PipeManagerMaster pipeManagerMaster) {
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.executorRegistry = executorRegistry;
     this.planStateManager = planStateManager;
+    this.pipeManagerMaster = pipeManagerMaster;
   }
 
   @Override
@@ -80,6 +83,12 @@ public final class StreamingScheduler implements Scheduler {
         submittedPhysicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
       final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
       final List<String> taskIdsToSchedule = planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId());
+
+      taskIdsToSchedule.forEach(taskId -> {
+        final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
+        stageIncomingEdges.forEach(inEdge -> pipeManagerMaster.onTaskScheduled(inEdge.getId(), index));
+        stageOutgoingEdges.forEach(outEdge -> pipeManagerMaster.onTaskScheduled(outEdge.getId(), index));
+      });
 
       // Create tasks of this stage
       return taskIdsToSchedule.stream().map(taskId -> new Task(

@@ -64,6 +64,9 @@ enum MessageType {
     MetricFlushed = 10;
     RequestBroadcastVariable = 11;
     InMasterBroadcastVariable = 12;
+    PipeInit = 13;
+    RequestPipeLoc = 14;
+    PipeLocInfo = 15;
 }
 
 message Message {
@@ -82,6 +85,9 @@ message Message {
     optional DataCollectMessage dataCollected = 13;
     optional RequestBroadcastVariableMessage requestbroadcastVariableMsg = 14;
     optional InMasterBroadcastVariableMessage broadcastVariableMsg = 15;
+    optional PipeInitMessage pipeInitMsg = 16;
+    optional RequestPipeLocationMessage requestPipeLocMsg = 17;
+    optional PipeLocationInfoMessage pipeLocInfoMsg = 18;
 }
 
 // Messages from Master to Executors
@@ -213,4 +219,20 @@ message RequestBroadcastVariableMessage {
 message InMasterBroadcastVariableMessage {
   required int64 requestId = 1; // To find the matching request msg
   required bytes variable = 2;
+}
+
+message PipeInitMessage {
+  required int64 srcTaskIndex = 1;
+  required string runtimeEdgeId = 2;
+  required string executorId = 3;
+}
+
+message RequestPipeLocationMessage {
+  required string executorId = 1;
+  required int64 srcTaskIndex = 2;
+  required string runtimeEdgeId = 3;
+}
+
+message PipeLocationInfoMessage {
+  required string executorId = 1;
 }

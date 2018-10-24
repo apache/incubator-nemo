@@ -54,7 +54,7 @@ public final class IntermediateDataIOFactory {
   public OutputWriter createWriter(final String srcTaskId,
                                    final IRVertex dstIRVertex,
                                    final RuntimeEdge<?> runtimeEdge) {
-    if (isStreaming(runtimeEdge)) {
+    if (isPipe(runtimeEdge)) {
       return new PipeOutputWriter(hashRangeMultiplier, srcTaskId, dstIRVertex, runtimeEdge, pipeManagerWorker);
     } else {
       return new BlockOutputWriter(hashRangeMultiplier, srcTaskId, dstIRVertex, runtimeEdge, blockManagerWorker);
@@ -72,15 +72,15 @@ public final class IntermediateDataIOFactory {
   public InputReader createReader(final int dstTaskIdx,
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge) {
-    if (isStreaming(runtimeEdge)) {
+    if (isPipe(runtimeEdge)) {
       return new PipeInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker);
     } else {
       return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
     }
   }
 
-  private boolean isStreaming(final RuntimeEdge runtimeEdge) {
+  private boolean isPipe(final RuntimeEdge runtimeEdge) {
     final Optional<DataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    return dataStoreProperty.isPresent() && dataStoreProperty.get().equals(DataStoreProperty.Value.Streaming);
+    return dataStoreProperty.isPresent() && dataStoreProperty.get().equals(DataStoreProperty.Value.Pipe);
   }
 }
