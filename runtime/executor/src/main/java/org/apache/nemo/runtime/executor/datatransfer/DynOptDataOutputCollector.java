@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * OutputCollector implementation.
+ * OutputCollector for dynamic optimization data.
  *
  * @param <O> output type.
  */

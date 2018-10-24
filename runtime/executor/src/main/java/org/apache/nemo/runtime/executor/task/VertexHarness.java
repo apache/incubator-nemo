@@ -27,7 +27,7 @@ import java.util.*;
 /**
  * Captures the relationship between a non-source IRVertex's outputCollector, and mainTagChildren vertices.
  */
-public final class VertexHarness {
+final class VertexHarness {
   private static final Logger LOG = LoggerFactory.getLogger(VertexHarness.class.getName());
 
   // IRVertex and transform-specific information

@@ -127,7 +127,7 @@ public final class TaskExecutorTest {
   /**
    * Test source vertex data fetching.
    */
-  @Test()
+  @Test(timeout=5000)
   public void testSourceVertexDataFetching() throws Exception {
     final IRVertex sourceIRVertex = new InMemorySourceVertex<>(elements);
 
@@ -284,7 +284,7 @@ public final class TaskExecutorTest {
    * emit(element) and emit(dstVertexId, element) used together. emit(element) routes results to main output children,
    * and emit(dstVertexId, element) routes results to corresponding additional output children.
    */
-  @Test()
+  @Test(timeout=5000)
   public void testAdditionalOutputs() throws Exception {
     final String additionalTag1 = "bonus1";
     final String additionalTag2 = "bonus2";

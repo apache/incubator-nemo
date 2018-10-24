@@ -25,6 +25,11 @@ import java.util.*;
 
 /**
  * OutputCollector implementation.
+ * This emits four types of outputs
+ * 1) internal main outputs: this output becomes the input of internal Transforms
+ * 2) internal additional outputs: this additional output becomes the input of internal Transforms
+ * 3) external main outputs: this external output is emitted to OutputWriter
+ * 4) external additional outputs: this external output is emitted to OutputWriter
  *
  * @param <O> output type.
  */
@@ -38,8 +43,12 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   private final Map<String, Set<OutputWriter>> externalAdditionalOutputs;
 
   /**
-   * Constructor of a new OutputCollectorImpl with tagged outputs.
-   * @param tagToChildren additional children vertices
+   * Constructor of the output collector.
+   * @param irVertex the ir vertex that emits the output
+   * @param internalMainOutputs internal main outputs
+   * @param internalAdditionalOutputs internal additional outputs
+   * @param externalMainOutputs external main outputs
+   * @param externalAdditionalOutputs external additional outputs
    */
   public OutputCollectorImpl(final IRVertex irVertex,
                              final Set<OperatorVertex> internalMainOutputs,
