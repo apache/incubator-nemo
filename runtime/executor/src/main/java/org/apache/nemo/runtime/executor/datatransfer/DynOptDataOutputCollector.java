@@ -78,6 +78,6 @@ public final class DynOptDataOutputCollector<O> implements OutputCollector<O> {
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
-    throw new IllegalStateException("Dynamic optimization data does not emit tagged data");
+    throw new IllegalStateException("Dynamic optimization does not emit tagged data");
   }
 }
