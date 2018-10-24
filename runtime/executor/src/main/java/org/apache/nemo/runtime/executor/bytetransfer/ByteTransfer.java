@@ -49,22 +49,26 @@ public final class ByteTransfer {
    * Initiate a transfer context to receive data.
    * @param executorId        the id of the remote executor
    * @param contextDescriptor user-provided descriptor for the new context
+   * @param isPipe            is pipe
    * @return a {@link ByteInputContext} from which the received data can be read
    */
   public CompletableFuture<ByteInputContext> newInputContext(final String executorId,
-                                                             final byte[] contextDescriptor) {
-    return connectTo(executorId).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor));
+                                                             final byte[] contextDescriptor,
+                                                             final boolean isPipe) {
+    return connectTo(executorId).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
   }
 
   /**
    * Initiate a transfer context to send data.
    * @param executorId         the id of the remote executor
    * @param contextDescriptor  user-provided descriptor for the new context
+   * @param isPipe            is pipe
    * @return a {@link ByteOutputContext} to which data can be written
    */
   public CompletableFuture<ByteOutputContext> newOutputContext(final String executorId,
-                                                               final byte[] contextDescriptor) {
-    return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor));
+                                                               final byte[] contextDescriptor,
+                                                               final boolean isPipe) {
+    return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
   }
 
   /**

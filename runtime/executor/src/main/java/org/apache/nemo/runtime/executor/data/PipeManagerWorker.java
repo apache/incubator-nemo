@@ -21,6 +21,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
@@ -103,7 +104,7 @@ public final class PipeManagerWorker {
         .build();
 
     // TODO: Connect to the executor and get iterator.
-    return  byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray())
+    return  byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
       .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
   }
 
@@ -152,5 +153,9 @@ public final class PipeManagerWorker {
 
     // Then, do stuff
     pipeContainer.putPipe(pairKey, dstTaskIndex, outputContext);
+  }
+
+  public void onInputContext(final ByteInputContext inputContext) throws InvalidProtocolBufferException {
+    throw new UnsupportedOperationException();
   }
 }

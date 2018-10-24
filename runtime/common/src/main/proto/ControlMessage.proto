@@ -158,6 +158,7 @@ message ByteTransferContextSetupMessage {
     required int32 transferIndex = 2;
     required ByteTransferDataDirection dataDirection = 3;
     required bytes contextDescriptor = 4;
+    required bool isPipe = 5;
 }
 
 message BlockTransferContextDescriptor {

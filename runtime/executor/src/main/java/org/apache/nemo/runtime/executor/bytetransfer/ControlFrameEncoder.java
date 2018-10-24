@@ -59,6 +59,7 @@ final class ControlFrameEncoder extends MessageToMessageEncoder<ByteTransferCont
         .setTransferIndex(in.getContextId().getTransferIndex())
         .setDataDirection(in.getContextId().getDataDirection())
         .setContextDescriptor(ByteString.copyFrom(in.getContextDescriptor()))
+        .setIsPipe(in.getContextId().isPipe())
         .build();
     final byte[] frameBody = message.toByteArray();
     out.add(ZEROS.retain());
