@@ -19,7 +19,6 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 
 import java.io.Serializable;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -27,29 +26,20 @@ import java.util.Optional;
  */
 public final class TransformContextImpl implements Transform.Context {
   private final BroadcastManagerWorker broadcastManagerWorker;
-  private final Map<String, String> tagToAdditionalChildren;
   private String data;
 
   /**
    * Constructor of Context Implementation.
    * @param broadcastManagerWorker for broadcast variables.
-   * @param tagToAdditionalChildren tag id to additional vertices id map.
    */
-  public TransformContextImpl(final BroadcastManagerWorker broadcastManagerWorker,
-                              final Map<String, String> tagToAdditionalChildren) {
+  public TransformContextImpl(final BroadcastManagerWorker broadcastManagerWorker) {
     this.broadcastManagerWorker = broadcastManagerWorker;
-    this.tagToAdditionalChildren = tagToAdditionalChildren;
     this.data = null;
   }
 
   @Override
   public Object getBroadcastVariable(final Serializable tag) {
     return broadcastManagerWorker.get(tag);
-  }
-
-  @Override
-  public Map<String, String> getTagToAdditionalChildren() {
-    return this.tagToAdditionalChildren;
   }
 
   @Override

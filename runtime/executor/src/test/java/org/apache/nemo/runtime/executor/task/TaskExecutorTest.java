@@ -127,7 +127,7 @@ public final class TaskExecutorTest {
   /**
    * Test source vertex data fetching.
    */
-  @Test(timeout=5000)
+  @Test()
   public void testSourceVertexDataFetching() throws Exception {
     final IRVertex sourceIRVertex = new InMemorySourceVertex<>(elements);
 
@@ -284,9 +284,13 @@ public final class TaskExecutorTest {
    * emit(element) and emit(dstVertexId, element) used together. emit(element) routes results to main output children,
    * and emit(dstVertexId, element) routes results to corresponding additional output children.
    */
-  @Test(timeout = 5000)
+  @Test()
   public void testAdditionalOutputs() throws Exception {
-    final IRVertex routerVertex = new OperatorVertex(new RoutingTransform());
+    final String additionalTag1 = "bonus1";
+    final String additionalTag2 = "bonus2";
+
+    final IRVertex routerVertex = new OperatorVertex(
+      new RoutingTransform(Arrays.asList(additionalTag1, additionalTag2)));
     final IRVertex mainVertex= new OperatorVertex(new RelayTransform());
     final IRVertex bonusVertex1 = new OperatorVertex(new RelayTransform());
     final IRVertex bonusVertex2 = new OperatorVertex(new RelayTransform());
@@ -295,8 +299,8 @@ public final class TaskExecutorTest {
     final RuntimeEdge<IRVertex> edge2 = createEdge(routerVertex, bonusVertex1, "edge-2");
     final RuntimeEdge<IRVertex> edge3 = createEdge(routerVertex, bonusVertex2, "edge-3");
 
-    edge2.getExecutionProperties().put(AdditionalOutputTagProperty.of("bonus1"));
-    edge3.getExecutionProperties().put(AdditionalOutputTagProperty.of("bonus2"));
+    edge2.getExecutionProperties().put(AdditionalOutputTagProperty.of(additionalTag1));
+    edge3.getExecutionProperties().put(AdditionalOutputTagProperty.of(additionalTag2));
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(routerVertex)
@@ -514,12 +518,15 @@ public final class TaskExecutorTest {
    */
   private class RoutingTransform implements Transform<Integer, Integer> {
     private OutputCollector<Integer> outputCollector;
-    private Map<String, String> tagToVertex;
+    private final Collection<String> additionalTags;
+
+    public RoutingTransform(final Collection<String> additionalTags) {
+      this.additionalTags = additionalTags;
+    }
 
     @Override
     public void prepare(final Context context, OutputCollector<Integer> outputCollector) {
       this.outputCollector = outputCollector;
-      this.tagToVertex = context.getTagToAdditionalChildren();
     }
 
     @Override
@@ -530,7 +537,7 @@ public final class TaskExecutorTest {
         outputCollector.emit(i);
       } else {
         // route to all additional outputs. Invoked if user calls c.output(tupleTag, element)
-        tagToVertex.values().forEach(vertex -> outputCollector.emit(vertex, i));
+        additionalTags.forEach(tag -> outputCollector.emit(tag, i));
       }
     }
 

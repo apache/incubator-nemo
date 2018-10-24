@@ -15,68 +15,37 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Captures the relationship between a non-source IRVertex's outputCollector, and mainTagChildren vertices.
  */
-final class VertexHarness {
+public final class VertexHarness {
   private static final Logger LOG = LoggerFactory.getLogger(VertexHarness.class.getName());
 
   // IRVertex and transform-specific information
   private final IRVertex irVertex;
-  private final OutputCollectorImpl outputCollector;
+  private final OutputCollector outputCollector;
   private final Transform.Context context;
-  private final List<VertexHarness> mainTagChildren;
-
-  // These lists can be empty
-  private final Map<String, VertexHarness> additionalTagOutputChildren;
-  private final Map<String, String> tagToAdditionalChildrenId;
-  private final List<OutputWriter> writersToMainChildrenTasks;
-  private final Map<String, OutputWriter> writersToAdditionalChildrenTasks;
+  private final Set<OutputWriter> externalOutputWriter;
+  private final Map<String, Set<OutputWriter>> externalAdditionalOutputWriter;
 
   VertexHarness(final IRVertex irVertex,
-                final OutputCollectorImpl outputCollector,
-                final List<VertexHarness> children,
-                final List<Boolean> isAdditionalTagOutputs,
-                final List<OutputWriter> writersToMainChildrenTasks,
-                final Map<String, OutputWriter> writersToAdditionalChildrenTasks,
-                final Transform.Context context) {
+                final OutputCollector outputCollector,
+                final Transform.Context context,
+                final Set<OutputWriter> externalOutputWriter,
+                final Map<String, Set<OutputWriter>> externalAdditionalOutputWriter) {
     this.irVertex = irVertex;
     this.outputCollector = outputCollector;
-    if (children.size() != isAdditionalTagOutputs.size()) {
-      throw new IllegalStateException(irVertex.toString());
-    }
-    final Map<String, String> taggedOutputMap = context.getTagToAdditionalChildren();
-    final Map<String, VertexHarness> tagged = new HashMap<>();
-
-    // Classify input type for intra-task children
-    for (int i = 0; i < children.size(); i++) {
-      final VertexHarness child = children.get(i);
-      if (isAdditionalTagOutputs.get(i)) {
-        taggedOutputMap.entrySet().stream()
-          .filter(kv -> child.getIRVertex().getId().equals(kv.getValue()))
-          .forEach(kv -> tagged.put(kv.getKey(), child));
-      }
-    }
-
-    this.tagToAdditionalChildrenId = context.getTagToAdditionalChildren();
-    this.additionalTagOutputChildren = tagged;
-    final List<VertexHarness> mainTagChildrenTmp = new ArrayList<>(children);
-    mainTagChildrenTmp.removeAll(additionalTagOutputChildren.values());
-    this.mainTagChildren = mainTagChildrenTmp;
-    this.writersToMainChildrenTasks = writersToMainChildrenTasks;
-    this.writersToAdditionalChildrenTasks = writersToAdditionalChildrenTasks;
+    this.externalOutputWriter = externalOutputWriter;
+    this.externalAdditionalOutputWriter = externalAdditionalOutputWriter;
     this.context = context;
   }
 
@@ -88,45 +57,31 @@ final class VertexHarness {
   }
 
   /**
+   * @return id of irVertex.
+   */
+  String getId() {
+    return irVertex.getId();
+  }
+
+  /**
    * @return OutputCollector of this irVertex.
    */
-  OutputCollectorImpl getOutputCollector() {
+  OutputCollector getOutputCollector() {
     return outputCollector;
-  }
-
-  /**
-   * @return mainTagChildren harnesses.
-   */
-  List<VertexHarness> getMainTagChildren() {
-    return mainTagChildren;
-  }
-
-  /**
-   * @return map of tagged output mainTagChildren. (empty if none exists)
-   */
-  public Map<String, VertexHarness> getAdditionalTagOutputChildren() {
-    return additionalTagOutputChildren;
-  }
-
-  /**
-   * @return map of tag to additional children id.
-   */
-  public Map<String, String> getTagToAdditionalChildrenId() {
-    return tagToAdditionalChildrenId;
   }
 
   /**
    * @return OutputWriters for main outputs of this irVertex. (empty if none exists)
    */
-  List<OutputWriter> getWritersToMainChildrenTasks() {
-    return writersToMainChildrenTasks;
+  Set<OutputWriter> getWritersToMainChildrenTasks() {
+    return externalOutputWriter;
   }
 
   /**
    * @return OutputWriters for additional tagged outputs of this irVertex. (empty if none exists)
    */
-  Map<String, OutputWriter> getWritersToAdditionalChildrenTasks() {
-    return writersToAdditionalChildrenTasks;
+  Map<String, Set<OutputWriter>> getWritersToAdditionalChildrenTasks() {
+    return externalAdditionalOutputWriter;
   }
 
   /**
