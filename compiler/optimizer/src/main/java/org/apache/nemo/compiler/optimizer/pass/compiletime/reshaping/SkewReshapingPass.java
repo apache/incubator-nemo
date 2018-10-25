@@ -153,7 +153,6 @@ public final class SkewReshapingPass extends ReshapingPass {
       (BiFunction<Map<Object, Object>, OutputCollector, Map<Object, Object>> & Serializable)
         (dynOptData, outputCollector)-> {
           dynOptData.forEach((k, v) -> {
-            System.out.println("Emit at metric collect vertex: " + k + ", " + v);
             final Pair<Object, Object> pairData = Pair.of(k, v);
             outputCollector.emit(ADDITIONAL_OUTPUT_TAG, pairData);
           });
