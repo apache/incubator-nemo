@@ -157,24 +157,26 @@ public final class TaskExecutor {
       }
 
       // Additional outputs
-      final Map<String, Set<OperatorVertex>> internalAdditionalOutputMap =
+      final Map<String, List<OperatorVertex>> internalAdditionalOutputMap =
         getInternalAdditionalOutputMap(irVertex, irVertexDag);
-      final Map<String, Set<OutputWriter>> externalAdditionalOutputMap =
+      final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         getExternalAdditionalOutputMap(irVertex, task.getTaskOutgoingEdges(), dataTransferFactory);
 
       // Main outputs
-      final Set<OperatorVertex> internalMainOutputs = getInternalMainOutputs(irVertex, irVertexDag);
-      final Set<OutputWriter> externalMainOutputs =
+      final List<OperatorVertex> internalMainOutputs = getInternalMainOutputs(irVertex, irVertexDag);
+      final List<OutputWriter> externalMainOutputs =
         getExternalMainOutputs(irVertex, task.getTaskOutgoingEdges(), dataTransferFactory);
 
-      OutputCollector outputCollector = new OutputCollectorImpl(
-        irVertex, internalMainOutputs, internalAdditionalOutputMap,
-        externalMainOutputs, externalAdditionalOutputMap);
+      final OutputCollector outputCollector;
 
       if (irVertex instanceof OperatorVertex
         && ((OperatorVertex) irVertex).getTransform() instanceof AggregateMetricTransform) {
         outputCollector = new DynOptDataOutputCollector(
           irVertex, persistentConnectionToMasterMap, this);
+      } else {
+        outputCollector = new OutputCollectorImpl(
+          irVertex, internalMainOutputs, internalAdditionalOutputMap,
+          externalMainOutputs, externalAdditionalOutputMap);
       }
 
       // Create VERTEX HARNESS
@@ -355,12 +357,12 @@ public final class TaskExecutor {
   }
 
   ////////////////////////////////////////////// Helper methods for setting up initial data structures
-  private Map<String, Set<OutputWriter>> getExternalAdditionalOutputMap(
+  private Map<String, List<OutputWriter>> getExternalAdditionalOutputMap(
     final IRVertex irVertex,
     final List<StageEdge> outEdgesToChildrenTasks,
     final DataTransferFactory dataTransferFactory) {
     // Add all inter-task additional tags to additional output map.
-    final Map<String, Set<OutputWriter>> map = new HashMap<>();
+    final Map<String, List<OutputWriter>> map = new HashMap<>();
 
     outEdgesToChildrenTasks
       .stream()
@@ -370,18 +372,18 @@ public final class TaskExecutor {
         Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(),
           dataTransferFactory.createWriter(taskId, edge.getDstIRVertex(), edge)))
       .forEach(pair -> {
-        map.putIfAbsent(pair.left(), new HashSet<>());
+        map.putIfAbsent(pair.left(), new ArrayList<>());
         map.get(pair.left()).add(pair.right());
       });
 
     return map;
   }
 
-  private Map<String, Set<OperatorVertex>> getInternalAdditionalOutputMap(
+  private Map<String, List<OperatorVertex>> getInternalAdditionalOutputMap(
     final IRVertex irVertex,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
     // Add all intra-task additional tags to additional output map.
-    final Map<String, Set<OperatorVertex>> map = new HashMap<>();
+    final Map<String, List<OperatorVertex>> map = new HashMap<>();
 
     irVertexDag.getOutgoingEdgesOf(irVertex.getId())
       .stream()
@@ -389,20 +391,20 @@ public final class TaskExecutor {
       .map(edge ->
         Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(), (OperatorVertex) edge.getDst()))
       .forEach(pair -> {
-        map.putIfAbsent(pair.left(), new HashSet<>());
+        map.putIfAbsent(pair.left(), new ArrayList<>());
         map.get(pair.left()).add(pair.right());
       });
 
     return map;
   }
 
-  private Set<OperatorVertex> getInternalMainOutputs(final IRVertex irVertex,
+  private List<OperatorVertex> getInternalMainOutputs(final IRVertex irVertex,
                                                      final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
     return irVertexDag.getOutgoingEdgesOf(irVertex.getId())
       .stream()
       .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
       .map(edge -> (OperatorVertex) edge.getDst())
-      .collect(Collectors.toSet());
+      .collect(Collectors.toList());
   }
 
   /**
@@ -413,7 +415,7 @@ public final class TaskExecutor {
    * @param dataTransferFactory     dataTransferFactory
    * @return OutputWriters for main children tasks
    */
-  private Set<OutputWriter> getExternalMainOutputs(final IRVertex irVertex,
+  private List<OutputWriter> getExternalMainOutputs(final IRVertex irVertex,
                                                    final List<StageEdge> outEdgesToChildrenTasks,
                                                    final DataTransferFactory dataTransferFactory) {
     return outEdgesToChildrenTasks
@@ -422,7 +424,7 @@ public final class TaskExecutor {
       .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
       .map(outEdgeForThisVertex -> dataTransferFactory
         .createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
-      .collect(Collectors.toSet());
+      .collect(Collectors.toList());
   }
 
 

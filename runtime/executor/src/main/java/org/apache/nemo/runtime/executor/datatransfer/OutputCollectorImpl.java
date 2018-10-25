@@ -37,10 +37,10 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(OutputCollectorImpl.class.getName());
 
   private final IRVertex irVertex;
-  private final Set<OperatorVertex> internalMainOutputs;
-  private final Map<String, Set<OperatorVertex>> internalAdditionalOutputs;
-  private final Set<OutputWriter> externalMainOutputs;
-  private final Map<String, Set<OutputWriter>> externalAdditionalOutputs;
+  private final List<OperatorVertex> internalMainOutputs;
+  private final Map<String, List<OperatorVertex>> internalAdditionalOutputs;
+  private final List<OutputWriter> externalMainOutputs;
+  private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
 
   /**
    * Constructor of the output collector.
@@ -51,10 +51,10 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @param externalAdditionalOutputs external additional outputs
    */
   public OutputCollectorImpl(final IRVertex irVertex,
-                             final Set<OperatorVertex> internalMainOutputs,
-                             final Map<String, Set<OperatorVertex>> internalAdditionalOutputs,
-                             final Set<OutputWriter> externalMainOutputs,
-                             final Map<String, Set<OutputWriter>> externalAdditionalOutputs) {
+                             final List<OperatorVertex> internalMainOutputs,
+                             final Map<String, List<OperatorVertex>> internalAdditionalOutputs,
+                             final List<OutputWriter> externalMainOutputs,
+                             final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;

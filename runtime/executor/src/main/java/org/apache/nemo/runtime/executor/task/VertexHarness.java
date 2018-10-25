@@ -34,14 +34,14 @@ final class VertexHarness {
   private final IRVertex irVertex;
   private final OutputCollector outputCollector;
   private final Transform.Context context;
-  private final Set<OutputWriter> externalOutputWriter;
-  private final Map<String, Set<OutputWriter>> externalAdditionalOutputWriter;
+  private final List<OutputWriter> externalOutputWriter;
+  private final Map<String, List<OutputWriter>> externalAdditionalOutputWriter;
 
   VertexHarness(final IRVertex irVertex,
                 final OutputCollector outputCollector,
                 final Transform.Context context,
-                final Set<OutputWriter> externalOutputWriter,
-                final Map<String, Set<OutputWriter>> externalAdditionalOutputWriter) {
+                final List<OutputWriter> externalOutputWriter,
+                final Map<String, List<OutputWriter>> externalAdditionalOutputWriter) {
     this.irVertex = irVertex;
     this.outputCollector = outputCollector;
     this.externalOutputWriter = externalOutputWriter;
@@ -73,14 +73,14 @@ final class VertexHarness {
   /**
    * @return OutputWriters for main outputs of this irVertex. (empty if none exists)
    */
-  Set<OutputWriter> getWritersToMainChildrenTasks() {
+  List<OutputWriter> getWritersToMainChildrenTasks() {
     return externalOutputWriter;
   }
 
   /**
    * @return OutputWriters for additional tagged outputs of this irVertex. (empty if none exists)
    */
-  Map<String, Set<OutputWriter>> getWritersToAdditionalChildrenTasks() {
+  Map<String, List<OutputWriter>> getWritersToAdditionalChildrenTasks() {
     return externalAdditionalOutputWriter;
   }
 
