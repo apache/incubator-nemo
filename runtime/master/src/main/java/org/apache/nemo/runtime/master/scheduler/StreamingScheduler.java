@@ -127,7 +127,8 @@ public final class StreamingScheduler implements Scheduler {
       case ON_HOLD:
       case FAILED:
         // TODO #226: StreamingScheduler Fault Tolerance
-        throw new UnsupportedOperationException();
+        // throw new UnsupportedOperationException();
+        break;
       case READY:
       case EXECUTING:
         throw new RuntimeException("The states READY/EXECUTING cannot occur at this point");

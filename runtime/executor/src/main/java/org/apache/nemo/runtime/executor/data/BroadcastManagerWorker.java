@@ -116,6 +116,7 @@ public final class BroadcastManagerWorker {
    */
   public void registerInputReader(final Serializable id,
                                   final InputReader inputReader) {
+    LOG.info("register {} / {}", id, inputReader.getId());
     this.idToReader.put(id, inputReader);
   }
 
@@ -125,6 +126,7 @@ public final class BroadcastManagerWorker {
    * @return the variable.
    */
   public Object get(final Serializable id)  {
+    LOG.info("get {}", id);
     try {
       return idToVariableCache.get(id);
     } catch (ExecutionException e) {

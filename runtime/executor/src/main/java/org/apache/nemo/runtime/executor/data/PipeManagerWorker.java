@@ -72,6 +72,8 @@ public final class PipeManagerWorker {
                                                                final String runtimeEdgeId,
                                                                final int dstTaskIndex,
                                                                final int dstParallelism) {
+    LOG.info("Get loc {}", runtimeEdgeId);
+
     // Get the location of the src task (blocking call)
     final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
       .getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
@@ -87,6 +89,7 @@ public final class PipeManagerWorker {
               .build())
           .build());
 
+
     return responseFromMasterFuture.thenCompose(responseFromMaster -> {
       // Get executor id
       if (responseFromMaster.getType() != ControlMessage.MessageType.PipeLocInfo) {
@@ -97,6 +100,7 @@ public final class PipeManagerWorker {
         throw new IllegalStateException();
       }
       final String targetExecutorId = responseFromMaster.getPipeLocInfoMsg().getExecutorId();
+      LOG.info("Connect to {} for {}", targetExecutorId, runtimeEdgeId);
 
       // Descriptor
       final ControlMessage.PipeTransferContextDescriptor descriptor =
@@ -140,6 +144,7 @@ public final class PipeManagerWorker {
 
     // First, initialize the pair key
     final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
+    LOG.info("dstParallelism init {}", dstParallelism);
     pipeContainer.putPipeListIfAbsent(pairKey, dstParallelism);
 
     // Then, do stuff
@@ -167,6 +172,7 @@ public final class PipeManagerWorker {
     final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
 
     // First, initialize the pair key
+    LOG.info("dstParallelism onOutputContext {}", dstParallelism);
     pipeContainer.putPipeListIfAbsent(pairKey, dstParallelism);
 
     // Then, do stuff

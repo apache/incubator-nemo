@@ -22,7 +22,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -47,13 +49,13 @@ public final class PipeContainer {
   }
 
   class CountBasedBlockingContainer<T> {
-    private final List<T> valueList;
+    private final Map<Integer, T> indexToValue;
     private final int expected;
     private final Lock lock;
     private final Condition condition;
 
     CountBasedBlockingContainer(final int expected) {
-      this.valueList = new ArrayList<>(expected);
+      this.indexToValue = new HashMap<>(expected);
       this.expected = expected;
       this.lock = new ReentrantLock();
       this.condition = lock.newCondition();
@@ -65,7 +67,7 @@ public final class PipeContainer {
         if (!isCountSatistified()) {
           condition.await();
         }
-        return valueList;
+        return new ArrayList<>(indexToValue.values());
       } catch (InterruptedException e) {
         throw new RuntimeException(e);
       } finally {
@@ -76,7 +78,7 @@ public final class PipeContainer {
     public void setValue(final int index, final T value) {
       lock.lock();
       try {
-        final T previous = valueList.set(index, value);
+        final T previous = indexToValue.put(index, value);
         if (null != previous) {
           throw new IllegalStateException(previous.toString());
         }
@@ -90,12 +92,12 @@ public final class PipeContainer {
     }
 
     private boolean isCountSatistified() {
-      if (valueList.size() < expected) {
+      if (indexToValue.size() < expected) {
         return false;
-      } else if (valueList.size() == expected) {
+      } else if (indexToValue.size() == expected) {
         return true;
       } else {
-        throw new IllegalStateException(valueList.size() + " < " + expected);
+        throw new IllegalStateException(indexToValue.size() + " < " + expected);
       }
     }
   }
@@ -107,6 +109,7 @@ public final class PipeContainer {
    * @param expected
    */
   synchronized void putPipeListIfAbsent(final Pair<String, Long> pairKey, final int expected) {
+    LOG.info("{} and {}", pairKey, expected);
     pipeMap.putIfAbsent(pairKey, new CountBasedBlockingContainer(expected));
   }
 
@@ -118,6 +121,7 @@ public final class PipeContainer {
    * @param byteOutputContext
    */
   void putPipe(final Pair<String, Long> pairKey, final int dstTaskIndex, final ByteOutputContext byteOutputContext) {
+    LOG.info("{} and {}", pairKey, dstTaskIndex);
     final CountBasedBlockingContainer<ByteOutputContext> container = pipeMap.get(pairKey);
     container.setValue(dstTaskIndex, byteOutputContext);
   }

@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
  */
 public final class PipeOutputWriter extends OutputWriter {
   private final Serializer serializer;
+  private final List<ByteOutputContext> contexts;
   private final List<ByteOutputContext.ByteOutputStream> pipes;
 
   /**
@@ -53,14 +54,17 @@ public final class PipeOutputWriter extends OutputWriter {
                    final PipeManagerWorker pipeManagerWorker) {
     super(hashRangeMultiplier, dstIrVertex, runtimeEdge);
     final int dstParallelism = ((StageEdge) runtimeEdge)
-      .getDst()
+      .getDstIRVertex()
       .getPropertyValue(ParallelismProperty.class)
       .orElseThrow(() -> new IllegalStateException());
+
+    System.out.println("VALUES " + ((StageEdge) runtimeEdge).getDstIRVertex().getExecutionProperties().toString());
 
     // Blocking call
     final List<ByteOutputContext> contexts = pipeManagerWorker
       .initializeOutgoingPipes(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId), dstParallelism);
 
+    this.contexts = contexts;
     this.pipes = contexts.stream()
       .map(collect -> {
         try {
@@ -104,6 +108,12 @@ public final class PipeOutputWriter extends OutputWriter {
 
   @Override
   public void close() {
-    throw new UnsupportedOperationException("Assumes pipes never close");
+    contexts.forEach(context -> {
+      try {
+        context.close();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    });
   }
 }
