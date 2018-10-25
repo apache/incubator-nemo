@@ -238,6 +238,8 @@ public final class TaskExecutor {
     final IRVertex irVertex = vertexHarness.getIRVertex();
     final OutputCollectorImpl outputCollector = vertexHarness.getOutputCollector();
 
+    LOG.info("process {} for {}", vertexHarness.getIRVertex().getId(), dataElement);
+
     if (irVertex instanceof SourceVertex) {
       outputCollector.emit(dataElement);
     } else if (irVertex instanceof OperatorVertex) {
@@ -246,6 +248,8 @@ public final class TaskExecutor {
     } else {
       throw new UnsupportedOperationException("This type of IRVertex is not supported");
     }
+
+    LOG.info("process done {} for {}", vertexHarness.getIRVertex().getId(), dataElement);
 
     // Given a single input element, a vertex can produce many output elements.
     // Here, we recursively process all of the main output elements.
@@ -379,6 +383,7 @@ public final class TaskExecutor {
   }
 
   private void handleMainOutputElement(final VertexHarness harness, final Object element) {
+    LOG.info("handle output {} for {}", harness.getIRVertex().getId(), element);
     // writes to children tasks
     harness.getWritersToMainChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
     // process elements in the next vertices within a task
@@ -407,10 +412,15 @@ public final class TaskExecutor {
       int finishedFetcherIndex = NONE_FINISHED;
       for (int i = 0; i < availableFetchers.size(); i++) {
         final DataFetcher dataFetcher = availableFetchers.get(i);
+
+        LOG.info("Fetching from {}", dataFetcher.getDataSource().getId());
+
         final Object element;
         try {
           element = dataFetcher.fetchDataElement();
+          LOG.info("Fetched {}", element);
         } catch (NoSuchElementException e) {
+          LOG.info("No such element {}", dataFetcher.getDataSource().getId());
           // We've consumed all the data from this data fetcher.
           if (dataFetcher instanceof SourceVertexDataFetcher) {
             boundedSourceReadTime += ((SourceVertexDataFetcher) dataFetcher).getBoundedSourceReadTime();

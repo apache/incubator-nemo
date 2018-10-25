@@ -64,10 +64,15 @@ class ParentTaskDataFetcher extends DataFetcher {
       }
 
       while (true) {
+        LOG.info("try to fetch for {}", readersForParentTask.getId());
+
         // This iterator has the element
         if (this.currentIterator.hasNext()) {
+          LOG.info("has next true {}", readersForParentTask.getId());
           return this.currentIterator.next();
         }
+
+        LOG.info("has next false {}", readersForParentTask.getId());
 
         // This iterator does not have the element
         if (currentIteratorIndex < expectedNumOfIterators) {
@@ -79,6 +84,7 @@ class ParentTaskDataFetcher extends DataFetcher {
           // We've consumed all the iterators
           break;
         }
+
       }
     } catch (final Throwable e) {
       // Any failure is caught and thrown as an IOException, so that the task is retried.

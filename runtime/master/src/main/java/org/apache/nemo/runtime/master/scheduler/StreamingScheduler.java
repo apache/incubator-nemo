@@ -77,7 +77,8 @@ public final class StreamingScheduler implements Scheduler {
     planStateManager.storeJSON("submitted");
 
     // Prepare tasks
-    final List<Stage> reverseTopoStages = Lists.reverse(submittedPhysicalPlan.getStageDAG().getTopologicalSort());
+    // final List<Stage> reverseTopoStages = Lists.reverse(submittedPhysicalPlan.getStageDAG().getTopologicalSort());
+    final List<Stage> reverseTopoStages = submittedPhysicalPlan.getStageDAG().getTopologicalSort();
     final List<Task> reverseTopoTasks = reverseTopoStages.stream().flatMap(stageToSchedule -> {
       // Helper variables for this stage
       final List<StageEdge> stageIncomingEdges =
@@ -121,14 +122,17 @@ public final class StreamingScheduler implements Scheduler {
                                             final TaskState.State newState,
                                             @Nullable final String vertexPutOnHold,
                                             final TaskState.RecoverableTaskFailureCause failureCause) {
+    planStateManager.onTaskStateChanged(taskId, newState);
+
     switch (newState) {
       case COMPLETE:
-      case SHOULD_RETRY:
+        // Do nothing.
+        break;
       case ON_HOLD:
       case FAILED:
+      case SHOULD_RETRY:
         // TODO #226: StreamingScheduler Fault Tolerance
-        // throw new UnsupportedOperationException();
-        break;
+        throw new UnsupportedOperationException();
       case READY:
       case EXECUTING:
         throw new RuntimeException("The states READY/EXECUTING cannot occur at this point");

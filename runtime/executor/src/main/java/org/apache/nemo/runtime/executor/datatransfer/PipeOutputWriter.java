@@ -24,20 +24,28 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Represents the output data transfer from a task.
  */
 public final class PipeOutputWriter extends OutputWriter {
-  private final Serializer serializer;
-  private final List<ByteOutputContext> contexts;
-  private final List<ByteOutputContext.ByteOutputStream> pipes;
+  private static final Logger LOG = LoggerFactory.getLogger(OutputWriter.class.getName());
+
+  private final String srcTaskId;
+  private final PipeManagerWorker pipeManagerWorker;
+
+  private boolean initialized;
+  private Serializer serializer;
+  private List<ByteOutputContext> pipes;
 
   /**
    * Constructor.
@@ -53,28 +61,10 @@ public final class PipeOutputWriter extends OutputWriter {
                    final RuntimeEdge runtimeEdge,
                    final PipeManagerWorker pipeManagerWorker) {
     super(hashRangeMultiplier, dstIrVertex, runtimeEdge);
-    final int dstParallelism = ((StageEdge) runtimeEdge)
-      .getDstIRVertex()
-      .getPropertyValue(ParallelismProperty.class)
-      .orElseThrow(() -> new IllegalStateException());
-
-    System.out.println("VALUES " + ((StageEdge) runtimeEdge).getDstIRVertex().getExecutionProperties().toString());
-
-    // Blocking call
-    final List<ByteOutputContext> contexts = pipeManagerWorker
-      .initializeOutgoingPipes(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId), dstParallelism);
-
-    this.contexts = contexts;
-    this.pipes = contexts.stream()
-      .map(collect -> {
-        try {
-          return collect.newOutputStream();
-        } catch (IOException e) {
-          throw new RuntimeException(e); // For now we crash the executor on IOException
-        }
-      })
-      .collect(Collectors.toList());
-    this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
+    this.initialized = false;
+    this.srcTaskId = srcTaskId;
+    this.pipeManagerWorker = pipeManagerWorker;
+    this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId));
   }
 
   /**
@@ -83,24 +73,25 @@ public final class PipeOutputWriter extends OutputWriter {
    */
   @Override
   public void write(final Object element) {
-    try {
-      // Get pipe
-      final ByteOutputContext.ByteOutputStream pipeToWriteTo;
-      if (runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get()
-        .equals(CommunicationPatternProperty.Value.OneToOne)) {
-        pipeToWriteTo = pipes.get(0);
-      } else {
-        pipeToWriteTo = pipes.get((int) partitioner.partition(element));
-      }
+    if (!initialized) {
+      doInitialize();
+    }
+
+    try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get()
+        .equals(CommunicationPatternProperty.Value.OneToOne) ? pipes.get(0).newOutputStream() : pipes.get((int) partitioner.partition(element)).newOutputStream()) {
 
       // Serialize (Do not compress)
-      // TODO: compress
+      LOG.info("Write ser {}", element);
       final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
-      final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(bytesOutputStream);
+      final OutputStream wrapped = DataUtil.buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
+      final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
       encoder.encode(element);
+      wrapped.close();
 
+      LOG.info("Write ser done {}", element);
       // Write
       pipeToWriteTo.write(bytesOutputStream.getBufDirectly());
+      LOG.info("Write done {}, byte {}", element, bytesOutputStream.getBufDirectly());
     } catch (IOException e) {
       throw new RuntimeException(e); // For now we crash the executor on IOException
     }
@@ -108,12 +99,32 @@ public final class PipeOutputWriter extends OutputWriter {
 
   @Override
   public void close() {
-    contexts.forEach(context -> {
+    if (!initialized) {
+      // In order to "wire-up" with the receivers waiting for us.:w
+      doInitialize();
+    }
+
+    LOG.info("Closing outputstream of {}", runtimeEdge.getId());
+    pipes.forEach(pipe -> {
       try {
-        context.close();
+        pipe.close();
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
     });
+  }
+
+  private void doInitialize() {
+    initialized = true;
+
+    final int dstParallelism = ((StageEdge) runtimeEdge)
+      .getDstIRVertex()
+      .getPropertyValue(ParallelismProperty.class)
+      .orElseThrow(() -> new IllegalStateException());
+
+    // Blocking call
+    this.pipes = pipeManagerWorker
+      .getOutputContexts(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId), dstParallelism);
+    this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
   }
 }

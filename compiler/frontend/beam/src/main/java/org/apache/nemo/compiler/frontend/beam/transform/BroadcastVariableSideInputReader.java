@@ -37,6 +37,7 @@ public final class BroadcastVariableSideInputReader implements SideInputReader {
 
   BroadcastVariableSideInputReader(final Transform.Context context,
                                    final Collection<PCollectionView<?>> sideInputs) {
+    System.out.println("SIDEINPUT INIT: " + sideInputs.toString());
     this.context = context;
     this.sideInputs = sideInputs;
   }
@@ -45,16 +46,19 @@ public final class BroadcastVariableSideInputReader implements SideInputReader {
   @Override
   public <T> T get(final PCollectionView<T> view, final BoundedWindow window) {
     // TODO #216: implement side input and windowing
+    System.out.println("SIDEINPUT: " + view.toString());
     return ((WindowedValue<T>) context.getBroadcastVariable(view)).getValue();
   }
 
   @Override
   public <T> boolean contains(final PCollectionView<T> view) {
+    System.out.println("SIDEINPUT contains: " + sideInputs.toString());
     return sideInputs.contains(view);
   }
 
   @Override
   public boolean isEmpty() {
+    System.out.println("SIDEINPUT isempty: " + sideInputs.toString());
     return sideInputs.isEmpty();
   }
 }

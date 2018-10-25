@@ -118,17 +118,8 @@ public final class PipeManagerWorker {
     });
   }
 
-  /**
-   * (SYNCHRONIZATION) Called by task threads.
-   *
-   * @param runtimeEdgeId
-   * @param srcTaskIndex
-   * @param dstParallelism
-   * @return
-   */
-  public List<ByteOutputContext> initializeOutgoingPipes(final String runtimeEdgeId,
-                                                         final long srcTaskIndex,
-                                                         final int dstParallelism) {
+
+  public void notifyMaster(final String runtimeEdgeId, final long srcTaskIndex) {
     // Notify the master that we're using this pipe.
     toMaster.getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
       ControlMessage.Message.newBuilder()
@@ -141,6 +132,19 @@ public final class PipeManagerWorker {
           .setExecutorId(executorId)
           .build())
         .build());
+  }
+
+  /**
+   * (SYNCHRONIZATION) Called by task threads.
+   *
+   * @param runtimeEdgeId
+   * @param srcTaskIndex
+   * @param dstParallelism
+   * @return output contexts.
+   */
+  public List<ByteOutputContext> getOutputContexts(final String runtimeEdgeId,
+                                                   final long srcTaskIndex,
+                                                   final int dstParallelism) {
 
     // First, initialize the pair key
     final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);

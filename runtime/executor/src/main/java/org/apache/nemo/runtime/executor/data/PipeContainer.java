@@ -65,7 +65,9 @@ public final class PipeContainer {
       lock.lock();
       try {
         if (!isCountSatistified()) {
+          LOG.info("Await - start");
           condition.await();
+          LOG.info("Await - done");
         }
         return new ArrayList<>(indexToValue.values());
       } catch (InterruptedException e) {
