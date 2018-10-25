@@ -16,7 +16,7 @@ syntax = "proto2";
 
 package protobuf;
 
-option java_package = "edu.snu.nemo.runtime.common.comm";
+option java_package = "org.apache.nemo.runtime.common.comm";
 option java_outer_classname = "ControlMessage";
 
 enum ClientToDriverMessageType {
@@ -120,12 +120,11 @@ message BlockStateChangedMsg {
 }
 
 message DataSizeMetricMsg {
-    // TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
     repeated PartitionSizeEntry partitionSize = 1;
 }
 
 message PartitionSizeEntry {
-    required int32 key = 1;
+    required string key = 1;
     required int64 size = 2;
 }
 

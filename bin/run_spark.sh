@@ -14,4 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp examples/spark/target/nemo-examples-spark-0.1-SNAPSHOT-shaded.jar:`yarn classpath` edu.snu.nemo.client.JobLauncher "$@"
+java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp examples/spark/target/nemo-examples-spark-0.1-SNAPSHOT-shaded.jar:`yarn classpath` org.apache.nemo.client.JobLauncher "$@"
