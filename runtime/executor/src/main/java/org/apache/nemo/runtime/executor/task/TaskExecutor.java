@@ -516,6 +516,8 @@ public final class TaskExecutor {
     for (final Long writtenBytes : writtenBytesList) {
       totalWrittenBytes += writtenBytes;
     }
+
+    // TODO #236: Decouple metric collection and sending logic
     metricMessageSender.send("TaskMetric", taskId,
       "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
   }
