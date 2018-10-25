@@ -19,10 +19,8 @@ import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
-import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
@@ -117,14 +115,8 @@ public final class PipeOutputWriter extends OutputWriter {
   private void doInitialize() {
     initialized = true;
 
-    final int dstParallelism = ((StageEdge) runtimeEdge)
-      .getDstIRVertex()
-      .getPropertyValue(ParallelismProperty.class)
-      .orElseThrow(() -> new IllegalStateException());
-
     // Blocking call
-    this.pipes = pipeManagerWorker
-      .getOutputContexts(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId), dstParallelism);
+    this.pipes = pipeManagerWorker.getOutputContexts(runtimeEdge, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
   }
 }

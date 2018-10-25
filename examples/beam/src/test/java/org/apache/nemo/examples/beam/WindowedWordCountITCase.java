@@ -18,11 +18,8 @@ package org.apache.nemo.examples.beam;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestUtil;
-import org.apache.nemo.compiler.optimizer.policy.ConditionalLargeShufflePolicy;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.apache.nemo.examples.beam.policy.*;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -47,7 +44,7 @@ public final class WindowedWordCountITCase {
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
   @Test (timeout = TIMEOUT)
-  public void testFixedWindow() throws Exception {
+  public void testBatchFixedWindow() throws Exception {
     builder = new ArgBuilder()
       .addUserMain(WindowedWordCount.class.getCanonicalName())
       .addUserArgs(inputFilePath, outputFilePath, "fixed");
@@ -67,7 +64,7 @@ public final class WindowedWordCountITCase {
 
 
   @Test (timeout = TIMEOUT)
-  public void testSlidingWindow() throws Exception {
+  public void testBatchSlidingWindow() throws Exception {
     builder = new ArgBuilder()
       .addUserMain(WindowedWordCount.class.getCanonicalName())
       .addUserArgs(inputFilePath, outputFilePath, "sliding");
@@ -76,6 +73,47 @@ public final class WindowedWordCountITCase {
       .addResourceJson(executorResourceFileName)
       .addJobId(WindowedWordCountITCase.class.getSimpleName())
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
+
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedSlidingWindowOutputFileName);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void testStreamingFixedWindow() throws Exception {
+    builder = new ArgBuilder()
+      .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
+      .addUserMain(WindowedWordCount.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath, "fixed");
+
+    JobLauncher.main(builder
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WindowedWordCountITCase.class.getSimpleName())
+      .addOptimizationPolicy(StreamingPolicyParallelismFive.class.getCanonicalName())
+      .build());
+
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
+  }
+
+
+  @Test (timeout = TIMEOUT)
+  public void testStreamingSlidingWindow() throws Exception {
+    builder = new ArgBuilder()
+      .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
+      .addUserMain(WindowedWordCount.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath, "sliding");
+
+    JobLauncher.main(builder
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WindowedWordCountITCase.class.getSimpleName())
+      .addOptimizationPolicy(StreamingPolicyParallelismFive.class.getCanonicalName())
       .build());
 
     try {

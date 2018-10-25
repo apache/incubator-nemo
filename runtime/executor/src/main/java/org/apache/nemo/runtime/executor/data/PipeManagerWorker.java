@@ -17,11 +17,15 @@ package org.apache.nemo.runtime.executor.data;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
@@ -69,9 +73,9 @@ public final class PipeManagerWorker {
   }
 
   public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final int srcTaskIndex,
-                                                               final String runtimeEdgeId,
-                                                               final int dstTaskIndex,
-                                                               final int dstParallelism) {
+                                                               final RuntimeEdge runtimeEdge,
+                                                               final int dstTaskIndex) {
+    final String runtimeEdgeId = runtimeEdge.getId();
     LOG.info("Get loc {}", runtimeEdgeId);
 
     // Get the location of the src task (blocking call)
@@ -108,7 +112,7 @@ public final class PipeManagerWorker {
           .setRuntimeEdgeId(runtimeEdgeId)
           .setSrcTaskIndex(srcTaskIndex)
           .setDstTaskIndex(dstTaskIndex)
-          .setDstParallelism(dstParallelism)
+          .setNumPipeToWait(getNumOfPipeToWait(runtimeEdge))
           .build();
 
       // Connect to the executor
@@ -137,19 +141,16 @@ public final class PipeManagerWorker {
   /**
    * (SYNCHRONIZATION) Called by task threads.
    *
-   * @param runtimeEdgeId
+   * @param runtimeEdge
    * @param srcTaskIndex
-   * @param dstParallelism
    * @return output contexts.
    */
-  public List<ByteOutputContext> getOutputContexts(final String runtimeEdgeId,
-                                                   final long srcTaskIndex,
-                                                   final int dstParallelism) {
+  public List<ByteOutputContext> getOutputContexts(final RuntimeEdge runtimeEdge,
+                                                   final long srcTaskIndex) {
 
     // First, initialize the pair key
-    final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
-    LOG.info("dstParallelism init {}", dstParallelism);
-    pipeContainer.putPipeListIfAbsent(pairKey, dstParallelism);
+    final Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), srcTaskIndex);
+    pipeContainer.putPipeListIfAbsent(pairKey, getNumOfPipeToWait(runtimeEdge));
 
     // Then, do stuff
     return pipeContainer.getPipes(pairKey); // blocking call
@@ -172,12 +173,12 @@ public final class PipeManagerWorker {
     final long srcTaskIndex = descriptor.getSrcTaskIndex();
     final String runtimeEdgeId = descriptor.getRuntimeEdgeId();
     final int dstTaskIndex = (int) descriptor.getDstTaskIndex();
-    final int dstParallelism = (int) descriptor.getDstParallelism();
+    final int numPipeToWait = (int) descriptor.getNumPipeToWait();
     final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
 
     // First, initialize the pair key
-    LOG.info("dstParallelism onOutputContext {}", dstParallelism);
-    pipeContainer.putPipeListIfAbsent(pairKey, dstParallelism);
+    LOG.info("dstParallelism onOutputContext {}", numPipeToWait);
+    pipeContainer.putPipeListIfAbsent(pairKey, numPipeToWait);
 
     // Then, do stuff
     pipeContainer.putPipe(pairKey, dstTaskIndex, outputContext);
@@ -185,5 +186,15 @@ public final class PipeManagerWorker {
 
   public void onInputContext(final ByteInputContext inputContext) throws InvalidProtocolBufferException {
     throw new UnsupportedOperationException();
+  }
+
+  private int getNumOfPipeToWait(final RuntimeEdge runtimeEdge) {
+    final int dstParallelism = ((StageEdge) runtimeEdge).getDstIRVertex().getPropertyValue(ParallelismProperty.class)
+      .orElseThrow(() -> new IllegalStateException());
+    final CommunicationPatternProperty.Value commPattern = ((StageEdge) runtimeEdge)
+      .getPropertyValue(CommunicationPatternProperty.class)
+      .orElseThrow(() -> new IllegalStateException());
+
+    return commPattern.equals(CommunicationPatternProperty.Value.OneToOne) ? 1 : dstParallelism;
   }
 }

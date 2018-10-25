@@ -21,24 +21,23 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 /**
- * Edge data store pass to process inter-stage memory store edges.
+ * Pipe transfer everything. (permanently)
  */
 @Annotates(DataStoreProperty.class)
-public final class DefaultDataStorePass extends AnnotatingPass {
+public final class PipeTransferEverythingPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public DefaultDataStorePass() {
-    super(DefaultDataStorePass.class);
+  public PipeTransferEverythingPass() {
+    super(PipeTransferEverythingPass.class);
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().forEach(vertex -> {
       dag.getIncomingEdgesOf(vertex).stream()
-          .filter(edge -> !edge.getPropertyValue(DataStoreProperty.class).isPresent())
-          .forEach(edge -> edge.setProperty(
-              DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore)));
+          .forEach(edge -> edge.setPropertyPermanently(
+              DataStoreProperty.of(DataStoreProperty.Value.Pipe)));
     });
     return dag;
   }

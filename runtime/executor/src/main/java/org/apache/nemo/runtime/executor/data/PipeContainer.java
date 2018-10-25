@@ -78,6 +78,7 @@ public final class PipeContainer {
     }
 
     public void setValue(final int index, final T value) {
+      LOG.info("Set value: {} is {}", index, value);
       lock.lock();
       try {
         final T previous = indexToValue.put(index, value);
@@ -102,6 +103,11 @@ public final class PipeContainer {
         throw new IllegalStateException(indexToValue.size() + " < " + expected);
       }
     }
+
+    @Override
+    public String toString() {
+      return indexToValue.toString();
+    }
   }
 
   /**
@@ -111,7 +117,7 @@ public final class PipeContainer {
    * @param expected
    */
   synchronized void putPipeListIfAbsent(final Pair<String, Long> pairKey, final int expected) {
-    LOG.info("{} and {}", pairKey, expected);
+    LOG.info("putPipeListIfAbsent: {} and {}", pairKey, expected);
     pipeMap.putIfAbsent(pairKey, new CountBasedBlockingContainer(expected));
   }
 
@@ -123,7 +129,7 @@ public final class PipeContainer {
    * @param byteOutputContext
    */
   void putPipe(final Pair<String, Long> pairKey, final int dstTaskIndex, final ByteOutputContext byteOutputContext) {
-    LOG.info("{} and {}", pairKey, dstTaskIndex);
+    LOG.info("putpipe: {} and {}", pairKey, dstTaskIndex);
     final CountBasedBlockingContainer<ByteOutputContext> container = pipeMap.get(pairKey);
     container.setValue(dstTaskIndex, byteOutputContext);
   }
@@ -135,6 +141,7 @@ public final class PipeContainer {
    * @return
    */
   List<ByteOutputContext> getPipes(final Pair<String, Long> pairKey) {
+    LOG.info("getpipes: {}", pairKey);
     final CountBasedBlockingContainer<ByteOutputContext> container = pipeMap.get(pairKey);
     return container.getValuesBlocking();
   }
