@@ -53,7 +53,7 @@ import java.util.function.BiFunction;
 @Requires(CommunicationPatternProperty.class)
 public final class SkewReshapingPass extends ReshapingPass {
   private static final Logger LOG = LoggerFactory.getLogger(SkewReshapingPass.class.getName());
-
+  private static final String ADDITIONAL_OUTPUT_TAG = "DynOptData";
   /**
    * Default constructor.
    */
@@ -154,7 +154,7 @@ public final class SkewReshapingPass extends ReshapingPass {
         (dynOptData, outputCollector)-> {
           dynOptData.forEach((k, v) -> {
             final Pair<Object, Object> pairData = Pair.of(k, v);
-            outputCollector.emit(abv.getId(), pairData);
+            outputCollector.emit(ADDITIONAL_OUTPUT_TAG, pairData);
           });
           return dynOptData;
         };
@@ -180,7 +180,7 @@ public final class SkewReshapingPass extends ReshapingPass {
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     newEdge.setProperty(KeyExtractorProperty.of(new PairKeyExtractor()));
-    newEdge.setProperty(AdditionalOutputTagProperty.of("DynOptData"));
+    newEdge.setProperty(AdditionalOutputTagProperty.of(ADDITIONAL_OUTPUT_TAG));
 
     // Dynamic optimization handles statistics on key-value data by default.
     // We need to get coders for encoding/decoding the keys to send data to

@@ -17,7 +17,6 @@ package org.apache.nemo.common.ir.vertex.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import java.io.Serializable;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -54,7 +53,6 @@ public interface Transform<I, O> extends Serializable {
      * @return the broadcast variable.
      */
     Object getBroadcastVariable(Serializable id);
-    Map<String, String> getTagToAdditionalChildren();
 
     /**
      * Put serialized data to send to the executor.
