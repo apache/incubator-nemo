@@ -133,6 +133,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
    * @param <O> output type.
    * @param <M> checkpoint mark type.
    */
+  // TODO #233: Emit watermark at unbounded source
   private static final class UnboundedSourceIterator<O, M extends UnboundedSource.CheckpointMark>
       implements Iterator<WindowedValue<O>> {
 
