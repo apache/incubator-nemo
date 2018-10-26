@@ -48,6 +48,10 @@ public final class PipeContainer {
     this.pipeMap = new ConcurrentHashMap<>();
   }
 
+  /**
+   * Blocks the get operation when the number of elements is smaller than expected.
+   * @param <T> type of the value.
+   */
   class CountBasedBlockingContainer<T> {
     private final Map<Integer, T> indexToValue;
     private final int expected;

@@ -70,10 +70,10 @@ public final class BlockOutputWriter extends OutputWriter {
   @Override
   public void write(final Object element) {
     if (nonDummyBlock) {
-      blockToWrite.write(partitioner.partition(element), element);
+      blockToWrite.write(getPartitioner().partition(element), element);
 
       final DedicatedKeyPerElement dedicatedKeyPerElement =
-          partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
+          getPartitioner().getClass().getAnnotation(DedicatedKeyPerElement.class);
       if (dedicatedKeyPerElement != null) {
         blockToWrite.commitPartitions();
       }
@@ -87,9 +87,8 @@ public final class BlockOutputWriter extends OutputWriter {
   @Override
   public void close() {
     // Commit block.
-    final DataPersistenceProperty.Value persistence =
-        runtimeEdge.getPropertyValue(DataPersistenceProperty.class).
-            orElseThrow(() -> new RuntimeException("No data persistence property on the edge"));
+    final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) getRuntimeEdge()
+      .getPropertyValue(DataPersistenceProperty.class).get();
 
     final Optional<Map<Integer, Long>> partitionSizeMap = blockToWrite.commit();
     // Return the total size of the committed block.
@@ -98,9 +97,9 @@ public final class BlockOutputWriter extends OutputWriter {
       for (final long partitionSize : partitionSizeMap.get().values()) {
         blockSizeTotal += partitionSize;
       }
-      this.writtenBytes = blockSizeTotal;
+      setWrittenBytes(blockSizeTotal);
     } else {
-      this.writtenBytes = -1; // no written bytes info.
+      setWrittenBytes(-1); // no written bytes info.
     }
     blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, getExpectedRead(), persistence);
   }

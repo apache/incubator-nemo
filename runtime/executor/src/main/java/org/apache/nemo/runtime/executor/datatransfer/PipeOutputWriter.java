@@ -52,6 +52,7 @@ public final class PipeOutputWriter extends OutputWriter {
    * @param srcTaskId           the id of the source task.
    * @param dstIrVertex         the destination IR vertex.
    * @param runtimeEdge         the {@link RuntimeEdge}.
+   * @param pipeManagerWorker   the pipe manager.
    */
   PipeOutputWriter(final int hashRangeMultiplier,
                    final String srcTaskId,
@@ -66,7 +67,7 @@ public final class PipeOutputWriter extends OutputWriter {
   }
 
   /**
-   * Writes output element
+   * Writes output element.
    * @param element the element to write.
    */
   @Override
@@ -75,9 +76,7 @@ public final class PipeOutputWriter extends OutputWriter {
       doInitialize();
     }
 
-    try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get()
-        .equals(CommunicationPatternProperty.Value.OneToOne) ? pipes.get(0).newOutputStream() : pipes.get((int) partitioner.partition(element)).newOutputStream()) {
-
+    try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = getPipeToWrite(element)) {
       // Serialize (Do not compress)
       LOG.info("Write ser {}", element);
       final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
@@ -102,7 +101,6 @@ public final class PipeOutputWriter extends OutputWriter {
       doInitialize();
     }
 
-    LOG.info("Closing outputstream of {}", runtimeEdge.getId());
     pipes.forEach(pipe -> {
       try {
         pipe.close();
@@ -116,7 +114,15 @@ public final class PipeOutputWriter extends OutputWriter {
     initialized = true;
 
     // Blocking call
-    this.pipes = pipeManagerWorker.getOutputContexts(runtimeEdge, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
-    this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
+    this.pipes = pipeManagerWorker.getOutputContexts(getRuntimeEdge(), RuntimeIdManager.getIndexFromTaskId(srcTaskId));
+    this.serializer = pipeManagerWorker.getSerializer(getRuntimeEdge().getId());
+  }
+
+  private ByteOutputContext.ByteOutputStream getPipeToWrite(final Object element) throws IOException {
+    return getRuntimeEdge().getPropertyValue(CommunicationPatternProperty.class)
+      .get()
+      .equals(CommunicationPatternProperty.Value.OneToOne)
+      ? pipes.get(0).newOutputStream()
+      : pipes.get((int) getPartitioner().partition(element)).newOutputStream();
   }
 }

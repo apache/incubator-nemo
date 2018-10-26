@@ -37,13 +37,13 @@ import java.util.stream.StreamSupport;
  * Represents the input data transfer to a task.
  */
 public abstract class InputReader extends DataTransfer {
-  final int dstTaskIndex;
+  private final int dstTaskIndex;
 
   /**
    * Attributes that specify how we should read the input.
    */
-  final IRVertex srcVertex;
-  final RuntimeEdge runtimeEdge;
+  private final IRVertex srcVertex;
+  private final RuntimeEdge runtimeEdge;
 
   InputReader(final int dstTaskIndex, final IRVertex srcVertex, final RuntimeEdge runtimeEdge) {
     super(runtimeEdge.getId());
@@ -57,7 +57,7 @@ public abstract class InputReader extends DataTransfer {
    *
    * @return the read data.
    */
-  public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
+  public final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
     final Optional<CommunicationPatternProperty.Value> comValue =
             runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
 
@@ -83,7 +83,7 @@ public abstract class InputReader extends DataTransfer {
    * @param producerTaskIndex to use.
    * @return wildcard block id that corresponds to "ANY" task attempt of the task index.
    */
-  String generateWildCardBlockId(final int producerTaskIndex) {
+  final String generateWildCardBlockId(final int producerTaskIndex) {
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     if (!duplicateDataProperty.isPresent() || duplicateDataProperty.get().getGroupSize() <= 1) {
@@ -93,7 +93,7 @@ public abstract class InputReader extends DataTransfer {
     return RuntimeIdManager.generateBlockIdWildcard(duplicateEdgeId, producerTaskIndex);
   }
 
-  public IRVertex getSrcIrVertex() {
+  public final IRVertex getSrcIrVertex() {
     return srcVertex;
   }
 
@@ -102,7 +102,7 @@ public abstract class InputReader extends DataTransfer {
    *
    * @return the parallelism of the source task.
    */
-  public int getSourceParallelism() {
+  public final int getSourceParallelism() {
     return srcVertex.getPropertyValue(ParallelismProperty.class).
         orElseThrow(() -> new RuntimeException("No parallelism property on this edge."));
   }
@@ -126,5 +126,17 @@ public abstract class InputReader extends DataTransfer {
       concatStream = Stream.concat(concatStream, StreamSupport.stream(iterable.spliterator(), false));
     }
     return concatStream.collect(Collectors.toList()).iterator();
+  }
+
+  final int getDstTaskIndex() {
+    return this.dstTaskIndex;
+  }
+
+  final IRVertex getSrcVertex() {
+    return this.srcVertex;
+  }
+
+  final RuntimeEdge getRuntimeEdge() {
+    return this.runtimeEdge;
   }
 }

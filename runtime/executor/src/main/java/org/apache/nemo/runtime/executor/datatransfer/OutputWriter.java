@@ -29,10 +29,10 @@ import java.util.*;
  * Represents the output data transfer from a task.
  */
 public abstract class OutputWriter extends DataTransfer implements AutoCloseable {
-  final RuntimeEdge<?> runtimeEdge;
-  final IRVertex dstIrVertex;
-  long writtenBytes;
-  Partitioner partitioner;
+  private final RuntimeEdge<?> runtimeEdge;
+  private final IRVertex dstIrVertex;
+  private long writtenBytes;
+  private Partitioner partitioner;
 
   /**
    * Constructor.
@@ -89,12 +89,16 @@ public abstract class OutputWriter extends DataTransfer implements AutoCloseable
   /**
    * @return the total written bytes.
    */
-  public Optional<Long> getWrittenBytes() {
+  public final Optional<Long> getWrittenBytes() {
     if (writtenBytes == -1) {
       return Optional.empty();
     } else {
       return Optional.of(writtenBytes);
     }
+  }
+
+  final void setWrittenBytes(final long newWrittenBytes) {
+    this.writtenBytes = newWrittenBytes;
   }
 
   /**
@@ -103,7 +107,7 @@ public abstract class OutputWriter extends DataTransfer implements AutoCloseable
    *
    * @return the expected number of data read.
    */
-  protected int getExpectedRead() {
+  protected final int getExpectedRead() {
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     final int duplicatedDataMultiplier =
@@ -114,5 +118,13 @@ public abstract class OutputWriter extends DataTransfer implements AutoCloseable
         ? 1 : dstIrVertex.getPropertyValue(ParallelismProperty.class).orElseThrow(
             () -> new RuntimeException("No parallelism property on the destination vertex."));
     return readForABlock * duplicatedDataMultiplier;
+  }
+
+  final RuntimeEdge getRuntimeEdge() {
+    return this.runtimeEdge;
+  }
+
+  final Partitioner getPartitioner() {
+    return this.partitioner;
   }
 }

@@ -40,7 +40,7 @@ public final class PipeInputReader extends InputReader {
 
   @Override
   CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    return pipeManagerWorker.read(dstTaskIndex, runtimeEdge, dstTaskIndex);
+    return pipeManagerWorker.read(getDstTaskIndex(), getRuntimeEdge(), getDstTaskIndex());
   }
 
   @Override
@@ -48,7 +48,7 @@ public final class PipeInputReader extends InputReader {
     final int numSrcTasks = this.getSourceParallelism();
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      futures.add(pipeManagerWorker.read(srcTaskIdx, runtimeEdge, dstTaskIndex));
+      futures.add(pipeManagerWorker.read(srcTaskIdx, getRuntimeEdge(), getDstTaskIndex()));
     }
     return futures;
   }
@@ -58,7 +58,7 @@ public final class PipeInputReader extends InputReader {
     final int numSrcTasks = this.getSourceParallelism();
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      futures.add(pipeManagerWorker.read(srcTaskIdx, runtimeEdge, dstTaskIndex));
+      futures.add(pipeManagerWorker.read(srcTaskIdx, getRuntimeEdge(), getDstTaskIndex()));
     }
     return futures;
   }

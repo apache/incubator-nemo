@@ -44,9 +44,9 @@ public final class BlockInputReader extends InputReader {
 
   @Override
   CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    final String blockIdWildcard = generateWildCardBlockId(dstTaskIndex);
+    final String blockIdWildcard = generateWildCardBlockId(getDstTaskIndex());
     final Optional<DataStoreProperty.Value> dataStoreProperty
-        = runtimeEdge.getPropertyValue(DataStoreProperty.class);
+        = getRuntimeEdge().getPropertyValue(DataStoreProperty.class);
     return blockManagerWorker.readBlock(blockIdWildcard, getId(), dataStoreProperty.get(), HashRange.all());
   }
 
@@ -54,7 +54,7 @@ public final class BlockInputReader extends InputReader {
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
     final int numSrcTasks = this.getSourceParallelism();
     final Optional<DataStoreProperty.Value> dataStoreProperty
-        = runtimeEdge.getPropertyValue(DataStoreProperty.class);
+        = getRuntimeEdge().getPropertyValue(DataStoreProperty.class);
 
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
@@ -72,14 +72,14 @@ public final class BlockInputReader extends InputReader {
    */
   @Override
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
-    assert (runtimeEdge instanceof StageEdge);
+    assert (getRuntimeEdge() instanceof StageEdge);
     final Optional<DataStoreProperty.Value> dataStoreProperty
-        = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
-    final KeyRange hashRangeToRead = ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
+        = getRuntimeEdge().getPropertyValue(DataStoreProperty.class);
+    ((StageEdge) getRuntimeEdge()).getTaskIdxToKeyRange().get(getDstTaskIndex());
+    final KeyRange hashRangeToRead = ((StageEdge) getRuntimeEdge()).getTaskIdxToKeyRange().get(getDstTaskIndex());
     if (hashRangeToRead == null) {
       throw new BlockFetchException(
-          new Throwable("The hash range to read is not assigned to " + dstTaskIndex + "'th task"));
+          new Throwable("The hash range to read is not assigned to " + getDstTaskIndex() + "'th task"));
     }
 
     final int numSrcTasks = this.getSourceParallelism();
