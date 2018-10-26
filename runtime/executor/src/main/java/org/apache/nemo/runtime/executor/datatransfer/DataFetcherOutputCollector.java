@@ -42,6 +42,6 @@ public final class DataFetcherOutputCollector<O> implements OutputCollector<O> {
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
-    nextOperatorVertex.getTransform().onData(output);
+    throw new IllegalAccessException("No additional output tag in DataFetcherOutputCollector");
   }
 }
