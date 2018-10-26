@@ -16,9 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
- * specific language governing permissions and limitations
- * under the License.
- */
 package org.apache.reef.runtime.yarn;
 
 import org.apache.reef.util.HadoopEnvironment;
