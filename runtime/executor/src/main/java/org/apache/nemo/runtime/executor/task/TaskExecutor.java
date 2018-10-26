@@ -363,6 +363,16 @@ public final class TaskExecutor {
         availableFetchers.remove(finishedFetcherIndex);
       }
     }
+
+    // Close all data fetchers
+    fetchers.stream().forEach(fetcher -> {
+      try {
+        fetcher.close();
+      } catch (final Exception e) {
+        e.printStackTrace();
+      }
+    });
+
     return true;
   }
 

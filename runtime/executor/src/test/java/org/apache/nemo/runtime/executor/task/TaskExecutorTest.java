@@ -16,7 +16,6 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.IteratorBasedReadable;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.dag.DAG;
@@ -144,7 +143,7 @@ public final class TaskExecutorTest {
 
       @Override
       public long readWatermark() {
-        return 0;
+        throw new UnsupportedOperationException();
       }
 
       @Override
