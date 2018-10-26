@@ -234,6 +234,13 @@ public final class TaskExecutor {
   }
 
   /**
+   * Process a data element down the DAG dependency.
+   */
+  private void processElement(final OutputCollector outputCollector, final Object dataElement) {
+    outputCollector.emit(dataElement);
+  }
+
+  /**
    * Execute a task, while handling unrecoverable errors and exceptions.
    */
   public void execute() {
@@ -325,7 +332,7 @@ public final class TaskExecutor {
         }
 
         // Successfully fetched an element
-        dataFetcher.getOutputCollector().emit(element);
+        processElement(dataFetcher.getOutputCollector(), element);
       }
 
       // Remove the finished fetcher from the list
