@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.nemo.runtime.executor.task;
+package org.apache.nemo.common.ir.vertex.transform;
 
 import java.io.Serializable;
 

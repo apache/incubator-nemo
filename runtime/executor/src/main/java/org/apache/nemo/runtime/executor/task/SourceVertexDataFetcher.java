@@ -17,6 +17,7 @@ package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.transform.Watermark;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
