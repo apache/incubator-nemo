@@ -16,7 +16,6 @@
 package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
 
@@ -25,6 +24,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.function.Function;
 
 import org.apache.nemo.common.ir.vertex.SourceVertex;
@@ -138,7 +138,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
     @Override
     public WindowedValue<T> readCurrent() {
       if (finished) {
-        throw new IllegalStateException("Bounded reader read all elements");
+        throw new NoSuchElementException("Bounded reader read all elements");
       }
 
       final T elem = reader.getCurrent();
