@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.common.ir;
 
+import org.apache.nemo.common.ir.vertex.transform.Watermark;
+
 import java.io.Serializable;
 
 /**
@@ -32,6 +34,11 @@ public interface OutputCollector<O> extends Serializable {
    * @param output value.
    */
   void emit(O output);
+
+  /**
+   * Emit watermark to downstream vertices.
+   */
+  void emitWatermark(Watermark watermark);
 
   /**
    * Multi-destination emit.

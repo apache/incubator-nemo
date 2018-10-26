@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.frontend.spark.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Watermark;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -53,6 +54,11 @@ public final class LocalTextFileTransform<I> implements Transform<I, String> {
   @Override
   public void onData(final I element) {
     elements.add(element);
+  }
+
+  @Override
+  public void onWatermark(final  Watermark watermark) {
+    // do nothing
   }
 
   @Override

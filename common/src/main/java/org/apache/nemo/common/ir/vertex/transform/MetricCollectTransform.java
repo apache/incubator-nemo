@@ -61,6 +61,11 @@ public final class MetricCollectTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
+  public void onWatermark(Watermark watermark) {
+    // do nothing
+  }
+
+  @Override
   public void close() {
     closer.apply(dynOptData, outputCollector);
   }

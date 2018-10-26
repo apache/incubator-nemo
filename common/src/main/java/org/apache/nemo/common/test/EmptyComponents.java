@@ -35,6 +35,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.values.KV;
+import org.apache.nemo.common.ir.vertex.transform.Watermark;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -163,6 +164,10 @@ public final class EmptyComponents {
 
     @Override
     public void onData(final I element) {
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
     }
 
     @Override

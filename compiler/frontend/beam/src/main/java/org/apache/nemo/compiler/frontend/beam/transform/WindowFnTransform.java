@@ -25,6 +25,7 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.transforms.windowing.WindowFn;
+import org.apache.nemo.common.ir.vertex.transform.Watermark;
 import org.joda.time.Instant;
 
 import java.util.Collection;
@@ -86,6 +87,11 @@ public final class WindowFnTransform<T, W extends BoundedWindow>
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public void onWatermark(Watermark watermark) {
+    outputCollector.emitWatermark(watermark);
   }
 
   @Override

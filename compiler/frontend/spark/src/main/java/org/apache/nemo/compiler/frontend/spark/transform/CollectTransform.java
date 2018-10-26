@@ -21,12 +21,14 @@ package org.apache.nemo.compiler.frontend.spark.transform;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.punctuation.Watermark;
 
 import java.util.ArrayList;
 import java.util.Base64;
 
 /**
  * Collect transform.
+ * This transform is used for spark batch job, so do not emit watermark.
  * @param <T> type of data to collect.
  */
 public final class CollectTransform<T> implements Transform<T, T> {
@@ -48,6 +50,11 @@ public final class CollectTransform<T> implements Transform<T, T> {
   @Override
   public void onData(final T element) {
     list.add(element);
+  }
+
+  @Override
+  public void onWatermark(final Watermark watermark) {
+    // do nothing
   }
 
   @Override

@@ -25,6 +25,7 @@ import org.apache.beam.sdk.transforms.Materializations;
 import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.nemo.common.ir.vertex.transform.Watermark;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -61,6 +62,11 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
     // TODO #216: support window in view
     final KV kv = ((WindowedValue<KV>) element).getValue();
     multiView.getDataList().add(kv.getValue());
+  }
+
+  @Override
+  public void onWatermark(Watermark watermark) {
+    // do nothing because it is for batch side input.
   }
 
   @Override

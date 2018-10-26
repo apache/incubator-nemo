@@ -44,6 +44,13 @@ public interface Transform<I, O> extends Serializable {
   void onData(I element);
 
   /**
+   * On watermark received.
+   * This method should be called for the minimum watermark among input streams (input watermark).
+   * @param watermark watermark
+   */
+  void onWatermark(Watermark watermark);
+
+  /**
    * Close the transform.
    */
   void close();

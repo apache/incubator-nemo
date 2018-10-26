@@ -57,6 +57,11 @@ public final class AggregateMetricTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
+  public void onWatermark(Watermark watermark) {
+    // do nothing
+  }
+
+  @Override
   public void close() {
     outputCollector.emit(aggregatedDynOptData);
   }

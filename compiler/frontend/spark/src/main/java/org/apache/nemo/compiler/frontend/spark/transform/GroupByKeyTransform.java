@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.frontend.spark.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Watermark;
 import scala.Tuple2;
 
 import java.util.*;
@@ -52,6 +53,11 @@ public final class GroupByKeyTransform<K, V> implements Transform<Tuple2<K, V>, 
 
     keyToValues.putIfAbsent(key, new ArrayList<>());
     keyToValues.get(key).add(value);
+  }
+
+  @Override
+  public void onWatermark(final Watermark watermark) {
+    // do nothing
   }
 
   @Override

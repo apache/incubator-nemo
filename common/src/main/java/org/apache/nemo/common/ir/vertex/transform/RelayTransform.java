@@ -46,6 +46,11 @@ public final class RelayTransform<T> implements Transform<T, T> {
   }
 
   @Override
+  public void onWatermark(Watermark watermark) {
+    outputCollector.emitWatermark(watermark);
+  }
+
+  @Override
   public void close() {
     // Do nothing.
   }

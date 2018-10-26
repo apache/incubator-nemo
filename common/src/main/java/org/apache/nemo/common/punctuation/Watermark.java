@@ -19,11 +19,13 @@
 package org.apache.nemo.common.punctuation;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * Watermark event.
  */
 public final class Watermark implements Serializable {
+
   private final long timestamp;
   public Watermark(final long timestamp) {
     this.timestamp = timestamp;
@@ -31,5 +33,22 @@ public final class Watermark implements Serializable {
 
   public long getTimestamp() {
     return timestamp;
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final Watermark watermark = (Watermark) o;
+    return timestamp == watermark.timestamp;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(timestamp);
   }
 }

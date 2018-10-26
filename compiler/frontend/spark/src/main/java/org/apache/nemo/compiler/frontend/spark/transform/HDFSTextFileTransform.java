@@ -24,6 +24,7 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.nemo.common.punctuation.Watermark;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -57,6 +58,11 @@ public final class HDFSTextFileTransform<I> implements Transform<I, String> {
   @Override
   public void onData(final I element) {
     elements.add(element);
+  }
+
+  @Override
+  public void onWatermark(final Watermark watermark) {
+    // do nothing
   }
 
   @Override

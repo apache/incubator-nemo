@@ -37,6 +37,7 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.transform.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Stage;
@@ -294,7 +295,9 @@ public final class TaskExecutorTest {
     assertEquals(watermark, emittedWatermark.get());
 
     // Check the output.
-    assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
+    final List<Object> expectedElements = new LinkedList<>(elements);
+    expectedElements.add(elements.size() / 2, new Watermark(emittedWatermark.get()));
+    assertEquals(expectedElements, runtimeEdgeToOutputData.get(taskOutEdge.getId()));
   }
 
   /**
@@ -576,6 +579,11 @@ public final class TaskExecutorTest {
     }
 
     @Override
+    public void onWatermark(Watermark watermark) {
+      outputCollector.emitWatermark(watermark);
+    }
+
+    @Override
     public void onData(final Object element) {
       outputCollector.emit((T) element);
     }
@@ -598,6 +606,11 @@ public final class TaskExecutorTest {
     public void prepare(final Context context, final OutputCollector<List<T>> outputCollector) {
       this.list = new ArrayList<>();
       this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      // do nothing
     }
 
     @Override
@@ -628,6 +641,11 @@ public final class TaskExecutorTest {
     public void prepare(final Context context, final OutputCollector<T> outputCollector) {
       this.context = context;
       this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      outputCollector.emitWatermark(watermark);
     }
 
     @Override
@@ -668,6 +686,11 @@ public final class TaskExecutorTest {
         // route to all additional outputs. Invoked if user calls c.output(tupleTag, element)
         additionalTags.forEach(tag -> outputCollector.emit(tag, i));
       }
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      outputCollector.emitWatermark(watermark);
     }
 
     @Override

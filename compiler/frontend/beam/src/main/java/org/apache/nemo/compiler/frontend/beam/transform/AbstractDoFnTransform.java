@@ -33,6 +33,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -131,14 +132,12 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       sideInputReader = NullSideInputReader.of(sideInputs);
     }
 
-    // create step context
     // this transform does not support state and timer.
     final StepContext stepContext = new StepContext() {
       @Override
       public StateInternals stateInternals() {
         throw new UnsupportedOperationException("Not support stateInternals in DoFnTransform");
       }
-
       @Override
       public TimerInternals timerInternals() {
         throw new UnsupportedOperationException("Not support timerInternals in DoFnTransform");
@@ -166,6 +165,14 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       windowingStrategy);
 
     doFnRunner.startBundle();
+  }
+
+  public OutputCollector<WindowedValue<OutputT>> getOutputCollector() {
+    return outputCollector;
+  }
+
+  public StepContext getStepContext() {
+    return stepContext;
   }
 
   @Override

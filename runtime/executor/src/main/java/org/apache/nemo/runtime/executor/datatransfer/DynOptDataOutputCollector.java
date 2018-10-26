@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.transform.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -77,6 +78,11 @@ public final class DynOptDataOutputCollector<O> implements OutputCollector<O> {
 
     // set the id of this vertex to mark the corresponding stage as put on hold
     taskExecutor.setIRVertexPutOnHold(irVertex);
+  }
+
+  @Override
+  public void emitWatermark(Watermark watermark) {
+    // do nothing
   }
 
   @Override

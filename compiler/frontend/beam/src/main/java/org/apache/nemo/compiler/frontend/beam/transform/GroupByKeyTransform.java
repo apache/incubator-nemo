@@ -22,6 +22,7 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.values.KV;
+import org.apache.nemo.common.ir.vertex.transform.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,11 @@ public final class GroupByKeyTransform<I> implements Transform<I, WindowedValue<
     final KV kv = windowedValue.getValue();
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
     keyToValues.get(kv.getKey()).add(kv.getValue());
+  }
+
+  @Override
+  public void onWatermark(Watermark watermark) {
+    // this class is for batch job, so does not emit watermark.
   }
 
   @Override
