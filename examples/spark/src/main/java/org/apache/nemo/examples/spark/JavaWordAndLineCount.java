@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.nemo.examples.spark;
 
 import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaPairRDD;
