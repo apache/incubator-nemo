@@ -19,6 +19,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.reef.tang.annotations.Parameter;
@@ -47,17 +48,17 @@ public final class IntermediateDataIOFactory {
    * Creates an {@link OutputWriter} between two stages.
    *
    * @param srcTaskId   the id of the source task.
-   * @param dstIRVertex the {@link IRVertex} that will take the output data as its input.
    * @param runtimeEdge that connects the srcTask to the tasks belonging to dstIRVertex.
    * @return the {@link OutputWriter} created.
    */
   public OutputWriter createWriter(final String srcTaskId,
-                                   final IRVertex dstIRVertex,
                                    final RuntimeEdge<?> runtimeEdge) {
     if (isPipe(runtimeEdge)) {
-      return new PipeOutputWriter(hashRangeMultiplier, srcTaskId, dstIRVertex, runtimeEdge, pipeManagerWorker);
+      return new PipeOutputWriter(hashRangeMultiplier, srcTaskId, runtimeEdge, pipeManagerWorker);
     } else {
-      return new BlockOutputWriter(hashRangeMultiplier, srcTaskId, dstIRVertex, runtimeEdge, blockManagerWorker);
+      final StageEdge stageEdge = (StageEdge) runtimeEdge;
+      return new BlockOutputWriter(
+        hashRangeMultiplier, srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker);
     }
   }
 

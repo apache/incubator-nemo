@@ -16,11 +16,12 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.KeyExtractor;
-import org.apache.nemo.common.exception.*;
-import org.apache.nemo.common.ir.edge.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.exception.UnsupportedPartitionerException;
+import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.partitioner.*;
 
 import java.util.*;
@@ -28,103 +29,52 @@ import java.util.*;
 /**
  * Represents the output data transfer from a task.
  */
-public abstract class OutputWriter extends DataTransfer implements AutoCloseable {
-  private final RuntimeEdge<?> runtimeEdge;
-  private final IRVertex dstIrVertex;
-  private long writtenBytes;
-  private Partitioner partitioner;
-
-  /**
-   * Constructor.
-   *
-   * @param hashRangeMultiplier the {@link org.apache.nemo.conf.JobConf.HashRangeMultiplier}.
-   * @param dstIrVertex         the destination IR vertex.
-   * @param runtimeEdge         the {@link RuntimeEdge}.
-   */
-  OutputWriter(final int hashRangeMultiplier, final IRVertex dstIrVertex, final RuntimeEdge<?> runtimeEdge) {
-    super(runtimeEdge.getId());
-    this.runtimeEdge = runtimeEdge;
-    this.dstIrVertex = dstIrVertex;
-
-    // Setup partitioner
-    final int dstParallelism = dstIrVertex.getPropertyValue(ParallelismProperty.class).
-        orElseThrow(() -> new RuntimeException("No parallelism property on the destination vertex"));
-    final Optional<KeyExtractor> keyExtractor = runtimeEdge.getPropertyValue(KeyExtractorProperty.class);
-    final PartitionerProperty.Value partitionerPropertyValue =
-        runtimeEdge.getPropertyValue(PartitionerProperty.class).
-            orElseThrow(() -> new RuntimeException("No partitioner property on the edge"));
-    switch (partitionerPropertyValue) {
-      case IntactPartitioner:
-        this.partitioner = new IntactPartitioner();
-        break;
-      case HashPartitioner:
-        this.partitioner = new HashPartitioner(dstParallelism, keyExtractor.
-            orElseThrow(() -> new RuntimeException("No key extractor property on the edge")));
-        break;
-      case DataSkewHashPartitioner:
-        this.partitioner = new DataSkewHashPartitioner(hashRangeMultiplier, dstParallelism, keyExtractor.
-            orElseThrow(() -> new RuntimeException("No key extractor property on the edge")));
-        break;
-      case DedicatedKeyPerElementPartitioner:
-        this.partitioner = new DedicatedKeyPerElementPartitioner();
-        break;
-      default:
-        throw new UnsupportedPartitionerException(
-            new Throwable("Partitioner " + partitionerPropertyValue + " is not supported."));
-    }
-  }
-
+public interface OutputWriter {
   /**
    * Writes output element depending on the communication pattern of the edge.
    *
    * @param element the element to write.
    */
-  public abstract void write(final Object element);
-
-  /**
-   * Notifies that all writes are done.
-   */
-  public abstract void close();
+  void write(final Object element);
 
   /**
    * @return the total written bytes.
    */
-  public final Optional<Long> getWrittenBytes() {
-    if (writtenBytes == -1) {
-      return Optional.empty();
-    } else {
-      return Optional.of(writtenBytes);
+  Optional<Long> getWrittenBytes();
+
+  void close();
+
+
+  static Partitioner getPartitioner(final RuntimeEdge runtimeEdge,
+                                    final int hashRangeMultiplier) {
+    final StageEdge stageEdge = (StageEdge) runtimeEdge;
+    final PartitionerProperty.Value partitionerPropertyValue =
+      (PartitionerProperty.Value) runtimeEdge.getPropertyValueOrRuntimeException(PartitionerProperty.class);
+    final int dstParallelism =
+      stageEdge.getDstIRVertex().getPropertyValue(ParallelismProperty.class).get();
+
+    final Partitioner partitioner;
+    switch (partitionerPropertyValue) {
+      case IntactPartitioner:
+        partitioner = new IntactPartitioner();
+        break;
+      case HashPartitioner:
+        final KeyExtractor hashKeyExtractor =
+          (KeyExtractor) runtimeEdge.getPropertyValueOrRuntimeException(KeyExtractorProperty.class);
+        partitioner = new HashPartitioner(dstParallelism, hashKeyExtractor);
+        break;
+      case DataSkewHashPartitioner:
+        final KeyExtractor dataSkewKeyExtractor =
+          (KeyExtractor) runtimeEdge.getPropertyValueOrRuntimeException(KeyExtractorProperty.class);
+        partitioner = new DataSkewHashPartitioner(hashRangeMultiplier, dstParallelism, dataSkewKeyExtractor);
+        break;
+      case DedicatedKeyPerElementPartitioner:
+        partitioner = new DedicatedKeyPerElementPartitioner();
+        break;
+      default:
+        throw new UnsupportedPartitionerException(
+          new Throwable("Partitioner " + partitionerPropertyValue + " is not supported."));
     }
-  }
-
-  final void setWrittenBytes(final long newWrittenBytes) {
-    this.writtenBytes = newWrittenBytes;
-  }
-
-  /**
-   * Get the expected number of data read according to the communication pattern of the edge and
-   * the parallelism of destination vertex.
-   *
-   * @return the expected number of data read.
-   */
-  protected final int getExpectedRead() {
-    final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
-        runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
-    final int duplicatedDataMultiplier =
-        duplicateDataProperty.isPresent() ? duplicateDataProperty.get().getGroupSize() : 1;
-    final int readForABlock = CommunicationPatternProperty.Value.OneToOne.equals(
-        runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).orElseThrow(
-            () -> new RuntimeException("No communication pattern on this edge.")))
-        ? 1 : dstIrVertex.getPropertyValue(ParallelismProperty.class).orElseThrow(
-            () -> new RuntimeException("No parallelism property on the destination vertex."));
-    return readForABlock * duplicatedDataMultiplier;
-  }
-
-  final RuntimeEdge getRuntimeEdge() {
-    return this.runtimeEdge;
-  }
-
-  final Partitioner getPartitioner() {
-    return this.partitioner;
+    return partitioner;
   }
 }

@@ -17,6 +17,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
@@ -29,11 +30,17 @@ import java.util.Optional;
 /**
  * Represents the output data transfer from a task.
  */
-public final class BlockOutputWriter extends OutputWriter {
+public final class BlockOutputWriter implements OutputWriter {
+  private final RuntimeEdge<?> runtimeEdge;
+  private final IRVertex dstIrVertex;
+  private final Partitioner partitioner;
+
   private final DataStoreProperty.Value blockStoreValue;
   private final BlockManagerWorker blockManagerWorker;
   private final Block blockToWrite;
   private final boolean nonDummyBlock;
+
+  private long writtenBytes;
 
   /**
    * Constructor.
@@ -49,12 +56,15 @@ public final class BlockOutputWriter extends OutputWriter {
                     final IRVertex dstIrVertex,
                     final RuntimeEdge<?> runtimeEdge,
                     final BlockManagerWorker blockManagerWorker) {
-    super(hashRangeMultiplier, dstIrVertex, runtimeEdge);
+    this.runtimeEdge = runtimeEdge;
+    this.dstIrVertex = dstIrVertex;
+
+    this.partitioner = OutputWriter.getPartitioner(runtimeEdge, hashRangeMultiplier);
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class)
       .orElseThrow(() -> new RuntimeException("No data store property on the edge"));
     blockToWrite = blockManagerWorker.createBlock(
-        RuntimeIdManager.generateBlockId(getId(), srcTaskId), blockStoreValue);
+        RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), blockStoreValue);
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
         runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     nonDummyBlock = !duplicateDataProperty.isPresent()
@@ -62,18 +72,13 @@ public final class BlockOutputWriter extends OutputWriter {
         || duplicateDataProperty.get().getGroupSize() <= 1;
   }
 
-  /**
-   * Writes output element depending on the communication pattern of the edge.
-   *
-   * @param element the element to write.
-   */
   @Override
   public void write(final Object element) {
     if (nonDummyBlock) {
-      blockToWrite.write(getPartitioner().partition(element), element);
+      blockToWrite.write(partitioner.partition(element), element);
 
       final DedicatedKeyPerElement dedicatedKeyPerElement =
-          getPartitioner().getClass().getAnnotation(DedicatedKeyPerElement.class);
+          partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
       if (dedicatedKeyPerElement != null) {
         blockToWrite.commitPartitions();
       }
@@ -87,7 +92,7 @@ public final class BlockOutputWriter extends OutputWriter {
   @Override
   public void close() {
     // Commit block.
-    final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) getRuntimeEdge()
+    final DataPersistenceProperty.Value persistence = (DataPersistenceProperty.Value) runtimeEdge
       .getPropertyValue(DataPersistenceProperty.class).get();
 
     final Optional<Map<Integer, Long>> partitionSizeMap = blockToWrite.commit();
@@ -97,10 +102,37 @@ public final class BlockOutputWriter extends OutputWriter {
       for (final long partitionSize : partitionSizeMap.get().values()) {
         blockSizeTotal += partitionSize;
       }
-      setWrittenBytes(blockSizeTotal);
+      writtenBytes = blockSizeTotal;
     } else {
-      setWrittenBytes(-1); // no written bytes info.
+      writtenBytes = -1; // no written bytes info.
     }
     blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, getExpectedRead(), persistence);
+  }
+
+  public Optional<Long> getWrittenBytes() {
+    if (writtenBytes == -1) {
+      return Optional.empty();
+    } else {
+      return Optional.of(writtenBytes);
+    }
+  }
+
+  /**
+   * Get the expected number of data read according to the communication pattern of the edge and
+   * the parallelism of destination vertex.
+   *
+   * @return the expected number of data read.
+   */
+  private int getExpectedRead() {
+    final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
+      runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
+    final int duplicatedDataMultiplier =
+      duplicateDataProperty.isPresent() ? duplicateDataProperty.get().getGroupSize() : 1;
+    final int readForABlock = CommunicationPatternProperty.Value.OneToOne.equals(
+      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).orElseThrow(
+        () -> new RuntimeException("No communication pattern on this edge.")))
+      ? 1 : dstIrVertex.getPropertyValue(ParallelismProperty.class).orElseThrow(
+      () -> new RuntimeException("No parallelism property on the destination vertex."));
+    return readForABlock * duplicatedDataMultiplier;
   }
 }

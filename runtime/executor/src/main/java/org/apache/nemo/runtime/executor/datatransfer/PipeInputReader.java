@@ -15,51 +15,65 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.exception.UnsupportedCommPatternException;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /**
  * Represents the input data transfer to a task.
  */
-public final class PipeInputReader extends InputReader {
+public final class PipeInputReader implements InputReader {
   private final PipeManagerWorker pipeManagerWorker;
 
-  public PipeInputReader(final int dstTaskIdx,
-                         final IRVertex srcIRVertex,
-                         final RuntimeEdge runtimeEdge,
-                         final PipeManagerWorker pipeManagerWorker) {
-    super(dstTaskIdx, srcIRVertex, runtimeEdge);
+  private final int dstTaskIndex;
+
+  /**
+   * Attributes that specify how we should read the input.
+   */
+  private final IRVertex srcVertex;
+  private final RuntimeEdge runtimeEdge;
+
+  PipeInputReader(final int dstTaskIdx,
+                  final IRVertex srcIRVertex,
+                  final RuntimeEdge runtimeEdge,
+                  final PipeManagerWorker pipeManagerWorker) {
+    this.dstTaskIndex = dstTaskIdx;
+    this.srcVertex = srcIRVertex;
+    this.runtimeEdge = runtimeEdge;
     this.pipeManagerWorker = pipeManagerWorker;
   }
 
   @Override
-  CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    return pipeManagerWorker.read(getDstTaskIndex(), getRuntimeEdge(), getDstTaskIndex());
+  public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
+    final Optional<CommunicationPatternProperty.Value> comValue =
+      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+
+    if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)) {
+      return Collections.singletonList(pipeManagerWorker.read(dstTaskIndex, runtimeEdge, dstTaskIndex));
+    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
+      || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)) {
+      final int numSrcTasks = InputReader.getSourceParallelism(this);
+      final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
+      for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
+        futures.add(pipeManagerWorker.read(srcTaskIdx, runtimeEdge, dstTaskIndex));
+      }
+      return futures;
+    } else {
+      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    }
   }
 
   @Override
-  List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
-    final int numSrcTasks = this.getSourceParallelism();
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
-    for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      futures.add(pipeManagerWorker.read(srcTaskIdx, getRuntimeEdge(), getDstTaskIndex()));
-    }
-    return futures;
-  }
-
-  @Override
-  List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
-    final int numSrcTasks = this.getSourceParallelism();
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
-    for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      futures.add(pipeManagerWorker.read(srcTaskIdx, getRuntimeEdge(), getDstTaskIndex()));
-    }
-    return futures;
+  public IRVertex getSrcIrVertex() {
+    return srcVertex;
   }
 }

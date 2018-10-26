@@ -42,10 +42,13 @@ import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.Executor;
 import org.apache.nemo.runtime.executor.TestUtil;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
+import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.master.*;
 import org.apache.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import org.apache.commons.io.FileUtils;
+import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
+import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServer;
@@ -67,10 +70,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static org.apache.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 import static org.apache.nemo.runtime.common.RuntimeTestUtil.getRangedNumList;
@@ -78,6 +84,7 @@ import static org.apache.nemo.runtime.common.RuntimeTestUtil.flatten;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.powermock.api.mockito.PowerMockito.when;
 
 /**
  * Tests {@link InputReader} and {@link OutputWriter}.
@@ -135,6 +142,7 @@ public final class DataTransferTest {
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, EMPTY_DAG_DIRECTORY);
 
     // Necessary for wiring up the message environments
+    injector.bindVolatileInstance(Scheduler.class, injector.getInstance(BatchScheduler.class));
     injector.getInstance(RuntimeMaster.class);
     final BlockManagerMaster master = injector.getInstance(BlockManagerMaster.class);
 
@@ -315,11 +323,9 @@ public final class DataTransferTest {
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
     final RuntimeEdge dummyEdge;
 
-    final IRVertex srcMockVertex = mock(IRVertex.class);
-    final IRVertex dstMockVertex = mock(IRVertex.class);
     final Stage srcStage = setupStages("srcStage" + testIndex);
     final Stage dstStage = setupStages("dstStage" + testIndex);
-    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex, srcStage, dstStage);
+    dummyEdge = new StageEdge(edgeId, edgeProperties, srcVertex, dstVertex, srcStage, dstStage);
 
     // Initialize states in Master
     TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
@@ -331,7 +337,7 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = transferFactory.createWriter(srcTaskId, dstVertex, dummyEdge);
+      final OutputWriter writer = transferFactory.createWriter(srcTaskId, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
@@ -343,11 +349,11 @@ public final class DataTransferTest {
       final InputReader reader =
           new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
 
-      assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
+      assertEquals(PARALLELISM_TEN, InputReader.getSourceParallelism(reader));
 
       final List dataRead = new ArrayList<>();
       try {
-        InputReader.combineFutures(reader.read()).forEachRemaining(dataRead::add);
+        combineFutures(reader.read()).forEachRemaining(dataRead::add);
       } catch (final Exception e) {
         throw new RuntimeException(e);
       }
@@ -406,13 +412,10 @@ public final class DataTransferTest {
     final RuntimeEdge dummyEdge, dummyEdge2;
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
 
-    final IRVertex srcMockVertex = mock(IRVertex.class);
-    final IRVertex dstMockVertex = mock(IRVertex.class);
     final Stage srcStage = setupStages("srcStage" + testIndex);
     final Stage dstStage = setupStages("dstStage" + testIndex);
-    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex, srcStage, dstStage);
-    final IRVertex dstMockVertex2 = mock(IRVertex.class);
-    dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2, srcStage, dstStage);
+    dummyEdge = new StageEdge(edgeId, edgeProperties, srcVertex, dstVertex, srcStage, dstStage);
+    dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcVertex, dstVertex, srcStage, dstStage);
     // Initialize states in Master
     TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final String blockId = RuntimeIdManager.generateBlockId(edgeId, srcTaskId);
@@ -424,12 +427,12 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     TestUtil.generateTaskIds(srcStage).forEach(srcTaskId -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = transferFactory.createWriter(srcTaskId, dstVertex, dummyEdge);
+      final OutputWriter writer = transferFactory.createWriter(srcTaskId, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
 
-      final OutputWriter writer2 = transferFactory.createWriter(srcTaskId, dstVertex, dummyEdge2);
+      final OutputWriter writer2 = transferFactory.createWriter(srcTaskId, dummyEdge2);
       dataWritten.iterator().forEachRemaining(writer2::write);
       writer2.close();
     });
@@ -443,13 +446,13 @@ public final class DataTransferTest {
       final InputReader reader2 =
           new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
 
-      assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
+      assertEquals(PARALLELISM_TEN, InputReader.getSourceParallelism(reader));
 
-      assertEquals(PARALLELISM_TEN, reader2.getSourceParallelism());
+      assertEquals(PARALLELISM_TEN, InputReader.getSourceParallelism(reader));
 
       final List dataRead = new ArrayList<>();
       try {
-        InputReader.combineFutures(reader.read()).forEachRemaining(dataRead::add);
+        combineFutures(reader.read()).forEachRemaining(dataRead::add);
       } catch (final Exception e) {
         throw new RuntimeException(e);
       }
@@ -457,7 +460,7 @@ public final class DataTransferTest {
 
       final List dataRead2 = new ArrayList<>();
       try {
-        InputReader.combineFutures(reader2.read()).forEachRemaining(dataRead2::add);
+        combineFutures(reader2.read()).forEachRemaining(dataRead2::add);
       } catch (final Exception e) {
         throw new RuntimeException(e);
       }
@@ -528,6 +531,26 @@ public final class DataTransferTest {
     stageExecutionProperty.put(ParallelismProperty.of(PARALLELISM_TEN));
     stageExecutionProperty.put(ScheduleGroupProperty.of(0));
     return new Stage(stageId, emptyDag, stageExecutionProperty, Collections.emptyList());
+  }
+
+  /**
+   * Combine the given list of futures.
+   *
+   * @param futures to combine.
+   * @return the combined iterable of elements.
+   * @throws ExecutionException   when fail to get results from futures.
+   * @throws InterruptedException when interrupted during getting results from futures.
+   */
+  private Iterator combineFutures(final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures)
+    throws ExecutionException, InterruptedException {
+    final List concatStreamBase = new ArrayList<>();
+    Stream<Object> concatStream = concatStreamBase.stream();
+    for (int srcTaskIdx = 0; srcTaskIdx < futures.size(); srcTaskIdx++) {
+      final Iterator dataFromATask = futures.get(srcTaskIdx).get();
+      final Iterable iterable = () -> dataFromATask;
+      concatStream = Stream.concat(concatStream, StreamSupport.stream(iterable.spliterator(), false));
+    }
+    return concatStream.collect(Collectors.toList()).iterator();
   }
 }
 

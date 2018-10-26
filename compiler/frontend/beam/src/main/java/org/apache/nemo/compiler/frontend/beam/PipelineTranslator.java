@@ -268,12 +268,6 @@ public final class PipelineTranslator
   private static void createPCollectionViewTranslator(final TranslationContext ctx,
                                                       final PrimitiveTransformVertex transformVertex,
                                                       final View.CreatePCollectionView<?, ?> transform) {
-    System.out.println("VIEW OUTPUT");
-    transformVertex.getNode().getOutputs().values().forEach(viewOutput -> System.out.println(viewOutput.toString()));
-    System.out.println("VIEW INPUT");
-    transformVertex.getNode().getInputs().values().forEach(viewOutput -> System.out.println(viewOutput.toString()));
-
-
     final IRVertex vertex = new OperatorVertex(new CreateViewTransform<>(transform.getView()));
     ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
@@ -420,8 +414,6 @@ public final class PipelineTranslator
    * @return appropriate {@link Coder} for {@link PCollectionView}
    */
   private static Coder<?> getCoderForView(final PCollectionView view, final CompositeTransformVertex pipeline) {
-    LOG.info("VIEW CODER {}", view.getCoderInternal().toString());
-
     final PrimitiveTransformVertex src = pipeline.getPrimitiveProducerOf(view);
     final Coder<?> baseCoder = src.getNode().getOutputs().values().stream()
       .filter(v -> v instanceof PCollection)
@@ -429,9 +421,6 @@ public final class PipelineTranslator
       .findFirst()
       .orElseThrow(() -> new RuntimeException(String.format("No incoming PCollection to %s", src)))
       .getCoder();
-    LOG.info("output Basecoder {}", baseCoder);
-
-
     final KvCoder<?, ?> inputKVCoder = (KvCoder) baseCoder;
     final ViewFn viewFn = view.getViewFn();
     if (viewFn instanceof PCollectionViews.IterableViewFn) {

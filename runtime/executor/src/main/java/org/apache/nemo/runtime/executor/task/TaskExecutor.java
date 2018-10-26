@@ -325,15 +325,10 @@ public final class TaskExecutor {
       int finishedFetcherIndex = NONE_FINISHED;
       for (int i = 0; i < availableFetchers.size(); i++) {
         final DataFetcher dataFetcher = availableFetchers.get(i);
-
-        LOG.info("Fetching from {}", dataFetcher.getDataSource().getId());
-
         final Object element;
         try {
           element = dataFetcher.fetchDataElement();
-          LOG.info("Fetched {}", element);
         } catch (NoSuchElementException e) {
-          LOG.info("No such element {}", dataFetcher.getDataSource().getId());
           // We've consumed all the data from this data fetcher.
           if (dataFetcher instanceof SourceVertexDataFetcher) {
             boundedSourceReadTime += ((SourceVertexDataFetcher) dataFetcher).getBoundedSourceReadTime();
@@ -377,7 +372,7 @@ public final class TaskExecutor {
       .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
       .map(edge ->
         Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(),
-          intermediateDataIOFactory.createWriter(taskId, edge.getDstIRVertex(), edge)))
+          intermediateDataIOFactory.createWriter(taskId, edge)))
       .forEach(pair -> {
         map.putIfAbsent(pair.left(), new ArrayList<>());
         map.get(pair.left()).add(pair.right());
@@ -430,7 +425,7 @@ public final class TaskExecutor {
       .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
       .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
       .map(outEdgeForThisVertex -> intermediateDataIOFactory
-        .createWriter(taskId, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
+        .createWriter(taskId, outEdgeForThisVertex))
       .collect(Collectors.toList());
   }
 

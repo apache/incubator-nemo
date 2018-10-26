@@ -29,6 +29,7 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.InMemorySourceVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -42,9 +43,7 @@ import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.TaskStateManager;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
-import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
-import org.apache.nemo.runtime.executor.datatransfer.InputReader;
-import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -72,7 +71,8 @@ import static org.mockito.Mockito.*;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({InputReader.class, OutputWriter.class, IntermediateDataIOFactory.class, BroadcastManagerWorker.class,
-    TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class})
+  TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class,
+  BlockInputReader.class, BlockOutputWriter.class})
 public final class TaskExecutorTest {
   private static final AtomicInteger RUNTIME_EDGE_ID = new AtomicInteger(0);
   private static final int DATA_SIZE = 100;
@@ -107,7 +107,7 @@ public final class TaskExecutorTest {
     runtimeEdgeToOutputData = new HashMap<>();
     intermediateDataIOFactory = mock(IntermediateDataIOFactory.class);
     when(intermediateDataIOFactory.createReader(anyInt(), any(), any())).then(new ParentTaskReaderAnswer());
-    when(intermediateDataIOFactory.createWriter(any(), any(), any())).then(new ChildTaskWriterAnswer());
+    when(intermediateDataIOFactory.createWriter(any(), any())).then(new ChildTaskWriterAnswer());
 
     // Mock a MetricMessageSender.
     metricMessageSender = mock(MetricMessageSender.class);
@@ -391,9 +391,9 @@ public final class TaskExecutorTest {
    * Represents the answer return an inter-stage {@link InputReader},
    * which will have multiple iterable according to the source parallelism.
    */
-  private class ParentTaskReaderAnswer implements Answer<InputReader> {
+  private class ParentTaskReaderAnswer implements Answer<BlockInputReader> {
     @Override
-    public InputReader answer(final InvocationOnMock invocationOnMock) throws Throwable {
+    public BlockInputReader answer(final InvocationOnMock invocationOnMock) throws Throwable {
       final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> inputFutures = new ArrayList<>(SOURCE_PARALLELISM);
       final int elementsPerSource = DATA_SIZE / SOURCE_PARALLELISM;
       for (int i = 0; i < SOURCE_PARALLELISM; i++) {
@@ -401,11 +401,11 @@ public final class TaskExecutorTest {
             DataUtil.IteratorWithNumBytes.of(elements.subList(i * elementsPerSource, (i + 1) * elementsPerSource)
                 .iterator())));
       }
-      final InputReader inputReader = mock(InputReader.class);
+      final BlockInputReader inputReader = mock(BlockInputReader.class);
       final IRVertex srcVertex = (IRVertex) invocationOnMock.getArgument(1);
+      srcVertex.setProperty(ParallelismProperty.of(SOURCE_PARALLELISM));
       when(inputReader.getSrcIrVertex()).thenReturn(srcVertex);
       when(inputReader.read()).thenReturn(inputFutures);
-      when(inputReader.getSourceParallelism()).thenReturn(SOURCE_PARALLELISM);
       return inputReader;
     }
   }
@@ -414,12 +414,12 @@ public final class TaskExecutorTest {
    * Represents the answer return a {@link OutputWriter},
    * which will stores the data to the map between task id and output data.
    */
-  private class ChildTaskWriterAnswer implements Answer<OutputWriter> {
+  private class ChildTaskWriterAnswer implements Answer<BlockOutputWriter> {
     @Override
-    public OutputWriter answer(final InvocationOnMock invocationOnMock) throws Throwable {
+    public BlockOutputWriter answer(final InvocationOnMock invocationOnMock) throws Throwable {
       final Object[] args = invocationOnMock.getArguments();
-      final RuntimeEdge runtimeEdge = (RuntimeEdge) args[2];
-      final OutputWriter outputWriter = mock(OutputWriter.class);
+      final RuntimeEdge runtimeEdge = (RuntimeEdge) args[1];
+      final BlockOutputWriter outputWriter = mock(BlockOutputWriter.class);
       doAnswer(new Answer() {
         @Override
         public Object answer(final InvocationOnMock invocationOnMock) throws Throwable {

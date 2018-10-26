@@ -64,15 +64,11 @@ class ParentTaskDataFetcher extends DataFetcher {
       }
 
       while (true) {
-        LOG.info("try to fetch for {}", readersForParentTask.getId());
 
         // This iterator has the element
         if (this.currentIterator.hasNext()) {
-          LOG.info("has next true {}", readersForParentTask.getId());
           return this.currentIterator.next();
         }
-
-        LOG.info("has next false {}", readersForParentTask.getId());
 
         // This iterator does not have the element
         if (currentIteratorIndex < expectedNumOfIterators) {

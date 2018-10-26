@@ -243,7 +243,7 @@ public final class TaskRetryTest {
     injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
     injector.bindVolatileInstance(SchedulingConstraintRegistry.class, mock(SchedulingConstraintRegistry.class));
     planStateManager = injector.getInstance(PlanStateManager.class);
-    scheduler = injector.getInstance(Scheduler.class);
+    scheduler = injector.getInstance(BatchScheduler.class);
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
 
     scheduler.schedulePlan(plan, MAX_SCHEDULE_ATTEMPT);

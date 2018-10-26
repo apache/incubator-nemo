@@ -61,6 +61,21 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
   }
 
   /**
+   * @param executionPropertyKey key
+   * @param <T> type
+   * @return the value
+   */
+  public final <T extends Serializable> T getPropertyValueOrRuntimeException(
+    final Class<? extends EdgeExecutionProperty<T>> executionPropertyKey) {
+    final Optional<T> optional = getPropertyValue(executionPropertyKey);
+    if (optional.isPresent()) {
+      return optional.get();
+    } else {
+      throw new IllegalStateException(executionPropertyKey.toString());
+    }
+  }
+
+  /**
    * @return the ExecutionPropertyMap of the Runtime Edge.
    */
   public final ExecutionPropertyMap<EdgeExecutionProperty> getExecutionProperties() {

@@ -116,7 +116,6 @@ public final class BroadcastManagerWorker {
    */
   public void registerInputReader(final Serializable id,
                                   final InputReader inputReader) {
-    LOG.info("register {} / {}", id, inputReader.getId());
     this.idToReader.put(id, inputReader);
   }
 
