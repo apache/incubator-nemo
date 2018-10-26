@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.nemo.runtime.executor.datatransfer.DynOptDataOutputCollector;
-import org.apache.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
+import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -174,7 +174,7 @@ public final class TaskExecutor {
         outputCollector = new DynOptDataOutputCollector(
           irVertex, persistentConnectionToMasterMap, this);
       } else {
-        outputCollector = new OutputCollectorImpl(
+        outputCollector = new OperatorVertexOutputCollector(
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap);
       }
@@ -231,13 +231,6 @@ public final class TaskExecutor {
       .collect(Collectors.toList());
 
     return Pair.of(nonBroadcastDataFetcherList, sortedHarnessList);
-  }
-
-  /**
-   * Process a data element down the DAG dependency.
-   */
-  private void processElement(final OutputCollector outputCollector, final Object dataElement) {
-    outputCollector.emit(dataElement);
   }
 
   /**
@@ -332,7 +325,7 @@ public final class TaskExecutor {
         }
 
         // Successfully fetched an element
-        processElement(dataFetcher.getOutputCollector(), element);
+        dataFetcher.getOutputCollector().emit(element);
       }
 
       // Remove the finished fetcher from the list

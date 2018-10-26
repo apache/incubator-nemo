@@ -33,8 +33,8 @@ import java.util.*;
  *
  * @param <O> output type.
  */
-public final class OutputCollectorImpl<O> implements OutputCollector<O> {
-  private static final Logger LOG = LoggerFactory.getLogger(OutputCollectorImpl.class.getName());
+public final class OperatorVertexOutputCollector<O> implements OutputCollector<O> {
+  private static final Logger LOG = LoggerFactory.getLogger(OperatorVertexOutputCollector.class.getName());
 
   private final IRVertex irVertex;
   private final List<OperatorVertex> internalMainOutputs;
@@ -50,11 +50,11 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @param externalMainOutputs external main outputs
    * @param externalAdditionalOutputs external additional outputs
    */
-  public OutputCollectorImpl(final IRVertex irVertex,
-                             final List<OperatorVertex> internalMainOutputs,
-                             final Map<String, List<OperatorVertex>> internalAdditionalOutputs,
-                             final List<OutputWriter> externalMainOutputs,
-                             final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
+  public OperatorVertexOutputCollector(final IRVertex irVertex,
+                                       final List<OperatorVertex> internalMainOutputs,
+                                       final Map<String, List<OperatorVertex>> internalAdditionalOutputs,
+                                       final List<OutputWriter> externalMainOutputs,
+                                       final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;

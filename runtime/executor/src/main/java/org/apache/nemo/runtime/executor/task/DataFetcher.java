@@ -44,8 +44,4 @@ abstract class DataFetcher {
   OutputCollector getOutputCollector() {
     return outputCollector;
   }
-
-  public IRVertex getDataSource() {
-    return dataSource;
-  }
 }
