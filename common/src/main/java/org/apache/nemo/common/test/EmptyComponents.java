@@ -33,6 +33,7 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.values.KV;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -202,6 +203,11 @@ public final class EmptyComponents {
     }
 
     @Override
+    public boolean isBounded() {
+      return true;
+    }
+
+    @Override
     public List<Readable<T>> getReadables(final int desirednumOfSplits) {
       final List list = new ArrayList(desirednumOfSplits);
       for (int i = 0; i < desirednumOfSplits; i++) {
@@ -227,13 +233,37 @@ public final class EmptyComponents {
    */
   static final class EmptyReadable<T> implements Readable<T> {
     @Override
-    public Iterable<T> read() {
-      return new ArrayList<>();
+    public void prepare() {
+
+    }
+
+    @Override
+    public T readCurrent() {
+      return null;
+    }
+
+    @Override
+    public void advance() {
+    }
+
+    @Override
+    public long readWatermark() {
+      return 0;
+    }
+
+    @Override
+    public boolean isFinished() {
+      return true;
     }
 
     @Override
     public List<String> getLocations() {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void close() throws IOException {
+
     }
   }
 }

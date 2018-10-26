@@ -16,6 +16,7 @@
 package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
 
@@ -24,6 +25,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.beam.sdk.io.BoundedSource;
@@ -69,6 +71,11 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
   }
 
   @Override
+  public boolean isBounded() {
+    return true;
+  }
+
+  @Override
   public List<Readable<WindowedValue<O>>> getReadables(final int desiredNumOfSplits) throws Exception {
     final List<Readable<WindowedValue<O>>> readables = new ArrayList<>();
     LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
@@ -96,6 +103,9 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
    */
   private static final class BoundedSourceReadable<T> implements Readable<WindowedValue<T>> {
     private final BoundedSource<T> boundedSource;
+    private boolean finished = false;
+    private BoundedSource.BoundedReader<T> reader;
+    private Function<T, WindowedValue<T>> windowedValueConverter;
 
     /**
      * Constructor of the BoundedSourceReadable.
@@ -106,32 +116,48 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
     }
 
     @Override
-    public Iterable<WindowedValue<T>> read() throws IOException {
-      boolean started = false;
-      boolean windowed = false;
+    public void prepare() {
+      try {
+        reader = boundedSource.createReader(null);
+        finished = !reader.start();
 
-      final ArrayList<WindowedValue<T>> elements = new ArrayList<>();
-      try (BoundedSource.BoundedReader<T> reader = boundedSource.createReader(null)) {
-        for (boolean available = reader.start(); available; available = reader.advance()) {
-          final T elem = reader.getCurrent();
+        if (!finished) {
+          T elem = reader.getCurrent();
 
-          // Check whether the element is windowed or not
-          // We only have to check the first element.
-          if (!started) {
-            started = true;
-            if (elem instanceof WindowedValue) {
-              windowed = true;
-            }
-          }
-
-          if (!windowed) {
-            elements.add(WindowedValue.valueInGlobalWindow(reader.getCurrent()));
+          if (elem instanceof WindowedValue) {
+            windowedValueConverter = val -> (WindowedValue) val;
           } else {
-            elements.add((WindowedValue<T>) elem);
+            windowedValueConverter = WindowedValue::valueInGlobalWindow;
           }
         }
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
       }
-      return elements;
+    }
+
+    @Override
+    public WindowedValue<T> readCurrent() {
+      if (finished) {
+        throw new IllegalStateException("Bounded reader read all elements");
+      }
+
+      final T elem = reader.getCurrent();
+      return windowedValueConverter.apply(elem);
+    }
+
+    @Override
+    public void advance() throws IOException {
+      finished = !reader.advance();
+    }
+
+    @Override
+    public long readWatermark() {
+      throw new UnsupportedOperationException("No watermark");
+    }
+
+    @Override
+    public boolean isFinished() {
+      return finished;
     }
 
     @Override
@@ -145,6 +171,12 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
       } else {
         throw new UnsupportedOperationException();
       }
+    }
+
+    @Override
+    public void close() throws IOException {
+      finished = true;
+      reader.close();
     }
   }
 }

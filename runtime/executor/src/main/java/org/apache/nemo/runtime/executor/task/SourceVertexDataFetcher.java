@@ -16,49 +16,99 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Fetches data from a data source.
  */
 class SourceVertexDataFetcher extends DataFetcher {
   private final Readable readable;
-
-  // Non-finals (lazy fetching)
-  private Iterator iterator;
   private long boundedSourceReadTime = 0;
+  private static final long POLLING_INTERVAL = 10L; // ms
+  private static final long WATERMARK_PERIOD = 1000; // ms
+  private final ScheduledExecutorService watermarkTriggerService;
+  private boolean watermarkTriggered = false;
+  private final boolean bounded;
 
-  SourceVertexDataFetcher(final IRVertex dataSource,
+  SourceVertexDataFetcher(final SourceVertex dataSource,
                           final Readable readable,
                           final VertexHarness child) {
     super(dataSource, child);
     this.readable = readable;
+    this.readable.prepare();
+    this.bounded = dataSource.isBounded();
+
+    if (!bounded) {
+      this.watermarkTriggerService = Executors.newScheduledThreadPool(1);
+      this.watermarkTriggerService.scheduleAtFixedRate(() -> {
+        watermarkTriggered = true;
+      }, WATERMARK_PERIOD, WATERMARK_PERIOD, TimeUnit.MILLISECONDS);
+    } else {
+      this.watermarkTriggerService = null;
+    }
   }
 
   @Override
-  Object fetchDataElement() throws IOException {
-    if (iterator == null) {
-      fetchDataLazily();
-    }
-
-    if (iterator.hasNext()) {
-      return iterator.next();
+  Object fetchDataElement() {
+    if (readable.isFinished()) {
+      return Finishmark.getInstance();
     } else {
-      throw new NoSuchElementException();
+      final long start = System.currentTimeMillis();
+      final Object element = retrieveElement();
+      boundedSourceReadTime += System.currentTimeMillis() - start;
+      return element;
     }
-  }
-
-  private void fetchDataLazily() throws IOException {
-    final long start = System.currentTimeMillis();
-    iterator = this.readable.read().iterator();
-    boundedSourceReadTime += System.currentTimeMillis() - start;
   }
 
   final long getBoundedSourceReadTime() {
     return boundedSourceReadTime;
+  }
+
+  @Override
+  public void close() throws Exception {
+    readable.close();
+    if (watermarkTriggerService != null) {
+      watermarkTriggerService.shutdown();
+    }
+  }
+
+  private boolean isWatermarkTriggerTime() {
+    if (watermarkTriggered) {
+      watermarkTriggered = false;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  private Object retrieveElement() {
+    while (true) {
+
+      // Emit watermark
+      if (!bounded && isWatermarkTriggerTime()) {
+        return new Watermark(readable.readWatermark());
+      }
+
+      try {
+        final Object element = readable.readCurrent();
+        readable.advance();
+        return element;
+      } catch (final NoSuchElementException e) {
+        // the element is not currently available... retry
+        try {
+          Thread.sleep(POLLING_INTERVAL);
+        } catch (InterruptedException e1) {
+          e1.printStackTrace();
+        }
+      } catch (final IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 }

@@ -40,16 +40,14 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({InputReader.class, VertexHarness.class})
 public final class ParentTaskDataFetcherTest {
 
-  @Test(timeout=5000, expected = NoSuchElementException.class)
+  @Test(timeout=5000)
   public void testEmpty() throws Exception {
     final List<String> empty = new ArrayList<>(0); // empty data
     final InputReader inputReader = generateInputReader(generateCompletableFuture(empty.iterator()));
 
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
-
-    // Should trigger the expected 'NoSuchElementException'
-    fetcher.fetchDataElement();
+    assertEquals(Finishmark.getInstance(), fetcher.fetchDataElement());
   }
 
   @Test(timeout=5000)

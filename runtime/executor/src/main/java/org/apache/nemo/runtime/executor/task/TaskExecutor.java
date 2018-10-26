@@ -191,7 +191,8 @@ public final class TaskExecutor {
       // Source read
       if (irVertex instanceof SourceVertex) {
         // Source vertex read
-        nonBroadcastDataFetcherList.add(new SourceVertexDataFetcher(irVertex, sourceReader.get(), vertexHarness));
+        nonBroadcastDataFetcherList.add(new SourceVertexDataFetcher(
+          (SourceVertex) irVertex, sourceReader.get(), vertexHarness));
       }
 
       // Parent-task read (broadcasts)
@@ -251,6 +252,11 @@ public final class TaskExecutor {
     } else {
       throw new UnsupportedOperationException("This type of IRVertex is not supported");
     }
+  }
+
+  private void processWatermark(final VertexHarness vertexHarness, final Watermark watermark) {
+    // TODO #231: Add onWatermark() method to Transform and
+    // TODO #231: fowards watermark to Transforms and OutputWriters
   }
 
   /**
@@ -323,19 +329,26 @@ public final class TaskExecutor {
       int finishedFetcherIndex = NONE_FINISHED;
       for (int i = 0; i < availableFetchers.size(); i++) {
         final DataFetcher dataFetcher = availableFetchers.get(i);
-        final Object element;
+        Object element;
         try {
           element = dataFetcher.fetchDataElement();
-        } catch (NoSuchElementException e) {
-          // We've consumed all the data from this data fetcher.
-          if (dataFetcher instanceof SourceVertexDataFetcher) {
-            boundedSourceReadTime += ((SourceVertexDataFetcher) dataFetcher).getBoundedSourceReadTime();
-          } else if (dataFetcher instanceof ParentTaskDataFetcher) {
-            serializedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getSerializedBytes();
-            encodedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getEncodedBytes();
+          if (element instanceof Finishmark) {
+            // We've consumed all the data from this data fetcher.
+            if (dataFetcher instanceof SourceVertexDataFetcher) {
+              boundedSourceReadTime += ((SourceVertexDataFetcher) dataFetcher).getBoundedSourceReadTime();
+            } else if (dataFetcher instanceof ParentTaskDataFetcher) {
+              serializedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getSerializedBytes();
+              encodedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getEncodedBytes();
+            }
+            finishedFetcherIndex = i;
+            break;
+          } else if (element instanceof Watermark) {
+            // Watermark
+            processWatermark(dataFetcher.getChild(), (Watermark) element);
+          } else {
+            // Data element
+            processElement(dataFetcher.getChild(), element);
           }
-          finishedFetcherIndex = i;
-          break;
         } catch (IOException e) {
           // IOException means that this task should be retried.
           taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
@@ -343,9 +356,6 @@ public final class TaskExecutor {
           LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
           return false;
         }
-
-        // Successfully fetched an element
-        processElement(dataFetcher.getChild(), element);
       }
 
       // Remove the finished fetcher from the list

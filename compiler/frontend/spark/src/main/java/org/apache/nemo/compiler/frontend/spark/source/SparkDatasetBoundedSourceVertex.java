@@ -15,6 +15,7 @@
  */
 package org.apache.nemo.compiler.frontend.spark.source;
 
+import org.apache.nemo.common.ir.IteratorBasedReadable;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.compiler.frontend.spark.sql.Dataset;
@@ -71,6 +72,11 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
   }
 
   @Override
+  public boolean isBounded() {
+    return true;
+  }
+
+  @Override
   public List<Readable<T>> getReadables(final int desiredNumOfSplits) {
     return readables;
   }
@@ -83,7 +89,7 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
   /**
    * A Readable wrapper for Spark Dataset.
    */
-  private final class SparkDatasetBoundedSourceReadable implements Readable<T> {
+  private final class SparkDatasetBoundedSourceReadable extends IteratorBasedReadable<T> {
     private final LinkedHashMap<String, Object[]> commands;
     private final Map<String, String> sessionInitialConf;
     private final int partitionIndex;
@@ -108,11 +114,11 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
     }
 
     @Override
-    public Iterable<T> read() throws IOException {
+    protected Iterator<T> initializeIterator() {
       // for setting up the same environment in the executors.
       final SparkSession spark = SparkSession.builder()
-          .config(sessionInitialConf)
-          .getOrCreate();
+        .config(sessionInitialConf)
+        .getOrCreate();
       final Dataset<T> dataset;
 
       try {
@@ -123,8 +129,14 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
 
       // Spark does lazy evaluation: it doesn't load the full dataset, but only the partition it is asked for.
       final RDD<T> rdd = dataset.sparkRDD();
-      return () -> JavaConverters.asJavaIteratorConverter(
-          rdd.iterator(rdd.getPartitions()[partitionIndex], TaskContext$.MODULE$.empty())).asJava();
+      final Iterable<T> iterable = () -> JavaConverters.asJavaIteratorConverter(
+        rdd.iterator(rdd.getPartitions()[partitionIndex], TaskContext$.MODULE$.empty())).asJava();
+      return iterable.iterator();
+    }
+
+    @Override
+    public long readWatermark() {
+      throw new UnsupportedOperationException("No watermark");
     }
 
     @Override
@@ -134,6 +146,11 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
       } else {
         return locations;
       }
+    }
+
+    @Override
+    public void close() throws IOException {
+
     }
   }
 }
