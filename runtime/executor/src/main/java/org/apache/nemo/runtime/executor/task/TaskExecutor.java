@@ -191,7 +191,7 @@ public final class TaskExecutor {
       // Source read
       if (irVertex instanceof SourceVertex) {
         // Source vertex read
-        nonBroadcastDataFetcherList.add(new SourceVertexDataFetcher(irVertex, sourceReader.get(), vertexHarness));
+        nonBroadcastDataFetcherList.add(new SourceVertexDataFetcher(irVertex, sourceReader.get(), outputCollector));
       }
 
       // Parent-task read (broadcasts)
@@ -221,7 +221,8 @@ public final class TaskExecutor {
       final List<InputReader> nonBroadcastReaders =
         getParentTaskReaders(taskIndex, nonBroadcastInEdges, dataTransferFactory);
       nonBroadcastReaders.forEach(parentTaskReader -> nonBroadcastDataFetcherList.add(
-        new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader, vertexHarness)));
+        new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
+          new DataFetcherOutputCollector((OperatorVertex) irVertex))));
     });
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
@@ -234,23 +235,9 @@ public final class TaskExecutor {
 
   /**
    * Process a data element down the DAG dependency.
-   *
-   * @param vertexHarness VertexHarness of a vertex to execute.
-   * @param dataElement   input data element to process.
    */
-  private void processElement(final VertexHarness vertexHarness, final Object dataElement) {
-    final IRVertex irVertex = vertexHarness.getIRVertex();
-    final OutputCollector outputCollector = vertexHarness.getOutputCollector();
-
-    // TODO #XXX: optimize processElement (do not check instanceof for each data element)
-    if (irVertex instanceof SourceVertex) {
-      outputCollector.emit(dataElement);
-    } else if (irVertex instanceof OperatorVertex) {
-      final Transform transform = ((OperatorVertex) irVertex).getTransform();
-      transform.onData(dataElement);
-    } else {
-      throw new UnsupportedOperationException("This type of IRVertex is not supported");
-    }
+  private void processElement(final OutputCollector outputCollector, final Object dataElement) {
+    outputCollector.emit(dataElement);
   }
 
   /**
@@ -345,7 +332,7 @@ public final class TaskExecutor {
         }
 
         // Successfully fetched an element
-        processElement(dataFetcher.getChild(), element);
+        processElement(dataFetcher.getOutputCollector(), element);
       }
 
       // Remove the finished fetcher from the list
