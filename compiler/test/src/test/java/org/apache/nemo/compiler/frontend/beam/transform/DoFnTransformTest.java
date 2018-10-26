@@ -115,7 +115,6 @@ public final class DoFnTransformTest {
 
     // mock context
     final Transform.Context context = mock(Transform.Context.class);
-    when(context.getTagToAdditionalChildren()).thenReturn(tagsMap);
 
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
     doFnTransform.prepare(context, oc);

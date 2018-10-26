@@ -19,9 +19,6 @@ import org.apache.beam.runners.core.DoFnRunners;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
-
-import java.util.Map;
 
 /**
  * Default output emitter that uses outputCollector.
@@ -30,14 +27,11 @@ import java.util.Map;
 public final class DefaultOutputManager<OutputT> implements DoFnRunners.OutputManager {
   private final TupleTag<OutputT> mainOutputTag;
   private final OutputCollector<WindowedValue<OutputT>> outputCollector;
-  private final Map<String, String> additionalOutputs;
 
   DefaultOutputManager(final OutputCollector<WindowedValue<OutputT>> outputCollector,
-                       final Transform.Context context,
                        final TupleTag<OutputT> mainOutputTag) {
     this.outputCollector = outputCollector;
     this.mainOutputTag = mainOutputTag;
-    this.additionalOutputs = context.getTagToAdditionalChildren();
   }
 
   @Override
@@ -45,7 +39,7 @@ public final class DefaultOutputManager<OutputT> implements DoFnRunners.OutputMa
     if (tag.equals(mainOutputTag)) {
       outputCollector.emit((WindowedValue<OutputT>) output);
     } else {
-      outputCollector.emit(additionalOutputs.get(tag.getId()), output);
+      outputCollector.emit(tag.getId(), output);
     }
   }
 }

@@ -119,8 +119,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     this.outputCollector = oc;
 
     // create output manager
-    outputManager = new DefaultOutputManager<>(
-      outputCollector, context, mainOutputTag);
+    outputManager = new DefaultOutputManager<>(outputCollector, mainOutputTag);
 
     // create side input reader
     if (!sideInputs.isEmpty()) {

@@ -24,8 +24,6 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.util.*;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -39,19 +37,17 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({BroadcastManagerWorker.class})
 public class TransformContextImplTest {
   private Transform.Context context;
-  private final Map<String, String> taggedOutputs = new HashMap<>();
 
   @Before
   public void setUp() {
     final BroadcastManagerWorker broadcastManagerWorker = mock(BroadcastManagerWorker.class);
     when(broadcastManagerWorker.get("a")).thenReturn("b");
-    this.context = new TransformContextImpl(broadcastManagerWorker, taggedOutputs);
+    this.context = new TransformContextImpl(broadcastManagerWorker);
   }
 
   @Test
   public void testContextImpl() {
     assertEquals("b", this.context.getBroadcastVariable("a"));
-    assertEquals(this.taggedOutputs, this.context.getTagToAdditionalChildren());
 
     final String sampleText = "test_text";
 
