@@ -84,8 +84,6 @@ public final class PipeManagerMaster {
           final Pair<String, Long> keyPair =
             Pair.of(pipeInitMessage.getRuntimeEdgeId(), pipeInitMessage.getSrcTaskIndex());
 
-          LOG.info("INIT-START {}", keyPair);
-
           // Allow to put at most once
           final Lock lock = runtimeEdgeSrcIndexToLock.get(keyPair);
           lock.lock();
@@ -97,8 +95,6 @@ public final class PipeManagerMaster {
           } finally {
             lock.unlock();
           }
-
-          LOG.info("INIT-DONE {}", keyPair);
 
           break;
         default:
@@ -118,15 +114,12 @@ public final class PipeManagerMaster {
           waitForPipe.submit(() -> {
             final Pair<String, Long> keyPair =
               Pair.of(pipeLocRequest.getRuntimeEdgeId(), pipeLocRequest.getSrcTaskIndex());
-            LOG.info("Request-START {}", keyPair);
 
             final Lock lock = runtimeEdgeSrcIndexToLock.get(keyPair);
             lock.lock();
             try {
               if (!runtimeEdgeSrcIndexToExecutor.containsKey(keyPair)) {
-                LOG.info("Request-AWAIT {}", keyPair);
                 runtimeEdgeSrcIndexToCondition.get(keyPair).await();
-                LOG.info("Request-AWAIT-DONE {}", keyPair);
               }
 
               final String location = runtimeEdgeSrcIndexToExecutor.get(keyPair);
@@ -135,7 +128,6 @@ public final class PipeManagerMaster {
               }
 
               // Reply the location
-              LOG.info("Request-REPLY {}", keyPair);
               messageContext.reply(
                 ControlMessage.Message.newBuilder()
                   .setId(RuntimeIdManager.generateMessageId())
@@ -146,15 +138,12 @@ public final class PipeManagerMaster {
                     .setExecutorId(location)
                     .build())
                   .build());
-              LOG.info("Request-REPLY-DONE {}", keyPair);
             } catch (InterruptedException e) {
               throw new RuntimeException(e);
             } finally {
               lock.unlock();
             }
-            LOG.info("Request-DONE {}", keyPair);
           });
-
 
           break;
         default:
