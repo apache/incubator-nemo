@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Watermark;
@@ -42,8 +43,8 @@ class SourceVertexDataFetcher extends DataFetcher {
 
   SourceVertexDataFetcher(final SourceVertex dataSource,
                           final Readable readable,
-                          final VertexHarness child) {
-    super(dataSource, child);
+                          final OutputCollector outputCollector) {
+    super(dataSource, outputCollector);
     this.readable = readable;
     this.readable.prepare();
     this.bounded = dataSource.isBounded();

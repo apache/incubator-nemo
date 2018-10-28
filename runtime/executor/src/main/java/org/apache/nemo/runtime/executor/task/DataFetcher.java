@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import java.io.IOException;
@@ -27,12 +28,12 @@ import java.io.IOException;
  */
 abstract class DataFetcher implements AutoCloseable {
   private final IRVertex dataSource;
-  private final VertexHarness child;
+  private final OutputCollector outputCollector;
 
   DataFetcher(final IRVertex dataSource,
-              final VertexHarness child) {
+              final OutputCollector outputCollector) {
     this.dataSource = dataSource;
-    this.child = child;
+    this.outputCollector = outputCollector;
   }
 
   /**
@@ -43,11 +44,7 @@ abstract class DataFetcher implements AutoCloseable {
    */
   abstract Object fetchDataElement() throws IOException;
 
-  VertexHarness getChild() {
-    return child;
-  }
-
-  public IRVertex getDataSource() {
-    return dataSource;
+  OutputCollector getOutputCollector() {
+    return outputCollector;
   }
 }

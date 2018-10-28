@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.nemo.runtime.executor.datatransfer.DynOptDataOutputCollector;
-import org.apache.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
+import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -178,7 +178,7 @@ public final class TaskExecutor {
         outputCollector = new DynOptDataOutputCollector(
           irVertex, persistentConnectionToMasterMap, this);
       } else {
-        outputCollector = new OutputCollectorImpl(
+        outputCollector = new OperatorVertexOutputCollector(
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap);
       }
@@ -196,7 +196,7 @@ public final class TaskExecutor {
       if (irVertex instanceof SourceVertex) {
         // Source vertex read
         nonBroadcastDataFetcherList.add(new SourceVertexDataFetcher(
-          (SourceVertex) irVertex, sourceReader.get(), vertexHarness));
+          (SourceVertex) irVertex, sourceReader.get(), outputCollector));
       }
 
       // Parent-task read (broadcasts)
@@ -226,7 +226,8 @@ public final class TaskExecutor {
       final List<InputReader> nonBroadcastReaders =
         getParentTaskReaders(taskIndex, nonBroadcastInEdges, dataTransferFactory);
       nonBroadcastReaders.forEach(parentTaskReader -> nonBroadcastDataFetcherList.add(
-        new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader, vertexHarness)));
+        new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
+          new DataFetcherOutputCollector((OperatorVertex) irVertex))));
     });
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
@@ -239,26 +240,12 @@ public final class TaskExecutor {
 
   /**
    * Process a data element down the DAG dependency.
-   *
-   * @param vertexHarness VertexHarness of a vertex to execute.
-   * @param dataElement   input data element to process.
    */
-  private void processElement(final VertexHarness vertexHarness, final Object dataElement) {
-    final IRVertex irVertex = vertexHarness.getIRVertex();
-    final OutputCollector outputCollector = vertexHarness.getOutputCollector();
-
-    // TODO #XXX: optimize processElement (do not check instanceof for each data element)
-    if (irVertex instanceof SourceVertex) {
-      outputCollector.emit(dataElement);
-    } else if (irVertex instanceof OperatorVertex) {
-      final Transform transform = ((OperatorVertex) irVertex).getTransform();
-      transform.onData(dataElement);
-    } else {
-      throw new UnsupportedOperationException("This type of IRVertex is not supported");
-    }
+  private void processElement(final OutputCollector outputCollector, final Object dataElement) {
+    outputCollector.emit(dataElement);
   }
 
-  private void processWatermark(final VertexHarness vertexHarness, final Watermark watermark) {
+  private void processWatermark(final OutputCollector outputCollector, final Watermark watermark) {
     // TODO #231: Add onWatermark() method to Transform and
     // TODO #231: fowards watermark to Transforms and OutputWriters
   }
@@ -348,10 +335,10 @@ public final class TaskExecutor {
             break;
           } else if (element instanceof Watermark) {
             // Watermark
-            processWatermark(dataFetcher.getChild(), (Watermark) element);
+            processWatermark(dataFetcher.getOutputCollector(), (Watermark) element);
           } else {
-            // Data element
-            processElement(dataFetcher.getChild(), element);
+            // Process data element
+            processElement(dataFetcher.getOutputCollector(), element);
           }
         } catch (IOException e) {
           // IOException means that this task should be retried.
