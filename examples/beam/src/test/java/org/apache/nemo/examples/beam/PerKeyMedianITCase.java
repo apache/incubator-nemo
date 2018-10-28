@@ -35,7 +35,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class PerKeyMedianITCase {
-  private static final int TIMEOUT = 60 * 1000;
+  private static final int TIMEOUT = 120 * 1000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
