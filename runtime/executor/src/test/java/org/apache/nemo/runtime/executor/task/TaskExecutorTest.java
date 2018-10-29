@@ -19,7 +19,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ir.IteratorBasedReadable;
+import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
@@ -138,7 +138,7 @@ public final class TaskExecutorTest {
   public void testSourceVertexDataFetching() throws Exception {
     final IRVertex sourceIRVertex = new InMemorySourceVertex<>(elements);
 
-    final Readable readable = new IteratorBasedReadable() {
+    final Readable readable = new BoundedIteratorReadable() {
       @Override
       protected Iterator initializeIterator() {
         return elements.iterator();

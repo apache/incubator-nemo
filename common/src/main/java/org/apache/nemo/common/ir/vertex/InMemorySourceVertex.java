@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.common.ir.vertex;
 
-import org.apache.nemo.common.ir.IteratorBasedReadable;
+import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.Readable;
 
 import java.io.IOException;
@@ -95,7 +95,7 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
    * Simply returns the in-memory data.
    * @param <T> type of the data.
    */
-  private static final class InMemorySourceReadable<T> extends IteratorBasedReadable<T> {
+  private static final class InMemorySourceReadable<T> extends BoundedIteratorReadable<T> {
 
     private final Iterable<T> initializedSourceData;
 

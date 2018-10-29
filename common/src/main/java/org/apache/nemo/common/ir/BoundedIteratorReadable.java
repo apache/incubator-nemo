@@ -24,7 +24,7 @@ import java.util.Iterator;
  * An abstract readable class that retrieves data from iterator.
  * @param <O> output type.
  */
-public abstract class IteratorBasedReadable<O> implements Readable<O> {
+public abstract class BoundedIteratorReadable<O> implements Readable<O> {
 
   private Iterator<O> iterator;
 
@@ -37,19 +37,22 @@ public abstract class IteratorBasedReadable<O> implements Readable<O> {
   /**
    * Prepare reading data.
    */
+  @Override
   public final void prepare() {
     iterator = initializeIterator();
   }
 
-
+  @Override
   public final O readCurrent() {
     return iterator.next();
   }
 
+  @Override
   public final void advance() {
     // do nothing
   }
 
+  @Override
   public final boolean isFinished() {
     return !iterator.hasNext();
   }

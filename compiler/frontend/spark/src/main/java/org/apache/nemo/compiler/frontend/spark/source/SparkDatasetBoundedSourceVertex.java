@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.spark.source;
 
-import org.apache.nemo.common.ir.IteratorBasedReadable;
+import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.compiler.frontend.spark.sql.Dataset;
@@ -92,7 +92,7 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
   /**
    * A Readable wrapper for Spark Dataset.
    */
-  private final class SparkDatasetBoundedSourceReadable extends IteratorBasedReadable<T> {
+  private final class SparkDatasetBoundedSourceReadable extends BoundedIteratorReadable<T> {
     private final LinkedHashMap<String, Object[]> commands;
     private final Map<String, String> sessionInitialConf;
     private final int partitionIndex;

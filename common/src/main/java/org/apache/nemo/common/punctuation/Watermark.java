@@ -16,20 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.task;
+package org.apache.nemo.common.punctuation;
+
+import java.io.Serializable;
 
 /**
- * Finish mark that notifies the data fetching is finished.
- * This is only used for bounded source because unbounded source does not finish.
+ * Watermark event.
  */
-public final class Finishmark {
-  private static final Finishmark INSTANCE = new Finishmark();
-
-  private Finishmark() {
-
+public final class Watermark implements Serializable {
+  private final long timestamp;
+  public Watermark(final long timestamp) {
+    this.timestamp = timestamp;
   }
 
-  public static Finishmark getInstance() {
-    return INSTANCE;
+  public long getTimestamp() {
+    return timestamp;
   }
 }

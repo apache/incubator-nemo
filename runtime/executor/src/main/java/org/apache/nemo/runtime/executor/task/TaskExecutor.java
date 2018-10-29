@@ -28,7 +28,8 @@ import org.apache.nemo.common.ir.edge.executionproperty.BroadcastVariableIdPrope
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.ir.vertex.transform.Watermark;
+import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;

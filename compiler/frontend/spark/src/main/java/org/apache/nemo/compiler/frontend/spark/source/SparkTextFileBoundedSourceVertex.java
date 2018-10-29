@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.spark.source;
 
-import org.apache.nemo.common.ir.IteratorBasedReadable;
+import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.spark.*;
@@ -91,7 +91,7 @@ public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String>
   /**
    * A Readable wrapper for Spark text file.
    */
-  private final class SparkTextFileBoundedSourceReadable extends IteratorBasedReadable<String> {
+  private final class SparkTextFileBoundedSourceReadable extends BoundedIteratorReadable<String> {
     private final SparkConf sparkConf;
     private final int partitionIndex;
     private final List<String> locations;
