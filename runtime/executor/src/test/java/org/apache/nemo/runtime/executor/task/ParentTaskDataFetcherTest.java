@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.BlockInputReader;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
@@ -46,16 +47,14 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({InputReader.class, VertexHarness.class, BlockInputReader.class})
 public final class ParentTaskDataFetcherTest {
 
-  @Test(timeout=5000, expected = NoSuchElementException.class)
+  @Test(timeout=5000)
   public void testEmpty() throws Exception {
     final List<String> empty = new ArrayList<>(0); // empty data
     final InputReader inputReader = generateInputReader(generateCompletableFuture(empty.iterator()));
 
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
-
-    // Should trigger the expected 'NoSuchElementException'
-    fetcher.fetchDataElement();
+    assertEquals(Finishmark.getInstance(), fetcher.fetchDataElement());
   }
 
   @Test(timeout=5000)

@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
@@ -33,6 +34,7 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.InMemorySourceVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -60,9 +62,11 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -129,20 +133,32 @@ public final class TaskExecutorTest {
   /**
    * Test source vertex data fetching.
    */
-  @Test(timeout=5000)
+  @Test()
   public void testSourceVertexDataFetching() throws Exception {
     final IRVertex sourceIRVertex = new InMemorySourceVertex<>(elements);
 
-    final Readable readable = new Readable() {
+    final Readable readable = new BoundedIteratorReadable() {
       @Override
-      public Iterable read() throws IOException {
-        return elements;
+      protected Iterator initializeIterator() {
+        return elements.iterator();
       }
+
+      @Override
+      public long readWatermark() {
+        throw new UnsupportedOperationException();
+      }
+
       @Override
       public List<String> getLocations() {
         throw new UnsupportedOperationException();
       }
+
+      @Override
+      public void close() throws IOException {
+
+      }
     };
+
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
 
@@ -165,6 +181,116 @@ public final class TaskExecutorTest {
     // Execute the task.
     final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
     taskExecutor.execute();
+
+    // Check the output.
+    assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
+  }
+
+  /**
+   * This test emits data and watermark by emulating an unbounded source readable.
+   */
+  @Test()
+  public void testUnboundedSourceVertexDataFetching() throws Exception {
+    final IRVertex sourceIRVertex = new SourceVertex() {
+      @Override
+      public IRVertex getClone() {
+        return this;
+      }
+
+      @Override
+      public boolean isBounded() {
+        return false;
+      }
+
+      @Override
+      public List<Readable> getReadables(int desiredNumOfSplits) throws Exception {
+        return null;
+      }
+
+      @Override
+      public void clearInternalStates() {
+
+      }
+    };
+
+    final long watermark = 1234567L;
+    final AtomicLong emittedWatermark = new AtomicLong(0);
+
+    final Readable readable = new Readable() {
+      int pointer = 0;
+      final int middle = elements.size() / 2;
+      final int end = elements.size();
+      boolean watermarkEmitted = false;
+
+      @Override
+      public void prepare() {
+
+      }
+
+      // This emulates unbounded source that throws NoSuchElementException
+      // It reads current data until middle point and  throws NoSuchElementException at the middle point.
+      // It resumes the data reading after emitting a watermark, and finishes at the end of the data.
+      @Override
+      public Object readCurrent() throws NoSuchElementException {
+        if (pointer == middle && !watermarkEmitted) {
+          throw new NoSuchElementException();
+        }
+
+        return elements.get(pointer);
+      }
+
+      @Override
+      public void advance() throws IOException {
+        pointer += 1;
+      }
+
+      @Override
+      public long readWatermark() {
+        watermarkEmitted = true;
+        emittedWatermark.set(watermark);
+        return watermark;
+      }
+
+      @Override
+      public boolean isFinished() {
+        return pointer == end;
+      }
+
+      @Override
+      public List<String> getLocations() throws Exception {
+        return null;
+      }
+
+      @Override
+      public void close() throws IOException {
+      }
+    };
+
+    final Map<String, Readable> vertexIdToReadable = new HashMap<>();
+    vertexIdToReadable.put(sourceIRVertex.getId(), readable);
+
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
+      new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
+        .addVertex(sourceIRVertex)
+        .buildWithoutSourceSinkCheck();
+
+    final StageEdge taskOutEdge = mockStageEdgeFrom(sourceIRVertex);
+    final Task task =
+      new Task(
+        "testSourceVertexDataFetching",
+        generateTaskId(),
+        TASK_EXECUTION_PROPERTY_MAP,
+        new byte[0],
+        Collections.emptyList(),
+        Collections.singletonList(taskOutEdge),
+        vertexIdToReadable);
+
+    // Execute the task.
+    final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
+    taskExecutor.execute();
+
+    // Check whether the watermark is emitted
+    assertEquals(watermark, emittedWatermark.get());
 
     // Check the output.
     assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
