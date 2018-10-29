@@ -434,6 +434,7 @@ public final class TaskExecutor {
           Thread.sleep(pollingInterval);
         } catch (InterruptedException e) {
           e.printStackTrace();
+          throw new RuntimeException(e);
         }
       }
     }
@@ -444,6 +445,7 @@ public final class TaskExecutor {
         fetcher.close();
       } catch (final Exception e) {
         e.printStackTrace();
+        throw new RuntimeException(e);
       }
     });
 

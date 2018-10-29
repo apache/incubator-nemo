@@ -135,6 +135,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
             Thread.sleep(100);
           } catch (InterruptedException e1) {
             e1.printStackTrace();
+            throw new RuntimeException(e);
           }
         }
       }
