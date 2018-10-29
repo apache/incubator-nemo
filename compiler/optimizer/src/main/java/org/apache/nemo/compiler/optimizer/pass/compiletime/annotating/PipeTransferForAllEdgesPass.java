@@ -24,15 +24,15 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 /**
- * Pipe transfer everything. (permanently)
+ * Annotate 'Pipe' on all edges.
  */
 @Annotates(DataStoreProperty.class)
-public final class PipeTransferEverythingPass extends AnnotatingPass {
+public final class PipeTransferForAllEdgesPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public PipeTransferEverythingPass() {
-    super(PipeTransferEverythingPass.class);
+  public PipeTransferForAllEdgesPass() {
+    super(PipeTransferForAllEdgesPass.class);
   }
 
   @Override

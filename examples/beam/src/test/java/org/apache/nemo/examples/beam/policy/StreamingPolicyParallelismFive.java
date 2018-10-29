@@ -22,8 +22,7 @@ import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.PipeTransferEverythingPass;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.PipeTransferForAllEdgesPass;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
 import org.apache.nemo.compiler.optimizer.policy.PolicyBuilder;
@@ -42,7 +41,7 @@ public final class StreamingPolicyParallelismFive implements Policy {
     final PolicyBuilder builder = new PolicyBuilder();
     PolicyTestUtil.overwriteParallelism(5, DefaultPolicy.BUILDER.getCompileTimePasses())
       .forEach(ctPass -> builder.registerCompileTimePass(ctPass));
-    builder.registerCompileTimePass(new PipeTransferEverythingPass());
+    builder.registerCompileTimePass(new PipeTransferForAllEdgesPass());
     this.policy = builder.build();
   }
 

@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 /**
  * A simple scheduler for streaming workloads.
  * - Keeps track of new executors
- * - Schedules all tasks in a reverse topological order.
+ * - Schedules all tasks in the plan at once.
  * - Crashes the system upon any other events (should be fixed in the future)
  * - Never stops running.
  */
@@ -79,9 +79,8 @@ public final class StreamingScheduler implements Scheduler {
     planStateManager.storeJSON("submitted");
 
     // Prepare tasks
-    // final List<Stage> reverseTopoStages = Lists.reverse(submittedPhysicalPlan.getStageDAG().getTopologicalSort());
-    final List<Stage> reverseTopoStages = submittedPhysicalPlan.getStageDAG().getTopologicalSort();
-    final List<Task> reverseTopoTasks = reverseTopoStages.stream().flatMap(stageToSchedule -> {
+    final List<Stage> allStages = submittedPhysicalPlan.getStageDAG().getTopologicalSort();
+    final List<Task> allTasks = allStages.stream().flatMap(stageToSchedule -> {
       // Helper variables for this stage
       final List<StageEdge> stageIncomingEdges =
         submittedPhysicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
@@ -107,7 +106,7 @@ public final class StreamingScheduler implements Scheduler {
     }).collect(Collectors.toList());
 
     // Schedule everything at once
-    pendingTaskCollectionPointer.setToOverwrite(reverseTopoTasks);
+    pendingTaskCollectionPointer.setToOverwrite(allTasks);
     taskDispatcher.onNewPendingTaskCollectionAvailable();
   }
 

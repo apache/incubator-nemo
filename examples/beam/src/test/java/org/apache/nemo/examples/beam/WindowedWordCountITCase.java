@@ -86,7 +86,7 @@ public final class WindowedWordCountITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testStreamingFixedWindow() throws Exception {
+  public void testStreamingSchedulerAndPipeFixedWindow() throws Exception {
     builder = new ArgBuilder()
       .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
       .addUserMain(WindowedWordCount.class.getCanonicalName())
@@ -107,7 +107,7 @@ public final class WindowedWordCountITCase {
 
 
   @Test (timeout = TIMEOUT)
-  public void testStreamingSlidingWindow() throws Exception {
+  public void testStreamingSchedulerAndPipeSlidingWindow() throws Exception {
     builder = new ArgBuilder()
       .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
       .addUserMain(WindowedWordCount.class.getCanonicalName())
