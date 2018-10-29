@@ -16,44 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.frontend.spark.transform;
+package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.spark.api.java.function.Function;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Map Transform for Spark.
- * @param <I> input type.
+ * This collector receives data from DataFetcher and forwards it to the next operator.
  * @param <O> output type.
  */
-public final class MapTransform<I, O> implements Transform<I, O> {
-  private final Function<I, O> func;
-  private OutputCollector<O> outputCollector;
+public final class DataFetcherOutputCollector<O> implements OutputCollector<O> {
+  private static final Logger LOG = LoggerFactory.getLogger(DataFetcherOutputCollector.class.getName());
+  private final OperatorVertex nextOperatorVertex;
 
   /**
-   * Constructor.
-   * @param func the function to run map with.
+   * It forwards output to the next operator.
    */
-  public MapTransform(final Function<I, O> func) {
-    this.func = func;
+  public DataFetcherOutputCollector(final OperatorVertex nextOperatorVertex) {
+    this.nextOperatorVertex = nextOperatorVertex;
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> oc) {
-    this.outputCollector = oc;
+  public void emit(final O output) {
+    nextOperatorVertex.getTransform().onData(output);
   }
 
   @Override
-  public void onData(final I element) {
-      try {
-        outputCollector.emit(func.call(element));
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-  }
-
-  @Override
-  public void close() {
+  public <T> void emit(final String dstVertexId, final T output) {
+    throw new RuntimeException("No additional output tag in DataFetcherOutputCollector");
   }
 }
