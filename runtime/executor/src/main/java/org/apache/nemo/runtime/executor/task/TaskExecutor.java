@@ -28,6 +28,8 @@ import org.apache.nemo.common.ir.edge.executionproperty.BroadcastVariableIdPrope
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -49,7 +51,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.nemo.runtime.executor.datatransfer.DynOptDataOutputCollector;
-import org.apache.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
+import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +64,6 @@ import javax.annotation.concurrent.NotThreadSafe;
 @NotThreadSafe
 public final class TaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutor.class.getName());
-  private static final int NONE_FINISHED = -1;
 
   // Essential information
   private boolean isExecuted;
@@ -177,7 +178,7 @@ public final class TaskExecutor {
         outputCollector = new DynOptDataOutputCollector(
           irVertex, persistentConnectionToMasterMap, this);
       } else {
-        outputCollector = new OutputCollectorImpl(
+        outputCollector = new OperatorVertexOutputCollector(
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap);
       }
@@ -194,7 +195,8 @@ public final class TaskExecutor {
       // Source read
       if (irVertex instanceof SourceVertex) {
         // Source vertex read
-        nonBroadcastDataFetcherList.add(new SourceVertexDataFetcher(irVertex, sourceReader.get(), vertexHarness));
+        nonBroadcastDataFetcherList.add(new SourceVertexDataFetcher(
+          (SourceVertex) irVertex, sourceReader.get(), outputCollector));
       }
 
       // Parent-task read (broadcasts)
@@ -224,7 +226,8 @@ public final class TaskExecutor {
       final List<InputReader> nonBroadcastReaders =
         getParentTaskReaders(taskIndex, nonBroadcastInEdges, dataTransferFactory);
       nonBroadcastReaders.forEach(parentTaskReader -> nonBroadcastDataFetcherList.add(
-        new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader, vertexHarness)));
+        new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
+          new DataFetcherOutputCollector((OperatorVertex) irVertex))));
     });
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
@@ -237,23 +240,14 @@ public final class TaskExecutor {
 
   /**
    * Process a data element down the DAG dependency.
-   *
-   * @param vertexHarness VertexHarness of a vertex to execute.
-   * @param dataElement   input data element to process.
    */
-  private void processElement(final VertexHarness vertexHarness, final Object dataElement) {
-    final IRVertex irVertex = vertexHarness.getIRVertex();
-    final OutputCollector outputCollector = vertexHarness.getOutputCollector();
+  private void processElement(final OutputCollector outputCollector, final Object dataElement) {
+    outputCollector.emit(dataElement);
+  }
 
-    // TODO #XXX: optimize processElement (do not check instanceof for each data element)
-    if (irVertex instanceof SourceVertex) {
-      outputCollector.emit(dataElement);
-    } else if (irVertex instanceof OperatorVertex) {
-      final Transform transform = ((OperatorVertex) irVertex).getTransform();
-      transform.onData(dataElement);
-    } else {
-      throw new UnsupportedOperationException("This type of IRVertex is not supported");
-    }
+  private void processWatermark(final OutputCollector outputCollector, final Watermark watermark) {
+    // TODO #231: Add onWatermark() method to Transform and
+    // TODO #231: fowards watermark to Transforms and OutputWriters
   }
 
   /**
@@ -316,46 +310,145 @@ public final class TaskExecutor {
   }
 
   /**
+   * Process an element generated from the dataFetcher.
+   * If the element is an instance of Finishmark, we remove the dataFetcher from the current list.
+   * @param element element
+   * @param dataFetcher current data fetcher
+   * @param dataFetchers current list
+   */
+  private void handleElement(final Object element,
+                             final DataFetcher dataFetcher,
+                             final List<DataFetcher> dataFetchers) {
+    if (element instanceof Finishmark) {
+      // We've consumed all the data from this data fetcher.
+      if (dataFetcher instanceof SourceVertexDataFetcher) {
+        boundedSourceReadTime += ((SourceVertexDataFetcher) dataFetcher).getBoundedSourceReadTime();
+      } else if (dataFetcher instanceof ParentTaskDataFetcher) {
+        serializedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getSerializedBytes();
+        encodedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getEncodedBytes();
+      }
+
+      // remove current data fetcher from the list
+      dataFetchers.remove(dataFetcher);
+    } else if (element instanceof Watermark) {
+      // Watermark
+      processWatermark(dataFetcher.getOutputCollector(), (Watermark) element);
+    } else {
+      // Process data element
+      processElement(dataFetcher.getOutputCollector(), element);
+    }
+  }
+
+  /**
+   * Check if it is time to poll pending fetchers' data.
+   * @param pollingPeriod polling period
+   * @param currentTime current time
+   * @param prevTime prev time
+   */
+  private boolean isPollingTime(final long pollingPeriod,
+                                final long currentTime,
+                                final long prevTime) {
+    return (currentTime - prevTime) >= pollingPeriod;
+  }
+
+  /**
+   * This retrieves data from data fetchers and process them.
+   * It maintains two lists:
+   *  -- availableFetchers: maintain data fetchers that currently have data elements to retreive
+   *  -- pendingFetchers: maintain data fetchers that currently do not have available elements.
+   *     This can become available in the future, and therefore we check the pending fetchers every pollingInterval.
+   *
+   *  If a data fetcher finishes, we remove it from the two lists.
+   *  If a data fetcher has no available element, we move the data fetcher to pendingFetchers
+   *  If a pending data fetcher has element, we move it to availableFetchers
+   *  If there are no available fetchers but pending fetchers, sleep for pollingPeriod
+   *  and retry fetching data from the pendingFetchers.
+   *
    * @param fetchers to handle.
    * @return false if IOException.
    */
   private boolean handleDataFetchers(final List<DataFetcher> fetchers) {
-    final List<DataFetcher> availableFetchers = new ArrayList<>(fetchers);
-    while (!availableFetchers.isEmpty()) { // empty means we've consumed all task-external input data
-      // For this looping of available fetchers.
-      int finishedFetcherIndex = NONE_FINISHED;
-      for (int i = 0; i < availableFetchers.size(); i++) {
-        final DataFetcher dataFetcher = availableFetchers.get(i);
-        final Object element;
+    final List<DataFetcher> availableFetchers = new LinkedList<>(fetchers);
+    final List<DataFetcher> pendingFetchers = new LinkedList<>();
+
+    // Polling interval.
+    final long pollingInterval = 100; // ms
+
+    // Previous polling time
+    long prevPollingTime = System.currentTimeMillis();
+
+    // empty means we've consumed all task-external input data
+    while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
+      // We first fetch data from available data fetchers
+      final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
+
+      while (availableIterator.hasNext()) {
+        final DataFetcher dataFetcher = availableIterator.next();
         try {
-          element = dataFetcher.fetchDataElement();
-        } catch (NoSuchElementException e) {
-          // We've consumed all the data from this data fetcher.
-          if (dataFetcher instanceof SourceVertexDataFetcher) {
-            boundedSourceReadTime += ((SourceVertexDataFetcher) dataFetcher).getBoundedSourceReadTime();
-          } else if (dataFetcher instanceof ParentTaskDataFetcher) {
-            serializedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getSerializedBytes();
-            encodedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getEncodedBytes();
-          }
-          finishedFetcherIndex = i;
-          break;
-        } catch (IOException e) {
+          handleElement(dataFetcher.fetchDataElement(), dataFetcher, availableFetchers);
+        } catch (final NoSuchElementException e) {
+          // No element in current data fetcher, fetch data from next fetcher
+          // move current data fetcher to pending.
+          availableIterator.remove();
+          pendingFetchers.add(dataFetcher);
+        } catch (final IOException e) {
           // IOException means that this task should be retried.
           taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
             Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
           LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
           return false;
         }
-
-        // Successfully fetched an element
-        processElement(dataFetcher.getChild(), element);
       }
 
-      // Remove the finished fetcher from the list
-      if (finishedFetcherIndex != NONE_FINISHED) {
-        availableFetchers.remove(finishedFetcherIndex);
+      final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
+      final long currentTime = System.currentTimeMillis();
+      // We check pending data every polling interval
+      while (pendingIterator.hasNext()
+        && isPollingTime(pollingInterval, currentTime, prevPollingTime)) {
+        prevPollingTime = currentTime;
+
+        final DataFetcher dataFetcher = pendingIterator.next();
+        try {
+          handleElement(dataFetcher.fetchDataElement(), dataFetcher, pendingFetchers);
+
+          // We processed data. This means the data fetcher is now available.
+          // Add current data fetcher to available
+          pendingIterator.remove();
+          availableFetchers.add(dataFetcher);
+
+        } catch (final NoSuchElementException e) {
+          // The current data fetcher is still pending.. try next data fetcher
+        } catch (final IOException e) {
+          // IOException means that this task should be retried.
+          taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
+            Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
+          LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
+          return false;
+        }
+      }
+
+      // If there are no available fetchers,
+      // Sleep and retry fetching element from pending fetchers every polling interval
+      if (availableFetchers.isEmpty() && !pendingFetchers.isEmpty()) {
+        try {
+          Thread.sleep(pollingInterval);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
       }
     }
+
+    // Close all data fetchers
+    fetchers.forEach(fetcher -> {
+      try {
+        fetcher.close();
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    });
+
     return true;
   }
 

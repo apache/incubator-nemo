@@ -21,19 +21,44 @@ package org.apache.nemo.common.ir;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  * Interface for readable.
  * @param <O> output type.
  */
 public interface Readable<O> extends Serializable {
+
   /**
-   * Method to read data from the source.
-   *
-   * @return an {@link Iterable} of the data read by the readable.
-   * @throws IOException exception while reading data.
+   * Prepare reading data.
    */
-  Iterable<O> read() throws IOException;
+  void prepare();
+
+  /**
+   * Method to read current data from the source.
+   * The caller should check whether the Readable is finished or not by using isFinished() method
+   * before calling this method.
+   *
+   * It can throw NoSuchElementException although it is not finished in Unbounded source.
+   * @return a data read by the readable.
+   */
+  O readCurrent() throws NoSuchElementException;
+
+  /**
+   * Advance current data point.
+   */
+  void advance() throws IOException;
+
+  /**
+   * Read watermark.
+   * @return watermark
+   */
+  long readWatermark();
+
+  /**
+   * @return true if it reads all data.
+   */
+  boolean isFinished();
 
   /**
    * Returns the list of locations where this readable resides.
@@ -44,4 +69,9 @@ public interface Readable<O> extends Serializable {
    * @throws Exception                     any other exceptions on the way
    */
   List<String> getLocations() throws Exception;
+
+  /**
+   * Close.
+   */
+  void close() throws IOException;
 }

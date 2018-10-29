@@ -29,8 +29,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.function.Function;
 
 /**
  * SourceVertex implementation for UnboundedSource.
@@ -38,13 +39,11 @@ import java.util.List;
  * @param <M> checkpoint mark type.
  */
 public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.CheckpointMark> extends
-  SourceVertex<WindowedValue<O>> {
+  SourceVertex<Object> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BeamUnboundedSourceVertex.class.getName());
   private UnboundedSource<O, M> source;
   private final String sourceDescription;
-
-  private static final long POLLING_INTERVAL = 10L;
 
   /**
    * The default constructor for beam unbounded source.
@@ -68,8 +67,13 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
   }
 
   @Override
-  public List<Readable<WindowedValue<O>>> getReadables(final int desiredNumOfSplits) throws Exception {
-    final List<Readable<WindowedValue<O>>> readables = new ArrayList<>();
+  public boolean isBounded() {
+    return false;
+  }
+
+  @Override
+  public List<Readable<Object>> getReadables(final int desiredNumOfSplits) throws Exception {
+    final List<Readable<Object>> readables = new ArrayList<>();
     source.split(desiredNumOfSplits, null)
       .forEach(unboundedSource -> readables.add(new UnboundedSourceReadable<>(unboundedSource)));
     return readables;
@@ -93,90 +97,80 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
    * @param <M> checkpoint mark type.
    */
   private static final class UnboundedSourceReadable<O, M extends UnboundedSource.CheckpointMark>
-      implements Readable<WindowedValue<O>> {
+      implements Readable<Object> {
     private final UnboundedSource<O, M> unboundedSource;
+    private UnboundedSource.UnboundedReader<O> reader;
+    private Function<O, WindowedValue<O>> windowedValueConverter;
+    private boolean finished = false;
 
     UnboundedSourceReadable(final UnboundedSource<O, M> unboundedSource) {
       this.unboundedSource = unboundedSource;
     }
 
     @Override
-    public Iterable<WindowedValue<O>> read() throws IOException {
-      return new UnboundedSourceIterable<>(unboundedSource);
+    public void prepare() {
+      try {
+        reader = unboundedSource.createReader(null, null);
+        reader.start();
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
+
+      // get first element
+      final O firstElement = retrieveFirstElement();
+      if (firstElement instanceof WindowedValue) {
+        windowedValueConverter = val -> (WindowedValue) val;
+      } else {
+        windowedValueConverter = WindowedValue::valueInGlobalWindow;
+      }
+    }
+
+    private O retrieveFirstElement() {
+      while (true) {
+        try {
+          return reader.getCurrent();
+        } catch (final NoSuchElementException e) {
+          // the first element is not currently available... retry
+          try {
+            Thread.sleep(100);
+          } catch (InterruptedException e1) {
+            e1.printStackTrace();
+            throw new RuntimeException(e);
+          }
+        }
+      }
+    }
+
+    @Override
+    public Object readCurrent() {
+      final O elem = reader.getCurrent();
+      return windowedValueConverter.apply(elem);
+    }
+
+    @Override
+    public void advance() throws IOException {
+      reader.advance();
+    }
+
+    @Override
+    public long readWatermark() {
+      return reader.getWatermark().getMillis();
+    }
+
+    @Override
+    public boolean isFinished() {
+      return finished;
     }
 
     @Override
     public List<String> getLocations() throws Exception {
       return new ArrayList<>();
     }
-  }
-
-  /**
-   * The iterable class for unbounded sources.
-   * @param <O> output type.
-   * @param <M> checkpoint mark type.
-   */
-  private static final class UnboundedSourceIterable<O, M extends UnboundedSource.CheckpointMark>
-      implements Iterable<WindowedValue<O>> {
-
-    private UnboundedSourceIterator<O, M> iterator;
-
-    UnboundedSourceIterable(final UnboundedSource<O, M> unboundedSource) throws IOException {
-      this.iterator = new UnboundedSourceIterator<>(unboundedSource);
-    }
 
     @Override
-    public Iterator<WindowedValue<O>> iterator() {
-      return iterator;
-    }
-  }
-
-  /**
-   * The iterator for unbounded sources.
-   * @param <O> output type.
-   * @param <M> checkpoint mark type.
-   */
-  // TODO #233: Emit watermark at unbounded source
-  private static final class UnboundedSourceIterator<O, M extends UnboundedSource.CheckpointMark>
-      implements Iterator<WindowedValue<O>> {
-
-    private final UnboundedSource.UnboundedReader<O> unboundedReader;
-    private boolean available;
-
-    UnboundedSourceIterator(final UnboundedSource<O, M> unboundedSource) throws IOException {
-      this.unboundedReader = unboundedSource.createReader(null, null);
-      available = unboundedReader.start();
-    }
-
-    @Override
-    public boolean hasNext() {
-      // Unbounded source always has next element until it finishes.
-      return true;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public WindowedValue<O> next() {
-      try {
-        while (true) {
-          if (!available) {
-            Thread.sleep(POLLING_INTERVAL);
-          } else {
-            final O element = unboundedReader.getCurrent();
-            final boolean windowed = element instanceof WindowedValue;
-            if (!windowed) {
-              return WindowedValue.valueInGlobalWindow(element);
-            } else {
-              return (WindowedValue<O>) element;
-            }
-          }
-          available = unboundedReader.advance();
-        }
-      } catch (final InterruptedException | IOException e) {
-        LOG.error("Exception occurred while waiting for the events...");
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
+    public void close() throws IOException {
+      finished = true;
+      reader.close();
     }
   }
 }

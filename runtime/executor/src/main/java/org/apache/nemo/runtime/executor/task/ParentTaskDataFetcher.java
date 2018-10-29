@@ -18,7 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import org.slf4j.Logger;
@@ -27,7 +29,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -49,8 +50,9 @@ class ParentTaskDataFetcher extends DataFetcher {
   private long serBytes = 0;
   private long encodedBytes = 0;
 
-  ParentTaskDataFetcher(final IRVertex dataSource, final InputReader readerForParentTask, final VertexHarness child) {
-    super(dataSource, child);
+  ParentTaskDataFetcher(final IRVertex dataSource, final InputReader readerForParentTask,
+                        final OutputCollector outputCollector) {
+    super(dataSource, outputCollector);
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
     this.currentIteratorIndex = 0;
@@ -92,8 +94,7 @@ class ParentTaskDataFetcher extends DataFetcher {
       throw new IOException(e);
     }
 
-    // We throw the exception here, outside of the above try-catch region
-    throw new NoSuchElementException();
+    return Finishmark.getInstance();
   }
 
   private void advanceIterator() throws IOException {
@@ -157,5 +158,10 @@ class ParentTaskDataFetcher extends DataFetcher {
     } catch (final IllegalStateException e) {
       LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
     }
+  }
+
+  @Override
+  public void close() throws Exception {
+
   }
 }

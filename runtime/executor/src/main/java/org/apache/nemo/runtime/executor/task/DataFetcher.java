@@ -18,21 +18,23 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import java.io.IOException;
+import java.util.NoSuchElementException;
 
 /**
  * An abstraction for fetching data from task-external sources.
  */
-abstract class DataFetcher {
+abstract class DataFetcher implements AutoCloseable {
   private final IRVertex dataSource;
-  private final VertexHarness child;
+  private final OutputCollector outputCollector;
 
   DataFetcher(final IRVertex dataSource,
-              final VertexHarness child) {
+              final OutputCollector outputCollector) {
     this.dataSource = dataSource;
-    this.child = child;
+    this.outputCollector = outputCollector;
   }
 
   /**
@@ -41,13 +43,9 @@ abstract class DataFetcher {
    * @throws IOException upon I/O error
    * @throws java.util.NoSuchElementException if no more element is available
    */
-  abstract Object fetchDataElement() throws IOException;
+  abstract Object fetchDataElement() throws IOException, NoSuchElementException;
 
-  VertexHarness getChild() {
-    return child;
-  }
-
-  public IRVertex getDataSource() {
-    return dataSource;
+  OutputCollector getOutputCollector() {
+    return outputCollector;
   }
 }
