@@ -36,6 +36,8 @@ public abstract class SourceVertex<O> extends IRVertex {
     super();
   }
 
+  public abstract boolean isBounded();
+
   /**
    * Copy Constructor for SourceVertex.
    *

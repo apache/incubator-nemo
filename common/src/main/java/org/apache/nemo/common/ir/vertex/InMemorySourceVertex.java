@@ -18,8 +18,10 @@
  */
 package org.apache.nemo.common.ir.vertex;
 
+import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.Readable;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -57,6 +59,11 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
   }
 
   @Override
+  public boolean isBounded() {
+    return true;
+  }
+
+  @Override
   public List<Readable<T>> getReadables(final int desiredNumOfSplits) throws Exception {
 
     final List<Readable<T>> readables = new ArrayList<>();
@@ -88,7 +95,8 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
    * Simply returns the in-memory data.
    * @param <T> type of the data.
    */
-  private static final class InMemorySourceReadable<T> implements Readable<T> {
+  private static final class InMemorySourceReadable<T> extends BoundedIteratorReadable<T> {
+
     private final Iterable<T> initializedSourceData;
 
     /**
@@ -96,17 +104,28 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
      * @param initializedSourceData the source data.
      */
     private InMemorySourceReadable(final Iterable<T> initializedSourceData) {
+      super();
       this.initializedSourceData = initializedSourceData;
     }
 
     @Override
-    public Iterable<T> read() {
-      return this.initializedSourceData;
+    protected Iterator<T> initializeIterator() {
+      return initializedSourceData.iterator();
+    }
+
+    @Override
+    public long readWatermark() {
+      throw new UnsupportedOperationException("No watermark");
     }
 
     @Override
     public List<String> getLocations() {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void close() throws IOException {
+
     }
   }
 }

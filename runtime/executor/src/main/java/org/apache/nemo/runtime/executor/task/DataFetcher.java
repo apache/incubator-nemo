@@ -22,11 +22,12 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import java.io.IOException;
+import java.util.NoSuchElementException;
 
 /**
  * An abstraction for fetching data from task-external sources.
  */
-abstract class DataFetcher {
+abstract class DataFetcher implements AutoCloseable {
   private final IRVertex dataSource;
   private final OutputCollector outputCollector;
 
@@ -42,7 +43,7 @@ abstract class DataFetcher {
    * @throws IOException upon I/O error
    * @throws java.util.NoSuchElementException if no more element is available
    */
-  abstract Object fetchDataElement() throws IOException;
+  abstract Object fetchDataElement() throws IOException, NoSuchElementException;
 
   OutputCollector getOutputCollector() {
     return outputCollector;
