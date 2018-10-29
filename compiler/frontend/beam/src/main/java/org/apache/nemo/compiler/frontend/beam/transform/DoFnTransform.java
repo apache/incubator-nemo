@@ -25,8 +25,7 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
-import org.apache.nemo.common.ir.vertex.transform.Watermark;
-import org.joda.time.Instant;
+import org.apache.nemo.common.punctuation.Watermark;
 
 import java.util.Collection;
 import java.util.List;
@@ -69,21 +68,10 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   }
 
   @Override
-  public void onWatermark(Watermark watermark) {
-    final InMemoryTimerInternals timerInternals =
-      (InMemoryTimerInternals) getStepContext().timerInternals();
-
-    try {
-      // TODO #216: We should consider push-back data that waits for side input
-      // TODO #216: If there are push-back data, input watermark >= output watermark
-      final Instant instant = new Instant(watermark.getTimestamp());
-      timerInternals.advanceInputWatermark(instant);
-      timerInternals.advanceOutputWatermark(instant);
-      timerInternals.advanceProcessingTime(Instant.now());
-      timerInternals.advanceSynchronizedProcessingTime(Instant.now());
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
+  public void onWatermark(final Watermark watermark) {
+    // TODO #216: We should consider push-back data that waits for side input
+    // TODO #216: If there are push-back data, input watermark >= output watermark
+    getOutputCollector().emitWatermark(watermark);
   }
 
   @Override

@@ -28,8 +28,7 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.beam.sdk.values.KV;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ir.vertex.transform.Watermark;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,7 +128,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   }
 
   @Override
-  public void onWatermark(Watermark watermark) {
+  public void onWatermark(final Watermark watermark) {
     processElementsAndTriggerTimers(watermark, Instant.now(), Instant.now());
   }
 

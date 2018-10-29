@@ -33,9 +33,9 @@ import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.values.KV;
-import org.apache.nemo.common.ir.vertex.transform.Watermark;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -137,7 +137,7 @@ public final class EmptyComponents {
    * @param <I> input type.
    * @param <O> output type.
    */
-  public static class EmptyTransform<I, O> implements Transform<I, O> {
+  public static class EmptyTransform<I, O> extends NoWatermarkEmitTransform<I, O> {
     private final String name;
 
     /**
@@ -164,10 +164,6 @@ public final class EmptyComponents {
 
     @Override
     public void onData(final I element) {
-    }
-
-    @Override
-    public void onWatermark(Watermark watermark) {
     }
 
     @Override

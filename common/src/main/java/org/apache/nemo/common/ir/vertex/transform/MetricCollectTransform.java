@@ -32,7 +32,7 @@ import java.util.function.BiFunction;
  * @param <I> input type.
  * @param <O> output type.
  */
-public final class MetricCollectTransform<I, O> implements Transform<I, O> {
+public final class MetricCollectTransform<I, O> extends NoWatermarkEmitTransform<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(MetricCollectTransform.class.getName());
   private OutputCollector<O> outputCollector;
   private O dynOptData;
@@ -58,11 +58,6 @@ public final class MetricCollectTransform<I, O> implements Transform<I, O> {
   @Override
   public void onData(final I element) {
     dynOptData = dynOptDataCollector.apply(element, dynOptData);
-  }
-
-  @Override
-  public void onWatermark(Watermark watermark) {
-    // do nothing
   }
 
   @Override

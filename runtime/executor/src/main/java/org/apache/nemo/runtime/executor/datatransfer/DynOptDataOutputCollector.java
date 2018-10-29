@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.transform.Watermark;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -81,7 +81,7 @@ public final class DynOptDataOutputCollector<O> implements OutputCollector<O> {
   }
 
   @Override
-  public void emitWatermark(Watermark watermark) {
+  public void emitWatermark(final Watermark watermark) {
     // do nothing
   }
 

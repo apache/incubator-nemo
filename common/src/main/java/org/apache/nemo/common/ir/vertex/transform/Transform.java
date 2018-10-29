@@ -19,6 +19,8 @@
 package org.apache.nemo.common.ir.vertex.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.punctuation.Watermark;
+
 import java.io.Serializable;
 import java.util.Optional;
 
@@ -46,6 +48,7 @@ public interface Transform<I, O> extends Serializable {
   /**
    * On watermark received.
    * This method should be called for the minimum watermark among input streams (input watermark).
+   * Transform may emit collected data after receiving watermarks.
    * @param watermark watermark
    */
   void onWatermark(Watermark watermark);

@@ -20,12 +20,11 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 import org.apache.beam.sdk.transforms.Materializations;
 import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.apache.nemo.common.ir.vertex.transform.Watermark;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -36,7 +35,7 @@ import java.util.ArrayList;
  * @param <I> input type.
  * @param <O> output type.
  */
-public final class CreateViewTransform<I, O> implements Transform<WindowedValue<I>, WindowedValue<O>> {
+public final class CreateViewTransform<I, O> extends NoWatermarkEmitTransform<WindowedValue<I>, WindowedValue<O>> {
   private final PCollectionView pCollectionView;
   private OutputCollector<WindowedValue<O>> outputCollector;
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
@@ -62,11 +61,6 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
     // TODO #216: support window in view
     final KV kv = ((WindowedValue<KV>) element).getValue();
     multiView.getDataList().add(kv.getValue());
-  }
-
-  @Override
-  public void onWatermark(Watermark watermark) {
-    // do nothing because it is for batch side input.
   }
 
   @Override

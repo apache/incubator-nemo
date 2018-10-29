@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.Watermark;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,7 +102,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   }
 
   @Override
-  public void emitWatermark(Watermark watermark) {
+  public void emitWatermark(final Watermark watermark) {
     // Emit watermarks to internal vertices
     // TODO #232: Implement InputWatermarkManager
     // TODO #232: We should emit the minimum watermark among multiple input streams of Transform.

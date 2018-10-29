@@ -16,36 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir;
+package org.apache.nemo.common.ir.vertex.transform;
 
 import org.apache.nemo.common.punctuation.Watermark;
 
-import java.io.Serializable;
-
 /**
- * Interface through which Transform emits outputs.
- * This is to be implemented in the runtime with
- * runtime-specific distributed data movement and storage mechanisms.
- * @param <O> output type.
+ * This transform does not emit watermarks.
+ * It may be a transform for batch operation that emits collected data when calling {@link Transform#close()}.
+ * @param <I> input type
+ * @param <O> output type
  */
-public interface OutputCollector<O> extends Serializable {
-  /**
-   * Single-destination emit.
-   * @param output value.
-   */
-  void emit(O output);
+public abstract class NoWatermarkEmitTransform<I, O> implements Transform<I, O> {
 
-  /**
-   * Emit watermark to downstream vertices.
-   */
-  void emitWatermark(Watermark watermark);
+  @Override
+  public final void onWatermark(final Watermark watermark) {
+    // do nothing
+  }
 
-  /**
-   * Multi-destination emit.
-   * Currently unused, but might come in handy
-   * for operations like multi-output map.
-   * @param dstVertexId destination vertex id.
-   * @param output value.
-   */
-  <T> void emit(String dstVertexId, T output);
 }

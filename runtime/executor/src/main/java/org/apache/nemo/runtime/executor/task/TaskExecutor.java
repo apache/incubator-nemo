@@ -247,25 +247,7 @@ public final class TaskExecutor {
   }
 
   private void processWatermark(final OutputCollector outputCollector, final Watermark watermark) {
-    // TODO #231: Add onWatermark() method to Transform and
-    // TODO #231: fowards watermark to Transforms and OutputWriters
-  }
-
-  // TODO: fix
-  private void processWatermark(final VertexHarness vertexHarness, final Watermark watermark) {
-    final IRVertex irVertex = vertexHarness.getIRVertex();
-    final OutputCollector outputCollector = vertexHarness.getOutputCollector();
-
-    // TODO #231: Add onWatermark() method to Transform and
-    // TODO #231: fowards watermark to Transforms and OutputWriters
-    if (irVertex instanceof SourceVertex) {
-      outputCollector.emitWatermark(watermark);
-    } else if (irVertex instanceof OperatorVertex) {
-      final Transform transform = ((OperatorVertex) irVertex).getTransform();
-      transform.onData(dataElement);
-    } else {
-      throw new UnsupportedOperationException("This type of IRVertex is not supported");
-    }
+    outputCollector.emit(watermark);
   }
 
   /**
@@ -442,6 +424,7 @@ public final class TaskExecutor {
             Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
           LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
           return false;
+        }
       }
 
       // If there are no available fetchers,

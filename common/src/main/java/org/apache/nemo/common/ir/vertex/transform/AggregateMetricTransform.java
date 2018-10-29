@@ -31,7 +31,7 @@ import java.util.function.BiFunction;
  * @param <I> input type.
  * @param <O> output type.
  */
-public final class AggregateMetricTransform<I, O> implements Transform<I, O> {
+public final class AggregateMetricTransform<I, O> extends NoWatermarkEmitTransform<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(AggregateMetricTransform.class.getName());
   private OutputCollector<O> outputCollector;
   private O aggregatedDynOptData;
@@ -54,11 +54,6 @@ public final class AggregateMetricTransform<I, O> implements Transform<I, O> {
   @Override
   public void onData(final I element) {
     aggregatedDynOptData = dynOptDataAggregator.apply(element, aggregatedDynOptData);
-  }
-
-  @Override
-  public void onWatermark(Watermark watermark) {
-    // do nothing
   }
 
   @Override

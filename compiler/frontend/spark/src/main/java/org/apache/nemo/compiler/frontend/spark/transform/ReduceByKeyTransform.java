@@ -19,8 +19,7 @@
 package org.apache.nemo.compiler.frontend.spark.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 import org.apache.spark.api.java.function.Function2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +32,7 @@ import java.util.*;
  * @param <K> key type.
  * @param <V> value type.
  */
-public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>, Tuple2<K, V>> {
+public final class ReduceByKeyTransform<K, V> extends NoWatermarkEmitTransform<Tuple2<K, V>, Tuple2<K, V>> {
   private static final Logger LOG = LoggerFactory.getLogger(ReduceByKeyTransform.class.getName());
 
   private final Map<K, List<V>> keyToValues;
@@ -61,11 +60,6 @@ public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>,
 
     keyToValues.putIfAbsent(key, new ArrayList<>());
     keyToValues.get(key).add(value);
-  }
-
-  @Override
-  public void onWatermark(final Watermark watermark) {
-    outputCollector.emitWatermark(watermark);
   }
 
   @Override

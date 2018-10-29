@@ -33,7 +33,6 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 
-import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -167,12 +166,8 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     doFnRunner.startBundle();
   }
 
-  public OutputCollector<WindowedValue<OutputT>> getOutputCollector() {
+  public final OutputCollector<WindowedValue<OutputT>> getOutputCollector() {
     return outputCollector;
-  }
-
-  public StepContext getStepContext() {
-    return stepContext;
   }
 
   @Override

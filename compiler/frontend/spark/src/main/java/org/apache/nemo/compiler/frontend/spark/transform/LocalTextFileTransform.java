@@ -19,8 +19,7 @@
 package org.apache.nemo.compiler.frontend.spark.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -31,7 +30,7 @@ import java.util.UUID;
  * Transform which saves elements to a local text file for Spark.
  * @param <I> input type.
  */
-public final class LocalTextFileTransform<I> implements Transform<I, String> {
+public final class LocalTextFileTransform<I> extends NoWatermarkEmitTransform<I, String> {
   private final String path;
   private String fileName;
   private List<I> elements;
@@ -54,11 +53,6 @@ public final class LocalTextFileTransform<I> implements Transform<I, String> {
   @Override
   public void onData(final I element) {
     elements.add(element);
-  }
-
-  @Override
-  public void onWatermark(final  Watermark watermark) {
-    // do nothing
   }
 
   @Override
