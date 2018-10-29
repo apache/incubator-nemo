@@ -35,7 +35,6 @@ import java.util.concurrent.TimeUnit;
 class SourceVertexDataFetcher extends DataFetcher {
   private final Readable readable;
   private long boundedSourceReadTime = 0;
-  private static final long POLLING_INTERVAL = 10L; // ms
   private static final long WATERMARK_PERIOD = 1000; // ms
   private final ScheduledExecutorService watermarkTriggerService;
   private boolean watermarkTriggered = false;
@@ -59,8 +58,13 @@ class SourceVertexDataFetcher extends DataFetcher {
     }
   }
 
+  /**
+   * This is non-blocking operation.
+   * @return current data
+   * @throws NoSuchElementException if the current data is not available
+   */
   @Override
-  Object fetchDataElement() {
+  Object fetchDataElement() throws NoSuchElementException, IOException {
     if (readable.isFinished()) {
       return Finishmark.getInstance();
     } else {
@@ -92,28 +96,15 @@ class SourceVertexDataFetcher extends DataFetcher {
     }
   }
 
-  private Object retrieveElement() {
-    while (true) {
-
-      // Emit watermark
-      if (!bounded && isWatermarkTriggerTime()) {
-        return new Watermark(readable.readWatermark());
-      }
-
-      try {
-        final Object element = readable.readCurrent();
-        readable.advance();
-        return element;
-      } catch (final NoSuchElementException e) {
-        // the element is not currently available... retry
-        try {
-          Thread.sleep(POLLING_INTERVAL);
-        } catch (InterruptedException e1) {
-          e1.printStackTrace();
-        }
-      } catch (final IOException e) {
-        throw new RuntimeException(e);
-      }
+  private Object retrieveElement() throws IOException {
+    // Emit watermark
+    if (!bounded && isWatermarkTriggerTime()) {
+      return new Watermark(readable.readWatermark());
     }
+
+    // Data
+    final Object element = readable.readCurrent();
+    readable.advance();
+    return element;
   }
 }
