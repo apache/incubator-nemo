@@ -18,9 +18,11 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.punctuation.InputWatermarkManager;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,8 +43,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   private static final Logger LOG = LoggerFactory.getLogger(OperatorVertexOutputCollector.class.getName());
 
   private final IRVertex irVertex;
-  private final List<OperatorVertex> internalMainOutputs;
-  private final Map<String, List<OperatorVertex>> internalAdditionalOutputs;
+  private final List<Pair<OperatorVertex, InputWatermarkManager>> internalMainOutputs;
+  private final Map<String, List<Pair<OperatorVertex, InputWatermarkManager>>> internalAdditionalOutputs;
   private final List<OutputWriter> externalMainOutputs;
   private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
 
@@ -54,11 +56,12 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
    * @param externalMainOutputs external main outputs
    * @param externalAdditionalOutputs external additional outputs
    */
-  public OperatorVertexOutputCollector(final IRVertex irVertex,
-                                       final List<OperatorVertex> internalMainOutputs,
-                                       final Map<String, List<OperatorVertex>> internalAdditionalOutputs,
-                                       final List<OutputWriter> externalMainOutputs,
-                                       final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
+  public OperatorVertexOutputCollector(
+    final IRVertex irVertex,
+    final List<Pair<OperatorVertex, InputWatermarkManager>> internalMainOutputs,
+    final Map<String, List<Pair<OperatorVertex, InputWatermarkManager>>> internalAdditionalOutputs,
+    final List<OutputWriter> externalMainOutputs,
+    final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
@@ -76,8 +79,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emit(final O output) {
-    for (final OperatorVertex internalVertex : internalMainOutputs) {
-      emit(internalVertex, output);
+    for (final Pair<OperatorVertex, InputWatermarkManager> internalVertex : internalMainOutputs) {
+      emit(internalVertex.left(), output);
     }
 
     for (final OutputWriter externalWriter : externalMainOutputs) {
@@ -89,8 +92,9 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   public <T> void emit(final String dstVertexId, final T output) {
 
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
-      for (final OperatorVertex internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-        emit(internalVertex, (O) output);
+      for (final Pair<OperatorVertex, InputWatermarkManager> internalVertex :
+        internalAdditionalOutputs.get(dstVertexId)) {
+        emit(internalVertex.left(), (O) output);
       }
     }
 
@@ -106,8 +110,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     // Emit watermarks to internal vertices
     // TODO #232: Implement InputWatermarkManager
     // TODO #232: We should emit the minimum watermark among multiple input streams of Transform.
-    for (final OperatorVertex internalVertex : internalMainOutputs) {
-      internalVertex.getTransform().onWatermark(watermark);
+    for (final Pair<OperatorVertex, InputWatermarkManager> internalVertex : internalMainOutputs) {
+      internalVertex.right().trackAndEmitWatermarks(watermark);
     }
 
     for (final List<OperatorVertex> internalVertices : internalAdditionalOutputs.values()) {

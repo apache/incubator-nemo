@@ -153,6 +153,18 @@ public final class TaskExecutor {
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
 
+    // We build a map that has a edge as a key and index as a value
+    final Map<RuntimeEdge<IRVertex>, Integer> edgeIndexMap = new HashMap<>();
+    reverseTopologicallySorted.forEach(parentVertex -> {
+      final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getIncomingEdgesOf(parentVertex);
+      for (int edgeIndex = 0; edgeIndex < edges.size(); edgeIndex++) {
+        final RuntimeEdge<IRVertex> edge = edges.get(0);
+        if (!edgeIndexMap.containsKey(edge)) {
+          edgeIndexMap.put(edge, edgeIndex);
+        }
+      }
+    });
+
     // Create a harness for each vertex
     final List<DataFetcher> nonBroadcastDataFetcherList = new ArrayList<>();
     final Map<String, VertexHarness> vertexIdToHarness = new HashMap<>();
