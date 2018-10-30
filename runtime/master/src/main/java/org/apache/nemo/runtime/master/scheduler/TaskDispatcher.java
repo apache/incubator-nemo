@@ -50,7 +50,7 @@ import javax.inject.Inject;
 final class TaskDispatcher {
   private static final Logger LOG = LoggerFactory.getLogger(TaskDispatcher.class.getName());
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
-  private final ExecutorService schedulerThread;
+  private final ExecutorService dispatcherThread;
   private final PlanStateManager planStateManager;
   private boolean isSchedulerRunning;
   private boolean isTerminated;
@@ -67,7 +67,7 @@ final class TaskDispatcher {
                          final ExecutorRegistry executorRegistry,
                          final PlanStateManager planStateManager) {
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
-    this.schedulerThread = Executors.newSingleThreadExecutor(runnable ->
+    this.dispatcherThread = Executors.newSingleThreadExecutor(runnable ->
         new Thread(runnable, "TaskDispatcher thread"));
     this.planStateManager = planStateManager;
     this.isSchedulerRunning = false;
@@ -81,7 +81,7 @@ final class TaskDispatcher {
    * A separate thread is run to dispatch tasks to executors.
    * See comments in the {@link Scheduler} for avoiding race conditions.
    */
-  private final class SchedulerThread implements Runnable {
+  private final class TaskDispatcherThread implements Runnable {
     @Override
     public void run() {
       while (!isTerminated) {
@@ -167,8 +167,8 @@ final class TaskDispatcher {
    */
   void run() {
     if (!isTerminated && !isSchedulerRunning) {
-      schedulerThread.execute(new SchedulerThread());
-      schedulerThread.shutdown();
+      dispatcherThread.execute(new TaskDispatcherThread());
+      dispatcherThread.shutdown();
       isSchedulerRunning = true;
     }
   }

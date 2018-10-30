@@ -135,6 +135,14 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class MaxTaskAttempt implements Name<Integer> {
   }
 
+  /**
+   * Scheduler impl.
+   */
+  @NamedParameter(doc = "Class name of the scheduler to use", short_name = "scheduler_impl_class_name",
+    default_value = "org.apache.nemo.runtime.master.scheduler.BatchScheduler")
+  public final class SchedulerImplClassName implements Name<String> {
+  }
+
   //////////////////////////////// Runtime Executor Configurations
 
   /**

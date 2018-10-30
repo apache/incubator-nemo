@@ -41,7 +41,7 @@ import java.util.*;
  * @param <InputT> input type.
  */
 public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
-    extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> {
+  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> {
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyAndWindowDoFnTransform.class.getName());
 
   private final SystemReduceFn reduceFn;
@@ -297,4 +297,3 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     }
   }
 }
-
