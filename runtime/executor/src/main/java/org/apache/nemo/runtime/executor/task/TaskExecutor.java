@@ -228,7 +228,7 @@ public final class TaskExecutor {
       final List<InputReader> nonBroadcastReaders =
         getParentTaskReaders(taskIndex, nonBroadcastInEdges, intermediateDataIOFactory);
       nonBroadcastReaders.forEach(parentTaskReader -> nonBroadcastDataFetcherList.add(
-        new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
+        new MultiThreadParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
           new DataFetcherOutputCollector((OperatorVertex) irVertex))));
     });
 
@@ -328,6 +328,9 @@ public final class TaskExecutor {
       } else if (dataFetcher instanceof ParentTaskDataFetcher) {
         serializedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getSerializedBytes();
         encodedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getEncodedBytes();
+      } else if (dataFetcher instanceof MultiThreadParentTaskDataFetcher) {
+        serializedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getSerializedBytes();
+        encodedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getEncodedBytes();
       }
 
       // remove current data fetcher from the list
