@@ -161,7 +161,7 @@ public final class TaskExecutor {
     reverseTopologicallySorted.forEach(childVertex -> {
       final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getIncomingEdgesOf(childVertex);
       for (int edgeIndex = 0; edgeIndex < edges.size(); edgeIndex++) {
-        final RuntimeEdge<IRVertex> edge = edges.get(0);
+        final RuntimeEdge<IRVertex> edge = edges.get(edgeIndex);
         edgeIndexMap.putIfAbsent(edge, edgeIndex);
       }
     });

@@ -192,78 +192,9 @@ public final class TaskExecutorTest {
    */
   @Test()
   public void testUnboundedSourceVertexDataFetching() throws Exception {
-    final IRVertex sourceIRVertex = new SourceVertex() {
-      @Override
-      public IRVertex getClone() {
-        return this;
-      }
-
-      @Override
-      public boolean isBounded() {
-        return false;
-      }
-
-      @Override
-      public List<Readable> getReadables(int desiredNumOfSplits) throws Exception {
-        return null;
-      }
-
-      @Override
-      public void clearInternalStates() {
-
-      }
-    };
-
-    final long watermark = 1234567L;
-
-    final Readable readable = new Readable() {
-      int pointer = 0;
-      final int middle = elements.size() / 2;
-      final int end = elements.size();
-      boolean watermarkEmitted = false;
-
-      @Override
-      public void prepare() {
-
-      }
-
-      // This emulates unbounded source that throws NoSuchElementException
-      // It reads current data until middle point and  throws NoSuchElementException at the middle point.
-      // It resumes the data reading after emitting a watermark, and finishes at the end of the data.
-      @Override
-      public Object readCurrent() throws NoSuchElementException {
-        if (pointer == middle && !watermarkEmitted) {
-          throw new NoSuchElementException();
-        }
-
-        return elements.get(pointer);
-      }
-
-      @Override
-      public void advance() throws IOException {
-        pointer += 1;
-      }
-
-      @Override
-      public long readWatermark() {
-        watermarkEmitted = true;
-        return watermark;
-      }
-
-      @Override
-      public boolean isFinished() {
-        return pointer == end;
-      }
-
-      @Override
-      public List<String> getLocations() throws Exception {
-        return null;
-      }
-
-      @Override
-      public void close() throws IOException {
-      }
-    };
+    final IRVertex sourceIRVertex = new TestUnboundedSourceVertex();
+    final Long watermark = 1234567L;
+    final Readable readable = new TestUnboundedSourceReadable(Arrays.asList(watermark));
 
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
@@ -328,6 +259,74 @@ public final class TaskExecutorTest {
 
     // Check the output.
     assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
+  }
+
+  /**
+   * The DAG of the task to test will looks like:
+   * source1 -> vertex1 -> vertex2
+   * source2 -> vertex3 ->
+   *
+   * The vertex2 has two incoming edges (from vertex1 and vertex3)
+   * and we test if TaskExecutor handles data and watermarks correctly in this situation.
+   *
+   * The source1 emits watermark 500, 1800 and source2 emits watermark 1000
+   * The vertex2 should receives watermark 500 and 1000.
+   */
+  @Test()
+  public void testMultipleIncomingEdges() throws Exception {
+    final List<Watermark> emittedWatermarks = new ArrayList<>();
+    final IRVertex operatorIRVertex1 = new OperatorVertex(new RelayTransform());
+    final IRVertex operatorIRVertex2 = new OperatorVertex(new RelayTransformNoWatermarkEmit(emittedWatermarks));
+    final IRVertex operatorIRVertex3 = new OperatorVertex(new RelayTransform());
+
+    final IRVertex sourceIRVertex1 = new TestUnboundedSourceVertex();
+    final IRVertex sourceIRVertex2 = new TestUnboundedSourceVertex();
+
+    final List<Long> watermarks1 = Arrays.asList(500L, 1800L);
+    final List<Long> watermarks2 = Arrays.asList(1000L);
+    final Readable readable1 = new TestUnboundedSourceReadable(watermarks1);
+    final Readable readable2 = new TestUnboundedSourceReadable(watermarks2);
+
+    final Map<String, Readable> vertexIdToReadable = new HashMap<>();
+    vertexIdToReadable.put(sourceIRVertex1.getId(), readable1);
+    vertexIdToReadable.put(sourceIRVertex2.getId(), readable2);
+
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
+      new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
+        .addVertex(sourceIRVertex1)
+        .addVertex(sourceIRVertex2)
+        .addVertex(operatorIRVertex1)
+        .addVertex(operatorIRVertex2)
+        .addVertex(operatorIRVertex3)
+        .connectVertices(createEdge(sourceIRVertex1, operatorIRVertex1, "edge1"))
+        .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, "edge2"))
+        .connectVertices(createEdge(sourceIRVertex2, operatorIRVertex3, "edge3"))
+        .connectVertices(createEdge(operatorIRVertex3, operatorIRVertex2, "edge4"))
+        .buildWithoutSourceSinkCheck();
+
+    final StageEdge taskOutEdge = mockStageEdgeFrom(operatorIRVertex2);
+    final Task task =
+      new Task(
+        "testSourceVertexDataFetching",
+        generateTaskId(),
+        TASK_EXECUTION_PROPERTY_MAP,
+        new byte[0],
+        Collections.emptyList(),
+        Collections.singletonList(taskOutEdge),
+        vertexIdToReadable);
+
+    // Execute the task.
+    final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
+    taskExecutor.execute();
+
+    // Check whether the watermark is emitted
+    assertEquals(Arrays.asList(new Watermark(500), new Watermark(1000)), emittedWatermarks);
+
+    // Check the output.
+    final List<Integer> doubledElements = new ArrayList<>(elements.size()*2);
+    doubledElements.addAll(elements);
+    doubledElements.addAll(elements);
+    assertTrue(checkEqualElements(doubledElements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
   }
 
   /**
@@ -601,6 +600,91 @@ public final class TaskExecutorTest {
     }
   }
 
+  /**
+   * Source vertex for unbounded source test.
+   */
+  private final class TestUnboundedSourceVertex extends SourceVertex {
+
+    @Override
+    public boolean isBounded() {
+      return false;
+    }
+
+    @Override
+    public List<Readable> getReadables(int desiredNumOfSplits) throws Exception {
+      return null;
+    }
+
+    @Override
+    public void clearInternalStates() {
+
+    }
+
+    @Override
+    public IRVertex getClone() {
+      return null;
+    }
+  }
+
+  private final class TestUnboundedSourceReadable implements Readable {
+    int pointer = 0;
+    final int middle = elements.size() / 2;
+    final int end = elements.size();
+    boolean watermarkEmitted = false;
+    final List<Long> watermarks;
+    int numEmittedWatermarks = 0;
+
+    public TestUnboundedSourceReadable(final List<Long> watermarks) {
+      this.watermarks = watermarks;
+    }
+
+    @Override
+    public void prepare() {
+
+    }
+
+    // This emulates unbounded source that throws NoSuchElementException
+    // It reads current data until middle point and  throws NoSuchElementException at the middle point.
+    // It resumes the data reading after emitting a watermark, and finishes at the end of the data.
+    @Override
+    public Object readCurrent() throws NoSuchElementException {
+      if (pointer == middle && !watermarkEmitted) {
+        throw new NoSuchElementException();
+      }
+
+      return elements.get(pointer);
+    }
+
+    @Override
+    public void advance() throws IOException {
+      pointer += 1;
+    }
+
+    @Override
+    public long readWatermark() {
+      if (numEmittedWatermarks == watermarks.size() - 1) {
+        watermarkEmitted = true;
+      }
+
+      final long watermark =  watermarks.get(numEmittedWatermarks);
+      numEmittedWatermarks += 1;
+      return watermark;
+    }
+
+    @Override
+    public boolean isFinished() {
+      return pointer == end;
+    }
+
+    @Override
+    public List<String> getLocations() throws Exception {
+      return null;
+    }
+
+    @Override
+    public void close() throws IOException {
+    }
+  }
 
   /**
    * Simple identity function for testing.

@@ -17,70 +17,72 @@
  * under the License.
  */
 package org.apache.nemo.runtime.executor.datatransfer;
- import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
- import org.apache.nemo.common.punctuation.Watermark;
- import org.junit.Test;
+import org.apache.nemo.common.punctuation.Watermark;
+import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
- import java.util.LinkedList;
+import java.util.LinkedList;
 import java.util.List;
- import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.junit.Assert.assertEquals;
- public final class InputWatermarkManagerTest {
-   @Test
-   public void test() {
-     final List<Watermark> emittedWatermarks = new LinkedList<>();
-     final Transform transform = mock(Transform.class);
-     doAnswer(new Answer() {
-       @Override
-       public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
-         final Watermark watermark = invocationOnMock.getArgument(0);
-         emittedWatermarks.add(watermark);
-         return null;
-       }
-     }).when(transform).onWatermark(any(Watermark.class));
 
-     final OperatorVertex operatorVertex = new OperatorVertex(transform);
-     final InputWatermarkManager watermarkManager =
-       new MultiInputWatermarkManager(3, operatorVertex);
+public final class InputWatermarkManagerTest {
 
-     //edge1: 10 s
-     //edge2: 5 s
-     //edge3: 8 s
-     //current min watermark: 5 s
-     watermarkManager.trackAndEmitWatermarks(0, new Watermark(10));
-     assertEquals(0, emittedWatermarks.size());
-     watermarkManager.trackAndEmitWatermarks(1, new Watermark(5));
-     assertEquals(0, emittedWatermarks.size());
-     watermarkManager.trackAndEmitWatermarks(2, new Watermark(8));
-     assertEquals(5, emittedWatermarks.get(0).getTimestamp());
-     emittedWatermarks.clear();
+  @Test
+  public void test() {
+    final List<Watermark> emittedWatermarks = new LinkedList<>();
+    final Transform transform = mock(Transform.class);
+    doAnswer(new Answer() {
+      @Override
+      public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
+        final Watermark watermark = invocationOnMock.getArgument(0);
+        emittedWatermarks.add(watermark);
+        return null;
+      }
+    }).when(transform).onWatermark(any(Watermark.class));
 
-     //edge1: 13
-     //edge2: 9
-     //edge3: 8
-     //current min watermark: 8
-     watermarkManager.trackAndEmitWatermarks(0, new Watermark(13));
-     assertEquals(0, emittedWatermarks.size());
-     watermarkManager.trackAndEmitWatermarks(1, new Watermark(9));
-     assertEquals(8, emittedWatermarks.get(0).getTimestamp());
-     emittedWatermarks.clear();
+    final OperatorVertex operatorVertex = new OperatorVertex(transform);
+    final InputWatermarkManager watermarkManager =
+      new MultiInputWatermarkManager(3, operatorVertex);
 
-     //edge1: 13
-     //edge2: 15
-     //edge3: 8
-     //current min watermark: 8
-     watermarkManager.trackAndEmitWatermarks(1, new Watermark(15));
-     assertEquals(0, emittedWatermarks.size());
+    //edge1: 10 s
+    //edge2: 5 s
+    //edge3: 8 s
+    //current min watermark: 5 s
+    watermarkManager.trackAndEmitWatermarks(0, new Watermark(10));
+    assertEquals(0, emittedWatermarks.size());
+    watermarkManager.trackAndEmitWatermarks(1, new Watermark(5));
+    assertEquals(0, emittedWatermarks.size());
+    watermarkManager.trackAndEmitWatermarks(2, new Watermark(8));
+    assertEquals(5, emittedWatermarks.get(0).getTimestamp());
+    emittedWatermarks.clear();
 
-     //edge1: 13
-     //edge2: 15
-     //edge3: 17
-     //current min watermark: 13
-     watermarkManager.trackAndEmitWatermarks(2, new Watermark(17));
-     assertEquals(13, emittedWatermarks.get(0).getTimestamp());
+    //edge1: 13
+    //edge2: 9
+    //edge3: 8
+    //current min watermark: 8
+    watermarkManager.trackAndEmitWatermarks(0, new Watermark(13));
+    assertEquals(0, emittedWatermarks.size());
+    watermarkManager.trackAndEmitWatermarks(1, new Watermark(9));
+    assertEquals(8, emittedWatermarks.get(0).getTimestamp());
+    emittedWatermarks.clear();
+
+    //edge1: 13
+    //edge2: 15
+    //edge3: 8
+    //current min watermark: 8
+    watermarkManager.trackAndEmitWatermarks(1, new Watermark(15));
+    assertEquals(0, emittedWatermarks.size());
+
+    //edge1: 13
+    //edge2: 15
+    //edge3: 17
+    //current min watermark: 13
+    watermarkManager.trackAndEmitWatermarks(2, new Watermark(17));
+    assertEquals(13, emittedWatermarks.get(0).getTimestamp());
   }
 }
