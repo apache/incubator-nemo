@@ -116,15 +116,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       }
     }
 
-    // Emit watermarks to external vertices
-    for (final OutputWriter externalVertex : externalMainOutputs) {
-      externalVertex.write(watermark);
-    }
-
-    for (final List<OutputWriter> externalVertices : externalAdditionalOutputs.values()) {
-      for (final OutputWriter externalVertex : externalVertices) {
-        externalVertex.write(watermark);
-      }
-    }
+    // TODO #245: handle watermarks in OutputWriter
+    // TODO #245: currently ignore emitting watermarks to output writer
   }
 }

@@ -295,9 +295,7 @@ public final class TaskExecutorTest {
     assertEquals(watermark, emittedWatermark.get());
 
     // Check the output.
-    final List<Object> expectedElements = new LinkedList<>(elements);
-    expectedElements.add(elements.size() / 2, new Watermark(emittedWatermark.get()));
-    assertEquals(expectedElements, runtimeEdgeToOutputData.get(taskOutEdge.getId()));
+    assertEquals(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId()));
   }
 
   /**
