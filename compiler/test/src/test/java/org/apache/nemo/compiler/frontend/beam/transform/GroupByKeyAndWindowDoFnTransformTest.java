@@ -48,23 +48,17 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
   private final static Map<TupleTag<?>, Coder<?>> NULL_OUTPUT_CODERS = null;
 
   private void checkOutput(final KV<String, List<String>> expected, final KV<String, Iterable<String>> result) {
+
+    // check key
     assertEquals(expected.getKey(), result.getKey());
 
-    int len = 0;
-    for (final String val : result.getValue()) {
-      len += 1;
-    }
+    // check value
+    final List<String> resultValue = new ArrayList<>();
+    final List<String> expectedValue = new ArrayList<>(expected.getValue());
+    result.getValue().iterator().forEachRemaining(resultValue::add);
+    Collections.sort(resultValue);
 
-    assertEquals(expected.getValue().size(), len);
-
-    int equalNum = 0;
-    for (final String val : result.getValue()) {
-      if (expected.getValue().contains(val)) {
-        equalNum += 1;
-      }
-    }
-
-    assertEquals(expected.getValue().size(), equalNum);
+    assertEquals(expectedValue, resultValue);
   }
 
 
@@ -178,34 +172,5 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
       oc.watermarks.get(0).getTimestamp());
 
     doFnTransform.close();
-  }
-
-  private static final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> {
-    private final List<WindowedValue<T>> outputs;
-    private final List<Tuple<String, WindowedValue<T>>> taggedOutputs;
-    private final List<Watermark> watermarks;
-
-    TestOutputCollector() {
-      this.outputs = new LinkedList<>();
-      this.taggedOutputs = new LinkedList<>();
-      this.watermarks = new LinkedList<>();
-    }
-
-    @Override
-    public void emit(WindowedValue<T> output) {
-      outputs.add(output);
-    }
-
-    @Override
-    public void emitWatermark(Watermark watermark) {
-      watermarks.add(watermark);
-    }
-
-    @Override
-    public <O> void emit(String dstVertexId, O output) {
-      final WindowedValue<T> val = (WindowedValue<T>) output;
-      final Tuple<String, WindowedValue<T>> tuple = new Tuple<>(dstVertexId, val);
-      taggedOutputs.add(tuple);
-    }
   }
 }
