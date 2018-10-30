@@ -27,7 +27,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Test output collector that collects data and watermarks. 
+ * Test output collector that collects data and watermarks.
  * @param <T>
  */
 final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> {
