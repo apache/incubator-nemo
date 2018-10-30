@@ -227,9 +227,18 @@ public final class TaskExecutor {
       nonBroadcastInEdges.removeAll(broadcastInEdges);
       final List<InputReader> nonBroadcastReaders =
         getParentTaskReaders(taskIndex, nonBroadcastInEdges, intermediateDataIOFactory);
-      nonBroadcastReaders.forEach(parentTaskReader -> nonBroadcastDataFetcherList.add(
-        new MultiThreadParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
-          new DataFetcherOutputCollector((OperatorVertex) irVertex))));
+      nonBroadcastReaders.forEach(parentTaskReader -> {
+        final DataFetcher dataFetcher;
+        if (parentTaskReader instanceof PipeInputReader) {
+          nonBroadcastDataFetcherList.add(
+            new MultiThreadParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
+              new DataFetcherOutputCollector((OperatorVertex) irVertex)));
+        } else {
+          nonBroadcastDataFetcherList.add(
+            new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
+              new DataFetcherOutputCollector((OperatorVertex) irVertex)));
+        }
+      });
     });
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
@@ -412,7 +421,6 @@ public final class TaskExecutor {
         prevPollingTime = currentTime;
 
         final DataFetcher dataFetcher = pendingIterator.next();
-
         try {
           final Object element = dataFetcher.fetchDataElement();
           handleElement(element, dataFetcher);

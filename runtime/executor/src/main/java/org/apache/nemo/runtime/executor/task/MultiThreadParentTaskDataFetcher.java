@@ -33,7 +33,13 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.*;
 
 /**
- * Fetches data from parent tasks.
+ * Task thread -> fetchDataElement() -> (((QUEUE))) <- List of iterators <- queueInsertionThreads
+ *
+ * Unlike {@link ParentTaskDataFetcher}, where the task thread directly consumes (and blocks on) iterators one by one,
+ * this class spawns threads that each forwards elements from an iterator to a global queue.
+ *
+ * This class should be used when dealing with unbounded data streams, as we do not want to be blocked on a
+ * single unbounded iterator forever.
  */
 @NotThreadSafe
 class MultiThreadParentTaskDataFetcher extends DataFetcher {
