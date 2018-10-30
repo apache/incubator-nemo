@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.*;
 
 /**
@@ -37,15 +38,14 @@ import java.util.concurrent.*;
 @NotThreadSafe
 class MultiThreadParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(MultiThreadParentTaskDataFetcher.class);
-  private static final int ELEMENT_QUEUE_CAPACITY = 50;
 
   private final InputReader readersForParentTask;
+  private final ExecutorService queueInsertionThreads;
 
   // Non-finals (lazy fetching)
   private boolean firstFetch = true;
-  private ExecutorService queueInsertionThreads;
 
-  private final ArrayBlockingQueue elementQueue;
+  private final ConcurrentLinkedQueue elementQueue;
 
   private long serBytes = 0;
   private long encodedBytes = 0;
@@ -59,40 +59,30 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     super(dataSource, outputCollector);
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
-    this.elementQueue = new ArrayBlockingQueue(ELEMENT_QUEUE_CAPACITY);
+    this.elementQueue = new ConcurrentLinkedQueue();
+    this.queueInsertionThreads = Executors.newCachedThreadPool();
   }
 
   @Override
-  Object fetchDataElement() throws IOException {
+  Object fetchDataElement() throws IOException, NoSuchElementException {
     if (firstFetch) {
       fetchDataLazily();
       firstFetch = false;
     }
 
-    LOG.info("finish {} iter {}", numOfFinishMarks, numOfIterators);
-
-    try {
-      while (true) {
-        LOG.info("queue take");
-        final Object element = elementQueue.take();
-        LOG.info("Got element {}", element);
-        final boolean isFinishMark = element instanceof Finishmark;
-        if (isFinishMark) {
-          LOG.info("isfinishmark: finish {} iter {}", numOfFinishMarks, numOfIterators);
-          numOfFinishMarks++;
-          if (numOfFinishMarks == numOfIterators) {
-            // LOG.info("return finishmark", numOfFinishMarks, numOfIterators);
-            return Finishmark.getInstance();
-          }
-          // LOG.info("else try again", numOfFinishMarks, numOfIterators);
-          // else try again.
-        } else {
-          LOG.info("return element: finish {} iter {}", numOfFinishMarks, numOfIterators);
-          return element;
+    while (true) {
+      final Object element = elementQueue.poll();
+      if (element == null) {
+        throw new NoSuchElementException();
+      } else if (element instanceof Finishmark) {
+        numOfFinishMarks++;
+        if (numOfFinishMarks == numOfIterators) {
+          return Finishmark.getInstance();
         }
+        // else try again.
+      } else {
+        return element;
       }
-    } catch (InterruptedException e) {
-      throw new IOException(e);
     }
   }
 
@@ -100,34 +90,19 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     numOfIterators = futures.size();
 
-    queueInsertionThreads = Executors.newFixedThreadPool(numOfIterators);
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
       // A thread for each iterator
-      LOG.info("Monitor {} with {}", iterator.toString(), numOfIterators);
-
-      LOG.info("Submitting {}", iterator.toString());
-      LOG.info("queue threads is {} and the num is {}", queueInsertionThreads.toString(), numOfIterators);
-
       queueInsertionThreads.submit(() -> {
-        LOG.info("Submitted {}", iterator.toString());
-
         if (exception == null) {
-          try {
-            // Consume this iterator to the end.
-            while (iterator.hasNext()) { // blocked on the iterator.
-              final Object element = iterator.next();
-              LOG.info("Putting {}", element);
-              elementQueue.put(element); // blocked on the queue.
-            }
-
-            // This iterator is finished.
-            LOG.info("Done {}", iterator.toString());
-            countBytesSynchronized(iterator);
-            elementQueue.put(Finishmark.getInstance());
-          } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException(e); // this should not happen.
+          // Consume this iterator to the end.
+          while (iterator.hasNext()) { // blocked on the iterator.
+            final Object element = iterator.next();
+            elementQueue.offer(element);
           }
+
+          // This iterator is finished.
+          countBytesSynchronized(iterator);
+          elementQueue.offer(Finishmark.getInstance());
         } else {
           exception.printStackTrace();
           throw new RuntimeException(exception);

@@ -316,11 +316,9 @@ public final class TaskExecutor {
    * If the element is an instance of Finishmark, we remove the dataFetcher from the current list.
    * @param element element
    * @param dataFetcher current data fetcher
-   * @param dataFetchers current list
    */
   private void handleElement(final Object element,
-                             final DataFetcher dataFetcher,
-                             final List<DataFetcher> dataFetchers) {
+                             final DataFetcher dataFetcher) {
     if (element instanceof Finishmark) {
       // We've consumed all the data from this data fetcher.
       if (dataFetcher instanceof SourceVertexDataFetcher) {
@@ -332,9 +330,6 @@ public final class TaskExecutor {
         serializedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getSerializedBytes();
         encodedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getEncodedBytes();
       }
-
-      // remove current data fetcher from the list
-      dataFetchers.remove(dataFetcher);
     } else if (element instanceof Watermark) {
       // Watermark
       processWatermark(dataFetcher.getOutputCollector(), (Watermark) element);
@@ -390,7 +385,11 @@ public final class TaskExecutor {
       while (availableIterator.hasNext()) {
         final DataFetcher dataFetcher = availableIterator.next();
         try {
-          handleElement(dataFetcher.fetchDataElement(), dataFetcher, availableFetchers);
+          final Object element = dataFetcher.fetchDataElement();
+          handleElement(element, dataFetcher);
+          if (element instanceof Finishmark) {
+            availableIterator.remove();
+          }
         } catch (final NoSuchElementException e) {
           // No element in current data fetcher, fetch data from next fetcher
           // move current data fetcher to pending.
@@ -413,13 +412,17 @@ public final class TaskExecutor {
         prevPollingTime = currentTime;
 
         final DataFetcher dataFetcher = pendingIterator.next();
+
         try {
-          handleElement(dataFetcher.fetchDataElement(), dataFetcher, pendingFetchers);
+          final Object element = dataFetcher.fetchDataElement();
+          handleElement(element, dataFetcher);
 
           // We processed data. This means the data fetcher is now available.
           // Add current data fetcher to available
           pendingIterator.remove();
-          availableFetchers.add(dataFetcher);
+          if (!(element instanceof Finishmark)) {
+            availableFetchers.add(dataFetcher);
+          }
 
         } catch (final NoSuchElementException e) {
           // The current data fetcher is still pending.. try next data fetcher
