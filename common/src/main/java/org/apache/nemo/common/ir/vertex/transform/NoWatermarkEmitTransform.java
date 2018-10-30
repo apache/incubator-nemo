@@ -16,25 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.common.ir.vertex.transform;
 
+import org.apache.nemo.common.punctuation.Watermark;
 
 /**
- * Contains common parts involved in {@link InputReader} and {@link OutputWriter}.
- * The two classes are involved in
- * intermediate data transfer between {@link org.apache.nemo.runtime.common.plan.physical.Task}.
+ * This transform does not emit watermarks.
+ * It may be a transform for batch operation that emits collected data when calling {@link Transform#close()}.
+ * @param <I> input type
+ * @param <O> output type
  */
-public abstract class DataTransfer {
-  private final String id;
+public abstract class NoWatermarkEmitTransform<I, O> implements Transform<I, O> {
 
-  public DataTransfer(final String id) {
-    this.id = id;
+  @Override
+  public final void onWatermark(final Watermark watermark) {
+    // do nothing
   }
 
-  /**
-   * @return ID of the reader/writer.
-   */
-  public final String getId() {
-    return id;
-  }
 }

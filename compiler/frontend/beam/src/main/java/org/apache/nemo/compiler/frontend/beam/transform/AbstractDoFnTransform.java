@@ -131,14 +131,12 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       sideInputReader = NullSideInputReader.of(sideInputs);
     }
 
-    // create step context
     // this transform does not support state and timer.
     final StepContext stepContext = new StepContext() {
       @Override
       public StateInternals stateInternals() {
         throw new UnsupportedOperationException("Not support stateInternals in DoFnTransform");
       }
-
       @Override
       public TimerInternals timerInternals() {
         throw new UnsupportedOperationException("Not support timerInternals in DoFnTransform");
@@ -166,6 +164,10 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       windowingStrategy);
 
     doFnRunner.startBundle();
+  }
+
+  public final OutputCollector<WindowedValue<OutputT>> getOutputCollector() {
+    return outputCollector;
   }
 
   @Override

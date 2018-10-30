@@ -22,7 +22,6 @@ import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.Nullable;
 
@@ -33,7 +32,6 @@ import javax.annotation.Nullable;
  * Other scheduler-related classes that are accessed by only one of the two threads are not synchronized(NotThreadSafe).
  */
 @DriverSide
-@DefaultImplementation(BatchScheduler.class)
 public interface Scheduler {
 
   /**

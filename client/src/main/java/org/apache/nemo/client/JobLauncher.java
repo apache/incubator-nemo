@@ -27,6 +27,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.parameters.JobMessageHandler;
@@ -109,10 +110,11 @@ public final class JobLauncher {
     final Configuration bandwidthConfig = getJSONConf(builtJobConf, JobConf.BandwidthJSONPath.class,
         JobConf.BandwidthJSONContents.class);
     final Configuration clientConf = getClientConf();
+    final Configuration schedulerConf = getSchedulerConf(builtJobConf);
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfg,
-        executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration());
+        executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration(), schedulerConf);
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
@@ -249,6 +251,16 @@ public final class JobLauncher {
     return jcb.build();
   }
 
+  private static Configuration getSchedulerConf(final Configuration jobConf)
+    throws ClassNotFoundException, InjectionException {
+    final Injector injector = TANG.newInjector(jobConf);
+    final String classImplName = injector.getNamedInstance(JobConf.SchedulerImplClassName.class);
+    final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
+    final Class schedulerImpl = ((Class<Scheduler>) Class.forName(classImplName));
+    jcb.bindImplementation(Scheduler.class, schedulerImpl);
+    return jcb.build();
+  }
+
   /**
    * Get driver ncs configuration.
    *
@@ -331,6 +343,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerNumWorkingThreads.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportClientNumThreads.class);
     cl.registerShortNameOfClass(JobConf.MaxNumDownloadsForARuntimeEdge.class);
+    cl.registerShortNameOfClass(JobConf.SchedulerImplClassName.class);
     cl.processCommandLine(args);
     return confBuilder.build();
   }

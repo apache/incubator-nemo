@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
-import com.google.common.collect.Lists;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -35,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
+import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 /**
  * A simple scheduler for streaming workloads.
  * - Keeps track of new executors
- * - Schedules all tasks in a reverse topological order.
+ * - Schedules all tasks in the plan at once.
  * - Crashes the system upon any other events (should be fixed in the future)
  * - Never stops running.
  */
@@ -55,15 +55,19 @@ public final class StreamingScheduler implements Scheduler {
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorRegistry executorRegistry;
   private final PlanStateManager planStateManager;
+  private final PipeManagerMaster pipeManagerMaster;
 
+  @Inject
   StreamingScheduler(final TaskDispatcher taskDispatcher,
                      final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                      final ExecutorRegistry executorRegistry,
-                     final PlanStateManager planStateManager) {
+                     final PlanStateManager planStateManager,
+                     final PipeManagerMaster pipeManagerMaster) {
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.executorRegistry = executorRegistry;
     this.planStateManager = planStateManager;
+    this.pipeManagerMaster = pipeManagerMaster;
   }
 
   @Override
@@ -75,8 +79,8 @@ public final class StreamingScheduler implements Scheduler {
     planStateManager.storeJSON("submitted");
 
     // Prepare tasks
-    final List<Stage> reverseTopoStages = Lists.reverse(submittedPhysicalPlan.getStageDAG().getTopologicalSort());
-    final List<Task> reverseTopoTasks = reverseTopoStages.stream().flatMap(stageToSchedule -> {
+    final List<Stage> allStages = submittedPhysicalPlan.getStageDAG().getTopologicalSort();
+    final List<Task> allTasks = allStages.stream().flatMap(stageToSchedule -> {
       // Helper variables for this stage
       final List<StageEdge> stageIncomingEdges =
         submittedPhysicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
@@ -84,6 +88,11 @@ public final class StreamingScheduler implements Scheduler {
         submittedPhysicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
       final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
       final List<String> taskIdsToSchedule = planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId());
+
+      taskIdsToSchedule.forEach(taskId -> {
+        final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
+        stageOutgoingEdges.forEach(outEdge -> pipeManagerMaster.onTaskScheduled(outEdge.getId(), index));
+      });
 
       // Create tasks of this stage
       return taskIdsToSchedule.stream().map(taskId -> new Task(
@@ -97,7 +106,8 @@ public final class StreamingScheduler implements Scheduler {
     }).collect(Collectors.toList());
 
     // Schedule everything at once
-    pendingTaskCollectionPointer.setToOverwrite(reverseTopoTasks);
+    pendingTaskCollectionPointer.setToOverwrite(allTasks);
+    taskDispatcher.onNewPendingTaskCollectionAvailable();
   }
 
   @Override
@@ -113,11 +123,15 @@ public final class StreamingScheduler implements Scheduler {
                                             final TaskState.State newState,
                                             @Nullable final String vertexPutOnHold,
                                             final TaskState.RecoverableTaskFailureCause failureCause) {
+    planStateManager.onTaskStateChanged(taskId, newState);
+
     switch (newState) {
       case COMPLETE:
-      case SHOULD_RETRY:
+        // Do nothing.
+        break;
       case ON_HOLD:
       case FAILED:
+      case SHOULD_RETRY:
         // TODO #226: StreamingScheduler Fault Tolerance
         throw new UnsupportedOperationException();
       case READY:
@@ -137,6 +151,7 @@ public final class StreamingScheduler implements Scheduler {
   @Override
   public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
     LOG.info("{} added (node: {})", executorRepresenter.getExecutorId(), executorRepresenter.getNodeName());
+    taskDispatcher.onExecutorSlotAvailable();
     executorRegistry.registerExecutor(executorRepresenter);
   }
 

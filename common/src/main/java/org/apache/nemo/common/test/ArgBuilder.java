@@ -98,6 +98,15 @@ public final class ArgBuilder {
   }
 
   /**
+   * @param schedulerName scheduler.
+   * @return builder with the scheduler.
+   */
+  public ArgBuilder addScheduler(final String schedulerName) {
+    args.add(Arrays.asList("-scheduler_impl_class_name", schedulerName));
+    return this;
+  }
+
+  /**
    * @return the built arguments.
    */
   public String[] build() {

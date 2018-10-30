@@ -25,6 +25,7 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
+import org.apache.nemo.common.punctuation.Watermark;
 
 import java.util.Collection;
 import java.util.List;
@@ -64,6 +65,13 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   @Override
   public void onData(final WindowedValue<InputT> data) {
     getDoFnRunner().processElement(data);
+  }
+
+  @Override
+  public void onWatermark(final Watermark watermark) {
+    // TODO #216: We should consider push-back data that waits for side input
+    // TODO #216: If there are push-back data, input watermark >= output watermark
+    getOutputCollector().emitWatermark(watermark);
   }
 
   @Override
