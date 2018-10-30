@@ -16,30 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import org.apache.nemo.runtime.executor.data.DataUtil;
-
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 /**
- * Represents the input data transfer to a task.
+ * Annotate 'Pipe' on all edges.
  */
-public interface InputReader {
+@Annotates(DataStoreProperty.class)
+public final class PipeTransferForAllEdgesPass extends AnnotatingPass {
   /**
-   * Reads input data depending on the communication pattern of the srcVertex.
-   *
-   * @return the read data.
+   * Default constructor.
    */
-  List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read();
+  public PipeTransferForAllEdgesPass() {
+    super(PipeTransferForAllEdgesPass.class);
+  }
 
-  IRVertex getSrcIrVertex();
-
-  static int getSourceParallelism(final InputReader inputReader) {
-    return inputReader.getSrcIrVertex().getPropertyValue(ParallelismProperty.class)
-      .orElseThrow(() -> new IllegalStateException(inputReader.getSrcIrVertex().getId()));
+  @Override
+  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+    dag.getVertices().forEach(vertex -> {
+      dag.getIncomingEdgesOf(vertex).stream()
+          .forEach(edge -> edge.setPropertyPermanently(
+              DataStoreProperty.of(DataStoreProperty.Value.Pipe)));
+    });
+    return dag;
   }
 }

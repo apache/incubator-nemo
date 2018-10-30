@@ -141,6 +141,7 @@ public abstract class ByteTransferContext {
     private final String partnerExecutorId;
     private final ByteTransferDataDirection dataDirection;
     private final int transferIndex;
+    private final boolean isPipe;
 
     /**
      * Create {@link ContextId}.
@@ -148,15 +149,18 @@ public abstract class ByteTransferContext {
      * @param partnerExecutorId   the other executor
      * @param dataDirection       the direction of the data flow
      * @param transferIndex       an index issued by the initiator
+     * @param isPipe              is a pipe context
      */
     ContextId(final String initiatorExecutorId,
               final String partnerExecutorId,
               final ByteTransferDataDirection dataDirection,
-              final int transferIndex) {
+              final int transferIndex,
+              final boolean isPipe) {
       this.initiatorExecutorId = initiatorExecutorId;
       this.partnerExecutorId = partnerExecutorId;
       this.dataDirection = dataDirection;
       this.transferIndex = transferIndex;
+      this.isPipe = isPipe;
     }
 
     public String getInitiatorExecutorId() {
@@ -165,6 +169,10 @@ public abstract class ByteTransferContext {
 
     public String getPartnerExecutorId() {
       return partnerExecutorId;
+    }
+
+    public boolean isPipe() {
+      return isPipe;
     }
 
     public ByteTransferDataDirection getDataDirection() {

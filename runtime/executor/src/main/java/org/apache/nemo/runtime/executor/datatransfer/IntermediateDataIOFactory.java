@@ -18,41 +18,51 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
+import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.Optional;
 
 /**
  * A factory that produces {@link InputReader} and {@link OutputWriter}.
  */
-public final class DataTransferFactory {
-
+public final class IntermediateDataIOFactory {
+  private final PipeManagerWorker pipeManagerWorker;
   private final BlockManagerWorker blockManagerWorker;
   private final int hashRangeMultiplier;
 
   @Inject
-  private DataTransferFactory(@Parameter(JobConf.HashRangeMultiplier.class) final int hashRangeMultiplier,
-                              final BlockManagerWorker blockManagerWorker) {
+  private IntermediateDataIOFactory(@Parameter(JobConf.HashRangeMultiplier.class) final int hashRangeMultiplier,
+                                    final BlockManagerWorker blockManagerWorker,
+                                    final PipeManagerWorker pipeManagerWorker) {
     this.hashRangeMultiplier = hashRangeMultiplier;
     this.blockManagerWorker = blockManagerWorker;
+    this.pipeManagerWorker = pipeManagerWorker;
   }
 
   /**
    * Creates an {@link OutputWriter} between two stages.
    *
    * @param srcTaskId   the id of the source task.
-   * @param dstIRVertex the {@link IRVertex} that will take the output data as its input.
    * @param runtimeEdge that connects the srcTask to the tasks belonging to dstIRVertex.
    * @return the {@link OutputWriter} created.
    */
   public OutputWriter createWriter(final String srcTaskId,
-                                   final IRVertex dstIRVertex,
                                    final RuntimeEdge<?> runtimeEdge) {
-    return new OutputWriter(hashRangeMultiplier, srcTaskId, dstIRVertex, runtimeEdge, blockManagerWorker);
+    if (isPipe(runtimeEdge)) {
+      return new PipeOutputWriter(hashRangeMultiplier, srcTaskId, runtimeEdge, pipeManagerWorker);
+    } else {
+      final StageEdge stageEdge = (StageEdge) runtimeEdge;
+      return new BlockOutputWriter(
+        hashRangeMultiplier, srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker);
+    }
   }
 
   /**
@@ -66,6 +76,15 @@ public final class DataTransferFactory {
   public InputReader createReader(final int dstTaskIdx,
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge) {
-    return new InputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
+    if (isPipe(runtimeEdge)) {
+      return new PipeInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker);
+    } else {
+      return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
+    }
+  }
+
+  private boolean isPipe(final RuntimeEdge runtimeEdge) {
+    final Optional<DataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(DataStoreProperty.class);
+    return dataStoreProperty.isPresent() && dataStoreProperty.get().equals(DataStoreProperty.Value.Pipe);
   }
 }

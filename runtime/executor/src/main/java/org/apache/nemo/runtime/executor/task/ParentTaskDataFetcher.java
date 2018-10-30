@@ -69,6 +69,7 @@ class ParentTaskDataFetcher extends DataFetcher {
       }
 
       while (true) {
+
         // This iterator has the element
         if (this.currentIterator.hasNext()) {
           return this.currentIterator.next();
@@ -84,6 +85,7 @@ class ParentTaskDataFetcher extends DataFetcher {
           // We've consumed all the iterators
           break;
         }
+
       }
     } catch (final Throwable e) {
       // Any failure is caught and thrown as an IOException, so that the task is retried.
