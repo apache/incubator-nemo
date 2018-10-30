@@ -269,10 +269,10 @@ public final class TaskExecutorTest {
    * The vertex2 has two incoming edges (from vertex1 and vertex3)
    * and we test if TaskExecutor handles data and watermarks correctly in this situation.
    *
-   * The source1 emits watermark 500, 1800 and source2 emits watermark 1000
-   * The vertex2 should receives watermark 500 and 1000.
+   * The source1 emits watermark 500, 1800 and source2 emits watermark 1000.
+   * The vertex2 should receive and emit watermarks 500 and 1000.
    */
-  @Test()
+  @Test(timeout=5000)
   public void testMultipleIncomingEdges() throws Exception {
     final List<Watermark> emittedWatermarks = new ArrayList<>();
     final IRVertex operatorIRVertex1 = new OperatorVertex(new RelayTransform());
