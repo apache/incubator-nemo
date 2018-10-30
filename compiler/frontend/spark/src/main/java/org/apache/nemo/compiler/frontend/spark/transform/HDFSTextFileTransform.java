@@ -19,6 +19,7 @@
 package org.apache.nemo.compiler.frontend.spark.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -34,7 +35,7 @@ import java.util.UUID;
  * Transform which saves elements to a HDFS text file for Spark.
  * @param <I> input type.
  */
-public final class HDFSTextFileTransform<I> implements Transform<I, String> {
+public final class HDFSTextFileTransform<I> extends NoWatermarkEmitTransform<I, String> {
   private final String path;
   private Path fileName;
   private List<I> elements;

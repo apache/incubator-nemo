@@ -48,7 +48,7 @@ public final class SerializerManager {
 
   /**
    * Register a encoderFactory for runtime edge.
-   * This method regards that compression & decompression property are empty.
+   * This method regards that compression and decompression property are empty.
    *
    * @param runtimeEdgeId  id of the runtime edge.
    * @param encoderFactory the corresponding encoder factory.

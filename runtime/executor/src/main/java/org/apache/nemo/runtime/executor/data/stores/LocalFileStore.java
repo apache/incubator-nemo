@@ -53,9 +53,6 @@ public final class LocalFileStore extends LocalBlockStore {
     new File(fileDirectory).mkdirs();
   }
 
-  /**
-   * @see BlockStore#createBlock(String).
-   */
   @Override
   public Block createBlock(final String blockId) {
     deleteBlock(blockId);

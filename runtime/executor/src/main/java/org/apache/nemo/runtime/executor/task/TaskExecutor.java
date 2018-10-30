@@ -92,7 +92,8 @@ public final class TaskExecutor {
    * @param taskStateManager       State manager for this Task.
    * @param intermediateDataIOFactory    For reading from/writing to data to other tasks.
    * @param broadcastManagerWorker For broadcasts.
-   * @param metricMessageSender    For sending metric with execution stats to Master.
+   * @param metricMessageSender    For sending metric with execution stats to the master.
+   * @param persistentConnectionToMasterMap For sending messages to the master.
    */
   public TaskExecutor(final Task task,
                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
@@ -156,6 +157,7 @@ public final class TaskExecutor {
     // Create a harness for each vertex
     final List<DataFetcher> nonBroadcastDataFetcherList = new ArrayList<>();
     final Map<String, VertexHarness> vertexIdToHarness = new HashMap<>();
+
     reverseTopologicallySorted.forEach(irVertex -> {
       final Optional<Readable> sourceReader = getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
       if (sourceReader.isPresent() != irVertex instanceof SourceVertex) {
@@ -257,8 +259,7 @@ public final class TaskExecutor {
   }
 
   private void processWatermark(final OutputCollector outputCollector, final Watermark watermark) {
-    // TODO #231: Add onWatermark() method to Transform and
-    // TODO #231: fowards watermark to Transforms and OutputWriters
+    outputCollector.emitWatermark(watermark);
   }
 
   /**

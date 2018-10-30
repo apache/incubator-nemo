@@ -38,6 +38,7 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Stage;
@@ -214,7 +215,6 @@ public final class TaskExecutorTest {
     };
 
     final long watermark = 1234567L;
-    final AtomicLong emittedWatermark = new AtomicLong(0);
 
     final Readable readable = new Readable() {
       int pointer = 0;
@@ -247,7 +247,6 @@ public final class TaskExecutorTest {
       @Override
       public long readWatermark() {
         watermarkEmitted = true;
-        emittedWatermark.set(watermark);
         return watermark;
       }
 
@@ -268,13 +267,19 @@ public final class TaskExecutorTest {
 
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
+    final List<Watermark> emittedWatermarks = new LinkedList<>();
+
+    final Transform transform = new RelayTransformNoWatermarkEmit(emittedWatermarks);
+    final OperatorVertex operatorVertex = new OperatorVertex(transform);
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
       new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(sourceIRVertex)
+        .addVertex(operatorVertex)
+        .connectVertices(createEdge(sourceIRVertex, operatorVertex, "edge1"))
         .buildWithoutSourceSinkCheck();
 
-    final StageEdge taskOutEdge = mockStageEdgeFrom(sourceIRVertex);
+    final StageEdge taskOutEdge = mockStageEdgeFrom(operatorVertex);
     final Task task =
       new Task(
         "testSourceVertexDataFetching",
@@ -290,10 +295,10 @@ public final class TaskExecutorTest {
     taskExecutor.execute();
 
     // Check whether the watermark is emitted
-    assertEquals(watermark, emittedWatermark.get());
+    assertEquals(Arrays.asList(new Watermark(watermark)), emittedWatermarks);
 
     // Check the output.
-    assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
+    assertEquals(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId()));
   }
 
   /**
@@ -563,6 +568,41 @@ public final class TaskExecutorTest {
   }
 
   /**
+   * This transform does not emit watermark to OutputWriter
+   * because OutputWriter currently does not support watermarks (TODO #245)
+   * @param <T> type
+   */
+  private class RelayTransformNoWatermarkEmit<T> implements Transform<T, T> {
+    private OutputCollector<T> outputCollector;
+    private final List<Watermark> emittedWatermarks;
+
+    RelayTransformNoWatermarkEmit(final List<Watermark> emittedWatermarks) {
+      this.emittedWatermarks = emittedWatermarks;
+    }
+
+    @Override
+    public void prepare(final Context context, final OutputCollector<T> outputCollector) {
+      this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      emittedWatermarks.add(watermark);
+    }
+
+    @Override
+    public void onData(final Object element) {
+      outputCollector.emit((T) element);
+    }
+
+    @Override
+    public void close() {
+      // Do nothing.
+    }
+  }
+
+
+  /**
    * Simple identity function for testing.
    * @param <T> input/output type.
    */
@@ -572,6 +612,11 @@ public final class TaskExecutorTest {
     @Override
     public void prepare(final Context context, final OutputCollector<T> outputCollector) {
       this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      outputCollector.emitWatermark(watermark);
     }
 
     @Override
@@ -597,6 +642,11 @@ public final class TaskExecutorTest {
     public void prepare(final Context context, final OutputCollector<List<T>> outputCollector) {
       this.list = new ArrayList<>();
       this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      // do nothing
     }
 
     @Override
@@ -627,6 +677,11 @@ public final class TaskExecutorTest {
     public void prepare(final Context context, final OutputCollector<T> outputCollector) {
       this.context = context;
       this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      outputCollector.emitWatermark(watermark);
     }
 
     @Override
@@ -667,6 +722,11 @@ public final class TaskExecutorTest {
         // route to all additional outputs. Invoked if user calls c.output(tupleTag, element)
         additionalTags.forEach(tag -> outputCollector.emit(tag, i));
       }
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      outputCollector.emitWatermark(watermark);
     }
 
     @Override
