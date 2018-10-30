@@ -132,7 +132,12 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     assertEquals(Arrays.asList(fixedwindows.assignWindow(ts3)), oc.outputs.get(1).getWindows());
     checkOutput(KV.of("2", Arrays.asList("hello")), oc.outputs.get(1).getValue());
 
+    // check output watermark
+    assertEquals(fixedwindows.assignWindow(ts1).maxTimestamp().getMillis(),
+      oc.watermarks.get(0).getTimestamp());
+
     oc.outputs.clear();
+    oc.watermarks.clear();
 
     doFnTransform.onData(WindowedValue.of(
       KV.of("1", "a"), ts4, fixedwindows.assignWindow(ts4), PaneInfo.NO_FIRING));
@@ -140,6 +145,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     // do not emit anything
     doFnTransform.onWatermark(watermark2);
     assertEquals(0, oc.outputs.size());
+    assertEquals(0, oc.watermarks.size());
 
     doFnTransform.onData(WindowedValue.of(
       KV.of("2", "a"), ts5, fixedwindows.assignWindow(ts5), PaneInfo.NO_FIRING));
@@ -167,16 +173,22 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     assertEquals(Arrays.asList(fixedwindows.assignWindow(ts6)), oc.outputs.get(2).getWindows());
     checkOutput(KV.of("3", Arrays.asList("a")), oc.outputs.get(2).getValue());
 
+    // check output watermark
+    assertEquals(fixedwindows.assignWindow(ts4).maxTimestamp().getMillis(),
+      oc.watermarks.get(0).getTimestamp());
+
     doFnTransform.close();
   }
 
   private static final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> {
     private final List<WindowedValue<T>> outputs;
     private final List<Tuple<String, WindowedValue<T>>> taggedOutputs;
+    private final List<Watermark> watermarks;
 
     TestOutputCollector() {
       this.outputs = new LinkedList<>();
       this.taggedOutputs = new LinkedList<>();
+      this.watermarks = new LinkedList<>();
     }
 
     @Override
@@ -186,7 +198,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
 
     @Override
     public void emitWatermark(Watermark watermark) {
-      // do nothing
+      watermarks.add(watermark);
     }
 
     @Override
