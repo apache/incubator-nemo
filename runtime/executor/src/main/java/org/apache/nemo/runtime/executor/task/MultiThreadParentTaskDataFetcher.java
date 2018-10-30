@@ -43,6 +43,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   // Non-finals (lazy fetching)
   private boolean firstFetch = true;
+  private ExecutorService queueInsertionThreads;
 
   private final ArrayBlockingQueue elementQueue;
 
@@ -68,19 +69,25 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       firstFetch = false;
     }
 
-
     LOG.info("finish {} iter {}", numOfFinishMarks, numOfIterators);
 
     try {
       while (true) {
+        LOG.info("queue take");
         final Object element = elementQueue.take();
+        LOG.info("Got element {}", element);
         final boolean isFinishMark = element instanceof Finishmark;
         if (isFinishMark) {
+          LOG.info("isfinishmark: finish {} iter {}", numOfFinishMarks, numOfIterators);
           numOfFinishMarks++;
           if (numOfFinishMarks == numOfIterators) {
+            // LOG.info("return finishmark", numOfFinishMarks, numOfIterators);
             return Finishmark.getInstance();
           }
+          // LOG.info("else try again", numOfFinishMarks, numOfIterators);
+          // else try again.
         } else {
+          LOG.info("return element: finish {} iter {}", numOfFinishMarks, numOfIterators);
           return element;
         }
       }
@@ -93,10 +100,17 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     numOfIterators = futures.size();
 
-    final ExecutorService queueInsertionThreads = Executors.newFixedThreadPool(numOfIterators);
+    queueInsertionThreads = Executors.newFixedThreadPool(numOfIterators);
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
       // A thread for each iterator
+      LOG.info("Monitor {} with {}", iterator.toString(), numOfIterators);
+
+      LOG.info("Submitting {}", iterator.toString());
+      LOG.info("queue threads is {} and the num is {}", queueInsertionThreads.toString(), numOfIterators);
+
       queueInsertionThreads.submit(() -> {
+        LOG.info("Submitted {}", iterator.toString());
+
         if (exception == null) {
           try {
             // Consume this iterator to the end.
@@ -104,10 +118,10 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
               final Object element = iterator.next();
               LOG.info("Putting {}", element);
               elementQueue.put(element); // blocked on the queue.
-
             }
 
             // This iterator is finished.
+            LOG.info("Done {}", iterator.toString());
             countBytesSynchronized(iterator);
             elementQueue.put(Finishmark.getInstance());
           } catch (final InterruptedException e) {
@@ -115,11 +129,12 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
             throw new RuntimeException(e); // this should not happen.
           }
         } else {
+          exception.printStackTrace();
           throw new RuntimeException(exception);
         }
       });
+
     }));
-    queueInsertionThreads.shutdown();
   }
 
   final long getSerializedBytes() {
@@ -149,5 +164,6 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   @Override
   public void close() throws Exception {
+    queueInsertionThreads.shutdown();
   }
 }
