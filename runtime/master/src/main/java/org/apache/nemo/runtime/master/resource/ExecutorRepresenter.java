@@ -91,6 +91,8 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks all Tasks which were running in this executor as failed.
+   *
+   * @return set of identifiers of tasks that were running in this executor.
    */
   public Set<String> onExecutorFailed() {
     failedTasks.addAll(runningComplyingTasks.values());
@@ -104,7 +106,7 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks the Task as running, and sends scheduling message to the executor.
-   * @param task
+   * @param task the task to run
    */
   public void onTaskScheduled(final Task task) {
     (task.getPropertyValue(ResourceSlotProperty.class).orElse(true)
@@ -136,7 +138,7 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks the specified Task as completed.
-   *
+   * @param taskId id of the completed task
    */
   public void onTaskExecutionComplete(final String taskId) {
     final Task completedTask = removeFromRunningTasks(taskId);

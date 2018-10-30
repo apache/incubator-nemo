@@ -115,7 +115,7 @@ public final class BroadcastManagerWorker {
    * (i.e., the variable is expressed as an IREdge, and reside in a executor as a block)
    *
    * @param id of the broadcast variable.
-   * @param inputReader
+   * @param inputReader the {@link InputReader} to register.
    */
   public void registerInputReader(final Serializable id,
                                   final InputReader inputReader) {
