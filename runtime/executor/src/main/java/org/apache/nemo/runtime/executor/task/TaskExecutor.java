@@ -93,7 +93,8 @@ public final class TaskExecutor {
    * @param taskStateManager       State manager for this Task.
    * @param intermediateDataIOFactory    For reading from/writing to data to other tasks.
    * @param broadcastManagerWorker For broadcasts.
-   * @param metricMessageSender    For sending metric with execution stats to Master.
+   * @param metricMessageSender    For sending metric with execution stats to the master.
+   * @param persistentConnectionToMasterMap For sending messages to the master.
    */
   public TaskExecutor(final Task task,
                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,

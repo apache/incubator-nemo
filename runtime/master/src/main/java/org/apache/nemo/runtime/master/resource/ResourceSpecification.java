@@ -75,7 +75,7 @@ public final class ResourceSpecification {
 
   /**
    * @return -1   if this resource is not poisoned. (for all other normal cases)
-   *         >= 0 the expected time to failure by poison. (for fault-handling tests)
+   *         &gt;= 0 the expected time to failure by poison. (for fault-handling tests)
    */
   public int getPoisonSec() {
     return poisonSec;
