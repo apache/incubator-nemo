@@ -45,6 +45,7 @@ public final class DataStoreProperty extends EdgeExecutionProperty<DataStoreProp
    * Possible values of DataStore ExecutionProperty.
    */
   public enum Value {
+    Pipe,
     MemoryStore,
     SerializedMemoryStore,
     LocalFileStore,

@@ -33,6 +33,7 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.InMemorySourceVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
@@ -47,9 +48,7 @@ import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.TaskStateManager;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
-import org.apache.nemo.runtime.executor.datatransfer.DataTransferFactory;
-import org.apache.nemo.runtime.executor.datatransfer.InputReader;
-import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -78,8 +77,8 @@ import static org.mockito.Mockito.*;
  * Tests {@link TaskExecutor}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class, BroadcastManagerWorker.class,
-    TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class})
+@PrepareForTest({InputReader.class, OutputWriter.class, IntermediateDataIOFactory.class, BroadcastManagerWorker.class,
+  TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class})
 public final class TaskExecutorTest {
   private static final AtomicInteger RUNTIME_EDGE_ID = new AtomicInteger(0);
   private static final int DATA_SIZE = 100;
@@ -90,7 +89,7 @@ public final class TaskExecutorTest {
 
   private List<Integer> elements;
   private Map<String, List> runtimeEdgeToOutputData;
-  private DataTransferFactory dataTransferFactory;
+  private IntermediateDataIOFactory intermediateDataIOFactory;
   private BroadcastManagerWorker broadcastManagerWorker;
   private TaskStateManager taskStateManager;
   private MetricMessageSender metricMessageSender;
@@ -110,11 +109,11 @@ public final class TaskExecutorTest {
     // Mock a TaskStateManager. It accumulates the state change into a list.
     taskStateManager = mock(TaskStateManager.class);
 
-    // Mock a DataTransferFactory.
+    // Mock a IntermediateDataIOFactory.
     runtimeEdgeToOutputData = new HashMap<>();
-    dataTransferFactory = mock(DataTransferFactory.class);
-    when(dataTransferFactory.createReader(anyInt(), any(), any())).then(new ParentTaskReaderAnswer());
-    when(dataTransferFactory.createWriter(any(), any(), any())).then(new ChildTaskWriterAnswer());
+    intermediateDataIOFactory = mock(IntermediateDataIOFactory.class);
+    when(intermediateDataIOFactory.createReader(anyInt(), any(), any())).then(new ParentTaskReaderAnswer());
+    when(intermediateDataIOFactory.createWriter(any(), any())).then(new ChildTaskWriterAnswer());
 
     // Mock a MetricMessageSender.
     metricMessageSender = mock(MetricMessageSender.class);
@@ -532,9 +531,9 @@ public final class TaskExecutorTest {
       }
       final InputReader inputReader = mock(InputReader.class);
       final IRVertex srcVertex = (IRVertex) invocationOnMock.getArgument(1);
+      srcVertex.setProperty(ParallelismProperty.of(SOURCE_PARALLELISM));
       when(inputReader.getSrcIrVertex()).thenReturn(srcVertex);
       when(inputReader.read()).thenReturn(inputFutures);
-      when(inputReader.getSourceParallelism()).thenReturn(SOURCE_PARALLELISM);
       return inputReader;
     }
   }
@@ -547,7 +546,7 @@ public final class TaskExecutorTest {
     @Override
     public OutputWriter answer(final InvocationOnMock invocationOnMock) throws Throwable {
       final Object[] args = invocationOnMock.getArguments();
-      final RuntimeEdge runtimeEdge = (RuntimeEdge) args[2];
+      final RuntimeEdge runtimeEdge = (RuntimeEdge) args[1];
       final OutputWriter outputWriter = mock(OutputWriter.class);
       doAnswer(new Answer() {
         @Override
@@ -689,7 +688,7 @@ public final class TaskExecutorTest {
   }
 
   private TaskExecutor getTaskExecutor(final Task task, final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag) {
-    return new TaskExecutor(task, taskDag, taskStateManager, dataTransferFactory, broadcastManagerWorker,
+    return new TaskExecutor(task, taskDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
       metricMessageSender, persistentConnectionToMasterMap);
   }
 }

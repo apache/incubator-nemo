@@ -24,6 +24,7 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteTransferContext.Context
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
+import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -35,6 +36,7 @@ import java.util.function.Function;
  */
 final class ContextManager extends SimpleChannelInboundHandler<ByteTransferContextSetupMessage> {
 
+  private final PipeManagerWorker pipeManagerWorker;
   private final BlockManagerWorker blockManagerWorker;
   private final ByteTransfer byteTransfer;
   private final ChannelGroup channelGroup;
@@ -51,17 +53,20 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
 
   /**
    * Creates context manager for this channel.
+   * @param pipeManagerWorker   provides handler for new contexts by remote executors
    * @param blockManagerWorker  provides handler for new contexts by remote executors
    * @param byteTransfer        provides channel caching
    * @param channelGroup        to cleanup this channel when closing {@link ByteTransport}
    * @param localExecutorId     local executor id
    * @param channel             the {@link Channel} to manage
    */
-  ContextManager(final BlockManagerWorker blockManagerWorker,
+  ContextManager(final PipeManagerWorker pipeManagerWorker,
+                 final BlockManagerWorker blockManagerWorker,
                  final ByteTransfer byteTransfer,
                  final ChannelGroup channelGroup,
                  final String localExecutorId,
                  final Channel channel) {
+    this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
     this.channelGroup = channelGroup;
@@ -103,7 +108,9 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     byteTransfer.onNewContextByRemoteExecutor(message.getInitiatorExecutorId(), channel);
     final ByteTransferDataDirection dataDirection = message.getDataDirection();
     final int transferIndex = message.getTransferIndex();
-    final ContextId contextId = new ContextId(remoteExecutorId, localExecutorId, dataDirection, transferIndex);
+    final boolean isPipe = message.getIsPipe();
+    final ContextId contextId =
+      new ContextId(remoteExecutorId, localExecutorId, dataDirection, transferIndex, isPipe);
     final byte[] contextDescriptor = message.getContextDescriptor().toByteArray();
 
     if (dataDirection == ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
@@ -113,7 +120,12 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
         }
         return new ByteInputContext(remoteExecutorId, contextId, contextDescriptor, this);
       });
-      blockManagerWorker.onInputContext(context);
+
+      if (isPipe) {
+        pipeManagerWorker.onInputContext(context);
+      } else {
+        blockManagerWorker.onInputContext(context);
+      }
     } else {
       final ByteOutputContext context = outputContextsInitiatedByRemote.compute(transferIndex, (idx, existing) -> {
         if (existing != null) {
@@ -121,7 +133,11 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
         }
         return new ByteOutputContext(remoteExecutorId, contextId, contextDescriptor, this);
       });
-      blockManagerWorker.onOutputContext(context);
+      if (isPipe) {
+        pipeManagerWorker.onOutputContext(context);
+      } else {
+        blockManagerWorker.onOutputContext(context);
+      }
     }
   }
 
@@ -147,16 +163,18 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * @param contextGenerator a function that returns context from context id
    * @param executorId id of the remote executor
    * @param <T> {@link ByteInputContext} or {@link ByteOutputContext}
+   * @param isPipe is a pipe context
    * @return generated context
    */
   <T extends ByteTransferContext> T newContext(final ConcurrentMap<Integer, T> contexts,
                                                final AtomicInteger transferIndexCounter,
                                                final ByteTransferDataDirection dataDirection,
                                                final Function<ContextId, T> contextGenerator,
-                                               final String executorId) {
+                                               final String executorId,
+                                               final boolean isPipe) {
     setRemoteExecutorId(executorId);
     final int transferIndex = transferIndexCounter.getAndIncrement();
-    final ContextId contextId = new ContextId(localExecutorId, executorId, dataDirection, transferIndex);
+    final ContextId contextId = new ContextId(localExecutorId, executorId, dataDirection, transferIndex, isPipe);
     final T context = contexts.compute(transferIndex, (index, existingContext) -> {
       if (existingContext != null) {
         throw new RuntimeException(String.format("Duplicate ContextId: %s", contextId));
@@ -171,26 +189,28 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * Create a new {@link ByteInputContext}.
    * @param executorId target executor id
    * @param contextDescriptor the context descriptor
+   * @param isPipe            is pipe
    * @return new {@link ByteInputContext}
    */
-  ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor) {
+  ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
     return newContext(inputContextsInitiatedByLocal, nextInputTransferIndex,
         ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
         contextId -> new ByteInputContext(executorId, contextId, contextDescriptor, this),
-        executorId);
+        executorId, isPipe);
   }
 
   /**
    * Create a new {@link ByteOutputContext}.
    * @param executorId target executor id
    * @param contextDescriptor the context descriptor
+   * @param isPipe            is pipe
    * @return new {@link ByteOutputContext}
    */
-  ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor) {
+  ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
     return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
         ByteTransferDataDirection.INITIATOR_SENDS_DATA,
         contextId -> new ByteOutputContext(executorId, contextId, contextDescriptor, this),
-        executorId);
+        executorId, isPipe);
   }
 
   /**

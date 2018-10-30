@@ -128,6 +128,7 @@ public final class BroadcastManagerWorker {
    * @return the variable.
    */
   public Object get(final Serializable id)  {
+    LOG.info("get {}", id);
     try {
       return idToVariableCache.get(id);
     } catch (ExecutionException e) {

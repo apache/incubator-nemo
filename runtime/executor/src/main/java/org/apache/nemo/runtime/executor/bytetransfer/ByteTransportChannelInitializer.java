@@ -22,6 +22,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
+import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -59,6 +60,7 @@ import javax.inject.Inject;
  */
 final class ByteTransportChannelInitializer extends ChannelInitializer<SocketChannel> {
 
+  private final InjectionFuture<PipeManagerWorker> pipeManagerWorker;
   private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
   private final InjectionFuture<ByteTransfer> byteTransfer;
   private final InjectionFuture<ByteTransport> byteTransport;
@@ -69,6 +71,7 @@ final class ByteTransportChannelInitializer extends ChannelInitializer<SocketCha
   /**
    * Creates a netty channel initializer.
    *
+   * @param pipeManagerWorker   provides handler for new contexts by remote executors
    * @param blockManagerWorker  provides handler for new contexts by remote executors
    * @param byteTransfer        provides channel caching
    * @param byteTransport       provides {@link io.netty.channel.group.ChannelGroup}
@@ -77,12 +80,14 @@ final class ByteTransportChannelInitializer extends ChannelInitializer<SocketCha
    * @param localExecutorId     the id of this executor
    */
   @Inject
-  private ByteTransportChannelInitializer(final InjectionFuture<BlockManagerWorker> blockManagerWorker,
+  private ByteTransportChannelInitializer(final InjectionFuture<PipeManagerWorker> pipeManagerWorker,
+                                          final InjectionFuture<BlockManagerWorker> blockManagerWorker,
                                           final InjectionFuture<ByteTransfer> byteTransfer,
                                           final InjectionFuture<ByteTransport> byteTransport,
                                           final ControlFrameEncoder controlFrameEncoder,
                                           final DataFrameEncoder dataFrameEncoder,
                                           @Parameter(JobConf.ExecutorId.class) final String localExecutorId) {
+    this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
     this.byteTransport = byteTransport;
@@ -93,8 +98,8 @@ final class ByteTransportChannelInitializer extends ChannelInitializer<SocketCha
 
   @Override
   protected void initChannel(final SocketChannel ch) {
-    final ContextManager contextManager = new ContextManager(blockManagerWorker.get(), byteTransfer.get(),
-        byteTransport.get().getChannelGroup(), localExecutorId, ch);
+    final ContextManager contextManager = new ContextManager(pipeManagerWorker.get(), blockManagerWorker.get(),
+      byteTransfer.get(), byteTransport.get().getChannelGroup(), localExecutorId, ch);
     ch.pipeline()
         // inbound
         .addLast(new FrameDecoder(contextManager))
