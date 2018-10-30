@@ -28,6 +28,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.BroadcastVariableIdPrope
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.runtime.executor.datatransfer.MultiInputWatermarkManager;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -153,16 +154,35 @@ public final class TaskExecutor {
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
 
-    // We build a map that has a edge as a key and index as a value
+    // Build a map for edge as a key and edge index as a value
+    // This variable is used for creating NextOperatorInfo
+    // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
     final Map<RuntimeEdge<IRVertex>, Integer> edgeIndexMap = new HashMap<>();
-    reverseTopologicallySorted.forEach(parentVertex -> {
-      final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getIncomingEdgesOf(parentVertex);
+    reverseTopologicallySorted.forEach(childVertex -> {
+      final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getIncomingEdgesOf(childVertex);
       for (int edgeIndex = 0; edgeIndex < edges.size(); edgeIndex++) {
         final RuntimeEdge<IRVertex> edge = edges.get(0);
-        if (!edgeIndexMap.containsKey(edge)) {
-          edgeIndexMap.put(edge, edgeIndex);
+        edgeIndexMap.putIfAbsent(edge, edgeIndex);
+      }
+    });
+
+    // Build a map for InputWatermarkManager for each operator vertex
+    // This variable is used for creating NextOperatorInfo
+    // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
+    final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap = new HashMap<>();
+    reverseTopologicallySorted.forEach(childVertex -> {
+
+      if (childVertex instanceof OperatorVertex) {
+        final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getIncomingEdgesOf(childVertex);
+        if (edges.size() == 1) {
+          operatorWatermarkManagerMap.putIfAbsent(childVertex,
+            new SingleInputWatermarkManager((OperatorVertex) childVertex));
+        } else {
+          operatorWatermarkManagerMap.putIfAbsent(childVertex,
+            new MultiInputWatermarkManager(edges.size(), (OperatorVertex) childVertex));
         }
       }
+
     });
 
     // Create a harness for each vertex
@@ -176,13 +196,14 @@ public final class TaskExecutor {
       }
 
       // Additional outputs
-      final Map<String, List<OperatorVertex>> internalAdditionalOutputMap =
-        getInternalAdditionalOutputMap(irVertex, irVertexDag);
+      final Map<String, List<NextOperatorInfo>> internalAdditionalOutputMap =
+        getInternalAdditionalOutputMap(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
       final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         getExternalAdditionalOutputMap(irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory);
 
       // Main outputs
-      final List<OperatorVertex> internalMainOutputs = getInternalMainOutputs(irVertex, irVertexDag);
+      final List<NextOperatorInfo> internalMainOutputs =
+        getInternalMainOutputs(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
       final List<OutputWriter> externalMainOutputs =
         getExternalMainOutputs(irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory);
 
@@ -489,17 +510,24 @@ public final class TaskExecutor {
     return map;
   }
 
-  private Map<String, List<OperatorVertex>> getInternalAdditionalOutputMap(
+  private Map<String, List<NextOperatorInfo>> getInternalAdditionalOutputMap(
     final IRVertex irVertex,
-    final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+    final Map<RuntimeEdge<IRVertex>, Integer> edgeIndexMap,
+    final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap) {
     // Add all intra-task additional tags to additional output map.
-    final Map<String, List<OperatorVertex>> map = new HashMap<>();
+    final Map<String, List<NextOperatorInfo>> map = new HashMap<>();
 
     irVertexDag.getOutgoingEdgesOf(irVertex.getId())
       .stream()
       .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-      .map(edge ->
-        Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(), (OperatorVertex) edge.getDst()))
+      .map(edge -> {
+          final String outputTag = edge.getPropertyValue(AdditionalOutputTagProperty.class).get();
+          final int index = edgeIndexMap.get(edge);
+          final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
+          final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
+          return Pair.of(outputTag, new NextOperatorInfo(index, nextOperator, inputWatermarkManager));
+        })
       .forEach(pair -> {
         map.putIfAbsent(pair.left(), new ArrayList<>());
         map.get(pair.left()).add(pair.right());
@@ -508,12 +536,21 @@ public final class TaskExecutor {
     return map;
   }
 
-  private List<OperatorVertex> getInternalMainOutputs(final IRVertex irVertex,
-                                                      final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
+  private List<NextOperatorInfo> getInternalMainOutputs(
+    final IRVertex irVertex,
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+    final Map<RuntimeEdge<IRVertex>, Integer> edgeIndexMap,
+    final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap) {
+
     return irVertexDag.getOutgoingEdgesOf(irVertex.getId())
       .stream()
       .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-      .map(edge -> (OperatorVertex) edge.getDst())
+      .map(edge -> {
+        final int index = edgeIndexMap.get(edge);
+        final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
+        final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
+        return new NextOperatorInfo(index, nextOperator, inputWatermarkManager);
+      })
       .collect(Collectors.toList());
   }
 

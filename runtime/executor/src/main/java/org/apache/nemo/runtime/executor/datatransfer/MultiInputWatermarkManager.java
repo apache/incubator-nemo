@@ -16,27 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.punctuation;
+package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.punctuation.Watermark;
 
 /**
  * This tracks the minimum input watermark among multiple input streams.
- * Ex)
- * -- input stream1 (edge 1):  ---------- ts: 3 ------------------ts: 6
- *                                                                 ^^^
- *                                                              emit ts: 4 (edge 2) watermark at this time
- * -- input stream2 (edge 2):  ----------------- ts: 4------
- *                                                 ^^^
- *                                             emit ts: 3 (edge 1) watermark at this time
- * -- input stream3 (edge 3):  ------- ts: 5 ---------------
  */
-public final class InputWatermarkManager {
+public final class MultiInputWatermarkManager implements InputWatermarkManager {
   private final Watermark[] watermarks;
   private final OperatorVertex nextOperator;
   private int minWatermarkIndex;
-  public InputWatermarkManager(final int numEdges,
-                                final OperatorVertex nextOperator) {
+  public MultiInputWatermarkManager(final int numEdges,
+                                    final OperatorVertex nextOperator) {
     super();
     this.watermarks = new Watermark[numEdges];
     this.nextOperator = nextOperator;
@@ -68,7 +61,7 @@ public final class InputWatermarkManager {
        // find min watermark
       minWatermarkIndex = findNextMinWatermarkIndex();
       final Watermark minWatermark = watermarks[minWatermarkIndex];
-      assert(minWatermark.getTimestamp() >= prevMinWatermark.getTimestamp());
+      assert minWatermark.getTimestamp() >= prevMinWatermark.getTimestamp();
        if (minWatermark.getTimestamp() > prevMinWatermark.getTimestamp()) {
         // Watermark timestamp progress!
         // Emit the min watermark
@@ -77,7 +70,7 @@ public final class InputWatermarkManager {
     } else {
       // The recent watermark timestamp cannot be less than the previous one
       // because watermark is monotonically increasing.
-      assert(watermarks[edgeIndex].getTimestamp() <= watermark.getTimestamp());
+      assert watermarks[edgeIndex].getTimestamp() <= watermark.getTimestamp();
       watermarks[edgeIndex] = watermark;
     }
   }

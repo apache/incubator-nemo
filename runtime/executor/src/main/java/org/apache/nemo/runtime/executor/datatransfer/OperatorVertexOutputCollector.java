@@ -18,11 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.punctuation.InputWatermarkManager;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,8 +41,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   private static final Logger LOG = LoggerFactory.getLogger(OperatorVertexOutputCollector.class.getName());
 
   private final IRVertex irVertex;
-  private final List<Pair<OperatorVertex, InputWatermarkManager>> internalMainOutputs;
-  private final Map<String, List<Pair<OperatorVertex, InputWatermarkManager>>> internalAdditionalOutputs;
+  private final List<NextOperatorInfo> internalMainOutputs;
+  private final Map<String, List<NextOperatorInfo>> internalAdditionalOutputs;
   private final List<OutputWriter> externalMainOutputs;
   private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
 
@@ -58,8 +56,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
    */
   public OperatorVertexOutputCollector(
     final IRVertex irVertex,
-    final List<Pair<OperatorVertex, InputWatermarkManager>> internalMainOutputs,
-    final Map<String, List<Pair<OperatorVertex, InputWatermarkManager>>> internalAdditionalOutputs,
+    final List<NextOperatorInfo> internalMainOutputs,
+    final Map<String, List<NextOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
     final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
     this.irVertex = irVertex;
@@ -79,8 +77,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emit(final O output) {
-    for (final Pair<OperatorVertex, InputWatermarkManager> internalVertex : internalMainOutputs) {
-      emit(internalVertex.left(), output);
+    for (final NextOperatorInfo internalVertex : internalMainOutputs) {
+      emit(internalVertex.getNextOperator(), output);
     }
 
     for (final OutputWriter externalWriter : externalMainOutputs) {
@@ -92,9 +90,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   public <T> void emit(final String dstVertexId, final T output) {
 
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
-      for (final Pair<OperatorVertex, InputWatermarkManager> internalVertex :
-        internalAdditionalOutputs.get(dstVertexId)) {
-        emit(internalVertex.left(), (O) output);
+      for (final NextOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
+        emit(internalVertex.getNextOperator(), (O) output);
       }
     }
 
@@ -108,15 +105,13 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   @Override
   public void emitWatermark(final Watermark watermark) {
     // Emit watermarks to internal vertices
-    // TODO #232: Implement InputWatermarkManager
-    // TODO #232: We should emit the minimum watermark among multiple input streams of Transform.
-    for (final Pair<OperatorVertex, InputWatermarkManager> internalVertex : internalMainOutputs) {
-      internalVertex.right().trackAndEmitWatermarks(watermark);
+    for (final NextOperatorInfo internalVertex : internalMainOutputs) {
+      internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
     }
 
-    for (final List<OperatorVertex> internalVertices : internalAdditionalOutputs.values()) {
-      for (final OperatorVertex internalVertex : internalVertices) {
-        internalVertex.getTransform().onWatermark(watermark);
+    for (final List<NextOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
+      for (final NextOperatorInfo internalVertex : internalVertices) {
+        internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
 
