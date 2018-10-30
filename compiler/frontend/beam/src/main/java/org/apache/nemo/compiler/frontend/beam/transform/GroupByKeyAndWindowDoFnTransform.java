@@ -97,7 +97,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   }
 
   @Override
-  public void onWatermark(Watermark watermark) {
+  public void onWatermark(final Watermark watermark) {
     // TODO #230: Emit collected data when receiving watermark
     // TODO #230: in GroupByKeyAndWindowTransform
   }

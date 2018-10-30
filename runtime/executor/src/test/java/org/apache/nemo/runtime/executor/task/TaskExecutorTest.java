@@ -215,7 +215,6 @@ public final class TaskExecutorTest {
     };
 
     final long watermark = 1234567L;
-    final AtomicLong emittedWatermark = new AtomicLong(0);
 
     final Readable readable = new Readable() {
       int pointer = 0;
@@ -248,7 +247,6 @@ public final class TaskExecutorTest {
       @Override
       public long readWatermark() {
         watermarkEmitted = true;
-        emittedWatermark.set(watermark);
         return watermark;
       }
 
@@ -269,13 +267,19 @@ public final class TaskExecutorTest {
 
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
+    final List<Watermark> emittedWatermarks = new LinkedList<>();
+
+    final Transform transform = new RelayTransformNoWatermarkEmit(emittedWatermarks);
+    final OperatorVertex operatorVertex = new OperatorVertex(transform);
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
       new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(sourceIRVertex)
+        .addVertex(operatorVertex)
+        .connectVertices(createEdge(sourceIRVertex, operatorVertex, "edge1"))
         .buildWithoutSourceSinkCheck();
 
-    final StageEdge taskOutEdge = mockStageEdgeFrom(sourceIRVertex);
+    final StageEdge taskOutEdge = mockStageEdgeFrom(operatorVertex);
     final Task task =
       new Task(
         "testSourceVertexDataFetching",
@@ -291,7 +295,7 @@ public final class TaskExecutorTest {
     taskExecutor.execute();
 
     // Check whether the watermark is emitted
-    assertEquals(watermark, emittedWatermark.get());
+    assertEquals(Arrays.asList(new Watermark(watermark)), emittedWatermarks);
 
     // Check the output.
     assertEquals(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId()));
@@ -562,6 +566,41 @@ public final class TaskExecutorTest {
       return outputWriter;
     }
   }
+
+  /**
+   * This transform does not emit watermark to OutputWriter
+   * because OutputWriter currently does not support watermarks (TODO #245)
+   * @param <T> type
+   */
+  private class RelayTransformNoWatermarkEmit<T> implements Transform<T, T> {
+    private OutputCollector<T> outputCollector;
+    private final List<Watermark> emittedWatermarks;
+
+    RelayTransformNoWatermarkEmit(final List<Watermark> emittedWatermarks) {
+      this.emittedWatermarks = emittedWatermarks;
+    }
+
+    @Override
+    public void prepare(final Context context, final OutputCollector<T> outputCollector) {
+      this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      emittedWatermarks.add(watermark);
+    }
+
+    @Override
+    public void onData(final Object element) {
+      outputCollector.emit((T) element);
+    }
+
+    @Override
+    public void close() {
+      // Do nothing.
+    }
+  }
+
 
   /**
    * Simple identity function for testing.
