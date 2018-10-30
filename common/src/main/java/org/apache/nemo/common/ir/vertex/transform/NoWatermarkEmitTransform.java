@@ -16,39 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.punctuation;
+package org.apache.nemo.common.ir.vertex.transform;
 
-import java.io.Serializable;
-import java.util.Objects;
+import org.apache.nemo.common.punctuation.Watermark;
 
 /**
- * Watermark event.
+ * This transform does not emit watermarks.
+ * It may be a transform for batch operation that emits collected data when calling {@link Transform#close()}.
+ * @param <I> input type
+ * @param <O> output type
  */
-public final class Watermark implements Serializable {
-
-  private final long timestamp;
-  public Watermark(final long timestamp) {
-    this.timestamp = timestamp;
-  }
-
-  public long getTimestamp() {
-    return timestamp;
-  }
+public abstract class NoWatermarkEmitTransform<I, O> implements Transform<I, O> {
 
   @Override
-  public boolean equals(final Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    final Watermark watermark = (Watermark) o;
-    return timestamp == watermark.timestamp;
+  public final void onWatermark(final Watermark watermark) {
+    // do nothing
   }
 
-  @Override
-  public int hashCode() {
-    return Objects.hash(timestamp);
-  }
 }

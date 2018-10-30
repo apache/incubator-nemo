@@ -19,6 +19,7 @@
 package org.apache.nemo.common.ir.vertex.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.punctuation.Watermark;
 
 /**
  * A {@link Transform} relays input data from upstream vertex to downstream vertex promptly.
@@ -43,6 +44,11 @@ public final class RelayTransform<T> implements Transform<T, T> {
   @Override
   public void onData(final T element) {
     outputCollector.emit(element);
+  }
+
+  @Override
+  public void onWatermark(final Watermark watermark) {
+    outputCollector.emitWatermark(watermark);
   }
 
   @Override
