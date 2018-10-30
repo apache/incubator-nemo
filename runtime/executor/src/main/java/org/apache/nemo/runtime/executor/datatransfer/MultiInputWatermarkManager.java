@@ -34,7 +34,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
     this.watermarks = new Watermark[numEdges];
     this.nextOperator = nextOperator;
     this.minWatermarkIndex = 0;
-     // We initialize watermarks as min value because
+    // We initialize watermarks as min value because
     // we should not emit watermark until all edges emit watermarks.
     for (int i = 0; i < numEdges; i++) {
       watermarks[i] = new Watermark(Long.MIN_VALUE);
@@ -53,6 +53,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
     return index;
   }
 
+  @Override
   public void trackAndEmitWatermarks(final int edgeIndex, final Watermark watermark) {
     if (edgeIndex == minWatermarkIndex) {
       // update min watermark
