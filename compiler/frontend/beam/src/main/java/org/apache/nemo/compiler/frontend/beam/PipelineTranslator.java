@@ -24,6 +24,7 @@ import org.apache.beam.runners.core.construction.ParDoTranslation;
 import org.apache.beam.runners.core.construction.TransformInputs;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.AppliedPTransform;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
@@ -225,7 +226,7 @@ public final class PipelineTranslator
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
     final TupleTag mainOutputTag = new TupleTag<>();
 
-    if (mainInput.getWindowingStrategy() == WindowingStrategy.globalDefault()) {
+    if (mainInput.getWindowingStrategy().getWindowFn() instanceof GlobalWindows) {
       return new GroupByKeyTransform();
     } else {
       return new GroupByKeyAndWindowDoFnTransform(
@@ -418,21 +419,22 @@ public final class PipelineTranslator
    */
   private static Coder<?> getCoderForView(final PCollectionView view, final CompositeTransformVertex pipeline) {
     final PrimitiveTransformVertex src = pipeline.getPrimitiveProducerOf(view);
-    final Coder<?> baseCoder = src.getNode().getInputs().values().stream()
-      .filter(v -> v instanceof PCollection).map(v -> (PCollection) v).findFirst()
+    final Coder<?> baseCoder = src.getNode().getOutputs().values().stream()
+      .filter(v -> v instanceof PCollection)
+      .map(v -> (PCollection) v)
+      .findFirst()
       .orElseThrow(() -> new RuntimeException(String.format("No incoming PCollection to %s", src)))
       .getCoder();
+    final KvCoder<?, ?> inputKVCoder = (KvCoder) baseCoder;
     final ViewFn viewFn = view.getViewFn();
     if (viewFn instanceof PCollectionViews.IterableViewFn) {
-      return IterableCoder.of(baseCoder);
+      return IterableCoder.of(inputKVCoder.getValueCoder());
     } else if (viewFn instanceof PCollectionViews.ListViewFn) {
-      return ListCoder.of(baseCoder);
+      return ListCoder.of(inputKVCoder.getValueCoder());
     } else if (viewFn instanceof PCollectionViews.MapViewFn) {
-      final KvCoder<?, ?> inputCoder = (KvCoder) baseCoder;
-      return MapCoder.of(inputCoder.getKeyCoder(), inputCoder.getValueCoder());
+      return MapCoder.of(inputKVCoder.getKeyCoder(), inputKVCoder.getValueCoder());
     } else if (viewFn instanceof PCollectionViews.MultimapViewFn) {
-      final KvCoder<?, ?> inputCoder = (KvCoder) baseCoder;
-      return MapCoder.of(inputCoder.getKeyCoder(), IterableCoder.of(inputCoder.getValueCoder()));
+      return MapCoder.of(inputKVCoder.getKeyCoder(), IterableCoder.of(inputKVCoder.getValueCoder()));
     } else if (viewFn instanceof PCollectionViews.SingletonViewFn) {
       return baseCoder;
     } else {
@@ -675,6 +677,7 @@ public final class PipelineTranslator
   private static final class OneToOneCommunicationPatternSelector
       implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
     private static final OneToOneCommunicationPatternSelector INSTANCE = new OneToOneCommunicationPatternSelector();
+
     @Override
     public CommunicationPatternProperty.Value apply(final IRVertex src, final IRVertex dst) {
       return CommunicationPatternProperty.Value.OneToOne;

@@ -206,12 +206,15 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case MetricMessageReceived:
       case RequestMetricFlush:
       case MetricFlushed:
+      case PipeInit:
         return MessageType.Send;
       case RequestBlockLocation:
       case RequestBroadcastVariable:
+      case RequestPipeLoc:
         return MessageType.Request;
       case BlockLocationInfo:
       case InMasterBroadcastVariable:
+      case PipeLocInfo:
         return MessageType.Reply;
       default:
         throw new IllegalArgumentException(controlMessage.toString());
@@ -224,6 +227,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
         return controlMessage.getRequestBlockLocationMsg().getExecutorId();
       case RequestBroadcastVariable:
         return controlMessage.getRequestbroadcastVariableMsg().getExecutorId();
+      case RequestPipeLoc:
+        return controlMessage.getRequestPipeLocMsg().getExecutorId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }
@@ -235,6 +240,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
         return controlMessage.getBlockLocationInfoMsg().getRequestId();
       case InMasterBroadcastVariable:
         return controlMessage.getBroadcastVariableMsg().getRequestId();
+      case PipeLocInfo:
+        return controlMessage.getPipeLocInfoMsg().getRequestId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }

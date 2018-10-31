@@ -16,25 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.common.punctuation;
 
+import java.io.Serializable;
+import java.util.Objects;
 
 /**
- * Contains common parts involved in {@link InputReader} and {@link OutputWriter}.
- * The two classes are involved in
- * intermediate data transfer between {@link org.apache.nemo.runtime.common.plan.physical.Task}.
+ * Watermark event.
  */
-public abstract class DataTransfer {
-  private final String id;
+public final class Watermark implements Serializable {
 
-  public DataTransfer(final String id) {
-    this.id = id;
+  private final long timestamp;
+  public Watermark(final long timestamp) {
+    this.timestamp = timestamp;
   }
 
-  /**
-   * @return ID of the reader/writer.
-   */
-  public final String getId() {
-    return id;
+  public long getTimestamp() {
+    return timestamp;
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final Watermark watermark = (Watermark) o;
+    return timestamp == watermark.timestamp;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(timestamp);
   }
 }

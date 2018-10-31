@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.frontend.spark.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.spark.api.java.function.Function2;
 
 import javax.annotation.Nullable;
@@ -66,6 +67,11 @@ public final class ReduceTransform<T> implements Transform<T, T> {
     }
 
     outputCollector.emit(result);
+  }
+
+  @Override
+  public void onWatermark(final Watermark watermark) {
+    outputCollector.emitWatermark(watermark);
   }
 
   /**

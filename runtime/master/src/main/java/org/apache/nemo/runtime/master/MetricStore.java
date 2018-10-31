@@ -150,6 +150,7 @@ public final class MetricStore {
   /**
    * Dumps JSON-serialized string of specific metric.
    * @param metricClass class of metric.
+   * @param <T> type of the metric to dump
    * @return dumped JSON string of all metric.
    * @throws IOException when failed to write json.
    */
@@ -223,6 +224,7 @@ public final class MetricStore {
    * send changed metric data to the frontend client. Also this method is synchronized.
    * @param metricClass class of the metric.
    * @param id id of the metric.
+   * @param <T> type of the metric to broadcast
    */
   public synchronized <T extends Metric> void triggerBroadcast(final Class<T> metricClass, final String id) {
     final MetricBroadcaster metricBroadcaster = MetricBroadcaster.getInstance();

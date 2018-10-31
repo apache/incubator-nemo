@@ -58,9 +58,6 @@ public final class DataSkewHashPartitioner implements Partitioner<Integer> {
     LOG.info("hashRangeBase {} resulting hashRange {}", hashRangeBase, hashRange);
   }
 
-  /**
-   * @see Partitioner#partition(Object).
-   */
   @Override
   public Integer partition(final Object element) {
     return Math.abs(keyExtractor.extractKey(element).hashCode() % hashRange);

@@ -32,6 +32,7 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.apache.reef.io.Tuple;
 import org.junit.Before;
@@ -205,6 +206,11 @@ public final class DoFnTransformTest {
     @Override
     public void emit(WindowedValue<T> output) {
       outputs.add(output);
+    }
+
+    @Override
+    public void emitWatermark(final Watermark watermark) {
+      // do nothing
     }
 
     @Override

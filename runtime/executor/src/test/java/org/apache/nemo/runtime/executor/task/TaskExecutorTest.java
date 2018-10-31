@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
@@ -32,9 +33,12 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.InMemorySourceVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Stage;
@@ -45,9 +49,7 @@ import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.TaskStateManager;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
-import org.apache.nemo.runtime.executor.datatransfer.DataTransferFactory;
-import org.apache.nemo.runtime.executor.datatransfer.InputReader;
-import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -61,9 +63,11 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -74,8 +78,8 @@ import static org.mockito.Mockito.*;
  * Tests {@link TaskExecutor}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class, BroadcastManagerWorker.class,
-    TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class})
+@PrepareForTest({InputReader.class, OutputWriter.class, IntermediateDataIOFactory.class, BroadcastManagerWorker.class,
+  TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class, Stage.class, IREdge.class})
 public final class TaskExecutorTest {
   private static final AtomicInteger RUNTIME_EDGE_ID = new AtomicInteger(0);
   private static final int DATA_SIZE = 100;
@@ -86,7 +90,7 @@ public final class TaskExecutorTest {
 
   private List<Integer> elements;
   private Map<String, List> runtimeEdgeToOutputData;
-  private DataTransferFactory dataTransferFactory;
+  private IntermediateDataIOFactory intermediateDataIOFactory;
   private BroadcastManagerWorker broadcastManagerWorker;
   private TaskStateManager taskStateManager;
   private MetricMessageSender metricMessageSender;
@@ -106,11 +110,11 @@ public final class TaskExecutorTest {
     // Mock a TaskStateManager. It accumulates the state change into a list.
     taskStateManager = mock(TaskStateManager.class);
 
-    // Mock a DataTransferFactory.
+    // Mock a IntermediateDataIOFactory.
     runtimeEdgeToOutputData = new HashMap<>();
-    dataTransferFactory = mock(DataTransferFactory.class);
-    when(dataTransferFactory.createReader(anyInt(), any(), any())).then(new ParentTaskReaderAnswer());
-    when(dataTransferFactory.createWriter(any(), any(), any())).then(new ChildTaskWriterAnswer());
+    intermediateDataIOFactory = mock(IntermediateDataIOFactory.class);
+    when(intermediateDataIOFactory.createReader(anyInt(), any(), any())).then(new ParentTaskReaderAnswer());
+    when(intermediateDataIOFactory.createWriter(any(), any())).then(new ChildTaskWriterAnswer());
 
     // Mock a MetricMessageSender.
     metricMessageSender = mock(MetricMessageSender.class);
@@ -130,20 +134,32 @@ public final class TaskExecutorTest {
   /**
    * Test source vertex data fetching.
    */
-  @Test(timeout=5000)
+  @Test()
   public void testSourceVertexDataFetching() throws Exception {
     final IRVertex sourceIRVertex = new InMemorySourceVertex<>(elements);
 
-    final Readable readable = new Readable() {
+    final Readable readable = new BoundedIteratorReadable() {
       @Override
-      public Iterable read() throws IOException {
-        return elements;
+      protected Iterator initializeIterator() {
+        return elements.iterator();
       }
+
+      @Override
+      public long readWatermark() {
+        throw new UnsupportedOperationException();
+      }
+
       @Override
       public List<String> getLocations() {
         throw new UnsupportedOperationException();
       }
+
+      @Override
+      public void close() throws IOException {
+
+      }
     };
+
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
 
@@ -169,6 +185,120 @@ public final class TaskExecutorTest {
 
     // Check the output.
     assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
+  }
+
+  /**
+   * This test emits data and watermark by emulating an unbounded source readable.
+   */
+  @Test()
+  public void testUnboundedSourceVertexDataFetching() throws Exception {
+    final IRVertex sourceIRVertex = new SourceVertex() {
+      @Override
+      public IRVertex getClone() {
+        return this;
+      }
+
+      @Override
+      public boolean isBounded() {
+        return false;
+      }
+
+      @Override
+      public List<Readable> getReadables(int desiredNumOfSplits) throws Exception {
+        return null;
+      }
+
+      @Override
+      public void clearInternalStates() {
+
+      }
+    };
+
+    final long watermark = 1234567L;
+
+    final Readable readable = new Readable() {
+      int pointer = 0;
+      final int middle = elements.size() / 2;
+      final int end = elements.size();
+      boolean watermarkEmitted = false;
+
+      @Override
+      public void prepare() {
+
+      }
+
+      // This emulates unbounded source that throws NoSuchElementException
+      // It reads current data until middle point and  throws NoSuchElementException at the middle point.
+      // It resumes the data reading after emitting a watermark, and finishes at the end of the data.
+      @Override
+      public Object readCurrent() throws NoSuchElementException {
+        if (pointer == middle && !watermarkEmitted) {
+          throw new NoSuchElementException();
+        }
+
+        return elements.get(pointer);
+      }
+
+      @Override
+      public void advance() throws IOException {
+        pointer += 1;
+      }
+
+      @Override
+      public long readWatermark() {
+        watermarkEmitted = true;
+        return watermark;
+      }
+
+      @Override
+      public boolean isFinished() {
+        return pointer == end;
+      }
+
+      @Override
+      public List<String> getLocations() throws Exception {
+        return null;
+      }
+
+      @Override
+      public void close() throws IOException {
+      }
+    };
+
+    final Map<String, Readable> vertexIdToReadable = new HashMap<>();
+    vertexIdToReadable.put(sourceIRVertex.getId(), readable);
+    final List<Watermark> emittedWatermarks = new LinkedList<>();
+
+    final Transform transform = new RelayTransformNoWatermarkEmit(emittedWatermarks);
+    final OperatorVertex operatorVertex = new OperatorVertex(transform);
+
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
+      new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
+        .addVertex(sourceIRVertex)
+        .addVertex(operatorVertex)
+        .connectVertices(createEdge(sourceIRVertex, operatorVertex, "edge1"))
+        .buildWithoutSourceSinkCheck();
+
+    final StageEdge taskOutEdge = mockStageEdgeFrom(operatorVertex);
+    final Task task =
+      new Task(
+        "testSourceVertexDataFetching",
+        generateTaskId(),
+        TASK_EXECUTION_PROPERTY_MAP,
+        new byte[0],
+        Collections.emptyList(),
+        Collections.singletonList(taskOutEdge),
+        vertexIdToReadable);
+
+    // Execute the task.
+    final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
+    taskExecutor.execute();
+
+    // Check whether the watermark is emitted
+    assertEquals(Arrays.asList(new Watermark(watermark)), emittedWatermarks);
+
+    // Check the output.
+    assertEquals(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId()));
   }
 
   /**
@@ -406,9 +536,9 @@ public final class TaskExecutorTest {
       }
       final InputReader inputReader = mock(InputReader.class);
       final IRVertex srcVertex = (IRVertex) invocationOnMock.getArgument(1);
+      srcVertex.setProperty(ParallelismProperty.of(SOURCE_PARALLELISM));
       when(inputReader.getSrcIrVertex()).thenReturn(srcVertex);
       when(inputReader.read()).thenReturn(inputFutures);
-      when(inputReader.getSourceParallelism()).thenReturn(SOURCE_PARALLELISM);
       return inputReader;
     }
   }
@@ -421,7 +551,7 @@ public final class TaskExecutorTest {
     @Override
     public OutputWriter answer(final InvocationOnMock invocationOnMock) throws Throwable {
       final Object[] args = invocationOnMock.getArguments();
-      final RuntimeEdge runtimeEdge = (RuntimeEdge) args[2];
+      final RuntimeEdge runtimeEdge = (RuntimeEdge) args[1];
       final OutputWriter outputWriter = mock(OutputWriter.class);
       doAnswer(new Answer() {
         @Override
@@ -438,6 +568,41 @@ public final class TaskExecutorTest {
   }
 
   /**
+   * This transform does not emit watermark to OutputWriter
+   * because OutputWriter currently does not support watermarks (TODO #245)
+   * @param <T> type
+   */
+  private class RelayTransformNoWatermarkEmit<T> implements Transform<T, T> {
+    private OutputCollector<T> outputCollector;
+    private final List<Watermark> emittedWatermarks;
+
+    RelayTransformNoWatermarkEmit(final List<Watermark> emittedWatermarks) {
+      this.emittedWatermarks = emittedWatermarks;
+    }
+
+    @Override
+    public void prepare(final Context context, final OutputCollector<T> outputCollector) {
+      this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      emittedWatermarks.add(watermark);
+    }
+
+    @Override
+    public void onData(final Object element) {
+      outputCollector.emit((T) element);
+    }
+
+    @Override
+    public void close() {
+      // Do nothing.
+    }
+  }
+
+
+  /**
    * Simple identity function for testing.
    * @param <T> input/output type.
    */
@@ -447,6 +612,11 @@ public final class TaskExecutorTest {
     @Override
     public void prepare(final Context context, final OutputCollector<T> outputCollector) {
       this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      outputCollector.emitWatermark(watermark);
     }
 
     @Override
@@ -472,6 +642,11 @@ public final class TaskExecutorTest {
     public void prepare(final Context context, final OutputCollector<List<T>> outputCollector) {
       this.list = new ArrayList<>();
       this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      // do nothing
     }
 
     @Override
@@ -502,6 +677,11 @@ public final class TaskExecutorTest {
     public void prepare(final Context context, final OutputCollector<T> outputCollector) {
       this.context = context;
       this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onWatermark(Watermark watermark) {
+      outputCollector.emitWatermark(watermark);
     }
 
     @Override
@@ -545,6 +725,11 @@ public final class TaskExecutorTest {
     }
 
     @Override
+    public void onWatermark(Watermark watermark) {
+      outputCollector.emitWatermark(watermark);
+    }
+
+    @Override
     public void close() {
       // Do nothing.
     }
@@ -563,7 +748,7 @@ public final class TaskExecutorTest {
   }
 
   private TaskExecutor getTaskExecutor(final Task task, final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag) {
-    return new TaskExecutor(task, taskDag, taskStateManager, dataTransferFactory, broadcastManagerWorker,
+    return new TaskExecutor(task, taskDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
       metricMessageSender, persistentConnectionToMasterMap);
   }
 }

@@ -60,7 +60,7 @@ public final class WriteOneFilePerWindow extends PTransform<PCollection<String>,
     return input.apply(write);
   }
    /**
-   * A {@link FilenamePolicy} produces a base file name for a write based on metadata about the data
+   * A {@link FileBasedSink.FilenamePolicy} produces a base file name for a write based on metadata about the data
    * being written. This always includes the shard number and the total number of shards. For
    * windowed writes, it also includes the window and pane index (a sequence number assigned to each
    * trigger firing).
