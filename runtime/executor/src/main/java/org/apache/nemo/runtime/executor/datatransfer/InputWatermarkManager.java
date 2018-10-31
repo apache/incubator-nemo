@@ -23,9 +23,9 @@ import org.apache.nemo.common.punctuation.Watermark;
 
 /**
  * An interface for tracking input watermarks among multiple input streams.
- * --edge 1-->
- * --edge 2-->  watermarkManager --(emitWatermark)-> nextOperator
- * --edge 3-->
+ * --edge 1--&gt;
+ * --edge 2--&gt;  watermarkManager --(emitWatermark)--&gt; nextOperator
+ * --edge 3--&gt;
  */
 public interface InputWatermarkManager {
 
@@ -39,6 +39,8 @@ public interface InputWatermarkManager {
    *                                                 ^^^
    *                                             emit ts: 3 (edge 1) watermark at this time
    * -- input stream3 (edge 3):  ------- ts: 5 ---------------
+   * @param edgeIndex incoming edge index
+   * @param watermark watermark emitted from the edge
    */
   void trackAndEmitWatermarks(int edgeIndex, Watermark watermark);
 }
