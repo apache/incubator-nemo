@@ -29,6 +29,7 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.beam.sdk.values.KV;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +46,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   private final SystemReduceFn reduceFn;
   private final Map<K, List<WindowedValue<InputT>>> keyToValues;
-  private transient InMemoryTimerInternalsFactory timerInternalsFactory;
+  private transient InMemoryTimerInternalsFactory inMemoryTimerInternalsFactory;
+  private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
 
   /**
    * GroupByKey constructor.
@@ -76,30 +78,69 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   @Override
   protected DoFn wrapDoFn(final DoFn doFn) {
-    timerInternalsFactory = new InMemoryTimerInternalsFactory();
+    final Map<K, StateAndTimerForKey> map = new HashMap<>();
+    this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory(map);
+    this.inMemoryTimerInternalsFactory = new InMemoryTimerInternalsFactory(map);
+
     // This function performs group by key and window operation
     return
       GroupAlsoByWindowViaWindowSetNewDoFn.create(
         getWindowingStrategy(),
-        new InMemoryStateInternalsFactory(),
-        timerInternalsFactory,
+        inMemoryStateInternalsFactory,
+        inMemoryTimerInternalsFactory,
         getSideInputReader(),
         reduceFn,
         getOutputManager(),
         getMainOutputTag());
   }
 
+  /**
+   * It collects data for each key.
+   * The collected data are emitted at {@link GroupByKeyAndWindowDoFnTransform#onWatermark(Watermark)}
+   * @param element data element
+   */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
+    // We can call Beam's DoFnRunner#processElement here,
+    // but it may generate some overheads if we call the method for each data.
+    // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
+    // TODO #250: But, this approach can delay the event processing in streaming,
+    // TODO #250: if the watermark is not triggered for a long time.
     final KV<K, InputT> kv = element.getValue();
-    keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
+    keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
     keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
+  }
+
+  /**
+   * Process the collected data and trigger timers.
+   * @param watermark current watermark
+   * @param processingTime processing time
+   * @param synchronizedTime synchronized time
+   */
+  private void processElementsAndTriggerTimers(final Watermark watermark,
+                                               final Instant processingTime,
+                                               final Instant synchronizedTime) {
+    keyToValues.forEach((key, val) -> {
+      // for each key
+      // Process elements
+      if (!val.isEmpty()) {
+        final KeyedWorkItem<K, InputT> keyedWorkItem =
+          KeyedWorkItems.elementsWorkItem(key, val);
+        // The DoFnRunner interface requires WindowedValue,
+        // but this windowed value is actually not used in the ReduceFnRunner internal.
+        getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
+      }
+
+      // Trigger timers
+      triggerTimers(key, watermark, processingTime, synchronizedTime);
+      // Remove values
+      val.clear();
+    });
   }
 
   @Override
   public void onWatermark(final Watermark watermark) {
-    // TODO #230: Emit collected data when receiving watermark
-    // TODO #230: in GroupByKeyAndWindowTransform
+    processElementsAndTriggerTimers(watermark, Instant.now(), Instant.now());
   }
 
   /**
@@ -108,33 +149,58 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   @Override
   protected void beforeClose() {
-    final InMemoryTimerInternals timerInternals = timerInternalsFactory.timerInternals;
-    try {
-      // Finish any pending windows by advancing the input watermark to infinity.
-      timerInternals.advanceInputWatermark(BoundedWindow.TIMESTAMP_MAX_VALUE);
+    // Finish any pending windows by advancing the input watermark to infinity.
+    processElementsAndTriggerTimers(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()),
+      BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE);
+  }
 
-      // Finally, advance the processing time to infinity to fire any timers.
-      timerInternals.advanceProcessingTime(BoundedWindow.TIMESTAMP_MAX_VALUE);
-      timerInternals.advanceSynchronizedProcessingTime(BoundedWindow.TIMESTAMP_MAX_VALUE);
+  /**
+   * Trigger times for current key.
+   * When triggering, it emits the windowed data to downstream operators.
+   * @param key key
+   * @param watermark watermark
+   * @param processingTime processing time
+   * @param synchronizedTime synchronized time
+   */
+  private void triggerTimers(final K key,
+                             final Watermark watermark,
+                             final Instant processingTime,
+                             final Instant synchronizedTime) {
+    final InMemoryTimerInternals timerInternals = (InMemoryTimerInternals)
+      inMemoryTimerInternalsFactory.timerInternalsForKey(key);
+    try {
+      timerInternals.advanceInputWatermark(new Instant(watermark.getTimestamp()));
+      timerInternals.advanceProcessingTime(processingTime);
+      timerInternals.advanceSynchronizedProcessingTime(synchronizedTime);
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
 
-    if (keyToValues.isEmpty()) {
-      LOG.warn("Beam GroupByKeyAndWindowDoFnTransform received no data!");
-    } else {
-      // timer
-      final Iterable<TimerInternals.TimerData> timerData = getTimers(timerInternals);
+    final List<TimerInternals.TimerData> timerDataList = getEligibleTimers(timerInternals);
 
-      keyToValues.entrySet().stream().forEach(entry -> {
-        // The GroupAlsoByWindowViaWindowSetNewDoFn requires KeyedWorkItem,
-        // so we convert the KV to KeyedWorkItem
-        final KeyedWorkItem<K, InputT> keyedWorkItem =
-          KeyedWorkItems.workItem(entry.getKey(), timerData, entry.getValue());
-        getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
-      });
-      keyToValues.clear();
+    if (timerDataList.isEmpty()) {
+      return;
     }
+
+    // Trigger timers and emit windowed data
+    final KeyedWorkItem<K, InputT> timerWorkItem =
+      KeyedWorkItems.timersWorkItem(key, timerDataList);
+    // The DoFnRunner interface requires WindowedValue,
+    // but this windowed value is actually not used in the ReduceFnRunner internal.
+    getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
+
+    // output watermark
+    // we set output watermark to the minimum of the timer data
+    long outputWatermark = Long.MAX_VALUE;
+    for (final TimerInternals.TimerData timer : timerDataList) {
+      if (outputWatermark > timer.getTimestamp().getMillis()) {
+        outputWatermark = timer.getTimestamp().getMillis();
+      }
+    }
+
+    // Emit watermark to downstream operators
+    timerInternals.advanceOutputWatermark(new Instant(outputWatermark));
+    getOutputCollector().emitWatermark(new Watermark(outputWatermark));
   }
 
   @Override
@@ -144,7 +210,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     return sb.toString();
   }
 
-  private Iterable<TimerInternals.TimerData> getTimers(final InMemoryTimerInternals timerInternals) {
+  /**
+   * Get timer data.
+   */
+  private List<TimerInternals.TimerData> getEligibleTimers(final InMemoryTimerInternals timerInternals) {
     final List<TimerInternals.TimerData> timerData = new LinkedList<>();
 
     while (true) {
@@ -172,18 +241,37 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   }
 
   /**
+   * State and timer internal.
+   */
+  final class StateAndTimerForKey {
+    private StateInternals stateInternals;
+    private TimerInternals timerInternals;
+
+    StateAndTimerForKey(final StateInternals stateInternals,
+                        final TimerInternals timerInternals) {
+      this.stateInternals = stateInternals;
+      this.timerInternals = timerInternals;
+    }
+  }
+
+  /**
    * InMemoryStateInternalsFactory.
    */
   final class InMemoryStateInternalsFactory implements StateInternalsFactory<K> {
-    private final InMemoryStateInternals inMemoryStateInternals;
+    private final Map<K, StateAndTimerForKey> map;
 
-    InMemoryStateInternalsFactory() {
-      this.inMemoryStateInternals = InMemoryStateInternals.forKey(null);
+    InMemoryStateInternalsFactory(final Map<K, StateAndTimerForKey> map) {
+      this.map = map;
     }
 
     @Override
     public StateInternals stateInternalsForKey(final K key) {
-      return inMemoryStateInternals;
+      map.putIfAbsent(key, new StateAndTimerForKey(InMemoryStateInternals.forKey(key), null));
+      final StateAndTimerForKey stateAndTimerForKey = map.get(key);
+      if (stateAndTimerForKey.stateInternals == null) {
+        stateAndTimerForKey.stateInternals = InMemoryStateInternals.forKey(key);
+      }
+      return stateAndTimerForKey.stateInternals;
     }
   }
 
@@ -191,15 +279,20 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    * InMemoryTimerInternalsFactory.
    */
   final class InMemoryTimerInternalsFactory implements TimerInternalsFactory<K> {
-    private final InMemoryTimerInternals timerInternals;
+    private final Map<K, StateAndTimerForKey> map;
 
-    InMemoryTimerInternalsFactory() {
-      this.timerInternals = new InMemoryTimerInternals();
+    InMemoryTimerInternalsFactory(final Map<K, StateAndTimerForKey> map) {
+      this.map = map;
     }
 
     @Override
     public TimerInternals timerInternalsForKey(final K key) {
-      return timerInternals;
+      map.putIfAbsent(key, new StateAndTimerForKey(null, new InMemoryTimerInternals()));
+      final StateAndTimerForKey stateAndTimerForKey = map.get(key);
+      if (stateAndTimerForKey.timerInternals == null) {
+        stateAndTimerForKey.timerInternals = new InMemoryTimerInternals();
+      }
+      return stateAndTimerForKey.timerInternals;
     }
   }
 }
