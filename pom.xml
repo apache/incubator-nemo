@@ -248,20 +248,13 @@ under the License.
                         </configuration>
                     </execution>
                     <execution>
-                        <id>test-javadoc</id>
-                        <goals>
-                            <goal>test-javadoc</goal>
-                        </goals>
-                        <phase>validate</phase>
-                        <configuration>
-                          <excludePackageNames>*test*</excludePackageNames>
-                          <sourceFileExcludes>
-                            <sourceFileExclude>*Test.java</sourceFileExclude>
-                          </sourceFileExcludes>
-                        </configuration>
+                      <id>test-javadoc</id>
+                      <goals>
+                        <goal>javadoc</goal>
+                      </goals>
+                      <phase>validate</phase>
                     </execution>
-
-                  </executions>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.rat</groupId>
