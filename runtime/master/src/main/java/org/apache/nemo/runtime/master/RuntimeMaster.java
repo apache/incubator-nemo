@@ -164,6 +164,7 @@ public final class RuntimeMaster {
    *
    * @param plan               to execute
    * @param maxScheduleAttempt the max number of times this plan/sub-part of the plan should be attempted.
+   * @return pair of {@link PlanStateManager} and {@link ScheduledExecutorService}
    */
   public Pair<PlanStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
                                                                   final int maxScheduleAttempt) {
