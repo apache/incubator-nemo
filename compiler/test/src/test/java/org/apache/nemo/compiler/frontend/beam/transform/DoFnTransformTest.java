@@ -194,41 +194,6 @@ public final class DoFnTransformTest {
     doFnTransform.close();
   }
 
-  private static final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> {
-    private final List<WindowedValue<T>> outputs;
-    private final List<Tuple<String, WindowedValue<T>>> taggedOutputs;
-
-    TestOutputCollector() {
-      this.outputs = new LinkedList<>();
-      this.taggedOutputs = new LinkedList<>();
-    }
-
-    @Override
-    public void emit(WindowedValue<T> output) {
-      outputs.add(output);
-    }
-
-    @Override
-    public void emitWatermark(final Watermark watermark) {
-      // do nothing
-    }
-
-    @Override
-    public <O> void emit(String dstVertexId, O output) {
-      final WindowedValue<T> val = (WindowedValue<T>) output;
-      final Tuple<String, WindowedValue<T>> tuple = new Tuple<>(dstVertexId, val);
-      taggedOutputs.add(tuple);
-    }
-
-    public List<WindowedValue<T>> getOutput() {
-      return outputs;
-    }
-
-    public List<Tuple<String, WindowedValue<T>>> getTaggedOutputs() {
-      return taggedOutputs;
-    }
-  }
-
   /**
    * Identitiy do fn.
    * @param <T> type
