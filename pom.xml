@@ -247,6 +247,13 @@ under the License.
                         </goals>
                         <phase>site</phase>
                     </execution>
+                    <execution>
+                      <id>test-javadoc</id>
+                      <goals>
+                        <goal>javadoc</goal>
+                      </goals>
+                      <phase>validate</phase>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
