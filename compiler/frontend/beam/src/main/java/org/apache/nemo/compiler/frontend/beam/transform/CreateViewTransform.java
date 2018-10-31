@@ -20,54 +20,66 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 import org.apache.beam.sdk.transforms.Materializations;
 import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Watermark;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
-import java.util.ArrayList;
 
 /**
- * CreateView transform implementation.
+ * This transform receives data and forwards them to the group by key and window transform.
+ *
+ * Dataflow:
+ * data -- CreateViewTransform.onData() -- GBKWTransform.onData() -- GBKWOutputCollectorWrapper.emit()
+ *
+ * watermark -- CReateViewTransform.onWatermark()
+ *                            -- GBKWTransform.onWatermark() -- GBKWOutputCollectorWrapper.emitWatermark()
  * @param <I> input type.
  * @param <O> output type.
  */
-public final class CreateViewTransform<I, O> extends NoWatermarkEmitTransform<WindowedValue<I>, WindowedValue<O>> {
+public final class CreateViewTransform<I, O> implements
+  Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
   private final PCollectionView pCollectionView;
   private OutputCollector<WindowedValue<O>> outputCollector;
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
-  private final MultiView<Object> multiView;
+  private final Transform<WindowedValue<KV<?, I>>, WindowedValue<KV<?, Iterable<I>>>> gbkwTransform;
 
   /**
    * Constructor of CreateViewTransform.
    * @param pCollectionView the pCollectionView to create.
+   * @param gbkwTransform group by window transform (single key)
    */
-  public CreateViewTransform(final PCollectionView<O> pCollectionView) {
+  public CreateViewTransform(
+    final PCollectionView<O> pCollectionView,
+    final Transform<WindowedValue<KV<?, I>>, WindowedValue<KV<?, Iterable<I>>>> gbkwTransform) {
     this.pCollectionView = pCollectionView;
     this.viewFn = this.pCollectionView.getViewFn();
-    this.multiView = new MultiView<>();
+    this.gbkwTransform = gbkwTransform;
   }
 
   @Override
   public void prepare(final Context context, final OutputCollector<WindowedValue<O>> oc) {
     this.outputCollector = oc;
+    gbkwTransform.prepare(context, new GBKWOutputCollectorWrapper());
   }
 
   @Override
-  public void onData(final WindowedValue<I> element) {
-    // TODO #216: support window in view
-    final KV kv = ((WindowedValue<KV>) element).getValue();
-    multiView.getDataList().add(kv.getValue());
+  public void onData(final WindowedValue<KV<?, I>> element) {
+    gbkwTransform.onData(element);
+  }
+
+  @Override
+  public void onWatermark(final Watermark watermark) {
+    gbkwTransform.onWatermark(watermark);
   }
 
   @Override
   public void close() {
-    final Object view = viewFn.apply(multiView);
-    // TODO #216: support window in view
-    outputCollector.emit(WindowedValue.valueInGlobalWindow((O) view));
+    gbkwTransform.close();
   }
 
   @Override
@@ -82,23 +94,41 @@ public final class CreateViewTransform<I, O> extends NoWatermarkEmitTransform<Wi
    * @param <T> primitive view type
    */
   public final class MultiView<T> implements Materializations.MultimapView<Void, T>, Serializable {
-    private final ArrayList<T> dataList;
+    private final Iterable<T> iterable;
 
     /**
      * Constructor.
      */
-    MultiView() {
+    MultiView(final Iterable<T> iterable) {
       // Create a placeholder for side input data. CreateViewTransform#onData stores data to this list.
-      dataList = new ArrayList<>();
+      this.iterable = iterable;
     }
 
     @Override
     public Iterable<T> get(@Nullable final Void aVoid) {
-      return dataList;
+      return iterable;
+    }
+  }
+
+  /**
+   * This is a output collector wrapper that handles emitted data and watermark from GBKWTransform.
+   */
+  final class GBKWOutputCollectorWrapper implements OutputCollector<WindowedValue<KV<?, Iterable<I>>>> {
+
+    @Override
+    public void emit(final WindowedValue<KV<?, Iterable<I>>> output) {
+      final O view = viewFn.apply(new MultiView<>(output.getValue().getValue()));
+      outputCollector.emit(output.withValue(view));
     }
 
-    public ArrayList<T> getDataList() {
-      return dataList;
+    @Override
+    public void emitWatermark(final Watermark watermark) {
+      outputCollector.emitWatermark(watermark);
+    }
+
+    @Override
+    public <T> void emit(final String dstVertexId, final T output) {
+      throw new RuntimeException("Should not be called");
     }
   }
 }
