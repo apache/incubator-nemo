@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.beam.sdk.transforms.Materializations;
@@ -28,58 +30,93 @@ import org.apache.nemo.common.punctuation.Watermark;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
+import java.util.*;
 
 /**
- * This transform receives data and forwards them to the group by key and window transform.
- *
- * Dataflow:
- * data -- CreateViewTransform.onData() -- GBKWTransform.onData() -- GBKWOutputCollectorWrapper.emit()
- *
- * watermark -- CReateViewTransform.onWatermark()
- *                            -- GBKWTransform.onWatermark() -- GBKWOutputCollectorWrapper.emitWatermark()
- * @param <I> input type.
- * @param <O> output type.
+ * This transforms emits materialized data for each window.
+ * @param <I> input type
+ * @param <O> materialized output type
  */
 public final class CreateViewTransform<I, O> implements
   Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
   private OutputCollector<WindowedValue<O>> outputCollector;
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
-  private final Transform<WindowedValue<KV<?, I>>, WindowedValue<KV<?, Iterable<I>>>> gbkwTransform;
+  private final Map<BoundedWindow, List<I>> windowListMap;
+
+  // TODO #XXX: we should remove this variable by refactoring broadcast worker for side input
+  private boolean isEmitted = false;
+  private long outputWatermark;
 
   /**
    * Constructor of CreateViewTransform.
    * @param viewFn the viewFn that materializes data.
-   * @param gbkwTransform group by window transform (single key)
    */
-  public CreateViewTransform(
-    final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn,
-    final Transform<WindowedValue<KV<?, I>>, WindowedValue<KV<?, Iterable<I>>>> gbkwTransform) {
+  public CreateViewTransform(final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn)  {
     this.viewFn = viewFn;
-    this.gbkwTransform = gbkwTransform;
+    this.windowListMap = new HashMap<>();
+    this.outputWatermark = Long.MIN_VALUE;
   }
 
   @Override
   public void prepare(final Context context, final OutputCollector<WindowedValue<O>> oc) {
     this.outputCollector = oc;
-    gbkwTransform.prepare(context, new GBKWOutputCollectorWrapper());
   }
 
   @Override
   public void onData(final WindowedValue<KV<?, I>> element) {
-    // The key is always null in CreateViewTransform
-    // because Beam translates the key to null.
-    // Therefore, the group by key and window is performed on a single (null) key
-    gbkwTransform.onData(element);
+    // The key of element is always null (beam's semantic)
+    // because view is a globally materialized data regardless of key
+    for (final BoundedWindow window : element.getWindows()) {
+      windowListMap.putIfAbsent(window, new ArrayList<>());
+      final List<I> list = windowListMap.get(window);
+      list.add(element.getValue().getValue());
+    }
   }
 
   @Override
-  public void onWatermark(final Watermark watermark) {
-    gbkwTransform.onWatermark(watermark);
+  public void onWatermark(final Watermark inputWatermark) {
+
+    // If no data, just forwards the watermark
+    if (windowListMap.size() == 0 && outputWatermark < inputWatermark.getTimestamp()) {
+      outputWatermark = inputWatermark.getTimestamp();
+      outputCollector.emitWatermark(inputWatermark);
+      return;
+    }
+
+    final Iterator<Map.Entry<BoundedWindow, List<I>>> iterator = windowListMap.entrySet().iterator();
+    long outputTimestamp = Long.MAX_VALUE;
+
+    while (iterator.hasNext()) {
+      final Map.Entry<BoundedWindow, List<I>> entry = iterator.next();
+      if (entry.getKey().maxTimestamp().getMillis() <= inputWatermark.getTimestamp()) {
+        // emit
+        final O view = viewFn.apply(new MultiView<>(entry.getValue()));
+        outputCollector.emit(WindowedValue.of(
+          view, entry.getKey().maxTimestamp(), entry.getKey(), PaneInfo.ON_TIME_AND_ONLY_FIRING));
+        iterator.remove();
+        isEmitted = true;
+
+        if (outputTimestamp > entry.getKey().maxTimestamp().getMillis()) {
+          outputTimestamp = entry.getKey().maxTimestamp().getMillis();
+        }
+      }
+    }
+
+    if (outputTimestamp != Long.MAX_VALUE && outputWatermark < outputTimestamp) {
+      outputWatermark = outputTimestamp;
+      outputCollector.emitWatermark(new Watermark(outputTimestamp));
+    }
   }
 
   @Override
   public void close() {
-    gbkwTransform.close();
+    if (!isEmitted) {
+      // TODO #XXX: This is an ad-hoc code to resolve the view that has no data
+      // Currently, broadCastWorker reads the view data, but it throws exception if no data is available for a view.
+      // We should use watermark value to track whether the materialized data in a view is available or not.
+      final O view = viewFn.apply(new MultiView<>(Collections.emptyList()));
+      outputCollector.emit(WindowedValue.valueInGlobalWindow(view));
+    }
   }
 
   @Override
@@ -107,29 +144,6 @@ public final class CreateViewTransform<I, O> implements
     @Override
     public Iterable<T> get(@Nullable final Void aVoid) {
       return iterable;
-    }
-  }
-
-  /**
-   * This is a output collector wrapper that handles emitted data and watermark from GBKWTransform.
-   */
-  final class GBKWOutputCollectorWrapper implements OutputCollector<WindowedValue<KV<?, Iterable<I>>>> {
-
-    @Override
-    public void emit(final WindowedValue<KV<?, Iterable<I>>> output) {
-      final O view = viewFn.apply(new MultiView<>(output.getValue().getValue()));
-      System.out.println("Emit: " + view);
-      outputCollector.emit(output.withValue(view));
-    }
-
-    @Override
-    public void emitWatermark(final Watermark watermark) {
-      outputCollector.emitWatermark(watermark);
-    }
-
-    @Override
-    public <T> void emit(final String dstVertexId, final T output) {
-      outputCollector.emit(dstVertexId, output);
     }
   }
 }

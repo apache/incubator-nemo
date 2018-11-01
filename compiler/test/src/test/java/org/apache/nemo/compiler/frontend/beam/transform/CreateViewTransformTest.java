@@ -75,7 +75,7 @@ public final class CreateViewTransformTest {
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
         SystemReduceFn.buffering(NULL_INPUT_CODER));
     final CreateViewTransform<String, Integer> viewTransform =
-      new CreateViewTransform(new SumViewFn(), gbkTransform);
+      new CreateViewTransform(new SumViewFn());
 
     final Instant ts1 = new Instant(1);
     final Instant ts2 = new Instant(100);

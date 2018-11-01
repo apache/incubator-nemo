@@ -48,6 +48,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private final Map<K, List<WindowedValue<InputT>>> keyToValues;
   private transient InMemoryTimerInternalsFactory inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
+  private long outputWatermark;
 
   /**
    * GroupByKey constructor.
@@ -69,6 +70,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       options);
     this.keyToValues = new HashMap<>();
     this.reduceFn = reduceFn;
+    this.outputWatermark = Long.MIN_VALUE;
   }
 
   /**
@@ -113,14 +115,19 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   /**
    * Process the collected data and trigger timers.
-   * @param watermark current watermark
+   * @param inputWatermark current input watermark
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
    */
-  private void processElementsAndTriggerTimers(final Watermark watermark,
+  private void processElementsAndTriggerTimers(final Watermark inputWatermark,
                                                final Instant processingTime,
                                                final Instant synchronizedTime) {
-    keyToValues.forEach((key, val) -> {
+    long outputTimestamp = Long.MAX_VALUE;
+
+    for (final Map.Entry<K, List<WindowedValue<InputT>>> entry : keyToValues.entrySet()) {
+      final K key = entry.getKey();
+      final List<WindowedValue<InputT>> val = entry.getValue();
+
       // for each key
       // Process elements
       if (!val.isEmpty()) {
@@ -132,15 +139,26 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       }
 
       // Trigger timers
-      triggerTimers(key, watermark, processingTime, synchronizedTime);
+      final long keyOutputTimestamp =
+        triggerTimers(key, inputWatermark, processingTime, synchronizedTime);
+      if (outputTimestamp > keyOutputTimestamp) {
+        outputTimestamp = keyOutputTimestamp;
+      }
+
       // Remove values
       val.clear();
-    });
+    }
+
+    // Emit watermark to downstream operators
+    if (outputTimestamp != Long.MAX_VALUE && outputWatermark < outputTimestamp) {
+      outputWatermark = outputTimestamp;
+      getOutputCollector().emitWatermark(new Watermark(outputTimestamp));
+    }
   }
 
   @Override
-  public void onWatermark(final Watermark watermark) {
-    processElementsAndTriggerTimers(watermark, Instant.now(), Instant.now());
+  public void onWatermark(final Watermark inputWatermark) {
+    processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
   }
 
   /**
@@ -157,12 +175,14 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   /**
    * Trigger times for current key.
    * When triggering, it emits the windowed data to downstream operators.
+   * It returns the minimum output timestamp.
+   * If no data is emitted, it returns Long.MAX_VALUE.
    * @param key key
    * @param watermark watermark
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
    */
-  private void triggerTimers(final K key,
+  private long triggerTimers(final K key,
                              final Watermark watermark,
                              final Instant processingTime,
                              final Instant synchronizedTime) {
@@ -179,7 +199,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final List<TimerInternals.TimerData> timerDataList = getEligibleTimers(timerInternals);
 
     if (timerDataList.isEmpty()) {
-      return;
+      return Long.MAX_VALUE;
     }
 
     // Trigger timers and emit windowed data
@@ -197,10 +217,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         outputWatermark = timer.getTimestamp().getMillis();
       }
     }
-
-    // Emit watermark to downstream operators
     timerInternals.advanceOutputWatermark(new Instant(outputWatermark));
-    getOutputCollector().emitWatermark(new Watermark(outputWatermark));
+
+    return outputWatermark;
   }
 
   @Override

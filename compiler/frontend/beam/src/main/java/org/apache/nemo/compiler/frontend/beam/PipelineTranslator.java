@@ -272,9 +272,7 @@ public final class PipelineTranslator
   private static void createPCollectionViewTranslator(final TranslationContext ctx,
                                                       final PrimitiveTransformVertex transformVertex,
                                                       final View.CreatePCollectionView<?, ?> transform) {
-    System.out.println("PCOllection view: " + ctx + ", " + transformVertex);
-    final IRVertex vertex = new OperatorVertex(
-      new CreateViewTransform(transform.getView().getViewFn(), createGBKTransform(ctx, transformVertex)));
+    final IRVertex vertex = new OperatorVertex(new CreateViewTransform(transform.getView().getViewFn()));
     ctx.addVertex(vertex);
     transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     ctx.registerMainOutputFrom(vertex, transform.getView());
