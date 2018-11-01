@@ -141,8 +141,8 @@ public final class PipeManagerWorker {
   /**
    * (SYNCHRONIZATION) Called by task threads.
    *
-   * @param runtimeEdge
-   * @param srcTaskIndex
+   * @param runtimeEdge runtime edge
+   * @param srcTaskIndex source task index
    * @return output contexts.
    */
   public List<ByteOutputContext> getOutputContexts(final RuntimeEdge runtimeEdge,
@@ -163,8 +163,8 @@ public final class PipeManagerWorker {
   /**
    * (SYNCHRONIZATION) Called by network threads.
    *
-   * @param outputContext
-   * @throws InvalidProtocolBufferException
+   * @param outputContext output context
+   * @throws InvalidProtocolBufferException protobuf exception
    */
   public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
     final ControlMessage.PipeTransferContextDescriptor descriptor =

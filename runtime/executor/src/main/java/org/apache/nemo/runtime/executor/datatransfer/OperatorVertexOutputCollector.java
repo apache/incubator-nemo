@@ -41,8 +41,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   private static final Logger LOG = LoggerFactory.getLogger(OperatorVertexOutputCollector.class.getName());
 
   private final IRVertex irVertex;
-  private final List<OperatorVertex> internalMainOutputs;
-  private final Map<String, List<OperatorVertex>> internalAdditionalOutputs;
+  private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
+  private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
   private final List<OutputWriter> externalMainOutputs;
   private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
 
@@ -54,11 +54,12 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
    * @param externalMainOutputs external main outputs
    * @param externalAdditionalOutputs external additional outputs
    */
-  public OperatorVertexOutputCollector(final IRVertex irVertex,
-                                       final List<OperatorVertex> internalMainOutputs,
-                                       final Map<String, List<OperatorVertex>> internalAdditionalOutputs,
-                                       final List<OutputWriter> externalMainOutputs,
-                                       final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
+  public OperatorVertexOutputCollector(
+    final IRVertex irVertex,
+    final List<NextIntraTaskOperatorInfo> internalMainOutputs,
+    final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
+    final List<OutputWriter> externalMainOutputs,
+    final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
@@ -76,8 +77,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emit(final O output) {
-    for (final OperatorVertex internalVertex : internalMainOutputs) {
-      emit(internalVertex, output);
+    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      emit(internalVertex.getNextOperator(), output);
     }
 
     for (final OutputWriter externalWriter : externalMainOutputs) {
@@ -89,8 +90,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   public <T> void emit(final String dstVertexId, final T output) {
 
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
-      for (final OperatorVertex internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-        emit(internalVertex, (O) output);
+      for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
+        emit(internalVertex.getNextOperator(), (O) output);
       }
     }
 
@@ -104,15 +105,13 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   @Override
   public void emitWatermark(final Watermark watermark) {
     // Emit watermarks to internal vertices
-    // TODO #232: Implement InputWatermarkManager
-    // TODO #232: We should emit the minimum watermark among multiple input streams of Transform.
-    for (final OperatorVertex internalVertex : internalMainOutputs) {
-      internalVertex.getTransform().onWatermark(watermark);
+    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
     }
 
-    for (final List<OperatorVertex> internalVertices : internalAdditionalOutputs.values()) {
-      for (final OperatorVertex internalVertex : internalVertices) {
-        internalVertex.getTransform().onWatermark(watermark);
+    for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
+      for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
+        internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
 
