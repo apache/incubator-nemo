@@ -34,6 +34,7 @@ public final class DataFetcherOutputCollector<O> implements OutputCollector<O> {
 
   /**
    * It forwards output to the next operator.
+   * @param nextOperatorVertex next operator to emit data and watermark
    */
   public DataFetcherOutputCollector(final OperatorVertex nextOperatorVertex) {
     this.nextOperatorVertex = nextOperatorVertex;

@@ -69,7 +69,6 @@ class ParentTaskDataFetcher extends DataFetcher {
       }
 
       while (true) {
-
         // This iterator has the element
         if (this.currentIterator.hasNext()) {
           return this.currentIterator.next();
