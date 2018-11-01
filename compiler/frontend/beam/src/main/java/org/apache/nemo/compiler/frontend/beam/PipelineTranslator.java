@@ -314,23 +314,12 @@ public final class PipelineTranslator
   private static void combineTranslator(final TranslationContext ctx,
                                         final CompositeTransformVertex transformVertex,
                                         final PTransform<?, ?> transform) {
-    // No optimization for BeamSQL that handles Beam 'Row's.
-    final boolean handlesBeamRow = Stream
-      .concat(transformVertex.getNode().getInputs().values().stream(),
-        transformVertex.getNode().getOutputs().values().stream())
-      .map(pValue -> (KvCoder) getCoder(pValue, ctx.root)) // Input and output of combine should be KV
-      .map(kvCoder -> kvCoder.getValueCoder().getEncodedTypeDescriptor()) // We're interested in the 'Value' of KV
-      .anyMatch(valueTypeDescriptor -> TypeDescriptor.of(Row.class).equals(valueTypeDescriptor));
-    if (handlesBeamRow) {
-      transformVertex.getDAG().topologicalDo(ctx::translate);
-      return; // return early and give up optimization - TODO #209: Enable Local Combiner for BeamSQL
-    }
-
-    // Local combiner optimization
     final List<TransformVertex> topologicalOrdering = transformVertex.getDAG().getTopologicalSort();
     final TransformVertex groupByKeyBeamTransform = topologicalOrdering.get(0);
     final TransformVertex last = topologicalOrdering.get(topologicalOrdering.size() - 1);
-    if (groupByKeyBeamTransform.getNode().getTransform() instanceof GroupByKey) {
+    if (groupByKeyBeamTransform.getNode().getTransform() instanceof GroupByKey
+      && isBinaryCombine(extractCombineFn(transform))) {
+      // Local combiner optimization (only for binary combiners that are guaranteed to be commutative/associative)
       // Translate the given CompositeTransform under OneToOneEdge-enforced context.
       final TranslationContext oneToOneEdgeContext = new TranslationContext(ctx,
           OneToOneCommunicationPatternSelector.INSTANCE);
@@ -349,7 +338,27 @@ public final class PipelineTranslator
       // Translate the remaining vertices.
       topologicalOrdering.stream().skip(1).forEach(ctx::translate);
     } else {
+      // No optimization
       transformVertex.getDAG().topologicalDo(ctx::translate);
+    }
+  }
+
+  private static boolean isBinaryCombine(final CombineFnBase.GlobalCombineFn combineFn) {
+    return combineFn instanceof Combine.BinaryCombineFn
+      || combineFn instanceof Combine.BinaryCombineDoubleFn
+      || combineFn instanceof Combine.BinaryCombineIntegerFn
+      || combineFn instanceof Combine.BinaryCombineLongFn;
+  }
+
+  private static CombineFnBase.GlobalCombineFn extractCombineFn(final PTransform<?, ?> combine) {
+    if (combine instanceof Combine.Globally) {
+      return ((Combine.Globally) combine).getFn();
+    } else if (combine instanceof Combine.PerKey) {
+      return ((Combine.PerKey) combine).getFn();
+    } else if (combine instanceof Combine.GroupedValues) {
+      return ((Combine.GroupedValues) combine).getFn();
+    } else {
+      throw new IllegalStateException(combine.toString());
     }
   }
 
