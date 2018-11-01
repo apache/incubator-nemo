@@ -68,7 +68,7 @@ public final class CreateViewTransform<I, O> implements
   public void onData(final WindowedValue<KV<?, I>> element) {
     // The key is always null in CreateViewTransform
     // because Beam translates the key to null.
-    // Therefore, the group by key and window is performed on a single key
+    // Therefore, the group by key and window is performed on a single (null) key
     gbkwTransform.onData(element);
   }
 
