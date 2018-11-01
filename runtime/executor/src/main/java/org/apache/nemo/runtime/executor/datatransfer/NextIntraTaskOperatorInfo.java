@@ -31,15 +31,15 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
  * --edge (index 1)--&gt;  watermarkManager --&gt; nextOperator
  * --edge (index 2)--&gt;
  */
-public final class NextOperatorInfo {
+public final class NextIntraTaskOperatorInfo {
 
   private final int edgeIndex;
   private final OperatorVertex nextOperator;
   private final InputWatermarkManager watermarkManager;
 
-  public NextOperatorInfo(final int edgeIndex,
-                          final OperatorVertex nextOperator,
-                          final InputWatermarkManager watermarkManager) {
+  public NextIntraTaskOperatorInfo(final int edgeIndex,
+                                   final OperatorVertex nextOperator,
+                                   final InputWatermarkManager watermarkManager) {
     this.edgeIndex = edgeIndex;
     this.nextOperator = nextOperator;
     this.watermarkManager = watermarkManager;

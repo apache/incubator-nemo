@@ -21,33 +21,36 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * This tracks the minimum input watermark among multiple input streams.
  */
 public final class MultiInputWatermarkManager implements InputWatermarkManager {
-  private final Watermark[] watermarks;
+  private final List<Watermark> watermarks;
   private final OperatorVertex nextOperator;
   private int minWatermarkIndex;
   public MultiInputWatermarkManager(final int numEdges,
                                     final OperatorVertex nextOperator) {
     super();
-    this.watermarks = new Watermark[numEdges];
+    this.watermarks = new ArrayList<>(numEdges);
     this.nextOperator = nextOperator;
     this.minWatermarkIndex = 0;
     // We initialize watermarks as min value because
     // we should not emit watermark until all edges emit watermarks.
     for (int i = 0; i < numEdges; i++) {
-      watermarks[i] = new Watermark(Long.MIN_VALUE);
+      watermarks.add(new Watermark(Long.MIN_VALUE));
     }
   }
 
   private int findNextMinWatermarkIndex() {
     int index = -1;
     long timestamp = Long.MAX_VALUE;
-    for (int i = 0; i < watermarks.length; i++) {
-      if (watermarks[i].getTimestamp() < timestamp) {
+    for (int i = 0; i < watermarks.size(); i++) {
+      if (watermarks.get(i).getTimestamp() < timestamp) {
         index = i;
-        timestamp = watermarks[i].getTimestamp();
+        timestamp = watermarks.get(i).getTimestamp();
       }
     }
     return index;
@@ -57,13 +60,18 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
   public void trackAndEmitWatermarks(final int edgeIndex, final Watermark watermark) {
     if (edgeIndex == minWatermarkIndex) {
       // update min watermark
-      final Watermark prevMinWatermark = watermarks[minWatermarkIndex];
-      watermarks[minWatermarkIndex] = watermark;
+      final Watermark prevMinWatermark = watermarks.get(minWatermarkIndex);
+      watermarks.set(minWatermarkIndex, watermark);
        // find min watermark
       minWatermarkIndex = findNextMinWatermarkIndex();
-      final Watermark minWatermark = watermarks[minWatermarkIndex];
-      assert minWatermark.getTimestamp() >= prevMinWatermark.getTimestamp();
-       if (minWatermark.getTimestamp() > prevMinWatermark.getTimestamp()) {
+      final Watermark minWatermark = watermarks.get(minWatermarkIndex);
+
+      if (minWatermark.getTimestamp() < prevMinWatermark.getTimestamp()) {
+        throw new IllegalStateException(
+          "The current min watermark is ahead of prev min: " + minWatermark + ", " + prevMinWatermark);
+      }
+
+      if (minWatermark.getTimestamp() > prevMinWatermark.getTimestamp()) {
         // Watermark timestamp progress!
         // Emit the min watermark
         nextOperator.getTransform().onWatermark(minWatermark);
@@ -71,8 +79,12 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
     } else {
       // The recent watermark timestamp cannot be less than the previous one
       // because watermark is monotonically increasing.
-      assert watermarks[edgeIndex].getTimestamp() <= watermark.getTimestamp();
-      watermarks[edgeIndex] = watermark;
+      if (watermarks.get(edgeIndex).getTimestamp() > watermark.getTimestamp()) {
+        throw new IllegalStateException(
+          "The recent watermark timestamp cannot be less than the previous one "
+            + "because watermark is monotonically increasing.");
+      }
+      watermarks.set(edgeIndex, watermark);
     }
   }
 }

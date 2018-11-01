@@ -61,7 +61,10 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -194,7 +197,9 @@ public final class TaskExecutorTest {
   public void testUnboundedSourceVertexDataFetching() throws Exception {
     final IRVertex sourceIRVertex = new TestUnboundedSourceVertex();
     final Long watermark = 1234567L;
-    final Readable readable = new TestUnboundedSourceReadable(Arrays.asList(watermark));
+    final BlockingQueue<Long> watermarkQueue = new LinkedBlockingQueue<>();
+    watermarkQueue.add(watermark);
+    final Readable readable = new TestUnboundedSourceReadable(watermarkQueue, 1);
 
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
@@ -261,6 +266,16 @@ public final class TaskExecutorTest {
     assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
   }
 
+  private void waitUntilWatermarkEmitted(final Queue<Long> watermarkQueue) {
+    while (!watermarkQueue.isEmpty()) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
   /**
    * The DAG of the task to test will looks like:
    * source1 -> vertex1 -> vertex2
@@ -269,10 +284,12 @@ public final class TaskExecutorTest {
    * The vertex2 has two incoming edges (from vertex1 and vertex3)
    * and we test if TaskExecutor handles data and watermarks correctly in this situation.
    *
-   * The source1 emits watermark 500, 1800 and source2 emits watermark 1000.
-   * The vertex2 should receive and emit watermarks 500 and 1000.
+   * source1 emits watermarks:     500 (ts)  600 (ts)   1400 (ts)  1800 (ts)        2500 (ts)
+   * source2 emits watermarks:  1000(ts)                                     2200 (ts)
+   *
+   * The vertex2 should receive and emits watermarks 500, 600, 1000, 1800, and 2200
    */
-  @Test(timeout=5000)
+  @Test()
   public void testMultipleIncomingEdges() throws Exception {
     final List<Watermark> emittedWatermarks = new ArrayList<>();
     final IRVertex operatorIRVertex1 = new OperatorVertex(new RelayTransform());
@@ -282,10 +299,12 @@ public final class TaskExecutorTest {
     final IRVertex sourceIRVertex1 = new TestUnboundedSourceVertex();
     final IRVertex sourceIRVertex2 = new TestUnboundedSourceVertex();
 
-    final List<Long> watermarks1 = Arrays.asList(500L, 1800L);
-    final List<Long> watermarks2 = Arrays.asList(1000L);
-    final Readable readable1 = new TestUnboundedSourceReadable(watermarks1);
-    final Readable readable2 = new TestUnboundedSourceReadable(watermarks2);
+    final Queue<Long> watermarks1 = new ConcurrentLinkedQueue<>();
+    watermarks1.add(500L);
+    final Queue<Long> watermarks2 = new ConcurrentLinkedQueue<>();
+    watermarks2.add(1000L);
+    final Readable readable1 = new TestUnboundedSourceReadable(watermarks1, 5);
+    final Readable readable2 = new TestUnboundedSourceReadable(watermarks2, 2);
 
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex1.getId(), readable1);
@@ -316,11 +335,31 @@ public final class TaskExecutorTest {
         vertexIdToReadable);
 
     // Execute the task.
+    final Thread watermarkEmitThread = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        waitUntilWatermarkEmitted(watermarks2);
+        watermarks1.add(600L);
+        watermarks1.add(1400L);
+        watermarks1.add(1800L);
+        waitUntilWatermarkEmitted(watermarks1);
+        watermarks2.add(2200L);
+        waitUntilWatermarkEmitted(watermarks2);
+        watermarks1.add(2500L);
+        waitUntilWatermarkEmitted(watermarks1);
+      }
+    });
+
+    watermarkEmitThread.start();
     final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
     taskExecutor.execute();
 
+    watermarkEmitThread.join();
+
     // Check whether the watermark is emitted
-    assertEquals(Arrays.asList(new Watermark(500), new Watermark(1000)), emittedWatermarks);
+    assertEquals(Arrays.asList(
+      new Watermark(500), new Watermark(600), new Watermark(1000),
+      new Watermark(1800), new Watermark(2200)), emittedWatermarks);
 
     // Check the output.
     final List<Integer> doubledElements = new ArrayList<>(elements.size()*2);
@@ -626,16 +665,23 @@ public final class TaskExecutorTest {
     }
   }
 
+
+  // This emulates unbounded source that throws NoSuchElementException
+  // It reads current data until middle point and throws NoSuchElementException at the middle point.
+  // It resumes the data reading after emitting a watermark, and finishes at the end of the data.
   private final class TestUnboundedSourceReadable implements Readable {
     int pointer = 0;
     final int middle = elements.size() / 2;
     final int end = elements.size();
-    boolean watermarkEmitted = false;
-    final List<Long> watermarks;
+    final Queue<Long> watermarks;
     int numEmittedWatermarks = 0;
+    final int expectedNumWatermarks;
+    long currWatermark = -1;
 
-    public TestUnboundedSourceReadable(final List<Long> watermarks) {
+    public TestUnboundedSourceReadable(final Queue<Long> watermarks,
+                                       final int expectedNumWatermarks) {
       this.watermarks = watermarks;
+      this.expectedNumWatermarks = expectedNumWatermarks;
     }
 
     @Override
@@ -643,15 +689,11 @@ public final class TaskExecutorTest {
 
     }
 
-    // This emulates unbounded source that throws NoSuchElementException
-    // It reads current data until middle point and  throws NoSuchElementException at the middle point.
-    // It resumes the data reading after emitting a watermark, and finishes at the end of the data.
     @Override
     public Object readCurrent() throws NoSuchElementException {
-      if (pointer == middle && !watermarkEmitted) {
+      if (pointer == middle && numEmittedWatermarks < expectedNumWatermarks) {
         throw new NoSuchElementException();
       }
-
       return elements.get(pointer);
     }
 
@@ -662,11 +704,15 @@ public final class TaskExecutorTest {
 
     @Override
     public long readWatermark() {
-      if (numEmittedWatermarks == watermarks.size() - 1) {
-        watermarkEmitted = true;
+      if (numEmittedWatermarks >= expectedNumWatermarks) {
+        return Long.MAX_VALUE;
       }
 
-      final long watermark =  watermarks.get(numEmittedWatermarks);
+      final Long watermark = watermarks.poll();
+      if (watermark == null) {
+        return currWatermark;
+      }
+      currWatermark = watermark;
       numEmittedWatermarks += 1;
       return watermark;
     }

@@ -36,9 +36,9 @@ public final class InputWatermarkManagerTest {
   public void test() {
     final List<Watermark> emittedWatermarks = new LinkedList<>();
     final Transform transform = mock(Transform.class);
-    doAnswer(new Answer() {
+    doAnswer(new Answer<Void>() {
       @Override
-      public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
+      public Void answer(InvocationOnMock invocationOnMock) throws Throwable {
         final Watermark watermark = invocationOnMock.getArgument(0);
         emittedWatermarks.add(watermark);
         return null;

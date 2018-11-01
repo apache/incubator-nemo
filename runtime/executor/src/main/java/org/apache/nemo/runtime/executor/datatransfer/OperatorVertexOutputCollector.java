@@ -41,8 +41,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   private static final Logger LOG = LoggerFactory.getLogger(OperatorVertexOutputCollector.class.getName());
 
   private final IRVertex irVertex;
-  private final List<NextOperatorInfo> internalMainOutputs;
-  private final Map<String, List<NextOperatorInfo>> internalAdditionalOutputs;
+  private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
+  private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
   private final List<OutputWriter> externalMainOutputs;
   private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
 
@@ -56,8 +56,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
    */
   public OperatorVertexOutputCollector(
     final IRVertex irVertex,
-    final List<NextOperatorInfo> internalMainOutputs,
-    final Map<String, List<NextOperatorInfo>> internalAdditionalOutputs,
+    final List<NextIntraTaskOperatorInfo> internalMainOutputs,
+    final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
     final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
     this.irVertex = irVertex;
@@ -77,7 +77,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emit(final O output) {
-    for (final NextOperatorInfo internalVertex : internalMainOutputs) {
+    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       emit(internalVertex.getNextOperator(), output);
     }
 
@@ -90,7 +90,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   public <T> void emit(final String dstVertexId, final T output) {
 
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
-      for (final NextOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
+      for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
         emit(internalVertex.getNextOperator(), (O) output);
       }
     }
@@ -105,12 +105,12 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   @Override
   public void emitWatermark(final Watermark watermark) {
     // Emit watermarks to internal vertices
-    for (final NextOperatorInfo internalVertex : internalMainOutputs) {
+    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
     }
 
-    for (final List<NextOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
-      for (final NextOperatorInfo internalVertex : internalVertices) {
+    for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
+      for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
