@@ -67,6 +67,7 @@ public final class CreateViewTransform<I, O> implements
   @Override
   public void onData(final WindowedValue<KV<?, I>> element) {
     // The key is always null in CreateViewTransform
+    // because Beam translates the key to null.
     // Therefore, the group by key and window is performed on a single key
     gbkwTransform.onData(element);
   }
