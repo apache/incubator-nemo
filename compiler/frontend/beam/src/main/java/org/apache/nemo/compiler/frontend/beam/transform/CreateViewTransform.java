@@ -23,7 +23,6 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.beam.sdk.transforms.Materializations;
 import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
 
@@ -43,21 +42,19 @@ import java.io.Serializable;
  */
 public final class CreateViewTransform<I, O> implements
   Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
-  private final PCollectionView pCollectionView;
   private OutputCollector<WindowedValue<O>> outputCollector;
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final Transform<WindowedValue<KV<?, I>>, WindowedValue<KV<?, Iterable<I>>>> gbkwTransform;
 
   /**
    * Constructor of CreateViewTransform.
-   * @param pCollectionView the pCollectionView to create.
+   * @param viewFn the viewFn that materializes data.
    * @param gbkwTransform group by window transform (single key)
    */
   public CreateViewTransform(
-    final PCollectionView<O> pCollectionView,
+    final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn,
     final Transform<WindowedValue<KV<?, I>>, WindowedValue<KV<?, Iterable<I>>>> gbkwTransform) {
-    this.pCollectionView = pCollectionView;
-    this.viewFn = this.pCollectionView.getViewFn();
+    this.viewFn = viewFn;
     this.gbkwTransform = gbkwTransform;
   }
 
@@ -69,6 +66,8 @@ public final class CreateViewTransform<I, O> implements
 
   @Override
   public void onData(final WindowedValue<KV<?, I>> element) {
+    // The key is always null in CreateViewTransform
+    // Therefore, the group by key and window is performed on a single key
     gbkwTransform.onData(element);
   }
 
@@ -85,7 +84,7 @@ public final class CreateViewTransform<I, O> implements
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("CreateViewTransform:" + pCollectionView);
+    sb.append("CreateViewTransform:" + viewFn);
     return sb.toString();
   }
 
