@@ -37,6 +37,7 @@ under the License.
     </el-table>
   </div>
 </template>
+
 <script>
 export default {
   props: ['tableData'],
@@ -59,6 +60,7 @@ export default {
   },
 }
 </script>
+
 <style>
 .no-expand .el-icon {
   display: none;

@@ -78,7 +78,7 @@ under the License.
               <no-ssr>
                 <affix
                   relative-element-selector="#affix-target"
-                  >
+                >
                   <el-card header="Detail">
                     <detail-table
                       v-if="tabIndex === '2'"
@@ -127,6 +127,8 @@ const DAG_TAB = '2';
 let reconnectionTimer;
 // reconnection interval
 const RECONNECT_INTERVAL = 3000;
+// Window width
+const DEFAULT_WINDOW_WIDTH = 1920;
 
 const LISTENING_EVENT_LIST = [
   'job-id-select',
@@ -148,6 +150,8 @@ export default {
 
   data() {
     return {
+      windowWidth: DEFAULT_WINDOW_WIDTH,
+
       // timeline dataset
       groupDataSet: new DataSet([]),
 
@@ -168,6 +172,12 @@ export default {
   },
 
   beforeMount() {
+    if (process.browser) {
+      this.windowWidth = window.innerWidth;
+      window.addEventListener('resize', this.updateWindowWidth);
+    }
+    this.updateWindowWidth();
+
     // predefine group sets
     METRIC_LIST.forEach(metricType => {
       this.groupDataSet.add({
@@ -186,7 +196,24 @@ export default {
     });
   },
 
+  computed: {
+    title() {
+      if (this.windowWidth > 768) {
+        return 'Nemo Web Visualizer';
+      }
+      return 'Nemo Visualizer';
+    },
+  },
+
   methods: {
+    updateWindowWidth() {
+      if (process.browser) {
+        this.windowWidth = window.innerWidth;
+      } else {
+        this.windowWidth = DEFAULT_WINDOW_WIDTH;
+      }
+    },
+
     /**
      * Set up event handlers for this component.
      */
@@ -297,9 +324,24 @@ export default {
   }
 }
 </script>
+
 <style>
 .status-header {
   margin-bottom: 15px;
+}
+
+.header-container {
+  height: 80px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 30px;
+}
+
+.header-title {
+  display: flex;
+  display: -webkit-flex;
+  font-size: 32px;
 }
 
 .detail-card {

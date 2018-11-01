@@ -46,8 +46,8 @@ const FONT_SIZE = 2;
 
 const GRAPH_MARGIN = 15;
 
-const SUCCESS_COLOR = '#67C23A';
-const DANGER_COLOR = '#F56C6C';
+const SUCCESS_COLOR = '#85c262';
+const DANGER_COLOR = '#f58c89';
 
 const BACKGROUND_COLOR = '#F2F6FC';
 const CANVAS_RATIO = 0.75;
@@ -752,6 +752,7 @@ export default {
   }
 }
 </script>
+
 <style>
 .dag-canvas {
   box-sizing: border-box;

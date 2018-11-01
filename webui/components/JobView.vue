@@ -654,6 +654,7 @@ export default {
   },
 }
 </script>
+
 <style>
 .job-table {
   margin-top: 20px;
