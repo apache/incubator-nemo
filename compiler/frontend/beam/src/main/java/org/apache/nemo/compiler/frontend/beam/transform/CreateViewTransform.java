@@ -110,6 +110,8 @@ public final class CreateViewTransform<I, O> implements
 
   @Override
   public void close() {
+    onWatermark(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()));
+
     if (!isEmitted) {
       // TODO #XXX: This is an ad-hoc code to resolve the view that has no data
       // Currently, broadCastWorker reads the view data, but it throws exception if no data is available for a view.
