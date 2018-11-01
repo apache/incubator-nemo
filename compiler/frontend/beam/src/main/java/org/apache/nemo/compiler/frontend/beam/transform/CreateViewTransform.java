@@ -118,6 +118,7 @@ public final class CreateViewTransform<I, O> implements
     @Override
     public void emit(final WindowedValue<KV<?, Iterable<I>>> output) {
       final O view = viewFn.apply(new MultiView<>(output.getValue().getValue()));
+      System.out.println("Emit: " + view);
       outputCollector.emit(output.withValue(view));
     }
 
@@ -128,7 +129,7 @@ public final class CreateViewTransform<I, O> implements
 
     @Override
     public <T> void emit(final String dstVertexId, final T output) {
-      throw new RuntimeException("Should not be called");
+      outputCollector.emit(dstVertexId, output);
     }
   }
 }

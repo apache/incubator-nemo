@@ -83,6 +83,10 @@ public final class BlockInputReader implements InputReader {
     return srcVertex;
   }
 
+  public RuntimeEdge getRuntimeEdge() {
+    return runtimeEdge;
+  }
+
   /**
    * See {@link RuntimeIdManager#generateBlockIdWildcard(String, int)} for information on block wildcards.
    * @param producerTaskIndex to use.

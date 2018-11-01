@@ -27,6 +27,7 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.executor.datatransfer.BlockInputReader;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang.SerializationUtils;
@@ -76,6 +77,7 @@ public final class BroadcastManagerWorker {
             if (idToReader.containsKey(id)) {
               // Get from reader
               final InputReader inputReader = idToReader.get(id);
+              LOG.info("Reading from {}", ((BlockInputReader) inputReader).getRuntimeEdge().getId());
               final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> iterators = inputReader.read();
               if (iterators.size() != 1) {
                 throw new IllegalStateException(id.toString());

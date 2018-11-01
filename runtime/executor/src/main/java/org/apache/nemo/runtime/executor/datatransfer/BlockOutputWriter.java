@@ -26,6 +26,8 @@ import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.partitioner.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Optional;
@@ -44,6 +46,7 @@ public final class BlockOutputWriter implements OutputWriter {
   private final boolean nonDummyBlock;
 
   private long writtenBytes;
+  private static final Logger LOG = LoggerFactory.getLogger(BlockOutputWriter.class.getName());
 
   /**
    * Constructor.
@@ -77,6 +80,9 @@ public final class BlockOutputWriter implements OutputWriter {
 
   @Override
   public void write(final Object element) {
+    LOG.info("Writing {} to {}", new Object[] {
+      element, runtimeEdge.getId()});
+
     if (nonDummyBlock) {
       blockToWrite.write(partitioner.partition(element), element);
 
