@@ -46,7 +46,6 @@ public final class BlockOutputWriter implements OutputWriter {
   private final boolean nonDummyBlock;
 
   private long writtenBytes;
-  private static final Logger LOG = LoggerFactory.getLogger(BlockOutputWriter.class.getName());
 
   /**
    * Constructor.
@@ -80,9 +79,6 @@ public final class BlockOutputWriter implements OutputWriter {
 
   @Override
   public void write(final Object element) {
-    LOG.info("Writing {} to {}", new Object[] {
-      element, runtimeEdge.getId()});
-
     if (nonDummyBlock) {
       blockToWrite.write(partitioner.partition(element), element);
 

@@ -73,11 +73,9 @@ public final class BroadcastManagerWorker {
       .build(
         new CacheLoader<Serializable, Object>() {
           public Object load(final Serializable id) throws Exception {
-            LOG.info("Start to load broadcast {}", id.toString());
             if (idToReader.containsKey(id)) {
               // Get from reader
               final InputReader inputReader = idToReader.get(id);
-              LOG.info("Reading from {}", ((BlockInputReader) inputReader).getRuntimeEdge().getId());
               final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> iterators = inputReader.read();
               if (iterators.size() != 1) {
                 throw new IllegalStateException(id.toString());
@@ -130,7 +128,6 @@ public final class BroadcastManagerWorker {
    * @return the variable.
    */
   public Object get(final Serializable id)  {
-    LOG.info("get {}", id);
     try {
       return idToVariableCache.get(id);
     } catch (ExecutionException e) {
