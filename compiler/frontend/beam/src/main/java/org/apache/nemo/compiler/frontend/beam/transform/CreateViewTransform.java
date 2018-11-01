@@ -89,7 +89,7 @@ public final class CreateViewTransform<I, O> implements
     while (iterator.hasNext()) {
       final Map.Entry<BoundedWindow, List<I>> entry = iterator.next();
       if (entry.getKey().maxTimestamp().getMillis() <= inputWatermark.getTimestamp()) {
-        // emit
+        // emit the windowed data if the watermark timestamp > the window max boundary
         final O view = viewFn.apply(new MultiView<>(entry.getValue()));
         outputCollector.emit(WindowedValue.of(
           view, entry.getKey().maxTimestamp(), entry.getKey(), PaneInfo.ON_TIME_AND_ONLY_FIRING));
@@ -103,6 +103,7 @@ public final class CreateViewTransform<I, O> implements
     }
 
     if (outputTimestamp != Long.MAX_VALUE && outputWatermark < outputTimestamp) {
+      // update current output watermark and emit to next operators
       outputWatermark = outputTimestamp;
       outputCollector.emitWatermark(new Watermark(outputTimestamp));
     }
