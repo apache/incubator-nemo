@@ -211,15 +211,15 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
     // output watermark
     // we set output watermark to the minimum of the timer data
-    long outputWatermark = Long.MAX_VALUE;
+    long keyOutputTimestamp = Long.MAX_VALUE;
     for (final TimerInternals.TimerData timer : timerDataList) {
-      if (outputWatermark > timer.getTimestamp().getMillis()) {
-        outputWatermark = timer.getTimestamp().getMillis();
+      if (keyOutputTimestamp > timer.getTimestamp().getMillis()) {
+        keyOutputTimestamp = timer.getTimestamp().getMillis();
       }
     }
-    timerInternals.advanceOutputWatermark(new Instant(outputWatermark));
+    timerInternals.advanceOutputWatermark(new Instant(keyOutputTimestamp));
 
-    return outputWatermark;
+    return keyOutputTimestamp;
   }
 
   @Override
