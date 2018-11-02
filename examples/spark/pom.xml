@@ -23,10 +23,10 @@ under the License.
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <artifactId>nemo-project</artifactId>
+        <artifactId>nemo-examples</artifactId>
         <groupId>org.apache.nemo</groupId>
         <version>0.1-SNAPSHOT</version>
-        <relativePath>../../</relativePath>
+        <relativePath>../</relativePath>
     </parent>
 
     <artifactId>nemo-examples-spark</artifactId>
