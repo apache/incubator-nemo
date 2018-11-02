@@ -20,34 +20,24 @@ under the License.
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <artifactId>nemo-project</artifactId>
+    <groupId>org.apache.nemo</groupId>
+    <version>0.1-SNAPSHOT</version>
+    <relativePath>../</relativePath>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>org.apache.nemo</groupId>
-        <artifactId>nemo-compiler</artifactId>
-        <version>0.1-SNAPSHOT</version>
-        <relativePath>../</relativePath>
-    </parent>
+  <artifactId>nemo-runtime</artifactId>
+  <packaging>pom</packaging>
+  <name>Nemo Runtime</name>
 
-    <artifactId>nemo-compiler-backend</artifactId>
-    <name>Nemo Compiler Backend</name>
+  <modules>
+    <module>common</module>
+    <module>driver</module>
+    <module>executor</module>
+    <module>master</module>
+    <module>test</module>
+  </modules>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.nemo</groupId>
-            <artifactId>nemo-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-	    <dependency>
-            <groupId>org.apache.nemo</groupId>
-            <artifactId>nemo-runtime-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.nemo</groupId>
-            <artifactId>nemo-compiler-optimizer</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
 </project>
