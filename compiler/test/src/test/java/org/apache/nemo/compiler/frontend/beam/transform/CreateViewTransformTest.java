@@ -124,6 +124,8 @@ public final class CreateViewTransformTest {
     assertEquals(fixedwindows.assignWindow(ts4).maxTimestamp().getMillis(),
       oc.watermarks.get(0).getTimestamp());
 
+    oc.outputs.clear();
+
     viewTransform.close();
     assertEquals(0, oc.outputs.size());
   }
