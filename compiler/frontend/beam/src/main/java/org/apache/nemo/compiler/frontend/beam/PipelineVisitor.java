@@ -186,6 +186,10 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
     public Collection<PValue> getPValuesConsumed() {
       return pValuesConsumed;
     }
+
+    public String toString() {
+      return getNode().toString();
+    }
   }
   /**
    * Represents a transform hierarchy for composite transform.
@@ -260,6 +264,15 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
      */
     public DAG<TransformVertex, DataFlowEdge> getDAG() {
       return dag;
+    }
+
+    @Override
+    public String toString() {
+      final StringBuilder sb = new StringBuilder();
+      sb.append("[");
+      dag.getTopologicalSort().forEach(v -> sb.append(v.toString()));
+      sb.append("]");
+      return sb.toString();
     }
   }
 

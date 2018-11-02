@@ -58,7 +58,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Converts DAG of Beam root to Nemo IR DAG.
@@ -304,52 +303,76 @@ public final class PipelineTranslator
   }
 
   /**
-   * Translator for Combine transform. Implements local combining before shuffling key-value pairs.
+   * {@link Combine.PerKey} = {@link GroupByKey} + {@link Combine.GroupedValues}
+   * ({@link Combine.Globally} internally uses {@link Combine.PerKey} which will also be optimized by this translator)
+   *
+   * Partial aggregation optimizations (e.g., combiner, aggregation tree) will be applied here.
+   * In {@link Combine.CombineFn}, there are InputT, AccumT, OutputT
+   * Partial aggregations will perform transformations of AccumT -> AccumT
    *
    * @param ctx provides translation context
    * @param transformVertex the given CompositeTransform to translate
    * @param transform transform which can be obtained from {@code transformVertex}
    */
-  @CompositeTransformTranslator({Combine.Globally.class, Combine.PerKey.class, Combine.GroupedValues.class})
-  private static void combineTranslator(final TranslationContext ctx,
-                                        final CompositeTransformVertex transformVertex,
-                                        final PTransform<?, ?> transform) {
-    // No optimization for BeamSQL that handles Beam 'Row's.
-    final boolean handlesBeamRow = Stream
-      .concat(transformVertex.getNode().getInputs().values().stream(),
-        transformVertex.getNode().getOutputs().values().stream())
-      .map(pValue -> (KvCoder) getCoder(pValue, ctx.root)) // Input and output of combine should be KV
-      .map(kvCoder -> kvCoder.getValueCoder().getEncodedTypeDescriptor()) // We're interested in the 'Value' of KV
-      .anyMatch(valueTypeDescriptor -> TypeDescriptor.of(Row.class).equals(valueTypeDescriptor));
-    if (handlesBeamRow) {
+  @CompositeTransformTranslator(Combine.PerKey.class)
+  private static void combinePerKeyTranslator(final TranslationContext ctx,
+                                              final CompositeTransformVertex transformVertex,
+                                              final PTransform<?, ?> transform) {
+    final Combine.PerKey perKey = (Combine.PerKey) transform;
+    if (perKey.getFn() instanceof Combine.CombineFn) {
+
+
+      final Combine.CombineFn combineFn = (Combine.CombineFn) perKey.getFn();
+
+      final Coder accumulatorCoder;
+      try {
+        accumulatorCoder =
+          combineFn.getAccumulatorCoder(
+            ctx.getInput(transform).getPipeline().getCoderRegistry(),
+            inputCoder.getValueCoder());
+      } catch (CannotProvideCoderException e) {
+        throw new RuntimeException(e);
+      }
+
+      combineFn.createAccumulator()
+
+    } else {
+      // No optimization if not CombineFn, since we cannot extract the accumulator.
       transformVertex.getDAG().topologicalDo(ctx::translate);
-      return; // return early and give up optimization - TODO #209: Enable Local Combiner for BeamSQL
     }
 
-    // Local combiner optimization
-    final List<TransformVertex> topologicalOrdering = transformVertex.getDAG().getTopologicalSort();
-    final TransformVertex groupByKeyBeamTransform = topologicalOrdering.get(0);
-    final TransformVertex last = topologicalOrdering.get(topologicalOrdering.size() - 1);
-    if (groupByKeyBeamTransform.getNode().getTransform() instanceof GroupByKey) {
-      // Translate the given CompositeTransform under OneToOneEdge-enforced context.
-      final TranslationContext oneToOneEdgeContext = new TranslationContext(ctx,
-          OneToOneCommunicationPatternSelector.INSTANCE);
-      transformVertex.getDAG().topologicalDo(oneToOneEdgeContext::translate);
 
-      // Attempt to translate the CompositeTransform again.
-      // Add GroupByKey, which is the first transform in the given CompositeTransform.
-      // Make sure it consumes the output from the last vertex in OneToOneEdge-translated hierarchy.
-      final IRVertex groupByKeyIRVertex = new OperatorVertex(createGBKTransform(ctx, transformVertex));
-      ctx.addVertex(groupByKeyIRVertex);
-      last.getNode().getOutputs().values().forEach(outputFromCombiner
-          -> ctx.addEdgeTo(groupByKeyIRVertex, outputFromCombiner));
-      groupByKeyBeamTransform.getNode().getOutputs().values()
+    LOG.info("---");
+    transformVertex.getDAG().topologicalDo(v -> LOG.info(v.toString()));
+
+    // TODO #XXX: Opt for other types of GBK
+    if (transformVertex.getDAG().getTopologicalSort().size() != 2) {
+    } else {
+      // Local combiner optimization for gbk + afterGbk patterns,
+      // where afterGbk is assumed to contain only OneToOne edges (if it is a composite vertex)
+      final List<TransformVertex> topologicalOrdering = transformVertex.getDAG().getTopologicalSort();
+      final TransformVertex gbk = topologicalOrdering.get(0);
+      final TransformVertex afterGbk = topologicalOrdering.get(1);
+
+      if (gbk.getNode().getTransform() instanceof GroupByKey) {
+        // GBK + One-to-Ones
+        final TranslationContext oneToOneEdgeContext = new TranslationContext(ctx,
+          OneToOneCommunicationPatternSelector.INSTANCE);
+        transformVertex.getDAG().topologicalDo(oneToOneEdgeContext::translate);
+
+        // Attempt to translate the CompositeTransform again.
+        // Add GroupByKey, which is the first transform in the given CompositeTransform.
+        // Make sure it consumes the output from the last vertex in OneToOneEdge-translated hierarchy.
+        final IRVertex groupByKeyIRVertex = new OperatorVertex(createGBKTransform(ctx, transformVertex));
+        ctx.addVertex(groupByKeyIRVertex);
+        afterGbk.getNode().getOutputs().values()
+          .forEach(outputFromGbk -> ctx.addEdgeTo(groupByKeyIRVertex, outputFromGbk));
+        gbk.getNode().getOutputs().values()
           .forEach(outputFromGroupByKey -> ctx.registerMainOutputFrom(groupByKeyIRVertex, outputFromGroupByKey));
 
-      // Translate the remaining vertices.
-      topologicalOrdering.stream().skip(1).forEach(ctx::translate);
-    } else {
-      transformVertex.getDAG().topologicalDo(ctx::translate);
+        // Translate the remaining vertices.
+        topologicalOrdering.stream().skip(1).forEach(ctx::translate);
+      }
     }
   }
 

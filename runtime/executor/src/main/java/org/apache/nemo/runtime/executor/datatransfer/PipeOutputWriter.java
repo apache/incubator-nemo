@@ -97,6 +97,12 @@ public final class PipeOutputWriter implements OutputWriter {
     }
   }
 
+  writeAll() {
+    pair
+
+
+  }
+
   @Override
   public Optional<Long> getWrittenBytes() {
     return Optional.empty();
