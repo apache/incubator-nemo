@@ -17,89 +17,127 @@ specific language governing permissions and limitations
 under the License.
 -->
 <template>
-  <div>
-    <el-card class="status-header">
-      <el-row>
-        <el-col class="upper-card-col" :span="8" :xs="24">
-          <el-row type="flex" justify="center">
-            <div :span="12">
-              Selected job: {{ jobFrom ? jobFrom : "Not selected" }}
-            </div>
-          </el-row>
-        </el-col>
-      </el-row>
-    </el-card>
-    <el-card>
-      <el-tabs @tab-click="handleTabClick">
-        <el-tab-pane>
-          <template slot="label">
-            Jobs <i class="el-icon-tickets"/>
-          </template>
-          <job-view/>
-        </el-tab-pane>
-        <el-tab-pane>
-          <template slot="label">
-            Timeline <i class="el-icon-time"/>
-          </template>
-          <el-card header="Timeline" class="detail-card">
-            <metric-timeline
-              ref="metricTimeline"
+  <el-container>
+    <el-header>
+      <el-menu :default-active="activeIndex" class="el-menu-demo" mode="horizontal" @select="handleSelect">
+        <el-menu-item index="0"><a href="/">LOGO</a></el-menu-item>
+        <el-menu-item index="1">Jobs</el-menu-item>
+        <el-menu-item index="2">Stages</el-menu-item>
+        <el-menu-item index="3">Storage</el-menu-item>
+        <el-menu-item index="4">Environment</el-menu-item>
+        <el-menu-item index="5">Executors</el-menu-item>
+        <el-menu-item index="6" disabled style="float: right;">Nemo Web UI</el-menu-item>
+      </el-menu>
+    </el-header>
+
+    <el-main>
+      <!--Jobs-->
+      <div v-if="activeIndex === '1'">
+        <job-view/>
+      </div>
+      <!--Stages-->
+      <div v-else-if="activeIndex === '2'">
+
+      </div>
+      <!--Storage-->
+      <div v-else-if="activeIndex === '3'">
+
+      </div>
+      <!--Environment-->
+      <div v-else-if="activeIndex === '4'">
+
+      </div>
+      <!--Executors-->
+      <div v-else-if="activeIndex === '5'">
+
+      </div>
+
+      <!--To be GONE-->
+      <el-card>
+        <el-tabs @tab-click="handleTabClick">
+          <el-tab-pane>
+            <template slot="label">
+              Timeline <i class="el-icon-time"/>
+            </template>
+
+            <el-card header="Timeline" class="detail-card">
+              <metric-timeline
+                ref="metricTimeline"
+                :selectedJobId="selectedJobId"
+                :groups="groupDataSet"/>
+            </el-card>
+            <el-row :gutter="10">
+              <el-col height="100%" :span="12" :xs="24">
+                <el-card class="detail-card" header="Select stage">
+                  <stage-select
+                    :selectedJobId="selectedJobId"
+                    :metricLookupMap="metricLookupMap"/>
+                </el-card>
+              </el-col>
+              <el-col :span="12" :xs="24">
+                <el-card class="detail-card" header="Detail">
+                  <detail-table
+                    v-if="tabIndex === '1'"
+                    :tableData="tableData"/>
+                </el-card>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
+
+          <el-tab-pane>
+            <template slot="label">
+              DAG
+            </template>
+
+            <el-row id="affix-target" :gutter="10">
+              <el-col :span="16" :xs="24">
+                <el-card header="DAG">
+                  <dag :selectedJobId="selectedJobId" :tabIndex="tabIndex"/>
+                </el-card>
+              </el-col>
+              <el-col :span="8" :xs="24">
+                <no-ssr>
+                  <affix
+                    relative-element-selector="#affix-target"
+                  >
+                    <el-card header="Detail">
+                      <detail-table
+                        v-if="tabIndex === '2'"
+                        :tableData="tableData"/>
+                    </el-card>
+                  </affix>
+                </no-ssr>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
+
+          <el-tab-pane>
+            <template slot="label">
+              Task
+            </template>
+
+            <task-statistics
               :selectedJobId="selectedJobId"
-              :groups="groupDataSet"/>
-          </el-card>
-          <el-row :gutter="10">
-            <el-col height="100%" :span="12" :xs="24">
-              <el-card class="detail-card" header="Select stage">
-                <stage-select
-                  :selectedJobId="selectedJobId"
-                  :metricLookupMap="metricLookupMap"/>
-              </el-card>
-            </el-col>
-            <el-col :span="12" :xs="24">
-              <el-card class="detail-card" header="Detail">
-                <detail-table
-                  v-if="tabIndex === '1'"
-                  :tableData="tableData"/>
-              </el-card>
-            </el-col>
-          </el-row>
-        </el-tab-pane>
-        <el-tab-pane>
-          <template slot="label">
-            DAG
-          </template>
-          <el-row id="affix-target" :gutter="10">
-            <el-col :span="16" :xs="24">
-              <el-card header="DAG">
-                <dag :selectedJobId="selectedJobId" :tabIndex="tabIndex"/>
-              </el-card>
-            </el-col>
-            <el-col :span="8" :xs="24">
-              <no-ssr>
-                <affix
-                  relative-element-selector="#affix-target"
-                >
-                  <el-card header="Detail">
-                    <detail-table
-                      v-if="tabIndex === '2'"
-                      :tableData="tableData"/>
-                  </el-card>
-                </affix>
-              </no-ssr>
-            </el-col>
-          </el-row>
-        </el-tab-pane>
-        <el-tab-pane>
-          <template slot="label">
-            Task
-          </template>
-          <task-statistics
-            :selectedJobId="selectedJobId"
-            :metricLookupMap="metricLookupMap"/>
-        </el-tab-pane>
-      </el-tabs>
-    </el-card>
-  </div>
+              :metricLookupMap="metricLookupMap"/>
+          </el-tab-pane>
+        </el-tabs>
+      </el-card>
+    </el-main>
+  </el-container>
+
+  <!--<div>-->
+    <!--<el-card class="status-header">-->
+      <!--<el-row>-->
+        <!--<el-col class="upper-card-col" :span="8" :xs="24">-->
+          <!--<el-row type="flex" justify="center">-->
+            <!--<div :span="12">-->
+              <!--Selected job: {{ jobFrom ? jobFrom : "Not selected" }}-->
+            <!--</div>-->
+          <!--</el-row>-->
+        <!--</el-col>-->
+      <!--</el-row>-->
+    <!--</el-card>-->
+  <!--</div>-->
 </template>
 
 <script>
@@ -152,6 +190,8 @@ export default {
     return {
       windowWidth: DEFAULT_WINDOW_WIDTH,
 
+      activeIndex: '1',
+
       // timeline dataset
       groupDataSet: new DataSet([]),
 
@@ -171,31 +211,7 @@ export default {
     };
   },
 
-  beforeMount() {
-    if (process.browser) {
-      this.windowWidth = window.innerWidth;
-      window.addEventListener('resize', this.updateWindowWidth);
-    }
-    this.updateWindowWidth();
-
-    // predefine group sets
-    METRIC_LIST.forEach(metricType => {
-      this.groupDataSet.add({
-        id: metricType,
-        content: metricType
-      });
-    });
-
-
-    this.setUpEventHandlers();
-  },
-
-  beforeDestroy() {
-    LISTENING_EVENT_LIST.forEach(e => {
-      this.$eventBus.$off(e);
-    });
-  },
-
+  //COMPUTED
   computed: {
     title() {
       if (this.windowWidth > 768) {
@@ -205,6 +221,7 @@ export default {
     },
   },
 
+  //METHODS
   methods: {
     updateWindowWidth() {
       if (process.browser) {
@@ -303,6 +320,10 @@ export default {
         + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
     },
 
+    handleSelect(key, keyPath) {
+      this.activeIndex = key;
+    },
+
     /**
      * Handler for clicking tab.
      */
@@ -321,7 +342,33 @@ export default {
       delete newMetric.content;
       return newMetric;
     },
-  }
+  },
+
+  //HOOKS
+  beforeMount() {
+    if (process.browser) {
+      this.windowWidth = window.innerWidth;
+      window.addEventListener('resize', this.updateWindowWidth);
+    }
+    this.updateWindowWidth();
+
+    // predefine group sets
+    METRIC_LIST.forEach(metricType => {
+      this.groupDataSet.add({
+        id: metricType,
+        content: metricType
+      });
+    });
+
+
+    this.setUpEventHandlers();
+  },
+
+  beforeDestroy() {
+    LISTENING_EVENT_LIST.forEach(e => {
+      this.$eventBus.$off(e);
+    });
+  },
 }
 </script>
 

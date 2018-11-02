@@ -18,14 +18,29 @@ under the License.
 -->
 <template>
   <el-card>
-    <el-button
-      :disabled="uploading"
-      type="primary"
-      plain
-      @click="addJobDialogVisible = true">
-      Add job
-    </el-button>
+    <!--Title-->
+    <h1>Nemo Jobs</h1>
 
+    <!--Jobs information-->
+    <p>
+      <b>User: </b><span>TODO</span><br>
+      <b>Total Uptime: </b><span>TODO</span><br>
+      <b>Scheduling Mode: </b><span>TODO</span><br>
+      <b>Active Jobs: </b><span>TODO</span><br>
+      <b>Completed Jobs: </b><span>TODO</span><br>
+      <b>Failed Jobs: </b><span>TODO</span><br>
+    </p>
+
+    <!--Stage Timeline-->
+    <el-collapse>
+      <el-collapse-item title="Event Timeline" name="1">
+        TODO
+      </el-collapse-item>
+    </el-collapse>
+
+    <!--Jobs list-->
+    <h2>Active Jobs (TODO)</h2>
+    <!--TODO: 이거 component로 refactor 하기-->
     <el-table
       class="job-table"
       empty-text="No data"
@@ -66,6 +81,33 @@ under the License.
       </el-table-column>
     </el-table>
 
+    <h2>Completed Jobs (TODO)</h2>
+    <el-table>
+      <el-table-column label="Job id" width="70"></el-table-column>
+      <el-table-column label="Description" width="180"></el-table-column>
+      <el-table-column label="Submitted" width="180"></el-table-column>
+      <el-table-column label="Duration" width="90"></el-table-column>
+      <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column>
+      <el-table-column label="Tasks (for all stages): Succeeded/Total"></el-table-column>
+    </el-table>
+
+    <h2>Failed Jobs (TODO)</h2>
+    <el-table>
+      <el-table-column label="Job id" width="70"></el-table-column>
+      <el-table-column label="Description" width="180"></el-table-column>
+      <el-table-column label="Submitted" width="180"></el-table-column>
+      <el-table-column label="Duration" width="90"></el-table-column>
+      <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column>
+      <el-table-column label="Tasks (for all stages): Succeeded/Total"></el-table-column>
+    </el-table>
+
+
+    <!--Add job button-->
+    <el-button :disabled="uploading" icon="el-icon-plus" plain
+               @click="addJobDialogVisible = true" style="margin: auto;">
+    </el-button>
+
+    <!--Add Job dialog-->
     <el-dialog
       title="Add job"
       :visible.sync="addJobDialogVisible"
@@ -110,11 +152,96 @@ under the License.
         </el-row>
       </el-card>
     </el-dialog>
+
+    <br><br><br>
+
+    <!--Selected Job-->
+    <!--<el-card v-if="selectedJobId"> (disabled for debugging)-->
+    <el-card>
+      <h1>Details for Job TODO</h1>
+
+      <p>
+        <b>Status: </b><span>TODO</span><br>
+        <span><b>Completed Stages: </b><span>TODO</span><br></span>
+        <span><b>Active Stages: </b><span>TODO</span><br></span>
+        <span><b>Pending Stages: </b><span>TODO</span><br></span>
+        <span><b>Skipped Stages: </b><span>TODO</span><br></span>
+      </p>
+
+      <el-collapse>
+        <!--Event Timeline-->
+        <el-collapse-item title="Event Timeline" name="1">
+          TODO
+        </el-collapse-item>
+        <!--DAG Visualization-->
+        <el-collapse-item title="DAG Visualization" name="2">
+          TODO
+        </el-collapse-item>
+      </el-collapse>
+
+      <!--Stages List-->
+      <!--Completed Stages-->
+      <h2>Completed Stages (TODO)</h2>
+      <el-table>
+        <el-table-column label="Stage id" width="80"></el-table-column>
+        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Submitted" width="180"></el-table-column>
+        <el-table-column label="Duration" width="90"></el-table-column>
+        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
+        <el-table-column label="Input" width="60"></el-table-column>
+        <el-table-column label="Output" width="70"></el-table-column>
+        <el-table-column label="Shuffle Read"></el-table-column>
+        <el-table-column label="Shuffle Write"></el-table-column>
+      </el-table>
+
+      <!--Active Stages-->
+      <h2>Active Stages (TODO)</h2>
+      <el-table>
+        <el-table-column label="Stage id" width="80"></el-table-column>
+        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Submitted" width="180"></el-table-column>
+        <el-table-column label="Duration" width="90"></el-table-column>
+        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
+        <el-table-column label="Input" width="60"></el-table-column>
+        <el-table-column label="Output" width="70"></el-table-column>
+        <el-table-column label="Shuffle Read"></el-table-column>
+        <el-table-column label="Shuffle Write"></el-table-column>
+      </el-table>
+
+      <!--Pending Stages-->
+      <h2>Pending Stages (TODO)</h2>
+      <el-table>
+        <el-table-column label="Stage id" width="80"></el-table-column>
+        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Submitted" width="180"></el-table-column>
+        <el-table-column label="Duration" width="90"></el-table-column>
+        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
+        <el-table-column label="Input" width="60"></el-table-column>
+        <el-table-column label="Output" width="70"></el-table-column>
+        <el-table-column label="Shuffle Read"></el-table-column>
+        <el-table-column label="Shuffle Write"></el-table-column>
+      </el-table>
+
+      <!--Skipped Stages-->
+      <h2>Skipped Stages (TODO)</h2>
+      <el-table>
+        <el-table-column label="Stage id" width="80"></el-table-column>
+        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Submitted" width="180"></el-table-column>
+        <el-table-column label="Duration" width="90"></el-table-column>
+        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
+        <el-table-column label="Input" width="60"></el-table-column>
+        <el-table-column label="Output" width="70"></el-table-column>
+        <el-table-column label="Shuffle Read"></el-table-column>
+        <el-table-column label="Shuffle Write"></el-table-column>
+      </el-table>
+    </el-card>
   </el-card>
 </template>
 
 <script>
 import Vue from 'vue';
+import MetricTimeline from '../components/MetricTimeline';
 import uuid from 'uuid/v4';
 import { DataSet } from 'vue2vis';
 import { STATE } from '../assets/constants';
@@ -133,6 +260,10 @@ function _isDone(status) {
 }
 
 export default {
+  components: {
+    'metric-timeline': MetricTimeline,
+  },
+
   data() {
     return {
       // job id -> job data object
@@ -148,6 +279,7 @@ export default {
     };
   },
 
+  //COMPUTED
   computed: {
     /**
      * Computed property of table rows, containing job id and status.
@@ -160,6 +292,7 @@ export default {
     },
   },
 
+  //METHODS
   methods: {
     /**
      * Handler for uploading file.

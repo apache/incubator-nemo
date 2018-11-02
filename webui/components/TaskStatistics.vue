@@ -108,6 +108,33 @@ const _isDoneTaskEvent = function(event) {
 export default {
   props: ['metricLookupMap'],
 
+  //COMPUTED
+  computed: {
+    /**
+     * Computed property which consists table data.
+     */
+    taskMetric() {
+      return Object.keys(this.metricLookupMap)
+        .filter(key => this.metricLookupMap[key].group === 'TaskMetric')
+        .map(key => _preprocessMetric(this.metricLookupMap[key]));
+    },
+
+    /**
+     * Computed property of column string array.
+     * This property will look first element of `taskMetric` array and
+     * extract object keys and filter by EXECLUDE_COLUMN.
+     */
+    columnArray() {
+      if (!this.taskMetric[0]) {
+        return [];
+      }
+
+      return Object.keys(this.taskMetric[0])
+        .filter(k => !EXCLUDE_COLUMN.includes(k));
+    },
+  },
+
+  //METHODS
   methods: {
     _sortFunc(_a, _b, column) {
       let a = _a[column], b = _b[column];
@@ -160,29 +187,6 @@ export default {
     }
   },
 
-  computed: {
-    /**
-     * Computed property which consists table data.
-     */
-    taskMetric() {
-      return Object.keys(this.metricLookupMap)
-        .filter(key => this.metricLookupMap[key].group === 'TaskMetric')
-        .map(key => _preprocessMetric(this.metricLookupMap[key]));
-    },
 
-    /**
-     * Computed property of column string array.
-     * This property will look first element of `taskMetric` array and
-     * extract object keys and filter by EXECLUDE_COLUMN.
-     */
-    columnArray() {
-      if (!this.taskMetric[0]) {
-        return [];
-      }
-
-      return Object.keys(this.taskMetric[0])
-        .filter(k => !EXCLUDE_COLUMN.includes(k));
-    },
-  },
 }
 </script>
