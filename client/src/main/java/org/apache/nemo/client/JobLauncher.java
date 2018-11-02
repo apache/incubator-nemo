@@ -60,6 +60,18 @@ import java.util.concurrent.CountDownLatch;
  * Job launcher.
  */
 public final class JobLauncher {
+
+  static {
+    System.out.println(
+        "\nPowered by\n"
+          + "    _   __                   \n"
+          + "   / | / /__  ____ ___  ____ \n"
+          + "  /  |/ / _ \\/ __ `__ \\/ __ \\\n"
+          + " / /|  /  __/ / / / / / /_/ /\n"
+          + "/_/ |_/\\___/_/ /_/ /_/\\____/ \n"
+    );
+  }
+
   private static final Tang TANG = Tang.Factory.getTang();
   private static final Logger LOG = LoggerFactory.getLogger(JobLauncher.class.getName());
   private static final int LOCAL_NUMBER_OF_EVALUATORS = 100; // hopefully large enough for our use....
