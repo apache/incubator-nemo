@@ -48,7 +48,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private final Map<K, List<WindowedValue<InputT>>> keyToValues;
   private transient InMemoryTimerInternalsFactory inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
-  private long outputWatermark;
+  private long currentOutputWatermark;
 
   /**
    * GroupByKey constructor.
@@ -70,7 +70,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       options);
     this.keyToValues = new HashMap<>();
     this.reduceFn = reduceFn;
-    this.outputWatermark = Long.MIN_VALUE;
+    this.currentOutputWatermark = Long.MIN_VALUE;
   }
 
   /**
@@ -122,37 +122,37 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private void processElementsAndTriggerTimers(final Watermark inputWatermark,
                                                final Instant processingTime,
                                                final Instant synchronizedTime) {
-    long outputTimestamp = Long.MAX_VALUE;
+    long minOutputTimestampsOfEmittedWindows = Long.MAX_VALUE;
 
     for (final Map.Entry<K, List<WindowedValue<InputT>>> entry : keyToValues.entrySet()) {
       final K key = entry.getKey();
-      final List<WindowedValue<InputT>> val = entry.getValue();
+      final List<WindowedValue<InputT>> values = entry.getValue();
 
       // for each key
       // Process elements
-      if (!val.isEmpty()) {
+      if (!values.isEmpty()) {
         final KeyedWorkItem<K, InputT> keyedWorkItem =
-          KeyedWorkItems.elementsWorkItem(key, val);
+          KeyedWorkItems.elementsWorkItem(key, values);
         // The DoFnRunner interface requires WindowedValue,
         // but this windowed value is actually not used in the ReduceFnRunner internal.
         getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
       }
 
       // Trigger timers
-      final long keyOutputTimestamp =
+      final long minOutputTimestamp =
         triggerTimers(key, inputWatermark, processingTime, synchronizedTime);
-      if (outputTimestamp > keyOutputTimestamp) {
-        outputTimestamp = keyOutputTimestamp;
-      }
+
+      minOutputTimestampsOfEmittedWindows = Math.min(minOutputTimestampsOfEmittedWindows, minOutputTimestamp);
 
       // Remove values
-      val.clear();
+      values.clear();
     }
 
     // Emit watermark to downstream operators
-    if (outputTimestamp != Long.MAX_VALUE && outputWatermark < outputTimestamp) {
-      outputWatermark = outputTimestamp;
-      getOutputCollector().emitWatermark(new Watermark(outputTimestamp));
+    if (minOutputTimestampsOfEmittedWindows != Long.MAX_VALUE
+      && currentOutputWatermark < minOutputTimestampsOfEmittedWindows) {
+      currentOutputWatermark = minOutputTimestampsOfEmittedWindows;
+      getOutputCollector().emitWatermark(new Watermark(minOutputTimestampsOfEmittedWindows));
     }
   }
 
@@ -175,12 +175,12 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   /**
    * Trigger times for current key.
    * When triggering, it emits the windowed data to downstream operators.
-   * It returns the minimum output timestamp.
-   * If no data is emitted, it returns Long.MAX_VALUE.
    * @param key key
    * @param watermark watermark
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
+   * @return the minimum output timestamp.
+   * If no data is emitted, it returns Long.MAX_VALUE.
    */
   private long triggerTimers(final K key,
                              final Watermark watermark,
@@ -200,26 +200,26 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
     if (timerDataList.isEmpty()) {
       return Long.MAX_VALUE;
-    }
+    } else {
 
-    // Trigger timers and emit windowed data
-    final KeyedWorkItem<K, InputT> timerWorkItem =
-      KeyedWorkItems.timersWorkItem(key, timerDataList);
-    // The DoFnRunner interface requires WindowedValue,
-    // but this windowed value is actually not used in the ReduceFnRunner internal.
-    getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
+      // Trigger timers and emit windowed data
+      final KeyedWorkItem<K, InputT> timerWorkItem =
+        KeyedWorkItems.timersWorkItem(key, timerDataList);
+      // The DoFnRunner interface requires WindowedValue,
+      // but this windowed value is actually not used in the ReduceFnRunner internal.
+      getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
 
-    // output watermark
-    // we set output watermark to the minimum of the timer data
-    long keyOutputTimestamp = Long.MAX_VALUE;
-    for (final TimerInternals.TimerData timer : timerDataList) {
-      if (keyOutputTimestamp > timer.getTimestamp().getMillis()) {
-        keyOutputTimestamp = timer.getTimestamp().getMillis();
+      // output watermark
+      // we set output watermark to the minimum of the timer data
+      long keyOutputTimestamp = Long.MAX_VALUE;
+      for (final TimerInternals.TimerData timer : timerDataList) {
+        keyOutputTimestamp = Math.min(keyOutputTimestamp, timer.getTimestamp().getMillis());
       }
-    }
-    timerInternals.advanceOutputWatermark(new Instant(keyOutputTimestamp));
 
-    return keyOutputTimestamp;
+      timerInternals.advanceOutputWatermark(new Instant(keyOutputTimestamp));
+
+      return keyOutputTimestamp;
+    }
   }
 
   @Override

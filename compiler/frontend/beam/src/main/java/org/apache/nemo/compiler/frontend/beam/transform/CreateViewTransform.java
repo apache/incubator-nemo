@@ -43,9 +43,9 @@ public final class CreateViewTransform<I, O> implements
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final Map<BoundedWindow, List<I>> windowListMap;
 
-  // TODO #XXX: we should remove this variable by refactoring broadcast worker for side input
+  // TODO #259: we can remove this variable by implementing ReadyCheckingSideInputReader
   private boolean isEmitted = false;
-  private long outputWatermark;
+  private long currentOutputWatermark;
 
   /**
    * Constructor of CreateViewTransform.
@@ -54,7 +54,7 @@ public final class CreateViewTransform<I, O> implements
   public CreateViewTransform(final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn)  {
     this.viewFn = viewFn;
     this.windowListMap = new HashMap<>();
-    this.outputWatermark = Long.MIN_VALUE;
+    this.currentOutputWatermark = Long.MIN_VALUE;
   }
 
   @Override
@@ -77,14 +77,14 @@ public final class CreateViewTransform<I, O> implements
   public void onWatermark(final Watermark inputWatermark) {
 
     // If no data, just forwards the watermark
-    if (windowListMap.size() == 0 && outputWatermark < inputWatermark.getTimestamp()) {
-      outputWatermark = inputWatermark.getTimestamp();
+    if (windowListMap.size() == 0 && currentOutputWatermark < inputWatermark.getTimestamp()) {
+      currentOutputWatermark = inputWatermark.getTimestamp();
       outputCollector.emitWatermark(inputWatermark);
       return;
     }
 
     final Iterator<Map.Entry<BoundedWindow, List<I>>> iterator = windowListMap.entrySet().iterator();
-    long outputTimestamp = Long.MAX_VALUE;
+    long minOutputTimestampOfEmittedWindows = Long.MAX_VALUE;
 
     while (iterator.hasNext()) {
       final Map.Entry<BoundedWindow, List<I>> entry = iterator.next();
@@ -96,16 +96,16 @@ public final class CreateViewTransform<I, O> implements
         iterator.remove();
         isEmitted = true;
 
-        if (outputTimestamp > entry.getKey().maxTimestamp().getMillis()) {
-          outputTimestamp = entry.getKey().maxTimestamp().getMillis();
-        }
+        minOutputTimestampOfEmittedWindows =
+          Math.min(minOutputTimestampOfEmittedWindows, entry.getKey().maxTimestamp().getMillis());
       }
     }
 
-    if (outputTimestamp != Long.MAX_VALUE && outputWatermark < outputTimestamp) {
+    if (minOutputTimestampOfEmittedWindows != Long.MAX_VALUE
+      && currentOutputWatermark < minOutputTimestampOfEmittedWindows) {
       // update current output watermark and emit to next operators
-      outputWatermark = outputTimestamp;
-      outputCollector.emitWatermark(new Watermark(outputTimestamp));
+      currentOutputWatermark = minOutputTimestampOfEmittedWindows;
+      outputCollector.emitWatermark(new Watermark(currentOutputWatermark));
     }
   }
 
@@ -114,7 +114,7 @@ public final class CreateViewTransform<I, O> implements
     onWatermark(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()));
 
     if (!isEmitted) {
-      // TODO #XXX: This is an ad-hoc code to resolve the view that has no data
+      // TODO #259: This is an ad-hoc code to resolve the view that has no data
       // Currently, broadCastWorker reads the view data, but it throws exception if no data is available for a view.
       // We should use watermark value to track whether the materialized data in a view is available or not.
       final O view = viewFn.apply(new MultiView<>(Collections.emptyList()));

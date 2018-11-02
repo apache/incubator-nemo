@@ -18,9 +18,6 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
-import org.apache.beam.runners.core.SystemReduceFn;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Materialization;
 import org.apache.beam.sdk.transforms.Materializations;
 import org.apache.beam.sdk.transforms.ViewFn;
@@ -28,25 +25,18 @@ import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.TupleTag;
-import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.junit.Test;
 
 import java.util.*;
 
-import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 
 public final class CreateViewTransformTest {
-
-  private final static Coder NULL_INPUT_CODER = null;
-  private final static Map<TupleTag<?>, Coder<?>> NULL_OUTPUT_CODERS = null;
 
   // [---- window1 --------]         [--------------- window2 ---------------]
   // ts1 -- ts2 -- ts3 -- watermark -- ts4 -- watermark2 -- ts5 --ts6 --ts7 -- watermark7
@@ -63,17 +53,7 @@ public final class CreateViewTransformTest {
   @SuppressWarnings("unchecked")
   public void test() {
 
-    final TupleTag<String> outputTag = new TupleTag<>("main-output");
     final FixedWindows fixedwindows = FixedWindows.of(Duration.standardSeconds(1));
-    final GroupByKeyAndWindowDoFnTransform<String, String> gbkTransform =
-      new GroupByKeyAndWindowDoFnTransform(
-        NULL_OUTPUT_CODERS,
-        outputTag,
-        Collections.emptyList(), /* additional outputs */
-        WindowingStrategy.of(fixedwindows),
-        emptyList(), /* side inputs */
-        PipelineOptionsFactory.as(NemoPipelineOptions.class),
-        SystemReduceFn.buffering(NULL_INPUT_CODER));
     final CreateViewTransform<String, Integer> viewTransform =
       new CreateViewTransform(new SumViewFn());
 
@@ -145,18 +125,20 @@ public final class CreateViewTransformTest {
       oc.watermarks.get(0).getTimestamp());
 
     viewTransform.close();
+    assertEquals(0, oc.outputs.size());
   }
 
   final class SumViewFn extends ViewFn<Materializations.MultimapView<Void, String>, Integer> {
 
     @Override
     public Materialization<Materializations.MultimapView<Void, String>> getMaterialization() {
-      return null;
+      throw new UnsupportedOperationException();
     }
 
     @Override
     public Integer apply(final Materializations.MultimapView<Void, String> view) {
       int sum = 0;
+      // MultimapView.get is Nullable
       for (String s : view.get(null)) {
         sum += 1;
       }
