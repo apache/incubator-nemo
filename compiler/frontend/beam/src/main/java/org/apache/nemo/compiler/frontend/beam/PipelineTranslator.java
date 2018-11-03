@@ -84,7 +84,7 @@ public final class PipelineTranslator {
   public static DAG<IRVertex, IREdge> translate(final Pipeline pipeline,
                                                 final CompositeTransformVertex root,
                                                 final PipelineOptions pipelineOptions) {
-    return INSTANCE.apply(root, pipeline, pipelineOptions);
+    return INSTANCE.translateToIRDAG(root, pipeline, pipelineOptions);
   }
 
   /**
@@ -366,9 +366,9 @@ public final class PipelineTranslator {
     ctx.loopVertexStack.pop();
   }
 
-  private DAG<IRVertex, IREdge> apply(final CompositeTransformVertex vertex,
-                                     final Pipeline pipeline,
-                                     final PipelineOptions pipelineOptions) {
+  private DAG<IRVertex, IREdge> translateToIRDAG(final CompositeTransformVertex vertex,
+                                                 final Pipeline pipeline,
+                                                 final PipelineOptions pipelineOptions) {
     final TranslationContext ctx = new TranslationContext(vertex, pipeline, primitiveTransformToTranslator,
         compositeTransformToTranslator, DefaultCommunicationPatternSelector.INSTANCE, pipelineOptions);
     ctx.translate(vertex);
