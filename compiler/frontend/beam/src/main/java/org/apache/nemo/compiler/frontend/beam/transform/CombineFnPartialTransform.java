@@ -28,65 +28,67 @@ import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
+ *
+ * @param <K> Key type.
  * @param <I> Input type.
  * @param <A> Accum type.
  */
-public final class CombineFnTransform<K, I, A>
-  extends NoWatermarkEmitTransform<WindowedValue<KV<K, I>>, WindowedValue<KV<K, I>>> {
-  private static final Logger LOG = LoggerFactory.getLogger(CombineFnTransform.class.getName());
-  private final Map<Object, List> keyToValues;
-  private OutputCollector<WindowedValue<KV<Object, List>>> outputCollector;
-
-
+public final class CombineFnPartialTransform<K, I, A>
+  extends NoWatermarkEmitTransform<WindowedValue<KV<K, I>>, WindowedValue<KV<K, A>>> {
+  private static final Logger LOG = LoggerFactory.getLogger(CombineFnPartialTransform.class.getName());
+  private final Map<K, A> keyToAcuumulator;
+  private OutputCollector<WindowedValue<KV<K, A>>> outputCollector;
   private final GlobalCombineFnRunner<I, A, ?> combineFnRunner;
 
   /**
    * GroupByKey constructor.
    */
-  public CombineFnTransform(final CombineFnBase.GlobalCombineFn<I, A, ?> combineFn) {
+  public CombineFnPartialTransform(final CombineFnBase.GlobalCombineFn<I, A, ?> combineFn) {
     this.combineFnRunner = GlobalCombineFnRunners.create(combineFn);
+    this.keyToAcuumulator = new HashMap<>();
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<WindowedValue<KV<K, I>>> oc) {
+  public void prepare(final Context context, final OutputCollector<WindowedValue<KV<K, A>>> oc) {
     this.outputCollector = oc;
   }
 
   @Override
   public void onData(final WindowedValue<KV<K, I>> element) {
-    // Windowing here (?)
-    combineFnRunner.
+    final K key = element.getValue().getKey();
+    final I val = element.getValue().getValue();
 
-    combineFn.mergeAccumulators()
+    // The initial accumulator
+    keyToAcuumulator.putIfAbsent(
+      key, combineFnRunner.createAccumulator(null, null, element.getWindows()));
 
+    // Get the accumulator
+    final A accumulatorForThisElement = keyToAcuumulator.get(key);
 
-    final WindowedValue<KV> windowedValue = (WindowedValue<KV>) element;
-    final KV kv = windowedValue.getValue();
-    keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
-    keyToValues.get(kv.getKey()).add(kv.getValue());
+    // Update the accumulator
+    keyToAcuumulator.putIfAbsent(
+      key,
+      combineFnRunner.addInput(accumulatorForThisElement, val, null, null, element.getWindows()));
   }
 
   @Override
   public void close() {
-    if (keyToValues.isEmpty()) {
-      LOG.warn("Beam GroupByKeyTransform received no data!");
-    } else {
-      keyToValues.entrySet().stream().map(entry ->
-        WindowedValue.valueInGlobalWindow(KV.of(entry.getKey(), entry.getValue())))
-        .forEach(outputCollector::emit);
-      keyToValues.clear();
-    }
+    keyToAcuumulator.entrySet().stream().forEach(entry -> {
+      final K key = entry.getKey();
+      final A accum = entry.getValue();
+      final A compactAccum = combineFnRunner.compact(accum, null, null, null);
+      outputCollector.emit(WindowedValue.valueInGlobalWindow(KV.of(key, compactAccum)));
+    });
   }
 
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("GroupByKeyTransform:");
+    sb.append("CombineFnPartialTransform:");
     sb.append(super.toString());
     return sb.toString();
   }

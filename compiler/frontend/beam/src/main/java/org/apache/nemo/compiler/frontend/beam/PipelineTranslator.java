@@ -103,7 +103,7 @@ public final class PipelineTranslator
         for (final Class<? extends PTransform> transform : primitive.value()) {
           if (primitiveTransformToTranslator.containsKey(transform)) {
             throw new RuntimeException(String.format("Translator for primitive transform %s is"
-                + "already registered: %s", transform, primitiveTransformToTranslator.get(transform)));
+              + "already registered: %s", transform, primitiveTransformToTranslator.get(transform)));
           }
           primitiveTransformToTranslator.put(transform, translator);
         }
@@ -112,7 +112,7 @@ public final class PipelineTranslator
         for (final Class<? extends PTransform> transform : composite.value()) {
           if (compositeTransformToTranslator.containsKey(transform)) {
             throw new RuntimeException(String.format("Translator for composite transform %s is"
-                + "already registered: %s", transform, compositeTransformToTranslator.get(transform)));
+              + "already registered: %s", transform, compositeTransformToTranslator.get(transform)));
           }
           compositeTransformToTranslator.put(transform, translator);
         }
@@ -225,7 +225,7 @@ public final class PipelineTranslator
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
     final TupleTag mainOutputTag = new TupleTag<>();
 
-    if (mainInput.getWindowingStrategy().getWindowFn() instanceof GlobalWindows) {
+    if (isBatch(transformVertex)) {
       return new GroupByKeyTransform();
     } else {
       return new GroupByKeyAndWindowDoFnTransform(
@@ -237,6 +237,13 @@ public final class PipelineTranslator
         ctx.pipelineOptions,
         SystemReduceFn.buffering(mainInput.getCoder()));
     }
+  }
+
+  private static boolean isBatch(final TransformVertex transformVertex) {
+    final AppliedPTransform pTransform = transformVertex.getNode().toAppliedPTransform(PIPELINE.get());
+    final PCollection<?> mainInput = (PCollection<?>)
+      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+    return mainInput.getWindowingStrategy().getWindowFn() instanceof GlobalWindows;
   }
 
   @PrimitiveTransformTranslator(GroupByKey.class)
@@ -318,34 +325,65 @@ public final class PipelineTranslator
   private static void combinePerKeyTranslator(final TranslationContext ctx,
                                               final CompositeTransformVertex transformVertex,
                                               final PTransform<?, ?> transform) {
-    final Combine.PerKey perKey = (Combine.PerKey) transform;
-    if (perKey.getFn() instanceof Combine.CombineFn) {
-
-
-      final Combine.CombineFn combineFn = (Combine.CombineFn) perKey.getFn();
-
-      final Coder accumulatorCoder;
-      try {
-        accumulatorCoder =
-          combineFn.getAccumulatorCoder(
-            ctx.getInput(transform).getPipeline().getCoderRegistry(),
-            inputCoder.getValueCoder());
-      } catch (CannotProvideCoderException e) {
-        throw new RuntimeException(e);
-      }
-
-      combineFn.createAccumulator()
-
-    } else {
-      // No optimization if not CombineFn, since we cannot extract the accumulator.
+    // TODO #XXX: Combiner optimization for streaming
+    if (!isBatch(transformVertex)) {
       transformVertex.getDAG().topologicalDo(ctx::translate);
+      return;
     }
-
 
     LOG.info("---");
     transformVertex.getDAG().topologicalDo(v -> LOG.info(v.toString()));
 
+
+    final Combine.PerKey perKey = (Combine.PerKey) transform;
+    final CombineFnBase.GlobalCombineFn combineFn = perKey.getFn();
+
+
+    final Coder accumulatorCoder;
+    try {
+      accumulatorCoder =
+        combineFn.getAccumulatorCoder(
+          ctx.getInput(transform).getPipeline().getCoderRegistry(),
+          inputCoder.getValueCoder());
+    } catch (CannotProvideCoderException e) {
+      throw new RuntimeException(e);
+    }
+
+
+    // input of Combine -O2O-> partialCombine -shuffle/accumcoder-> finalCombine -?> next
+    final IRVertex partialCombine = new OperatorVertex(new CombineFnPartialTransform<>(combineFn));
+
+    combineFn.createAccumulator()
+
+    final IRVertex finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn));
+
+
+
+
+
+    /* Prev code:
+
     // TODO #XXX: Opt for other types of GBK
+    // Local combiner optimization for gbk + afterGbk patterns,
+    // where afterGbk is assumed to contain only OneToOne edges (if it is a composite vertex)
+    final List<TransformVertex> topologicalOrdering = transformVertex.getDAG().getTopologicalSort();
+    final TransformVertex gbk = topologicalOrdering.get(0);
+    final TransformVertex groupedValues = topologicalOrdering.get(1);
+
+    // GBK + One-to-Ones
+    final TranslationContext oneToOneEdgeContext = new TranslationContext(ctx,
+      OneToOneCommunicationPatternSelector.INSTANCE);
+    transformVertex.getDAG().topologicalDo(oneToOneEdgeContext::translate);
+
+    ctx.addVertex(groupByKeyIRVertex);
+    afterGbk.getNode().getOutputs().values()
+      .forEach(outputFromGbk -> ctx.addEdgeTo(groupByKeyIRVertex, outputFromGbk));
+    gbk.getNode().getOutputs().values()
+      .forEach(outputFromGroupByKey -> ctx.registerMainOutputFrom(groupByKeyIRVertex, outputFromGroupByKey));
+
+    // Translate the remaining vertices.
+    topologicalOrdering.stream().skip(1).forEach(ctx::translate);
+
     if (transformVertex.getDAG().getTopologicalSort().size() != 2) {
     } else {
       // Local combiner optimization for gbk + afterGbk patterns,
@@ -374,6 +412,7 @@ public final class PipelineTranslator
         topologicalOrdering.stream().skip(1).forEach(ctx::translate);
       }
     }
+      */
   }
 
   /**
@@ -399,7 +438,7 @@ public final class PipelineTranslator
   public DAG<IRVertex, IREdge> apply(final CompositeTransformVertex pipeline,
                                      final PipelineOptions pipelineOptions) {
     final TranslationContext ctx = new TranslationContext(pipeline, primitiveTransformToTranslator,
-        compositeTransformToTranslator, DefaultCommunicationPatternSelector.INSTANCE, pipelineOptions);
+      compositeTransformToTranslator, DefaultCommunicationPatternSelector.INSTANCE, pipelineOptions);
     ctx.translate(pipeline);
     return ctx.builder.build();
   }
@@ -540,14 +579,14 @@ public final class PipelineTranslator
       Class<?> clazz = transform.getClass();
       while (true) {
         final Method translator = (isComposite ? compositeTransformToTranslator : primitiveTransformToTranslator)
-            .get(clazz);
+          .get(clazz);
         if (translator == null) {
           if (clazz.getSuperclass() != null) {
             clazz = clazz.getSuperclass();
             continue;
           }
           throw new UnsupportedOperationException(String.format("%s transform %s is not supported",
-              isComposite ? "Composite" : "Primitive", transform.getClass().getCanonicalName()));
+            isComposite ? "Composite" : "Primitive", transform.getClass().getCanonicalName()));
         } else {
           try {
             translator.setAccessible(true);
@@ -557,7 +596,7 @@ public final class PipelineTranslator
             throw new RuntimeException(e);
           } catch (final InvocationTargetException | RuntimeException e) {
             throw new RuntimeException(String.format(
-                "Translator %s have failed to translate %s", translator, transform), e);
+              "Translator %s have failed to translate %s", translator, transform), e);
           }
         }
       }
@@ -583,16 +622,16 @@ public final class PipelineTranslator
       if (src == null) {
         try {
           throw new RuntimeException(String.format("Cannot find a vertex that emits pValue %s, "
-              + "while PTransform %s is known to produce it.", input, root.getPrimitiveProducerOf(input)));
+            + "while PTransform %s is known to produce it.", input, root.getPrimitiveProducerOf(input)));
         } catch (final RuntimeException e) {
           throw new RuntimeException(String.format("Cannot find a vertex that emits pValue %s, "
-              + "and the corresponding PTransform was not found", input));
+            + "and the corresponding PTransform was not found", input));
         }
       }
       final CommunicationPatternProperty.Value communicationPattern = communicationPatternSelector.apply(src, dst);
       if (communicationPattern == null) {
         throw new RuntimeException(String.format("%s have failed to determine communication pattern "
-            + "for an edge from %s to %s", communicationPatternSelector, src, dst));
+          + "for an edge from %s to %s", communicationPatternSelector, src, dst));
       }
       final IREdge edge = new IREdge(communicationPattern, src, dst);
       final Coder coder;
@@ -660,7 +699,7 @@ public final class PipelineTranslator
    * Default implementation for {@link CommunicationPatternProperty.Value} selector.
    */
   private static final class DefaultCommunicationPatternSelector
-      implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
+    implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
 
     private static final DefaultCommunicationPatternSelector INSTANCE = new DefaultCommunicationPatternSelector();
 
@@ -698,7 +737,7 @@ public final class PipelineTranslator
    * A {@link CommunicationPatternProperty.Value} selector which always emits OneToOne.
    */
   private static final class OneToOneCommunicationPatternSelector
-      implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
+    implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
     private static final OneToOneCommunicationPatternSelector INSTANCE = new OneToOneCommunicationPatternSelector();
 
     @Override
