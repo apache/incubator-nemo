@@ -26,9 +26,6 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.AppliedPTransform;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
@@ -38,7 +35,6 @@ import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.*;
 import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.io.Read;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.transforms.windowing.WindowFn;
@@ -51,16 +47,15 @@ import java.lang.annotation.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 /**
  * A collection of translators for the Beam PTransforms.
  */
 final class PipelineTranslator {
+  public static final PipelineTranslator INSTANCE = new PipelineTranslator();
   private static final Logger LOG = LoggerFactory.getLogger(PipelineTranslator.class.getName());
 
-  private static final PipelineTranslator INSTANCE = new PipelineTranslator();
 
   private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator = new HashMap<>();
   private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator = new HashMap<>();
@@ -269,20 +264,6 @@ final class PipelineTranslator {
   /////////////////////// COMPOSITE TRANSFORMS
 
   /**
-   * Default translator for CompositeTransforms. Translates inner DAG without modifying {@link PipelineTranslationContext}.
-   *
-   * @param ctx provides translation context
-   * @param transformVertex the given CompositeTransform to translate
-   * @param transform transform which can be obtained from {@code transformVertex}
-   */
-  @CompositeTransformTranslator(PTransform.class)
-  private static void topologicalTranslator(final PipelineTranslationContext ctx,
-                                            final TransformHierarchy.Node transformVertex,
-                                            final PTransform<?, ?> transform) {
-    transformVertex.getDAG().topologicalDo(ctx::translate);
-  }
-
-  /**
    * {@link Combine.PerKey} = {@link GroupByKey} + {@link Combine.GroupedValues}
    * ({@link Combine.Globally} internally uses {@link Combine.PerKey} which will also be optimized by this translator)
    *
@@ -370,8 +351,8 @@ final class PipelineTranslator {
                                      final TransformHierarchy.Node transformVertex,
                                      final LoopCompositeTransform<?, ?> transform) {
     final LoopVertex loopVertex = new LoopVertex(transformVertex.getFullName());
-    ctx.builder.addVertex(loopVertex, ctx.loopVertexStack);
-    ctx.builder.removeVertex(loopVertex);
+    ctx.getBuilder().addVertex(loopVertex, ctx.loopVertexStack);
+    ctx.getBuilder().removeVertex(loopVertex);
     ctx.loopVertexStack.push(loopVertex);
     topologicalTranslator(ctx, transformVertex, transform);
     ctx.loopVertexStack.pop();
@@ -383,7 +364,7 @@ final class PipelineTranslator {
   private static DoFnTransform createDoFnTransform(final PipelineTranslationContext ctx,
                                                    final TransformHierarchy.Node transformVertex) {
     try {
-      final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.pipeline);
+      final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.getPipeline());
       final DoFn doFn = ParDoTranslation.getDoFn(pTransform);
       final TupleTag mainOutputTag = ParDoTranslation.getMainOutputTag(pTransform);
       final List<PCollectionView<?>> sideInputs = ParDoTranslation.getSideInputs(pTransform);
@@ -400,12 +381,11 @@ final class PipelineTranslator {
         additionalOutputTags.getAll(),
         mainInput.getWindowingStrategy(),
         sideInputs,
-        ctx.pipelineOptions);
+        ctx.getPipelineOptions());
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
   }
-
 
   private static Map<TupleTag<?>, Coder<?>> getOutputCoders(final AppliedPTransform<?, ?, ?> ptransform) {
     return ptransform
@@ -415,7 +395,6 @@ final class PipelineTranslator {
       .filter(e -> e.getValue() instanceof PCollection)
       .collect(Collectors.toMap(e -> e.getKey(), e -> ((PCollection) e.getValue()).getCoder()));
   }
-
 
   /**
    * Create a group by key transform.
@@ -427,7 +406,7 @@ final class PipelineTranslator {
   private static Transform createGBKTransform(
     final PipelineTranslationContext ctx,
     final TransformHierarchy.Node transformVertex) {
-    final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.pipeline);
+    final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.getPipeline());
     final PCollection<?> mainInput = (PCollection<?>)
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
     final TupleTag mainOutputTag = new TupleTag<>();
@@ -441,121 +420,15 @@ final class PipelineTranslator {
         Collections.emptyList(),  /*  GBK does not have additional outputs */
         mainInput.getWindowingStrategy(),
         Collections.emptyList(), /*  GBK does not have additional side inputs */
-        ctx.pipelineOptions,
+        ctx.getPipelineOptions(),
         SystemReduceFn.buffering(mainInput.getCoder()));
     }
   }
 
   private static boolean isBatch(final TransformHierarchy.Node transformVertex) {
-    final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.pipeline);
+    final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.getPipeline());
     final PCollection<?> mainInput = (PCollection<?>)
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
     return mainInput.getWindowingStrategy().getWindowFn() instanceof GlobalWindows;
-  }
-
-
-
-  private DAG<IRVertex, IREdge> translateToIRDAG(final TransformHierarchy.Node vertex,
-                                                 final Pipeline pipeline,
-                                                 final PipelineOptions pipelineOptions) {
-    final PipelineTranslationContext ctx = new PipelineTranslationContext(vertex, pipeline, primitiveTransformToTranslator,
-      compositeTransformToTranslator, DefaultCommunicationPatternSelector.INSTANCE, pipelineOptions);
-    ctx.translate(vertex);
-    return ctx.builder.build();
-  }
-
-
-  private static Coder<?> getCoder(final PValue input, final TransformHierarchy.Node pipeline) {
-    final Coder<?> coder;
-    if (input instanceof PCollection) {
-      coder = ((PCollection) input).getCoder();
-    } else if (input instanceof PCollectionView) {
-      coder = getCoderForView((PCollectionView) input, pipeline);
-    } else {
-      throw new RuntimeException(String.format("Coder for PValue %s cannot be determined", input));
-    }
-    return coder;
-  }
-
-  /**
-   * Get appropriate coder for {@link PCollectionView}.
-   *
-   * @param view {@link PCollectionView} from the corresponding {@link View.CreatePCollectionView} transform
-   * @return appropriate {@link Coder} for {@link PCollectionView}
-   */
-  private static Coder<?> getCoderForView(final PCollectionView view, final TransformHierarchy.Node pipeline) {
-    final TransformHierarchy.Node src = pipeline.getPrimitiveProducerOf(view);
-    final Coder<?> baseCoder = src.getOutputs().values().stream()
-      .filter(v -> v instanceof PCollection)
-      .map(v -> (PCollection) v)
-      .findFirst()
-      .orElseThrow(() -> new RuntimeException(String.format("No incoming PCollection to %s", src)))
-      .getCoder();
-    final KvCoder<?, ?> inputKVCoder = (KvCoder) baseCoder;
-    final ViewFn viewFn = view.getViewFn();
-    if (viewFn instanceof PCollectionViews.IterableViewFn) {
-      return IterableCoder.of(inputKVCoder.getValueCoder());
-    } else if (viewFn instanceof PCollectionViews.ListViewFn) {
-      return ListCoder.of(inputKVCoder.getValueCoder());
-    } else if (viewFn instanceof PCollectionViews.MapViewFn) {
-      return MapCoder.of(inputKVCoder.getKeyCoder(), inputKVCoder.getValueCoder());
-    } else if (viewFn instanceof PCollectionViews.MultimapViewFn) {
-      return MapCoder.of(inputKVCoder.getKeyCoder(), IterableCoder.of(inputKVCoder.getValueCoder()));
-    } else if (viewFn instanceof PCollectionViews.SingletonViewFn) {
-      return baseCoder;
-    } else {
-      throw new UnsupportedOperationException(String.format("Unsupported viewFn %s", viewFn.getClass()));
-    }
-  }
-
-  /**
-   * Default implementation for {@link CommunicationPatternProperty.Value} selector.
-   */
-  private static final class DefaultCommunicationPatternSelector
-    implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
-
-    private static final DefaultCommunicationPatternSelector INSTANCE = new DefaultCommunicationPatternSelector();
-
-    @Override
-    public CommunicationPatternProperty.Value apply(final IRVertex src, final IRVertex dst) {
-      final Class<?> constructUnionTableFn;
-      try {
-        constructUnionTableFn = Class.forName("org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");
-      } catch (final ClassNotFoundException e) {
-        throw new RuntimeException(e);
-      }
-
-      final Transform srcTransform = src instanceof OperatorVertex ? ((OperatorVertex) src).getTransform() : null;
-      final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
-      final DoFn srcDoFn = srcTransform instanceof DoFnTransform ? ((DoFnTransform) srcTransform).getDoFn() : null;
-
-      if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
-        return CommunicationPatternProperty.Value.Shuffle;
-      }
-      if (srcTransform instanceof FlattenTransform) {
-        return CommunicationPatternProperty.Value.OneToOne;
-      }
-      if (dstTransform instanceof GroupByKeyAndWindowDoFnTransform
-        || dstTransform instanceof GroupByKeyTransform) {
-        return CommunicationPatternProperty.Value.Shuffle;
-      }
-      if (dstTransform instanceof CreateViewTransform) {
-        return CommunicationPatternProperty.Value.BroadCast;
-      }
-      return CommunicationPatternProperty.Value.OneToOne;
-    }
-  }
-
-  /**
-   * A {@link CommunicationPatternProperty.Value} selector which always emits OneToOne.
-   */
-  private static final class OneToOneCommunicationPatternSelector
-    implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
-    private static final OneToOneCommunicationPatternSelector INSTANCE = new OneToOneCommunicationPatternSelector();
-
-    @Override
-    public CommunicationPatternProperty.Value apply(final IRVertex src, final IRVertex dst) {
-      return CommunicationPatternProperty.Value.OneToOne;
-    }
   }
 }

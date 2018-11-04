@@ -20,8 +20,9 @@ package org.apache.nemo.compiler.frontend.beam;
 
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.TransformHierarchy;
-
-import java.util.*;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 
 /**
  * Traverses through the given Beam pipeline to construct a DAG of Beam Transform,
@@ -31,14 +32,12 @@ import java.util.*;
  * This DAG will be later translated by {@link PipelineTranslator} into Nemo IR DAG.
  */
 public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
-  private final Stack<TransformHierarchy.Node> compositeTransformVertexStack = new Stack<>();
-  private TransformHierarchy.Node rootVertex = null;
-  private static PipelineTranslationContext pipelineTranslationContext = new PipelineTranslationContext();
-  private static PipelineTranslator pipelineTranslator = new PipelineTranslator();
+  private static PipelineTranslator pipelineTranslator = PipelineTranslator.INSTANCE;
 
-  public PipelineVisitor() {
-    final PipelineTranslationContext ctx = new PipelineTranslationContext(vertex, pipeline, primitiveTransformToTranslator,
-      compositeTransformToTranslator, DefaultCommunicationPatternSelector.INSTANCE, pipelineOptions);
+  private final PipelineTranslationContext context;
+
+  PipelineVisitor(final Pipeline pipeline, final NemoPipelineOptions pipelineOptions) {
+    this.context = new PipelineTranslationContext(pipeline, pipelineOptions);
   }
 
   @Override
@@ -48,8 +47,11 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
 
   @Override
   public CompositeBehavior enterCompositeTransform(final TransformHierarchy.Node node) {
+    final CompositeBehavior compositeBehavior = pipelineTranslator.translateComposite(node);
+
+    // this should come after the above translateComposite, since this composite is a child of a previous composite.
     pipelineTranslationContext.enterCompositeTransform(node);
-    return pipelineTranslator.translateComposite(node);
+    return compositeBehavior;
   }
 
   @Override
@@ -60,10 +62,10 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   /**
    * @return A vertex representing the top-level CompositeTransform.
    */
-  public TransformHierarchy.Node getConvertedPipeline() {
+  DAG<IRVertex, IREdge> getConvertedPipeline() {
     if (rootVertex == null) {
       throw new RuntimeException("The visitor have not fully traversed through a Beam pipeline.");
     }
-    return rootVertex;
+    return pipelineTranslationContext.getBuilder().build();
   }
 }

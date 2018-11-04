@@ -22,7 +22,8 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.runners.TransformHierarchy;
-import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.*;
 import org.apache.nemo.common.dag.DAGBuilder;
@@ -30,9 +31,12 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
-import java.lang.reflect.Method;
+import org.apache.nemo.compiler.frontend.beam.transform.*;
+
 import java.util.*;
 import java.util.function.BiFunction;
 
@@ -49,38 +53,21 @@ final class PipelineTranslationContext {
   private final Map<PValue, IRVertex> pValueToProducer;
   private final Map<PValue, TupleTag<?>> pValueToTag;
   private final Stack<LoopVertex> loopVertexStack;
-  private final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> communicationPatternSelector;
   private final Pipeline pipeline;
 
-
-  private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator;
-  private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator;
-
   /**
-   * @param root the root to translate
    * @param pipeline the pipeline to translate
-   * @param primitiveTransformToTranslator provides translators for PrimitiveTransform
-   * @param compositeTransformToTranslator provides translators for CompositeTransform
-   * @param selector provides {@link CommunicationPatternProperty.Value} for IR edges
    * @param pipelineOptions {@link PipelineOptions}
    */
-  PipelineTranslationContext(final TransformHierarchy.Node root,
-                             final Pipeline pipeline,
-                             final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator,
-                             final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator,
-                             final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> selector,
+  PipelineTranslationContext(final Pipeline pipeline,
                              final PipelineOptions pipelineOptions) {
     this.root = root;
-    this.hierarchyStack = new Stack<>();
-
+    this.compositeTransformStack = new Stack<>();
     this.pipeline = pipeline;
     this.builder = new DAGBuilder<>();
     this.pValueToProducer = new HashMap<>();
     this.pValueToTag = new HashMap<>();
     this.loopVertexStack = new Stack<>();
-    this.primitiveTransformToTranslator = primitiveTransformToTranslator;
-    this.compositeTransformToTranslator = compositeTransformToTranslator;
-    this.communicationPatternSelector = selector;
     this.pipelineOptions = pipelineOptions;
   }
 
@@ -93,7 +80,6 @@ final class PipelineTranslationContext {
       throw new IllegalStateException(compositeTransform.toString());
     }
   }
-
 
   /**
    * Add IR vertex to the builder.
@@ -190,7 +176,95 @@ final class PipelineTranslationContext {
 
   Pipeline getPipeline() {
     return pipeline;
+  }
 
+  PipelineOptions getPipelineOptions() {
+    return pipelineOptions;
+  }
+
+  DAGBuilder getBuilder() {
+    return builder;
+  }
+
+  /**
+   * Default implementation for {@link CommunicationPatternProperty.Value} selector.
+   */
+  private static final class DefaultCommunicationPatternSelector
+    implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
+
+    private static final DefaultCommunicationPatternSelector INSTANCE = new DefaultCommunicationPatternSelector();
+
+    @Override
+    public CommunicationPatternProperty.Value apply(final IRVertex src, final IRVertex dst) {
+      final Class<?> constructUnionTableFn;
+      try {
+        constructUnionTableFn = Class.forName("org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");
+      } catch (final ClassNotFoundException e) {
+        throw new RuntimeException(e);
+      }
+
+      final Transform srcTransform = src instanceof OperatorVertex ? ((OperatorVertex) src).getTransform() : null;
+      final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
+      final DoFn srcDoFn = srcTransform instanceof DoFnTransform ? ((DoFnTransform) srcTransform).getDoFn() : null;
+
+      if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
+        return CommunicationPatternProperty.Value.Shuffle;
+      }
+      if (srcTransform instanceof FlattenTransform) {
+        return CommunicationPatternProperty.Value.OneToOne;
+      }
+      if (dstTransform instanceof GroupByKeyAndWindowDoFnTransform
+        || dstTransform instanceof GroupByKeyTransform) {
+        return CommunicationPatternProperty.Value.Shuffle;
+      }
+      if (dstTransform instanceof CreateViewTransform) {
+        return CommunicationPatternProperty.Value.BroadCast;
+      }
+      return CommunicationPatternProperty.Value.OneToOne;
+    }
+  }
+
+  private static Coder<?> getCoder(final PValue input, final TransformHierarchy.Node pipeline) {
+    final Coder<?> coder;
+    if (input instanceof PCollection) {
+      coder = ((PCollection) input).getCoder();
+    } else if (input instanceof PCollectionView) {
+      coder = getCoderForView((PCollectionView) input, pipeline);
+    } else {
+      throw new RuntimeException(String.format("Coder for PValue %s cannot be determined", input));
+    }
+    return coder;
+  }
+
+  /**
+   * Get appropriate coder for {@link PCollectionView}.
+   *
+   * @param view {@link PCollectionView} from the corresponding {@link View.CreatePCollectionView} transform
+   * @return appropriate {@link Coder} for {@link PCollectionView}
+   */
+  private static Coder<?> getCoderForView(final PCollectionView view, final TransformHierarchy.Node pipeline) {
+    final TransformHierarchy.Node src = pipeline.getPrimitiveProducerOf(view);
+    final Coder<?> baseCoder = src.getOutputs().values().stream()
+      .filter(v -> v instanceof PCollection)
+      .map(v -> (PCollection) v)
+      .findFirst()
+      .orElseThrow(() -> new RuntimeException(String.format("No incoming PCollection to %s", src)))
+      .getCoder();
+    final KvCoder<?, ?> inputKVCoder = (KvCoder) baseCoder;
+    final ViewFn viewFn = view.getViewFn();
+    if (viewFn instanceof PCollectionViews.IterableViewFn) {
+      return IterableCoder.of(inputKVCoder.getValueCoder());
+    } else if (viewFn instanceof PCollectionViews.ListViewFn) {
+      return ListCoder.of(inputKVCoder.getValueCoder());
+    } else if (viewFn instanceof PCollectionViews.MapViewFn) {
+      return MapCoder.of(inputKVCoder.getKeyCoder(), inputKVCoder.getValueCoder());
+    } else if (viewFn instanceof PCollectionViews.MultimapViewFn) {
+      return MapCoder.of(inputKVCoder.getKeyCoder(), IterableCoder.of(inputKVCoder.getValueCoder()));
+    } else if (viewFn instanceof PCollectionViews.SingletonViewFn) {
+      return baseCoder;
+    } else {
+      throw new UnsupportedOperationException(String.format("Unsupported viewFn %s", viewFn.getClass()));
+    }
   }
 }
 

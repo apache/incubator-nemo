@@ -19,9 +19,6 @@
 package org.apache.nemo.compiler.frontend.beam;
 
 import org.apache.nemo.client.JobLauncher;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineRunner;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -57,14 +54,10 @@ public final class NemoPipelineRunner extends PipelineRunner<NemoPipelineResult>
    * @return The result of the pipeline.
    */
   public NemoPipelineResult run(final Pipeline pipeline) {
-    final PipelineVisitor pipelineVisitor = new PipelineVisitor();
+    final PipelineVisitor pipelineVisitor = new PipelineVisitor(pipeline, nemoPipelineOptions);
     pipeline.traverseTopologically(pipelineVisitor);
-    final DAG<IRVertex, IREdge> dag = PipelineTranslator.translate(pipeline,
-      pipelineVisitor.getConvertedPipeline(),
-      nemoPipelineOptions);
-
     final NemoPipelineResult nemoPipelineResult = new NemoPipelineResult();
-    JobLauncher.launchDAG(dag);
+    JobLauncher.launchDAG(pipelineVisitor.getConvertedPipeline());
     return nemoPipelineResult;
   }
 }
