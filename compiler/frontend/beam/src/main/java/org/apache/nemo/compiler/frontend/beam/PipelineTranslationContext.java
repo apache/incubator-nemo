@@ -45,9 +45,6 @@ import java.util.function.BiFunction;
  */
 
 final class PipelineTranslationContext {
-  private final TransformHierarchy.Node root;
-  private final Stack<TransformHierarchy.Node> compositeTransformStack;
-
   private final PipelineOptions pipelineOptions;
   private final DAGBuilder<IRVertex, IREdge> builder;
   private final Map<PValue, IRVertex> pValueToProducer;
@@ -61,7 +58,6 @@ final class PipelineTranslationContext {
    */
   PipelineTranslationContext(final Pipeline pipeline,
                              final PipelineOptions pipelineOptions) {
-    this.compositeTransformStack = new Stack<>();
     this.pipeline = pipeline;
     this.builder = new DAGBuilder<>();
     this.pValueToProducer = new HashMap<>();
@@ -71,12 +67,14 @@ final class PipelineTranslationContext {
   }
 
   void enterCompositeTransform(final TransformHierarchy.Node compositeTransform) {
-    compositeTransformStack.push(compositeTransform);
+    if (compositeTransform.getTransform() instanceof LoopCompositeTransform) {
+      loopVertexStack.push(new LoopVertex(compositeTransform.getFullName()));
+    }
   }
 
   void leaveCompositeTransform(final TransformHierarchy.Node compositeTransform) {
-    if (compositeTransform.equals(compositeTransformStack.pop())) {
-      throw new IllegalStateException(compositeTransform.toString());
+    if (compositeTransform.getTransform() instanceof LoopCompositeTransform) {
+      loopVertexStack.pop();
     }
   }
 

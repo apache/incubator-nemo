@@ -341,8 +341,6 @@ final class PipelineTranslator {
   }
 
   /**
-   * Pushes the loop vertex to the stack before translating the inner DAG, and pops it after the translation.
-   *
    * @param ctx provides translation context
    * @param transformVertex the given CompositeTransform to translate
    * @param transform transform which can be obtained from {@code transformVertex}
@@ -351,14 +349,7 @@ final class PipelineTranslator {
   private static void loopTranslator(final PipelineTranslationContext ctx,
                                      final TransformHierarchy.Node transformVertex,
                                      final LoopCompositeTransform<?, ?> transform) {
-    final LoopVertex loopVertex = new LoopVertex(transformVertex.getFullName());
-    ctx.getBuilder().addVertex(loopVertex, ctx.getLoopVertexStack());
-    ctx.getBuilder().removeVertex(loopVertex);
-
-    // TODO: Do this in composite
-    ctx.getLoopVertexStack().push(loopVertex);
-    topologicalTranslator(ctx, transformVertex, transform);
-    ctx.getLoopVertexStack().pop();
+    // Do nothing here, as the context handles the loop vertex stack.
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
