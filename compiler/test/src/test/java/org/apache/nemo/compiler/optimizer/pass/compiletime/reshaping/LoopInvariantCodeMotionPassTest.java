@@ -62,32 +62,32 @@ public class LoopInvariantCodeMotionPassTest {
     assertTrue(alsLoopOpt.isPresent());
     final LoopVertex alsLoop = alsLoopOpt.get();
 
-    final IRVertex vertex6 = groupedDAG.getTopologicalSort().get(11);
-    final IRVertex vertex18 = alsLoop.getDAG().getTopologicalSort().get(4);
+    final IRVertex vertex7 = groupedDAG.getTopologicalSort().get(3);
+    final IRVertex vertex15 = alsLoop.getDAG().getTopologicalSort().get(4);
 
-    final Set<IREdge> oldDAGIncomingEdges = alsLoop.getDagIncomingEdges().get(vertex18);
-    final List<IREdge> newDAGIncomingEdge = groupedDAG.getIncomingEdgesOf(vertex6);
+    final Set<IREdge> oldDAGIncomingEdges = alsLoop.getDagIncomingEdges().get(vertex15);
+    final List<IREdge> newDAGIncomingEdge = groupedDAG.getIncomingEdgesOf(vertex7);
 
-    alsLoop.getDagIncomingEdges().remove(vertex18);
-    alsLoop.getDagIncomingEdges().putIfAbsent(vertex6, new HashSet<>());
-    newDAGIncomingEdge.forEach(alsLoop.getDagIncomingEdges().get(vertex6)::add);
+    alsLoop.getDagIncomingEdges().remove(vertex15);
+    alsLoop.getDagIncomingEdges().putIfAbsent(vertex7, new HashSet<>());
+    newDAGIncomingEdge.forEach(alsLoop.getDagIncomingEdges().get(vertex7)::add);
 
-    alsLoop.getNonIterativeIncomingEdges().remove(vertex18);
-    alsLoop.getNonIterativeIncomingEdges().putIfAbsent(vertex6, new HashSet<>());
-    newDAGIncomingEdge.forEach(alsLoop.getNonIterativeIncomingEdges().get(vertex6)::add);
+    alsLoop.getNonIterativeIncomingEdges().remove(vertex15);
+    alsLoop.getNonIterativeIncomingEdges().putIfAbsent(vertex7, new HashSet<>());
+    newDAGIncomingEdge.forEach(alsLoop.getNonIterativeIncomingEdges().get(vertex7)::add);
 
-    alsLoop.getBuilder().addVertex(vertex6);
+    alsLoop.getBuilder().addVertex(vertex7);
     oldDAGIncomingEdges.forEach(alsLoop.getBuilder()::connectVertices);
 
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
     groupedDAG.topologicalDo(v -> {
-      if (!v.equals(vertex6) && !v.equals(alsLoop)) {
+      if (!v.equals(vertex7) && !v.equals(alsLoop)) {
         builder.addVertex(v);
         groupedDAG.getIncomingEdgesOf(v).forEach(builder::connectVertices);
       } else if (v.equals(alsLoop)) {
         builder.addVertex(v);
         groupedDAG.getIncomingEdgesOf(v).forEach(e -> {
-          if (!e.getSrc().equals(vertex6)) {
+          if (!e.getSrc().equals(vertex7)) {
             builder.connectVertices(e);
           } else {
             final Optional<IREdge> incomingEdge = newDAGIncomingEdge.stream().findFirst();
