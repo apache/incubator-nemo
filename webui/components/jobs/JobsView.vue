@@ -156,95 +156,17 @@ under the License.
     <br><br><br>
 
     <!--Selected Job-->
-    <!--<el-card v-if="selectedJobId"> (disabled for debugging)-->
-    <el-card>
-      <h1>Details for Job TODO</h1>
-
-      <p>
-        <b>Status: </b><span>TODO</span><br>
-        <span><b>Completed Stages: </b><span>TODO</span><br></span>
-        <span><b>Active Stages: </b><span>TODO</span><br></span>
-        <span><b>Pending Stages: </b><span>TODO</span><br></span>
-        <span><b>Skipped Stages: </b><span>TODO</span><br></span>
-      </p>
-
-      <el-collapse>
-        <!--Event Timeline-->
-        <el-collapse-item title="Event Timeline" name="1">
-          TODO
-        </el-collapse-item>
-        <!--DAG Visualization-->
-        <el-collapse-item title="DAG Visualization" name="2">
-          TODO
-        </el-collapse-item>
-      </el-collapse>
-
-      <!--Stages List-->
-      <!--Completed Stages-->
-      <h2>Completed Stages (TODO)</h2>
-      <el-table>
-        <el-table-column label="Stage id" width="80"></el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
-        <el-table-column label="Submitted" width="180"></el-table-column>
-        <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Input" width="60"></el-table-column>
-        <el-table-column label="Output" width="70"></el-table-column>
-        <el-table-column label="Shuffle Read"></el-table-column>
-        <el-table-column label="Shuffle Write"></el-table-column>
-      </el-table>
-
-      <!--Active Stages-->
-      <h2>Active Stages (TODO)</h2>
-      <el-table>
-        <el-table-column label="Stage id" width="80"></el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
-        <el-table-column label="Submitted" width="180"></el-table-column>
-        <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Input" width="60"></el-table-column>
-        <el-table-column label="Output" width="70"></el-table-column>
-        <el-table-column label="Shuffle Read"></el-table-column>
-        <el-table-column label="Shuffle Write"></el-table-column>
-      </el-table>
-
-      <!--Pending Stages-->
-      <h2>Pending Stages (TODO)</h2>
-      <el-table>
-        <el-table-column label="Stage id" width="80"></el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
-        <el-table-column label="Submitted" width="180"></el-table-column>
-        <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Input" width="60"></el-table-column>
-        <el-table-column label="Output" width="70"></el-table-column>
-        <el-table-column label="Shuffle Read"></el-table-column>
-        <el-table-column label="Shuffle Write"></el-table-column>
-      </el-table>
-
-      <!--Skipped Stages-->
-      <h2>Skipped Stages (TODO)</h2>
-      <el-table>
-        <el-table-column label="Stage id" width="80"></el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
-        <el-table-column label="Submitted" width="180"></el-table-column>
-        <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Input" width="60"></el-table-column>
-        <el-table-column label="Output" width="70"></el-table-column>
-        <el-table-column label="Shuffle Read"></el-table-column>
-        <el-table-column label="Shuffle Write"></el-table-column>
-      </el-table>
-    </el-card>
+    <job-view/>
   </el-card>
 </template>
 
 <script>
 import Vue from 'vue';
-import MetricTimeline from '../components/MetricTimeline';
+import MetricTimeline from '../MetricTimeline';
+import JobView from './detail/JobView';
 import uuid from 'uuid/v4';
 import { DataSet } from 'vue2vis';
-import { STATE } from '../assets/constants';
+import { STATE } from '../../assets/constants';
 
 const JOB_STATUS = {
   NOT_CONNECTED: 'NOT CONNECTED',
@@ -262,6 +184,7 @@ function _isDone(status) {
 export default {
   components: {
     'metric-timeline': MetricTimeline,
+    'job-view': JobView,
   },
 
   data() {

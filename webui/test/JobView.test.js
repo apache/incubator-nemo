@@ -18,7 +18,7 @@
  */
 import test from 'ava';
 import Vue from 'vue';
-import JobView from '../components/JobView';
+import JobView from '../components/jobs/JobsView';
 
 test.before('initialize', async t => {
   // load all plugins

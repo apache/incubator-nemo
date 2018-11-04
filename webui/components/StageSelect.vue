@@ -157,13 +157,13 @@ export default {
 
   //HOOKS
   mounted() {
-    // this event is emitted by JobView, which processes incoming metric.
+    // this event is emitted by JobsView, which processes incoming metric.
     this.$eventBus.$on('set-timeline-items', metricDataSet => {
       this.metricDataSet = metricDataSet;
       this.filterAndSend(metricDataSet);
     });
 
-    // this event is emitted by JobView, which processes incoming metric.
+    // this event is emitted by JobsView, which processes incoming metric.
     this.$eventBus.$on('add-timeline-item', ({ jobId, item }) => {
       if (jobId !== this.selectedJobId) {
         return;
@@ -174,7 +174,7 @@ export default {
       }
     });
 
-    // this event is emitted by JobView, which processes incoming metric.
+    // this event is emitted by JobsView, which processes incoming metric.
     this.$eventBus.$on('update-timeline-item', ({ jobId, item }) => {
       if (jobId !== this.selectedJobId) {
         return;
