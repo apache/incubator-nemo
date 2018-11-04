@@ -33,6 +33,13 @@ import java.util.*;
 public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   private final Stack<TransformHierarchy.Node> compositeTransformVertexStack = new Stack<>();
   private TransformHierarchy.Node rootVertex = null;
+  private static PipelineTranslationContext pipelineTranslationContext = new PipelineTranslationContext();
+
+  public PipelineVisitor() {
+    final PipelineTranslationContext ctx = new PipelineTranslationContext(vertex, pipeline, primitiveTransformToTranslator,
+      compositeTransformToTranslator, DefaultCommunicationPatternSelector.INSTANCE, pipelineOptions);
+
+  }
 
   @Override
   public void visitPrimitiveTransform(final TransformHierarchy.Node node) {
