@@ -38,10 +38,10 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class AlternatingLeastSquareITCase {
   private static ArgBuilder builder;
-  private static final String input = ExampleTestArgs.getFileBasePath() + "test_input_als";
+  private static final String input = ExampleTestArgs.getFileBasePath() + "intpus/test_input_als";
   private static final String outputFileName = "test_output_als";
   private static final String output = ExampleTestArgs.getFileBasePath() + outputFileName;
-  private static final String expectedOutputFileName = "expected_output_als";
+  private static final String expectedOutputFileName = "outputs/expected_output_als";
   private static final String noPoisonResources = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
   private static final String poisonedResource = ExampleTestArgs.getFileBasePath() + "executors/beam_test_poisoned_executor_resources.json";
   private static final String numFeatures = "10";
