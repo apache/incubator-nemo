@@ -38,7 +38,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class AlternatingLeastSquareITCase {
   private static ArgBuilder builder;
-  private static final String input = ExampleTestArgs.getFileBasePath() + "intpus/test_input_als";
+  private static final String input = ExampleTestArgs.getFileBasePath() + "inputs/test_input_als";
   private static final String outputFileName = "test_output_als";
   private static final String output = ExampleTestArgs.getFileBasePath() + outputFileName;
   private static final String expectedOutputFileName = "outputs/expected_output_als";
