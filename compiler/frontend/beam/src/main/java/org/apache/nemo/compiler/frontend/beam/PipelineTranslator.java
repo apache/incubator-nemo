@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.annotation.*;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.BiFunction;
@@ -56,27 +57,13 @@ import java.util.stream.Collectors;
 /**
  * A collection of translators for the Beam PTransforms.
  */
-public final class PipelineTranslator {
-
+final class PipelineTranslator {
   private static final Logger LOG = LoggerFactory.getLogger(PipelineTranslator.class.getName());
 
   private static final PipelineTranslator INSTANCE = new PipelineTranslator();
 
   private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator = new HashMap<>();
   private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator = new HashMap<>();
-
-  /**
-   * Static translator method.
-   * @param pipeline the original root
-   * @param root Top-level Beam transform hierarchy, usually given by {@link PipelineVisitor}
-   * @param pipelineOptions {@link PipelineOptions}
-   * @return Nemo IR DAG
-   */
-  public static DAG<IRVertex, IREdge> translate(final Pipeline pipeline,
-                                                final TransformHierarchy.Node root,
-                                                final PipelineOptions pipelineOptions) {
-    return INSTANCE.translateToIRDAG(root, pipeline, pipelineOptions);
-  }
 
   /**
    * Creates the translator, while building a map between {@link PTransform}s and the corresponding translators.
@@ -106,6 +93,74 @@ public final class PipelineTranslator {
     }
   }
 
+  void translatePrimitive(final TransformHierarchy.Node primitive){
+    final PTransform<?, ?> transform = primitive.getTransform();
+    Class<?> clazz = transform.getClass();
+    final Method translator = primitiveTransformToTranslator.get(clazz);
+    if (translator == null) {
+      throw new UnsupportedOperationException(
+        String.format("Primitive transform %s is not supported", transform.getClass().getCanonicalName()));
+    } else {
+      try {
+        translator.setAccessible(true);
+        translator.invoke(null, this, primitive, transform);
+      } catch (final IllegalAccessException e) {
+        throw new RuntimeException(e);
+      } catch (final InvocationTargetException | RuntimeException e) {
+        throw new RuntimeException(String.format(
+          "Translator %s have failed to translate %s", translator, transform), e);
+      }
+    }
+  }
+
+  /**
+   * @param composite transform.
+   * @return true if this composite has been translated in its entirety.
+   */
+  Pipeline.PipelineVisitor.CompositeBehavior translateComposite(final TransformHierarchy.Node composite){
+    final PTransform<?, ?> transform = composite.getTransform();
+    Class<?> clazz = transform.getClass();
+
+    final Method translator = compositeTransformToTranslator.get(clazz);
+    if (translator == null) {
+      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM; // No translator exists (enter!)
+    } else {
+      try {
+        translator.setAccessible(true);
+        translator.invoke(null, this, composite, transform);
+
+        // Translator has successfully translated (Do not enter! (TODO: loop?)
+        return Pipeline.PipelineVisitor.CompositeBehavior.DO_NOT_ENTER_TRANSFORM;
+      } catch (final IllegalAccessException e) {
+        throw new RuntimeException(e);
+      } catch (final InvocationTargetException | RuntimeException e) {
+        throw new RuntimeException(String.format(
+          "Translator %s have failed to translate %s", translator, transform), e);
+      }
+    }
+  }
+
+  /**
+   * Annotates translator for PrimitiveTransform.
+   */
+  @Target(ElementType.METHOD)
+  @Retention(RetentionPolicy.RUNTIME)
+  private @interface PrimitiveTransformTranslator {
+    Class<? extends PTransform>[] value();
+  }
+
+  /**
+   * Annotates translator for CompositeTransform.
+   */
+  @Target(ElementType.METHOD)
+  @Retention(RetentionPolicy.RUNTIME)
+  private @interface CompositeTransformTranslator {
+    Class<? extends PTransform>[] value();
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////// PRIMITIVE TRANSFORMS
+
   @PrimitiveTransformTranslator(Read.Unbounded.class)
   private static void unboundedReadTranslator(final PipelineTranslationContext ctx,
                                               final TransformHierarchy.Node transformVertex,
@@ -126,32 +181,6 @@ public final class PipelineTranslator {
     transformVertex.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
-  private static DoFnTransform createDoFnTransform(final PipelineTranslationContext ctx,
-                                                   final TransformHierarchy.Node transformVertex) {
-    try {
-      final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.pipeline);
-      final DoFn doFn = ParDoTranslation.getDoFn(pTransform);
-      final TupleTag mainOutputTag = ParDoTranslation.getMainOutputTag(pTransform);
-      final List<PCollectionView<?>> sideInputs = ParDoTranslation.getSideInputs(pTransform);
-      final TupleTagList additionalOutputTags = ParDoTranslation.getAdditionalOutputTags(pTransform);
-
-      final PCollection<?> mainInput = (PCollection<?>)
-        Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
-
-      return new DoFnTransform(
-        doFn,
-        mainInput.getCoder(),
-        getOutputCoders(pTransform),
-        mainOutputTag,
-        additionalOutputTags.getAll(),
-        mainInput.getWindowingStrategy(),
-        sideInputs,
-        ctx.pipelineOptions);
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   @PrimitiveTransformTranslator(ParDo.SingleOutput.class)
   private static void parDoSingleOutputTranslator(final PipelineTranslationContext ctx,
                                                   final TransformHierarchy.Node transformVertex,
@@ -165,15 +194,6 @@ public final class PipelineTranslator {
       .forEach(input -> ctx.addEdgeTo(vertex, input));
     transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
     transformVertex.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
-  }
-
-  private static Map<TupleTag<?>, Coder<?>> getOutputCoders(final AppliedPTransform<?, ?, ?> ptransform) {
-    return ptransform
-      .getOutputs()
-      .entrySet()
-      .stream()
-      .filter(e -> e.getValue() instanceof PCollection)
-      .collect(Collectors.toMap(e -> e.getKey(), e -> ((PCollection) e.getValue()).getCoder()));
   }
 
   @PrimitiveTransformTranslator(ParDo.MultiOutput.class)
@@ -194,42 +214,6 @@ public final class PipelineTranslator {
       .filter(pValueWithTupleTag -> !pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
       .forEach(pValueWithTupleTag -> ctx.registerAdditionalOutputFrom(vertex, pValueWithTupleTag.getValue(),
         pValueWithTupleTag.getKey()));
-  }
-
-  /**
-   * Create a group by key transform.
-   * It returns GroupByKeyAndWindowDoFnTransform if window function is not default.
-   * @param ctx translation context
-   * @param transformVertex transform vertex
-   * @return group by key transform
-   */
-  private static Transform createGBKTransform(
-    final PipelineTranslationContext ctx,
-    final TransformHierarchy.Node transformVertex) {
-    final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.pipeline);
-    final PCollection<?> mainInput = (PCollection<?>)
-      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
-    final TupleTag mainOutputTag = new TupleTag<>();
-
-    if (isBatch(transformVertex)) {
-      return new GroupByKeyTransform();
-    } else {
-      return new GroupByKeyAndWindowDoFnTransform(
-        getOutputCoders(pTransform),
-        mainOutputTag,
-        Collections.emptyList(),  /*  GBK does not have additional outputs */
-        mainInput.getWindowingStrategy(),
-        Collections.emptyList(), /*  GBK does not have additional side inputs */
-        ctx.pipelineOptions,
-        SystemReduceFn.buffering(mainInput.getCoder()));
-    }
-  }
-
-  private static boolean isBatch(final TransformHierarchy.Node transformVertex) {
-    final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.pipeline);
-    final PCollection<?> mainInput = (PCollection<?>)
-      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
-    return mainInput.getWindowingStrategy().getWindowFn() instanceof GlobalWindows;
   }
 
   @PrimitiveTransformTranslator(GroupByKey.class)
@@ -281,6 +265,9 @@ public final class PipelineTranslator {
     transformVertex.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
   }
 
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////// COMPOSITE TRANSFORMS
+
   /**
    * Default translator for CompositeTransforms. Translates inner DAG without modifying {@link PipelineTranslationContext}.
    *
@@ -328,7 +315,7 @@ public final class PipelineTranslator {
     final Coder accumulatorCoder;
     try {
       accumulatorCoder = combineFn.getAccumulatorCoder(ctx.getPipeline().getCoderRegistry(),
-          inputCoder.getValueCoder());
+        inputCoder.getValueCoder());
     } catch (CannotProvideCoderException e) {
       throw new RuntimeException(e);
     }
@@ -390,32 +377,93 @@ public final class PipelineTranslator {
     ctx.loopVertexStack.pop();
   }
 
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////// HELPER METHODS
+
+  private static DoFnTransform createDoFnTransform(final PipelineTranslationContext ctx,
+                                                   final TransformHierarchy.Node transformVertex) {
+    try {
+      final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.pipeline);
+      final DoFn doFn = ParDoTranslation.getDoFn(pTransform);
+      final TupleTag mainOutputTag = ParDoTranslation.getMainOutputTag(pTransform);
+      final List<PCollectionView<?>> sideInputs = ParDoTranslation.getSideInputs(pTransform);
+      final TupleTagList additionalOutputTags = ParDoTranslation.getAdditionalOutputTags(pTransform);
+
+      final PCollection<?> mainInput = (PCollection<?>)
+        Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+
+      return new DoFnTransform(
+        doFn,
+        mainInput.getCoder(),
+        getOutputCoders(pTransform),
+        mainOutputTag,
+        additionalOutputTags.getAll(),
+        mainInput.getWindowingStrategy(),
+        sideInputs,
+        ctx.pipelineOptions);
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+
+  private static Map<TupleTag<?>, Coder<?>> getOutputCoders(final AppliedPTransform<?, ?, ?> ptransform) {
+    return ptransform
+      .getOutputs()
+      .entrySet()
+      .stream()
+      .filter(e -> e.getValue() instanceof PCollection)
+      .collect(Collectors.toMap(e -> e.getKey(), e -> ((PCollection) e.getValue()).getCoder()));
+  }
+
+
+  /**
+   * Create a group by key transform.
+   * It returns GroupByKeyAndWindowDoFnTransform if window function is not default.
+   * @param ctx translation context
+   * @param transformVertex transform vertex
+   * @return group by key transform
+   */
+  private static Transform createGBKTransform(
+    final PipelineTranslationContext ctx,
+    final TransformHierarchy.Node transformVertex) {
+    final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.pipeline);
+    final PCollection<?> mainInput = (PCollection<?>)
+      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+    final TupleTag mainOutputTag = new TupleTag<>();
+
+    if (isBatch(transformVertex)) {
+      return new GroupByKeyTransform();
+    } else {
+      return new GroupByKeyAndWindowDoFnTransform(
+        getOutputCoders(pTransform),
+        mainOutputTag,
+        Collections.emptyList(),  /*  GBK does not have additional outputs */
+        mainInput.getWindowingStrategy(),
+        Collections.emptyList(), /*  GBK does not have additional side inputs */
+        ctx.pipelineOptions,
+        SystemReduceFn.buffering(mainInput.getCoder()));
+    }
+  }
+
+  private static boolean isBatch(final TransformHierarchy.Node transformVertex) {
+    final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.pipeline);
+    final PCollection<?> mainInput = (PCollection<?>)
+      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+    return mainInput.getWindowingStrategy().getWindowFn() instanceof GlobalWindows;
+  }
+
+
+
   private DAG<IRVertex, IREdge> translateToIRDAG(final TransformHierarchy.Node vertex,
                                                  final Pipeline pipeline,
                                                  final PipelineOptions pipelineOptions) {
     final PipelineTranslationContext ctx = new PipelineTranslationContext(vertex, pipeline, primitiveTransformToTranslator,
-        compositeTransformToTranslator, DefaultCommunicationPatternSelector.INSTANCE, pipelineOptions);
+      compositeTransformToTranslator, DefaultCommunicationPatternSelector.INSTANCE, pipelineOptions);
     ctx.translate(vertex);
     return ctx.builder.build();
   }
 
-  /**
-   * Annotates translator for PrimitiveTransform.
-   */
-  @Target(ElementType.METHOD)
-  @Retention(RetentionPolicy.RUNTIME)
-  private @interface PrimitiveTransformTranslator {
-    Class<? extends PTransform>[] value();
-  }
-
-  /**
-   * Annotates translator for CompositeTransform.
-   */
-  @Target(ElementType.METHOD)
-  @Retention(RetentionPolicy.RUNTIME)
-  private @interface CompositeTransformTranslator {
-    Class<? extends PTransform>[] value();
-  }
 
   private static Coder<?> getCoder(final PValue input, final TransformHierarchy.Node pipeline) {
     final Coder<?> coder;

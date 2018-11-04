@@ -34,51 +34,27 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   private final Stack<TransformHierarchy.Node> compositeTransformVertexStack = new Stack<>();
   private TransformHierarchy.Node rootVertex = null;
   private static PipelineTranslationContext pipelineTranslationContext = new PipelineTranslationContext();
+  private static PipelineTranslator pipelineTranslator = new PipelineTranslator();
 
   public PipelineVisitor() {
     final PipelineTranslationContext ctx = new PipelineTranslationContext(vertex, pipeline, primitiveTransformToTranslator,
       compositeTransformToTranslator, DefaultCommunicationPatternSelector.INSTANCE, pipelineOptions);
-
   }
 
   @Override
   public void visitPrimitiveTransform(final TransformHierarchy.Node node) {
-    compositeTransformVertexStack.peek().addVertex(vertex);
-    vertex.getPValuesConsumed()
-        .forEach(pValue -> {
-          final TransformVertex dst = getDestinationOfDataFlowEdge(vertex, pValue);
-          dst.enclosingVertex.addDataFlow(new DataFlowEdge(dst.enclosingVertex.getProducerOf(pValue), dst));
-        });
+    pipelineTranslator.translatePrimitive(node);
   }
 
   @Override
   public CompositeBehavior enterCompositeTransform(final TransformHierarchy.Node node) {
-    final TransformHierarchy.Node vertex;
-    if (compositeTransformVertexStack.isEmpty()) {
-      // There is always a top-level CompositeTransform that encompasses the entire Beam pipeline.
-      vertex = new TransformHierarchy.Node(node, null);
-    } else {
-      vertex = new TransformHierarchy.Node(node, compositeTransformVertexStack.peek());
-    }
-    compositeTransformVertexStack.push(vertex);
-    return CompositeBehavior.ENTER_TRANSFORM;
+    pipelineTranslationContext.enterCompositeTransform(node);
+    return pipelineTranslator.translateComposite(node);
   }
 
   @Override
   public void leaveCompositeTransform(final TransformHierarchy.Node node) {
-    final TransformHierarchy.Node vertex = compositeTransformVertexStack.pop();
-    vertex.build();
-    if (compositeTransformVertexStack.isEmpty()) {
-      // The vertex is the root.
-      if (rootVertex != null) {
-        throw new RuntimeException("The visitor already have traversed a Beam pipeline. "
-            + "Re-using a visitor is not allowed.");
-      }
-      rootVertex = vertex;
-    } else {
-      // The TransformHierarchy.Node is ready; adding it to its enclosing vertex.
-      compositeTransformVertexStack.peek().addVertex(vertex);
-    }
+    pipelineTranslationContext.leaveCompositeTransform(node);
   }
 
   /**

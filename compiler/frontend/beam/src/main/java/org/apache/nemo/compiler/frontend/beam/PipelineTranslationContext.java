@@ -32,7 +32,6 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.BiFunction;
@@ -95,45 +94,6 @@ final class PipelineTranslationContext {
     }
   }
 
-  /**
-   * Selects appropriate translator to translate the given hierarchy.
-   *
-   * @param transformVertex the Beam transform hierarchy to translate
-   */
-  void translate(final TransformHierarchy.Node transformVertex) {
-    final boolean isComposite = transformVertex instanceof TransformHierarchy.Node;
-    final PTransform<?, ?> transform = transformVertex.getTransform();
-    if (transform == null) {
-      // root node
-      topologicalTranslator(this, (TransformHierarchy.Node) transformVertex, null);
-      return;
-    }
-
-    Class<?> clazz = transform.getClass();
-    while (true) {
-      final Method translator = (isComposite ? compositeTransformToTranslator : primitiveTransformToTranslator)
-        .get(clazz);
-      if (translator == null) {
-        if (clazz.getSuperclass() != null) {
-          clazz = clazz.getSuperclass();
-          continue;
-        }
-        throw new UnsupportedOperationException(String.format("%s transform %s is not supported",
-          isComposite ? "Composite" : "Primitive", transform.getClass().getCanonicalName()));
-      } else {
-        try {
-          translator.setAccessible(true);
-          translator.invoke(null, this, transformVertex, transform);
-          break;
-        } catch (final IllegalAccessException e) {
-          throw new RuntimeException(e);
-        } catch (final InvocationTargetException | RuntimeException e) {
-          throw new RuntimeException(String.format(
-            "Translator %s have failed to translate %s", translator, transform), e);
-        }
-      }
-    }
-  }
 
   /**
    * Add IR vertex to the builder.
