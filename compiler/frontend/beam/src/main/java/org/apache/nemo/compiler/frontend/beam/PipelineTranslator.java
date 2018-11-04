@@ -26,6 +26,8 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.AppliedPTransform;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
@@ -108,26 +110,26 @@ final class PipelineTranslator {
   }
 
   /**
+   * @param context context.
    * @param composite transform.
-   * @return true if this composite has been translated in its entirety.
+   * @return behavior.
    */
-  boolean translateComposite(final PipelineTranslationContext context,
-                             final TransformHierarchy.Node composite){
+  Pipeline.PipelineVisitor.CompositeBehavior translateComposite(final PipelineTranslationContext context,
+                                                                final TransformHierarchy.Node composite){
     final PTransform<?, ?> transform = composite.getTransform();
     if (transform == null) {
       // root beam node
-      return false;
+      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
     }
 
     Class<?> clazz = transform.getClass();
     final Method translator = compositeTransformToTranslator.get(clazz);
     if (translator == null) {
-      return false; // Failed to translate.
+      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
     } else {
       try {
         translator.setAccessible(true);
-        translator.invoke(null, context, composite, transform);
-        return false; // Translation succeeded!
+        return (Pipeline.PipelineVisitor.CompositeBehavior) translator.invoke(null, context, composite, transform);
       } catch (final IllegalAccessException e) {
         throw new RuntimeException(e);
       } catch (final InvocationTargetException | RuntimeException e) {
@@ -278,78 +280,71 @@ final class PipelineTranslator {
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @CompositeTransformTranslator(Combine.PerKey.class)
-  private static void combinePerKeyTranslator(final PipelineTranslationContext ctx,
-                                              final TransformHierarchy.Node beamNode,
-                                              final PTransform<?, ?> transform) {
-    /*
-    // TODO #XXX: Combiner optimization for streaming
-    if (!isBatch(beamNode)) {
-      beamNode.getDAG().topologicalDo(ctx::translate);
-      return;
+  private static Pipeline.PipelineVisitor.CompositeBehavior combinePerKeyTranslator(
+    final PipelineTranslationContext ctx,
+    final TransformHierarchy.Node beamNode,
+    final PTransform<?, ?> transform) {
+
+    // Check if the optimization can be applied.
+    if (!isBatch(beamNode, ctx.getPipeline())) {
+      // TODO #XXX: Combiner optimization for streaming
+      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
+    }
+    final Combine.PerKey perKey = (Combine.PerKey) transform;
+    if (!perKey.getSideInputs().isEmpty()) {
+      // TODO #XXX: Combiner optimization for sideinputs
+      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
     }
 
-    LOG.info("---");
-    beamNode.getDAG().topologicalDo(v -> LOG.info(v.toString()));
-
-
-    final Combine.PerKey perKey = (Combine.PerKey) transform;
+    // This Combine can be optimized as the following sequence of Nemo IRVertices.
+    // Combine Input -> (Partial Combine -> KV<InputT, AccumT> -> Final Combine) -> Combine Output
     final CombineFnBase.GlobalCombineFn combineFn = perKey.getFn();
 
+    // (Step 1) To Partial Combine
+    final IRVertex partialCombine = new OperatorVertex(new CombineFnPartialTransform<>(combineFn));
+    ctx.addVertex(partialCombine);
+    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
 
+    // (Step 2) To Final Combine
+    final PCollection input = (PCollection) Iterables.getOnlyElement(
+      TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
+    final KvCoder inputCoder = (KvCoder) input.getCoder();
     final Coder accumulatorCoder;
     try {
-      accumulatorCoder = combineFn.getAccumulatorCoder(ctx.getPipeline().getCoderRegistry(),
-        inputCoder.getValueCoder());
+      accumulatorCoder =
+        combineFn.getAccumulatorCoder(ctx.getPipeline().getCoderRegistry(), inputCoder.getValueCoder());
     } catch (CannotProvideCoderException e) {
       throw new RuntimeException(e);
     }
-
-    ctx.addEdgeTo(groupByKeyIRVertex, outputFromGbk));
-
-
-    // input of Combine -O2O-> partialCombine -shuffle/accumcoder-> finalCombine -?> next
-    final IRVertex partialCombine = new OperatorVertex(new CombineFnPartialTransform<>(combineFn));
-    ctx.addVertex(partialCombine);
-    ctx.addEdgeTo();
-    // The KV coder
-
-    combineFn.createAccumulator()
-
     final IRVertex finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn));
     ctx.addVertex(finalCombine);
-    ctx.addEdgeTo();
-    KvCoder.of(x, accumulatorCoder);
+    final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, partialCombine, finalCombine);
+    ctx.addEdgeTo(
+      edge,
+      KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder),
+      input.getWindowingStrategy().getWindowFn().windowCoder());
 
-    final PipelineTranslationContext oneToOneEdgeContext = new PipelineTranslationContext(ctx,
-      OneToOneCommunicationPatternSelector.INSTANCE);
-    beamNode.getDAG().topologicalDo(oneToOneEdgeContext::translate);
+    // (Step 3) From Final Combine
+    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
 
-    // Attempt to translate the CompositeTransform again.
-    // Add GroupByKey, which is the first transform in the given CompositeTransform.
-    // Make sure it consumes the output from the last vertex in OneToOneEdge-translated hierarchy.
-    final IRVertex groupByKeyIRVertex = new OperatorVertex(createGBKTransform(ctx, beamNode));
-    ctx.addVertex(groupByKeyIRVertex);
-    afterGbk.getOutputs().values()
-      .forEach(outputFromGbk -> ctx.addEdgeTo(groupByKeyIRVertex, outputFromGbk));
-    gbk.getOutputs().values()
-      .forEach(outputFromGroupByKey -> ctx.registerMainOutputFrom(groupByKeyIRVertex, outputFromGroupByKey));
-
-    // Translate the remaining vertices.
-    topologicalOrdering.stream().skip(1).forEach(ctx::translate);
-    */
+    // This composite transform has been translated in its entirety.
+    return Pipeline.PipelineVisitor.CompositeBehavior.DO_NOT_ENTER_TRANSFORM;
   }
 
   /**
    * @param ctx provides translation context
    * @param beamNode the given CompositeTransform to translate
    * @param transform transform which can be obtained from {@code beamNode}
+   * @
    */
   @CompositeTransformTranslator(LoopCompositeTransform.class)
-  private static void loopTranslator(final PipelineTranslationContext ctx,
-                                     final TransformHierarchy.Node beamNode,
-                                     final LoopCompositeTransform<?, ?> transform) {
+  private static Pipeline.PipelineVisitor.CompositeBehavior loopTranslator(
+    final PipelineTranslationContext ctx,
+    final TransformHierarchy.Node beamNode,
+    final LoopCompositeTransform<?, ?> transform) {
     // Do nothing here, as the context handles the loop vertex stack.
     // We just keep this method to signal that the loop vertex is acknowledged.
+    return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////

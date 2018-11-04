@@ -44,11 +44,11 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
 
   @Override
   public CompositeBehavior enterCompositeTransform(final TransformHierarchy.Node node) {
-    final boolean isTranslated = pipelineTranslator.translateComposite(context, node);
+    final CompositeBehavior compositeBehavior = pipelineTranslator.translateComposite(context, node);
 
     // this should come after the above translateComposite, since this composite is a child of a previous composite.
     context.enterCompositeTransform(node);
-    return isTranslated ? CompositeBehavior.DO_NOT_ENTER_TRANSFORM : CompositeBehavior.ENTER_TRANSFORM;
+    return compositeBehavior;
   }
 
   @Override

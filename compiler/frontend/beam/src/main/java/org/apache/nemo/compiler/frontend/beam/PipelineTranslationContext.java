@@ -23,6 +23,7 @@ import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -108,31 +109,22 @@ final class PipelineTranslationContext {
     addEdgeTo(dst, input, coder);
   }
 
-  void addEdgeTo(final IRVertex dst, final PValue input, final Coder coder) {
+  void addEdgeTo(final IRVertex dst, final PValue input, final Coder elementCoder) {
     final IRVertex src = pValueToProducerVertex.get(input);
     if (src == null) {
-        throw new IllegalStateException(String.format("Cannot find a vertex that emits pValue %s", input));
+      throw new IllegalStateException(String.format("Cannot find a vertex that emits pValue %s", input));
     }
+
+    final Coder windowCoder;
     final CommunicationPatternProperty.Value communicationPattern = getCommPattern(src, dst);
     final IREdge edge = new IREdge(communicationPattern, src, dst);
 
     if (pValueToTag.containsKey(input)) {
       edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
     }
-
     if (input instanceof PCollectionView) {
       edge.setProperty(BroadcastVariableIdProperty.of((PCollectionView) input));
     }
-
-    edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
-
-    if (coder instanceof KvCoder) {
-      Coder keyCoder = ((KvCoder) coder).getKeyCoder();
-      edge.setProperty(KeyEncoderProperty.of(new BeamEncoderFactory(keyCoder)));
-      edge.setProperty(KeyDecoderProperty.of(new BeamDecoderFactory(keyCoder)));
-    }
-
-    final Coder windowCoder;
     if (input instanceof PCollection) {
       windowCoder = ((PCollection) input).getWindowingStrategy().getWindowFn().windowCoder();
     } else if (input instanceof PCollectionView) {
@@ -142,10 +134,25 @@ final class PipelineTranslationContext {
       throw new RuntimeException(String.format("While adding an edge from %s, to %s, coder for PValue %s cannot "
         + "be determined", src, dst, input));
     }
+
+    addEdgeTo(edge, elementCoder, windowCoder);
+  }
+
+  void addEdgeTo(final IREdge edge,
+                 final Coder elementCoder,
+                 final Coder windowCoder) {
+    edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
+
+    if (elementCoder instanceof KvCoder) {
+      Coder keyCoder = ((KvCoder) elementCoder).getKeyCoder();
+      edge.setProperty(KeyEncoderProperty.of(new BeamEncoderFactory(keyCoder)));
+      edge.setProperty(KeyDecoderProperty.of(new BeamDecoderFactory(keyCoder)));
+    }
+
     edge.setProperty(EncoderProperty.of(
-      new BeamEncoderFactory<>(WindowedValue.getFullCoder(coder, windowCoder))));
+      new BeamEncoderFactory<>(WindowedValue.getFullCoder(elementCoder, windowCoder))));
     edge.setProperty(DecoderProperty.of(
-      new BeamDecoderFactory<>(WindowedValue.getFullCoder(coder, windowCoder))));
+      new BeamDecoderFactory<>(WindowedValue.getFullCoder(elementCoder, windowCoder))));
 
     builder.connectVertices(edge);
   }
