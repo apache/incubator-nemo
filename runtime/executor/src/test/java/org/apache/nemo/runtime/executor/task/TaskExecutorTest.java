@@ -698,8 +698,9 @@ public final class TaskExecutorTest {
     }
 
     @Override
-    public void advance() throws IOException {
+    public boolean advance() throws IOException {
       pointer += 1;
+      return pointer < expectedNumWatermarks;
     }
 
     @Override

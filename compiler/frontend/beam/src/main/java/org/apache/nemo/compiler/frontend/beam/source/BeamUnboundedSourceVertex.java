@@ -148,8 +148,8 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     }
 
     @Override
-    public void advance() throws IOException {
-      reader.advance();
+    public boolean advance() throws IOException {
+      return reader.advance();
     }
 
     @Override

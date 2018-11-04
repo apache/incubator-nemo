@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 
@@ -29,13 +30,13 @@ import java.util.List;
  */
 public final class MultiInputWatermarkManager implements InputWatermarkManager {
   private final List<Watermark> watermarks;
-  private final OperatorVertex nextOperator;
+  private final OutputCollector<?> watermarkCollector;
   private int minWatermarkIndex;
   public MultiInputWatermarkManager(final int numEdges,
-                                    final OperatorVertex nextOperator) {
+                                    final OutputCollector<?> watermarkCollector) {
     super();
     this.watermarks = new ArrayList<>(numEdges);
-    this.nextOperator = nextOperator;
+    this.watermarkCollector = watermarkCollector;
     this.minWatermarkIndex = 0;
     // We initialize watermarks as min value because
     // we should not emit watermark until all edges emit watermarks.
@@ -74,7 +75,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
       if (minWatermark.getTimestamp() > prevMinWatermark.getTimestamp()) {
         // Watermark timestamp progress!
         // Emit the min watermark
-        nextOperator.getTransform().onWatermark(minWatermark);
+        watermarkCollector.emitWatermark(minWatermark);
       }
     } else {
       // The recent watermark timestamp cannot be less than the previous one

@@ -148,8 +148,9 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
     }
 
     @Override
-    public void advance() throws IOException {
+    public boolean advance() throws IOException {
       finished = !reader.advance();
+      return !finished;
     }
 
     @Override

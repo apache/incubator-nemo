@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 
@@ -27,10 +28,10 @@ import org.apache.nemo.common.punctuation.Watermark;
  */
 public final class SingleInputWatermarkManager implements InputWatermarkManager {
 
-  private final OperatorVertex nextOperator;
+  private final OutputCollector watermarkCollector;
 
-  public SingleInputWatermarkManager(final OperatorVertex nextOperator) {
-    this.nextOperator = nextOperator;
+  public SingleInputWatermarkManager(final OutputCollector watermarkCollector) {
+    this.watermarkCollector = watermarkCollector;
   }
 
   /**
@@ -41,6 +42,6 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
   @Override
   public void trackAndEmitWatermarks(final int edgeIndex,
                                      final Watermark watermark) {
-    nextOperator.getTransform().onWatermark(watermark);
+    watermarkCollector.emitWatermark(watermark);
   }
 }

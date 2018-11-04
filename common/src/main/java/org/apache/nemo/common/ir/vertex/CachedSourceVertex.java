@@ -101,7 +101,7 @@ public final class CachedSourceVertex<T> extends SourceVertex<T> {
     }
 
     @Override
-    public void advance() throws IOException {
+    public boolean advance() throws IOException {
       throw new UnsupportedOperationException(
         "CachedSourceVertex should not be used");
     }

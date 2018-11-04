@@ -47,7 +47,7 @@ public interface Readable<O> extends Serializable {
   /**
    * Advance current data point.
    */
-  void advance() throws IOException;
+  boolean advance() throws IOException;
 
   /**
    * Read watermark.

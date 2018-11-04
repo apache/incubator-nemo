@@ -106,6 +106,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
     // TODO #250: But, this approach can delay the event processing in streaming,
     // TODO #250: if the watermark is not triggered for a long time.
+
+    LOG.info("Receive {}", element);
     final KV<K, InputT> kv = element.getValue();
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
     keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
@@ -140,6 +142,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   @Override
   public void onWatermark(final Watermark watermark) {
+    LOG.info("Receive watermark {}", watermark.getTimestamp());
     processElementsAndTriggerTimers(watermark, Instant.now(), Instant.now());
   }
 

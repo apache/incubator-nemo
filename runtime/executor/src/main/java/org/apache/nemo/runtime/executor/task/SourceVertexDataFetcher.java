@@ -23,6 +23,9 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
@@ -34,12 +37,15 @@ import java.util.concurrent.TimeUnit;
  * Fetches data from a data source.
  */
 class SourceVertexDataFetcher extends DataFetcher {
+  private static final Logger LOG = LoggerFactory.getLogger(SourceVertexDataFetcher.class.getName());
+
   private final Readable readable;
   private long boundedSourceReadTime = 0;
   private static final long WATERMARK_PERIOD = 1000; // ms
   private final ScheduledExecutorService watermarkTriggerService;
   private boolean watermarkTriggered = false;
   private final boolean bounded;
+  private boolean isAdvanced = true;
 
   SourceVertexDataFetcher(final SourceVertex dataSource,
                           final Readable readable,
@@ -71,6 +77,7 @@ class SourceVertexDataFetcher extends DataFetcher {
     } else {
       final long start = System.currentTimeMillis();
       final Object element = retrieveElement();
+      //LOG.info("Emit element: {}", element);
       boundedSourceReadTime += System.currentTimeMillis() - start;
       return element;
     }
@@ -103,9 +110,21 @@ class SourceVertexDataFetcher extends DataFetcher {
       return new Watermark(readable.readWatermark());
     }
 
-    // Data
-    final Object element = readable.readCurrent();
-    readable.advance();
-    return element;
+    if (isAdvanced) {
+      // Data
+      final Object element = readable.readCurrent();
+      isAdvanced = readable.advance();
+      return element;
+    } else {
+      // Read again
+      isAdvanced = readable.advance();
+      if (!isAdvanced) {
+        throw new NoSuchElementException();
+      } else {
+        final Object element = readable.readCurrent();
+        isAdvanced = readable.advance();
+        return element;
+      }
+    }
   }
 }

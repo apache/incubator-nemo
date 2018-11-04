@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
@@ -86,6 +87,11 @@ public final class BlockOutputWriter implements OutputWriter {
         blockToWrite.commitPartitions();
       }
     } // If else, does not need to write because the data is duplicated.
+  }
+
+  @Override
+  public void writeWatermark(Watermark watermark) {
+    throw new UnsupportedOperationException("BlockOutputWriter does not support watermark");
   }
 
   /**

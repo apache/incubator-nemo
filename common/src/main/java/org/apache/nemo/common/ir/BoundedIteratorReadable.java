@@ -48,8 +48,8 @@ public abstract class BoundedIteratorReadable<O> implements Readable<O> {
   }
 
   @Override
-  public final void advance() {
-    // do nothing
+  public final boolean advance() {
+    return true;
   }
 
   @Override

@@ -177,10 +177,12 @@ public final class TaskExecutor {
         final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getIncomingEdgesOf(childVertex);
         if (edges.size() == 1) {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
-            new SingleInputWatermarkManager((OperatorVertex) childVertex));
+            new SingleInputWatermarkManager(
+              new OperatorWatermarkCollector((OperatorVertex) childVertex)));
         } else {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
-            new MultiInputWatermarkManager(edges.size(), (OperatorVertex) childVertex));
+            new MultiInputWatermarkManager(edges.size(),
+              new OperatorWatermarkCollector((OperatorVertex) childVertex)));
         }
       }
 

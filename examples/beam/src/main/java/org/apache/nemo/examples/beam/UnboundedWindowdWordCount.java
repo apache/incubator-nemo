@@ -36,11 +36,11 @@ import org.joda.time.Instant;
 /**
  * Computes the sum of an unbounded sequence.
  */
-public final class SumOfUnboundedSequence {
+public final class UnboundedWindowdWordCount {
   /**
    * Private Constructor.
    */
-  private SumOfUnboundedSequence() {
+  private UnboundedWindowdWordCount() {
   }
 
   /**
@@ -53,15 +53,15 @@ public final class SumOfUnboundedSequence {
 
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
     options.setRunner(NemoPipelineRunner.class);
-    options.setJobName("SumOfUnboundedSequence");
+    options.setJobName("UnboundedWindowdWordCount");
 
     final Pipeline p = Pipeline.create(options);
 
     // Create the unbounded source.
     final PCollection<Long> unboundedSequence = p.apply(GenerateSequence
       .from(1)
-      .to(10000)
-      .withTimestampFn(num -> new Instant(num * 100L))); // 10 ms interval between subsequent numbers
+      .withRate(4, Duration.standardSeconds(1))
+      .withTimestampFn(num -> new Instant(num * 250))); // 10 ms interval between subsequent numbers
 
     // Apply windowing.
     final Window<Long> windowFn;
@@ -71,21 +71,23 @@ public final class SumOfUnboundedSequence {
       windowFn = Window.<Long>into(SlidingWindows.of(Duration.standardSeconds(10))
         .every(Duration.standardSeconds(5)));
     }
-    final PCollection windowedSequence = unboundedSequence.apply(windowFn);
-
-    // Compute sum and write.
-    final PCollection xxx = windowedSequence.apply(Sum.longsGlobally());
+    final PCollection<Long> windowedSequence = unboundedSequence.apply(windowFn);
 
     windowedSequence
-      .apply(Sum.longsGlobally())
-
-      .apply(MapElements.<Long, String>via(new SimpleFunction<Long, String>() {
+      .apply(MapElements.via(new SimpleFunction<Long, KV<Integer, Long>>() {
         @Override
-        public String apply(final Long sum) {
-          return String.valueOf(sum);
+        public KV<Integer, Long> apply(final Long val) {
+          return KV.of((int) (val % 5), 1L);
         }
       }))
-      .apply(new WriteOneFilePerWindow(outputFilePath, null));
+      .apply(Sum.longsPerKey())
+      .apply(MapElements.via(new SimpleFunction<KV<Integer, Long>, String>() {
+        @Override
+        public String apply(final KV<Integer, Long> sum) {
+          return String.valueOf(sum.getValue());
+        }
+      }))
+      .apply(new WriteOneFilePerWindow(outputFilePath, 1));
 
     // Run the pipeline
     p.run();

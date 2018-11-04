@@ -39,7 +39,7 @@ public final class StreamingPolicyParallelismFive implements Policy {
    */
   public StreamingPolicyParallelismFive() {
     final PolicyBuilder builder = new PolicyBuilder();
-    PolicyTestUtil.overwriteParallelism(5, DefaultPolicy.BUILDER.getCompileTimePasses())
+    PolicyTestUtil.overwriteParallelism(1, DefaultPolicy.BUILDER.getCompileTimePasses())
       .forEach(ctPass -> builder.registerCompileTimePass(ctPass));
     builder.registerCompileTimePass(new PipeTransferForAllEdgesPass());
     this.policy = builder.build();

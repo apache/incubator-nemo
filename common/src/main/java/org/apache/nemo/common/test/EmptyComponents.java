@@ -247,7 +247,8 @@ public final class EmptyComponents {
     }
 
     @Override
-    public void advance() {
+    public boolean advance() {
+      return false;
     }
 
     @Override
