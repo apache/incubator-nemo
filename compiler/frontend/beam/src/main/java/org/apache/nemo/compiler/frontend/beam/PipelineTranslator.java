@@ -89,7 +89,7 @@ final class PipelineTranslator {
   }
 
   void translatePrimitive(final PipelineTranslationContext context,
-                          final TransformHierarchy.Node primitive){
+                          final TransformHierarchy.Node primitive) {
     final PTransform<?, ?> transform = primitive.getTransform();
     Class<?> clazz = transform.getClass();
     final Method translator = primitiveTransformToTranslator.get(clazz);
@@ -115,7 +115,7 @@ final class PipelineTranslator {
    * @return behavior.
    */
   Pipeline.PipelineVisitor.CompositeBehavior translateComposite(final PipelineTranslationContext context,
-                                                                final TransformHierarchy.Node composite){
+                                                                final TransformHierarchy.Node composite) {
     final PTransform<?, ?> transform = composite.getTransform();
     if (transform == null) {
       // root beam node
@@ -270,10 +270,7 @@ final class PipelineTranslator {
   /**
    * {@link Combine.PerKey} = {@link GroupByKey} + {@link Combine.GroupedValues}
    * ({@link Combine.Globally} internally uses {@link Combine.PerKey} which will also be optimized by this translator)
-   *
-   * Partial aggregation optimizations (e.g., combiner, aggregation tree) will be applied here.
-   * In {@link Combine.CombineFn}, there are InputT, AccumT, OutputT
-   * Partial aggregations will perform transformations of AccumT -> AccumT
+   * Here, we translate this composite transform as a whole, exploiting its accumulator semantics.
    *
    * @param ctx provides translation context
    * @param beamNode the given CompositeTransform to translate
@@ -297,7 +294,7 @@ final class PipelineTranslator {
     }
 
     // This Combine can be optimized as the following sequence of Nemo IRVertices.
-    // Combine Input -> (Partial Combine -> KV<InputT, AccumT> -> Final Combine) -> Combine Output
+    // Combine Input -> Combine(Partial Combine -> KV<InputT, AccumT> -> Final Combine) -> Combine Output
     final CombineFnBase.GlobalCombineFn combineFn = perKey.getFn();
 
     // (Step 1) To Partial Combine

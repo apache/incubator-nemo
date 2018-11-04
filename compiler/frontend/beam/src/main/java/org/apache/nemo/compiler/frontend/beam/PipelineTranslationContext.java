@@ -23,8 +23,6 @@ import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.*;
@@ -233,8 +231,7 @@ final class PipelineTranslationContext {
 
   /**
    * Get appropriate coder for {@link PCollectionView}.
-   *
-   * @param view {@link PCollectionView} from the corresponding {@link View.CreatePCollectionView} transform
+   * @param view {@link PCollectionView}
    * @return appropriate {@link Coder} for {@link PCollectionView}
    */
   private static Coder<?> getCoderForView(final PCollectionView view, final PipelineTranslationContext context) {
