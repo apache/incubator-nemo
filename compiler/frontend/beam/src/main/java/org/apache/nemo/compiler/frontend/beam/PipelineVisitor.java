@@ -18,15 +18,8 @@
  */
 package org.apache.nemo.compiler.frontend.beam;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.dag.DAGBuilder;
-import org.apache.nemo.common.dag.Edge;
-import org.apache.nemo.common.dag.Vertex;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.TransformHierarchy;
-import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.View;
-import org.apache.beam.sdk.values.PValue;
 
 import java.util.*;
 
@@ -38,17 +31,11 @@ import java.util.*;
  * This DAG will be later translated by {@link PipelineTranslator} into Nemo IR DAG.
  */
 public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
-
-  private static final String TRANSFORM = "Transform-";
-  private static final String DATAFLOW = "Dataflow-";
-
-  private final Stack<CompositeTransformVertex> compositeTransformVertexStack = new Stack<>();
-  private CompositeTransformVertex rootVertex = null;
-  private int nextIdx = 0;
+  private final Stack<TransformHierarchy.Node> compositeTransformVertexStack = new Stack<>();
+  private TransformHierarchy.Node rootVertex = null;
 
   @Override
   public void visitPrimitiveTransform(final TransformHierarchy.Node node) {
-    final PrimitiveTransformVertex vertex = new PrimitiveTransformVertex(node, compositeTransformVertexStack.peek());
     compositeTransformVertexStack.peek().addVertex(vertex);
     vertex.getPValuesConsumed()
         .forEach(pValue -> {
@@ -59,12 +46,12 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
 
   @Override
   public CompositeBehavior enterCompositeTransform(final TransformHierarchy.Node node) {
-    final CompositeTransformVertex vertex;
+    final TransformHierarchy.Node vertex;
     if (compositeTransformVertexStack.isEmpty()) {
       // There is always a top-level CompositeTransform that encompasses the entire Beam pipeline.
-      vertex = new CompositeTransformVertex(node, null);
+      vertex = new TransformHierarchy.Node(node, null);
     } else {
-      vertex = new CompositeTransformVertex(node, compositeTransformVertexStack.peek());
+      vertex = new TransformHierarchy.Node(node, compositeTransformVertexStack.peek());
     }
     compositeTransformVertexStack.push(vertex);
     return CompositeBehavior.ENTER_TRANSFORM;
@@ -72,7 +59,7 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
 
   @Override
   public void leaveCompositeTransform(final TransformHierarchy.Node node) {
-    final CompositeTransformVertex vertex = compositeTransformVertexStack.pop();
+    final TransformHierarchy.Node vertex = compositeTransformVertexStack.pop();
     vertex.build();
     if (compositeTransformVertexStack.isEmpty()) {
       // The vertex is the root.
@@ -82,7 +69,7 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
       }
       rootVertex = vertex;
     } else {
-      // The CompositeTransformVertex is ready; adding it to its enclosing vertex.
+      // The TransformHierarchy.Node is ready; adding it to its enclosing vertex.
       compositeTransformVertexStack.peek().addVertex(vertex);
     }
   }
@@ -90,223 +77,10 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   /**
    * @return A vertex representing the top-level CompositeTransform.
    */
-  public CompositeTransformVertex getConvertedPipeline() {
+  public TransformHierarchy.Node getConvertedPipeline() {
     if (rootVertex == null) {
       throw new RuntimeException("The visitor have not fully traversed through a Beam pipeline.");
     }
     return rootVertex;
-  }
-
-  /**
-   * Represents a {@link org.apache.beam.sdk.transforms.PTransform} as a vertex in DAG.
-   */
-  public abstract class TransformVertex extends Vertex {
-    private final TransformHierarchy.Node node;
-    private final CompositeTransformVertex enclosingVertex;
-
-    /**
-     * @param node the corresponding Beam node
-     * @param enclosingVertex the vertex for the transform which inserted this transform as its expansion,
-     *                        or {@code null}
-     */
-    private TransformVertex(final TransformHierarchy.Node node, final CompositeTransformVertex enclosingVertex) {
-      super(String.format("%s%d", TRANSFORM, nextIdx++));
-      this.node = node;
-      this.enclosingVertex = enclosingVertex;
-    }
-
-    /**
-     * @return Collection of {@link PValue}s this transform emits.
-     */
-    public abstract Collection<PValue> getPValuesProduced();
-
-    /**
-     * Searches within {@code this} to find a transform that produces the given {@link PValue}.
-     *
-     * @param pValue a {@link PValue}
-     * @return the {@link TransformVertex} whose {@link org.apache.beam.sdk.transforms.PTransform}
-     *         produces the given {@code pValue}
-     */
-    public abstract PrimitiveTransformVertex getPrimitiveProducerOf(final PValue pValue);
-
-    /**
-     * @return the corresponding Beam node.
-     */
-    public TransformHierarchy.Node getNode() {
-      return node;
-    }
-
-    /**
-     * @return the enclosing {@link CompositeTransformVertex} if any, {@code null} otherwise.
-     */
-    public CompositeTransformVertex getEnclosingVertex() {
-      return enclosingVertex;
-    }
-  }
-
-  /**
-   * Represents a transform hierarchy for primitive transform.
-   */
-  public final class PrimitiveTransformVertex extends TransformVertex {
-    private final List<PValue> pValuesProduced = new ArrayList<>();
-    private final List<PValue> pValuesConsumed = new ArrayList<>();
-
-    private PrimitiveTransformVertex(final TransformHierarchy.Node node,
-                                     final CompositeTransformVertex enclosingVertex) {
-      super(node, enclosingVertex);
-      if (node.getTransform() instanceof View.CreatePCollectionView) {
-        pValuesProduced.add(((View.CreatePCollectionView) node.getTransform()).getView());
-      }
-      if (node.getTransform() instanceof ParDo.SingleOutput) {
-        pValuesConsumed.addAll(((ParDo.SingleOutput) node.getTransform()).getSideInputs());
-      }
-      if (node.getTransform() instanceof ParDo.MultiOutput) {
-        pValuesConsumed.addAll(((ParDo.MultiOutput) node.getTransform()).getSideInputs());
-      }
-      pValuesProduced.addAll(getNode().getOutputs().values());
-      pValuesConsumed.addAll(getNode().getInputs().values());
-    }
-
-    @Override
-    public Collection<PValue> getPValuesProduced() {
-      return pValuesProduced;
-    }
-
-    @Override
-    public PrimitiveTransformVertex getPrimitiveProducerOf(final PValue pValue) {
-      if (!getPValuesProduced().contains(pValue)) {
-        throw new RuntimeException();
-      }
-      return this;
-    }
-
-    /**
-     * @return collection of {@link PValue} this transform consumes.
-     */
-    public Collection<PValue> getPValuesConsumed() {
-      return pValuesConsumed;
-    }
-
-    public String toString() {
-      return getNode().toString();
-    }
-  }
-  /**
-   * Represents a transform hierarchy for composite transform.
-   */
-  public final class CompositeTransformVertex extends TransformVertex {
-    private final Map<PValue, TransformVertex> pValueToProducer = new HashMap<>();
-    private final Collection<DataFlowEdge> dataFlowEdges = new ArrayList<>();
-    private final DAGBuilder<TransformVertex, DataFlowEdge> builder = new DAGBuilder<>();
-    private DAG<TransformVertex, DataFlowEdge> dag = null;
-
-    private CompositeTransformVertex(final TransformHierarchy.Node node,
-                                     final CompositeTransformVertex enclosingVertex) {
-      super(node, enclosingVertex);
-    }
-
-    /**
-     * Finalize this vertex and make it ready to be added to another {@link CompositeTransformVertex}.
-     */
-    private void build() {
-      if (dag != null) {
-        throw new RuntimeException("DAG already have been built.");
-      }
-      dataFlowEdges.forEach(builder::connectVertices);
-      dag = builder.build();
-    }
-
-    /**
-     * Add a {@link TransformVertex}.
-     *
-     * @param vertex the vertex to add
-     */
-    private void addVertex(final TransformVertex vertex) {
-      vertex.getPValuesProduced().forEach(value -> pValueToProducer.put(value, vertex));
-      builder.addVertex(vertex);
-    }
-
-    /**
-     * Add a {@link DataFlowEdge}.
-     *
-     * @param dataFlowEdge the edge to add
-     */
-    private void addDataFlow(final DataFlowEdge dataFlowEdge) {
-      dataFlowEdges.add(dataFlowEdge);
-    }
-
-    @Override
-    public Collection<PValue> getPValuesProduced() {
-      return pValueToProducer.keySet();
-    }
-
-    /**
-     * Get a direct child of this vertex which produces the given {@link PValue}.
-     *
-     * @param pValue the {@link PValue} to search
-     * @return the direct child of this vertex which produces {@code pValue}
-     */
-    public TransformVertex getProducerOf(final PValue pValue) {
-      final TransformVertex vertex = pValueToProducer.get(pValue);
-      if (vertex == null) {
-        throw new RuntimeException();
-      }
-      return vertex;
-    }
-
-    @Override
-    public PrimitiveTransformVertex getPrimitiveProducerOf(final PValue pValue) {
-      return getProducerOf(pValue).getPrimitiveProducerOf(pValue);
-    }
-
-    /**
-     * @return DAG of Beam hierarchy
-     */
-    public DAG<TransformVertex, DataFlowEdge> getDAG() {
-      return dag;
-    }
-
-    @Override
-    public String toString() {
-      final StringBuilder sb = new StringBuilder();
-      sb.append("[");
-      dag.getTopologicalSort().forEach(v -> sb.append(v.toString()));
-      sb.append("]");
-      return sb.toString();
-    }
-  }
-
-  /**
-   * Represents data flow from a transform to another transform.
-   */
-  public final class DataFlowEdge extends Edge<TransformVertex> {
-    /**
-     * @param src source vertex
-     * @param dst destination vertex
-     */
-    private DataFlowEdge(final TransformVertex src, final TransformVertex dst) {
-      super(String.format("%s%d", DATAFLOW, nextIdx++), src, dst);
-    }
-  }
-
-  /**
-   * @param primitiveConsumer a {@link PrimitiveTransformVertex} which consumes {@code pValue}
-   * @param pValue the specified {@link PValue}
-   * @return the closest {@link TransformVertex} to {@code primitiveConsumer},
-   *         which is equal to or encloses {@code primitiveConsumer} and can be the destination vertex of
-   *         data flow edge from the producer of {@code pValue} to {@code primitiveConsumer}.
-   */
-  private TransformVertex getDestinationOfDataFlowEdge(final PrimitiveTransformVertex primitiveConsumer,
-                                                       final PValue pValue) {
-    TransformVertex current = primitiveConsumer;
-    while (true) {
-      if (current.getEnclosingVertex().getPValuesProduced().contains(pValue)) {
-        return current;
-      }
-      current = current.getEnclosingVertex();
-      if (current.getEnclosingVertex() == null) {
-        throw new RuntimeException(String.format("Cannot find producer of %s", pValue));
-      }
-    }
   }
 }
