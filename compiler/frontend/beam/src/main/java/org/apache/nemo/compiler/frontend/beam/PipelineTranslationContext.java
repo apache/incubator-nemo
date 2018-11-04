@@ -69,6 +69,9 @@ final class PipelineTranslationContext {
 
   void enterCompositeTransform(final TransformHierarchy.Node compositeTransform) {
     if (compositeTransform.getTransform() instanceof LoopCompositeTransform) {
+      final LoopVertex loopVertex = new LoopVertex(compositeTransform.getFullName());
+      builder.addVertex(loopVertex, loopVertexStack);
+      builder.removeVertex(loopVertex);
       loopVertexStack.push(new LoopVertex(compositeTransform.getFullName()));
     }
   }

@@ -41,7 +41,7 @@ public final class BeamFrontendALSTest {
     final DAG<IRVertex, IREdge> producedDAG = CompilerTestUtil.compileALSDAG();
 
     assertEquals(producedDAG.getTopologicalSort(), producedDAG.getTopologicalSort());
-    assertEquals(42, producedDAG.getVertices().size());
+    assertEquals(38, producedDAG.getVertices().size());
 
 //    producedDAG.getTopologicalSort().forEach(v -> System.out.println(v.getId()));
     final IRVertex vertex11 = producedDAG.getTopologicalSort().get(5);

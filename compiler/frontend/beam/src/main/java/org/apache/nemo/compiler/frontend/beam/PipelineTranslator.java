@@ -321,7 +321,7 @@ final class PipelineTranslator {
       KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder),
       input.getWindowingStrategy().getWindowFn().windowCoder());
 
-    // (Step 3) From Final Combine
+    // (Step 3) To Combine Output
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
 
     // This composite transform has been translated in its entirety.

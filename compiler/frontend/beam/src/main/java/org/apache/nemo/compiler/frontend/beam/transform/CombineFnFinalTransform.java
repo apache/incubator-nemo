@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -78,12 +79,15 @@ public final class CombineFnFinalTransform<K, A, O>
 
   @Override
   public void close() {
-    keyToAcuumulator.entrySet().stream().forEach(entry -> {
+    final Iterator<Map.Entry<K, A>> iterator = keyToAcuumulator.entrySet().iterator();
+    while (iterator.hasNext()) {
+      final Map.Entry<K, A> entry = iterator.next();
       final K key = entry.getKey();
       final A accum = entry.getValue();
       final O output = combineFnRunner.extractOutput(accum, null, null, null);
       outputCollector.emit(WindowedValue.valueInGlobalWindow(KV.of(key, output)));
-    });
+      iterator.remove(); // for eager garbage collection
+    }
   }
 
   @Override
