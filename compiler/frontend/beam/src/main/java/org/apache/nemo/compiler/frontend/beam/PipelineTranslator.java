@@ -56,7 +56,6 @@ final class PipelineTranslator {
   public static final PipelineTranslator INSTANCE = new PipelineTranslator();
   private static final Logger LOG = LoggerFactory.getLogger(PipelineTranslator.class.getName());
 
-
   private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator = new HashMap<>();
   private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator = new HashMap<>();
 
@@ -88,7 +87,8 @@ final class PipelineTranslator {
     }
   }
 
-  void translatePrimitive(final TransformHierarchy.Node primitive){
+  void translatePrimitive(final PipelineTranslationContext context,
+                          final TransformHierarchy.Node primitive){
     final PTransform<?, ?> transform = primitive.getTransform();
     Class<?> clazz = transform.getClass();
     final Method translator = primitiveTransformToTranslator.get(clazz);
@@ -98,7 +98,7 @@ final class PipelineTranslator {
     } else {
       try {
         translator.setAccessible(true);
-        translator.invoke(null, this, primitive, transform);
+        translator.invoke(null, context, primitive, transform);
       } catch (final IllegalAccessException e) {
         throw new RuntimeException(e);
       } catch (final InvocationTargetException | RuntimeException e) {
@@ -112,20 +112,19 @@ final class PipelineTranslator {
    * @param composite transform.
    * @return true if this composite has been translated in its entirety.
    */
-  Pipeline.PipelineVisitor.CompositeBehavior translateComposite(final TransformHierarchy.Node composite){
+  boolean translateComposite(final PipelineTranslationContext context,
+                             final TransformHierarchy.Node composite){
     final PTransform<?, ?> transform = composite.getTransform();
     Class<?> clazz = transform.getClass();
 
     final Method translator = compositeTransformToTranslator.get(clazz);
     if (translator == null) {
-      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM; // No translator exists (enter!)
+      return false; // Failed to translate.
     } else {
       try {
         translator.setAccessible(true);
-        translator.invoke(null, this, composite, transform);
-
-        // Translator has successfully translated (Do not enter! (TODO: loop?)
-        return Pipeline.PipelineVisitor.CompositeBehavior.DO_NOT_ENTER_TRANSFORM;
+        translator.invoke(null, context, composite, transform);
+        return true; // Translation succeeded!
       } catch (final IllegalAccessException e) {
         throw new RuntimeException(e);
       } catch (final InvocationTargetException | RuntimeException e) {
@@ -279,6 +278,7 @@ final class PipelineTranslator {
   private static void combinePerKeyTranslator(final PipelineTranslationContext ctx,
                                               final TransformHierarchy.Node transformVertex,
                                               final PTransform<?, ?> transform) {
+    /*
     // TODO #XXX: Combiner optimization for streaming
     if (!isBatch(transformVertex)) {
       transformVertex.getDAG().topologicalDo(ctx::translate);
@@ -337,6 +337,7 @@ final class PipelineTranslator {
 
     // Translate the remaining vertices.
     topologicalOrdering.stream().skip(1).forEach(ctx::translate);
+    */
   }
 
   /**
@@ -351,11 +352,13 @@ final class PipelineTranslator {
                                      final TransformHierarchy.Node transformVertex,
                                      final LoopCompositeTransform<?, ?> transform) {
     final LoopVertex loopVertex = new LoopVertex(transformVertex.getFullName());
-    ctx.getBuilder().addVertex(loopVertex, ctx.loopVertexStack);
+    ctx.getBuilder().addVertex(loopVertex, ctx.getLoopVertexStack());
     ctx.getBuilder().removeVertex(loopVertex);
-    ctx.loopVertexStack.push(loopVertex);
+
+    // TODO: Do this in composite
+    ctx.getLoopVertexStack().push(loopVertex);
     topologicalTranslator(ctx, transformVertex, transform);
-    ctx.loopVertexStack.pop();
+    ctx.getLoopVertexStack().pop();
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -411,7 +414,7 @@ final class PipelineTranslator {
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
     final TupleTag mainOutputTag = new TupleTag<>();
 
-    if (isBatch(transformVertex)) {
+    if (isBatch(transformVertex, ctx.getPipeline())) {
       return new GroupByKeyTransform();
     } else {
       return new GroupByKeyAndWindowDoFnTransform(
@@ -425,8 +428,8 @@ final class PipelineTranslator {
     }
   }
 
-  private static boolean isBatch(final TransformHierarchy.Node transformVertex) {
-    final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(ctx.getPipeline());
+  private static boolean isBatch(final TransformHierarchy.Node transformVertex, final Pipeline pipeline) {
+    final AppliedPTransform pTransform = transformVertex.toAppliedPTransform(pipeline);
     final PCollection<?> mainInput = (PCollection<?>)
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
     return mainInput.getWindowingStrategy().getWindowFn() instanceof GlobalWindows;

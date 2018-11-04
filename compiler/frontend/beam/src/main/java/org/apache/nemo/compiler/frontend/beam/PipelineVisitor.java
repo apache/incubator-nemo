@@ -25,15 +25,12 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 /**
- * Traverses through the given Beam pipeline to construct a DAG of Beam Transform,
- * while preserving hierarchy of CompositeTransforms.
- * Hierarchy is established when a CompositeTransform is expanded to other CompositeTransforms or PrimitiveTransforms,
- * as the former CompositeTransform becoming 'enclosingVertex' which have the inner transforms as embedded DAG.
- * This DAG will be later translated by {@link PipelineTranslator} into Nemo IR DAG.
+ * Uses the translator and the context to build a Nemo IR DAG.
+ * - Translator: Translates each PTransform, and lets us know whether or not to enter into a composite PTransform.
+ * - Context: The translator builds a DAG in the context.
  */
 public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   private static PipelineTranslator pipelineTranslator = PipelineTranslator.INSTANCE;
-
   private final PipelineTranslationContext context;
 
   PipelineVisitor(final Pipeline pipeline, final NemoPipelineOptions pipelineOptions) {
@@ -42,30 +39,24 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
 
   @Override
   public void visitPrimitiveTransform(final TransformHierarchy.Node node) {
-    pipelineTranslator.translatePrimitive(node);
+    pipelineTranslator.translatePrimitive(context, node);
   }
 
   @Override
   public CompositeBehavior enterCompositeTransform(final TransformHierarchy.Node node) {
-    final CompositeBehavior compositeBehavior = pipelineTranslator.translateComposite(node);
+    final boolean isTranslated = pipelineTranslator.translateComposite(context, node);
 
     // this should come after the above translateComposite, since this composite is a child of a previous composite.
-    pipelineTranslationContext.enterCompositeTransform(node);
-    return compositeBehavior;
+    context.enterCompositeTransform(node);
+    return isTranslated ? CompositeBehavior.DO_NOT_ENTER_TRANSFORM : CompositeBehavior.ENTER_TRANSFORM;
   }
 
   @Override
   public void leaveCompositeTransform(final TransformHierarchy.Node node) {
-    pipelineTranslationContext.leaveCompositeTransform(node);
+    context.leaveCompositeTransform(node);
   }
 
-  /**
-   * @return A vertex representing the top-level CompositeTransform.
-   */
   DAG<IRVertex, IREdge> getConvertedPipeline() {
-    if (rootVertex == null) {
-      throw new RuntimeException("The visitor have not fully traversed through a Beam pipeline.");
-    }
-    return pipelineTranslationContext.getBuilder().build();
+    return context.getBuilder().build();
   }
 }

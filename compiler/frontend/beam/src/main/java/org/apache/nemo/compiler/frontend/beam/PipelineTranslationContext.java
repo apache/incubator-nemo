@@ -61,7 +61,6 @@ final class PipelineTranslationContext {
    */
   PipelineTranslationContext(final Pipeline pipeline,
                              final PipelineOptions pipelineOptions) {
-    this.root = root;
     this.compositeTransformStack = new Stack<>();
     this.pipeline = pipeline;
     this.builder = new DAGBuilder<>();
@@ -184,6 +183,10 @@ final class PipelineTranslationContext {
 
   DAGBuilder getBuilder() {
     return builder;
+  }
+
+  public Stack<LoopVertex> getLoopVertexStack() {
+    return loopVertexStack;
   }
 
   /**
