@@ -65,13 +65,13 @@ public final class CombineFnFinalTransform<K, A, O>
 
     // The initial accumulator
     keyToAcuumulator.putIfAbsent(
-      key, combineFnRunner.createAccumulator(null, null, element.getWindows()));
+      key, combineFnRunner.createAccumulator(null, null, null));
 
     // Get the accumulator
     final A accumulatorForThisElement = keyToAcuumulator.get(key);
 
     // Update the accumulator (merge)
-    keyToAcuumulator.putIfAbsent(
+    keyToAcuumulator.put(
       key,
       combineFnRunner.mergeAccumulators(
         Arrays.asList(accumulatorForThisElement, accum), null, null, null));

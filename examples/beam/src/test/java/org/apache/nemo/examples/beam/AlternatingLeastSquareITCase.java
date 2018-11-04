@@ -50,7 +50,6 @@ public final class AlternatingLeastSquareITCase {
   private static final String numIteration = "3";
   private static final String lambda = "0.05";
 
-  /*
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
@@ -75,7 +74,6 @@ public final class AlternatingLeastSquareITCase {
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
   }
-  */
 
   // TODO #137: Retry parent task(s) upon task INPUT_READ_FAILURE
   // @Test (timeout = TIMEOUT)

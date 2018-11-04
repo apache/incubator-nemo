@@ -221,10 +221,6 @@ public final class AlternatingLeastSquare {
       final int[] indexArr = c.element().getValue().getKey();
       final float[] ratingArr = c.element().getValue().getValue();
 
-      LOG.info("fixedMatrix {}", fixedMatrix);
-      LOG.info("indexArr {}", Arrays.toString(indexArr));
-      LOG.info("ratingArr {}", Arrays.toString(ratingArr));
-
       final int size = indexArr.length;
 
       final float[] vector = new float[numFeatures];
@@ -253,7 +249,6 @@ public final class AlternatingLeastSquare {
 
       final intW info = new intW(0);
 
-      LOG.info("dppsv: {} / {} / {} / {}", numFeatures, upperTriangularLeftMatrix, rightSideVector, numFeatures);
       NETLIB_LAPACK.dppsv("U", numFeatures, 1, upperTriangularLeftMatrix, rightSideVector, numFeatures, info);
       if (info.val != 0) {
         throw new RuntimeException("returned info value : " + info.val);
