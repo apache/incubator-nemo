@@ -100,8 +100,9 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
       implements Readable<Object> {
     private final UnboundedSource<O, M> unboundedSource;
     private UnboundedSource.UnboundedReader<O> reader;
-    private Function<O, WindowedValue<O>> windowedValueConverter;
+    private boolean isStarted = false;
     private boolean finished = false;
+    private boolean isCurrentAvailable = false;
 
     UnboundedSourceReadable(final UnboundedSource<O, M> unboundedSource) {
       this.unboundedSource = unboundedSource;
@@ -111,45 +112,32 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     public void prepare() {
       try {
         reader = unboundedSource.createReader(null, null);
-        reader.start();
+        isCurrentAvailable = reader.start();
       } catch (final Exception e) {
         throw new RuntimeException(e);
-      }
-
-      // get first element
-      final O firstElement = retrieveFirstElement();
-      if (firstElement instanceof WindowedValue) {
-        windowedValueConverter = val -> (WindowedValue) val;
-      } else {
-        windowedValueConverter = WindowedValue::valueInGlobalWindow;
-      }
-    }
-
-    private O retrieveFirstElement() {
-      while (true) {
-        try {
-          return reader.getCurrent();
-        } catch (final NoSuchElementException e) {
-          // the first element is not currently available... retry
-          try {
-            Thread.sleep(100);
-          } catch (InterruptedException e1) {
-            e1.printStackTrace();
-            throw new RuntimeException(e);
-          }
-        }
       }
     }
 
     @Override
     public Object readCurrent() {
-      final O elem = reader.getCurrent();
-      return windowedValueConverter.apply(elem);
-    }
 
-    @Override
-    public boolean advance() throws IOException {
-      return reader.advance();
+      try {
+        if (!isStarted) {
+          isStarted = true;
+          isCurrentAvailable = reader.start();
+        } else {
+          isCurrentAvailable = reader.advance();
+        }
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
+
+      if (isCurrentAvailable) {
+        final O elem = reader.getCurrent();
+        return WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp());
+      } else {
+        throw new NoSuchElementException();
+      }
     }
 
     @Override

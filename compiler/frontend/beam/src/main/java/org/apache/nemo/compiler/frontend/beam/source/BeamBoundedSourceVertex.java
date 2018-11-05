@@ -144,13 +144,13 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
       }
 
       final T elem = reader.getCurrent();
+      try {
+        finished = !reader.advance();
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
       return windowedValueConverter.apply(elem);
-    }
-
-    @Override
-    public boolean advance() throws IOException {
-      finished = !reader.advance();
-      return !finished;
     }
 
     @Override

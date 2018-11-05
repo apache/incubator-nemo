@@ -45,11 +45,6 @@ public interface Readable<O> extends Serializable {
   O readCurrent() throws NoSuchElementException;
 
   /**
-   * Advance current data point.
-   */
-  boolean advance() throws IOException;
-
-  /**
    * Read watermark.
    * @return watermark
    */

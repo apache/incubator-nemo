@@ -45,7 +45,6 @@ class SourceVertexDataFetcher extends DataFetcher {
   private final ScheduledExecutorService watermarkTriggerService;
   private boolean watermarkTriggered = false;
   private final boolean bounded;
-  private boolean isAdvanced = true;
 
   SourceVertexDataFetcher(final SourceVertex dataSource,
                           final Readable readable,
@@ -110,21 +109,8 @@ class SourceVertexDataFetcher extends DataFetcher {
       return new Watermark(readable.readWatermark());
     }
 
-    if (isAdvanced) {
-      // Data
-      final Object element = readable.readCurrent();
-      isAdvanced = readable.advance();
-      return element;
-    } else {
-      // Read again
-      isAdvanced = readable.advance();
-      if (!isAdvanced) {
-        throw new NoSuchElementException();
-      } else {
-        final Object element = readable.readCurrent();
-        isAdvanced = readable.advance();
-        return element;
-      }
-    }
+    // Data
+    final Object element = readable.readCurrent();
+    return element;
   }
 }

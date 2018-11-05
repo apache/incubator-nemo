@@ -107,7 +107,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     // TODO #250: But, this approach can delay the event processing in streaming,
     // TODO #250: if the watermark is not triggered for a long time.
 
-    LOG.info("Receive {}", element);
+    LOG.info("Receive {}, {}", element, element.getTimestamp().getMillis());
     final KV<K, InputT> kv = element.getValue();
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
     keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
@@ -202,6 +202,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     }
 
     // Emit watermark to downstream operators
+    LOG.info("GBKW emit watermark: {}, timerDataList: {}", outputWatermark, timerDataList);
     timerInternals.advanceOutputWatermark(new Instant(outputWatermark));
     getOutputCollector().emitWatermark(new Watermark(outputWatermark));
   }

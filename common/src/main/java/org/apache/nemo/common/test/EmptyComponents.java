@@ -247,11 +247,6 @@ public final class EmptyComponents {
     }
 
     @Override
-    public boolean advance() {
-      return false;
-    }
-
-    @Override
     public long readWatermark() {
       return 0;
     }

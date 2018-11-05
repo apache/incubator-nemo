@@ -294,6 +294,7 @@ public final class TaskExecutor {
   }
 
   private void processWatermark(final OutputCollector outputCollector, final Watermark watermark) {
+    LOG.info("Emit watermark from source: {}", watermark);
     outputCollector.emitWatermark(watermark);
   }
 

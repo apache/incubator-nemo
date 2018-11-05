@@ -258,6 +258,7 @@ public final class DataUtil {
           hasNext = true;
           return true;
         } catch (final IOException e) {
+          e.printStackTrace();
           // IOException from decoder indicates EOF event.
           numSerializedBytes += serializedCountingStream.getCount();
           numEncodedBytes += encodedCountingStream.getCount();

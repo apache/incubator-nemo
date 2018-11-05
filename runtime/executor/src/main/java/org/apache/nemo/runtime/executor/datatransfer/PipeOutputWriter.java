@@ -78,17 +78,8 @@ public final class PipeOutputWriter implements OutputWriter {
     this.srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(srcTaskId);
   }
 
-  /**
-   * Writes output element.
-   * @param element the element to write.
-   */
-  @Override
-  public void write(final Object element) {
-    if (!initialized) {
-      doInitialize();
-    }
-
-    getPipeToWrite(element).forEach(pipe -> {
+  private void writeData(final Object element, final List<ByteOutputContext> pipeList) {
+    pipeList.forEach(pipe -> {
       try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
         // Serialize (Do not compress)
         final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
@@ -105,28 +96,28 @@ public final class PipeOutputWriter implements OutputWriter {
     });
   }
 
+  /**
+   * Writes output element.
+   * @param element the element to write.
+   */
+  @Override
+  public void write(final Object element) {
+    if (!initialized) {
+      doInitialize();
+    }
+
+    writeData(element, getPipeToWrite(element));
+  }
+
   @Override
   public void writeWatermark(Watermark watermark) {
     if (!initialized) {
       doInitialize();
     }
 
-
-    final byte[] serialized = SerializationUtils.serialize(new WatermarkWithIndex(watermark, srcTaskIndex));
-    pipes.forEach(pipe -> {
-      try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
-        // Write
-        final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
-        final OutputStream wrapped = DataUtil.buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
-        final EncoderFactory.Encoder<byte[]> encoder = BytesEncoderFactory.of().create(wrapped);
-        encoder.encode(serialized);
-        wrapped.close();
-        LOG.info("Write watermark {} to {}", watermark.getTimestamp(), pipe.getRemoteExecutorId());
-        pipeToWriteTo.write(bytesOutputStream.getBufDirectly());
-      } catch (IOException e) {
-        throw new RuntimeException(e); // For now we crash the executor on IOException
-      }
-    });
+    LOG.info("Write watermark {}", watermark.getTimestamp());
+    final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermark, srcTaskIndex);
+    writeData(watermarkWithIndex, pipes);
   }
 
   @Override

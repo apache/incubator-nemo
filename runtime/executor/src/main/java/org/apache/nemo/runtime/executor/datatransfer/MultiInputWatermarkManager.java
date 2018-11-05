@@ -21,6 +21,8 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +31,8 @@ import java.util.List;
  * This tracks the minimum input watermark among multiple input streams.
  */
 public final class MultiInputWatermarkManager implements InputWatermarkManager {
+  private final Logger LOG = LoggerFactory.getLogger(MultiInputWatermarkManager.class.getName());
+
   private final List<Watermark> watermarks;
   private final OutputCollector<?> watermarkCollector;
   private int minWatermarkIndex;
@@ -59,6 +63,8 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
 
   @Override
   public void trackAndEmitWatermarks(final int edgeIndex, final Watermark watermark) {
+    LOG.info("Track watermark {} emitted from edge {}:, {}", watermark.getTimestamp(), edgeIndex,
+      watermarks.toString());
     if (edgeIndex == minWatermarkIndex) {
       // update min watermark
       final Watermark prevMinWatermark = watermarks.get(minWatermarkIndex);
@@ -75,6 +81,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
       if (minWatermark.getTimestamp() > prevMinWatermark.getTimestamp()) {
         // Watermark timestamp progress!
         // Emit the min watermark
+        LOG.info("Emit watermark {}, {}", minWatermark, watermarks);
         watermarkCollector.emitWatermark(minWatermark);
       }
     } else {

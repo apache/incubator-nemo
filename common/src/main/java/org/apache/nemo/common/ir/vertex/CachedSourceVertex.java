@@ -101,12 +101,6 @@ public final class CachedSourceVertex<T> extends SourceVertex<T> {
     }
 
     @Override
-    public boolean advance() throws IOException {
-      throw new UnsupportedOperationException(
-        "CachedSourceVertex should not be used");
-    }
-
-    @Override
     public long readWatermark() {
       throw new UnsupportedOperationException(
         "CachedSourceVertex should not be used");

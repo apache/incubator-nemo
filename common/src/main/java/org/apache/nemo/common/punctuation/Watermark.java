@@ -48,6 +48,11 @@ public final class Watermark implements Serializable {
   }
 
   @Override
+  public String toString() {
+    return String.valueOf(timestamp);
+  }
+
+  @Override
   public int hashCode() {
     return Objects.hash(timestamp);
   }
