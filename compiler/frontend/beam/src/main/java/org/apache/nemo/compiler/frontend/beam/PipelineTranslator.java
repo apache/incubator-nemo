@@ -282,14 +282,15 @@ final class PipelineTranslator {
     final TransformHierarchy.Node beamNode,
     final PTransform<?, ?> transform) {
 
-    // Check if the optimization can be applied.
+    // Check if the partial combining optimization can be applied.
+    // If not, simply use the default Combine implementation by entering into it.
     if (!isBatch(beamNode, ctx.getPipeline())) {
-      // TODO #XXX: Combiner optimization for streaming
+      // TODO #263: Partial Combining for Beam Streaming
       return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
     }
     final Combine.PerKey perKey = (Combine.PerKey) transform;
     if (!perKey.getSideInputs().isEmpty()) {
-      // TODO #XXX: Combiner optimization for sideinputs
+      // TODO #264: Partial Combining with Beam SideInputs
       return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
     }
 
