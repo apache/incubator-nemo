@@ -247,10 +247,6 @@ public final class EmptyComponents {
     }
 
     @Override
-    public void advance() {
-    }
-
-    @Override
     public long readWatermark() {
       return 0;
     }
