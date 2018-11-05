@@ -86,6 +86,7 @@ public final class JobLauncher {
   private static CountDownLatch jobDoneLatch;
   private static String serializedDAG;
   private static final List<?> COLLECTED_DATA = new ArrayList<>();
+  private static final String[] EMPTY_USER_ARGS = new String[0];
 
   /**
    * private constructor.
@@ -241,7 +242,8 @@ public final class JobLauncher {
   private static void runUserProgramMain(final Configuration jobConf) throws Exception {
     final Injector injector = TANG.newInjector(jobConf);
     final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
-    final String[] args = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+    final String userArgsString = injector.getNamedInstance(JobConf.UserMainArguments.class);
+    final String[] args = userArgsString.isEmpty() ? EMPTY_USER_ARGS : userArgsString.split(" ");
     final Class userCode = Class.forName(className);
     final Method method = userCode.getMethod("main", String[].class);
     if (!Modifier.isStatic(method.getModifiers())) {
