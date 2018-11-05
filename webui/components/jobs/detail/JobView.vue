@@ -14,8 +14,8 @@ limitations under the License.
 -->
 <template>
   <!--(disabled for debugging)-->
-  <!--<el-card v-if="selectedJobId">-->
-  <el-card>
+  <el-card v-if="selectedJobId" style="background-color: ghostwhite;">
+  <!--<el-card>-->
     <h1>Details for Job {{ jobFrom ? jobFrom : 'NULL' }}</h1>
 
     <p>
@@ -26,9 +26,9 @@ limitations under the License.
       <span><b>Skipped Stages: </b><span>TODO</span><br></span>
     </p>
 
-    <el-collapse @change="handleCollapse">
+    <el-collapse accordion @change="handleCollapse">
       <!--Event Timeline-->
-      <el-collapse-item title="Event Timeline" name="1">
+      <el-collapse-item title="  Event Timeline" name="1">
         <el-card header="Timeline" class="detail-card">
           <metric-timeline
             ref="metricTimeline"
@@ -46,14 +46,13 @@ limitations under the License.
           <el-col :span="12" :xs="24">
             <el-card class="detail-card" header="Detail">
               <detail-table
-                v-if="tabIndex === '1'"
                 :tableData="tableData"/>
             </el-card>
           </el-col>
         </el-row>
       </el-collapse-item>
       <!--DAG Visualization-->
-      <el-collapse-item title="DAG Visualization" name="2">
+      <el-collapse-item title="  DAG Visualization" name="2">
         <el-row id="affix-target" :gutter="10">
           <el-col :span="16" :xs="24">
             <el-card header="DAG">
@@ -65,13 +64,18 @@ limitations under the License.
               <affix relative-element-selector="#affix-target">
                 <el-card header="Detail">
                   <detail-table
-                    v-if="tabIndex === '2'"
                     :tableData="tableData"/>
                 </el-card>
               </affix>
             </no-ssr>
           </el-col>
         </el-row>
+      </el-collapse-item>
+      <!--Tasks information-->
+      <el-collapse-item title="  Task Statistics" name="3">
+        <task-statistics
+          :selectedJobId="selectedJobId"
+          :metricLookupMap="metricLookupMap"/>
       </el-collapse-item>
     </el-collapse>
 
@@ -140,7 +144,8 @@ limitations under the License.
   import MetricTimeline from './MetricTimeline'
   import DetailTable from './DetailTable';
   import StageSelect from './StageSelect';
-  import DAG from './DAG'
+  import DAG from './DAG';
+  import TaskStatistics from '../../TaskStatistics';
 
   // list of metric, order of elements matters.
   export const METRIC_LIST = [
@@ -162,6 +167,7 @@ limitations under the License.
       'stage-select': StageSelect,
       'detail-table': DetailTable,
       'dag': DAG,
+      'task-statistics': TaskStatistics,
     },
 
     data() {
@@ -186,11 +192,10 @@ limitations under the License.
     },
 
     methods: {
-      handleCollapse(collapseElements) {
-        if (collapseElements.includes("1")) {
+      handleCollapse(activatedElement) {
+        if (activatedElement === "1") {
           this.$eventBus.$emit('redraw-timeline');
-        }
-        if (collapseElements.includes("2")) {
+        } else if (activatedElement === "2") {
           this.$eventBus.$emit('rerender-dag');
         }
       },
