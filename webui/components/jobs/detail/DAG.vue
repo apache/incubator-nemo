@@ -30,7 +30,7 @@ import { fabric } from 'fabric';
 import { Graph } from '@dagrejs/graphlib';
 import graphlib from '@dagrejs/graphlib';
 import dagre from 'dagre';
-import { STATE } from '../assets/constants';
+import { STATE } from '../../../assets/constants';
 
 const DEBOUNCE_INTERVAL = 200;
 

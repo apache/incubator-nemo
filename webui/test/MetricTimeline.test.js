@@ -18,8 +18,8 @@
  */
 import test from 'ava';
 import Vue from 'vue';
-import MetricTimeline from '../components/MetricTimeline';
-import { FIT_THROTTLE_INTERVAL } from '../components/MetricTimeline';
+import MetricTimeline from '../components/jobs/detail/MetricTimeline';
+import { FIT_THROTTLE_INTERVAL } from '../components/jobs/detail/MetricTimeline';
 
 function wait(interval) {
   return new Promise(resolve => {

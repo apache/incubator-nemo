@@ -18,7 +18,7 @@
  */
 import test from 'ava';
 import Vue from 'vue';
-import DetailTable from '../components/DetailTable';
+import DetailTable from '../components/jobs/detail/DetailTable';
 
 test.before('initialize', async t => {
   // load all plugins
