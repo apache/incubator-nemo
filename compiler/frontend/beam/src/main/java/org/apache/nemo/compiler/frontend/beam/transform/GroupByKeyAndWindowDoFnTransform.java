@@ -48,6 +48,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private final Map<K, List<WindowedValue<InputT>>> keyToValues;
   private transient InMemoryTimerInternalsFactory inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
+  private long currentOutputWatermark;
 
   /**
    * GroupByKey constructor.
@@ -69,6 +70,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       options);
     this.keyToValues = new HashMap<>();
     this.reduceFn = reduceFn;
+    this.currentOutputWatermark = Long.MIN_VALUE;
   }
 
   /**
@@ -106,8 +108,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
     // TODO #250: But, this approach can delay the event processing in streaming,
     // TODO #250: if the watermark is not triggered for a long time.
-
-    LOG.info("Receive {}, {}", element, element.getTimestamp().getMillis());
     final KV<K, InputT> kv = element.getValue();
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
     keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
@@ -115,35 +115,50 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   /**
    * Process the collected data and trigger timers.
-   * @param watermark current watermark
+   * @param inputWatermark current input watermark
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
    */
-  private void processElementsAndTriggerTimers(final Watermark watermark,
+  private void processElementsAndTriggerTimers(final Watermark inputWatermark,
                                                final Instant processingTime,
                                                final Instant synchronizedTime) {
-    keyToValues.forEach((key, val) -> {
+    long minOutputTimestampsOfEmittedWindows = Long.MAX_VALUE;
+
+    for (final Map.Entry<K, List<WindowedValue<InputT>>> entry : keyToValues.entrySet()) {
+      final K key = entry.getKey();
+      final List<WindowedValue<InputT>> values = entry.getValue();
+
       // for each key
       // Process elements
-      if (!val.isEmpty()) {
+      if (!values.isEmpty()) {
         final KeyedWorkItem<K, InputT> keyedWorkItem =
-          KeyedWorkItems.elementsWorkItem(key, val);
+          KeyedWorkItems.elementsWorkItem(key, values);
         // The DoFnRunner interface requires WindowedValue,
         // but this windowed value is actually not used in the ReduceFnRunner internal.
         getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
       }
 
       // Trigger timers
-      triggerTimers(key, watermark, processingTime, synchronizedTime);
+      final long minOutputTimestamp =
+        triggerTimers(key, inputWatermark, processingTime, synchronizedTime);
+
+      minOutputTimestampsOfEmittedWindows = Math.min(minOutputTimestampsOfEmittedWindows, minOutputTimestamp);
+
       // Remove values
-      val.clear();
-    });
+      values.clear();
+    }
+
+    // Emit watermark to downstream operators
+    if (minOutputTimestampsOfEmittedWindows != Long.MAX_VALUE
+      && currentOutputWatermark < minOutputTimestampsOfEmittedWindows) {
+      currentOutputWatermark = minOutputTimestampsOfEmittedWindows;
+      getOutputCollector().emitWatermark(new Watermark(minOutputTimestampsOfEmittedWindows));
+    }
   }
 
   @Override
-  public void onWatermark(final Watermark watermark) {
-    LOG.info("Receive watermark {}", watermark.getTimestamp());
-    processElementsAndTriggerTimers(watermark, Instant.now(), Instant.now());
+  public void onWatermark(final Watermark inputWatermark) {
+    processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
   }
 
   /**
@@ -164,8 +179,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    * @param watermark watermark
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
+   * @return the minimum output timestamp.
+   * If no data is emitted, it returns Long.MAX_VALUE.
    */
-  private void triggerTimers(final K key,
+  private long triggerTimers(final K key,
                              final Watermark watermark,
                              final Instant processingTime,
                              final Instant synchronizedTime) {
@@ -182,29 +199,27 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final List<TimerInternals.TimerData> timerDataList = getEligibleTimers(timerInternals);
 
     if (timerDataList.isEmpty()) {
-      return;
-    }
+      return Long.MAX_VALUE;
+    } else {
 
-    // Trigger timers and emit windowed data
-    final KeyedWorkItem<K, InputT> timerWorkItem =
-      KeyedWorkItems.timersWorkItem(key, timerDataList);
-    // The DoFnRunner interface requires WindowedValue,
-    // but this windowed value is actually not used in the ReduceFnRunner internal.
-    getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
+      // Trigger timers and emit windowed data
+      final KeyedWorkItem<K, InputT> timerWorkItem =
+        KeyedWorkItems.timersWorkItem(key, timerDataList);
+      // The DoFnRunner interface requires WindowedValue,
+      // but this windowed value is actually not used in the ReduceFnRunner internal.
+      getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
 
-    // output watermark
-    // we set output watermark to the minimum of the timer data
-    long outputWatermark = Long.MAX_VALUE;
-    for (final TimerInternals.TimerData timer : timerDataList) {
-      if (outputWatermark > timer.getTimestamp().getMillis()) {
-        outputWatermark = timer.getTimestamp().getMillis();
+      // output watermark
+      // we set output watermark to the minimum of the timer data
+      long keyOutputTimestamp = Long.MAX_VALUE;
+      for (final TimerInternals.TimerData timer : timerDataList) {
+        keyOutputTimestamp = Math.min(keyOutputTimestamp, timer.getTimestamp().getMillis());
       }
-    }
 
-    // Emit watermark to downstream operators
-    LOG.info("GBKW emit watermark: {}, timerDataList: {}", outputWatermark, timerDataList);
-    timerInternals.advanceOutputWatermark(new Instant(outputWatermark));
-    getOutputCollector().emitWatermark(new Watermark(outputWatermark));
+      timerInternals.advanceOutputWatermark(new Instant(keyOutputTimestamp));
+
+      return keyOutputTimestamp;
+    }
   }
 
   @Override

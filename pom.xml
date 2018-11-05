@@ -22,6 +22,12 @@ under the License.
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+      <groupId>org.apache</groupId>
+      <artifactId>apache</artifactId>
+      <version>21</version>
+    </parent>
+
     <groupId>org.apache.nemo</groupId>
     <artifactId>nemo-project</artifactId>
     <version>0.1-SNAPSHOT</version>
@@ -60,18 +66,9 @@ under the License.
         <module>conf</module>
         <module>client</module>
         <module>common</module>
-        <module>compiler/backend</module>
-        <module>compiler/frontend/beam</module>
-        <module>compiler/frontend/spark</module>
-        <module>compiler/optimizer</module>
-        <module>compiler/test</module>
-        <module>examples/beam</module>
-        <module>examples/spark</module>
-        <module>runtime/common</module>
-        <module>runtime/executor</module>
-        <module>runtime/master</module>
-        <module>runtime/driver</module>
-        <module>runtime/test</module>
+        <module>compiler</module>
+        <module>examples</module>
+        <module>runtime</module>
     </modules>
 
     <dependencies>
@@ -283,8 +280,8 @@ under the License.
                         <exclude>**/target/**</exclude>
                         <!-- REEF run files -->
                         <exclude>**/REEF_LOCAL_RUNTIME/**</exclude>
-                        <!-- Resources under examples -->
-                        <exclude>examples/resources/**</exclude>
+                        <!-- Resources -->
+                        <exclude>**/resources/**</exclude>
                         <!-- Logs -->
                         <exclude>**/*.log</exclude>
                         <!-- EditorConfig -->

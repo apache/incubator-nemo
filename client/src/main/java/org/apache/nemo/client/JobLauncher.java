@@ -60,6 +60,18 @@ import java.util.concurrent.CountDownLatch;
  * Job launcher.
  */
 public final class JobLauncher {
+
+  static {
+    System.out.println(
+        "\nPowered by\n"
+          + "    _   __                   \n"
+          + "   / | / /__  ____ ___  ____ \n"
+          + "  /  |/ / _ \\/ __ `__ \\/ __ \\\n"
+          + " / /|  /  __/ / / / / / /_/ /\n"
+          + "/_/ |_/\\___/_/ /_/ /_/\\____/ \n"
+    );
+  }
+
   private static final Tang TANG = Tang.Factory.getTang();
   private static final Logger LOG = LoggerFactory.getLogger(JobLauncher.class.getName());
   private static final int LOCAL_NUMBER_OF_EVALUATORS = 100; // hopefully large enough for our use....
@@ -74,6 +86,7 @@ public final class JobLauncher {
   private static CountDownLatch jobDoneLatch;
   private static String serializedDAG;
   private static final List<?> COLLECTED_DATA = new ArrayList<>();
+  private static final String[] EMPTY_USER_ARGS = new String[0];
 
   /**
    * private constructor.
@@ -227,7 +240,8 @@ public final class JobLauncher {
   private static void runUserProgramMain(final Configuration jobConf) throws Exception {
     final Injector injector = TANG.newInjector(jobConf);
     final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
-    final String[] args = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+    final String userArgsString = injector.getNamedInstance(JobConf.UserMainArguments.class);
+    final String[] args = userArgsString.isEmpty() ? EMPTY_USER_ARGS : userArgsString.split(" ");
     final Class userCode = Class.forName(className);
     final Method method = userCode.getMethod("main", String[].class);
     if (!Modifier.isStatic(method.getModifiers())) {
