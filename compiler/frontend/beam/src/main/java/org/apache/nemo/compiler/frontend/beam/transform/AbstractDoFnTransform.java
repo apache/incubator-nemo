@@ -119,7 +119,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   public final void prepare(final Context context, final OutputCollector<WindowedValue<OutputT>> oc) {
     // deserialize pipeline option
     final NemoPipelineOptions options = serializedOptions.get().as(NemoPipelineOptions.class);
-    this.outputCollector = oc;
+    this.outputCollector = wrapOutputCollector(oc);
 
     // create output manager
     outputManager = new DefaultOutputManager<>(outputCollector, mainOutputTag);
@@ -183,6 +183,8 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    * @return wrapped doFn.
    */
   abstract DoFn wrapDoFn(final DoFn originalDoFn);
+
+  abstract OutputCollector wrapOutputCollector(final OutputCollector outputCollector);
 
   @Override
   public abstract void onData(final WindowedValue<InputT> data);

@@ -47,12 +47,12 @@ public final class UnboundedWindowdWordCountITCase {
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
-  //@Test (timeout = TIMEOUT)
+  @Test (timeout = TIMEOUT)
   public void testStreamingSchedulerAndPipeFixedWindow() throws Exception {
     builder = new ArgBuilder()
       .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
       .addUserMain(UnboundedWindowdWordCount.class.getCanonicalName())
-      .addUserArgs(inputFilePath, outputFilePath, "fixed");
+      .addUserArgs(outputFilePath, "fixed");
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
@@ -68,7 +68,7 @@ public final class UnboundedWindowdWordCountITCase {
   }
 
 
-  //@Test (timeout = TIMEOUT)
+  @Test (timeout = TIMEOUT)
   public void testStreamingSchedulerAndPipeSlidingWindow() throws Exception {
     builder = new ArgBuilder()
       .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")

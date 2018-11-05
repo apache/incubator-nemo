@@ -60,8 +60,8 @@ public final class UnboundedWindowdWordCount {
     // Create the unbounded source.
     final PCollection<Long> unboundedSequence = p.apply(GenerateSequence
       .from(1)
-      .withRate(4, Duration.standardSeconds(1))
-      .withTimestampFn(num -> new Instant(num * 250))); // 10 ms interval between subsequent numbers
+      .withRate(2, Duration.standardSeconds(1))
+      .withTimestampFn(num -> new Instant(num * 500))); // 10 ms interval between subsequent numbers
 
     // Apply windowing.
     final Window<Long> windowFn;
@@ -81,7 +81,7 @@ public final class UnboundedWindowdWordCount {
       .apply(MapElements.via(new SimpleFunction<Long, KV<Integer, Long>>() {
         @Override
         public KV<Integer, Long> apply(final Long val) {
-          return KV.of((int) (val % 5), 1L);
+          return KV.of((int) (val % 2), 1L);
         }
       }))
       .apply(Sum.longsPerKey())

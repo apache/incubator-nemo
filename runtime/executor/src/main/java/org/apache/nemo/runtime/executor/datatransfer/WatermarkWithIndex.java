@@ -25,4 +25,13 @@ public final class WatermarkWithIndex implements Serializable {
   public int getIndex() {
     return index;
   }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(watermark);
+    sb.append(" from ");
+    sb.append(index);
+    return sb.toString();
+  }
 }

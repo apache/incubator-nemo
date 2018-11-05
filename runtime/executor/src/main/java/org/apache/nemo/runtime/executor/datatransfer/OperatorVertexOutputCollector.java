@@ -77,10 +77,12 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emit(final O output) {
+    LOG.info("{} emits {}", irVertex.getId(), output);
 
-    LOG.info("Emit event {} from {} ", output, irVertex);
 
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      // LOG.info("Emit event {} from {} to {}", output,
+      //   irVertex, internalVertex.getNextOperator().getTransform());
       emit(internalVertex.getNextOperator(), output);
     }
 
@@ -107,8 +109,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-
-    LOG.info("Emit watermark {} from {} ", watermark.getTimestamp(), irVertex);
+    LOG.info("{} emitW {}", irVertex.getId(), watermark);
+    //LOG.info("Emit watermark {} from {} ", watermark.getTimestamp(), irVertex);
 
     // Emit watermarks to internal vertices
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {

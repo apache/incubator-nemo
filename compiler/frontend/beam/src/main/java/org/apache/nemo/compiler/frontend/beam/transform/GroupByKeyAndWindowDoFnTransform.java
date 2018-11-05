@@ -28,6 +28,7 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.beam.sdk.values.KV;
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -48,8 +49,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private final Map<K, List<WindowedValue<InputT>>> keyToValues;
   private transient InMemoryTimerInternalsFactory inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
-  private long currentOutputWatermark;
+  private Watermark currentOutputWatermark;
 
+  private final Map<K, Watermark> keyAndWatermarkHoldMap;
   /**
    * GroupByKey constructor.
    */
@@ -69,8 +71,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       sideInputs,
       options);
     this.keyToValues = new HashMap<>();
+    this.keyAndWatermarkHoldMap = new HashMap<>();
     this.reduceFn = reduceFn;
-    this.currentOutputWatermark = Long.MIN_VALUE;
+    this.currentOutputWatermark = new Watermark(Long.MIN_VALUE);
   }
 
   /**
@@ -96,6 +99,11 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         getMainOutputTag());
   }
 
+  @Override
+  OutputCollector wrapOutputCollector(OutputCollector outputCollector) {
+    return new GBKWOutputCollector(outputCollector);
+  }
+
   /**
    * It collects data for each key.
    * The collected data are emitted at {@link GroupByKeyAndWindowDoFnTransform#onWatermark(Watermark)}
@@ -108,6 +116,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
     // TODO #250: But, this approach can delay the event processing in streaming,
     // TODO #250: if the watermark is not triggered for a long time.
+    LOG.info("Receive data {}", element);
     final KV<K, InputT> kv = element.getValue();
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
     keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
@@ -135,7 +144,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
           KeyedWorkItems.elementsWorkItem(key, values);
         // The DoFnRunner interface requires WindowedValue,
         // but this windowed value is actually not used in the ReduceFnRunner internal.
+        LOG.info("Before processElement for {}", inputWatermark);
         getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
+        LOG.info("After processElement for {}", inputWatermark);
       }
 
       // Trigger timers
@@ -149,15 +160,33 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     }
 
     // Emit watermark to downstream operators
-    if (minOutputTimestampsOfEmittedWindows != Long.MAX_VALUE
-      && currentOutputWatermark < minOutputTimestampsOfEmittedWindows) {
-      currentOutputWatermark = minOutputTimestampsOfEmittedWindows;
-      getOutputCollector().emitWatermark(new Watermark(minOutputTimestampsOfEmittedWindows));
+
+    final Watermark watermarkHold = Collections.min(keyAndWatermarkHoldMap.values());
+    LOG.info("Watermark hold: {}, " +
+      "inputWatermark: {}, outputWatermark: {}", watermarkHold, inputWatermark, currentOutputWatermark);
+    if (watermarkHold.getTimestamp() > inputWatermark.getTimestamp()) {
+      if (inputWatermark.getTimestamp() > currentOutputWatermark.getTimestamp()) {
+        // progress!
+        currentOutputWatermark = inputWatermark;
+        LOG.info("Emit watermark: {}", currentOutputWatermark);
+        getOutputCollector().emitWatermark(currentOutputWatermark);
+      }
+    } else {
+      if (watermarkHold.getTimestamp() > currentOutputWatermark.getTimestamp()) {
+        // progress!
+        currentOutputWatermark = watermarkHold;
+        LOG.info("Emit watermark: {}", currentOutputWatermark);
+        getOutputCollector().emitWatermark(currentOutputWatermark);
+      }
     }
+
+    //LOG.info("Emit watermark: {}", inputWatermark);
+    //getOutputCollector().emitWatermark(inputWatermark);
   }
 
   @Override
   public void onWatermark(final Watermark inputWatermark) {
+    LOG.info("Receive watermark: {}", inputWatermark);
     processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
   }
 
@@ -189,14 +218,18 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final InMemoryTimerInternals timerInternals = (InMemoryTimerInternals)
       inMemoryTimerInternalsFactory.timerInternalsForKey(key);
     try {
+      LOG.info("Before advance");
       timerInternals.advanceInputWatermark(new Instant(watermark.getTimestamp()));
       timerInternals.advanceProcessingTime(processingTime);
       timerInternals.advanceSynchronizedProcessingTime(synchronizedTime);
+      LOG.info("After advance");
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
 
     final List<TimerInternals.TimerData> timerDataList = getEligibleTimers(timerInternals);
+    LOG.info("After getEligibleTimers");
+
 
     if (timerDataList.isEmpty()) {
       return Long.MAX_VALUE;
@@ -216,7 +249,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         keyOutputTimestamp = Math.min(keyOutputTimestamp, timer.getTimestamp().getMillis());
       }
 
-      timerInternals.advanceOutputWatermark(new Instant(keyOutputTimestamp));
+      LOG.info("TimerData: {}, timerMinTimestamp: {}", timerDataList, keyOutputTimestamp);
+
+      timerInternals.advanceOutputWatermark(new Instant(keyOutputTimestamp+1));
+      keyAndWatermarkHoldMap.put(key, new Watermark(keyOutputTimestamp+1));
 
       return keyOutputTimestamp;
     }
@@ -312,6 +348,31 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         stateAndTimerForKey.timerInternals = new InMemoryTimerInternals();
       }
       return stateAndTimerForKey.timerInternals;
+    }
+  }
+
+  final class GBKWOutputCollector implements OutputCollector<WindowedValue<KV<K, Iterable<InputT>>>> {
+
+    private final OutputCollector<WindowedValue<KV<K, Iterable<InputT>>>> outputCollector;
+    public GBKWOutputCollector(final OutputCollector<WindowedValue<KV<K, Iterable<InputT>>>> outputCollector) {
+      this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void emit(WindowedValue<KV<K, Iterable<InputT>>> output) {
+      keyAndWatermarkHoldMap.put(output.getValue().getKey(),
+        new Watermark(output.getTimestamp().getMillis() + 1));
+      outputCollector.emit(output);
+    }
+
+    @Override
+    public void emitWatermark(Watermark watermark) {
+      outputCollector.emitWatermark(watermark);
+    }
+
+    @Override
+    public <T> void emit(String dstVertexId, T output) {
+      outputCollector.emit(dstVertexId, output);
     }
   }
 }
