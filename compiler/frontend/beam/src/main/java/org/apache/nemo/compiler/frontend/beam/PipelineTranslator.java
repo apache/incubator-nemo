@@ -321,7 +321,28 @@ public final class PipelineTranslator {
     }
 
     // Local combiner optimization
-    transformVertex.getDAG().topologicalDo(ctx::translate);
+    final List<TransformVertex> topologicalOrdering = transformVertex.getDAG().getTopologicalSort();
+    final TransformVertex groupByKeyBeamTransform = topologicalOrdering.get(0);
+    final TransformVertex last = topologicalOrdering.get(topologicalOrdering.size() - 1);
+    if (groupByKeyBeamTransform.getNode().getTransform() instanceof GroupByKey) {
+      // Translate the given CompositeTransform under OneToOneEdge-enforced context.
+      final TranslationContext oneToOneEdgeContext = new TranslationContext(ctx,
+        OneToOneCommunicationPatternSelector.INSTANCE);
+      transformVertex.getDAG().topologicalDo(oneToOneEdgeContext::translate);
+      // Attempt to translate the CompositeTransform again.
+      // Add GroupByKey, which is the first transform in the given CompositeTransform.
+      // Make sure it consumes the output from the last vertex in OneToOneEdge-translated hierarchy.
+      final IRVertex groupByKeyIRVertex = new OperatorVertex(createGBKTransform(ctx, transformVertex));
+      ctx.addVertex(groupByKeyIRVertex);
+      last.getNode().getOutputs().values().forEach(outputFromCombiner
+        -> ctx.addEdgeTo(groupByKeyIRVertex, outputFromCombiner));
+      groupByKeyBeamTransform.getNode().getOutputs().values()
+        .forEach(outputFromGroupByKey -> ctx.registerMainOutputFrom(groupByKeyIRVertex, outputFromGroupByKey));
+      // Translate the remaining vertices.
+      topologicalOrdering.stream().skip(1).forEach(ctx::translate);
+    } else {
+      transformVertex.getDAG().topologicalDo(ctx::translate);
+    }
   }
 
   /**
