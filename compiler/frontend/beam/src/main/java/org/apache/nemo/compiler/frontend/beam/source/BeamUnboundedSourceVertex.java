@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.function.Function;
 
 /**
  * SourceVertex implementation for UnboundedSource.
@@ -101,7 +100,6 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     private final UnboundedSource<O, M> unboundedSource;
     private UnboundedSource.UnboundedReader<O> reader;
     private boolean isStarted = false;
-    private boolean finished = false;
     private boolean isCurrentAvailable = false;
 
     UnboundedSourceReadable(final UnboundedSource<O, M> unboundedSource) {
@@ -112,7 +110,6 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     public void prepare() {
       try {
         reader = unboundedSource.createReader(null, null);
-        isCurrentAvailable = reader.start();
       } catch (final Exception e) {
         throw new RuntimeException(e);
       }
@@ -120,7 +117,6 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
     @Override
     public Object readCurrent() {
-
       try {
         if (!isStarted) {
           isStarted = true;
@@ -147,7 +143,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
     @Override
     public boolean isFinished() {
-      return finished;
+      return false;
     }
 
     @Override
@@ -157,7 +153,6 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
     @Override
     public void close() throws IOException {
-      finished = true;
       reader.close();
     }
   }

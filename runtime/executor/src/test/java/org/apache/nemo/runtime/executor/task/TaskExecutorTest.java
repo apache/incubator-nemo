@@ -694,9 +694,9 @@ public final class TaskExecutorTest {
       if (pointer == middle && numEmittedWatermarks < expectedNumWatermarks) {
         throw new NoSuchElementException();
       }
-
+      final Object element = elements.get(pointer);
       pointer += 1;
-      return elements.get(pointer);
+      return element;
     }
 
     @Override
