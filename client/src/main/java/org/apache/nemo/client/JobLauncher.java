@@ -101,9 +101,12 @@ public final class JobLauncher {
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
-    driverRPCServer = new DriverRPCServer();
+    // Get Job and Driver Confs
+    builtJobConf = getJobConf(args);
 
     // Registers actions for launching the DAG.
+    LOG.info("Launching RPC Server");
+    driverRPCServer = new DriverRPCServer();
     driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> {
         })
@@ -113,8 +116,6 @@ public final class JobLauncher {
             SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
         .run();
 
-    // Get Job and Driver Confs
-    builtJobConf = getJobConf(args);
     final Configuration driverConf = getDriverConf(builtJobConf);
     final Configuration driverNcsConf = getDriverNcsConf();
     final Configuration driverMessageConfg = getDriverMessageConf();
@@ -137,6 +138,7 @@ public final class JobLauncher {
       if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
         throw new RuntimeException("Configuration for launching driver is not ready");
       }
+
 
       // Launch driver
       LOG.info("Launching driver");
