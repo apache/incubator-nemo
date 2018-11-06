@@ -281,52 +281,8 @@ final class PipelineTranslator {
     final PipelineTranslationContext ctx,
     final TransformHierarchy.Node beamNode,
     final PTransform<?, ?> transform) {
-
-    // Check if the partial combining optimization can be applied.
-    // If not, simply use the default Combine implementation by entering into it.
-    if (!isBatch(beamNode, ctx.getPipeline())) {
-      // TODO #263: Partial Combining for Beam Streaming
-      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
-    }
-    final Combine.PerKey perKey = (Combine.PerKey) transform;
-    if (!perKey.getSideInputs().isEmpty()) {
-      // TODO #264: Partial Combining with Beam SideInputs
-      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
-    }
-
-    // This Combine can be optimized as the following sequence of Nemo IRVertices.
-    // Combine Input -> Combine(Partial Combine -> KV<InputT, AccumT> -> Final Combine) -> Combine Output
-    final CombineFnBase.GlobalCombineFn combineFn = perKey.getFn();
-
-    // (Step 1) To Partial Combine
-    final IRVertex partialCombine = new OperatorVertex(new CombineFnPartialTransform<>(combineFn));
-    ctx.addVertex(partialCombine);
-    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
-
-    // (Step 2) To Final Combine
-    final PCollection input = (PCollection) Iterables.getOnlyElement(
-      TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
-    final KvCoder inputCoder = (KvCoder) input.getCoder();
-    final Coder accumulatorCoder;
-    try {
-      accumulatorCoder =
-        combineFn.getAccumulatorCoder(ctx.getPipeline().getCoderRegistry(), inputCoder.getValueCoder());
-    } catch (CannotProvideCoderException e) {
-      throw new RuntimeException(e);
-    }
-    final IRVertex finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn));
-    ctx.addVertex(finalCombine);
-    final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, partialCombine, finalCombine);
-    ctx.addEdgeTo(
-      edge,
-      KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder),
-      input.getWindowingStrategy().getWindowFn().windowCoder());
-
-    // (Step 3) To Combine Output
-    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
-
-    // This composite transform has been translated in its entirety.
-    return Pipeline.PipelineVisitor.CompositeBehavior.DO_NOT_ENTER_TRANSFORM;
+    // TODO #260: Beam Accumulator-based Partial Aggregation
+    return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
   }
 
   /**
