@@ -25,6 +25,7 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.util.Collection;
@@ -77,6 +78,11 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   @Override
   protected void beforeClose() {
     // nothing
+  }
+
+  @Override
+  OutputCollector wrapOutputCollector(final OutputCollector oc) {
+    return oc;
   }
 
   @Override
