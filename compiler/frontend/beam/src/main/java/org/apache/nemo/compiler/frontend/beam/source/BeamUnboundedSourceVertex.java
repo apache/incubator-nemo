@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.function.Function;
 
 /**
  * SourceVertex implementation for UnboundedSource.
@@ -100,8 +99,8 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
       implements Readable<Object> {
     private final UnboundedSource<O, M> unboundedSource;
     private UnboundedSource.UnboundedReader<O> reader;
-    private Function<O, WindowedValue<O>> windowedValueConverter;
-    private boolean finished = false;
+    private boolean isStarted = false;
+    private boolean isCurrentAvailable = false;
 
     UnboundedSourceReadable(final UnboundedSource<O, M> unboundedSource) {
       this.unboundedSource = unboundedSource;
@@ -111,45 +110,30 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     public void prepare() {
       try {
         reader = unboundedSource.createReader(null, null);
-        reader.start();
       } catch (final Exception e) {
         throw new RuntimeException(e);
-      }
-
-      // get first element
-      final O firstElement = retrieveFirstElement();
-      if (firstElement instanceof WindowedValue) {
-        windowedValueConverter = val -> (WindowedValue) val;
-      } else {
-        windowedValueConverter = WindowedValue::valueInGlobalWindow;
-      }
-    }
-
-    private O retrieveFirstElement() {
-      while (true) {
-        try {
-          return reader.getCurrent();
-        } catch (final NoSuchElementException e) {
-          // the first element is not currently available... retry
-          try {
-            Thread.sleep(100);
-          } catch (InterruptedException e1) {
-            e1.printStackTrace();
-            throw new RuntimeException(e);
-          }
-        }
       }
     }
 
     @Override
     public Object readCurrent() {
-      final O elem = reader.getCurrent();
-      return windowedValueConverter.apply(elem);
-    }
+      try {
+        if (!isStarted) {
+          isStarted = true;
+          isCurrentAvailable = reader.start();
+        } else {
+          isCurrentAvailable = reader.advance();
+        }
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
 
-    @Override
-    public void advance() throws IOException {
-      reader.advance();
+      if (isCurrentAvailable) {
+        final O elem = reader.getCurrent();
+        return WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp());
+      } else {
+        throw new NoSuchElementException();
+      }
     }
 
     @Override
@@ -159,7 +143,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
     @Override
     public boolean isFinished() {
-      return finished;
+      return false;
     }
 
     @Override
@@ -169,7 +153,6 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
     @Override
     public void close() throws IOException {
-      finished = true;
       reader.close();
     }
   }
