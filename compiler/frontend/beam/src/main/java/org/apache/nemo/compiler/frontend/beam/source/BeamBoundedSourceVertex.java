@@ -27,7 +27,6 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
 
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.beam.sdk.io.BoundedSource;
@@ -107,7 +106,6 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
     private final BoundedSource<T> boundedSource;
     private boolean finished = false;
     private BoundedSource.BoundedReader<T> reader;
-    private Function<T, WindowedValue<T>> windowedValueConverter;
 
     /**
      * Constructor of the BoundedSourceReadable.
@@ -122,16 +120,6 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
       try {
         reader = boundedSource.createReader(null);
         finished = !reader.start();
-
-        if (!finished) {
-          T elem = reader.getCurrent();
-
-          if (elem instanceof WindowedValue) {
-            windowedValueConverter = val -> (WindowedValue) val;
-          } else {
-            windowedValueConverter = WindowedValue::valueInGlobalWindow;
-          }
-        }
       } catch (final Exception e) {
         throw new RuntimeException(e);
       }
@@ -144,12 +132,15 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
       }
 
       final T elem = reader.getCurrent();
-      return windowedValueConverter.apply(elem);
-    }
 
-    @Override
-    public void advance() throws IOException {
-      finished = !reader.advance();
+      try {
+        finished = !reader.advance();
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      return WindowedValue.valueInGlobalWindow(elem);
     }
 
     @Override
