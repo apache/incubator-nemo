@@ -62,6 +62,13 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   private transient DoFnInvoker<InterT, OutputT> doFnInvoker;
   private transient DoFnRunners.OutputManager outputManager;
 
+  // for bundle
+  private transient long bundleSize;
+  private transient long bundleMillis;
+  private long prevBundleStartTime;
+  private long currBundleCount = 0;
+  private boolean bundleFinished = false;
+
   /**
    * AbstractDoFnTransform constructor.
    * @param doFn doFn
@@ -115,11 +122,31 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     return doFn;
   }
 
+  protected final void checkAndInvokeBundle() {
+    if (bundleFinished) {
+      bundleFinished = false;
+      doFnRunner.startBundle();
+      prevBundleStartTime = System.currentTimeMillis();
+      currBundleCount = 0;
+    }
+    currBundleCount += 1;
+  }
+
+  protected final void checkAndFinishBundle() {
+    if (currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
+      bundleFinished = true;
+      doFnRunner.finishBundle();
+    }
+  }
+
   @Override
   public final void prepare(final Context context, final OutputCollector<WindowedValue<OutputT>> oc) {
     // deserialize pipeline option
     final NemoPipelineOptions options = serializedOptions.get().as(NemoPipelineOptions.class);
     this.outputCollector = oc;
+
+    this.bundleMillis = options.getMaxBundleTimeMills();
+    this.bundleSize = options.getMaxBundleSize();
 
     // create output manager
     outputManager = new DefaultOutputManager<>(outputCollector, mainOutputTag);
@@ -163,6 +190,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       outputCoders,
       windowingStrategy);
 
+    this.prevBundleStartTime = System.currentTimeMillis();
     doFnRunner.startBundle();
   }
 
