@@ -284,7 +284,7 @@ final class PipelineTranslator {
 
     // Check if the partial combining optimization can be applied.
     // If not, simply use the default Combine implementation by entering into it.
-    if (!isBatch(beamNode, ctx.getPipeline())) {
+    if (!isGlobalWindow(beamNode, ctx.getPipeline())) {
       // TODO #263: Partial Combining for Beam Streaming
       return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
     }
@@ -398,7 +398,7 @@ final class PipelineTranslator {
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
     final TupleTag mainOutputTag = new TupleTag<>();
 
-    if (isBatch(beamNode, ctx.getPipeline())) {
+    if (isGlobalWindow(beamNode, ctx.getPipeline())) {
       return new GroupByKeyTransform();
     } else {
       return new GroupByKeyAndWindowDoFnTransform(
@@ -412,7 +412,7 @@ final class PipelineTranslator {
     }
   }
 
-  private static boolean isBatch(final TransformHierarchy.Node beamNode, final Pipeline pipeline) {
+  private static boolean isGlobalWindow(final TransformHierarchy.Node beamNode, final Pipeline pipeline) {
     final AppliedPTransform pTransform = beamNode.toAppliedPTransform(pipeline);
     final PCollection<?> mainInput = (PCollection<?>)
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
