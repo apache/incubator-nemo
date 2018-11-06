@@ -184,7 +184,12 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    */
   abstract DoFn wrapDoFn(final DoFn originalDoFn);
 
-  abstract OutputCollector wrapOutputCollector(final OutputCollector outputCollector);
+  /**
+   * An abstract function that wraps the original output collector.
+   * @param oc the original outputCollector.
+   * @return wrapped output collector.
+   */
+  abstract OutputCollector wrapOutputCollector(final OutputCollector oc);
 
   @Override
   public abstract void onData(final WindowedValue<InputT> data);

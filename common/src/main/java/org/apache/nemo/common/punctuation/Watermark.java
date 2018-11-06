@@ -59,12 +59,6 @@ public final class Watermark implements Serializable, Comparable<Watermark> {
 
   @Override
   public int compareTo(final Watermark o) {
-    if (timestamp < o.getTimestamp()) {
-      return -1;
-    } else if (timestamp > o.getTimestamp()) {
-      return 1;
-    } else {
-      return 0;
-    }
+    return Long.compare(timestamp, o.getTimestamp());
   }
 }

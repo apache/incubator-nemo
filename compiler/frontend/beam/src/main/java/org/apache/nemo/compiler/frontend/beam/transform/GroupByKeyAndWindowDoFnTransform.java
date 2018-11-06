@@ -180,9 +180,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         // progress!
         prevOutputWatermark = inputWatermark;
         getOutputCollector().emitWatermark(prevOutputWatermark);
-        // Remove watermark holds < inputWatermark
-        keyAndWatermarkHoldMap.entrySet()
-          .removeIf(entry -> entry.getValue().getTimestamp() < inputWatermark.getTimestamp());
       }
     } else {
       // watermark hold < input watermark

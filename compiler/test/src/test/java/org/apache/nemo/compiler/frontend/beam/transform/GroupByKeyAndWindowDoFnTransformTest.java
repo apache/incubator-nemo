@@ -21,8 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.runners.core.SystemReduceFn;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.windowing.FixedWindows;
-import org.apache.beam.sdk.transforms.windowing.PaneInfo;
+import org.apache.beam.sdk.transforms.windowing.*;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
@@ -57,13 +56,19 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     final List<String> expectedValue = new ArrayList<>(expected.getValue());
     result.getValue().iterator().forEachRemaining(resultValue::add);
     Collections.sort(resultValue);
+    Collections.sort(expectedValue);
 
     assertEquals(expectedValue, resultValue);
   }
 
 
-  // [---- window1 --------]         [--------------- window2 ---------------]
-  // ts1 -- ts2 -- ts3 -- watermark -- ts4 -- watermark2 -- ts5 --ts6 --ts7 -- watermark7
+  // window size: 2 sec
+  // interval size: 1 sec
+  //
+  //                           [--------------window2------------------------------]
+  // [----------------------- window1 --------------------------]
+  // [-------window0-------]
+  // ts1 -- ts2 -- ts3 -- w -- ts4 -- w2 -- ts5 --ts6 --ts7 -- w3 -- ts8 --ts9 - --w4
   // (1, "hello")
   //      (1, "world")
   //             (2, "hello")
@@ -78,13 +83,15 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
   public void test() {
 
     final TupleTag<String> outputTag = new TupleTag<>("main-output");
-    final FixedWindows fixedwindows = FixedWindows.of(Duration.standardSeconds(1));
+    final SlidingWindows slidingWindows = SlidingWindows.of(Duration.standardSeconds(2))
+      .every(Duration.standardSeconds(1));
+
     final GroupByKeyAndWindowDoFnTransform<String, String> doFnTransform =
       new GroupByKeyAndWindowDoFnTransform(
         NULL_OUTPUT_CODERS,
         outputTag,
         Collections.emptyList(), /* additional outputs */
-        WindowingStrategy.of(fixedwindows),
+        WindowingStrategy.of(slidingWindows),
         emptyList(), /* side inputs */
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
         SystemReduceFn.buffering(NULL_INPUT_CODER));
@@ -99,6 +106,35 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     final Instant ts6 = new Instant(1800);
     final Instant ts7 = new Instant(1900);
     final Watermark watermark3 = new Watermark(2100);
+    final Instant ts8 = new Instant(2200);
+    final Instant ts9 = new Instant(2300);
+    final Watermark watermark4 = new Watermark(3000);
+
+
+    List<IntervalWindow> sortedWindows = new ArrayList<>(slidingWindows.assignWindows(ts1));
+    Collections.sort(sortedWindows, new Comparator<IntervalWindow>() {
+      @Override
+      public int compare(IntervalWindow o1, IntervalWindow o2) {
+        return o1.maxTimestamp().compareTo(o2.maxTimestamp());
+      }
+    });
+
+    // [0---1000)
+    final IntervalWindow window0 = sortedWindows.get(0);
+    // [0---2000)
+    final IntervalWindow window1 = sortedWindows.get(1);
+
+    sortedWindows.clear();
+    sortedWindows = new ArrayList<>(slidingWindows.assignWindows(ts4));
+    Collections.sort(sortedWindows, new Comparator<IntervalWindow>() {
+      @Override
+      public int compare(IntervalWindow o1, IntervalWindow o2) {
+        return o1.maxTimestamp().compareTo(o2.maxTimestamp());
+      }
+    });
+
+    // [1000--3000)
+    final IntervalWindow window2 = sortedWindows.get(1);
 
 
     final Transform.Context context = mock(Transform.Context.class);
@@ -106,35 +142,41 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     doFnTransform.prepare(context, oc);
 
     doFnTransform.onData(WindowedValue.of(
-      KV.of("1", "hello"), ts1, fixedwindows.assignWindow(ts1), PaneInfo.NO_FIRING));
+      KV.of("1", "hello"), ts1, slidingWindows.assignWindows(ts1), PaneInfo.NO_FIRING));
 
     doFnTransform.onData(WindowedValue.of(
-      KV.of("1", "world"), ts2, fixedwindows.assignWindow(ts2), PaneInfo.NO_FIRING));
+      KV.of("1", "world"), ts2, slidingWindows.assignWindows(ts2), PaneInfo.NO_FIRING));
 
     doFnTransform.onData(WindowedValue.of(
-      KV.of("2", "hello"), ts3, fixedwindows.assignWindow(ts3), PaneInfo.NO_FIRING));
+      KV.of("2", "hello"), ts3, slidingWindows.assignWindows(ts3), PaneInfo.NO_FIRING));
 
     doFnTransform.onWatermark(watermark);
 
+    // output
+    // 1: ["hello", "world"]
+    // 2: ["hello"]
     Collections.sort(oc.outputs, (o1, o2) -> o1.getValue().getKey().compareTo(o2.getValue().getKey()));
 
     // windowed result for key 1
-    assertEquals(Arrays.asList(fixedwindows.assignWindow(ts1)), oc.outputs.get(0).getWindows());
+    assertEquals(Arrays.asList(window0), oc.outputs.get(0).getWindows());
     checkOutput(KV.of("1", Arrays.asList("hello", "world")), oc.outputs.get(0).getValue());
 
     // windowed result for key 2
-    assertEquals(Arrays.asList(fixedwindows.assignWindow(ts3)), oc.outputs.get(1).getWindows());
+    assertEquals(Arrays.asList(window0), oc.outputs.get(1).getWindows());
     checkOutput(KV.of("2", Arrays.asList("hello")), oc.outputs.get(1).getValue());
 
+    assertEquals(2, oc.outputs.size());
+    assertEquals(1, oc.watermarks.size());
+
     // check output watermark
-    assertEquals(fixedwindows.assignWindow(ts1).maxTimestamp().getMillis(),
+    assertEquals(1000,
       oc.watermarks.get(0).getTimestamp());
 
     oc.outputs.clear();
     oc.watermarks.clear();
 
     doFnTransform.onData(WindowedValue.of(
-      KV.of("1", "a"), ts4, fixedwindows.assignWindow(ts4), PaneInfo.NO_FIRING));
+      KV.of("1", "a"), ts4, slidingWindows.assignWindows(ts4), PaneInfo.NO_FIRING));
 
     // do not emit anything
     doFnTransform.onWatermark(watermark2);
@@ -142,33 +184,70 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     assertEquals(0, oc.watermarks.size());
 
     doFnTransform.onData(WindowedValue.of(
-      KV.of("2", "a"), ts5, fixedwindows.assignWindow(ts5), PaneInfo.NO_FIRING));
+      KV.of("3", "a"), ts5, slidingWindows.assignWindows(ts5), PaneInfo.NO_FIRING));
 
     doFnTransform.onData(WindowedValue.of(
-      KV.of("3", "a"), ts6, fixedwindows.assignWindow(ts6), PaneInfo.NO_FIRING));
+      KV.of("3", "a"), ts6, slidingWindows.assignWindows(ts6), PaneInfo.NO_FIRING));
 
     doFnTransform.onData(WindowedValue.of(
-      KV.of("2", "b"), ts7, fixedwindows.assignWindow(ts7), PaneInfo.NO_FIRING));
+      KV.of("3", "b"), ts7, slidingWindows.assignWindows(ts7), PaneInfo.NO_FIRING));
 
-    // emit windowed value
+    // emit window1
     doFnTransform.onWatermark(watermark3);
 
+    // output
+    // 1: ["hello", "world", "a"]
+    // 2: ["hello"]
+    // 3: ["a", "a", "b"]
     Collections.sort(oc.outputs, (o1, o2) -> o1.getValue().getKey().compareTo(o2.getValue().getKey()));
 
+
     // windowed result for key 1
-    assertEquals(Arrays.asList(fixedwindows.assignWindow(ts4)), oc.outputs.get(0).getWindows());
-    checkOutput(KV.of("1", Arrays.asList("a")), oc.outputs.get(0).getValue());
+    assertEquals(Arrays.asList(window1), oc.outputs.get(0).getWindows());
+    checkOutput(KV.of("1", Arrays.asList("hello", "world", "a")), oc.outputs.get(0).getValue());
 
     // windowed result for key 2
-    assertEquals(Arrays.asList(fixedwindows.assignWindow(ts5)), oc.outputs.get(1).getWindows());
-    checkOutput(KV.of("2", Arrays.asList("a", "b")), oc.outputs.get(1).getValue());
+    assertEquals(Arrays.asList(window1), oc.outputs.get(1).getWindows());
+    checkOutput(KV.of("2", Arrays.asList("hello")), oc.outputs.get(1).getValue());
 
     // windowed result for key 3
-    assertEquals(Arrays.asList(fixedwindows.assignWindow(ts6)), oc.outputs.get(2).getWindows());
-    checkOutput(KV.of("3", Arrays.asList("a")), oc.outputs.get(2).getValue());
+    assertEquals(Arrays.asList(window1), oc.outputs.get(2).getWindows());
+    checkOutput(KV.of("3", Arrays.asList("a", "a", "b")), oc.outputs.get(2).getValue());
 
     // check output watermark
-    assertEquals(fixedwindows.assignWindow(ts4).maxTimestamp().getMillis(),
+    assertEquals(2000,
+      oc.watermarks.get(0).getTimestamp());
+
+    oc.outputs.clear();
+    oc.watermarks.clear();
+
+
+    doFnTransform.onData(WindowedValue.of(
+      KV.of("1", "a"), ts8, slidingWindows.assignWindows(ts8), PaneInfo.NO_FIRING));
+
+    doFnTransform.onData(WindowedValue.of(
+      KV.of("3", "b"), ts9, slidingWindows.assignWindows(ts9), PaneInfo.NO_FIRING));
+
+    // emit window2
+    doFnTransform.onWatermark(watermark4);
+
+    // output
+    // 1: ["a", "a"]
+    // 3: ["a", "a", "b", "b"]
+    Collections.sort(oc.outputs, (o1, o2) -> o1.getValue().getKey().compareTo(o2.getValue().getKey()));
+
+    assertEquals(2, oc.outputs.size());
+
+    // windowed result for key 1
+    assertEquals(Arrays.asList(window2), oc.outputs.get(0).getWindows());
+    checkOutput(KV.of("1", Arrays.asList("a", "a")), oc.outputs.get(0).getValue());
+
+    // windowed result for key 3
+    assertEquals(Arrays.asList(window2), oc.outputs.get(1).getWindows());
+    checkOutput(KV.of("3", Arrays.asList("a", "a", "b", "b")), oc.outputs.get(1).getValue());
+
+    // check output watermark
+    assertEquals(3000,
       oc.watermarks.get(0).getTimestamp());
 
     doFnTransform.close();
