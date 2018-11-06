@@ -78,11 +78,6 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   }
 
   @Override
-  OutputCollector wrapOutputCollector(OutputCollector outputCollector) {
-    return outputCollector;
-  }
-
-  @Override
   public void onData(final WindowedValue<InputT> data) {
     getDoFnRunner().processElement(data);
 
