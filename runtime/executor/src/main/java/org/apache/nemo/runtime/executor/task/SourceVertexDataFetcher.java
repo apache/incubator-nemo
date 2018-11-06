@@ -105,7 +105,6 @@ class SourceVertexDataFetcher extends DataFetcher {
 
     // Data
     final Object element = readable.readCurrent();
-    readable.advance();
     return element;
   }
 }
