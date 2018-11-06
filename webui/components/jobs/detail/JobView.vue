@@ -13,17 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 <template>
-  <!--(disabled for debugging)-->
+  <!--(toggle for debugging)-->
   <el-card v-if="selectedJobId" style="background-color: ghostwhite;">
   <!--<el-card>-->
     <h1>Details for Job {{ jobFrom ? jobFrom : 'NULL' }}</h1>
 
     <p>
-      <b>Status: </b><span>TODO</span><br>
-      <span><b>Completed Stages: </b><span>TODO</span><br></span>
-      <span><b>Active Stages: </b><span>TODO</span><br></span>
-      <span><b>Pending Stages: </b><span>TODO</span><br></span>
-      <span><b>Skipped Stages: </b><span>TODO</span><br></span>
+      <b>Status: </b><span>{{ selectedJobStatus }}</span><br>
+      <b @click="jump($event, STATE.READY)"><a>
+        Pending Stages: </a></b><span>{{ pendingStagesData.length }}</span><br>
+      <b @click="jump($event, STATE.EXECUTING)"><a>
+        Active Stages: </a></b><span>{{ activeStagesData.length }}</span><br>
+      <b @click="jump($event, STATE.COMPLETE)"><a>
+        Completed Stages: </a></b><span>{{ completedStagesData.length }}</span><br>
+      <b @click="jump($event, STATE.INCOMPLETE)"><a>
+        Skipped Stages: </a></b><span>{{ skippedStagesData.length }}</span><br>
     </p>
 
     <el-collapse accordion @change="handleCollapse">
@@ -80,61 +84,89 @@ limitations under the License.
     </el-collapse>
 
     <!--Stages List-->
-    <!--Completed Stages-->
-    <h2>Completed Stages (TODO)</h2>
-    <el-table>
-      <el-table-column label="Stage id" width="80"></el-table-column>
-      <el-table-column label="Description" width="180"></el-table-column>
-      <el-table-column label="Submitted" width="180"></el-table-column>
-      <el-table-column label="Duration" width="90"></el-table-column>
-      <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-      <el-table-column label="Input" width="60"></el-table-column>
-      <el-table-column label="Output" width="70"></el-table-column>
-      <el-table-column label="Shuffle Read"></el-table-column>
-      <el-table-column label="Shuffle Write"></el-table-column>
-    </el-table>
+    <!--Pending Stages-->
+    <h2 ref="pendingStages">Pending Stages ({{ pendingStagesData.length }})</h2>
+    <div>
+      <!--<div v-if="pendingStagesData.length !== 0">-->
+      <el-table class="pending-stages-table" :data="pendingStagesData" stripe>
+        <el-table-column label="Stage id" width="80">
+          <template slot-scope="scope">
+            {{ scope.row }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Submitted" width="180"></el-table-column>
+        <el-table-column label="Duration" width="90"></el-table-column>
+        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
+        <el-table-column label="Input" width="60"></el-table-column>
+        <el-table-column label="Output" width="70"></el-table-column>
+        <el-table-column label="Shuffle Read"></el-table-column>
+        <el-table-column label="Shuffle Write"></el-table-column>
+      </el-table>
+    </div>
 
     <!--Active Stages-->
-    <h2>Active Stages (TODO)</h2>
-    <el-table>
-      <el-table-column label="Stage id" width="80"></el-table-column>
-      <el-table-column label="Description" width="180"></el-table-column>
-      <el-table-column label="Submitted" width="180"></el-table-column>
-      <el-table-column label="Duration" width="90"></el-table-column>
-      <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-      <el-table-column label="Input" width="60"></el-table-column>
-      <el-table-column label="Output" width="70"></el-table-column>
-      <el-table-column label="Shuffle Read"></el-table-column>
-      <el-table-column label="Shuffle Write"></el-table-column>
-    </el-table>
+    <h2 ref="activeStages">Active Stages ({{ activeStagesData.length }})</h2>
+    <div>
+    <!--<div v-if="activeStagesData.length !== 0">-->
+      <el-table class="active-stages-table" :data="activeStagesData" stripe>
+        <el-table-column label="Stage id" width="80">
+          <template slot-scope="scope">
+            {{ scope.row }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Submitted" width="180"></el-table-column>
+        <el-table-column label="Duration" width="90"></el-table-column>
+        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
+        <el-table-column label="Input" width="60"></el-table-column>
+        <el-table-column label="Output" width="70"></el-table-column>
+        <el-table-column label="Shuffle Read"></el-table-column>
+        <el-table-column label="Shuffle Write"></el-table-column>
+      </el-table>
+    </div>
 
-    <!--Pending Stages-->
-    <h2>Pending Stages (TODO)</h2>
-    <el-table>
-      <el-table-column label="Stage id" width="80"></el-table-column>
-      <el-table-column label="Description" width="180"></el-table-column>
-      <el-table-column label="Submitted" width="180"></el-table-column>
-      <el-table-column label="Duration" width="90"></el-table-column>
-      <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-      <el-table-column label="Input" width="60"></el-table-column>
-      <el-table-column label="Output" width="70"></el-table-column>
-      <el-table-column label="Shuffle Read"></el-table-column>
-      <el-table-column label="Shuffle Write"></el-table-column>
-    </el-table>
+    <!--Completed Stages-->
+    <h2 ref="completedStages">Completed Stages ({{ completedStagesData.length }})</h2>
+    <div>
+      <!--<div v-if="completedStagesData.length !== 0">-->
+      <el-table class="completed-stages-table" :data="completedStagesData" stripe>
+        <el-table-column label="Stage id" width="80">
+          <template slot-scope="scope">
+            {{ scope.row }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Submitted" width="180"></el-table-column>
+        <el-table-column label="Duration" width="90"></el-table-column>
+        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
+        <el-table-column label="Input" width="60"></el-table-column>
+        <el-table-column label="Output" width="70"></el-table-column>
+        <el-table-column label="Shuffle Read"></el-table-column>
+        <el-table-column label="Shuffle Write"></el-table-column>
+      </el-table>
+    </div>
 
     <!--Skipped Stages-->
-    <h2>Skipped Stages (TODO)</h2>
-    <el-table>
-      <el-table-column label="Stage id" width="80"></el-table-column>
-      <el-table-column label="Description" width="180"></el-table-column>
-      <el-table-column label="Submitted" width="180"></el-table-column>
-      <el-table-column label="Duration" width="90"></el-table-column>
-      <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-      <el-table-column label="Input" width="60"></el-table-column>
-      <el-table-column label="Output" width="70"></el-table-column>
-      <el-table-column label="Shuffle Read"></el-table-column>
-      <el-table-column label="Shuffle Write"></el-table-column>
-    </el-table>
+    <h2 ref="skippedStages">Skipped Stages ({{ skippedStagesData.length }})</h2>
+    <div>
+    <!--<div v-if="skippedStagesData.length !== 0">-->
+      <el-table class="skipped-stages-table" :data="skippedStagesData" stripe>
+        <el-table-column label="Stage id" width="80">
+          <template slot-scope="scope">
+            {{ scope.row }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Submitted" width="180"></el-table-column>
+        <el-table-column label="Duration" width="90"></el-table-column>
+        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
+        <el-table-column label="Input" width="60"></el-table-column>
+        <el-table-column label="Output" width="70"></el-table-column>
+        <el-table-column label="Shuffle Read"></el-table-column>
+        <el-table-column label="Shuffle Write"></el-table-column>
+      </el-table>
+    </div>
   </el-card>
 </template>
 
@@ -146,6 +178,7 @@ limitations under the License.
   import StageSelect from './StageSelect';
   import DAG from './DAG';
   import TaskStatistics from '../../TaskStatistics';
+  import { STATE } from '../../../assets/constants';
 
   // list of metric, order of elements matters.
   export const METRIC_LIST = [
@@ -170,8 +203,11 @@ limitations under the License.
       'task-statistics': TaskStatistics,
     },
 
+    props: ['selectedJobStatus'],
+
     data() {
       return {
+        STATE: STATE,
         // timeline dataset
         groupDataSet: new DataSet([]),
 
@@ -191,12 +227,55 @@ limitations under the License.
       }
     },
 
+    // COMPUTED
+    computed: {
+      // All stages
+      stageList() {
+        return Object.keys(this.metricLookupMap).filter(id => /^Stage[0-9]+$/.test(id.trim()));
+      },
+      // Stages by its status
+      pendingStagesData() {
+        return []
+      },
+      activeStagesData() {
+        return []
+      },
+      completedStagesData() {
+        // TODO: make this more meaningful.
+        return Object.keys(this.metricLookupMap).filter(id => /^Stage[0-9]+$/.test(id.trim()));
+      },
+      skippedStagesData() {
+        return []
+      },
+    },
+
+    // METHODS
     methods: {
+      // event timeline, dag event handler
       handleCollapse(activatedElement) {
         if (activatedElement === "1") {
+          console.log(Object.keys(this.metricLookupMap));
           this.$eventBus.$emit('redraw-timeline');
         } else if (activatedElement === "2") {
           this.$eventBus.$emit('rerender-dag');
+        }
+      },
+
+      // jump to the table
+      jump(event, val) {
+        switch (val) {
+          case STATE.READY:
+            this.$refs.pendingStages.scrollIntoView();
+            break;
+          case STATE.EXECUTING:
+            this.$refs.activeStages.scrollIntoView();
+            break;
+          case STATE.COMPLETE:
+            this.$refs.completedStages.scrollIntoView();
+            break;
+          case STATE.INCOMPLETE:
+            this.$refs.skippedStages.scrollIntoView();
+            break;
         }
       },
 

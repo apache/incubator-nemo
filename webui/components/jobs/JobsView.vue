@@ -26,80 +26,102 @@ under the License.
       <b>User: </b><span>TODO</span><br>
       <b>Total Uptime: </b><span>TODO</span><br>
       <b>Scheduling Mode: </b><span>TODO</span><br>
-      <b>Active Jobs: </b><span>TODO</span><br>
-      <b>Completed Jobs: </b><span>TODO</span><br>
-      <b>Failed Jobs: </b><span>TODO</span><br>
+      <b @click="jump($event, JOB_STATUS.RUNNING)"><a>
+        Active Jobs: </a></b><span>{{ activeJobsData.length }}</span><br>
+      <b @click="jump($event, JOB_STATUS.COMPLETE)"><a>
+        Completed Jobs: </a></b><span>{{ completedJobsData.length }}</span><br>
+      <b @click="jump($event, JOB_STATUS.FAILED)"><a>
+        Failed Jobs: </a></b><span>{{ failedJobsData.length }}</span><br>
     </p>
 
     <!--Stage Timeline-->
     <el-collapse>
       <el-collapse-item title="Event Timeline" name="1">
-        TODO
+        TODO: JOBS TIMELINE
       </el-collapse-item>
     </el-collapse>
 
     <!--Jobs list-->
-    <h2>Active Jobs (TODO)</h2>
-    <!--TODO: 이거 component로 refactor 하기-->
-    <el-table
-      class="job-table"
-      empty-text="No data"
-      :data="jobTableData">
-      <el-table-column label="From">
-        <template slot-scope="scope">
-          {{ _getFrom(scope.row.jobId) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="Status">
-        <template slot-scope="scope">
-          <el-tag :type="_fromJobStatusToType(scope.row.status)">
-            {{ scope.row.status }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="Operations">
-        <template slot-scope="scope">
-          <el-button
-            @click="selectJobId(scope.row.jobId)"
-            round
-            type="primary">
-            Select
-          </el-button>
-          <el-button
-            @click="deleteJobId(scope.row.jobId)"
-            circle
-            type="danger"
-            icon="el-icon-delete"/>
-          <el-button
-            v-if="_isWebSocketJob(scope.row.jobId)"
-            @click="prepareWebSocket(scope.row.jobId)"
-            :disabled="_reconnectDisabled(scope.row.status)"
-            circle
-            type="info"
-            :icon="_reconnectIconType(scope.row.status)"/>
-        </template>
-      </el-table-column>
-    </el-table>
+    <h2 ref="activeJobs">Active Jobs ({{ activeJobsData.length }})</h2>
+    <div v-if="activeJobsData.length !== 0">
+      <!--TODO: 이거 component로 refactor 하기-->
+      <el-table class="active-jobs-table" :data="activeJobsData"
+                @row-click="handleSelect" stripe>
+        <el-table-column label="Job id" width="100">
+          <template slot-scope="scope">
+            {{ _getFrom(scope.row.jobId) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Submitted" width="180"></el-table-column>
+        <el-table-column label="Duration" width="90"></el-table-column>
+        <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column>
+        <el-table-column label="Tasks (for all stages): Succeeded/Total"></el-table-column>
+        <!--<el-table-column label="Status">-->
+        <!--<template slot-scope="scope">-->
+        <!--<el-tag :type="_fromJobStatusToType(scope.row.status)">-->
+        <!--{{ scope.row.status }}-->
+        <!--</el-tag>-->
+        <!--</template>-->
+        <!--</el-table-column>-->
+        <!--<el-table-column label="Operations">-->
+        <!--<template slot-scope="scope">-->
+        <!--<el-button-->
+        <!--@click="selectJobId(scope.row.jobId)"-->
+        <!--round-->
+        <!--type="primary">-->
+        <!--Select-->
+        <!--</el-button>-->
+        <!--<el-button-->
+        <!--@click="deleteJobId(scope.row.jobId)"-->
+        <!--circle-->
+        <!--type="danger"-->
+        <!--icon="el-icon-delete"/>-->
+        <!--<el-button-->
+        <!--v-if="_isWebSocketJob(scope.row.jobId)"-->
+        <!--@click="prepareWebSocket(scope.row.jobId)"-->
+        <!--:disabled="_reconnectDisabled(scope.row.status)"-->
+        <!--circle-->
+        <!--type="info"-->
+        <!--:icon="_reconnectIconType(scope.row.status)"/>-->
+        <!--</template>-->
+        <!--</el-table-column>-->
+      </el-table>
+    </div>
 
-    <h2>Completed Jobs (TODO)</h2>
-    <el-table>
-      <el-table-column label="Job id" width="70"></el-table-column>
-      <el-table-column label="Description" width="180"></el-table-column>
-      <el-table-column label="Submitted" width="180"></el-table-column>
-      <el-table-column label="Duration" width="90"></el-table-column>
-      <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column>
-      <el-table-column label="Tasks (for all stages): Succeeded/Total"></el-table-column>
-    </el-table>
+    <h2 ref="completedJobs">Completed Jobs ({{ completedJobsData.length }})</h2>
+    <div v-if="completedJobsData.length !== 0">
+      <el-table class="completed-jobs-table" :data="completedJobsData"
+                @row-click="handleSelect" stripe>
+        <el-table-column label="Job id" width="100">
+          <template slot-scope="scope">
+            {{ _getFrom(scope.row.jobId) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Submitted" width="180"></el-table-column>
+        <el-table-column label="Duration" width="90"></el-table-column>
+        <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column>
+        <el-table-column label="Tasks (for all stages): Succeeded/Total"></el-table-column>
+      </el-table>
+    </div>
 
-    <h2>Failed Jobs (TODO)</h2>
-    <el-table>
-      <el-table-column label="Job id" width="70"></el-table-column>
-      <el-table-column label="Description" width="180"></el-table-column>
-      <el-table-column label="Submitted" width="180"></el-table-column>
-      <el-table-column label="Duration" width="90"></el-table-column>
-      <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column>
-      <el-table-column label="Tasks (for all stages): Succeeded/Total"></el-table-column>
-    </el-table>
+    <h2 ref="failedJobs">Failed Jobs ({{ failedJobsData.length }})</h2>
+    <div v-if="failedJobsData.length !== 0">
+      <el-table class="failed-jobs-table" :data="failedJobsData"
+                @row-click="handleSelect" stripe>
+        <el-table-column label="Job id" width="100">
+          <template slot-scope="scope">
+            {{ _getFrom(scope.row.jobId) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Submitted" width="180"></el-table-column>
+        <el-table-column label="Duration" width="90"></el-table-column>
+        <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column>
+        <el-table-column label="Tasks (for all stages): Succeeded/Total"></el-table-column>
+      </el-table>
+    </div>
 
 
     <!--Add job button-->
@@ -156,7 +178,7 @@ under the License.
     <br><br><br>
 
     <!--Selected Job-->
-    <job-view/>
+    <job-view :selected-job-status="selectedJobStatus"/>
     <!--<job-view :selectedJobId="selectedJobId"/>-->
   </el-card>
 </template>
@@ -189,6 +211,7 @@ export default {
 
   data() {
     return {
+      JOB_STATUS: JOB_STATUS,
       // job id -> job data object
       jobs: {},
 
@@ -213,6 +236,31 @@ export default {
         status: this.jobs[jobId].status,
       }));
     },
+    activeJobsData() {
+      return Object.keys(this.jobs).filter(jobId => this.jobs[jobId].status === JOB_STATUS.RUNNING).map(jobId => ({
+        jobId: jobId,
+        status: this.jobs[jobId].status,
+      }));
+    },
+    completedJobsData() {
+      return Object.keys(this.jobs).filter(jobId => this.jobs[jobId].status === JOB_STATUS.COMPLETE).map(jobId => ({
+        jobId: jobId,
+        status: this.jobs[jobId].status,
+      }));
+    },
+    failedJobsData() {
+      return Object.keys(this.jobs).filter(jobId => this.jobs[jobId].status === JOB_STATUS.FAILED).map(jobId => ({
+        jobId: jobId,
+        status: this.jobs[jobId].status,
+      }));
+    },
+    selectedJobStatus() {
+      if (this.selectedJobId !== '') {
+        return this.jobs[this.selectedJobId].status;
+      } else {
+        return '';
+      }
+    }
   },
 
   //METHODS
@@ -247,6 +295,28 @@ export default {
         title: 'Error',
         message: msg,
       });
+    },
+
+    // Handle selection of a job
+    handleSelect(val) {
+      if (this.selectedJobId !== val.jobId) {
+        this.selectJobId(val.jobId);
+      }
+    },
+
+    // jump to the table of jobs
+    jump(event, val) {
+      switch (val) {
+        case JOB_STATUS.RUNNING:
+          this.$refs.activeJobs.scrollIntoView();
+          break;
+        case JOB_STATUS.COMPLETE:
+          this.$refs.completedJobs.scrollIntoView();
+          break;
+        case JOB_STATUS.FAILED:
+          this.$refs.failedJobs.scrollIntoView();
+          break;
+      }
     },
 
     _getFrom(jobId) {
