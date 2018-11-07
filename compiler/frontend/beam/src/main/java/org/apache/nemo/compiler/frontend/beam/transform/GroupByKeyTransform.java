@@ -61,10 +61,12 @@ public final class GroupByKeyTransform<I> extends NoWatermarkEmitTransform<I, Wi
     if (keyToValues.isEmpty()) {
       LOG.warn("Beam GroupByKeyTransform received no data!");
     } else {
-      keyToValues.entrySet().stream().map(entry ->
-        WindowedValue.valueInGlobalWindow(KV.of(entry.getKey(), entry.getValue())))
-        .forEach(outputCollector::emit);
-      keyToValues.clear();
+      final Iterator<Map.Entry<Object, List>> iterator = keyToValues.entrySet().iterator();
+      while (iterator.hasNext()) {
+        final Map.Entry<Object, List> entry = iterator.next();
+        outputCollector.emit(WindowedValue.valueInGlobalWindow(KV.of(entry.getKey(), entry.getValue())));
+        iterator.remove();
+      }
     }
   }
 
