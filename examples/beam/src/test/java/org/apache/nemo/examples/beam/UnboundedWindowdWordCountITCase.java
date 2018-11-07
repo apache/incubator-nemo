@@ -68,7 +68,7 @@ public final class UnboundedWindowdWordCountITCase {
   }
 
 
-  //@Test (timeout = TIMEOUT)
+  @Test (timeout = TIMEOUT)
   public void testStreamingSchedulerAndPipeSlidingWindow() throws Exception {
     builder = new ArgBuilder()
       .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")

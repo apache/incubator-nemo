@@ -95,7 +95,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("DoTransform:" + getDoFn() + "-" + getDoFn().getClass().toString());
+    sb.append("DoTransform:" + getDoFn());
     return sb.toString();
   }
 }

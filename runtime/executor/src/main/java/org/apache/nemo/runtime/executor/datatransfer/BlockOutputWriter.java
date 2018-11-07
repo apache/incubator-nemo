@@ -91,7 +91,7 @@ public final class BlockOutputWriter implements OutputWriter {
 
   @Override
   public void writeWatermark(final Watermark watermark) {
-    throw new UnsupportedOperationException("BlockOutputWriter does not support watermark");
+    // do nothing
   }
 
   /**

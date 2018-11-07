@@ -62,8 +62,12 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
 
   @Override
   public void trackAndEmitWatermarks(final int edgeIndex, final Watermark watermark) {
-    LOG.info("Track watermark {} emitted from edge {}:, {}", watermark.getTimestamp(), edgeIndex,
-      watermarks.toString());
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Track watermark {} emitted from edge {}:, {}", watermark.getTimestamp(), edgeIndex,
+        watermarks.toString());
+    }
+
     if (edgeIndex == minWatermarkIndex) {
       // update min watermark
       final Watermark prevMinWatermark = watermarks.get(minWatermarkIndex);
@@ -80,7 +84,9 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
       if (minWatermark.getTimestamp() > prevMinWatermark.getTimestamp()) {
         // Watermark timestamp progress!
         // Emit the min watermark
-        LOG.info("Emit watermark {}, {}", minWatermark, watermarks);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Emit watermark {}, {}", minWatermark, watermarks);
+        }
         watermarkCollector.emitWatermark(minWatermark);
       }
     } else {

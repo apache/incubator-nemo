@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 /**
  * This class is used for collecting watermarks for an OperatorVertex.
+ * InputWatermarkManager emits watermarks to this class.
  */
 public final class OperatorWatermarkCollector implements OutputCollector {
   private static final Logger LOG = LoggerFactory.getLogger(OperatorWatermarkCollector.class.getName());

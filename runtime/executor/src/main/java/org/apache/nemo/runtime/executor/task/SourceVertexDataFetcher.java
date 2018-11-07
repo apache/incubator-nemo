@@ -75,7 +75,6 @@ class SourceVertexDataFetcher extends DataFetcher {
     } else {
       final long start = System.currentTimeMillis();
       final Object element = retrieveElement();
-      //LOG.info("Emit element: {}", element);
       boundedSourceReadTime += System.currentTimeMillis() - start;
       return element;
     }

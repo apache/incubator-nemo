@@ -113,11 +113,15 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
           // Consume this iterator to the end.
           while (iterator.hasNext()) { // blocked on the iterator.
             final Object element = iterator.next();
-            LOG.info("Receive data : {}", element);
+
+            if (LOG.isDebugEnabled()) {
+              LOG.debug("Receive data : {}", element);
+            }
+
             if (element instanceof WatermarkWithIndex) {
               // watermark element
               // the input watermark manager is accessed by multiple threads
-              // se we should synchronize it
+              // so we should synchronize it
               synchronized (inputWatermarkManager) {
                 final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
                 inputWatermarkManager.trackAndEmitWatermarks(
