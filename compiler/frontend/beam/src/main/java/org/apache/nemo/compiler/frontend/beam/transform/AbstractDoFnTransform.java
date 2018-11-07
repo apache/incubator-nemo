@@ -133,7 +133,6 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       currBundleCount = 0;
     }
     currBundleCount += 1;
-    //LOG.info("Bundle count: {}", currBundleCount);
   }
 
   protected final void checkAndFinishBundle() {
