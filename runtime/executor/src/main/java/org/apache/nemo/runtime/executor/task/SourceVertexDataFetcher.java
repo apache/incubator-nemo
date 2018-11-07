@@ -23,7 +23,6 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.Finishmark;
-import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -178,17 +178,17 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   private final class WatermarkCollector implements OutputCollector {
 
     @Override
-    public void emit(Object output) {
+    public void emit(final Object output) {
       throw new IllegalStateException("Should not be called");
     }
 
     @Override
-    public void emitWatermark(Watermark watermark) {
+    public void emitWatermark(final Watermark watermark) {
       elementQueue.offer(watermark);
     }
 
     @Override
-    public void emit(String dstVertexId, Object output) {
+    public void emit(final String dstVertexId, final Object output) {
       throw new IllegalStateException("Should not be called");
     }
   }

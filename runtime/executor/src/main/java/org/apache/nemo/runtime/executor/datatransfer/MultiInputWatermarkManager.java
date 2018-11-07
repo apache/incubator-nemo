@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +30,7 @@ import java.util.List;
  * This tracks the minimum input watermark among multiple input streams.
  */
 public final class MultiInputWatermarkManager implements InputWatermarkManager {
-  private final Logger LOG = LoggerFactory.getLogger(MultiInputWatermarkManager.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(MultiInputWatermarkManager.class.getName());
 
   private final List<Watermark> watermarks;
   private final OutputCollector<?> watermarkCollector;

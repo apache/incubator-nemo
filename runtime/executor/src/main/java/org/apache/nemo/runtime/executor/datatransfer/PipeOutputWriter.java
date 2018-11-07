@@ -18,9 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.nemo.common.DirectByteArrayOutputStream;
-import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -84,7 +82,8 @@ public final class PipeOutputWriter implements OutputWriter {
       try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
         // Serialize (Do not compress)
         final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
-        final OutputStream wrapped = DataUtil.buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
+        final OutputStream wrapped =
+          DataUtil.buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
         final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
         encoder.encode(element);
         wrapped.close();
@@ -111,7 +110,7 @@ public final class PipeOutputWriter implements OutputWriter {
   }
 
   @Override
-  public void writeWatermark(Watermark watermark) {
+  public void writeWatermark(final Watermark watermark) {
     if (!initialized) {
       doInitialize();
     }
