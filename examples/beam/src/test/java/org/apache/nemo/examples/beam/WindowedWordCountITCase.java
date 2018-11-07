@@ -28,6 +28,9 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import static org.apache.nemo.examples.beam.WindowedWordCount.INPUT_TYPE_BOUNDED;
+import static org.apache.nemo.examples.beam.WindowedWordCount.INPUT_TYPE_UNBOUNDED;
+
 /**
  * Test Windowed word count program with JobLauncher.
  */
@@ -51,7 +54,7 @@ public final class WindowedWordCountITCase {
   public void testBatchFixedWindow() throws Exception {
     builder = new ArgBuilder()
       .addUserMain(WindowedWordCount.class.getCanonicalName())
-      .addUserArgs(inputFilePath, outputFilePath, "fixed");
+      .addUserArgs(outputFilePath, "fixed", INPUT_TYPE_BOUNDED, inputFilePath);
 
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
@@ -71,7 +74,7 @@ public final class WindowedWordCountITCase {
   public void testBatchSlidingWindow() throws Exception {
     builder = new ArgBuilder()
       .addUserMain(WindowedWordCount.class.getCanonicalName())
-      .addUserArgs(inputFilePath, outputFilePath, "sliding");
+      .addUserArgs(outputFilePath, "sliding", INPUT_TYPE_BOUNDED, inputFilePath);
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
@@ -91,7 +94,7 @@ public final class WindowedWordCountITCase {
     builder = new ArgBuilder()
       .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
       .addUserMain(WindowedWordCount.class.getCanonicalName())
-      .addUserArgs(inputFilePath, outputFilePath, "fixed");
+      .addUserArgs(outputFilePath, "fixed", INPUT_TYPE_BOUNDED, inputFilePath);
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
@@ -112,7 +115,7 @@ public final class WindowedWordCountITCase {
     builder = new ArgBuilder()
       .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
       .addUserMain(WindowedWordCount.class.getCanonicalName())
-      .addUserArgs(inputFilePath, outputFilePath, "sliding");
+      .addUserArgs(outputFilePath, "sliding", INPUT_TYPE_BOUNDED, inputFilePath);
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
@@ -124,6 +127,28 @@ public final class WindowedWordCountITCase {
       ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedSlidingWindowOutputFileName);
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
+  }
+
+
+  // TODO #271: We currently disable this test because we cannot force close Nemo
+  //@Test (timeout = TIMEOUT)
+  public void testUnboundedSlidingWindow() throws Exception {
+    builder = new ArgBuilder()
+      .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
+      .addUserMain(WindowedWordCount.class.getCanonicalName())
+      .addUserArgs(outputFilePath, "sliding", INPUT_TYPE_UNBOUNDED);
+
+    JobLauncher.main(builder
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WindowedWordCountITCase.class.getSimpleName())
+      .addOptimizationPolicy(StreamingPolicyParallelismFive.class.getCanonicalName())
+      .build());
+
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedSlidingWindowOutputFileName);
+    } finally {
+      //ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 }
