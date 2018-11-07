@@ -49,8 +49,7 @@ public class TransientResourceCompositePassTest {
     compiledDAG = CompilerTestUtil.compileALSDAG();
   }
 
-  // TODO #260: Beam Accumulator-based Partial Aggregation
-  // @Test
+  @Test
   public void testTransientResourcePass() throws Exception {
     final DAG<IRVertex, IREdge> processedDAG = new TransientResourceCompositePass().apply(compiledDAG);
 

@@ -20,12 +20,14 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
@@ -86,6 +88,98 @@ public final class DoFnTransformTest {
     doFnTransform.onData(WindowedValue.valueInGlobalWindow("Hello"));
 
     assertEquals(((TestOutputCollector<String>) oc).outputs.get(0), WindowedValue.valueInGlobalWindow("Hello"));
+
+    doFnTransform.close();
+  }
+
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testCountBundle() {
+
+    final TupleTag<String> outputTag = new TupleTag<>("main-output");
+    final NemoPipelineOptions pipelineOptions = PipelineOptionsFactory.as(NemoPipelineOptions.class);
+    pipelineOptions.setMaxBundleSize(3L);
+    pipelineOptions.setMaxBundleTimeMills(10000000L);
+
+    final List<Integer> bundleOutput = new ArrayList<>();
+
+    final DoFnTransform<String, String> doFnTransform =
+      new DoFnTransform<>(
+        new BundleTestDoFn(bundleOutput),
+        NULL_INPUT_CODER,
+        NULL_OUTPUT_CODERS,
+        outputTag,
+        Collections.emptyList(),
+        WindowingStrategy.globalDefault(),
+        emptyList(), /* side inputs */
+        pipelineOptions);
+
+    final Transform.Context context = mock(Transform.Context.class);
+    final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
+    doFnTransform.prepare(context, oc);
+
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow("a"));
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow("a"));
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow("a"));
+
+    assertEquals(3, (int) bundleOutput.get(0));
+
+    bundleOutput.clear();
+
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow("a"));
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow("a"));
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow("a"));
+
+    assertEquals(3, (int) bundleOutput.get(0));
+
+    doFnTransform.close();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testTimeBundle() {
+
+    final long maxBundleTimeMills = 1000L;
+    final TupleTag<String> outputTag = new TupleTag<>("main-output");
+    final NemoPipelineOptions pipelineOptions = PipelineOptionsFactory.as(NemoPipelineOptions.class);
+    pipelineOptions.setMaxBundleSize(10000000L);
+    pipelineOptions.setMaxBundleTimeMills(maxBundleTimeMills);
+
+    final List<Integer> bundleOutput = new ArrayList<>();
+
+    final DoFnTransform<String, String> doFnTransform =
+      new DoFnTransform<>(
+        new BundleTestDoFn(bundleOutput),
+        NULL_INPUT_CODER,
+        NULL_OUTPUT_CODERS,
+        outputTag,
+        Collections.emptyList(),
+        WindowingStrategy.globalDefault(),
+        emptyList(), /* side inputs */
+        pipelineOptions);
+
+    final Transform.Context context = mock(Transform.Context.class);
+    final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
+
+    long startTime = System.currentTimeMillis();
+    doFnTransform.prepare(context, oc);
+
+    int count = 0;
+    while (bundleOutput.isEmpty()) {
+      doFnTransform.onData(WindowedValue.valueInGlobalWindow("a"));
+      count += 1;
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
+
+    long endTime = System.currentTimeMillis();
+    assertEquals(count, (int) bundleOutput.get(0));
+    assertTrue(endTime - startTime >= maxBundleTimeMills);
 
     doFnTransform.close();
   }
@@ -194,11 +288,42 @@ public final class DoFnTransformTest {
     doFnTransform.close();
   }
 
+
+  /**
+   * Bundle test do fn.
+   */
+  private static class BundleTestDoFn extends DoFn<String, String> {
+    int count;
+
+    private final List<Integer> bundleOutput;
+
+    BundleTestDoFn(final List<Integer> bundleOutput) {
+      this.bundleOutput = bundleOutput;
+    }
+
+    @ProcessElement
+    public void processElement(final ProcessContext c) throws Exception {
+      count += 1;
+      c.output(c.element());
+    }
+
+    @StartBundle
+    public void startBundle(final StartBundleContext c) {
+      count = 0;
+    }
+
+    @FinishBundle
+    public void finishBundle(final FinishBundleContext c) {
+      bundleOutput.add(count);
+    }
+  }
+
   /**
    * Identitiy do fn.
    * @param <T> type
    */
   private static class IdentityDoFn<T> extends DoFn<T, T> {
+
     @ProcessElement
     public void processElement(final ProcessContext c) throws Exception {
       c.output(c.element());

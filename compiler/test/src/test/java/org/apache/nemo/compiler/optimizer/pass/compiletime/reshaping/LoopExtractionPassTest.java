@@ -44,8 +44,7 @@ public class LoopExtractionPassTest {
     compiledDAG = CompilerTestUtil.compileALSDAG();
   }
 
-  // TODO #260: Beam Accumulator-based Partial Aggregation
-  // @Test
+  @Test
   public void testLoopGrouping() {
     final DAG<IRVertex, IREdge> processedDAG = new LoopExtractionPass().apply(compiledDAG);
 

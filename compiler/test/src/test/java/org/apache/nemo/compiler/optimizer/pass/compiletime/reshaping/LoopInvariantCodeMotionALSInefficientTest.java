@@ -46,8 +46,7 @@ public class LoopInvariantCodeMotionALSInefficientTest {
     groupedDAG = new LoopExtractionPass().apply(inefficientALSDAG);
   }
 
-  // TODO #260: Beam Accumulator-based Partial Aggregation
-  // @Test
+  @Test
   public void testForInefficientALSDAG() throws Exception {
     final long expectedNumOfVertices = groupedDAG.getVertices().size() + 3;
 
