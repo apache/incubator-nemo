@@ -32,6 +32,8 @@ import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -46,6 +48,7 @@ import java.util.Map;
  */
 public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   Transform<WindowedValue<InputT>, WindowedValue<OutputT>> {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractDoFnTransform.class.getName());
 
   private final TupleTag<OutputT> mainOutputTag;
   private final List<TupleTag<?>> additionalOutputTags;
@@ -67,7 +70,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   private transient long bundleMillis;
   private long prevBundleStartTime;
   private long currBundleCount = 0;
-  private boolean bundleFinished = false;
+  private boolean bundleFinished = true;
 
   /**
    * AbstractDoFnTransform constructor.
@@ -130,12 +133,15 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       currBundleCount = 0;
     }
     currBundleCount += 1;
+    //LOG.info("Bundle count: {}", currBundleCount);
   }
 
   protected final void checkAndFinishBundle() {
-    if (currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
-      bundleFinished = true;
-      doFnRunner.finishBundle();
+    if (!bundleFinished) {
+      if (currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
+        bundleFinished = true;
+        doFnRunner.finishBundle();
+      }
     }
   }
 
@@ -189,9 +195,6 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       inputCoder,
       outputCoders,
       windowingStrategy);
-
-    this.prevBundleStartTime = System.currentTimeMillis();
-    doFnRunner.startBundle();
   }
 
   public final OutputCollector<WindowedValue<OutputT>> getOutputCollector() {
