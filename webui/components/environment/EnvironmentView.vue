@@ -13,13 +13,42 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 <template>
-  <h1>Environment</h1>
+  <el-card>
+    <!--Title-->
+    <h1>Environment</h1>
+
+    <!--Runtime Info-->
+    <h2>Runtime Information</h2>
+    <div>
+      <el-table class="runtime-info-table" :data="runtimeInfoData" stripe>
+        <el-table-column label="Name"></el-table-column>
+        <el-table-column label="Value"></el-table-column>
+      </el-table>
+    </div>
+
+    <!--Nemo Properties-->
+    <h2>Nemo Properties</h2>
+    <div>
+      <el-table class="nemo-properties-table" :data="nemoPropertiesData" stripe>
+        <el-table-column label="Name"></el-table-column>
+        <el-table-column label="Value"></el-table-column>
+      </el-table>
+    </div>
+  </el-card>
 </template>
 
 <script>
   import Vue from 'vue';
 
   export default {
+    computed: {
+      runtimeInfoData() {
+        return [];
+      },
+      nemoPeopertiesData() {
+        return [];
 
+      }
+    },
   }
 </script>

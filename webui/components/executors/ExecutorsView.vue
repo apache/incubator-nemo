@@ -13,13 +13,41 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 <template>
-  <h1>Executors</h1>
+  <el-card>
+    <!--Title-->
+    <h1>Executors</h1>
+
+    <!--Summary-->
+    <h2>Summary</h2>
+    <div>
+      <el-table class="executors-summary-table" :data="executorsSummaryData" stripe>
+        <el-table-column label="Blocks"></el-table-column>
+      </el-table>
+    </div>
+
+    <!--Executors-->
+    <h2>Executors</h2>
+    <div>
+      <el-table class="executors-table" :data="executorsData" stripe>
+        <el-table-column label="ID"></el-table-column>
+        <el-table-column label="Address"></el-table-column>
+        <el-table-column label="Status"></el-table-column>
+      </el-table>
+    </div>
+  </el-card>
 </template>
 
 <script>
   import Vue from 'vue';
 
   export default {
-
+    computed: {
+      executorsSummaryData() {
+        return [];
+      },
+      executorsData() {
+        return [];
+      },
+    },
   }
 </script>

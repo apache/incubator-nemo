@@ -28,6 +28,8 @@ limitations under the License.
         Completed Stages: </a></b><span>{{ completedStagesData.length }}</span><br>
       <b @click="jump($event, STATE.INCOMPLETE)"><a>
         Skipped Stages: </a></b><span>{{ skippedStagesData.length }}</span><br>
+      <b @click="jump($event, STATE.FAILED)"><a>
+        Failed Stages: </a></b><span>{{ failedStagesData.length }}</span><br>
     </p>
 
     <el-collapse accordion @change="handleCollapse">
@@ -167,6 +169,29 @@ limitations under the License.
         <el-table-column label="Shuffle Write"></el-table-column>
       </el-table>
     </div>
+
+    <!--Failed Stages-->
+    <h2 ref="failedStages">Failed Stages ({{ failedStagesData.length }})</h2>
+    <div>
+      <!--<div v-if="failedStagesData.length !== 0">-->
+      <el-table class="failed-stages-table" :data="failedStagesData" stripe>
+        <el-table-column label="Stage id" width="80">
+          <template slot-scope="scope">
+            {{ scope.row }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Description" width="180"></el-table-column>
+        <el-table-column label="Submitted" width="180"></el-table-column>
+        <el-table-column label="Duration" width="90"></el-table-column>
+        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
+        <el-table-column label="Input" width="60"></el-table-column>
+        <el-table-column label="Output" width="70"></el-table-column>
+        <el-table-column label="Shuffle Read"></el-table-column>
+        <el-table-column label="Shuffle Write"></el-table-column>
+        <el-table-column label="Failure Reason" width="200"></el-table-column>
+      </el-table>
+    </div>
+
   </el-card>
 </template>
 
@@ -246,6 +271,9 @@ limitations under the License.
       },
       skippedStagesData() {
         return []
+      },
+      failedStagesData() {
+        return [];
       },
     },
 

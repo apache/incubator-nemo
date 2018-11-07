@@ -13,13 +13,39 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 <template>
-  <h1>Storage</h1>
+  <el-card>
+    <!--Title-->
+    <h1>Storage</h1>
+
+    <!--Stages-->
+    <h2>Cached Stages</h2>
+    <div>
+      <el-table class="cached-stages-table" :data="cachedStagesData" stripe>
+        <el-table-column label="ID" width="80">
+          <template slot-scope="scope">
+            {{ scope.row }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Stage Name" width="110"></el-table-column>
+        <el-table-column label="Storage Level" width="180"></el-table-column>
+        <el-table-column label="Cached Partitions"></el-table-column>
+        <el-table-column label="Fraction Cached"></el-table-column>
+        <el-table-column label="Size in Memory"></el-table-column>
+        <el-table-column label="Size on Disk"></el-table-column>
+      </el-table>
+    </div>
+
+  </el-card>
 </template>
 
 <script>
   import Vue from 'vue';
 
   export default {
-
+    computed: {
+      cachedStagesData() {
+        return [];
+      },
+    },
   }
 </script>

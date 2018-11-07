@@ -23,9 +23,9 @@ under the License.
 
     <!--Jobs information-->
     <p>
-      <b>User: </b><span>TODO</span><br>
-      <b>Total Uptime: </b><span>TODO</span><br>
-      <b>Scheduling Mode: </b><span>TODO</span><br>
+      <b>User: </b><span>{ TODO }</span><br>
+      <b>Total Uptime: </b><span>{ TODO }</span><br>
+      <b>Scheduling Mode: </b><span>{ TODO }</span><br>
       <b @click="jump($event, JOB_STATUS.RUNNING)"><a>
         Active Jobs: </a></b><span>{{ activeJobsData.length }}</span><br>
       <b @click="jump($event, JOB_STATUS.COMPLETE)"><a>
@@ -37,7 +37,7 @@ under the License.
     <!--Stage Timeline-->
     <el-collapse>
       <el-collapse-item title="Event Timeline" name="1">
-        TODO: JOBS TIMELINE
+        { TODO: JOBS TIMELINE }
       </el-collapse-item>
     </el-collapse>
 
