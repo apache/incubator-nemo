@@ -65,7 +65,10 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   private transient DoFnInvoker<InterT, OutputT> doFnInvoker;
   private transient DoFnRunners.OutputManager outputManager;
 
-  // for bundle
+  // For bundle
+  // we consider count and time millis for start/finish bundle
+  // if # of processed elements > bundleSize
+  // or elapsed time > bundleMillis, we finish the current bundle and start a new one
   private transient long bundleSize;
   private transient long bundleMillis;
   private long prevBundleStartTime;
@@ -125,6 +128,10 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     return doFn;
   }
 
+  /**
+   * Checks whether the bundle is finished or not.
+   * Starts the bundle if it is done.
+   */
   protected final void checkAndInvokeBundle() {
     if (bundleFinished) {
       bundleFinished = false;
@@ -135,6 +142,10 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     currBundleCount += 1;
   }
 
+
+  /**
+   * Checks whether it is time to finish the bundle and finish it.
+   */
   protected final void checkAndFinishBundle() {
     if (!bundleFinished) {
       if (currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
