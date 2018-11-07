@@ -24,6 +24,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.SlidingWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -64,16 +65,14 @@ public final class UnboundedWindowdWordCount {
 
     // Apply windowing.
     final Window<Long> windowFn;
-    windowFn = Window.<Long>into(FixedWindows.of(Duration.standardSeconds(5)));
 
-    /*
     if (windowType.equals("fixed")) {
       windowFn = Window.<Long>into(FixedWindows.of(Duration.standardSeconds(5)));
     } else {
       windowFn = Window.<Long>into(SlidingWindows.of(Duration.standardSeconds(10))
         .every(Duration.standardSeconds(5)));
     }
-    */
+
     final PCollection<Long> windowedSequence = unboundedSequence.apply(windowFn);
 
     windowedSequence

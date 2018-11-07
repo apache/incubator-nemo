@@ -84,7 +84,7 @@ public final class UnboundedWindowdWordCountITCase {
     try {
       ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedSlidingWindowOutputFileName);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      //ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 }
