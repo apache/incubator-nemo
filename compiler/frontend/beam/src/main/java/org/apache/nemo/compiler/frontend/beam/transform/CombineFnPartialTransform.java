@@ -33,7 +33,9 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- *
+ * Partially accumulates the given KVs(Key, Input) into KVs(Key, Accum).
+ * TODO #263: Partial Combining for Beam Streaming
+ * TODO #264: Partial Combining with Beam SideInputs
  * @param <K> Key type.
  * @param <I> Input type.
  * @param <A> Accum type.
@@ -46,7 +48,7 @@ public final class CombineFnPartialTransform<K, I, A>
   private final GlobalCombineFnRunner<I, A, ?> combineFnRunner;
 
   /**
-   * GroupByKey constructor.
+   * Constructor.
    */
   public CombineFnPartialTransform(final CombineFnBase.GlobalCombineFn<I, A, ?> combineFn) {
     this.combineFnRunner = GlobalCombineFnRunners.create(combineFn);
