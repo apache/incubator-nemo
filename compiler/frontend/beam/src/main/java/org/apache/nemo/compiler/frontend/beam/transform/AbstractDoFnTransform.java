@@ -203,7 +203,9 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   @Override
   public final void close() {
     beforeClose();
-    doFnRunner.finishBundle();
+    if (!bundleFinished) {
+      doFnRunner.finishBundle();
+    }
     doFnInvoker.invokeTeardown();
   }
 
