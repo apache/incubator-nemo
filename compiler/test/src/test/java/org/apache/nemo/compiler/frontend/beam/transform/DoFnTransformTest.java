@@ -173,6 +173,7 @@ public final class DoFnTransformTest {
         Thread.sleep(10);
       } catch (InterruptedException e) {
         e.printStackTrace();
+        throw new RuntimeException(e);
       }
     }
 
