@@ -32,6 +32,8 @@ import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -46,6 +48,7 @@ import java.util.Map;
  */
 public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   Transform<WindowedValue<InputT>, WindowedValue<OutputT>> {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractDoFnTransform.class.getName());
 
   private final TupleTag<OutputT> mainOutputTag;
   private final List<TupleTag<?>> additionalOutputTags;
@@ -61,6 +64,16 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   private transient SideInputReader sideInputReader;
   private transient DoFnInvoker<InterT, OutputT> doFnInvoker;
   private transient DoFnRunners.OutputManager outputManager;
+
+  // For bundle
+  // we consider count and time millis for start/finish bundle
+  // if # of processed elements > bundleSize
+  // or elapsed time > bundleMillis, we finish the current bundle and start a new one
+  private transient long bundleSize;
+  private transient long bundleMillis;
+  private long prevBundleStartTime;
+  private long currBundleCount = 0;
+  private boolean bundleFinished = true;
 
   /**
    * AbstractDoFnTransform constructor.
@@ -115,11 +128,41 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     return doFn;
   }
 
+  /**
+   * Checks whether the bundle is finished or not.
+   * Starts the bundle if it is done.
+   */
+  protected final void checkAndInvokeBundle() {
+    if (bundleFinished) {
+      bundleFinished = false;
+      doFnRunner.startBundle();
+      prevBundleStartTime = System.currentTimeMillis();
+      currBundleCount = 0;
+    }
+    currBundleCount += 1;
+  }
+
+
+  /**
+   * Checks whether it is time to finish the bundle and finish it.
+   */
+  protected final void checkAndFinishBundle() {
+    if (!bundleFinished) {
+      if (currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
+        bundleFinished = true;
+        doFnRunner.finishBundle();
+      }
+    }
+  }
+
   @Override
   public final void prepare(final Context context, final OutputCollector<WindowedValue<OutputT>> oc) {
     // deserialize pipeline option
     final NemoPipelineOptions options = serializedOptions.get().as(NemoPipelineOptions.class);
     this.outputCollector = oc;
+
+    this.bundleMillis = options.getMaxBundleTimeMills();
+    this.bundleSize = options.getMaxBundleSize();
 
     // create output manager
     outputManager = new DefaultOutputManager<>(outputCollector, mainOutputTag);
@@ -162,8 +205,6 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       inputCoder,
       outputCoders,
       windowingStrategy);
-
-    doFnRunner.startBundle();
   }
 
   public final OutputCollector<WindowedValue<OutputT>> getOutputCollector() {
@@ -173,7 +214,9 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   @Override
   public final void close() {
     beforeClose();
-    doFnRunner.finishBundle();
+    if (!bundleFinished) {
+      doFnRunner.finishBundle();
+    }
     doFnInvoker.invokeTeardown();
   }
 
