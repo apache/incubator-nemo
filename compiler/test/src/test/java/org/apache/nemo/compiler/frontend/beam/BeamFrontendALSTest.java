@@ -36,8 +36,7 @@ import static org.junit.Assert.assertEquals;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class BeamFrontendALSTest {
-  // TODO #260: Beam Accumulator-based Partial Aggregation
-  // @Test
+  @Test
   public void testALSDAG() throws Exception {
     final DAG<IRVertex, IREdge> producedDAG = CompilerTestUtil.compileALSDAG();
 

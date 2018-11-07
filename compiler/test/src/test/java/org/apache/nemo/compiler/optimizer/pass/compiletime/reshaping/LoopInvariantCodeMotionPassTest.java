@@ -105,8 +105,7 @@ public class LoopInvariantCodeMotionPassTest {
     dagToBeRefactored = builder.build();
   }
 
-  // TODO #260: Beam Accumulator-based Partial Aggregation
-  // @Test
+  @Test
   public void testLoopInvariantCodeMotionPass() throws Exception {
     final long numberOfGroupedVertices = groupedDAG.getVertices().size();
 

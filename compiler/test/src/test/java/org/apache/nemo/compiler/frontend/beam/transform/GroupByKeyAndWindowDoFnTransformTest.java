@@ -26,11 +26,9 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
-import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.reef.io.Tuple;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.junit.Test;
@@ -41,6 +39,7 @@ import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 
+// TODO #270: Test different triggers
 public final class GroupByKeyAndWindowDoFnTransformTest {
 
   private final static Coder NULL_INPUT_CODER = null;
@@ -112,12 +111,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
 
 
     List<IntervalWindow> sortedWindows = new ArrayList<>(slidingWindows.assignWindows(ts1));
-    Collections.sort(sortedWindows, new Comparator<IntervalWindow>() {
-      @Override
-      public int compare(IntervalWindow o1, IntervalWindow o2) {
-        return o1.maxTimestamp().compareTo(o2.maxTimestamp());
-      }
-    });
+    Collections.sort(sortedWindows, IntervalWindow::compareTo);
 
     // [0---1000)
     final IntervalWindow window0 = sortedWindows.get(0);
@@ -126,12 +120,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
 
     sortedWindows.clear();
     sortedWindows = new ArrayList<>(slidingWindows.assignWindows(ts4));
-    Collections.sort(sortedWindows, new Comparator<IntervalWindow>() {
-      @Override
-      public int compare(IntervalWindow o1, IntervalWindow o2) {
-        return o1.maxTimestamp().compareTo(o2.maxTimestamp());
-      }
-    });
+    Collections.sort(sortedWindows, IntervalWindow::compareTo);
 
     // [1000--3000)
     final IntervalWindow window2 = sortedWindows.get(1);
