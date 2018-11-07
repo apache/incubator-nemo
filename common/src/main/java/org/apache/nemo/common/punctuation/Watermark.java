@@ -24,7 +24,7 @@ import java.util.Objects;
 /**
  * Watermark event.
  */
-public final class Watermark implements Serializable {
+public final class Watermark implements Serializable, Comparable<Watermark> {
 
   private final long timestamp;
   public Watermark(final long timestamp) {
@@ -48,7 +48,17 @@ public final class Watermark implements Serializable {
   }
 
   @Override
+  public String toString() {
+    return String.valueOf(timestamp);
+  }
+
+  @Override
   public int hashCode() {
     return Objects.hash(timestamp);
+  }
+
+  @Override
+  public int compareTo(final Watermark o) {
+    return Long.compare(timestamp, o.getTimestamp());
   }
 }
