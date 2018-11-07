@@ -111,6 +111,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
+    checkAndInvokeBundle();
+
     // We can call Beam's DoFnRunner#processElement here,
     // but it may generate some overheads if we call the method for each data.
     // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
@@ -119,6 +121,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final KV<K, InputT> kv = element.getValue();
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
     keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
+
+    checkAndFinishBundle();
   }
 
   /**
@@ -196,7 +200,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   @Override
   public void onWatermark(final Watermark inputWatermark) {
+    checkAndInvokeBundle();
     processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
+    checkAndFinishBundle();
   }
 
   /**

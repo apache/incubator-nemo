@@ -18,10 +18,23 @@
  */
 package org.apache.nemo.compiler.frontend.beam;
 
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
  * NemoPipelineOptions.
  */
 public interface NemoPipelineOptions extends PipelineOptions {
+  @Description("The maximum number of elements in a bundle.")
+  @Default.Long(1000)
+  Long getMaxBundleSize();
+
+  void setMaxBundleSize(Long size);
+
+  @Description("The maximum time to wait before finalising a bundle (in milliseconds).")
+  @Default.Long(1000)
+  Long getMaxBundleTimeMills();
+
+  void setMaxBundleTimeMills(Long time);
 }

@@ -47,9 +47,6 @@ import java.util.concurrent.TimeUnit;
 public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<InputT, InputT, OutputT> {
   private static final Logger LOG = LoggerFactory.getLogger(DoFnTransform.class.getName());
 
-  private transient ScheduledExecutorService bundleScheduler;
-  private boolean isBundleFinished = false;
-
   /**
    * DoFnTransform Constructor.
    *
@@ -70,43 +67,28 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   protected DoFn wrapDoFn(final DoFn initDoFn) {
-    bundleScheduler = Executors.newSingleThreadScheduledExecutor();
-    bundleScheduler.scheduleAtFixedRate(() -> {
-      isBundleFinished = true;
-    }, 1, 1, TimeUnit.SECONDS);
     return initDoFn;
   }
 
   @Override
   public void onData(final WindowedValue<InputT> data) {
+    checkAndInvokeBundle();
     getDoFnRunner().processElement(data);
-
-    if (isBundleFinished) {
-      LOG.info("BundleFinished: true");
-      getDoFnRunner().finishBundle();
-      isBundleFinished = false;
-      getDoFnRunner().startBundle();
-    }
+    checkAndFinishBundle();
   }
 
   @Override
   public void onWatermark(final Watermark watermark) {
+    checkAndInvokeBundle();
     // TODO #216: We should consider push-back data that waits for side input
     // TODO #216: If there are push-back data, input watermark >= output watermark
     getOutputCollector().emitWatermark(watermark);
-
-    if (isBundleFinished) {
-      LOG.info("BundleFinished: true");
-      getDoFnRunner().finishBundle();
-      isBundleFinished = false;
-      getDoFnRunner().startBundle();
-    }
+    checkAndFinishBundle();
   }
 
   @Override
   protected void beforeClose() {
     // nothing
-    bundleScheduler.shutdown();
   }
 
   @Override
