@@ -35,6 +35,7 @@ import java.util.Map;
 
 /**
  * Accumulates all of the partially accumulated KVs(Key, Accum) into KVs(Key, Output).
+ * (Currently supports batch-style global windows only)
  * TODO #263: Partial Combining for Beam Streaming
  * TODO #264: Partial Combining with Beam SideInputs
  * @param <K> Key type.
@@ -46,6 +47,8 @@ public final class CombineFnFinalTransform<K, A, O>
   private static final Logger LOG = LoggerFactory.getLogger(CombineFnFinalTransform.class.getName());
   private final Map<K, A> keyToAcuumulator;
   private OutputCollector<WindowedValue<KV<K, O>>> outputCollector;
+
+  // null arguments when calling methods of this variable, since we don't support sideinputs yet.
   private final GlobalCombineFnRunner<?, A, O> combineFnRunner;
 
   /**
