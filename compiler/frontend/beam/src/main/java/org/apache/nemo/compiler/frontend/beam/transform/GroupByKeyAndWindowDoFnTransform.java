@@ -358,6 +358,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     public void emit(final WindowedValue<KV<K, Iterable<InputT>>> output) {
       // adds the output timestamp to the watermark hold of each key
       // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
+      // TODO #270: consider early firing
+      // TODO #270: This logic may not be applied to early firing outputs
       keyAndWatermarkHoldMap.put(output.getValue().getKey(),
         new Watermark(output.getTimestamp().getMillis() + 1));
       outputCollector.emit(output);
