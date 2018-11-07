@@ -150,9 +150,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // Remove values
       values.clear();
     }
-
-    // Emit watermark to downstream operators
-    emitOutputWatermark(inputWatermark);
   }
 
   /**
@@ -168,28 +165,26 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     }
 
     // Find min watermark hold
-    final Watermark watermarkHold = Collections.min(keyAndWatermarkHoldMap.values());
+    final Watermark minWatermarkHold = Collections.min(keyAndWatermarkHoldMap.values());
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("Watermark hold: {}, "
-        + "inputWatermark: {}, outputWatermark: {}", watermarkHold, inputWatermark, prevOutputWatermark);
+        + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
 
-    if (watermarkHold.getTimestamp() > inputWatermark.getTimestamp()) {
-      if (inputWatermark.getTimestamp() > prevOutputWatermark.getTimestamp()) {
-        // progress!
-        prevOutputWatermark = inputWatermark;
-        getOutputCollector().emitWatermark(prevOutputWatermark);
-      }
-    } else {
-      // watermark hold < input watermark
-      if (watermarkHold.getTimestamp() > prevOutputWatermark.getTimestamp()) {
-        // progress!
-        prevOutputWatermark = watermarkHold;
-        // Remove minimum watermark holds
+    final Watermark outputWatermarkCandidate = new Watermark(
+      Math.max(prevOutputWatermark.getTimestamp(),
+        Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
+
+    if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
+      // progress!
+      prevOutputWatermark = outputWatermarkCandidate;
+      // emit watermark
+      getOutputCollector().emitWatermark(outputWatermarkCandidate);
+      // Remove minimum watermark holds
+      if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
         keyAndWatermarkHoldMap.entrySet()
-          .removeIf(entry -> entry.getValue().getTimestamp() == watermarkHold.getTimestamp());
-        getOutputCollector().emitWatermark(prevOutputWatermark);
+          .removeIf(entry -> entry.getValue().getTimestamp() == minWatermarkHold.getTimestamp());
       }
     }
   }
@@ -197,6 +192,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   public void onWatermark(final Watermark inputWatermark) {
     processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
+    // Emit watermark to downstream operators
+    emitOutputWatermark(inputWatermark);
   }
 
   /**
@@ -208,6 +205,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     // Finish any pending windows by advancing the input watermark to infinity.
     processElementsAndTriggerTimers(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()),
       BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE);
+    // Emit watermark to downstream operators
+    emitOutputWatermark(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()));
   }
 
   /**
