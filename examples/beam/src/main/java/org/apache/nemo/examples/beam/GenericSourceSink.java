@@ -132,14 +132,14 @@ final class HDFSWrite extends DoFn<String, Void> {
   }
 
   /**
-   * Start bundle.
-   * The number of output files are determined according to the parallelism.
+   * Writes to exactly one file.
+   * (The number of total output files are determined according to the parallelism.)
    * i.e. if parallelism is 2, then there are total 2 output files.
-   * Each output file is written as a bundle.
-   * @param c      bundle context {@link StartBundleContext}
    */
-  @StartBundle
-  public void startBundle(final StartBundleContext c) {
+  @Setup
+  public void setup() {
+    // Creating a side-effect in Setup is discouraged, but we do it anyways for now as we're extending DoFn.
+    // TODO #273: Our custom HDFSWrite should implement WriteOperation
     fileName = new Path(path + UUID.randomUUID().toString());
     try {
       fileSystem = fileName.getFileSystem(new JobConf());
@@ -166,12 +166,11 @@ final class HDFSWrite extends DoFn<String, Void> {
   }
 
   /**
-   * finish bundle.
-   * @param c             context
+   * Teardown.
    * @throws IOException  output stream exception
    */
-  @FinishBundle
-  public void finishBundle(final FinishBundleContext c) throws IOException {
+  @Teardown
+  public void tearDown() throws IOException {
     outputStream.close();
   }
 }
