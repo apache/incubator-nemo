@@ -77,6 +77,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emit(final O output) {
+    LOG.debug("{} emits {}", irVertex.getId(), output);
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("{} emits {}", irVertex.getId(), output);

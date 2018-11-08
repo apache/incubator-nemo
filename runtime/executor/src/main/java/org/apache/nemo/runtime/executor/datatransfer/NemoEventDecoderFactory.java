@@ -70,5 +70,13 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
         return valueDecoder.decode();
       }
     }
+
+    @Override
+    public String toString() {
+      final StringBuilder stringBuilder = new StringBuilder("NemoDecoder{");
+      stringBuilder.append(valueDecoder.toString());
+      stringBuilder.append("}");
+      return stringBuilder.toString();
+    }
   }
 }

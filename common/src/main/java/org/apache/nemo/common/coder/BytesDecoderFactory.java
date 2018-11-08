@@ -19,7 +19,10 @@
 package org.apache.nemo.common.coder;
 
 import org.apache.nemo.common.DirectByteArrayOutputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -27,6 +30,7 @@ import java.io.InputStream;
  * A {@link DecoderFactory} which is used for an array of bytes.
  */
 public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
+  private static final Logger LOG = LoggerFactory.getLogger(BytesDecoderFactory.class.getName());
 
   private static final BytesDecoderFactory BYTES_DECODER_FACTORY = new BytesDecoderFactory();
 
@@ -69,6 +73,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
 
     @Override
     public byte[] decode() throws IOException {
+      LOG.info("Decoding");
       // We cannot use inputStream.available() to know the length of bytes to read.
       // The available method only returns the number of bytes can be read without blocking.
       final DirectByteArrayOutputStream byteOutputStream = new DirectByteArrayOutputStream();
@@ -84,7 +89,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
           returnedArray = true;
           return new byte[0];
         } else {
-          throw new IOException("EoF (empty partition)!"); // TODO #120: use EOF exception instead of IOException.
+          throw new EOFException("EoF (empty partition)!"); // TODO #120: use EOF exception instead of IOException.
         }
       }
       final byte[] resultBytes = new byte[lengthToRead]; // Read the size of this byte array.

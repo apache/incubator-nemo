@@ -258,12 +258,17 @@ public final class DataUtil {
           hasNext = true;
           return true;
         } catch (final IOException e) {
-          // IOException from decoder indicates EOF event.
-          numSerializedBytes += serializedCountingStream.getCount();
-          numEncodedBytes += encodedCountingStream.getCount();
-          serializedCountingStream = null;
-          encodedCountingStream = null;
-          decoder = null;
+          if (e.getMessage().contains("EOF")) {
+            // IOException from decoder indicates EOF event.
+            numSerializedBytes += serializedCountingStream.getCount();
+            numEncodedBytes += encodedCountingStream.getCount();
+            serializedCountingStream = null;
+            encodedCountingStream = null;
+            decoder = null;
+          } else {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
         }
       }
     }
