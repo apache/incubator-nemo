@@ -47,7 +47,6 @@ import java.io.OutputStream;
  */@Requires(CommunicationPatternProperty.class)
 
 public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
-  private static final Logger LOG = LoggerFactory.getLogger(LargeShuffleRelayReshapingPass.class.getName());
 
   /**
    * Default constructor.
@@ -98,9 +97,9 @@ public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
               new IREdge(CommunicationPatternProperty.Value.Shuffle, edge.getSrc(), iFileMergerVertex);
             edge.copyExecutionPropertiesTo(edge1);
 
-            final EncoderFactory encoderFactory = new LengthPaddingEncoderFactory(
+            final EncoderFactory encoderFactory = new LargeShuffleCoderClass.LengthPaddingEncoderFactory(
               edge1.getPropertyValue(EncoderProperty.class).get());
-            final DecoderFactory decoderFactory = new LengthPaddingDecoderFactory();
+            final DecoderFactory decoderFactory = new LargeShuffleCoderClass.LengthPaddingDecoderFactory();
 
             edge1.setPropertyPermanently(EncoderProperty.of(encoderFactory));
             edge1.setPropertyPermanently(DecoderProperty.of(decoderFactory));
@@ -121,77 +120,5 @@ public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
       }
     });
     return builder.build();
-  }
-
-  final class LengthPaddingEncoderFactory implements EncoderFactory {
-
-    final EncoderFactory valueEncoderFactory;
-
-    LengthPaddingEncoderFactory(final EncoderFactory valueEncoderFactory) {
-      this.valueEncoderFactory = valueEncoderFactory;
-    }
-
-    @Override
-    public Encoder create(final OutputStream outputStream) throws IOException {
-      final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      return new LengthPaddingEncoder(
-        valueEncoderFactory.create(bos), outputStream, bos);
-    }
-  }
-
-  final class LengthPaddingDecoderFactory implements DecoderFactory {
-
-    LengthPaddingDecoderFactory() {
-    }
-
-    @Override
-    public Decoder create(InputStream inputStream) throws IOException {
-      return new LengthPaddingDecoder(inputStream);
-    }
-  }
-
-  final class LengthPaddingEncoder implements EncoderFactory.Encoder {
-
-    private final EncoderFactory.Encoder valueEncoder;
-    private final OutputStream outputStream;
-    private final ByteArrayOutputStream bos;
-
-    private LengthPaddingEncoder(final EncoderFactory.Encoder valueEncoder,
-                                 final OutputStream outputStream,
-                                 final ByteArrayOutputStream bos) {
-      this.valueEncoder = valueEncoder;
-      this.outputStream = outputStream;
-      this.bos = bos;
-    }
-
-    @Override
-    public void encode(Object element) throws IOException {
-      // The value encoder will encode the value to the bos
-      LOG.info("Encode");
-      valueEncoder.encode(element);
-      // close bos
-      bos.close();
-      final byte[] arr = bos.toByteArray();
-      LOG.info("Encode length: {}, {}", arr.length, element);
-      outputStream.write(arr.length);
-      outputStream.write(arr);
-    }
-  }
-
-  final class LengthPaddingDecoder implements DecoderFactory.Decoder {
-
-    private final InputStream inputStream;
-
-    private LengthPaddingDecoder(final InputStream inputStream) {
-      this.inputStream = inputStream;
-    }
-
-    @Override
-    public Object decode() throws IOException {
-      // this just returns byte array
-      final int len = inputStream.read();
-      final byte[] arr = new byte[len];
-      return inputStream.read(arr);
-    }
   }
 }

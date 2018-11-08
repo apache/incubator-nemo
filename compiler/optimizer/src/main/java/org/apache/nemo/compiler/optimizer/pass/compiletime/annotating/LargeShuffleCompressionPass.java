@@ -49,7 +49,7 @@ public final class LargeShuffleCompressionPass extends AnnotatingPass {
       inEdges.forEach(edge -> {
         if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
             .equals(CommunicationPatternProperty.Value.Shuffle)) {
-          edge.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.LZ4));
+          edge.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.None));
 
           dag.getOutgoingEdgesOf(edge.getDst())
               .forEach(edgeFromRelay ->

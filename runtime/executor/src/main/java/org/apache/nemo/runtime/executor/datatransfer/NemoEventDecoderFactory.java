@@ -19,7 +19,10 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.commons.lang.SerializationUtils;
+import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.coder.DecoderFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,6 +31,7 @@ import java.io.InputStream;
  * A factory for NemoEventDecoder.
  */
 public final class NemoEventDecoderFactory implements DecoderFactory {
+  private static final Logger LOG = LoggerFactory.getLogger(NemoEventDecoderFactory.class.getName());
 
   private final DecoderFactory valueDecoderFactory;
 
@@ -67,7 +71,11 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
           (WatermarkWithIndex) SerializationUtils.deserialize(inputStream);
         return watermarkWithIndex;
       } else {
-        return valueDecoder.decode();
+        final Object e = valueDecoder.decode();
+        if (e instanceof byte[]) {
+          LOG.info("Decode from nemo decoder len: {}", ((byte[]) e).length);
+        }
+        return e;
       }
     }
 

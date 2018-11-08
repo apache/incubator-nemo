@@ -29,6 +29,8 @@ import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
@@ -49,6 +51,8 @@ import java.util.stream.Stream;
  */
 @NotThreadSafe
 public final class ExecutorRepresenter {
+  private static final Logger LOG = LoggerFactory.getLogger(ExecutorRepresenter.class.getName());
+
   private final String executorId;
   private final ResourceSpecification resourceSpecification;
   private final Map<String, Task> runningComplyingTasks;
@@ -113,18 +117,20 @@ public final class ExecutorRepresenter {
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
-    serializationExecutorService.submit(() -> {
+
+
+    serializationExecutorService.execute(() -> {
       final byte[] serialized = SerializationUtils.serialize(task);
       sendControlMessage(
-          ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.ScheduleTask)
-              .setScheduleTaskMsg(
-                  ControlMessage.ScheduleTaskMsg.newBuilder()
-                      .setTask(ByteString.copyFrom(serialized))
-                      .build())
-              .build());
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.ScheduleTask)
+          .setScheduleTaskMsg(
+            ControlMessage.ScheduleTaskMsg.newBuilder()
+              .setTask(ByteString.copyFrom(serialized))
+              .build())
+          .build());
     });
   }
 

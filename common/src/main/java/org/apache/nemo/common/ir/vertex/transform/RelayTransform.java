@@ -20,6 +20,8 @@ package org.apache.nemo.common.ir.vertex.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A {@link Transform} relays input data from upstream vertex to downstream vertex promptly.
@@ -28,6 +30,7 @@ import org.apache.nemo.common.punctuation.Watermark;
  */
 public final class RelayTransform<T> implements Transform<T, T> {
   private OutputCollector<T> outputCollector;
+  private static final Logger LOG = LoggerFactory.getLogger(RelayTransform.class.getName());
 
   /**
    * Default constructor.
@@ -43,6 +46,7 @@ public final class RelayTransform<T> implements Transform<T, T> {
 
   @Override
   public void onData(final T element) {
+    LOG.info("Relay transform: {}", element);
     outputCollector.emit(element);
   }
 

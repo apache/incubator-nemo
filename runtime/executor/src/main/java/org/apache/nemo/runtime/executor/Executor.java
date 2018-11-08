@@ -116,6 +116,7 @@ public final class Executor {
    * @param task to launch.
    */
   private void launchTask(final Task task) {
+    LOG.info("Launch task: {}", task);
     try {
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
           SerializationUtils.deserialize(task.getSerializedIRDag());
