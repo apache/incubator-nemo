@@ -32,11 +32,11 @@ under the License.
 
     <el-main>
       <!--Jobs-->
-      <div v-if="activeIndex === '1'">
+      <div v-show="activeIndex === '1'">
         <jobs-view/>
       </div>
       <!--Stages-->
-      <div v-else-if="activeIndex === '2'">
+      <div v-if="activeIndex === '2'">
         <stages-view/>
       </div>
       <!--Storage-->

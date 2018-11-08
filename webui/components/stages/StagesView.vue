@@ -36,7 +36,8 @@ limitations under the License.
 
     <!--Stages List-->
     <!--Pending Stages-->
-    <h2 ref="pendingStages">Pending Stages ({{ pendingStagesData.length }})</h2>
+    <h2 ref="pendingStages">Pending Stages
+      <el-badge type="warning" :value="pendingStagesData.length"></el-badge></h2>
     <div>
       <!--<div v-if="pendingStagesData.length !== 0">-->
       <el-table class="pending-stages-table" :data="pendingStagesData" stripe>
@@ -57,7 +58,8 @@ limitations under the License.
     </div>
 
     <!--Active Stages-->
-    <h2 ref="activeStages">Active Stages ({{ activeStagesData.length }})</h2>
+    <h2 ref="activeStages">Active Stages
+      <el-badge type="primary" :value="activeStagesData.length"></el-badge></h2>
     <div>
       <!--<div v-if="activeStagesData.length !== 0">-->
       <el-table class="active-stages-table" :data="activeStagesData" stripe>
@@ -78,7 +80,8 @@ limitations under the License.
     </div>
 
     <!--Completed Stages-->
-    <h2 ref="completedStages">Completed Stages ({{ completedStagesData.length }})</h2>
+    <h2 ref="completedStages">Completed Stages
+      <el-badge type="success" :value="completedStagesData.length"></el-badge></h2>
     <div>
       <!--<div v-if="completedStagesData.length !== 0">-->
       <el-table class="completed-stages-table" :data="completedStagesData" stripe>
@@ -99,7 +102,8 @@ limitations under the License.
     </div>
 
     <!--Skipped Stages-->
-    <h2 ref="skippedStages">Skipped Stages ({{ skippedStagesData.length }})</h2>
+    <h2 ref="skippedStages">Skipped Stages
+      <el-badge type="info" :value="skippedStagesData.length"></el-badge></h2>
     <div>
       <!--<div v-if="skippedStagesData.length !== 0">-->
       <el-table class="skipped-stages-table" :data="skippedStagesData" stripe>
@@ -120,7 +124,8 @@ limitations under the License.
     </div>
 
     <!--Failed Stages-->
-    <h2 ref="failedStages">Failed Stages ({{ failedStagesData.length }})</h2>
+    <h2 ref="failedStages">Failed Stages
+      <el-badge type="danger" :value="failedStagesData.length"></el-badge></h2>
     <div>
       <!--<div v-if="failedStagesData.length !== 0">-->
       <el-table class="failed-stages-table" :data="failedStagesData" stripe>

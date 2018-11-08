@@ -27,11 +27,11 @@ under the License.
       <b>Total Uptime: </b><span>{ TODO }</span><br>
       <b>Scheduling Mode: </b><span>{ TODO }</span><br>
       <b @click="jump($event, JOB_STATUS.RUNNING)"><a>
-        Active Jobs: </a></b><span>{{ activeJobsData.length }}</span><br>
+        Active Jobs: </a></b><el-badge type="primary" :value="activeJobsData.length"></el-badge><br>
       <b @click="jump($event, JOB_STATUS.COMPLETE)"><a>
-        Completed Jobs: </a></b><span>{{ completedJobsData.length }}</span><br>
+        Completed Jobs: </a></b><el-badge type="success" :value="completedJobsData.length"></el-badge><br>
       <b @click="jump($event, JOB_STATUS.FAILED)"><a>
-        Failed Jobs: </a></b><span>{{ failedJobsData.length }}</span><br>
+        Failed Jobs: </a></b><el-badge type="danger" :value="failedJobsData.length"></el-badge><br>
     </p>
 
     <!--Stage Timeline-->
@@ -42,7 +42,8 @@ under the License.
     </el-collapse>
 
     <!--Jobs list-->
-    <h2 ref="activeJobs">Active Jobs ({{ activeJobsData.length }})</h2>
+    <h2 ref="activeJobs">Active Jobs
+      <el-badge type="primary" :value="activeJobsData.length"></el-badge></h2>
     <div v-if="activeJobsData.length !== 0">
       <!--TODO: 이거 component로 refactor 하기-->
       <el-table class="active-jobs-table" :data="activeJobsData"
@@ -89,7 +90,8 @@ under the License.
       </el-table>
     </div>
 
-    <h2 ref="completedJobs">Completed Jobs ({{ completedJobsData.length }})</h2>
+    <h2 ref="completedJobs">Completed Jobs
+      <el-badge type="success" :value="completedJobsData.length"></el-badge></h2>
     <div v-if="completedJobsData.length !== 0">
       <el-table class="completed-jobs-table" :data="completedJobsData"
                 @row-click="handleSelect" stripe>
@@ -106,7 +108,8 @@ under the License.
       </el-table>
     </div>
 
-    <h2 ref="failedJobs">Failed Jobs ({{ failedJobsData.length }})</h2>
+    <h2 ref="failedJobs">Failed Jobs
+      <el-badge type="danger" :value="failedJobsData.length"></el-badge></h2>
     <div v-if="failedJobsData.length !== 0">
       <el-table class="failed-jobs-table" :data="failedJobsData"
                 @row-click="handleSelect" stripe>
