@@ -162,6 +162,13 @@ public final class Executor {
     }
   }
 
+  /**
+   * This wraps the encoder with NemoEventEncoder.
+   * If the encoder is BytesEncoderFactory, we do not wrap the encoder.
+   * TODO #276: Add NoCoder property value in Encoder/DecoderProperty
+   * @param encoderFactory encoder factory
+   * @return wrapped encoder
+   */
   private EncoderFactory getEncoderFactory(final EncoderFactory encoderFactory) {
     if (encoderFactory instanceof BytesEncoderFactory) {
       return encoderFactory;
@@ -170,6 +177,13 @@ public final class Executor {
     }
   }
 
+  /**
+   * This wraps the encoder with NemoEventDecoder.
+   * If the decoder is BytesDecoderFactory, we do not wrap the decoder.
+   * TODO #276: Add NoCoder property value in Encoder/DecoderProperty
+   * @param decoderFactory decoder factory
+   * @return wrapped decoder
+   */
   private DecoderFactory getDecoderFactory(final DecoderFactory decoderFactory) {
     if (decoderFactory instanceof BytesDecoderFactory) {
       return decoderFactory;
