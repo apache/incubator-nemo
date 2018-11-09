@@ -150,29 +150,29 @@ limitations under the License.
 </template>
 
 <script>
-  import Vue from 'vue';
+import Vue from 'vue';
 
-  export default {
-    computed: {
-      schedulerPools() {
-        return [];
-      },
-      // Stages by its status
-      pendingStagesData() {
-        return [];
-      },
-      activeStagesData() {
-        return [];
-      },
-      completedStagesData() {
-        return [];
-      },
-      skippedStagesData() {
-        return [];
-      },
-      failedStagesData() {
-        return [];
-      },
+export default {
+  computed: {
+    schedulerPools() {
+      return [];
     },
-  }
+    // Stages by its status
+    pendingStagesData() {
+      return [];
+    },
+    activeStagesData() {
+      return [];
+    },
+    completedStagesData() {
+      return [];
+    },
+    skippedStagesData() {
+      return [];
+    },
+    failedStagesData() {
+      return [];
+    },
+  },
+}
 </script>

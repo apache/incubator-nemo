@@ -38,17 +38,17 @@ limitations under the License.
 </template>
 
 <script>
-  import Vue from 'vue';
+import Vue from 'vue';
 
-  export default {
-    computed: {
-      runtimeInfoData() {
-        return [];
-      },
-      nemoPeopertiesData() {
-        return [];
-
-      }
+export default {
+  computed: {
+    runtimeInfoData() {
+      return [];
     },
-  }
+    nemoPeopertiesData() {
+      return [];
+
+    }
+  },
+}
 </script>

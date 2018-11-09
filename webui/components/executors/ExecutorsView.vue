@@ -38,16 +38,16 @@ limitations under the License.
 </template>
 
 <script>
-  import Vue from 'vue';
+import Vue from 'vue';
 
-  export default {
-    computed: {
-      executorsSummaryData() {
-        return [];
-      },
-      executorsData() {
-        return [];
-      },
+export default {
+  computed: {
+    executorsSummaryData() {
+      return [];
     },
-  }
+    executorsData() {
+      return [];
+    },
+  },
+}
 </script>

@@ -191,15 +191,7 @@ import Vue from 'vue';
 import JobView from './detail/JobView';
 import uuid from 'uuid/v4';
 import { DataSet } from 'vue2vis';
-import { STATE } from '../../assets/constants';
-
-const JOB_STATUS = {
-  NOT_CONNECTED: 'NOT CONNECTED',
-  CONNECTING: 'CONNECTING',
-  RUNNING: 'RUNNING',
-  COMPLETE: 'COMPLETE',
-  FAILED: 'FAILED',
-};
+import { STATE, JOB_STATUS } from '../../assets/constants';
 
 function _isDone(status) {
   return status === JOB_STATUS.COMPLETE ||
@@ -329,19 +321,6 @@ export default {
 
     _isWebSocketJob(jobId) {
       return this.jobs[jobId].endpoint ? true : false;
-    },
-
-    _fromJobStatusToType(status) {
-      switch (status) {
-        case JOB_STATUS.RUNNING:
-          return 'primary';
-        case JOB_STATUS.COMPLETE:
-          return 'success';
-        case JOB_STATUS.FAILED:
-          return 'danger';
-        default:
-          return 'info';
-      }
     },
 
     _reconnectDisabled(status) {

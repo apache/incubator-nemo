@@ -39,13 +39,13 @@ limitations under the License.
 </template>
 
 <script>
-  import Vue from 'vue';
+import Vue from 'vue';
 
-  export default {
-    computed: {
-      cachedStagesData() {
-        return [];
-      },
+export default {
+  computed: {
+    cachedStagesData() {
+      return [];
     },
-  }
+  },
+}
 </script>

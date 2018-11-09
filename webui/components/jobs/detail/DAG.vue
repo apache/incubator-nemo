@@ -35,21 +35,21 @@ import { STATE } from '../../../assets/constants';
 const DEBOUNCE_INTERVAL = 200;
 
 const VERTEX_WIDTH = 50;
-const VERTEX_HEIGHT = 30;
-const VERTEX_RADIUS = 6;
+const VERTEX_HEIGHT = 50;
+const VERTEX_RADIUS = 4;
 const PAN_MARGIN = 20;
 const RECT_ROUND_RADIUS = 4;
 const RECT_STROKE_WIDTH = 2;
-const EDGE_STROKE_WIDTH = 2;
+const INTER_STAGE_EDGE_STROKE_WIDTH = 2;
 const ARROW_SIDE = 3;
-const FONT_SIZE = 2;
+const FONT_SIZE = 15;
 
 const GRAPH_MARGIN = 15;
 
-const SUCCESS_COLOR = '#85c262';
-const DANGER_COLOR = '#f58c89';
+const SUCCESS_COLOR = '#b0ff82';
+const DANGER_COLOR = '#ff7375';
 
-const BACKGROUND_COLOR = '#F2F6FC';
+const BACKGROUND_COLOR = '#f6f9ff';
 const CANVAS_RATIO = 0.75;
 const MAX_ZOOM = 20;
 const MIN_ZOOM = 0.1;
@@ -123,19 +123,19 @@ export default {
         .map(e => this.stageGraph.edge(e))
         .map(edge => edge.points)
         .reduce((acc, curr) => acc.concat(curr))
-        .map(point => point.x)
+        .map(point => point.x);
 
       const stagesXCoordsRight = stages
         .map(node => this.stageGraph.node(node))
-        .map(stage => stage.x + stage.width / 2)
+        .map(stage => stage.x + stage.width / 2);
       const stagesXCoordsLeft = stages
         .map(node => this.stageGraph.node(node))
-        .map(stage => stage.x - stage.width / 2)
+        .map(stage => stage.x - stage.width / 2);
 
       const coordMax = Math.max(...(edgesXCoords.concat(stagesXCoordsRight)));
       const coordMin = Math.min(...(edgesXCoords.concat(stagesXCoordsLeft)));
 
-      return coordMax - coordMin + EDGE_STROKE_WIDTH * 2;
+      return coordMax - coordMin + INTER_STAGE_EDGE_STROKE_WIDTH * 2;
     },
 
     /**
@@ -163,7 +163,7 @@ export default {
       const coordMax = Math.max(...(edgesYCoords.concat(stagesYCoordsBottom)));
       const coordMin = Math.min(...(edgesYCoords.concat(stagesYCoordsTop)));
 
-      return coordMax - coordMin + EDGE_STROKE_WIDTH * 2;
+      return coordMax - coordMin + INTER_STAGE_EDGE_STROKE_WIDTH * 2;
     },
 
     /**
@@ -181,15 +181,15 @@ export default {
         .map(e => this.stageGraph.edge(e))
         .map(edge => edge.points)
         .reduce((acc, curr) => acc.concat(curr))
-        .map(point => point.x)
+        .map(point => point.x);
 
       const stagesXCoordsLeft = stages
         .map(node => this.stageGraph.node(node))
-        .map(stage => stage.x - stage.width / 2)
+        .map(stage => stage.x - stage.width / 2);
 
       const coordMin = Math.min(...(edgesXCoords.concat(stagesXCoordsLeft)));
 
-      return coordMin - EDGE_STROKE_WIDTH;
+      return coordMin - INTER_STAGE_EDGE_STROKE_WIDTH;
     },
 
     /**
@@ -206,14 +206,14 @@ export default {
         .map(e => this.stageGraph.edge(e))
         .map(edge => edge.points)
         .reduce((acc, curr) => acc.concat(curr))
-        .map(point => point.y)
+        .map(point => point.y);
 
       const stagesYCoordsTop = stages
         .map(node => this.stageGraph.node(node))
-        .map(stage => stage.y - stage.height / 2)
+        .map(stage => stage.y - stage.height / 2);
       const coordMin = Math.min(...(edgesYCoords.concat(stagesYCoordsTop)));
 
-      return coordMin - EDGE_STROKE_WIDTH;
+      return coordMin - INTER_STAGE_EDGE_STROKE_WIDTH;
     },
 
     /**
@@ -539,7 +539,7 @@ export default {
         this.verticesGraph[stageId] = new Graph();
         let g = this.verticesGraph[stageId];
 
-        g.setGraph({});
+        g.setGraph({  rankdir: 'LR' });
         g.setDefaultEdgeLabel(function () { return {}; });
 
         innerVertices.forEach(vertex => {
@@ -583,6 +583,7 @@ export default {
           objectArray.push(vertexCircle);
         });
 
+        // create internal edges
         g.edges().map(e => g.edge(e)).forEach(edge => {
           let path = this.drawSVGEdgeWithArrow(edge);
 
@@ -654,7 +655,7 @@ export default {
 
         let stageLabelObj = new fabric.Text(stage.label, {
           left: stage.x,
-          top: stage.y - stage.height / 2 + FONT_SIZE * 2,
+          top: stage.y - stage.height / 3,
           fontSize: FONT_SIZE,
           originX: 'center',
           originY: 'center',
@@ -678,7 +679,7 @@ export default {
           metricId: edge.label,
           fill: 'transparent',
           stroke: 'black',
-          strokeWidth: EDGE_STROKE_WIDTH,
+          strokeWidth: INTER_STAGE_EDGE_STROKE_WIDTH,
           perPixelTargetFind: true,
           hasControls: false,
           hasRotatingPoint: false,
