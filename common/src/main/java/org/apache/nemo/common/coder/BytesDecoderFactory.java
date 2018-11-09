@@ -73,8 +73,6 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
 
     @Override
     public byte[] decode() throws IOException {
-      //LOG.info("Decoding");
-
       // We cannot use inputStream.available() to know the length of bytes to read.
       // The available method only returns the number of bytes can be read without blocking.
       final DirectByteArrayOutputStream byteOutputStream = new DirectByteArrayOutputStream();

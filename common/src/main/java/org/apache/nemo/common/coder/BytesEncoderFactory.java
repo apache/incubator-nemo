@@ -71,7 +71,6 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
       // Write the byte[] as is.
       // Because this interface use the length of byte[] element,
       // the element must not have any padding bytes.
-      //LOG.info("Encode in ByteENcoder len: {}", value.length);
       outputStream.write(value);
     }
   }

@@ -61,10 +61,10 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
     @Override
     public void encode(final T element) throws IOException {
       if (element instanceof WatermarkWithIndex) {
-        outputStream.write(0x00); // this is watermark
+        outputStream.write(0x01); // this is watermark
         outputStream.write(SerializationUtils.serialize((Serializable) element));
       } else {
-        outputStream.write(0x01);
+        outputStream.write(0x00);
         valueEncoder.encode(element);
       }
     }

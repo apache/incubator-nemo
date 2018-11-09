@@ -260,18 +260,12 @@ public final class DataUtil {
           hasNext = true;
           return true;
         } catch (final IOException e) {
-          //if (e.getMessage().contains("EOF")) {
-          e.printStackTrace();
           // IOException from decoder indicates EOF event.
           numSerializedBytes += serializedCountingStream.getCount();
           numEncodedBytes += encodedCountingStream.getCount();
           serializedCountingStream = null;
           encodedCountingStream = null;
           decoder = null;
-          //} else {
-          //  e.printStackTrace();
-          //  throw new RuntimeException(e);
-          //}
         }
       }
     }

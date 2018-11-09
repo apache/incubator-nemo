@@ -69,12 +69,13 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
       }
 
       if (isWatermark == 0x00) {
+        // this is not a watermark
+        return valueDecoder.decode();
+      } else if (isWatermark == 0x01) {
         // this is a watermark
         final WatermarkWithIndex watermarkWithIndex =
           (WatermarkWithIndex) SerializationUtils.deserialize(inputStream);
         return watermarkWithIndex;
-      } else if (isWatermark == 0x01) {
-        return valueDecoder.decode();
       } else {
         throw new RuntimeException("Watermark decoding failure: " + isWatermark);
       }
