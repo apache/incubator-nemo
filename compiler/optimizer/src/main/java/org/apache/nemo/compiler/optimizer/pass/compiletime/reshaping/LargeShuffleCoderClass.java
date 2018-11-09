@@ -40,9 +40,7 @@ final class LargeShuffleCoderClass implements Serializable {
 
     @Override
     public Encoder create(final OutputStream outputStream) throws IOException {
-      final DirectByteArrayOutputStream byteOutputStream = new DirectByteArrayOutputStream();
-      return new LengthPaddingEncoder(
-        valueEncoderFactory.create(byteOutputStream), outputStream, byteOutputStream);
+      return new LengthPaddingEncoder(valueEncoderFactory, outputStream);
     }
   }
 
@@ -59,26 +57,25 @@ final class LargeShuffleCoderClass implements Serializable {
 
   static final class LengthPaddingEncoder<T> implements EncoderFactory.Encoder<T> {
 
-    private final EncoderFactory.Encoder<T> valueEncoder;
-    private final DirectByteArrayOutputStream bos;
+    private final EncoderFactory<T> valueEncoderFactory;
     private final OutputStream outputStream;
 
-    private LengthPaddingEncoder(final EncoderFactory.Encoder<T> valueEncoder,
-                                 final OutputStream outputStream,
-                                 final DirectByteArrayOutputStream bos) {
-      this.valueEncoder = valueEncoder;
-      this.bos = bos;
+    private LengthPaddingEncoder(final EncoderFactory<T> valueEncoderFactory,
+                                 final OutputStream outputStream) {
+      this.valueEncoderFactory = valueEncoderFactory;
       this.outputStream = outputStream;
     }
 
     @Override
     public void encode(T element) throws IOException {
+      final DirectByteArrayOutputStream dbos = new DirectByteArrayOutputStream();
+      final EncoderFactory.Encoder<T> valueEncoder = valueEncoderFactory.create(dbos);
       // The value encoder will encode the value to the bos
       LOG.info("Encode");
       valueEncoder.encode(element);
-      bos.close();
+      dbos.close();
 
-      int len = bos.getCount();
+      int len = dbos.getCount();
       //final ByteBuffer byteBuffer = ByteBuffer.allocate(4).putInt(len);
       //final byte[] lenByte = byteBuffer.array();
       //outputStream.write(lenByte);
@@ -87,7 +84,7 @@ final class LargeShuffleCoderClass implements Serializable {
       LOG.info("Encode length: {}, {}", len, element);
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeInt(len);
-      bos.writeTo(dos);
+      dbos.writeTo(dos);
 
       //LOG.info("Encoded bytes: {}", byteArrayToHex(bos.toByteArray()));
 
@@ -96,7 +93,7 @@ final class LargeShuffleCoderClass implements Serializable {
 
     @Override
     public String toString() {
-      return "{LengthPaddingEncoder: " + valueEncoder + "}";
+      return "{LengthPaddingEncoder}";
     }
   }
 
@@ -114,21 +111,18 @@ final class LargeShuffleCoderClass implements Serializable {
     @Override
     public byte[] decode() throws IOException {
 
-      if (!buffering) {
-        // this just returns byte array
-        LOG.info("Start decode from inputStream: {}", inputStream);
-        final DataInputStream dis = new DataInputStream(inputStream);
-        len = dis.readInt();
-        LOG.info("Decode len: {}", len);
-        buffering = true;
-        byteArrayOutputStream = new DirectByteArrayOutputStream(len);
-      }
+      // this just returns byte array
+      LOG.info("Start decode from inputStream: {}", inputStream);
+      final DataInputStream dis = new DataInputStream(inputStream);
+      len = dis.readInt();
+      LOG.info("Decode len: {}", len);
+      byteArrayOutputStream = new DirectByteArrayOutputStream(len);
 
       // debug
       //final DirectByteArrayOutputStream byteOutputStream = new DirectByteArrayOutputStream(len);
 
       while (byteArrayOutputStream.getCount() < len) {
-        int b = inputStream.read();
+        int b = dis.read();
 
         if (b == -1) {
           throw new RuntimeException();
@@ -138,6 +132,8 @@ final class LargeShuffleCoderClass implements Serializable {
       }
 
       buffering = false;
+
+      LOG.info("Decoded bytes: {}", byteArrayOutputStream.getBufDirectly());
 
       return byteArrayOutputStream.getBufDirectly();
       /*

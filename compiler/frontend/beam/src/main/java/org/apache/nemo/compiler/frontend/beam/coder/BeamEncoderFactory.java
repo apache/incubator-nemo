@@ -109,6 +109,7 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
 
     @Override
     public void encode(final T2 element) throws IOException {
+      LOG.info("Beam void encoder: {}", element);
       outputStream.write(0); // emit 0 instead of null to enable to count emitted elements.
     }
   }

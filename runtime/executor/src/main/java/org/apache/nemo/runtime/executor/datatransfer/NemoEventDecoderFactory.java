@@ -24,8 +24,10 @@ import org.apache.nemo.common.coder.DecoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 /**
  * A factory for NemoEventDecoder.
@@ -62,20 +64,33 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
 
     @Override
     public Object decode() throws IOException {
-      final byte[] isWatermark = new byte[1];
-      inputStream.read(isWatermark, 0, 1);
 
-      if (isWatermark[0] == 0x01) {
+      /*
+      final Object e = valueDecoder.decode();
+      if (e instanceof byte[]) {
+        LOG.info("Decode from nemo decoder len: {}", ((byte[]) e).length);
+      }
+      return e;
+      */
+
+      final byte isWatermark = (byte) inputStream.read();
+      if (isWatermark == -1) {
+        throw new EOFException();
+      }
+
+      if (isWatermark == 0x00) {
         // this is a watermark
         final WatermarkWithIndex watermarkWithIndex =
           (WatermarkWithIndex) SerializationUtils.deserialize(inputStream);
         return watermarkWithIndex;
-      } else {
+      } else if (isWatermark == 0x01) {
         final Object e = valueDecoder.decode();
         if (e instanceof byte[]) {
           LOG.info("Decode from nemo decoder len: {}", ((byte[]) e).length);
         }
         return e;
+      } else {
+        throw new RuntimeException("Watermark decoding failure: " + isWatermark);
       }
     }
 

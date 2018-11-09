@@ -27,6 +27,8 @@ import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.partitioner.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +37,8 @@ import java.util.Optional;
  * Represents the output data transfer from a task.
  */
 public final class BlockOutputWriter implements OutputWriter {
+  private static final Logger LOG = LoggerFactory.getLogger(BlockOutputWriter.class.getName());
+
   private final RuntimeEdge<?> runtimeEdge;
   private final IRVertex dstIrVertex;
   private final Partitioner partitioner;
@@ -78,6 +82,10 @@ public final class BlockOutputWriter implements OutputWriter {
 
   @Override
   public void write(final Object element) {
+    if (element instanceof byte[]) {
+      LOG.info("Write {} len", ((byte []) element).length);
+      LOG.info("Write byte {}", ((byte []) element));
+    }
     if (nonDummyBlock) {
       blockToWrite.write(partitioner.partition(element), element);
 
