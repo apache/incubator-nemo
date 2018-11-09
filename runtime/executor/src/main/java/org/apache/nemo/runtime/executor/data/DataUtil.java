@@ -144,7 +144,6 @@ public final class DataUtil {
     final List<NonSerializedPartition<K>> nonSerializedPartitions = new ArrayList<>();
     for (final SerializedPartition<K> partitionToConvert : partitionsToConvert) {
       final K key = partitionToConvert.getKey();
-      LOG.info("Local get Serialized data: {}", partitionToConvert.getData());
 
 
       try (final ByteArrayInputStream byteArrayInputStream =

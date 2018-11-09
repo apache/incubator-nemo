@@ -82,10 +82,6 @@ public final class BlockOutputWriter implements OutputWriter {
 
   @Override
   public void write(final Object element) {
-    if (element instanceof byte[]) {
-      LOG.info("Write {} len", ((byte []) element).length);
-      LOG.info("Write byte {}", ((byte []) element));
-    }
     if (nonDummyBlock) {
       blockToWrite.write(partitioner.partition(element), element);
 

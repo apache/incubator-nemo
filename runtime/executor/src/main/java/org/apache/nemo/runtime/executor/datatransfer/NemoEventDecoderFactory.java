@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.commons.lang.SerializationUtils;
-import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 
 /**
  * A factory for NemoEventDecoder.
@@ -65,14 +63,6 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
     @Override
     public Object decode() throws IOException {
 
-      /*
-      final Object e = valueDecoder.decode();
-      if (e instanceof byte[]) {
-        LOG.info("Decode from nemo decoder len: {}", ((byte[]) e).length);
-      }
-      return e;
-      */
-
       final byte isWatermark = (byte) inputStream.read();
       if (isWatermark == -1) {
         throw new EOFException();
@@ -84,11 +74,7 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
           (WatermarkWithIndex) SerializationUtils.deserialize(inputStream);
         return watermarkWithIndex;
       } else if (isWatermark == 0x01) {
-        final Object e = valueDecoder.decode();
-        if (e instanceof byte[]) {
-          LOG.info("Decode from nemo decoder len: {}", ((byte[]) e).length);
-        }
-        return e;
+        return valueDecoder.decode();
       } else {
         throw new RuntimeException("Watermark decoding failure: " + isWatermark);
       }

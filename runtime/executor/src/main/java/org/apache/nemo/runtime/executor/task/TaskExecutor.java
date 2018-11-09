@@ -364,7 +364,6 @@ public final class TaskExecutor {
    */
   private void handleElement(final Object element,
                              final DataFetcher dataFetcher) {
-    LOG.info("Handle element: {}", element);
     if (element instanceof Finishmark) {
       // We've consumed all the data from this data fetcher.
       if (dataFetcher instanceof SourceVertexDataFetcher) {

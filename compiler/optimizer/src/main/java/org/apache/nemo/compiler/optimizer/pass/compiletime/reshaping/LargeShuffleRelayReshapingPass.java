@@ -31,21 +31,14 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.RelayTransform;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 
 /**
  * Pass to modify the DAG for a job to batch the disk seek.
  * It adds a {@link OperatorVertex} with {@link RelayTransform} before the vertices
  * receiving shuffle edges,
  * to merge the shuffled data in memory and write to the disk at once.
- */@Requires(CommunicationPatternProperty.class)
-
+ */
+@Requires(CommunicationPatternProperty.class)
 public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
 
   /**
@@ -57,17 +50,17 @@ public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
 
   /**
    * Reshaping.
-   * If A --> B is shuffle,
+   * If A --&gt; B is shuffle,
    *
    * Convert
    *
    *          shuffle
-   * A --(Encoder1, Decoder1)--> B
+   * A --(Encoder1, Decoder1)--&gt; B
    *
    * to
    *
    *                       shuffle                                     one-to-one
-   * A --(LengthPaddingEncoder, LengthPaddingDecoder)-> Relay --(ByteEncoder, Decoder1)-> B
+   * A --(LengthPaddingEncoder, LengthPaddingDecoder)-&gt; Relay --(ByteEncoder, Decoder1)-&gt; B
    *                        edge1                                       edge2
    * @param dag current dag
    * @return reshaping dag

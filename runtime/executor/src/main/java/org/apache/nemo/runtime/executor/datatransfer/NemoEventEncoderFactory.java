@@ -19,16 +19,13 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.commons.lang.SerializationUtils;
-import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
-import java.nio.ByteBuffer;
 
 /**
  * A factory for NemoEventEncoder.
@@ -49,6 +46,7 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
 
   /**
    * This encodes normal data and WatermarkWithIndex.
+   * @param <T>
    */
   private final class NemoEventEncoder<T> implements EncoderFactory.Encoder<T> {
     private final EncoderFactory.Encoder<T> valueEncoder;
@@ -62,17 +60,11 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
 
     @Override
     public void encode(final T element) throws IOException {
-
-      //final byte[] isWatermark = new byte[1];
       if (element instanceof WatermarkWithIndex) {
-        //isWatermark[0] = 0x01;
         outputStream.write(0x00); // this is watermark
         outputStream.write(SerializationUtils.serialize((Serializable) element));
       } else {
-        //isWatermark[0] = 0x00;
-        //outputStream.write(0x01); // this is not a watermark
         outputStream.write(0x01);
-        LOG.info("Encode {} from {}", element, valueEncoder);
         valueEncoder.encode(element);
       }
     }

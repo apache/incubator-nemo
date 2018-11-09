@@ -98,7 +98,6 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       throw new IOException("The partition is already committed!");
     } else {
       try {
-        LOG.info("");
         encoder.encode(element);
       } catch (final IOException e) {
         wrappedStream.close();
@@ -117,7 +116,6 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       // inner buffer directly, which can be an unfinished(not flushed) buffer.
       wrappedStream.close();
       this.serializedData = bytesOutputStream.getBufDirectly();
-      LOG.info("Commit ser partition: {}", serializedData);
 
       this.length = bytesOutputStream.getCount();
       this.committed = true;

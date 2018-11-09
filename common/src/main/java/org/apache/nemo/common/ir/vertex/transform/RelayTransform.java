@@ -46,7 +46,7 @@ public final class RelayTransform<T> implements Transform<T, T> {
 
   @Override
   public void onData(final T element) {
-    LOG.info("Relay transform: {}", element);
+    //LOG.info("Relay transform: {}", element);
     outputCollector.emit(element);
   }
 

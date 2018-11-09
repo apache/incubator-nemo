@@ -22,7 +22,6 @@ import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.VoidCoder;
-import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,7 +80,6 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
     @Override
     public void encode(final T2 element) throws IOException {
       try {
-        LOG.info("Encode {}", element);
         beamCoder.encode(element, outputStream);
       } catch (final CoderException e) {
         throw new IOException(e);
@@ -109,7 +107,6 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
 
     @Override
     public void encode(final T2 element) throws IOException {
-      LOG.info("Beam void encoder: {}", element);
       outputStream.write(0); // emit 0 instead of null to enable to count emitted elements.
     }
   }

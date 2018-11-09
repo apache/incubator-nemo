@@ -86,8 +86,6 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
         // Reserve a partition write and get the metadata.
         metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
-        LOG.info("Write to file len: {}", serializedPartition.getLength());
-        LOG.info("Get data: {}", serializedPartition.getData());
         fileOutputStream.write(serializedPartition.getData(), 0, serializedPartition.getLength());
       }
     }
