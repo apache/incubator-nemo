@@ -18,9 +18,6 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
-import org.apache.nemo.common.coder.BytesEncoderFactory;
-import org.apache.nemo.common.coder.DecoderFactory;
-import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
@@ -48,68 +45,39 @@ public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
     super(LargeShuffleRelayReshapingPass.class);
   }
 
-  /**
-   * Reshaping.
-   * If A --&gt; B is shuffle,
-   *
-   * Convert
-   *
-   *          shuffle
-   * A --(Encoder1, Decoder1)--&gt; B
-   *
-   * to
-   *
-   *                       shuffle                                     one-to-one
-   * A --(LengthPaddingEncoder, LengthPaddingDecoder)-&gt; Relay --(ByteEncoder, Decoder1)-&gt; B
-   *                        edge1                                       edge2
-   * @param dag current dag
-   * @return reshaping dag
-   */
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
-    dag.topologicalDo(B -> {
-      builder.addVertex(B);
+    dag.topologicalDo(v -> {
+      builder.addVertex(v);
       // We care about OperatorVertices that have any incoming edge that
       // has Shuffle as data communication pattern.
-      if (B instanceof OperatorVertex && dag.getIncomingEdgesOf(B).stream().anyMatch(irEdge ->
-              CommunicationPatternProperty.Value.Shuffle
+      if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
+        CommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))) {
-        dag.getIncomingEdgesOf(B).forEach(edge -> {
+        dag.getIncomingEdgesOf(v).forEach(edge -> {
           if (CommunicationPatternProperty.Value.Shuffle
-                .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+            .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
             // Insert a merger vertex having transform that write received data immediately
             // before the vertex receiving shuffled data.
             final OperatorVertex iFileMergerVertex = new OperatorVertex(new RelayTransform());
 
             builder.addVertex(iFileMergerVertex);
-
-
-            // edge 1 setting
-            final IREdge edge1 =
+            final IREdge newEdgeToMerger =
               new IREdge(CommunicationPatternProperty.Value.Shuffle, edge.getSrc(), iFileMergerVertex);
-            edge.copyExecutionPropertiesTo(edge1);
-
-            final EncoderFactory encoderFactory = new LargeShuffleCoderClass.LengthPaddingEncoderFactory(
-              edge1.getPropertyValue(EncoderProperty.class).get());
-            final DecoderFactory decoderFactory = new LargeShuffleCoderClass.LengthPaddingDecoderFactory();
-
-            edge1.setPropertyPermanently(EncoderProperty.of(encoderFactory));
-            edge1.setPropertyPermanently(DecoderProperty.of(decoderFactory));
-
-            // edge 2 setting
-            final IREdge edge2 = new IREdge(CommunicationPatternProperty.Value.OneToOne,
-                iFileMergerVertex, B);
-            edge2.setPropertyPermanently(EncoderProperty.of(BytesEncoderFactory.of()));
-            edge2.setPropertyPermanently(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
-            builder.connectVertices(edge1);
-            builder.connectVertices(edge2);
+            edge.copyExecutionPropertiesTo(newEdgeToMerger);
+            final IREdge newEdgeFromMerger = new IREdge(CommunicationPatternProperty.Value.OneToOne,
+              iFileMergerVertex, v);
+            newEdgeFromMerger.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
+            newEdgeFromMerger.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
+            builder.connectVertices(newEdgeToMerger);
+            builder.connectVertices(newEdgeFromMerger);
           } else {
             builder.connectVertices(edge);
           }
         });
       } else { // Others are simply added to the builder.
-        dag.getIncomingEdgesOf(B).forEach(builder::connectVertices);
+        dag.getIncomingEdgesOf(v).forEach(builder::connectVertices);
       }
     });
     return builder.build();

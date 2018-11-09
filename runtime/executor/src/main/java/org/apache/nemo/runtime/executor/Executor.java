@@ -19,6 +19,10 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
+import org.apache.nemo.common.coder.BytesDecoderFactory;
+import org.apache.nemo.common.coder.BytesEncoderFactory;
+import org.apache.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecompressionProperty;
@@ -124,19 +128,19 @@ public final class Executor {
           new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
       task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(),
-          new NemoEventEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
-          new NemoEventDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
+          getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
+          getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
           e.getPropertyValue(CompressionProperty.class).orElse(null),
           e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       task.getTaskOutgoingEdges().forEach(e -> serializerManager.register(e.getId(),
-          new NemoEventEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
-          new NemoEventDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
+          getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
+          getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
           e.getPropertyValue(CompressionProperty.class).orElse(null),
           e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       irDag.getVertices().forEach(v -> {
         irDag.getOutgoingEdgesOf(v).forEach(e -> serializerManager.register(e.getId(),
-            new NemoEventEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
-            new NemoEventDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
+            getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
+            getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
             e.getPropertyValue(CompressionProperty.class).orElse(null),
             e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       });
@@ -155,6 +159,22 @@ public final class Executor {
                   .build())
               .build());
       throw e;
+    }
+  }
+
+  private EncoderFactory getEncoderFactory(final EncoderFactory encoderFactory) {
+    if (encoderFactory instanceof BytesEncoderFactory) {
+      return encoderFactory;
+    } else {
+      return new NemoEventEncoderFactory(encoderFactory);
+    }
+  }
+
+  private DecoderFactory getDecoderFactory(final DecoderFactory decoderFactory) {
+    if (decoderFactory instanceof BytesDecoderFactory) {
+      return decoderFactory;
+    } else {
+      return new NemoEventDecoderFactory(decoderFactory);
     }
   }
 
