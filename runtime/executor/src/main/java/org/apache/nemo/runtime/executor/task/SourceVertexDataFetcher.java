@@ -53,6 +53,7 @@ class SourceVertexDataFetcher extends DataFetcher {
     this.readable.prepare();
     this.bounded = dataSource.isBounded();
 
+    LOG.info("Is bounded: {}, source: {}", bounded, dataSource);
     if (!bounded) {
       this.watermarkTriggerService = Executors.newScheduledThreadPool(1);
       this.watermarkTriggerService.scheduleAtFixedRate(() -> {
@@ -104,11 +105,14 @@ class SourceVertexDataFetcher extends DataFetcher {
   private Object retrieveElement() throws NoSuchElementException, IOException {
     // Emit watermark
     if (!bounded && isWatermarkTriggerTime()) {
-      return new Watermark(readable.readWatermark());
+      final Watermark w = new Watermark(readable.readWatermark());
+      LOG.info("Emite watermark: {}", w);
+      return w;
     }
 
     // Data
     final Object element = readable.readCurrent();
+    LOG.info("Emite data: {}", element);
     return element;
   }
 }

@@ -18,12 +18,14 @@
  */
 package org.apache.nemo.compiler.frontend.beam;
 
+import org.apache.beam.sdk.metrics.*;
 import org.apache.nemo.client.ClientEndpoint;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.metrics.MetricResults;
 import org.joda.time.Duration;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
+import java.util.Collections;
 
 /**
  * Beam result.
@@ -49,10 +51,15 @@ public final class NemoPipelineResult extends ClientEndpoint implements Pipeline
 
   @Override
   public State waitUntilFinish(final Duration duration) {
-    throw new UnsupportedOperationException();
     // TODO #208: NemoPipelineResult#waitUntilFinish hangs
     // Previous code that hangs the job:
     // return (State) super.waitUntilJobFinish(duration.getMillis(), TimeUnit.MILLISECONDS);
+    try {
+      Thread.sleep(duration.getMillis());
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+    return State.DONE;
   }
 
   @Override
@@ -65,6 +72,26 @@ public final class NemoPipelineResult extends ClientEndpoint implements Pipeline
 
   @Override
   public MetricResults metrics() {
-    throw new UnsupportedOperationException("metrics() in frontend.beam.NemoPipelineResult");
+    return new MetricResults() {
+      @Override
+      public MetricQueryResults queryMetrics(@Nullable final MetricsFilter filter) {
+        return new MetricQueryResults() {
+          @Override
+          public Iterable<MetricResult<Long>> getCounters() {
+            return Collections.emptyList();
+          }
+
+          @Override
+          public Iterable<MetricResult<DistributionResult>> getDistributions() {
+            return Collections.emptyList();
+          }
+
+          @Override
+          public Iterable<MetricResult<GaugeResult>> getGauges() {
+            return Collections.emptyList();
+          }
+        };
+      }
+    };
   }
 }

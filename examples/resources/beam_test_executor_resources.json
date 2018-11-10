@@ -2,11 +2,11 @@
   {
     "type": "Transient",
     "memory_mb": 512,
-    "capacity": 15
+    "capacity": 50000 
   },
   {
     "type": "Reserved",
     "memory_mb": 512,
-    "capacity": 15
+    "capacity": 50000
   }
 ]

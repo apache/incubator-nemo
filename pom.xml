@@ -244,13 +244,13 @@ under the License.
                       </goals>
                       <phase>site</phase>
                     </execution>
-                    <execution>
-                      <id>test-javadoc</id>
-                      <goals>
-                        <goal>javadoc</goal>
-                      </goals>
-                      <phase>validate</phase>
-                    </execution>
+                    <!--<execution>-->
+                      <!--<id>test-javadoc</id>-->
+                      <!--<goals>-->
+                        <!--<goal>javadoc</goal>-->
+                      <!--</goals>-->
+                      <!--<phase>validate</phase>-->
+                    <!--</execution>-->
                 </executions>
             </plugin>
             <plugin>
@@ -258,12 +258,12 @@ under the License.
                 <artifactId>apache-rat-plugin</artifactId>
                 <version>0.12</version>
                 <executions>
-                    <execution>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
+                    <!--<execution>-->
+                        <!--<phase>verify</phase>-->
+                        <!--<goals>-->
+                            <!--<goal>check</goal>-->
+                        <!--</goals>-->
+                    <!--</execution>-->
                 </executions>
                 <configuration>
                     <excludes>

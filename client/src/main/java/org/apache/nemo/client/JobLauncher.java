@@ -47,7 +47,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.Serializable;
+import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
@@ -243,18 +245,32 @@ public final class JobLauncher {
     final Injector injector = TANG.newInjector(jobConf);
     final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
     final String userArgsString = injector.getNamedInstance(JobConf.UserMainArguments.class);
-    final String[] args = userArgsString.isEmpty() ? EMPTY_USER_ARGS : userArgsString.split(" ");
+    final String[] args = userArgsString.isEmpty() ? EMPTY_USER_ARGS : userArgsString.split(",");
+    LOG.info("Args are {}", Arrays.toString(args));
     final Class userCode = Class.forName(className);
+    LOG.info("User code {}", userCode);
     final Method method = userCode.getMethod("main", String[].class);
+    LOG.info("Method {}", method);
     if (!Modifier.isStatic(method.getModifiers())) {
+      LOG.info("NO1 {}", method);
       throw new RuntimeException("User Main Method not static");
     }
     if (!Modifier.isPublic(userCode.getModifiers())) {
+      LOG.info("NO2 {}", method);
       throw new RuntimeException("User Main Class not public");
     }
 
     LOG.info("User program started");
-    method.invoke(null, (Object) args);
+    try {
+      method.invoke(null, (Object) args);
+    } catch (Throwable t) {
+      LOG.info("Bad start");
+      t.printStackTrace();
+      StringWriter errors = new StringWriter();
+      t.printStackTrace(new PrintWriter(errors));
+      LOG.info(errors.toString());
+      throw new RuntimeException("Bad");
+    }
     LOG.info("User program finished");
   }
 
