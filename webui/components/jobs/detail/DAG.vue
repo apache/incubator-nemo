@@ -34,15 +34,19 @@ import { STATE } from '../../../assets/constants';
 
 const DEBOUNCE_INTERVAL = 200;
 
-const VERTEX_WIDTH = 50;
-const VERTEX_HEIGHT = 50;
-const VERTEX_RADIUS = 4;
-const PAN_MARGIN = 20;
+const STAGE_VERTEX_WIDTH = 50;
+const STAGE_VERTEX_HEIGHT = 50;
 const RECT_ROUND_RADIUS = 4;
 const RECT_STROKE_WIDTH = 2;
-const INTER_STAGE_EDGE_STROKE_WIDTH = 2;
+
+const VERTEX_SQUARE_SIDE = 20;
+const VERTEX_DOT_RADIUS = 7;
+const PAN_MARGIN = 20;
+const INTER_STAGE_EDGE_STROKE_WIDTH = 3;
+const INTRA_STAGE_EDGE_STROKE_WIDTH = 3;
 const ARROW_SIDE = 3;
-const FONT_SIZE = 15;
+const VERTEX_FONT_SIZE = 15;
+const STAGE_FONT_SIZE = 20;
 
 const GRAPH_MARGIN = 15;
 
@@ -103,6 +107,8 @@ export default {
       stageInnerObjects: {},
       // array of stage label text object
       stageTextObjects: [],
+      // array of vertex label text object
+      vertexTextObjects: [],
     };
   },
 
@@ -482,7 +488,7 @@ export default {
      */
     rearrangeFontSize(ratio) {
       this.stageTextObjects.forEach(text => {
-        text.set('fontSize', FONT_SIZE * ratio);
+        text.set('fontSize', STAGE_FONT_SIZE * ratio);
       });
     },
 
@@ -543,10 +549,12 @@ export default {
         g.setDefaultEdgeLabel(function () { return {}; });
 
         innerVertices.forEach(vertex => {
+          let label = vertex.properties.class === "OperatorVertex" ?
+            vertex.properties.transform.split("Transform:")[0] : vertex.properties.class;
           g.setNode(vertex.id, {
-            label: vertex.id,
-            width: VERTEX_WIDTH,
-            height: VERTEX_HEIGHT,
+            label: label,
+            width: STAGE_VERTEX_WIDTH,
+            height: STAGE_VERTEX_HEIGHT,
           });
         });
 
@@ -566,7 +574,7 @@ export default {
         g.nodes().map(node => g.node(node)).forEach(vertex => {
           let vertexCircle = new fabric.Circle({
             metricId: vertex.label,
-            radius: VERTEX_RADIUS,
+            radius: VERTEX_DOT_RADIUS,
             left: vertex.x,
             top: vertex.y,
             originX: 'center',
@@ -578,9 +586,23 @@ export default {
             lockMovementY: true,
           });
 
+          let top = vertex.label.length > 10 ?
+            vertex.y + (vertex.height * 5 / 12) : vertex.y + (vertex.height * 7 / 24);
+          let vertexLabelObj = new fabric.Text(vertex.label, {
+            left: vertex.x,
+            top: top,
+            fontSize: VERTEX_FONT_SIZE,
+            originX: 'center',
+            originY: 'center',
+            selectable: false,
+          });
+          this.vertexTextObjects.push(vertexLabelObj);
+
           this.vertexObjects[vertex.label] = vertexCircle;
           this.stageInnerObjects[stageId].push(vertexCircle);
+          this.stageInnerObjects[stageId].push(vertexLabelObj);
           objectArray.push(vertexCircle);
+          objectArray.push(vertexLabelObj);
         });
 
         // create internal edges
@@ -592,7 +614,7 @@ export default {
             metricId: edge.label,
             fill: 'transparent',
             stroke: 'black',
-            strokeWidth: 2,
+            strokeWidth: INTRA_STAGE_EDGE_STROKE_WIDTH,
             perPixelTargetFind: true,
             hasControls: false,
             hasRotatingPoint: false,
@@ -655,8 +677,8 @@ export default {
 
         let stageLabelObj = new fabric.Text(stage.label, {
           left: stage.x,
-          top: stage.y - stage.height / 3,
-          fontSize: FONT_SIZE,
+          top: stage.y - (stage.height / 2) + (STAGE_FONT_SIZE / 3),
+          fontSize: STAGE_FONT_SIZE,
           originX: 'center',
           originY: 'center',
           selectable: false,
