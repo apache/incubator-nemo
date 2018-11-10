@@ -164,6 +164,7 @@ final class PipelineTranslator {
   private static void unboundedReadTranslator(final PipelineTranslationContext ctx,
                                               final TransformHierarchy.Node beamNode,
                                               final Read.Unbounded<?> transform) {
+    LOG.info("Unbounded source: {}", transform.getSource());
     final IRVertex vertex = new BeamUnboundedSourceVertex<>(transform.getSource());
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
@@ -174,6 +175,7 @@ final class PipelineTranslator {
   private static void boundedReadTranslator(final PipelineTranslationContext ctx,
                                             final TransformHierarchy.Node beamNode,
                                             final Read.Bounded<?> transform) {
+    LOG.info("Bouded source: {}", transform.getSource());
     final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource());
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
