@@ -45,6 +45,7 @@ public final class WindowedWordCount {
 
   public static final String INPUT_TYPE_BOUNDED = "bounded";
   public static final String INPUT_TYPE_UNBOUNDED = "unbounded";
+  private static final String SPLITTER = "!";
 
 
   private static PCollection<KV<String, Long>> getSource(
@@ -59,7 +60,7 @@ public final class WindowedWordCount {
           @ProcessElement
           public void processElement(@Element final String elem,
                                      final OutputReceiver<String> out) {
-            final String[] splitt = elem.split("!");
+            final String[] splitt = elem.split(SPLITTER);
             out.outputWithTimestamp(splitt[0], new Instant(Long.valueOf(splitt[1])));
           }
         }))

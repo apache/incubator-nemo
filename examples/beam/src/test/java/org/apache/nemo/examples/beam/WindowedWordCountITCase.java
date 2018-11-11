@@ -148,7 +148,6 @@ public final class WindowedWordCountITCase {
     try {
       ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedSlidingWindowOutputFileName);
     } finally {
-      //ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 }

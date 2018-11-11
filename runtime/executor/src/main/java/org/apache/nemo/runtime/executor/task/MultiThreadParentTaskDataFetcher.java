@@ -114,9 +114,6 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
           while (iterator.hasNext()) { // blocked on the iterator.
             final Object element = iterator.next();
 
-            if (LOG.isDebugEnabled()) {
-              LOG.debug("Receive data : {}", element);
-            }
 
             if (element instanceof WatermarkWithIndex) {
               // watermark element
