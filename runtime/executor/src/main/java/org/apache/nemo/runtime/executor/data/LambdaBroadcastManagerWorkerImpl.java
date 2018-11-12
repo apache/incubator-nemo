@@ -18,18 +18,39 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import net.jcip.annotations.ThreadSafe;
+
+import org.apache.nemo.conf.JobConf;
 
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
-import org.apache.reef.tang.annotations.DefaultImplementation;
+import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.io.Serializable;
+
 
 /**
  * Used by tasks to get/fetch (probably remote) broadcast variables.
  */
-@DefaultImplementation(DefaultBroadcastManagerWorkerImpl.class)
-public interface BroadcastManagerWorker {
+@ThreadSafe
+public final class LambdaBroadcastManagerWorkerImpl implements BroadcastManagerWorker {
+  private static final Logger LOG = LoggerFactory.getLogger(LambdaBroadcastManagerWorkerImpl.class.getName());
+  private final String executorId;
 
+  /**
+   * Initializes the cache for broadcast variables.
+   * This cache handles concurrent cache operations by multiple threads, and is able to fetch data from
+   * remote executors or the master.
+   *
+   * @param executorId of the executor.
+   */
+  @Inject
+  private LambdaBroadcastManagerWorkerImpl(
+    @Parameter(JobConf.ExecutorId.class) final String executorId) {
+    this.executorId = executorId;
+  }
 
   /**
    * When the broadcast variable can be read by an input reader.
@@ -38,10 +59,12 @@ public interface BroadcastManagerWorker {
    * @param id of the broadcast variable.
    * @param inputReader the {@link InputReader} to register.
    */
-  void registerInputReader(Serializable id,
-                                  InputReader inputReader);
+  public void registerInputReader(final Serializable id,
+                                  final InputReader inputReader) {
+    // do nothing
+  }
 
-  default Object get(final Serializable id) {
+  public Object get(final Serializable id) {
     return get(id, null);
   }
 
@@ -50,5 +73,9 @@ public interface BroadcastManagerWorker {
    * @param id of the variable.
    * @return the variable.
    */
-  Object get(Serializable id, Object key);
+  public Object get(final Serializable id, final Object key) {
+    LOG.info("get/key {}/{}", id, key);
+    // get from lambda
+    return null;
+  }
 }

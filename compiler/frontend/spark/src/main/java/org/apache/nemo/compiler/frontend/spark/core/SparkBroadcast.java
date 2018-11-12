@@ -19,6 +19,7 @@
 package org.apache.nemo.compiler.frontend.spark.core;
 
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
+import org.apache.nemo.runtime.executor.data.DefaultBroadcastManagerWorkerImpl;
 import scala.reflect.ClassTag$;
 
 /**
@@ -34,7 +35,7 @@ public final class SparkBroadcast<T> extends org.apache.spark.broadcast.Broadcas
 
   @Override
   public T getValue() {
-    return (T) BroadcastManagerWorker.getStaticReference().get(tag);
+    return (T) DefaultBroadcastManagerWorkerImpl.getStaticReference().get(tag);
   }
 
   @Override
