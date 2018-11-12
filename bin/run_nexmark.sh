@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,16 +16,6 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
-# run this by ./bin/generate_javadocs.sh
 
-
-echo run query $1
-./bin/run_nexmark.sh \
-	-job_id nexmark-Q$1 \
-	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
-	-user_main org.apache.beam.sdk.nexmark.Main \
-  -optimization_policy org.apache.nemo.compiler.optimizer.policy.StreamingPolicy \
-  -scheduler_impl_class_name org.apache.nemo.runtime.master.scheduler.StreamingScheduler \
-	-user_args "--runner=org.apache.nemo.compiler.frontend.beam.NemoPipelineRunner,--streaming=true,--query=$1,--manageResources=false,--monitorJobs=true,--streamTimeout=30,--numEventGenerators=1,--numEvents=100,--isRateLimited=true,--firstEventRate=5,--nextEventRate=5,--windowSizeSec=5,--windowPeriodSec=2"
+java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp client/target/nemo-client-0.1-SNAPSHOT-shaded.jar:examples/nexmark/target/nexmark-0.1-SNAPSHOT-shaded.jar:`yarn classpath` org.apache.nemo.client.JobLauncher "$@"
 
