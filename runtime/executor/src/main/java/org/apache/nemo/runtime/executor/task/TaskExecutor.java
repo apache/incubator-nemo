@@ -124,6 +124,20 @@ public final class TaskExecutor {
     this.sortedHarnesses = pair.right();
   }
 
+  private List<Object> getIncomingEdges(
+    final Task task,
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+    final IRVertex childVertex) {
+    final List<Object> edges = new ArrayList<>();
+    edges.addAll(irVertexDag.getIncomingEdgesOf(childVertex));
+    final List<StageEdge> taskEdges = task.getTaskIncomingEdges().stream()
+      .filter(edge -> edge.getDstIRVertex().getId().equals(childVertex.getId()))
+      .collect(Collectors.toList());
+    edges.addAll(taskEdges);
+    return edges;
+  }
+
+
   /**
    * Converts the DAG of vertices into pointer-based DAG of vertex harnesses.
    * This conversion is necessary for constructing concrete data channels for each vertex's inputs and outputs.
@@ -160,9 +174,9 @@ public final class TaskExecutor {
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
     final Map<RuntimeEdge<IRVertex>, Integer> edgeIndexMap = new HashMap<>();
     reverseTopologicallySorted.forEach(childVertex -> {
-      final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getIncomingEdgesOf(childVertex);
+      final List<Object> edges = getIncomingEdges(task, irVertexDag, childVertex);
       for (int edgeIndex = 0; edgeIndex < edges.size(); edgeIndex++) {
-        final RuntimeEdge<IRVertex> edge = edges.get(edgeIndex);
+        final RuntimeEdge<IRVertex> edge = (RuntimeEdge<IRVertex>) edges.get(edgeIndex);
         edgeIndexMap.putIfAbsent(edge, edgeIndex);
       }
     });
@@ -174,7 +188,7 @@ public final class TaskExecutor {
     reverseTopologicallySorted.forEach(childVertex -> {
 
       if (childVertex instanceof OperatorVertex) {
-        final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getIncomingEdgesOf(childVertex);
+        final List<Object> edges = getIncomingEdges(task, irVertexDag, childVertex);
         if (edges.size() == 1) {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
             new SingleInputWatermarkManager(
@@ -259,23 +273,33 @@ public final class TaskExecutor {
             .orElseThrow(() -> new IllegalStateException(inEdge.toString())),
           broadcastReaders.get(i));
       }
+
       // Parent-task read (non-broadcasts)
       final List<StageEdge> nonBroadcastInEdges = new ArrayList<>(inEdgesForThisVertex);
       nonBroadcastInEdges.removeAll(broadcastInEdges);
-      final List<InputReader> nonBroadcastReaders =
-        getParentTaskReaders(taskIndex, nonBroadcastInEdges, intermediateDataIOFactory);
-      nonBroadcastReaders.forEach(parentTaskReader -> {
-        final DataFetcher dataFetcher;
-        if (parentTaskReader instanceof PipeInputReader) {
-          nonBroadcastDataFetcherList.add(
-            new MultiThreadParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
-              new DataFetcherOutputCollector((OperatorVertex) irVertex)));
-        } else {
-          nonBroadcastDataFetcherList.add(
-            new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
-              new DataFetcherOutputCollector((OperatorVertex) irVertex)));
-        }
-      });
+
+      nonBroadcastInEdges
+        .stream()
+        .map(incomingEdge ->
+          Pair.of(incomingEdge, intermediateDataIOFactory
+            .createReader(taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge)))
+        .forEach(pair -> {
+          if (irVertex instanceof OperatorVertex) {
+            final StageEdge edge = pair.left();
+            final int edgeIndex = edgeIndexMap.get(edge);
+            final InputWatermarkManager watermarkManager = operatorWatermarkManagerMap.get(irVertex);
+            final InputReader parentTaskReader = pair.right();
+            if (parentTaskReader instanceof PipeInputReader) {
+              nonBroadcastDataFetcherList.add(
+                new MultiThreadParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
+                  new DataFetcherOutputCollector((OperatorVertex) irVertex, edgeIndex, watermarkManager)));
+            } else {
+              nonBroadcastDataFetcherList.add(
+                new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
+                  new DataFetcherOutputCollector((OperatorVertex) irVertex, edgeIndex, watermarkManager)));
+            }
+          }
+        });
     });
 
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()

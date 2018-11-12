@@ -31,13 +31,19 @@ import org.slf4j.LoggerFactory;
 public final class DataFetcherOutputCollector<O> implements OutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(DataFetcherOutputCollector.class.getName());
   private final OperatorVertex nextOperatorVertex;
+  private final int edgeIndex;
+  private final InputWatermarkManager watermarkManager;
 
   /**
    * It forwards output to the next operator.
    * @param nextOperatorVertex next operator to emit data and watermark
    */
-  public DataFetcherOutputCollector(final OperatorVertex nextOperatorVertex) {
+  public DataFetcherOutputCollector(final OperatorVertex nextOperatorVertex,
+                                    final int edgeIndex,
+                                    final InputWatermarkManager watermarkManager) {
     this.nextOperatorVertex = nextOperatorVertex;
+    this.edgeIndex = edgeIndex;
+    this.watermarkManager = watermarkManager;
   }
 
   @Override
@@ -47,7 +53,7 @@ public final class DataFetcherOutputCollector<O> implements OutputCollector<O> {
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-    nextOperatorVertex.getTransform().onWatermark(watermark);
+    watermarkManager.trackAndEmitWatermarks(edgeIndex, watermark);
   }
 
   @Override
