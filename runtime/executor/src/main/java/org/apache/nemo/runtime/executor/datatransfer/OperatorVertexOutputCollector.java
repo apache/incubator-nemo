@@ -79,10 +79,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   public void emit(final O output) {
     LOG.info("{} emits {}", irVertex.getId(), output);
 
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("{} emits {}", irVertex.getId(), output);
-    }
-
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       emit(internalVertex.getNextOperator(), output);
     }
@@ -113,7 +109,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     LOG.info("{} emitW {}", irVertex.getId(), watermark);
 
     if (LOG.isDebugEnabled()) {
-      LOG.debug("{} emits {}", irVertex.getId(), watermark);
+      LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
     }
 
     // Emit watermarks to internal vertices

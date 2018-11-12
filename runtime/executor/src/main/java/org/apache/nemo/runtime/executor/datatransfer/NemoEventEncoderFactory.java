@@ -64,7 +64,7 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
         outputStream.write(0x01); // this is watermark
         outputStream.write(SerializationUtils.serialize((Serializable) element));
       } else {
-        outputStream.write(0x00);
+        outputStream.write(0x00); // this is a data element
         valueEncoder.encode(element);
       }
     }
