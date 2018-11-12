@@ -65,6 +65,7 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
 
       final byte isWatermark = (byte) inputStream.read();
       if (isWatermark == -1) {
+        // end of the input stream
         throw new EOFException();
       }
 

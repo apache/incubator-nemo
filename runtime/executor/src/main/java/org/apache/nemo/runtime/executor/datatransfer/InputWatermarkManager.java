@@ -31,6 +31,8 @@ public interface InputWatermarkManager {
 
   /**
    * This tracks the minimum input watermark among multiple input streams.
+   * This method is not a Thread-safe so the caller should synchronize it
+   * if multiple threads access this method concurrently.
    * Ex)
    * -- input stream1 (edge 1):  ---------- ts: 3 ------------------ts: 6
    *                                                                 ^^^

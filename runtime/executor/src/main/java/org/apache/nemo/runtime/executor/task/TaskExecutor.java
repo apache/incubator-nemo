@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.task;
 import com.google.common.collect.Lists;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
@@ -124,7 +125,8 @@ public final class TaskExecutor {
     this.sortedHarnesses = pair.right();
   }
 
-  private List<Object> getIncomingEdges(
+  // Get all of the intra-task edges + inter-task edges
+  private List<Object> getAllIncomingEdges(
     final Task task,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
     final IRVertex childVertex) {
@@ -172,11 +174,11 @@ public final class TaskExecutor {
     // Build a map for edge as a key and edge index as a value
     // This variable is used for creating NextIntraTaskOperatorInfo
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
-    final Map<RuntimeEdge<IRVertex>, Integer> edgeIndexMap = new HashMap<>();
+    final Map<Edge<IRVertex>, Integer> edgeIndexMap = new HashMap<>();
     reverseTopologicallySorted.forEach(childVertex -> {
-      final List<Object> edges = getIncomingEdges(task, irVertexDag, childVertex);
+      final List<Object> edges = getAllIncomingEdges(task, irVertexDag, childVertex);
       for (int edgeIndex = 0; edgeIndex < edges.size(); edgeIndex++) {
-        final RuntimeEdge<IRVertex> edge = (RuntimeEdge<IRVertex>) edges.get(edgeIndex);
+        final Edge<IRVertex> edge = (Edge<IRVertex>) edges.get(edgeIndex);
         edgeIndexMap.putIfAbsent(edge, edgeIndex);
       }
     });
@@ -188,7 +190,7 @@ public final class TaskExecutor {
     reverseTopologicallySorted.forEach(childVertex -> {
 
       if (childVertex instanceof OperatorVertex) {
-        final List<Object> edges = getIncomingEdges(task, irVertexDag, childVertex);
+        final List<Object> edges = getAllIncomingEdges(task, irVertexDag, childVertex);
         if (edges.size() == 1) {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
             new SingleInputWatermarkManager(
@@ -555,7 +557,7 @@ public final class TaskExecutor {
   private Map<String, List<NextIntraTaskOperatorInfo>> getInternalAdditionalOutputMap(
     final IRVertex irVertex,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-    final Map<RuntimeEdge<IRVertex>, Integer> edgeIndexMap,
+    final Map<Edge<IRVertex>, Integer> edgeIndexMap,
     final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap) {
     // Add all intra-task additional tags to additional output map.
     final Map<String, List<NextIntraTaskOperatorInfo>> map = new HashMap<>();
@@ -582,7 +584,7 @@ public final class TaskExecutor {
   private List<NextIntraTaskOperatorInfo> getInternalMainOutputs(
     final IRVertex irVertex,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-    final Map<RuntimeEdge<IRVertex>, Integer> edgeIndexMap,
+    final Map<Edge<IRVertex>, Integer> edgeIndexMap,
     final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap) {
 
     return irVertexDag.getOutgoingEdgesOf(irVertex.getId())
