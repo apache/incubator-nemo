@@ -20,7 +20,7 @@ package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.beam.sdk.io.UnboundedSource;
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -143,7 +143,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     public long readWatermark() {
       final Instant watermark = reader.getWatermark();
       // Finish if the watermark == TIMESTAMP_MAX_VALUE
-      isFinished = (watermark == BoundedWindow.TIMESTAMP_MAX_VALUE);
+      isFinished = (watermark.getMillis() >= GlobalWindow.TIMESTAMP_MAX_VALUE.getMillis());
       return watermark.getMillis();
     }
 
