@@ -245,7 +245,7 @@ public final class JobLauncher {
     final Injector injector = TANG.newInjector(jobConf);
     final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
     final String userArgsString = injector.getNamedInstance(JobConf.UserMainArguments.class);
-    final String[] args = userArgsString.isEmpty() ? EMPTY_USER_ARGS : userArgsString.split(",");
+    final String[] args = userArgsString.isEmpty() ? EMPTY_USER_ARGS : userArgsString.split(" ");
     LOG.info("Args are {}", Arrays.toString(args));
     final Class userCode = Class.forName(className);
     LOG.info("User code {}", userCode);
