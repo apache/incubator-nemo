@@ -20,10 +20,12 @@ package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,6 +103,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     private UnboundedSource.UnboundedReader<O> reader;
     private boolean isStarted = false;
     private boolean isCurrentAvailable = false;
+    private boolean isFinished = false;
 
     UnboundedSourceReadable(final UnboundedSource<O, M> unboundedSource) {
       this.unboundedSource = unboundedSource;
@@ -138,12 +141,15 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
     @Override
     public long readWatermark() {
-      return reader.getWatermark().getMillis();
+      final Instant watermark = reader.getWatermark();
+      // Finish if the watermark == TIMESTAMP_MAX_VALUE
+      isFinished = (watermark.getMillis() >= GlobalWindow.TIMESTAMP_MAX_VALUE.getMillis());
+      return watermark.getMillis();
     }
 
     @Override
     public boolean isFinished() {
-      return false;
+      return isFinished;
     }
 
     @Override
