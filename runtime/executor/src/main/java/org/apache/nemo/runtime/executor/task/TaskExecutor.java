@@ -126,11 +126,11 @@ public final class TaskExecutor {
   }
 
   // Get all of the intra-task edges + inter-task edges
-  private List<Object> getAllIncomingEdges(
+  private List<Edge> getAllIncomingEdges(
     final Task task,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
     final IRVertex childVertex) {
-    final List<Object> edges = new ArrayList<>();
+    final List<Edge> edges = new ArrayList<>();
     edges.addAll(irVertexDag.getIncomingEdgesOf(childVertex));
     final List<StageEdge> taskEdges = task.getTaskIncomingEdges().stream()
       .filter(edge -> edge.getDstIRVertex().getId().equals(childVertex.getId()))
@@ -174,11 +174,11 @@ public final class TaskExecutor {
     // Build a map for edge as a key and edge index as a value
     // This variable is used for creating NextIntraTaskOperatorInfo
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
-    final Map<Edge<IRVertex>, Integer> edgeIndexMap = new HashMap<>();
+    final Map<Edge, Integer> edgeIndexMap = new HashMap<>();
     reverseTopologicallySorted.forEach(childVertex -> {
-      final List<Object> edges = getAllIncomingEdges(task, irVertexDag, childVertex);
+      final List<Edge> edges = getAllIncomingEdges(task, irVertexDag, childVertex);
       for (int edgeIndex = 0; edgeIndex < edges.size(); edgeIndex++) {
-        final Edge<IRVertex> edge = (Edge<IRVertex>) edges.get(edgeIndex);
+        final Edge edge = edges.get(edgeIndex);
         edgeIndexMap.putIfAbsent(edge, edgeIndex);
       }
     });
@@ -190,7 +190,7 @@ public final class TaskExecutor {
     reverseTopologicallySorted.forEach(childVertex -> {
 
       if (childVertex instanceof OperatorVertex) {
-        final List<Object> edges = getAllIncomingEdges(task, irVertexDag, childVertex);
+        final List<Edge> edges = getAllIncomingEdges(task, irVertexDag, childVertex);
         if (edges.size() == 1) {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
             new SingleInputWatermarkManager(
@@ -557,7 +557,7 @@ public final class TaskExecutor {
   private Map<String, List<NextIntraTaskOperatorInfo>> getInternalAdditionalOutputMap(
     final IRVertex irVertex,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-    final Map<Edge<IRVertex>, Integer> edgeIndexMap,
+    final Map<Edge, Integer> edgeIndexMap,
     final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap) {
     // Add all intra-task additional tags to additional output map.
     final Map<String, List<NextIntraTaskOperatorInfo>> map = new HashMap<>();
@@ -584,7 +584,7 @@ public final class TaskExecutor {
   private List<NextIntraTaskOperatorInfo> getInternalMainOutputs(
     final IRVertex irVertex,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-    final Map<Edge<IRVertex>, Integer> edgeIndexMap,
+    final Map<Edge, Integer> edgeIndexMap,
     final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap) {
 
     return irVertexDag.getOutgoingEdgesOf(irVertex.getId())
