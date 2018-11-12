@@ -68,6 +68,11 @@ public interface Transform<I, O> extends Serializable {
     Object getBroadcastVariable(Serializable id);
 
     /**
+     * @return the broadcast variable.
+     */
+    Object getBroadcastVariable(Serializable id, Object key);
+
+    /**
      * Put serialized data to send to the executor.
      * @param serializedData the serialized data.
      */

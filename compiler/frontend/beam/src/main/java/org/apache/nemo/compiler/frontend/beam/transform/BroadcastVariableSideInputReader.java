@@ -23,15 +23,18 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A sideinput reader that reads/writes side input values to context.
  */
 public final class BroadcastVariableSideInputReader implements SideInputReader {
-
+  private static final Logger LOG = LoggerFactory.getLogger(BroadcastVariableSideInputReader.class.getName());
   // Nemo context for storing/getting side inputs
   private final Transform.Context context;
 
@@ -48,7 +51,10 @@ public final class BroadcastVariableSideInputReader implements SideInputReader {
   @Override
   public <T> T get(final PCollectionView<T> view, final BoundedWindow window) {
     // TODO #216: implement side input and windowing
-    return ((WindowedValue<T>) context.getBroadcastVariable(view)).getValue();
+    LOG.info("Try to get value of w {}, view {}", window, view);
+    final T result = ((WindowedValue<T>) context.getBroadcastVariable(view, window)).getValue();
+    LOG.info("Return result {}", result);
+    return result;
   }
 
   @Override

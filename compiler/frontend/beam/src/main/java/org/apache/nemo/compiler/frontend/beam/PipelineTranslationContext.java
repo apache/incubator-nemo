@@ -255,7 +255,7 @@ final class PipelineTranslationContext {
     } else if (viewFn instanceof PCollectionViews.MultimapViewFn) {
       return MapCoder.of(inputKVCoder.getKeyCoder(), IterableCoder.of(inputKVCoder.getValueCoder()));
     } else if (viewFn instanceof PCollectionViews.SingletonViewFn) {
-      return inputKVCoder;
+      return inputKVCoder.getValueCoder();
     } else {
       throw new UnsupportedOperationException(String.format("Unsupported viewFn %s", viewFn.getClass()));
     }
