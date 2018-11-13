@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,6 +45,7 @@ public final class PipeOutputWriter implements OutputWriter {
   private static final Logger LOG = LoggerFactory.getLogger(OutputWriter.class.getName());
 
   private final String srcTaskId;
+  private final int srcTaskIndex;
   private final PipeManagerWorker pipeManagerWorker;
 
   private final Partitioner partitioner;
@@ -70,6 +73,27 @@ public final class PipeOutputWriter implements OutputWriter {
     this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId));
     this.partitioner = OutputWriter.getPartitioner(runtimeEdge, hashRangeMultiplier);
     this.runtimeEdge = runtimeEdge;
+    this.srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(srcTaskId);
+  }
+
+  private void writeData(final Object element, final List<ByteOutputContext> pipeList) {
+    pipeList.forEach(pipe -> {
+
+      try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
+        // Serialize (Do not compress)
+        final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
+        final OutputStream wrapped =
+          DataUtil.buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
+        final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
+        encoder.encode(element);
+        wrapped.close();
+
+        // Write
+        pipeToWriteTo.write(bytesOutputStream.getBufDirectly());
+      } catch (IOException e) {
+        throw new RuntimeException(e); // For now we crash the executor on IOException
+      }
+    });
   }
 
   /**
@@ -82,19 +106,17 @@ public final class PipeOutputWriter implements OutputWriter {
       doInitialize();
     }
 
-    try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = getPipeToWrite(element)) {
-      // Serialize (Do not compress)
-      final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
-      final OutputStream wrapped = DataUtil.buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
-      final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
-      encoder.encode(element);
-      wrapped.close();
+    writeData(element, getPipeToWrite(element));
+  }
 
-      // Write
-      pipeToWriteTo.write(bytesOutputStream.getBufDirectly());
-    } catch (IOException e) {
-      throw new RuntimeException(e); // For now we crash the executor on IOException
+  @Override
+  public void writeWatermark(final Watermark watermark) {
+    if (!initialized) {
+      doInitialize();
     }
+
+    final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermark, srcTaskIndex);
+    writeData(watermarkWithIndex, pipes);
   }
 
   @Override
@@ -126,11 +148,11 @@ public final class PipeOutputWriter implements OutputWriter {
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
   }
 
-  private ByteOutputContext.ByteOutputStream getPipeToWrite(final Object element) throws IOException {
+  private List<ByteOutputContext> getPipeToWrite(final Object element) {
     return runtimeEdge.getPropertyValue(CommunicationPatternProperty.class)
       .get()
       .equals(CommunicationPatternProperty.Value.OneToOne)
-      ? pipes.get(0).newOutputStream()
-      : pipes.get((int) partitioner.partition(element)).newOutputStream();
+      ? Collections.singletonList(pipes.get(0))
+      : Collections.singletonList(pipes.get((int) partitioner.partition(element)));
   }
 }

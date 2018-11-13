@@ -18,12 +18,16 @@
  */
 package org.apache.nemo.common.coder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.*;
 
 /**
  * A {@link EncoderFactory} which is used for an array of bytes.
  */
 public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
+  private static final Logger LOG = LoggerFactory.getLogger(BytesEncoderFactory.class.getName());
 
   private static final BytesEncoderFactory BYTES_ENCODER_FACTORY = new BytesEncoderFactory();
 

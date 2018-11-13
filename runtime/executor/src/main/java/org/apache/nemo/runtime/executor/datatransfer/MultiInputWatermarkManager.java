@@ -18,8 +18,10 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,14 +30,16 @@ import java.util.List;
  * This tracks the minimum input watermark among multiple input streams.
  */
 public final class MultiInputWatermarkManager implements InputWatermarkManager {
+  private static final Logger LOG = LoggerFactory.getLogger(MultiInputWatermarkManager.class.getName());
+
   private final List<Watermark> watermarks;
-  private final OperatorVertex nextOperator;
+  private final OutputCollector<?> watermarkCollector;
   private int minWatermarkIndex;
   public MultiInputWatermarkManager(final int numEdges,
-                                    final OperatorVertex nextOperator) {
+                                    final OutputCollector<?> watermarkCollector) {
     super();
     this.watermarks = new ArrayList<>(numEdges);
-    this.nextOperator = nextOperator;
+    this.watermarkCollector = watermarkCollector;
     this.minWatermarkIndex = 0;
     // We initialize watermarks as min value because
     // we should not emit watermark until all edges emit watermarks.
@@ -58,6 +62,12 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
 
   @Override
   public void trackAndEmitWatermarks(final int edgeIndex, final Watermark watermark) {
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Track watermark {} emitted from edge {}:, {}", watermark.getTimestamp(), edgeIndex,
+        watermarks.toString());
+    }
+
     if (edgeIndex == minWatermarkIndex) {
       // update min watermark
       final Watermark prevMinWatermark = watermarks.get(minWatermarkIndex);
@@ -74,7 +84,10 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
       if (minWatermark.getTimestamp() > prevMinWatermark.getTimestamp()) {
         // Watermark timestamp progress!
         // Emit the min watermark
-        nextOperator.getTransform().onWatermark(minWatermark);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Emit watermark {}, {}", minWatermark, watermarks);
+        }
+        watermarkCollector.emitWatermark(minWatermark);
       }
     } else {
       // The recent watermark timestamp cannot be less than the previous one

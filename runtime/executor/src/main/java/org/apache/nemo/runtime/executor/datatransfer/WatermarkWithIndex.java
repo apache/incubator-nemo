@@ -16,32 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.edge.executionproperty;
+package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.coder.DecoderFactory;
-import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.punctuation.Watermark;
+
+import java.io.Serializable;
 
 /**
- * Decoder ExecutionProperty.
- * TODO #276: Add NoCoder property value in Encoder/DecoderProperty
+ * This contains a watermark and the src task index.
+ * It is used for transferring the watermark between tasks.
  */
-public final class DecoderProperty extends EdgeExecutionProperty<DecoderFactory> {
-  /**
-   * Constructor.
-   *
-   * @param value value of the execution property.
-   */
-  private DecoderProperty(final DecoderFactory value) {
-    super(value);
+public final class WatermarkWithIndex implements Serializable {
+  private final Watermark watermark;
+  private final int index;
+
+  public WatermarkWithIndex(final Watermark watermark, final int index) {
+    this.watermark = watermark;
+    this.index = index;
   }
 
-  /**
-   * Static method exposing the constructor.
-   *
-   * @param value value of the new execution property.
-   * @return the newly created execution property.
-   */
-  public static DecoderProperty of(final DecoderFactory value) {
-    return new DecoderProperty(value);
+  public Watermark getWatermark() {
+    return watermark;
+  }
+
+  public int getIndex() {
+    return index;
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(watermark);
+    sb.append(" from ");
+    sb.append(index);
+    return sb.toString();
   }
 }

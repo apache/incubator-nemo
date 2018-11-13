@@ -53,11 +53,11 @@ public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
       // We care about OperatorVertices that have any incoming edge that
       // has Shuffle as data communication pattern.
       if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
-              CommunicationPatternProperty.Value.Shuffle
+        CommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))) {
         dag.getIncomingEdgesOf(v).forEach(edge -> {
           if (CommunicationPatternProperty.Value.Shuffle
-                .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+            .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
             // Insert a merger vertex having transform that write received data immediately
             // before the vertex receiving shuffled data.
             final OperatorVertex iFileMergerVertex = new OperatorVertex(new RelayTransform());
@@ -67,7 +67,7 @@ public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
               new IREdge(CommunicationPatternProperty.Value.Shuffle, edge.getSrc(), iFileMergerVertex);
             edge.copyExecutionPropertiesTo(newEdgeToMerger);
             final IREdge newEdgeFromMerger = new IREdge(CommunicationPatternProperty.Value.OneToOne,
-                iFileMergerVertex, v);
+              iFileMergerVertex, v);
             newEdgeFromMerger.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
             newEdgeFromMerger.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
             builder.connectVertices(newEdgeToMerger);

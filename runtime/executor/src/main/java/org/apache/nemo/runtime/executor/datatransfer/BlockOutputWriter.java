@@ -21,11 +21,14 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.partitioner.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Optional;
@@ -34,6 +37,8 @@ import java.util.Optional;
  * Represents the output data transfer from a task.
  */
 public final class BlockOutputWriter implements OutputWriter {
+  private static final Logger LOG = LoggerFactory.getLogger(BlockOutputWriter.class.getName());
+
   private final RuntimeEdge<?> runtimeEdge;
   private final IRVertex dstIrVertex;
   private final Partitioner partitioner;
@@ -86,6 +91,11 @@ public final class BlockOutputWriter implements OutputWriter {
         blockToWrite.commitPartitions();
       }
     } // If else, does not need to write because the data is duplicated.
+  }
+
+  @Override
+  public void writeWatermark(final Watermark watermark) {
+    // do nothing
   }
 
   /**
