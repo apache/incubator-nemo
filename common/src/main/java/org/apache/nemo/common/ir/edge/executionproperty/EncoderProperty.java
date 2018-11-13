@@ -23,6 +23,7 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
  * EncoderFactory ExecutionProperty.
+ * TODO #276: Add NoCoder property value in Encoder/DecoderProperty
  */
 public final class EncoderProperty extends EdgeExecutionProperty<EncoderFactory> {
   /**

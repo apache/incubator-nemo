@@ -119,6 +119,11 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
     public T2 decode() throws IOException {
       return decodeInternal();
     }
+
+    @Override
+    public String toString() {
+      return "BeamDecoder: {" + beamCoder.toString() + "}";
+    }
   }
 
   /**

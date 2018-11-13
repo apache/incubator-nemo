@@ -27,6 +27,8 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -39,6 +41,7 @@ import java.util.Map;
  * @param <OutputT> output type.
  */
 public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<InputT, InputT, OutputT> {
+  private static final Logger LOG = LoggerFactory.getLogger(DoFnTransform.class.getName());
 
   /**
    * DoFnTransform Constructor.

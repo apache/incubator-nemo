@@ -65,9 +65,9 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   private transient DoFnInvoker<InterT, OutputT> doFnInvoker;
   private transient DoFnRunners.OutputManager outputManager;
 
-  // For bundle
-  // we consider count and time millis for start/finish bundle
-  // if # of processed elements > bundleSize
+  // Variables for bundle.
+  // We consider count and time millis for start/finish bundle.
+  // If # of processed elements > bundleSize
   // or elapsed time > bundleMillis, we finish the current bundle and start a new one
   private transient long bundleSize;
   private transient long bundleMillis;
