@@ -66,6 +66,11 @@ under the License.
             <version>0.1-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
+       <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk</artifactId>
+        <version>1.11.429</version>
+      </dependency>
         <dependency>
             <!--
             This is needed to view the logs when running unit tests.

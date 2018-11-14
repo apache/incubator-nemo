@@ -30,6 +30,7 @@ import org.joda.time.Instant;
 
 import java.util.Collection;
 
+
 /**
  * Windowing transform implementation.
  * This transform simply windows the given elements into
@@ -41,6 +42,7 @@ public final class WindowFnTransform<T, W extends BoundedWindow>
   implements Transform<WindowedValue<T>, WindowedValue<T>> {
   private final WindowFn windowFn;
   private OutputCollector<WindowedValue<T>> outputCollector;
+  private Context context;
 
   /**
    * Default Constructor.
@@ -53,6 +55,7 @@ public final class WindowFnTransform<T, W extends BoundedWindow>
   @Override
   public void prepare(final Context context, final OutputCollector<WindowedValue<T>> oc) {
     this.outputCollector = oc;
+    this.context = context;
   }
 
   @Override
@@ -84,6 +87,8 @@ public final class WindowFnTransform<T, W extends BoundedWindow>
 
       // Emit compressed windows for efficiency
       outputCollector.emit(WindowedValue.of(element, timestamp, windows, PaneInfo.NO_FIRING));
+
+
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }

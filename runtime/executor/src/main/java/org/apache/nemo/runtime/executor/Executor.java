@@ -146,7 +146,7 @@ public final class Executor {
       });
 
       new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-          metricMessageSender, persistentConnectionToMasterMap).execute();
+          metricMessageSender, persistentConnectionToMasterMap, serializerManager).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()

@@ -44,7 +44,7 @@ public class TransformContextImplTest {
   public void setUp() {
     final BroadcastManagerWorker broadcastManagerWorker = mock(BroadcastManagerWorker.class);
     when(broadcastManagerWorker.get("a")).thenReturn("b");
-    this.context = new TransformContextImpl(broadcastManagerWorker);
+    this.context = new TransformContextImpl(broadcastManagerWorker, null);
   }
 
   @Test

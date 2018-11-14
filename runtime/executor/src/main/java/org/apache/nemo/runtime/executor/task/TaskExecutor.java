@@ -29,6 +29,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.BroadcastVariableIdPrope
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.MultiInputWatermarkManager;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.Finishmark;
@@ -86,6 +87,8 @@ public final class TaskExecutor {
 
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
+  private final SerializerManager serializerManager;
+
   /**
    * Constructor.
    *
@@ -103,12 +106,15 @@ public final class TaskExecutor {
                       final IntermediateDataIOFactory intermediateDataIOFactory,
                       final BroadcastManagerWorker broadcastManagerWorker,
                       final MetricMessageSender metricMessageSender,
-                      final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
+                      final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                      final SerializerManager serializerManager) {
     // Essential information
     this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
+
+    this.serializerManager = serializerManager;
 
     // Metric sender
     this.metricMessageSender = metricMessageSender;
@@ -233,14 +239,18 @@ public final class TaskExecutor {
         outputCollector = new DynOptDataOutputCollector(
           irVertex, persistentConnectionToMasterMap, this);
       } else {
+        final List<StageEdge> outgoingEdges = task.getTaskOutgoingEdges();
+        final List<StageEdge> oedges =
+          outgoingEdges.stream().filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
+          .collect(Collectors.toList());
         outputCollector = new OperatorVertexOutputCollector(
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
-          externalMainOutputs, externalAdditionalOutputMap);
+          externalMainOutputs, externalAdditionalOutputMap, oedges, serializerManager);
       }
 
       // Create VERTEX HARNESS
       final VertexHarness vertexHarness = new VertexHarness(
-        irVertex, outputCollector, new TransformContextImpl(broadcastManagerWorker),
+        irVertex, outputCollector, new TransformContextImpl(broadcastManagerWorker, irVertex),
         externalMainOutputs, externalAdditionalOutputMap);
 
       prepareTransform(vertexHarness);

@@ -39,6 +39,10 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
     this.valueDecoderFactory = valueDecoderFactory;
   }
 
+  public DecoderFactory getValueDecoderFactory() {
+    return valueDecoderFactory;
+  }
+
   @Override
   public Decoder create(final InputStream inputStream) throws IOException {
     return new NemoEventDecoder(valueDecoderFactory.create(inputStream), inputStream);

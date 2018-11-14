@@ -18,13 +18,17 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.*;
 import java.util.*;
 
 /**
@@ -40,11 +44,17 @@ import java.util.*;
 public final class OperatorVertexOutputCollector<O> implements OutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(OperatorVertexOutputCollector.class.getName());
 
+  private static final String BUCKET_NAME = "nemo-serverless";
+
   private final IRVertex irVertex;
   private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
   private final List<OutputWriter> externalMainOutputs;
   private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
+
+  // TODO: remove
+  private SideInputLambdaCollector sideInputOutputCollector;
+  private MainInputLambdaCollector mainInputLambdaCollector;
 
   /**
    * Constructor of the output collector.
@@ -59,12 +69,24 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
-    final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
+    final Map<String, List<OutputWriter>> externalAdditionalOutputs,
+    final List<StageEdge> outgoingEdges,
+    final SerializerManager serializerManager) {
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.externalMainOutputs = externalMainOutputs;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
+
+
+    // TODO: remove
+    if (irVertex.getId().equals("vertex20")) {
+      sideInputOutputCollector = new SideInputLambdaCollector(irVertex, outgoingEdges, serializerManager);
+    }
+
+    if (irVertex.getId().equals("vertex6")) {
+      mainInputLambdaCollector = new MainInputLambdaCollector(irVertex, outgoingEdges, serializerManager);
+    }
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -72,12 +94,23 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   }
 
   private void emit(final OutputWriter writer, final O output) {
+
+    // TODO: remove
+    final String vertexId = irVertex.getId();
+    if (vertexId.equals("vertex20")) {
+      sideInputOutputCollector.emit(output);
+      return;
+    } else if (vertexId.equals("vertex6")) {
+      mainInputLambdaCollector.emit(output);
+      return;
+    }
+
     writer.write(output);
   }
 
   @Override
   public void emit(final O output) {
-    LOG.info("{} emits {}", irVertex.getId(), output);
+    //LOG.info("{} emits {}", irVertex.getId(), output);
 
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       emit(internalVertex.getNextOperator(), output);
@@ -96,6 +129,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
         emit(internalVertex.getNextOperator(), (O) output);
       }
     }
+
 
     if (externalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {

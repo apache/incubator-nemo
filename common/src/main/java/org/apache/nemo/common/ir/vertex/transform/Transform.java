@@ -19,6 +19,7 @@
 package org.apache.nemo.common.ir.vertex.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.io.Serializable;
@@ -83,5 +84,7 @@ public interface Transform<I, O> extends Serializable {
      * @return the serialized data.
      */
     Optional<String> getSerializedData();
+
+    IRVertex getIRVertex();
   }
 }

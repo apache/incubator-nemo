@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
+import com.amazonaws.services.kinesis.AmazonKinesis;
+import com.amazonaws.services.kinesis.AmazonKinesisClientBuilder;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -43,9 +45,12 @@ public final class CreateViewTransform<I, O> implements
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final Map<BoundedWindow, List<I>> windowListMap;
 
+
   // TODO #259: we can remove this variable by implementing ReadyCheckingSideInputReader
   private boolean isEmitted = false;
   private long currentOutputWatermark;
+
+  private Context context;
 
   /**
    * Constructor of CreateViewTransform.
@@ -59,6 +64,7 @@ public final class CreateViewTransform<I, O> implements
 
   @Override
   public void prepare(final Context context, final OutputCollector<WindowedValue<O>> oc) {
+    this.context = context;
     this.outputCollector = oc;
   }
 
@@ -91,8 +97,10 @@ public final class CreateViewTransform<I, O> implements
       if (entry.getKey().maxTimestamp().getMillis() <= inputWatermark.getTimestamp()) {
         // emit the windowed data if the watermark timestamp > the window max boundary
         final O view = viewFn.apply(new MultiView<>(entry.getValue()));
-        outputCollector.emit(WindowedValue.of(
-          view, entry.getKey().maxTimestamp(), entry.getKey(), PaneInfo.ON_TIME_AND_ONLY_FIRING));
+
+        final WindowedValue<O> windowedValue = WindowedValue.of(
+          view, entry.getKey().maxTimestamp(), entry.getKey(), PaneInfo.ON_TIME_AND_ONLY_FIRING);
+        outputCollector.emit(windowedValue);
         iterator.remove();
         isEmitted = true;
 
@@ -108,6 +116,26 @@ public final class CreateViewTransform<I, O> implements
       outputCollector.emitWatermark(new Watermark(currentOutputWatermark));
     }
   }
+
+  /*
+  private void writeToLambda(final WindowedValue wv) {
+
+      final PutRecordRequest putRecordRequest = new PutRecordRequest();
+      putRecordRequest.setStreamName(STREAMNAME);
+      PutRecordsRequest putRecordsRequest  = new PutRecordsRequest();
+      putRecordsRequest.setStreamName(STREAMNAME);
+      List<PutRecordsRequestEntry> putRecordsRequestEntryList  = new ArrayList<>();
+      for (int i = 0; i < 1; i++) {
+        PutRecordsRequestEntry putRecordsRequestEntry  = new PutRecordsRequestEntry();
+        putRecordsRequestEntry.setData(ByteBuffer.wrap(String.valueOf(i).getBytes()));
+        putRecordsRequestEntry.setPartitionKey(String.format("partitionKey-%d", i));
+        putRecordsRequestEntryList.add(putRecordsRequestEntry);
+      }
+      putRecordsRequest.setRecords(putRecordsRequestEntryList);
+      PutRecordsResult putRecordsResult  = kinesisClient.putRecords(putRecordsRequest);
+      System.out.println("Put Result" + putRecordsResult);
+  }
+  */
 
   @Override
   public void close() {

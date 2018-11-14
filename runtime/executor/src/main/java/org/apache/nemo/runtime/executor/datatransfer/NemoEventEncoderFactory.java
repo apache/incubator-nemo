@@ -39,6 +39,10 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
     this.valueEncoderFactory = valueEncoderFactory;
   }
 
+  public EncoderFactory getValueEncoderFactory() {
+    return valueEncoderFactory;
+  }
+
   @Override
   public Encoder create(final OutputStream outputStream) throws IOException {
     return new NemoEventEncoder(valueEncoderFactory.create(outputStream), outputStream);

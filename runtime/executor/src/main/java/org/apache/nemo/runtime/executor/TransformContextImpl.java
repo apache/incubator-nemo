@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor;
 
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 
@@ -30,14 +31,17 @@ import java.util.Optional;
 public final class TransformContextImpl implements Transform.Context {
   private final BroadcastManagerWorker broadcastManagerWorker;
   private String data;
+  private final IRVertex irVertex;
 
   /**
    * Constructor of Context Implementation.
    * @param broadcastManagerWorker for broadcast variables.
    */
-  public TransformContextImpl(final BroadcastManagerWorker broadcastManagerWorker) {
+  public TransformContextImpl(final BroadcastManagerWorker broadcastManagerWorker,
+                              final IRVertex irVertex) {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.data = null;
+    this.irVertex = irVertex;
   }
 
   @Override
@@ -58,5 +62,10 @@ public final class TransformContextImpl implements Transform.Context {
   @Override
   public Optional<String> getSerializedData() {
     return Optional.ofNullable(this.data);
+  }
+
+  @Override
+  public IRVertex getIRVertex() {
+    return irVertex;
   }
 }
