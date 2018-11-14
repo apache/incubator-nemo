@@ -110,7 +110,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emit(final O output) {
-    //LOG.info("{} emits {}", irVertex.getId(), output);
+    LOG.info("{} emits {}", irVertex.getId(), output);
 
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       emit(internalVertex.getNextOperator(), output);
@@ -157,14 +157,20 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       }
     }
 
-    // Emit watermarks to output writer
-    for (final OutputWriter outputWriter : externalMainOutputs) {
-      outputWriter.writeWatermark(watermark);
-    }
+    if (irVertex.getId().equals("vertex20")) {
+      sideInputOutputCollector.emitWatermark(watermark);
+    } else if (irVertex.getId().equals("vertex6")) {
+      mainInputLambdaCollector.emitWatermark(watermark);
+    } else {
+      // Emit watermarks to output writer
+      for (final OutputWriter outputWriter : externalMainOutputs) {
+        outputWriter.writeWatermark(watermark);
+      }
 
-    for (final List<OutputWriter> externalVertices : externalAdditionalOutputs.values()) {
-      for (final OutputWriter externalVertex : externalVertices) {
-        externalVertex.writeWatermark(watermark);
+      for (final List<OutputWriter> externalVertices : externalAdditionalOutputs.values()) {
+        for (final OutputWriter externalVertex : externalVertices) {
+          externalVertex.writeWatermark(watermark);
+        }
       }
     }
   }

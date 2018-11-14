@@ -145,11 +145,13 @@ public final class PipeOutputWriter implements OutputWriter {
   }
 
   private void doInitialize() {
+    LOG.info("Start - doInitialize() {}", runtimeEdge);
     initialized = true;
 
     // Blocking call
     this.pipes = pipeManagerWorker.getOutputContexts(runtimeEdge, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
+    LOG.info("Finish - doInitialize() {}", runtimeEdge);
   }
 
   private List<ByteOutputContext> getPipeToWrite(final Object element) {

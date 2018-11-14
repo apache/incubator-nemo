@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.coder.EncoderFactory;
@@ -74,7 +75,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
     this.encoderFactory = ((NemoEventEncoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getEncoderFactory()).getValueEncoderFactory();
-    this.amazonS3 = AWSUtils.AWS_S3;
+    this.amazonS3 = AmazonS3ClientBuilder.standard().build();
   }
 
   private void checkAndFlush(final String fileName) {
@@ -82,7 +83,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     info.cnt += 1;
     info.accessTime = System.currentTimeMillis();
 
-    if (info.cnt >= 5) {
+    if (info.cnt >= 10) {
       // flush
       info.close();
       windowAndInfoMap.put(fileName, null);
@@ -90,6 +91,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
     final long currTime = System.currentTimeMillis();
 
+    /*
     for (final String key : windowAndInfoMap.keySet()) {
       final Info info1 = windowAndInfoMap.get(key);
       if (info1 != null) {
@@ -99,6 +101,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
         }
       }
     }
+    */
   }
 
   @Override

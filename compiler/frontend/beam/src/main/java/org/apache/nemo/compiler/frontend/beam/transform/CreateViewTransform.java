@@ -29,6 +29,9 @@ import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.executor.datatransfer.MainInputLambdaCollector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -44,6 +47,7 @@ public final class CreateViewTransform<I, O> implements
   private OutputCollector<WindowedValue<O>> outputCollector;
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final Map<BoundedWindow, List<I>> windowListMap;
+  private static final Logger LOG = LoggerFactory.getLogger(CreateViewTransform.class.getName());
 
 
   // TODO #259: we can remove this variable by implementing ReadyCheckingSideInputReader
@@ -72,6 +76,7 @@ public final class CreateViewTransform<I, O> implements
   public void onData(final WindowedValue<KV<?, I>> element) {
     // The key of element is always null (beam's semantic)
     // because view is a globally materialized data regardless of key
+    LOG.info("CreateViewTransform data: {}", element);
     for (final BoundedWindow window : element.getWindows()) {
       windowListMap.putIfAbsent(window, new ArrayList<>());
       final List<I> list = windowListMap.get(window);

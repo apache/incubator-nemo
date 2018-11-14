@@ -19,7 +19,9 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import com.amazonaws.services.lambda.AWSLambda;
+import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -66,7 +68,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
     this.irVertex = irVertex;
     this.encoderFactory = ((NemoEventEncoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getEncoderFactory()).getValueEncoderFactory();
-    this.amazonS3 = AWSUtils.AWS_S3;
+    this.amazonS3 = AmazonS3ClientBuilder.standard().build();
     this.awsLambda = AWSUtils.AWS_LAMBDA;
   }
 
@@ -97,6 +99,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
     final WindowedValue wv = (WindowedValue) output;
     final BoundedWindow window = (BoundedWindow) wv.getWindows().iterator().next();
     LOG.info("Vertex20 Window: {} ********** {}", window, window.maxTimestamp().toString());
+
     final String fileName = window.toString();
     try {
       if (encoder == null) {
@@ -115,7 +118,17 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
       file.delete();
       LOG.info("End of send sideinput to S3");
 
+      /*
       // Trigger lambdas
+
+      LOG.info("Request sideinput lambda");
+      final InvokeRequest request = new InvokeRequest()
+        .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
+        .withPayload(String.format("{\"input\":\"%s\"}", file.getName()));
+
+      awsLambda.invoke(request);
+      LOG.info("End of Request sideinput lambda");
+      */
 
     } catch (IOException e) {
       e.printStackTrace();
