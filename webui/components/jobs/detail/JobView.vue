@@ -59,16 +59,18 @@ limitations under the License.
         </el-row>
       </el-collapse-item>
       <!--DAG Visualization-->
-      <el-collapse-item title="  DAG Visualization" name="2" id="affix-target">
+      <el-collapse-item title="  DAG Visualization" name="2">
+        <no-ssr>
+          <affix relative-element-selector="#affix-target" style="z-index: 1">
+            <el-popover v-model="showdetail" trigger="manual" width="400">
+              <el-button style="float: right;" size="mini" icon="el-icon-close" circle
+                         @click="showdetail = false"></el-button>
+              <detail-table :tableData="tableData"/>
+            </el-popover>
+          </affix>
+        </no-ssr>
         <el-card header="DAG">
-          <no-ssr>
-            <affix relative-element-selector="#affix-target">
-              <el-popover v-model="showdetail" trigger="manual" width="400">
-                <detail-table :tableData="tableData"/>
-              </el-popover>
-            </affix>
-          </no-ssr>
-          <dag :selectedJobId="selectedJobId" :tabIndex="tabIndex"/>
+          <dag :selectedJobId="selectedJobId" :tabIndex="tabIndex" id="affix-target"/>
         </el-card>
       </el-collapse-item>
       <!--Tasks information-->
