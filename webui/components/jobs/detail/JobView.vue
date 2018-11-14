@@ -59,24 +59,17 @@ limitations under the License.
         </el-row>
       </el-collapse-item>
       <!--DAG Visualization-->
-      <el-collapse-item title="  DAG Visualization" name="2">
-        <el-row id="affix-target" :gutter="10">
-          <el-col :span="16" :xs="24">
-            <el-card header="DAG">
-              <dag :selectedJobId="selectedJobId" :tabIndex="tabIndex"/>
-            </el-card>
-          </el-col>
-          <el-col :span="8" :xs="24">
-            <no-ssr>
-              <affix relative-element-selector="#affix-target">
-                <el-card header="Detail">
-                  <detail-table
-                    :tableData="tableData"/>
-                </el-card>
-              </affix>
-            </no-ssr>
-          </el-col>
-        </el-row>
+      <el-collapse-item title="  DAG Visualization" name="2" id="affix-target">
+        <el-card header="DAG">
+          <no-ssr>
+            <affix relative-element-selector="#affix-target">
+              <el-popover v-model="showdetail" trigger="manual" width="400">
+                <detail-table :tableData="tableData"/>
+              </el-popover>
+            </affix>
+          </no-ssr>
+          <dag :selectedJobId="selectedJobId" :tabIndex="tabIndex"/>
+        </el-card>
       </el-collapse-item>
       <!--Tasks information-->
       <el-collapse-item title="  Task Statistics" name="3">
@@ -254,6 +247,7 @@ export default {
       collapseActiveNames: ['timeline', 'dag'],
       tableData: [],
       tabIndex: '0',
+      showdetail: false,
     }
   },
 
@@ -338,6 +332,7 @@ export default {
         if (this.selectedJobId === jobId &&
           this.selectedMetricId === metricId) {
           this.buildTableData(metricId);
+          this.showdetail = true;
         }
       });
 
@@ -345,6 +340,7 @@ export default {
       this.$eventBus.$on('metric-select', metricId => {
         this.selectedMetricId = metricId;
         this.buildTableData(metricId);
+        this.showdetail = true;
         this.$eventBus.$emit('metric-select-done');
       });
 
@@ -353,6 +349,7 @@ export default {
         this.tableData = [];
         this.selectedMetricId = '';
         await this.$nextTick();
+        this.showdetail = false;
         this.$eventBus.$emit('metric-deselect-done');
       });
     },

@@ -454,7 +454,7 @@ export default {
         } else if (!options.target && !this.objectSelected) {
           this.$eventBus.$emit('metric-deselect');
         }
-      })
+      });
     },
 
     /**
@@ -557,6 +557,7 @@ export default {
             vertex.properties.transform.split("Transform:")[0] : vertex.properties.class;
           g.setNode(vertex.id, {
             label: label,
+            id: vertex.id,
             width: STAGE_VERTEX_WIDTH,
             height: STAGE_VERTEX_HEIGHT,
           });
@@ -577,7 +578,7 @@ export default {
         // create vertex circles
         g.nodes().map(node => g.node(node)).forEach(vertex => {
           let vertexCircle = new fabric.Circle({
-            metricId: vertex.label,
+            metricId: vertex.id,
             radius: VERTEX_DOT_RADIUS,
             left: vertex.x,
             top: vertex.y,
@@ -599,6 +600,7 @@ export default {
             fontSize: VERTEX_FONT_SIZE,
             originX: 'center',
             originY: 'center',
+            metricId: vertex.id,
             selectable: false,
           });
           this.vertexTextObjects.push(vertexLabelObj);
@@ -686,6 +688,7 @@ export default {
           fontSize: STAGE_FONT_SIZE,
           originX: 'center',
           originY: 'center',
+          metricId: stage.label,
           selectable: false,
         });
         this.stageTextObjects.push(stageLabelObj);
