@@ -42,22 +42,24 @@ import java.util.*;
 public final class CreateViewTransform<I, O> implements
   Transform<WindowedValue<KV<?, I>>, SideInputElement<WindowedValue<O>>> {
   private final PCollectionView<O> view;
+  private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final Map<BoundedWindow, List<I>> windowListMap;
 
   private OutputCollector<SideInputElement<WindowedValue<O>>> outputCollector;
 
-  // TODO #259: we can remove this variable by implementing ReadyCheckingSideInputReader
-  private boolean isEmitted = false;
   private long currentOutputWatermark;
 
   /**
    * Constructor of CreateViewTransform.
    * @param view the view.
    */
-  public CreateViewTransform(final PCollectionView<O> view)  {
+  public CreateViewTransform(final PCollectionView view)  {
     this.view = view;
     this.windowListMap = new HashMap<>();
     this.currentOutputWatermark = Long.MIN_VALUE;
+
+    // Hard-coded casting, since the PCollectionView implementations assume this type (checked in Beam 2.6.0).
+    this.viewFn = (ViewFn<Materializations.MultimapView<Void, ?>, O>) view.getViewFn();
   }
 
   @Override
@@ -93,11 +95,10 @@ public final class CreateViewTransform<I, O> implements
       final Map.Entry<BoundedWindow, List<I>> entry = iterator.next();
       if (entry.getKey().maxTimestamp().getMillis() <= inputWatermark.getTimestamp()) {
         // emit the windowed data if the watermark timestamp > the window max boundary
-        final O output = ((ViewFn<?, O>)view.getViewFn()).apply(new MultiView<>(entry.getValue()));
+        final O output = viewFn.apply(new MultiView<>(entry.getValue()));
         emitSideInputElement(WindowedValue.of(
           output, entry.getKey().maxTimestamp(), entry.getKey(), PaneInfo.ON_TIME_AND_ONLY_FIRING));
         iterator.remove();
-        isEmitted = true;
 
         minOutputTimestampOfEmittedWindows =
           Math.min(minOutputTimestampOfEmittedWindows, entry.getKey().maxTimestamp().getMillis());
@@ -115,14 +116,6 @@ public final class CreateViewTransform<I, O> implements
   @Override
   public void close() {
     onWatermark(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()));
-
-    if (!isEmitted) {
-      // TODO #259: This is an ad-hoc code to resolve the view that has no data
-      // Currently, broadCastWorker reads the view data, but it throws exception if no data is available for a view.
-      // We should use watermark value to track whether the materialized data in a view is available or not.
-      final O output = view.getViewFn().apply(new MultiView<>(Collections.emptyList()));
-      emitSideInputElement(WindowedValue.valueInGlobalWindow(output));
-    }
   }
 
   @Override
