@@ -25,7 +25,6 @@ import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
@@ -188,7 +187,6 @@ public final class TaskExecutor {
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
     final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap = new HashMap<>();
     reverseTopologicallySorted.forEach(childVertex -> {
-
       if (childVertex instanceof OperatorVertex) {
         final List<Edge> edges = getAllIncomingEdges(task, irVertexDag, childVertex);
         if (edges.size() == 1) {
@@ -201,7 +199,6 @@ public final class TaskExecutor {
               new OperatorWatermarkCollector((OperatorVertex) childVertex)));
         }
       }
-
     });
 
     // Create a harness for each vertex
@@ -254,31 +251,12 @@ public final class TaskExecutor {
           (SourceVertex) irVertex, sourceReader.get(), outputCollector));
       }
 
-      // Parent-task read (broadcasts)
-      final List<StageEdge> inEdgesForThisVertex = task.getTaskIncomingEdges()
+      // Parent-task read
+      final List<StageEdge> fromParentTasks = task.getTaskIncomingEdges()
         .stream()
         .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId()))
         .collect(Collectors.toList());
-      final List<StageEdge> broadcastInEdges = inEdgesForThisVertex
-        .stream()
-        .filter(stageEdge -> stageEdge.getPropertyValue(BroadcastVariableIdProperty.class).isPresent())
-        .collect(Collectors.toList());
-      final List<InputReader> broadcastReaders =
-        getParentTaskReaders(taskIndex, broadcastInEdges, intermediateDataIOFactory);
-      if (broadcastInEdges.size() != broadcastReaders.size()) {
-        throw new IllegalStateException(broadcastInEdges.toString() + ", " + broadcastReaders.toString());
-      }
-      for (int i = 0; i < broadcastInEdges.size(); i++) {
-        final StageEdge inEdge = broadcastInEdges.get(i);
-        broadcastManagerWorker.registerInputReader(
-          inEdge.getPropertyValue(BroadcastVariableIdProperty.class)
-            .orElseThrow(() -> new IllegalStateException(inEdge.toString())),
-          broadcastReaders.get(i));
-      }
 
-      // Parent-task read (non-broadcasts)
-      final List<StageEdge> nonBroadcastInEdges = new ArrayList<>(inEdgesForThisVertex);
-      nonBroadcastInEdges.removeAll(broadcastInEdges);
 
       nonBroadcastInEdges
         .stream()
@@ -338,7 +316,7 @@ public final class TaskExecutor {
 
   /**
    * The task is executed in the following two phases.
-   * - Phase 1: Consume task-external input data (non-broadcasts)
+   * - Phase 1: Consume task-external input data
    * - Phase 2: Finalize task-internal states and data elements
    */
   private void doExecute() {
@@ -349,7 +327,7 @@ public final class TaskExecutor {
     LOG.info("{} started", taskId);
     taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
 
-    // Phase 1: Consume task-external input data. (non-broadcasts)
+    // Phase 1: Consume task-external input data.
     if (!handleDataFetchers(nonBroadcastDataFetchers)) {
       return;
     }

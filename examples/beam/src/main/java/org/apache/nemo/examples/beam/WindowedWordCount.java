@@ -78,7 +78,7 @@ public final class WindowedWordCount {
       return p.apply(GenerateSequence
         .from(1)
         .withRate(2, Duration.standardSeconds(1))
-        .withTimestampFn(num -> new Instant(num * 500)))
+        .withTimestampFn(num -> new Instant(num * 100))) // 0.1 second between subsequent elements
         .apply(MapElements.via(new SimpleFunction<Long, KV<String, Long>>() {
           @Override
           public KV<String, Long> apply(final Long val) {
@@ -99,10 +99,10 @@ public final class WindowedWordCount {
 
     final Window<KV<String, Long>> windowFn;
     if (windowType.equals("fixed")) {
-      windowFn = Window.<KV<String, Long>>into(FixedWindows.of(Duration.standardSeconds(5)));
+      windowFn = Window.<KV<String, Long>>into(FixedWindows.of(Duration.standardSeconds(1)));
     } else {
-      windowFn = Window.<KV<String, Long>>into(SlidingWindows.of(Duration.standardSeconds(10))
-        .every(Duration.standardSeconds(5)));
+      windowFn = Window.<KV<String, Long>>into(SlidingWindows.of(Duration.standardSeconds(2))
+        .every(Duration.standardSeconds(1)));
     }
 
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);

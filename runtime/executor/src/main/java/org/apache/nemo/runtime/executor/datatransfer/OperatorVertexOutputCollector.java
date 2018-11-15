@@ -68,6 +68,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
+    LOG.info("{} to {} - emits {}", irVertex.getId(), vertex.getId(), output);
     vertex.getTransform().onData(output);
   }
 

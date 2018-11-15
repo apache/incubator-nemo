@@ -205,6 +205,14 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       inputCoder,
       outputCoders,
       windowingStrategy);
+
+    final SideInputHandler sideInputHandler = new SideInputHandler(sideInputs, stateInternals);
+
+    // TODO: KV of <view, output>
+    sideInputHandler.addSideInputValue(view, value);
+
+    final PushbackSideInputDoFnRunner pushbackSideInputDoFnRunner = SimplePushbackSideInputDoFnRunner
+      .create(doFnRunner, sideInputs, sideInputReader);
   }
 
   public final OutputCollector<WindowedValue<OutputT>> getOutputCollector() {

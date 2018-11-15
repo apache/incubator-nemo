@@ -27,6 +27,7 @@ import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -38,8 +39,8 @@ import java.util.*;
  * @param <O> materialized output type
  */
 public final class CreateViewTransform<I, O> implements
-  Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
-  private OutputCollector<WindowedValue<O>> outputCollector;
+  Transform<WindowedValue<KV<?, I>>, WindowedValue<SideInputElement<O>>> {
+  private OutputCollector<WindowedValue<SideInputElement<O>>> outputCollector;
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final Map<BoundedWindow, List<I>> windowListMap;
 
@@ -58,7 +59,7 @@ public final class CreateViewTransform<I, O> implements
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<WindowedValue<O>> oc) {
+  public void prepare(final Context context, final OutputCollector<WindowedValue<SideInputElement<O>>> oc) {
     this.outputCollector = oc;
   }
 
