@@ -56,3 +56,10 @@ ml-data
 tang.conf
 *.sw[op]
 -profile-*.json
+#
+# ----------------------------------------------------------------------
+# Release related files
+# ----------------------------------------------------------------------
+*.releaseBackup
+*.tag
+release.properties
