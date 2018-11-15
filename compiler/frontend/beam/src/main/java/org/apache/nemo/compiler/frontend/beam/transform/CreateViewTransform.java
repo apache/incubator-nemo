@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.beam.sdk.transforms.Materializations;
 import org.apache.beam.sdk.transforms.ViewFn;
@@ -39,10 +40,11 @@ import java.util.*;
  * @param <O> materialized output type
  */
 public final class CreateViewTransform<I, O> implements
-  Transform<WindowedValue<KV<?, I>>, WindowedValue<SideInputElement<O>>> {
-  private OutputCollector<WindowedValue<SideInputElement<O>>> outputCollector;
-  private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
+  Transform<WindowedValue<KV<?, I>>, SideInputElement<WindowedValue<O>>> {
+  private final PCollectionView<O> view;
   private final Map<BoundedWindow, List<I>> windowListMap;
+
+  private OutputCollector<SideInputElement<WindowedValue<O>>> outputCollector;
 
   // TODO #259: we can remove this variable by implementing ReadyCheckingSideInputReader
   private boolean isEmitted = false;
@@ -50,16 +52,16 @@ public final class CreateViewTransform<I, O> implements
 
   /**
    * Constructor of CreateViewTransform.
-   * @param viewFn the viewFn that materializes data.
+   * @param view the view.
    */
-  public CreateViewTransform(final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn)  {
-    this.viewFn = viewFn;
+  public CreateViewTransform(final PCollectionView<O> view)  {
+    this.view = view;
     this.windowListMap = new HashMap<>();
     this.currentOutputWatermark = Long.MIN_VALUE;
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<WindowedValue<SideInputElement<O>>> oc) {
+  public void prepare(final Context context, final OutputCollector<SideInputElement<WindowedValue<O>>> oc) {
     this.outputCollector = oc;
   }
 
@@ -91,9 +93,9 @@ public final class CreateViewTransform<I, O> implements
       final Map.Entry<BoundedWindow, List<I>> entry = iterator.next();
       if (entry.getKey().maxTimestamp().getMillis() <= inputWatermark.getTimestamp()) {
         // emit the windowed data if the watermark timestamp > the window max boundary
-        final O view = viewFn.apply(new MultiView<>(entry.getValue()));
-        outputCollector.emit(WindowedValue.of(
-          view, entry.getKey().maxTimestamp(), entry.getKey(), PaneInfo.ON_TIME_AND_ONLY_FIRING));
+        final O output = ((ViewFn<?, O>)view.getViewFn()).apply(new MultiView<>(entry.getValue()));
+        emitSideInputElement(WindowedValue.of(
+          output, entry.getKey().maxTimestamp(), entry.getKey(), PaneInfo.ON_TIME_AND_ONLY_FIRING));
         iterator.remove();
         isEmitted = true;
 
@@ -118,16 +120,20 @@ public final class CreateViewTransform<I, O> implements
       // TODO #259: This is an ad-hoc code to resolve the view that has no data
       // Currently, broadCastWorker reads the view data, but it throws exception if no data is available for a view.
       // We should use watermark value to track whether the materialized data in a view is available or not.
-      final O view = viewFn.apply(new MultiView<>(Collections.emptyList()));
-      outputCollector.emit(WindowedValue.valueInGlobalWindow(view));
+      final O output = view.getViewFn().apply(new MultiView<>(Collections.emptyList()));
+      emitSideInputElement(WindowedValue.valueInGlobalWindow(output));
     }
   }
 
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("CreateViewTransform:" + viewFn);
+    sb.append("CreateViewTransform:" + view.getViewFn());
     return sb.toString();
+  }
+
+  private void emitSideInputElement(final WindowedValue<O> output) {
+    outputCollector.emit(new SideInputElement<O>(view, output));
   }
 
   /**

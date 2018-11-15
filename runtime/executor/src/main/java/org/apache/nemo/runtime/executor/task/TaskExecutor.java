@@ -252,14 +252,9 @@ public final class TaskExecutor {
       }
 
       // Parent-task read
-      final List<StageEdge> fromParentTasks = task.getTaskIncomingEdges()
+      task.getTaskIncomingEdges()
         .stream()
-        .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId()))
-        .collect(Collectors.toList());
-
-
-      nonBroadcastInEdges
-        .stream()
+        .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId())) // edge to this vertex
         .map(incomingEdge ->
           Pair.of(incomingEdge, intermediateDataIOFactory
             .createReader(taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge)))

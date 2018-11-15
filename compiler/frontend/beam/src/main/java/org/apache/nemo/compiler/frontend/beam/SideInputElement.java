@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.beam;
 
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 
 /**
@@ -25,9 +26,9 @@ import org.apache.beam.sdk.values.PCollectionView;
  */
 public final class SideInputElement<T> {
   private final PCollectionView view;
-  private final T data;
+  private final WindowedValue<T> data;
 
-  public SideInputElement(final PCollectionView view, final T data) {
+  public SideInputElement(final PCollectionView view, final WindowedValue<T> data) {
     this.view = view;
     this.data = data;
   }
@@ -36,7 +37,7 @@ public final class SideInputElement<T> {
     return view;
   }
 
-  public T getData() {
+  public WindowedValue<T> getData() {
     return data;
   }
 }
