@@ -228,7 +228,7 @@ export default {
     'task-statistics': TaskStatistics,
   },
 
-  props: ['selectedJobStatus'],
+  props: ['selectedJobStatus', 'selectedJobMetricDataSet'],
 
   data() {
     return {
@@ -283,6 +283,7 @@ export default {
     // event timeline, dag event handler
     handleCollapse(activatedElement) {
       if (activatedElement === "1") {
+        this.$eventBus.$emit('set-timeline-items', this.selectedJobMetricDataSet);
         this.$eventBus.$emit('redraw-timeline');
       } else if (activatedElement === "2") {
         this.$eventBus.$emit('rerender-dag');
@@ -313,7 +314,6 @@ export default {
     setUpEventHandlers() {
       // event handler for detecting change of job id
       this.$eventBus.$on('job-id-select', data => {
-        this.$eventBus.$emit('set-timeline-items', data.metricDataSet);
         this.$eventBus.$emit('clear-stage-select');
         this.selectedJobId = data.jobId;
         this.jobFrom = data.jobFrom;
