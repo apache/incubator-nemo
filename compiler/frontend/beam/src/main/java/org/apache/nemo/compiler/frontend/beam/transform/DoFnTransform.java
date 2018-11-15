@@ -43,6 +43,8 @@ import java.util.Map;
 public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<InputT, InputT, OutputT> {
   private static final Logger LOG = LoggerFactory.getLogger(DoFnTransform.class.getName());
 
+  private long inputWatermark = Long.MIN_VALUE;
+
   /**
    * DoFnTransform Constructor.
    *
@@ -68,6 +70,12 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   public void onData(final WindowedValue<InputT> data) {
+    if (inputWatermark > data.getTimestamp().getMillis()) {
+      // late data!
+      // just drop
+      return;
+    }
+
     checkAndInvokeBundle();
     getDoFnRunner().processElement(data);
     checkAndFinishBundle();
@@ -75,6 +83,12 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   public void onWatermark(final Watermark watermark) {
+    if (inputWatermark> watermark.getTimestamp()) {
+      throw new IllegalStateException("The current watermark " + watermark + " should be greater than " + inputWatermark);
+    }
+
+    inputWatermark = watermark.getTimestamp();
+
     checkAndInvokeBundle();
     // TODO #216: We should consider push-back data that waits for side input
     // TODO #216: If there are push-back data, input watermark >= output watermark

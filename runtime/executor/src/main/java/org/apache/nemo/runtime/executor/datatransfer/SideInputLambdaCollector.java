@@ -19,10 +19,15 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import com.amazonaws.services.lambda.AWSLambda;
+import com.amazonaws.services.lambda.AWSLambdaAsync;
+import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.ListObjectsV2Request;
+import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.coder.EncoderFactory;
@@ -49,6 +54,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
 
   // TODO: remove
   private final AmazonS3 amazonS3;
+  private final AWSLambdaAsync awsLambdaAsync;
   private final AWSLambda awsLambda;
   private EncoderFactory<O> encoderFactory;
   private EncoderFactory.Encoder<O> encoder;
@@ -70,6 +76,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
       .getEncoderFactory()).getValueEncoderFactory();
     this.amazonS3 = AmazonS3ClientBuilder.standard().build();
     this.awsLambda = AWSUtils.AWS_LAMBDA;
+    this.awsLambdaAsync = AWSLambdaAsyncClientBuilder.standard().build();
   }
 
   private EncoderFactory.Encoder createEncoder(final String fileName) {
@@ -118,18 +125,22 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
       file.delete();
       LOG.info("End of send sideinput to S3");
 
-      /*
-      // Trigger lambdas
-
+      // Get main input list
       LOG.info("Request sideinput lambda");
-      final InvokeRequest request = new InvokeRequest()
-        .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
-        .withPayload(String.format("{\"input\":\"%s\"}", file.getName()));
+      final ListObjectsV2Request req =
+        new ListObjectsV2Request().withBucketName(S3_BUCKET_NAME).withPrefix("maininput/" + file.getName());
+      final ListObjectsV2Result result = amazonS3.listObjectsV2(req);
+      for (final S3ObjectSummary objectSummary : result.getObjectSummaries()) {
+        System.out.printf(" - %s (size: %d)\n", objectSummary.getKey(), objectSummary.getSize());
 
-      awsLambda.invoke(request);
-      LOG.info("End of Request sideinput lambda");
-      */
+        // Trigger lambdas
+        final InvokeRequest request = new InvokeRequest()
+          .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
+          .withPayload(String.format("{\"input\":\"%s\"}", objectSummary.getKey()));
 
+        awsLambdaAsync.invokeAsync(request);
+        LOG.info("End of Request sideinput lambda");
+      }
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);

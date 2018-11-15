@@ -195,7 +195,11 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   @Override
   public void onWatermark(final Watermark inputWatermark) {
-    checkAndInvokeBundle();
+    if (getContext().getIRVertex().getId().equals("vertex10")) {
+      LOG.info("vertex10 watermark: {}", new Instant(inputWatermark.getTimestamp()));
+    }
+
+      checkAndInvokeBundle();
     processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
     // Emit watermark to downstream operators
     emitOutputWatermark(inputWatermark);
@@ -366,6 +370,13 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
       // TODO #270: consider early firing
       // TODO #270: This logic may not be applied to early firing outputs
+
+      if (getContext().getIRVertex().getId().equals("vertex16")) {
+        LOG.info("vertex16 GBKW data: {}", output);
+      } else if (getContext().getIRVertex().getId().equals("vertex10")) {
+        LOG.info("vertex10 GBKW data: {}", output);
+      }
+
       keyAndWatermarkHoldMap.put(output.getValue().getKey(),
         new Watermark(output.getTimestamp().getMillis() + 1));
       outputCollector.emit(output);

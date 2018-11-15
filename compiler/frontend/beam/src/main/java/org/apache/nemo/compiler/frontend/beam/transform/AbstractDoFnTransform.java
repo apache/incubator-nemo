@@ -75,6 +75,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   private long currBundleCount = 0;
   private boolean bundleFinished = true;
 
+  private transient Context context;
   /**
    * AbstractDoFnTransform constructor.
    * @param doFn doFn
@@ -155,11 +156,16 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     }
   }
 
+  public Context getContext() {
+    return context;
+  }
+
   @Override
   public final void prepare(final Context context, final OutputCollector<WindowedValue<OutputT>> oc) {
     // deserialize pipeline option
     final NemoPipelineOptions options = serializedOptions.get().as(NemoPipelineOptions.class);
     this.outputCollector = wrapOutputCollector(oc);
+    this.context = context;
 
     this.bundleMillis = options.getMaxBundleTimeMills();
     this.bundleSize = options.getMaxBundleSize();

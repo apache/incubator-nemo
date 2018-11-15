@@ -25,6 +25,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,6 +124,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
+    LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
 
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
@@ -140,7 +142,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-    LOG.info("{} emitW {}", irVertex.getId(), watermark);
+    LOG.info("{} emitW {}", irVertex.getId(), new Instant(watermark.getTimestamp()));
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
