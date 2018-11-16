@@ -183,10 +183,10 @@ under the License.
                             <failsOnError>true</failsOnError>
                             <excludes>**/org/apache/reef/**/*</excludes>
                         </configuration>
-                        <goals>
-                            <goal>check</goal>
-                            <goal>checkstyle</goal>
-                        </goals>
+                        <!--<goals>-->
+                            <!--<goal>check</goal>-->
+                            <!--<goal>checkstyle</goal>-->
+                        <!--</goals>-->
                     </execution>
                 </executions>
             </plugin>

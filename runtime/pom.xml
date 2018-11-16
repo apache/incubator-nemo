@@ -38,6 +38,7 @@ under the License.
     <module>executor</module>
     <module>master</module>
     <module>test</module>
+    <module>lambda</module>
   </modules>
 
 </project>

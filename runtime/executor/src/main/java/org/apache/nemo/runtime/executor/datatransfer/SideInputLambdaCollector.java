@@ -30,12 +30,17 @@ import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang.SerializationUtils;
+import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.lambda.LambdaDecoderFactory;
+import org.apache.nemo.runtime.lambda.SerializeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +64,8 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
   private EncoderFactory<O> encoderFactory;
   private EncoderFactory.Encoder<O> encoder;
   private OutputStream outputStream;
+  private DecoderFactory decoderFactory;
+  private final String encodedDecoderFactory;
 
   int cnt = 0;
 
@@ -74,6 +81,10 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
     this.irVertex = irVertex;
     this.encoderFactory = ((NemoEventEncoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getEncoderFactory()).getValueEncoderFactory();
+    this.decoderFactory = new LambdaDecoderFactory(
+      ((NemoEventDecoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
+      .getDecoderFactory()).getValueDecoderFactory());
+    this.encodedDecoderFactory = SerializeUtils.serializeToString(decoderFactory);
     this.amazonS3 = AmazonS3ClientBuilder.standard().build();
     this.awsLambda = AWSUtils.AWS_LAMBDA;
     this.awsLambdaAsync = AWSLambdaAsyncClientBuilder.standard().build();
@@ -136,7 +147,8 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
         // Trigger lambdas
         final InvokeRequest request = new InvokeRequest()
           .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
-          .withPayload(String.format("{\"input\":\"%s\"}", objectSummary.getKey()));
+          .withPayload(String.format("{\"input\":\"%s\", \"decoder\":\"%s\"}",
+            objectSummary.getKey(), encodedDecoderFactory));
 
         awsLambdaAsync.invokeAsync(request);
         LOG.info("End of Request sideinput lambda");

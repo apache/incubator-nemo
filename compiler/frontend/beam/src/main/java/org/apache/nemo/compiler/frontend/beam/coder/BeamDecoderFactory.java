@@ -102,7 +102,7 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
    * Beam Decoder for non void objects.
    * @param <T2> the type of element to decode.
    */
-  private final class BeamDecoder<T2> extends BeamAbstractDecoder<T2> {
+  public final class BeamDecoder<T2> extends BeamAbstractDecoder<T2> {
 
     /**
      * Constructor.
