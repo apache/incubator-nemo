@@ -42,7 +42,7 @@ import java.util.*;
  * @param <InputT> input type.
  */
 public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
-  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> {
+  extends AbstractDoFnTransform<WindowedValue<KV<K, InputT>>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> {
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyAndWindowDoFnTransform.class.getName());
 
   private final SystemReduceFn reduceFn;
@@ -57,18 +57,16 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   public GroupByKeyAndWindowDoFnTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
                                           final TupleTag<KV<K, Iterable<InputT>>> mainOutputTag,
-                                          final List<TupleTag<?>> additionalOutputTags,
                                           final WindowingStrategy<?, ?> windowingStrategy,
-                                          final Collection<PCollectionView<?>> sideInputs,
                                           final PipelineOptions options,
                                           final SystemReduceFn reduceFn) {
     super(null, /* doFn */
       null, /* inputCoder */
       outputCoders,
       mainOutputTag,
-      additionalOutputTags,
+      Collections.emptyList(),  /*  GBK does not have additional outputs */
       windowingStrategy,
-      sideInputs,
+      Collections.emptyMap(), /*  GBK does not have additional side inputs */
       options);
     this.keyToValues = new HashMap<>();
     this.reduceFn = reduceFn;
@@ -93,7 +91,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         getWindowingStrategy(),
         inMemoryStateInternalsFactory,
         inMemoryTimerInternalsFactory,
-        getSideInputReader(),
+        getSideInputHandler(),
         reduceFn,
         getOutputManager(),
         getMainOutputTag());
@@ -195,11 +193,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   @Override
   public void onWatermark(final Watermark inputWatermark) {
-    checkAndInvokeBundle();
     processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
     // Emit watermark to downstream operators
     emitOutputWatermark(inputWatermark);
-    checkAndFinishBundle();
   }
 
   /**

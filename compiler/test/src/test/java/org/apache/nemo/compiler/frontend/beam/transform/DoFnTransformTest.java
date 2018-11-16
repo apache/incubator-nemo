@@ -43,6 +43,7 @@ import org.junit.Test;
 import java.util.*;
 
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -78,7 +79,7 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        emptyList(), /* side inputs */
+        emptyMap(), /* side inputs */
         PipelineOptionsFactory.as(NemoPipelineOptions.class));
 
     final Transform.Context context = mock(Transform.Context.class);
@@ -112,7 +113,7 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        emptyList(), /* side inputs */
+        emptyMap(), /* side inputs */
         pipelineOptions);
 
     final Transform.Context context = mock(Transform.Context.class);
@@ -156,7 +157,7 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        emptyList(), /* side inputs */
+        emptyMap(), /* side inputs */
         pipelineOptions);
 
     final Transform.Context context = mock(Transform.Context.class);
@@ -208,7 +209,7 @@ public final class DoFnTransformTest {
         mainOutput,
         tags,
         WindowingStrategy.globalDefault(),
-        emptyList(), /* side inputs */
+        emptyMap(), /* side inputs */
         PipelineOptionsFactory.as(NemoPipelineOptions.class));
 
     // mock context
@@ -262,6 +263,9 @@ public final class DoFnTransformTest {
     final Map<String, PCollectionView<Iterable<String>>> eventAndViewMap =
       ImmutableMap.of(first.getValue(), view1, second.getValue(), view2);
 
+    final Map sideInputMap = new HashMap();
+    sideInputMap.put(0, view1);
+    sideInputMap.put(1, view2);
     final DoFnTransform<String, Tuple<String, Iterable<String>>> doFnTransform =
       new DoFnTransform<>(
         new SimpleSideInputDoFn<>(eventAndViewMap),
@@ -270,7 +274,7 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        ImmutableList.of(view1, view2), /* side inputs */
+        sideInputMap, /* side inputs */
         PipelineOptionsFactory.as(NemoPipelineOptions.class));
 
     final OutputCollector<WindowedValue<Tuple<String, Iterable<String>>>> oc = new TestOutputCollector<>();

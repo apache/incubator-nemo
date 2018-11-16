@@ -89,9 +89,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
       new GroupByKeyAndWindowDoFnTransform(
         NULL_OUTPUT_CODERS,
         outputTag,
-        Collections.emptyList(), /* additional outputs */
         WindowingStrategy.of(slidingWindows),
-        emptyList(), /* side inputs */
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
         SystemReduceFn.buffering(NULL_INPUT_CODER));
 

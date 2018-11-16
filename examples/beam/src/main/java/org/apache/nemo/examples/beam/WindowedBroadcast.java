@@ -75,6 +75,8 @@ public final class WindowedBroadcast {
         public void processElement(final ProcessContext c) {
           final Long anElementInTheWindow = c.element();
           final List<Long> allElementsInTheWindow = c.sideInput(windowedView);
+          System.out.println(anElementInTheWindow + " / " + allElementsInTheWindow);
+
           // TODO: check when the sideinput is empty
           if (!allElementsInTheWindow.contains(anElementInTheWindow)) {
             throw new RuntimeException(anElementInTheWindow + " not in " + allElementsInTheWindow.toString());

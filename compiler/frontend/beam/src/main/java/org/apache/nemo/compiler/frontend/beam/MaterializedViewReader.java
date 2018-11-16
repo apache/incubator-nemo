@@ -16,48 +16,49 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.frontend.beam.transform;
+package org.apache.nemo.compiler.frontend.beam;
 
-import org.apache.beam.runners.core.SideInputReader;
+import org.apache.beam.runners.core.ReadyCheckingSideInputReader;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.Pair;
 
 import javax.annotation.Nullable;
-import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * A sideinput reader that reads/writes side input values to context.
  */
-public final class BroadcastVariableSideInputReader implements SideInputReader {
+public final class MaterializedViewReader<T> extends ReadyCheckingSideInputReader {
+  final Set<PCollectionView<?>> sideInputs;
+  final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> materializedViews;
 
-  // Nemo context for storing/getting side inputs
-  private final Transform.Context context;
+  public MaterializedViewReader() {
+  }
 
-  // The list of side inputs that we're handling
-  private final Collection<PCollectionView<?>> sideInputs;
-
-  BroadcastVariableSideInputReader(final Transform.Context context,
-                                   final Collection<PCollectionView<?>> sideInputs) {
-    this.context = context;
-    this.sideInputs = sideInputs;
+  @Override
+  public boolean isReady(final PCollectionView<?> view, final BoundedWindow window) {
+    return materializedViews.containsKey(Pair.<>of(view, window));
   }
 
   @Nullable
   @Override
   public <T> T get(final PCollectionView<T> view, final BoundedWindow window) {
-    // TODO #216: implement side input and windowing
-    return ((WindowedValue<T>) context.getBroadcastVariable(view)).getValue();
+    return materializedViews.get(Pair.of(view, window));
   }
 
   @Override
-  public <T> boolean contains(final PCollectionView<T> view) {
+  public <T> boolean contains(PCollectionView<T> view) {
     return sideInputs.contains(view);
   }
 
   @Override
   public boolean isEmpty() {
     return sideInputs.isEmpty();
+  }
+
+  public void addView(final PCollectionView<T> view, final BoundedWindow window, final WindowedValue materializedData) {
+    materializedViews.put(Pair.of(view, window), materializedData);
   }
 }
