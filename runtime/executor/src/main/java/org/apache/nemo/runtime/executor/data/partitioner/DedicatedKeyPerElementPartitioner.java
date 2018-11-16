@@ -33,6 +33,7 @@ public final class DedicatedKeyPerElementPartitioner implements Partitioner<Inte
    * Constructor.
    */
   public DedicatedKeyPerElementPartitioner() {
+    // TODO should not be 0
     key = 0;
   }
 

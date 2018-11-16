@@ -28,7 +28,6 @@ import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 
 import javax.annotation.Nullable;
 import java.io.Serializable;
@@ -39,13 +38,12 @@ import java.util.*;
  * @param <I> input type
  * @param <O> materialized output type
  */
-public final class CreateViewTransform<I, O> implements
-  Transform<WindowedValue<KV<?, I>>, SideInputElement<WindowedValue<O>>> {
+public final class CreateViewTransform<I, O> implements Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
   private final PCollectionView<O> view;
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final Map<BoundedWindow, List<I>> windowListMap;
 
-  private OutputCollector<SideInputElement<WindowedValue<O>>> outputCollector;
+  private OutputCollector<WindowedValue<O>> outputCollector;
 
   private long currentOutputWatermark;
 
@@ -63,7 +61,7 @@ public final class CreateViewTransform<I, O> implements
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<SideInputElement<WindowedValue<O>>> oc) {
+  public void prepare(final Context context, final OutputCollector<WindowedValue<O>> oc) {
     this.outputCollector = oc;
   }
 
@@ -80,7 +78,6 @@ public final class CreateViewTransform<I, O> implements
 
   @Override
   public void onWatermark(final Watermark inputWatermark) {
-
     // If no data, just forwards the watermark
     if (windowListMap.size() == 0 && currentOutputWatermark < inputWatermark.getTimestamp()) {
       currentOutputWatermark = inputWatermark.getTimestamp();
@@ -96,7 +93,7 @@ public final class CreateViewTransform<I, O> implements
       if (entry.getKey().maxTimestamp().getMillis() <= inputWatermark.getTimestamp()) {
         // emit the windowed data if the watermark timestamp > the window max boundary
         final O output = viewFn.apply(new MultiView<>(entry.getValue()));
-        emitSideInputElement(WindowedValue.of(
+        outputCollector.emit(WindowedValue.of(
           output, entry.getKey().maxTimestamp(), entry.getKey(), PaneInfo.ON_TIME_AND_ONLY_FIRING));
         iterator.remove();
 
@@ -123,10 +120,6 @@ public final class CreateViewTransform<I, O> implements
     final StringBuilder sb = new StringBuilder();
     sb.append("CreateViewTransform:" + view.getViewFn());
     return sb.toString();
-  }
-
-  private void emitSideInputElement(final WindowedValue<O> output) {
-    outputCollector.emit(new SideInputElement<O>(view, output));
   }
 
   /**

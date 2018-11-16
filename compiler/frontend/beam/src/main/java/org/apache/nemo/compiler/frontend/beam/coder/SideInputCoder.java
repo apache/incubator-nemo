@@ -19,43 +19,43 @@
 package org.apache.nemo.compiler.frontend.beam.coder;
 
 import org.apache.beam.sdk.coders.AtomicCoder;
+import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 
 import java.io.*;
 
 /**
- * EncoderFactory for float[].
+ * EncoderFactory for side inputs.
  */
-public final class FloatArrayCoder extends AtomicCoder<float[]> {
+public final class SideInputCoder extends AtomicCoder<SideInputElement> {
+  final WindowedValue.FullWindowedValueCoder windowedValueCoder;
+
   /**
    * Private constructor.
    */
-  private FloatArrayCoder() {
+  private SideInputCoder(final WindowedValue.FullWindowedValueCoder windowedValueCoder) {
+    this.windowedValueCoder = windowedValueCoder;
   }
 
   /**
    * @return a new coder
    */
-  public static FloatArrayCoder of() {
-    return new FloatArrayCoder();
+  public static SideInputCoder of(final WindowedValue.FullWindowedValueCoder windowedValueCoder) {
+    return new SideInputCoder(windowedValueCoder);
   }
 
   @Override
-  public void encode(final float[] ary, final OutputStream outStream) throws IOException {
+  public void encode(final SideInputElement sideInputElement, final OutputStream outStream) throws IOException {
     final DataOutputStream dataOutputStream = new DataOutputStream(outStream);
-    dataOutputStream.writeInt(ary.length);
-    for (float f : ary) {
-      dataOutputStream.writeFloat(f);
-    }
+    dataOutputStream.writeInt(sideInputElement.getViewIndex());
+    windowedValueCoder.encode(sideInputElement.getData(), dataOutputStream);
   }
 
   @Override
-  public float[] decode(final InputStream inStream) throws IOException {
+  public SideInputElement decode(final InputStream inStream) throws IOException {
     final DataInputStream dataInputStream = new DataInputStream(inStream);
-    final int floatArrayLen = dataInputStream.readInt();
-    final float[] floatArray = new float[floatArrayLen];
-    for (int i = 0; i < floatArrayLen; i++) {
-      floatArray[i] = dataInputStream.readFloat();
-    }
-    return floatArray;
+    final int index = dataInputStream.readInt();
+    final WindowedValue windowedValue = windowedValueCoder.decode(inStream);
+    return new SideInputElement(index, windowedValue);
   }
 }

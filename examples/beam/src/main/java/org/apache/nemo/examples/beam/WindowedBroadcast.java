@@ -85,6 +85,9 @@ public final class WindowedBroadcast {
       }).withSideInputs(windowedView)
     ).apply(new WriteOneFilePerWindow(outputFilePath, 1));
 
+
+    // TODO: Multi-sideinputs + view reuse
+
     p.run();
   }
 }

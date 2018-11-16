@@ -22,19 +22,20 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 
 /**
- *
+ * Nemo uses this.
+ * TODO: users should not use this.
  */
 public final class SideInputElement<T> {
-  private final PCollectionView view;
+  private final int viewIndex;
   private final WindowedValue<T> data;
 
-  public SideInputElement(final PCollectionView view, final WindowedValue<T> data) {
-    this.view = view;
+  public SideInputElement(final int viewIndex, final WindowedValue<T> data) {
+    this.viewIndex = viewIndex;
     this.data = data;
   }
 
-  public PCollectionView getView() {
-    return view;
+  public int getViewIndex() {
+    return viewIndex;
   }
 
   public WindowedValue<T> getData() {
