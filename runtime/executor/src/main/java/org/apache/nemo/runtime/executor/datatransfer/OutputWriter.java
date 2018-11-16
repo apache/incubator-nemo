@@ -23,6 +23,7 @@ import org.apache.nemo.common.exception.UnsupportedPartitionerException;
 import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.partitioner.*;
@@ -39,6 +40,12 @@ public interface OutputWriter {
    * @param element the element to write.
    */
   void write(final Object element);
+
+  /**
+   * Writes watermarks to all edges.
+   * @param watermark watermark
+   */
+  void writeWatermark(final Watermark watermark);
 
   /**
    * @return the total written bytes.

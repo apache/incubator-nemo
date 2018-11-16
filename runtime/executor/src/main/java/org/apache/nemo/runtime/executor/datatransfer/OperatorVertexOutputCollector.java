@@ -77,6 +77,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emit(final O output) {
+
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       emit(internalVertex.getNextOperator(), output);
     }
@@ -104,6 +105,11 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emitWatermark(final Watermark watermark) {
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
+    }
+
     // Emit watermarks to internal vertices
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
@@ -115,7 +121,15 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       }
     }
 
-    // TODO #245: handle watermarks in OutputWriter
-    // TODO #245: currently ignore emitting watermarks to output writer
+    // Emit watermarks to output writer
+    for (final OutputWriter outputWriter : externalMainOutputs) {
+      outputWriter.writeWatermark(watermark);
+    }
+
+    for (final List<OutputWriter> externalVertices : externalAdditionalOutputs.values()) {
+      for (final OutputWriter externalVertex : externalVertices) {
+        externalVertex.writeWatermark(watermark);
+      }
+    }
   }
 }

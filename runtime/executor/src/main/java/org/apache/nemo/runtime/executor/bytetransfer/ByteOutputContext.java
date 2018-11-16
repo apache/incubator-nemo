@@ -22,6 +22,8 @@ import org.apache.nemo.runtime.executor.data.FileArea;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -37,6 +39,7 @@ import java.nio.file.Paths;
  * although the execution order may not be linearized if they were called from different threads.</p>
  */
 public final class ByteOutputContext extends ByteTransferContext implements AutoCloseable {
+  private static final Logger LOG = LoggerFactory.getLogger(ByteOutputContext.class.getName());
 
   private final Channel channel;
 

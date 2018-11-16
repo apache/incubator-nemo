@@ -20,10 +20,12 @@ package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +33,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.function.Function;
 
 /**
  * SourceVertex implementation for UnboundedSource.
@@ -100,8 +101,9 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
       implements Readable<Object> {
     private final UnboundedSource<O, M> unboundedSource;
     private UnboundedSource.UnboundedReader<O> reader;
-    private Function<O, WindowedValue<O>> windowedValueConverter;
-    private boolean finished = false;
+    private boolean isStarted = false;
+    private boolean isCurrentAvailable = false;
+    private boolean isFinished = false;
 
     UnboundedSourceReadable(final UnboundedSource<O, M> unboundedSource) {
       this.unboundedSource = unboundedSource;
@@ -111,55 +113,43 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     public void prepare() {
       try {
         reader = unboundedSource.createReader(null, null);
-        reader.start();
       } catch (final Exception e) {
         throw new RuntimeException(e);
-      }
-
-      // get first element
-      final O firstElement = retrieveFirstElement();
-      if (firstElement instanceof WindowedValue) {
-        windowedValueConverter = val -> (WindowedValue) val;
-      } else {
-        windowedValueConverter = WindowedValue::valueInGlobalWindow;
-      }
-    }
-
-    private O retrieveFirstElement() {
-      while (true) {
-        try {
-          return reader.getCurrent();
-        } catch (final NoSuchElementException e) {
-          // the first element is not currently available... retry
-          try {
-            Thread.sleep(100);
-          } catch (InterruptedException e1) {
-            e1.printStackTrace();
-            throw new RuntimeException(e);
-          }
-        }
       }
     }
 
     @Override
     public Object readCurrent() {
-      final O elem = reader.getCurrent();
-      return windowedValueConverter.apply(elem);
-    }
+      try {
+        if (!isStarted) {
+          isStarted = true;
+          isCurrentAvailable = reader.start();
+        } else {
+          isCurrentAvailable = reader.advance();
+        }
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
 
-    @Override
-    public void advance() throws IOException {
-      reader.advance();
+      if (isCurrentAvailable) {
+        final O elem = reader.getCurrent();
+        return WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp());
+      } else {
+        throw new NoSuchElementException();
+      }
     }
 
     @Override
     public long readWatermark() {
-      return reader.getWatermark().getMillis();
+      final Instant watermark = reader.getWatermark();
+      // Finish if the watermark == TIMESTAMP_MAX_VALUE
+      isFinished = (watermark.getMillis() >= GlobalWindow.TIMESTAMP_MAX_VALUE.getMillis());
+      return watermark.getMillis();
     }
 
     @Override
     public boolean isFinished() {
-      return finished;
+      return isFinished;
     }
 
     @Override
@@ -169,7 +159,6 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
     @Override
     public void close() throws IOException {
-      finished = true;
       reader.close();
     }
   }

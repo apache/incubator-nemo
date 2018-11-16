@@ -25,7 +25,10 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -38,6 +41,7 @@ import java.util.Map;
  * @param <OutputT> output type.
  */
 public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<InputT, InputT, OutputT> {
+  private static final Logger LOG = LoggerFactory.getLogger(DoFnTransform.class.getName());
 
   /**
    * DoFnTransform Constructor.
@@ -64,19 +68,28 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   public void onData(final WindowedValue<InputT> data) {
+    checkAndInvokeBundle();
     getDoFnRunner().processElement(data);
+    checkAndFinishBundle();
   }
 
   @Override
   public void onWatermark(final Watermark watermark) {
+    checkAndInvokeBundle();
     // TODO #216: We should consider push-back data that waits for side input
     // TODO #216: If there are push-back data, input watermark >= output watermark
     getOutputCollector().emitWatermark(watermark);
+    checkAndFinishBundle();
   }
 
   @Override
   protected void beforeClose() {
     // nothing
+  }
+
+  @Override
+  OutputCollector wrapOutputCollector(final OutputCollector oc) {
+    return oc;
   }
 
   @Override

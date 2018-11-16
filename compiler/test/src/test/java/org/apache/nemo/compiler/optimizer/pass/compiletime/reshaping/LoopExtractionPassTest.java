@@ -48,6 +48,6 @@ public class LoopExtractionPassTest {
   public void testLoopGrouping() {
     final DAG<IRVertex, IREdge> processedDAG = new LoopExtractionPass().apply(compiledDAG);
 
-    assertEquals(13, processedDAG.getTopologicalSort().size());
+    assertEquals(9, processedDAG.getTopologicalSort().size());
   }
 }

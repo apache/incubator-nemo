@@ -22,6 +22,8 @@ import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.VoidCoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -31,6 +33,7 @@ import java.io.OutputStream;
  * @param <T> the type of element to encode.
  */
 public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
+  private static final Logger LOG = LoggerFactory.getLogger(BeamEncoderFactory.class.getName());
 
   private final Coder<T> beamCoder;
 

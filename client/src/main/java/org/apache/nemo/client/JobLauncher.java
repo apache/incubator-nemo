@@ -86,6 +86,7 @@ public final class JobLauncher {
   private static CountDownLatch jobDoneLatch;
   private static String serializedDAG;
   private static final List<?> COLLECTED_DATA = new ArrayList<>();
+  private static final String[] EMPTY_USER_ARGS = new String[0];
 
   /**
    * private constructor.
@@ -100,9 +101,12 @@ public final class JobLauncher {
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
-    driverRPCServer = new DriverRPCServer();
+    // Get Job and Driver Confs
+    builtJobConf = getJobConf(args);
 
     // Registers actions for launching the DAG.
+    LOG.info("Launching RPC Server");
+    driverRPCServer = new DriverRPCServer();
     driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> {
         })
@@ -112,8 +116,6 @@ public final class JobLauncher {
             SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
         .run();
 
-    // Get Job and Driver Confs
-    builtJobConf = getJobConf(args);
     final Configuration driverConf = getDriverConf(builtJobConf);
     final Configuration driverNcsConf = getDriverNcsConf();
     final Configuration driverMessageConfg = getDriverMessageConf();
@@ -136,6 +138,7 @@ public final class JobLauncher {
       if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
         throw new RuntimeException("Configuration for launching driver is not ready");
       }
+
 
       // Launch driver
       LOG.info("Launching driver");
@@ -239,7 +242,8 @@ public final class JobLauncher {
   private static void runUserProgramMain(final Configuration jobConf) throws Exception {
     final Injector injector = TANG.newInjector(jobConf);
     final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
-    final String[] args = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+    final String userArgsString = injector.getNamedInstance(JobConf.UserMainArguments.class);
+    final String[] args = userArgsString.isEmpty() ? EMPTY_USER_ARGS : userArgsString.split(" ");
     final Class userCode = Class.forName(className);
     final Method method = userCode.getMethod("main", String[].class);
     if (!Modifier.isStatic(method.getModifiers())) {

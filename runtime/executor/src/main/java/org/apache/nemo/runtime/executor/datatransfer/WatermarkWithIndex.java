@@ -16,25 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.frontend.beam;
+package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.nemo.common.punctuation.Watermark;
+
+import java.io.Serializable;
 
 /**
- * NemoPipelineOptions.
+ * This contains a watermark and the src task index.
+ * It is used for transferring the watermark between tasks.
  */
-public interface NemoPipelineOptions extends PipelineOptions {
-  @Description("The maximum number of elements in a bundle.")
-  @Default.Long(1000)
-  Long getMaxBundleSize();
+public final class WatermarkWithIndex implements Serializable {
+  private final Watermark watermark;
+  private final int index;
 
-  void setMaxBundleSize(Long size);
+  public WatermarkWithIndex(final Watermark watermark, final int index) {
+    this.watermark = watermark;
+    this.index = index;
+  }
 
-  @Description("The maximum time to wait before finalising a bundle (in milliseconds).")
-  @Default.Long(1000)
-  Long getMaxBundleTimeMills();
+  public Watermark getWatermark() {
+    return watermark;
+  }
 
-  void setMaxBundleTimeMills(Long time);
+  public int getIndex() {
+    return index;
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(watermark);
+    sb.append(" from ");
+    sb.append(index);
+    return sb.toString();
+  }
 }

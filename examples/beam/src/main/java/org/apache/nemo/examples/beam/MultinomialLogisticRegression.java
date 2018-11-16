@@ -18,8 +18,6 @@
  */
 package org.apache.nemo.examples.beam;
 
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
-import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineRunner;
 import org.apache.nemo.common.Pair;
@@ -60,6 +58,9 @@ public final class MultinomialLogisticRegression {
     private final Integer numFeatures;
     private final PCollectionView<Map<Integer, List<Double>>> modelView;
     private Map<Integer, List<Double>> model;
+
+    // TODO #274: Use bundles properly in Beam MultinomialLogisticRegression
+    private ProcessContext savedContextHack;
 
     /**
      * Constructor for CalculateGradient DoFn class.
@@ -124,6 +125,9 @@ public final class MultinomialLogisticRegression {
      */
     @ProcessElement
     public void processElement(final ProcessContext c) throws Exception {
+      // TODO #274: Use bundles properly in Beam MultinomialLogisticRegression
+      savedContextHack = c;
+
       final KV<Integer, Pair<List<Integer>, List<Double>>> data = parseLine(c.element());
       if (data == null) { // comments and newlines
         return;
@@ -224,15 +228,15 @@ public final class MultinomialLogisticRegression {
     }
 
     /**
-     * FinishBundle method for BEAM.
-     * @param c Context.
+     * Teardown, since this logic at the moment should be executed exactly once after consuming the final data element.
+     * TODO #274: Use bundles properly in Beam MultinomialLogisticRegression
      */
-    @FinishBundle
-    public void finishBundle(final FinishBundleContext c) {
+    @Teardown
+    public void tearDown() {
       for (Integer i = 0; i < gradients.size(); i++) {
         // this enforces a global window (batching),
         // where all data elements of the corresponding PCollection are grouped and emitted downstream together
-        c.output(KV.of(i, gradients.get(i)), BoundedWindow.TIMESTAMP_MIN_VALUE, GlobalWindow.INSTANCE);
+        savedContextHack.output(KV.of(i, gradients.get(i)));
       }
       LOG.info("stats: " + gradients.get(numClasses - 1).toString());
     }
@@ -301,13 +305,6 @@ public final class MultinomialLogisticRegression {
         }
         c.output(KV.of(kv.getKey(), ret));
       }
-    }
-
-    /**
-     * FinishBundle method for BEAM.
-     */
-    @FinishBundle
-    public void finishBundle() {
     }
   }
 
