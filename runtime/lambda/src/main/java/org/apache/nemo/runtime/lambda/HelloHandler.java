@@ -111,13 +111,13 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
 
 		  final WindowedValue sideInput = (WindowedValue) sideInputDecoder.decode();
 
-		  System.out.println("Side input: " + sideInput);
+		  //System.out.println("Side input: " + sideInput);
 
       while (true) {
         try {
           final WindowedValue mainInput = (WindowedValue) mainInputDecoder.decode();
           handler.processMainAndSideInput(mainInput, sideInput, outputCollector);
-          System.out.println("Windowed value: " + mainInput);
+          //System.out.println("Windowed value: " + mainInput);
         } catch (final IOException e) {
           if(e.getMessage().contains("EOF")) {
             System.out.println("eof!");

@@ -43,8 +43,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.nemo.runtime.executor.datatransfer.AWSUtils.S3_BUCKET_NAME;
 
@@ -64,13 +64,15 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private final IRVertex irVertex;
 
   private final AmazonS3 amazonS3;
-  private final Map<String, Info> windowAndInfoMap = new HashMap<>();
+  private final ConcurrentMap<String, Info> windowAndInfoMap = new ConcurrentHashMap<>();
   private final Map<String, Integer> windowAndPartitionMap = new HashMap<>();
   private final EncoderFactory<O> encoderFactory;
   private EncoderFactory.Encoder<O> encoder;
   private final byte[] encodedDecoderFactory;
 
   private final ExecutorService executorService = Executors.newCachedThreadPool();
+  private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+  private final long period = 5000;
 
   /**
    * Constructor of the output collector.
@@ -89,6 +91,19 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
       ((NemoEventDecoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getDecoderFactory()).getValueDecoderFactory());
     this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
+
+    this.scheduledExecutorService.scheduleAtFixedRate(() -> {
+      for (final Info info : windowAndInfoMap.values()) {
+        if (info != null) {
+          if (System.currentTimeMillis() - info.accessTime >= period) {
+            executorService.execute(() -> {
+              info.close();
+            });
+          }
+        }
+      }
+    }, 1000, 1000, TimeUnit.SECONDS);
+
   }
 
   private void checkAndFlush(final String fileName, final Info info) {
@@ -98,12 +113,15 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
     //LOG.info("Info {}, count: {}", info.fname, info.cnt);
 
-    if (info.cnt >= 10 || info.accessTime - prevAccessTime >= 2000) {
-      windowAndInfoMap.put(fileName, null);
-      // flush
-      executorService.execute(() -> {
-        info.close();
-      });
+    //if (info.cnt >= 10000 || info.accessTime - prevAccessTime >= 2000) {
+    if (info.accessTime - prevAccessTime >= period) {
+      synchronized (info) {
+        windowAndInfoMap.put(fileName, null);
+        // flush
+        executorService.execute(() -> {
+          info.close();
+        });
+      }
     }
 
     final long currTime = System.currentTimeMillis();
@@ -177,6 +195,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     public int cnt;
     public long accessTime;
     public final String fname;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
     //private final DirectByteArrayOutputStream dbos = new DirectByteArrayOutputStream();
 
     public Info(final String fileName, final int partition) {
@@ -194,22 +213,24 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     }
 
     public void close() {
-      try {
-        //dbos.close();
-        //LOG.info("Output Stream bytes: {}", dbos.getCount());
-        //dbos.writeTo(outputStream);
-        outputStream.close();
-        final File file = new File(fname);
-        LOG.info("Start to send main input data to S3 {}", file.getName());
-        final PutObjectRequest putObjectRequest =
-          new PutObjectRequest(S3_BUCKET_NAME + "/maininput", file.getName(), file);
-        amazonS3.putObject(putObjectRequest);
-        file.delete();
-        LOG.info("End of send main input to S3 {}", file.getName());
+      if (closed.compareAndSet(false, true)) {
+        try {
+          //dbos.close();
+          //LOG.info("Output Stream bytes: {}", dbos.getCount());
+          //dbos.writeTo(outputStream);
+          outputStream.close();
+          final File file = new File(fname);
+          LOG.info("Start to send main input data to S3 {}", file.getName());
+          final PutObjectRequest putObjectRequest =
+            new PutObjectRequest(S3_BUCKET_NAME + "/maininput", file.getName(), file);
+          amazonS3.putObject(putObjectRequest);
+          file.delete();
+          LOG.info("End of send main input to S3 {}", file.getName());
 
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
       }
     }
   }
