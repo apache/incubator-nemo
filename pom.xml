@@ -295,6 +295,8 @@ under the License.
                         <exclude>formatter.xml</exclude>
                         <!-- javadoc -->
                         <exclude>**/docs/**</exclude>
+                        <!-- dag files -->
+                        <exclude>**/dag/**</exclude>
                     </excludes>
                 </configuration>
             </plugin>
