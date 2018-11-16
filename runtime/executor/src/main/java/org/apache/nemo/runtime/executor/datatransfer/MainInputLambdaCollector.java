@@ -22,12 +22,16 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.commons.lang.SerializationUtils;
+import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.lambda.LambdaDecoderFactory;
+import org.apache.nemo.runtime.lambda.SerializeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +43,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.apache.nemo.runtime.executor.datatransfer.AWSUtils.S3_BUCKET_NAME;
 
@@ -62,6 +68,9 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private final Map<String, Integer> windowAndPartitionMap = new HashMap<>();
   private final EncoderFactory<O> encoderFactory;
   private EncoderFactory.Encoder<O> encoder;
+  private final byte[] encodedDecoderFactory;
+
+  private final ExecutorService executorService = Executors.newCachedThreadPool();
 
   /**
    * Constructor of the output collector.
@@ -76,17 +85,25 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     this.encoderFactory = ((NemoEventEncoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getEncoderFactory()).getValueEncoderFactory();
     this.amazonS3 = AmazonS3ClientBuilder.standard().build();
+    final LambdaDecoderFactory decoderFactory = new LambdaDecoderFactory(
+      ((NemoEventDecoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
+      .getDecoderFactory()).getValueDecoderFactory());
+    this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
   }
 
-  private void checkAndFlush(final String fileName) {
-    final Info info = windowAndInfoMap.get(fileName);
+  private void checkAndFlush(final String fileName, final Info info) {
     info.cnt += 1;
+    final long prevAccessTime = info.accessTime;
     info.accessTime = System.currentTimeMillis();
 
-    if (info.cnt >= 10) {
-      // flush
-      info.close();
+    //LOG.info("Info {}, count: {}", info.fname, info.cnt);
+
+    if (info.cnt >= 10 || info.accessTime - prevAccessTime >= 2000) {
       windowAndInfoMap.put(fileName, null);
+      // flush
+      executorService.execute(() -> {
+        info.close();
+      });
     }
 
     final long currTime = System.currentTimeMillis();
@@ -114,7 +131,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
       final String fileName =
         wvv.getWindows().iterator().next().toString() + "__" + this.hashCode();
 
-      LOG.info("Vertex 6 output: {} ******** {}", fileName, wvv);
+      //LOG.info("Vertex 6 output: {} ******** {}", fileName, wvv);
       Info info = windowAndInfoMap.get(fileName);
 
       if (info == null) {
@@ -129,14 +146,16 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
       }
 
       try {
-        info.encoder.encode(wv);
+        info.encoder.encode(wvv);
+        //LOG.info("Write count {}, of {}", info.dbos.getCount(), info.fname);
       } catch (IOException e) {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
 
       // time to flush?
-      checkAndFlush(fileName);
+      final Info info1 = info;
+      checkAndFlush(fileName, info1);
     }
 
     // send to serverless
@@ -158,6 +177,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     public int cnt;
     public long accessTime;
     public final String fname;
+    //private final DirectByteArrayOutputStream dbos = new DirectByteArrayOutputStream();
 
     public Info(final String fileName, final int partition) {
       this.cnt = 0;
@@ -165,6 +185,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
       this.fname = fileName + "-" + partition;
       try {
         this.outputStream = new FileOutputStream(fname);
+        outputStream.write(encodedDecoderFactory);
         this.encoder = encoderFactory.create(outputStream);
       } catch (IOException e) {
         e.printStackTrace();
@@ -174,6 +195,9 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
     public void close() {
       try {
+        //dbos.close();
+        //LOG.info("Output Stream bytes: {}", dbos.getCount());
+        //dbos.writeTo(outputStream);
         outputStream.close();
         final File file = new File(fname);
         LOG.info("Start to send main input data to S3 {}", file.getName());

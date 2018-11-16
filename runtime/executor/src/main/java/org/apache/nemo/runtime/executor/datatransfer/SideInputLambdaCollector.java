@@ -22,12 +22,10 @@ import com.amazonaws.services.lambda.AWSLambda;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
 import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
+import com.amazonaws.services.lambda.model.InvokeResult;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.ListObjectsV2Request;
-import com.amazonaws.services.s3.model.ListObjectsV2Result;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.amazonaws.services.s3.model.*;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.commons.codec.binary.Base64;
@@ -48,7 +46,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 import static org.apache.nemo.runtime.executor.datatransfer.AWSUtils.S3_BUCKET_NAME;
 
@@ -65,9 +69,11 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
   private EncoderFactory.Encoder<O> encoder;
   private OutputStream outputStream;
   private DecoderFactory decoderFactory;
-  private final String encodedDecoderFactory;
+  private final byte[] encodedDecoderFactory;
 
   int cnt = 0;
+
+  private final ExecutorService executorService = Executors.newCachedThreadPool();
 
 
   /**
@@ -84,7 +90,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
     this.decoderFactory = new LambdaDecoderFactory(
       ((NemoEventDecoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getDecoderFactory()).getValueDecoderFactory());
-    this.encodedDecoderFactory = SerializeUtils.serializeToString(decoderFactory);
+    this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
     this.amazonS3 = AmazonS3ClientBuilder.standard().build();
     this.awsLambda = AWSUtils.AWS_LAMBDA;
     this.awsLambdaAsync = AWSLambdaAsyncClientBuilder.standard().build();
@@ -122,6 +128,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
     try {
       if (encoder == null) {
         encoder = createEncoder(fileName);
+        outputStream.write(encodedDecoderFactory);
       }
       encoder.encode((O) wv);
 
@@ -129,30 +136,61 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
 
       final File file = new File(fileName);
 
-      LOG.info("Start to send sideinput data to S3");
-      final PutObjectRequest putObjectRequest =
-        new PutObjectRequest(S3_BUCKET_NAME + "/sideinput", file.getName(), file);
-      amazonS3.putObject(putObjectRequest);
-      file.delete();
-      LOG.info("End of send sideinput to S3");
+      //LOG.info("Start to send sideinput {}", file.getName());
+      final long st = System.currentTimeMillis();
+      System.out.println("!!! Start time of " + file.getName() + "::" + st);
 
-      // Get main input list
-      LOG.info("Request sideinput lambda");
-      final ListObjectsV2Request req =
-        new ListObjectsV2Request().withBucketName(S3_BUCKET_NAME).withPrefix("maininput/" + file.getName());
-      final ListObjectsV2Result result = amazonS3.listObjectsV2(req);
-      for (final S3ObjectSummary objectSummary : result.getObjectSummaries()) {
-        System.out.printf(" - %s (size: %d)\n", objectSummary.getKey(), objectSummary.getSize());
+      executorService.execute(() -> {
+        final PutObjectRequest putObjectRequest =
+          new PutObjectRequest(S3_BUCKET_NAME + "/sideinput", file.getName(), file);
+        amazonS3.putObject(putObjectRequest);
 
-        // Trigger lambdas
-        final InvokeRequest request = new InvokeRequest()
-          .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
-          .withPayload(String.format("{\"input\":\"%s\", \"decoder\":\"%s\"}",
-            objectSummary.getKey(), encodedDecoderFactory));
+        // Get main input list
+        //LOG.info("Request sideinput lambda");
+        final ListObjectsV2Request req =
+          new ListObjectsV2Request().withBucketName(S3_BUCKET_NAME).withPrefix("maininput/" + file.getName());
+        final ListObjectsV2Result result = amazonS3.listObjectsV2(req);
+        final List<Future<InvokeResult>> futures = new ArrayList<>(result.getObjectSummaries().size());
+        final List<DeleteObjectsRequest.KeyVersion> keys = new ArrayList<>(result.getObjectSummaries().size());
 
-        awsLambdaAsync.invokeAsync(request);
-        LOG.info("End of Request sideinput lambda");
-      }
+        for (final S3ObjectSummary objectSummary : result.getObjectSummaries()) {
+          //System.out.printf(" - %s (size: %d)\n", objectSummary.getKey(), objectSummary.getSize());
+          keys.add(new DeleteObjectsRequest.KeyVersion(objectSummary.getKey()));
+
+          // Trigger lambdas
+          final InvokeRequest request = new InvokeRequest()
+            .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
+            .withPayload(String.format("{\"sideInput\":\"sideinput/%s\", \"mainInput\":\"%s\"}",
+              fileName, objectSummary.getKey()));
+
+          futures.add(awsLambdaAsync.invokeAsync(request));
+          //LOG.info("End of Request sideinput lambda");
+        }
+
+
+        final List<Object> results = futures.stream().map(future -> {
+          try {
+            return future.get().getPayload().toString();
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          } catch (ExecutionException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+        }).collect(Collectors.toList());
+
+        final long et = System.currentTimeMillis();
+        System.out.println("!!! End time of " + file.getName() + "::" + et + ", latency: " + (et - st));
+        System.out.println("Result of " + file.getName() + ": " + results);
+
+        file.delete();
+        // remove files
+        final DeleteObjectsRequest deleteObjectsRequest = new DeleteObjectsRequest(S3_BUCKET_NAME);
+        deleteObjectsRequest.setKeys(keys);
+        amazonS3.deleteObjects(deleteObjectsRequest);
+        System.out.println("Delete objects");
+      });
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);

@@ -7,13 +7,14 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.commons.lang.SerializationUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.punctuation.Watermark;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -22,7 +23,9 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 public class HelloHandler implements RequestHandler<Map<String, Object>, Object> {
@@ -35,7 +38,9 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
 	private static final String PATH = "/tmp/nexmark-0.1-SNAPSHOT-shaded.jar";
 	//private static final String PATH = "/tmp/shaded.jar";
 	private URLClassLoader classLoader = null;
+	private LambdaSideInputHandler handler = null;
 
+	private final String serializedUserCode = "rO0ABXNyABZRdWVyeTdTaWRlSW5wdXRIYW5kbGVyMlM6Ib0vAkQCAAB4cA==";
 
 	private void createClassLoader() {
 		// read jar file
@@ -72,56 +77,94 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
 
 	@Override
 	public Object handleRequest(Map<String, Object> input, Context context) {
-		LOG.info("Input: {}", input);
-
 		System.out.println("Input: " + input);
 
 		if (classLoader == null) {
 			createClassLoader();
+			handler = SerializeUtils.deserializeFromString(serializedUserCode, classLoader);
 			LOG.info("Create class loader: {}", classLoader);
 		}
 
-		final String s3Key = (String) input.get("input");
-		final LambdaDecoderFactory lambdaDecoderFactory =
-      SerializeUtils.deserializeFromString((String) input.get("decoder"), classLoader);
-
-		System.out.println("decoder factory: " + lambdaDecoderFactory);
+		final String sideInputKey = (String) input.get("sideInput");
+		final String mainInputKey = (String) input.get("mainInput");
+		final List<String> result = new ArrayList<>();
+    final OutputCollector outputCollector = new LambdaOutputHandler(result);
 
 		try {
-			final S3Object result = s3Client.getObject(BUCKET_NAME, s3Key);
-			final S3ObjectInputStream inputStream = result.getObjectContent();
-		  final DecoderFactory.Decoder decoder = lambdaDecoderFactory.create(inputStream);
-      System.out.println("Decoder " + decoder);
+			final S3Object sideInputS3 = s3Client.getObject(BUCKET_NAME, sideInputKey);
+      final S3Object mainInputS3 = s3Client.getObject(BUCKET_NAME, mainInputKey);
+			final S3ObjectInputStream sideInputStream = sideInputS3.getObjectContent();
+      final S3ObjectInputStream mainInputStream = mainInputS3.getObjectContent();
+
+			// get decoder factory
+      final LambdaDecoderFactory sideInputDecoderFactory =
+        SerializeUtils.deserialize(sideInputStream, classLoader);
+
+      final LambdaDecoderFactory mainInputDecoderFactory =
+        SerializeUtils.deserialize(mainInputStream, classLoader);
+
+		  final DecoderFactory.Decoder sideInputDecoder =
+        sideInputDecoderFactory.create(sideInputStream);
+
+		  final DecoderFactory.Decoder mainInputDecoder =
+        mainInputDecoderFactory.create(mainInputStream);
+
+		  final WindowedValue sideInput = (WindowedValue) sideInputDecoder.decode();
+
+		  System.out.println("Side input: " + sideInput);
 
       while (true) {
-        final WindowedValue value = (WindowedValue) decoder.decode();
-
-        if (value == null) {
+        try {
+          final WindowedValue mainInput = (WindowedValue) mainInputDecoder.decode();
+          handler.processMainAndSideInput(mainInput, sideInput, outputCollector);
+          System.out.println("Windowed value: " + mainInput);
+        } catch (final IOException e) {
+          if(e.getMessage().contains("EOF")) {
+            System.out.println("eof!");
+          } else {
+            throw e;
+          }
           break;
         }
-
-        System.out.println("Windowed value: " + value);
       }
 
-			/*
-			final Method createMethod = object.getClass().getMethod("create", InputStream.class);
-			final Object decoder = createMethod.invoke(object, inputStream);
-
-			LOG.info("Decoder {}", decoder);
-
-			final Method decodeMethod = decoder.getClass().getMethod("decode");
-			final Object decodedValue = decodeMethod.invoke(decoder);
-			LOG.info("Decode value!: {}", decodedValue);
-			*/
 
 		} catch (IOException e) {
 			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
+
 		//final Decoder object  = (T)ois.readObject();
 		//ois.close();
 		//return object;
 
+    return result.toString();
 
-		return null;
 	}
+
+
+	final class LambdaOutputHandler  implements OutputCollector {
+
+	  private final List<String> result;
+
+	  public LambdaOutputHandler(final List<String> result) {
+	    this.result = result;
+    }
+
+    @Override
+    public void emit(Object output) {
+      System.out.println("Emit output: " + output);
+      result.add(output.toString());
+    }
+
+    @Override
+    public void emitWatermark(Watermark watermark) {
+
+    }
+
+    @Override
+    public void emit(String dstVertexId, Object output) {
+
+    }
+  }
 }

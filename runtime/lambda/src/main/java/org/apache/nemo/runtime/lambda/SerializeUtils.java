@@ -35,6 +35,30 @@ public final class SerializeUtils {
     }
   }
 
+
+  /**
+   * Read the object from Base64 string with the external class loader.
+   * @param classLoader an external class loader
+   * @param <T> object type
+   * @return object
+   * @throws IOException
+   * @throws ClassNotFoundException
+   */
+  public static <T> T deserialize(
+      final InputStream in,
+      final ClassLoader classLoader) {
+    try {
+      final ExternalJarObjectInputStream stream = new ExternalJarObjectInputStream(
+        classLoader, in);
+      final T object = (T) stream.readObject();
+      //stream.close();
+      return object;
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
   /**
    * Read the object from Base64 string with the external class loader.
    * @param s serialized object

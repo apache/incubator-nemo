@@ -106,13 +106,11 @@ class SourceVertexDataFetcher extends DataFetcher {
     // Emit watermark
     if (!bounded && isWatermarkTriggerTime()) {
       final Watermark w = new Watermark(readable.readWatermark());
-      LOG.info("Emite watermark: {}", w);
       return w;
     }
 
     // Data
     final Object element = readable.readCurrent();
-    LOG.info("Emite data: {}", element);
     return element;
   }
 }
