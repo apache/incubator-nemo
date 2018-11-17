@@ -53,6 +53,7 @@ public final class DataFetcherOutputCollector<O> implements OutputCollector<O> {
 
   @Override
   public void emitWatermark(final Watermark watermark) {
+    LOG.info(watermarkManager.toString());
     watermarkManager.trackAndEmitWatermarks(edgeIndex, watermark);
   }
 

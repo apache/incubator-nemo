@@ -161,22 +161,21 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    * @param inputWatermark input watermark
    */
   private void emitOutputWatermark(final Watermark inputWatermark) {
-
-    if (keyAndWatermarkHoldMap.isEmpty()) {
-      return;
-    }
-
     // Find min watermark hold
-    final Watermark minWatermarkHold = Collections.min(keyAndWatermarkHoldMap.values());
+    final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
+      ? new Watermark(Long.MAX_VALUE) // set this to MAX, in order to just use the input watermark.
+      : Collections.min(keyAndWatermarkHoldMap.values());
+    final Watermark outputWatermarkCandidate = new Watermark(
+      Math.max(prevOutputWatermark.getTimestamp(),
+        Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
+
+    LOG.info("Watermark hold: {}, "
+      + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("Watermark hold: {}, "
         + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
-
-    final Watermark outputWatermarkCandidate = new Watermark(
-      Math.max(prevOutputWatermark.getTimestamp(),
-        Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
@@ -193,6 +192,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   @Override
   public void onWatermark(final Watermark inputWatermark) {
+    LOG.info("GBKK {} / {} / {}", inputWatermark, prevOutputWatermark, keyAndWatermarkHoldMap);
     processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
     // Emit watermark to downstream operators
     emitOutputWatermark(inputWatermark);
@@ -368,6 +368,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     }
     @Override
     public void emitWatermark(final Watermark watermark) {
+      LOG.info(outputCollector.toString());
       outputCollector.emitWatermark(watermark);
     }
     @Override

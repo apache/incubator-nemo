@@ -49,7 +49,7 @@ public final class Watermark implements Serializable, Comparable<Watermark> {
 
   @Override
   public String toString() {
-    return String.valueOf(timestamp);
+    return String.valueOf("Watermark(" + timestamp + ")");
   }
 
   @Override

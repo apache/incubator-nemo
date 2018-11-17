@@ -46,7 +46,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   private static final Logger LOG = LoggerFactory.getLogger(DoFnTransform.class.getName());
 
   private List<WindowedValue<InputT>> curPushedBacks;
-  private long pushedBackWatermark; // Long.MAX_VALUE when no pushed-back exists.
+  private long curPushedBackWatermark; // Long.MAX_VALUE when no pushed-back exists.
   private long curInputWatermark;
   private long curOutputWatermark;
 
@@ -67,7 +67,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
     super(doFn, inputCoder, outputCoders, mainOutputTag,
       additionalOutputTags, windowingStrategy, sideInputs, options);
     this.curPushedBacks = new ArrayList<>();
-    this.pushedBackWatermark = Long.MAX_VALUE;
+    this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;
     this.curOutputWatermark = Long.MIN_VALUE;
   }
@@ -89,10 +89,10 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
       checkAndInvokeBundle();
       final SideInputElement sideInputElement = (SideInputElement) data;
       final PCollectionView view = getSideInputs().get(sideInputElement.getViewIndex());
-      final WindowedValue<Iterable<?>> sideInputData = sideInputElement.getData();
-      getSideInputHandler().addSideInputValue(view, sideInputData);
+      final WindowedValue sideInputData = sideInputElement.getData();
+      getSideInputHandler().addView(view, sideInputData);
 
-      // With the new side input added, we may be able to process the pushed-back elements.
+      // With the new side input added, we may be able to process some pushed-back elements.
       final List<WindowedValue<InputT>> pushedBackAgain = new ArrayList<>();
       long pushedBackAgainWatermark = Long.MAX_VALUE;
       for (WindowedValue<InputT> curPushedBack : curPushedBacks) {
@@ -104,14 +104,18 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
         }
       }
       curPushedBacks = pushedBackAgain;
+      curPushedBackWatermark = pushedBackAgainWatermark;
       checkAndFinishBundle();
+
+      // See if we can emit a new watermark, as we may have processed some pushed-back elements
+      onWatermark(new Watermark(curInputWatermark));
     } else {
       // Main input
       checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
         getPushBackRunner().processElementInReadyWindows((WindowedValue<InputT>) data);
       for (final WindowedValue wv : pushedBack) {
-        pushedBackWatermark = Math.min(pushedBackWatermark, wv.getTimestamp().getMillis());
+        curPushedBackWatermark = Math.min(curPushedBackWatermark, wv.getTimestamp().getMillis());
         curPushedBacks.add(wv);
       }
       checkAndFinishBundle();
@@ -121,7 +125,11 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   @Override
   public void onWatermark(final Watermark watermark) {
     curInputWatermark = watermark.getTimestamp();
-    final long minOfInputAndPushback = Math.min(curInputWatermark, pushedBackWatermark);
+
+    LOG.info("Watermark {} / {} / {}  || Pushedbacks {}",
+      curInputWatermark, curPushedBackWatermark, curOutputWatermark, curPushedBacks);
+
+    final long minOfInputAndPushback = Math.min(curInputWatermark, curPushedBackWatermark);
     if (minOfInputAndPushback > curOutputWatermark) {
       // Watermark advances!
       getOutputCollector().emitWatermark(new Watermark(minOfInputAndPushback));
@@ -134,7 +142,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   }
 
   private void hardFlushAllPushedbacks() {
-    // Instaed of using the PushBackRunner, we directly use the DoFnRunner to not wait for sideinputs.
+    // Instead of using the PushBackRunner, we directly use the DoFnRunner to not wait for sideinputs.
     curPushedBacks.forEach(wv -> getDoFnRunner().processElement(wv));
     curPushedBacks.clear();
   }

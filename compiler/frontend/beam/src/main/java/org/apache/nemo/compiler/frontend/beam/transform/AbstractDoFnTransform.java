@@ -31,10 +31,12 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.compiler.frontend.beam.MaterializedViewReader;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -64,7 +66,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   private transient DoFnInvoker<InterT, OutputT> doFnInvoker;
   private transient DoFnRunners.OutputManager outputManager;
-  private transient SideInputHandler sideInputReader;
+  private transient MaterializedViewReader sideInputReader;
 
   // Variables for bundle.
   // We consider count and time millis for start/finish bundle.
@@ -129,7 +131,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     return pushBackRunner;
   }
 
-  final SideInputHandler getSideInputHandler() {
+  final MaterializedViewReader getSideInputHandler() {
     return sideInputReader;
   }
 
@@ -177,7 +179,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     outputManager = new DefaultOutputManager<>(outputCollector, mainOutputTag);
 
     // create side input reader
-    sideInputReader = new SideInputHandler(sideInputs.values(), InMemoryStateInternals.forKey(null));
+    sideInputReader = new MaterializedViewReader(new ArrayList<>(sideInputs.values()));
 
     // this transform does not support state and timer.
     final StepContext stepContext = new StepContext() {

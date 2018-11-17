@@ -48,7 +48,7 @@ public final class WindowedBroadcast {
     return p.apply(GenerateSequence
       .from(1)
       .withRate(2, Duration.standardSeconds(1))
-      .withTimestampFn(num -> new Instant(num * 100))); // 0.1 second between subsequent elements
+      .withTimestampFn(num -> new Instant(num * 500))); // 0.5 second between subsequent elements
   }
   /**
    * Main function for the MR BEAM program.

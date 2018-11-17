@@ -25,27 +25,30 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.nemo.common.Pair;
 
 import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  */
-public final class MaterializedViewReader<T> extends ReadyCheckingSideInputReader {
-  final Set<PCollectionView<?>> sideInputs;
+public final class MaterializedViewReader implements ReadyCheckingSideInputReader {
+  final List<PCollectionView<?>> sideInputs;
   final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> materializedViews;
 
-  public MaterializedViewReader() {
+  public MaterializedViewReader(final List<PCollectionView<?>> sideInputs) {
+    this.sideInputs = sideInputs;
+    this.materializedViews = new HashMap<>();
   }
 
   @Override
   public boolean isReady(final PCollectionView<?> view, final BoundedWindow window) {
-    return materializedViews.containsKey(Pair.<>of(view, window));
+    return materializedViews.containsKey(Pair.of(view, window));
   }
 
   @Nullable
   @Override
   public <T> T get(final PCollectionView<T> view, final BoundedWindow window) {
-    return materializedViews.get(Pair.of(view, window));
+    return (T) materializedViews.get(Pair.of(view, window));
   }
 
   @Override
@@ -58,7 +61,10 @@ public final class MaterializedViewReader<T> extends ReadyCheckingSideInputReade
     return sideInputs.isEmpty();
   }
 
-  public void addView(final PCollectionView<T> view, final BoundedWindow window, final WindowedValue materializedData) {
-    materializedViews.put(Pair.of(view, window), materializedData);
+  public <T> void addView(final PCollectionView<T> view,
+                          final WindowedValue<T> materializedData) {
+    for (final BoundedWindow bw : materializedData.getWindows()) {
+      materializedViews.put(Pair.of(view, bw), materializedData.getValue());
+    }
   }
 }
