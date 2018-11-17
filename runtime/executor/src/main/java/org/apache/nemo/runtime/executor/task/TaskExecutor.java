@@ -388,7 +388,6 @@ public final class TaskExecutor {
    */
   private void onEventFromDataFetcher(final Object event,
                                       final DataFetcher dataFetcher) {
-    LOG.info("onevent {} to {}: {}", dataFetcher.getDataSource().getId(), taskId, event);
     if (event instanceof Finishmark) {
       // We've consumed all the data from this data fetcher.
       if (dataFetcher instanceof SourceVertexDataFetcher) {

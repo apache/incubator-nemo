@@ -169,9 +169,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       Math.max(prevOutputWatermark.getTimestamp(),
         Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
-    LOG.info("Watermark hold: {}, "
-      + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
-
     if (LOG.isDebugEnabled()) {
       LOG.debug("Watermark hold: {}, "
         + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
@@ -192,7 +189,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   @Override
   public void onWatermark(final Watermark inputWatermark) {
-    LOG.info("GBKK {} / {} / {}", inputWatermark, prevOutputWatermark, keyAndWatermarkHoldMap);
     processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
     // Emit watermark to downstream operators
     emitOutputWatermark(inputWatermark);
@@ -368,7 +364,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     }
     @Override
     public void emitWatermark(final Watermark watermark) {
-      LOG.info(outputCollector.toString());
       outputCollector.emitWatermark(watermark);
     }
     @Override

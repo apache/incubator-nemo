@@ -43,7 +43,6 @@ public final class OperatorWatermarkCollector implements OutputCollector {
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-    LOG.info(operatorVertex.getId());
     operatorVertex.getTransform().onWatermark(watermark);
   }
 

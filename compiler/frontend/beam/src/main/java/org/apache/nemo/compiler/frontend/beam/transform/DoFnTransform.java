@@ -126,9 +126,6 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   public void onWatermark(final Watermark watermark) {
     curInputWatermark = watermark.getTimestamp();
 
-    LOG.info("Watermark {} / {} / {}  || Pushedbacks {}",
-      curInputWatermark, curPushedBackWatermark, curOutputWatermark, curPushedBacks);
-
     final long minOfInputAndPushback = Math.min(curInputWatermark, curPushedBackWatermark);
     if (minOfInputAndPushback > curOutputWatermark) {
       // Watermark advances!

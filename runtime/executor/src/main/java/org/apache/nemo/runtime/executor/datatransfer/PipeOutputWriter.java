@@ -77,10 +77,7 @@ public final class PipeOutputWriter implements OutputWriter {
   }
 
   private void writeData(final Object element, final List<ByteOutputContext> pipeList) {
-    LOG.info("{} writes {} to number of pipes: {}", srcTaskId, element, pipeList.size());
-
     pipeList.forEach(pipe -> {
-
       try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
         // Serialize (Do not compress)
         final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();

@@ -44,7 +44,6 @@ public final class SingleInputWatermarkManager implements InputWatermarkManager 
   @Override
   public void trackAndEmitWatermarks(final int edgeIndex,
                                      final Watermark watermark) {
-    LOG.info("trackAndEmitWatermarks {} / {}", edgeIndex, watermark);
     watermarkCollector.emitWatermark(watermark);
   }
 }
