@@ -34,8 +34,8 @@ import java.util.Map;
  * TODO #290: Handle OOMs in InMemorySideInputReader
  */
 public final class InMemorySideInputReader implements ReadyCheckingSideInputReader {
-  final Collection<PCollectionView<?>> sideInputsToRead;
-  final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> inMemorySideInputs;
+  private final Collection<PCollectionView<?>> sideInputsToRead;
+  private final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> inMemorySideInputs;
 
   public InMemorySideInputReader(final Collection<PCollectionView<?>> sideInputsToRead) {
     this.sideInputsToRead = sideInputsToRead;

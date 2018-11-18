@@ -23,6 +23,7 @@ import org.apache.beam.sdk.util.WindowedValue;
 /**
  * {@link org.apache.nemo.compiler.frontend.beam.transform.DoFnTransform} treats elements of this type as side inputs.
  * TODO #289: Prevent using SideInputElement in UDFs
+ * @param <T> type of the side input value.
  */
 public final class SideInputElement<T> {
   private final int sideInputIndex;

@@ -76,8 +76,6 @@ public final class WindowedBroadcast {
           final Long anElementInTheWindow = c.element();
           final List<Long> allElementsInTheWindow = c.sideInput(windowedView);
           System.out.println(anElementInTheWindow + " / " + allElementsInTheWindow);
-
-          // TODO: check when the sideinput is empty
           if (!allElementsInTheWindow.contains(anElementInTheWindow)) {
             throw new RuntimeException(anElementInTheWindow + " not in " + allElementsInTheWindow.toString());
           } else {
@@ -86,9 +84,6 @@ public final class WindowedBroadcast {
         }
       }).withSideInputs(windowedView)
     ).apply(new WriteOneFilePerWindow(outputFilePath, 1));
-
-
-    // TODO: Multi-sideinputs + view reuse
 
     p.run();
   }

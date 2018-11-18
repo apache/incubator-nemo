@@ -21,7 +21,6 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.beam.sdk.transforms.Materializations;
 import org.apache.beam.sdk.transforms.ViewFn;
@@ -39,8 +38,7 @@ import java.util.*;
  * @param <O> materialized output type
  */
 public final class CreateViewTransform<I, O> implements Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
-  private final PCollectionView<O> view;
-  private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
+  private final ViewFn<Object, O> viewFn;
   private final Map<BoundedWindow, List<I>> windowListMap;
 
   private OutputCollector<WindowedValue<O>> outputCollector;
@@ -49,15 +47,12 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
 
   /**
    * Constructor of CreateViewTransform.
-   * @param view the view.
+   * @param viewFn the view function.
    */
-  public CreateViewTransform(final PCollectionView view)  {
-    this.view = view;
+  public CreateViewTransform(final ViewFn<Object, O> viewFn)  {
+    this.viewFn = viewFn;
     this.windowListMap = new HashMap<>();
     this.currentOutputWatermark = Long.MIN_VALUE;
-
-    // Hard-coded casting, since the PCollectionView implementations assume this type (checked in Beam 2.6.0).
-    this.viewFn = (ViewFn<Materializations.MultimapView<Void, ?>, O>) view.getViewFn();
   }
 
   @Override
@@ -118,7 +113,7 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("CreateViewTransform:" + view.getViewFn());
+    sb.append("CreateViewTransform:" + viewFn);
     return sb.toString();
   }
 

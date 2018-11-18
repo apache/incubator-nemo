@@ -24,7 +24,6 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ViewFn;
-import org.apache.beam.sdk.transforms.join.UnionCoder;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.*;
 import org.apache.nemo.common.dag.DAGBuilder;

@@ -80,7 +80,8 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   @Override
   public void onData(final Object data) {
     if (data instanceof SideInputElement) {
-      // Side input
+      // This element is a Side Input
+      // TODO #287: Consider Explicit Multi-Input IR Transform
 
       // Flush out any current bundle-related states in the DoFn,
       // as this sideinput may trigger the processing of pushed-back data.
@@ -110,7 +111,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
       // See if we can emit a new watermark, as we may have processed some pushed-back elements
       onWatermark(new Watermark(curInputWatermark));
     } else {
-      // Main input
+      // This element is the Main Input
       checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
         getPushBackRunner().processElementInReadyWindows((WindowedValue<InputT>) data);

@@ -29,7 +29,6 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.datatransfer.MultiInputWatermarkManager;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -256,6 +255,7 @@ public final class TaskExecutor {
       }
 
       // Parent-task read
+      // TODO #285: Cache broadcasted data
       task.getTaskIncomingEdges()
         .stream()
         .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId())) // edge to this vertex

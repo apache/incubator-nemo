@@ -28,7 +28,7 @@ import java.io.*;
  * EncoderFactory for side inputs.
  */
 public final class SideInputCoder extends AtomicCoder<SideInputElement> {
-  final WindowedValue.FullWindowedValueCoder windowedValueCoder;
+  private final WindowedValue.FullWindowedValueCoder windowedValueCoder;
 
   /**
    * Private constructor.
