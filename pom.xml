@@ -28,7 +28,7 @@ under the License.
 
     <groupId>org.apache.nemo</groupId>
     <artifactId>nemo-project</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.1</version>
     <packaging>pom</packaging>
     <name>Nemo Project</name>
 
@@ -36,7 +36,7 @@ under the License.
         <connection>scm:git:https://gitbox.apache.org/repos/asf/incubator-nemo.git</connection>
         <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/incubator-nemo.git</developerConnection>
         <url>https://github.com/apache/incubator-nemo/tree/${project.scm.tag}</url>
-        <tag>nemo-project-0.1</tag>
+        <tag>nemo-pproject-0.1</tag>
     </scm>
 
     <properties>
