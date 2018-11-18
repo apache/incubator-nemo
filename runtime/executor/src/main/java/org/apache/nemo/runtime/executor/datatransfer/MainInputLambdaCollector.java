@@ -64,7 +64,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private final IRVertex irVertex;
 
   private final AmazonS3 amazonS3;
-  private final ConcurrentMap<String, Info> windowAndInfoMap = new ConcurrentHashMap<>();
+  private final Map<String, Info> windowAndInfoMap = new HashMap<>();
   private final Map<String, Integer> windowAndPartitionMap = new HashMap<>();
   private final EncoderFactory<O> encoderFactory;
   private EncoderFactory.Encoder<O> encoder;
