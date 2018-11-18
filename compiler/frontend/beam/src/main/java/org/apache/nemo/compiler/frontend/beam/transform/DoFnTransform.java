@@ -88,9 +88,9 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
       checkAndInvokeBundle();
       final SideInputElement sideInputElement = (SideInputElement) data;
-      final PCollectionView view = getSideInputs().get(sideInputElement.getViewIndex());
-      final WindowedValue sideInputData = sideInputElement.getData();
-      getSideInputHandler().addView(view, sideInputData);
+      final PCollectionView view = getSideInputs().get(sideInputElement.getSideInputIndex());
+      final WindowedValue sideInputData = sideInputElement.getSideInputValue();
+      getSideInputHandler().addSideInputValue(view, sideInputData);
 
       // With the new side input added, we may be able to process some pushed-back elements.
       final List<WindowedValue<InputT>> pushedBackAgain = new ArrayList<>();

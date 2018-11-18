@@ -47,8 +47,8 @@ public final class SideInputCoder extends AtomicCoder<SideInputElement> {
   @Override
   public void encode(final SideInputElement sideInputElement, final OutputStream outStream) throws IOException {
     final DataOutputStream dataOutputStream = new DataOutputStream(outStream);
-    dataOutputStream.writeInt(sideInputElement.getViewIndex());
-    windowedValueCoder.encode(sideInputElement.getData(), dataOutputStream);
+    dataOutputStream.writeInt(sideInputElement.getSideInputIndex());
+    windowedValueCoder.encode(sideInputElement.getSideInputValue(), dataOutputStream);
   }
 
   @Override

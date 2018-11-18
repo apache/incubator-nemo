@@ -19,26 +19,25 @@
 package org.apache.nemo.compiler.frontend.beam;
 
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.beam.sdk.values.PCollectionView;
 
 /**
- * Nemo uses this.
- * TODO: users should not use this.
+ * {@link org.apache.nemo.compiler.frontend.beam.transform.DoFnTransform} treats elements of this type as side inputs.
+ * TODO #289: Prevent using SideInputElement in UDFs
  */
 public final class SideInputElement<T> {
-  private final int viewIndex;
-  private final WindowedValue<T> data;
+  private final int sideInputIndex;
+  private final WindowedValue<T> sideInputValue;
 
-  public SideInputElement(final int viewIndex, final WindowedValue<T> data) {
-    this.viewIndex = viewIndex;
-    this.data = data;
+  public SideInputElement(final int sideInputIndex, final WindowedValue<T> sideInputValue) {
+    this.sideInputIndex = sideInputIndex;
+    this.sideInputValue = sideInputValue;
   }
 
-  public int getViewIndex() {
-    return viewIndex;
+  public int getSideInputIndex() {
+    return sideInputIndex;
   }
 
-  public WindowedValue<T> getData() {
-    return data;
+  public WindowedValue<T> getSideInputValue() {
+    return sideInputValue;
   }
 }

@@ -25,46 +25,48 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.nemo.common.Pair;
 
 import javax.annotation.Nullable;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
+ * Accumulates and provides side inputs in memory.
+ * TODO #290: Handle OOMs in InMemorySideInputReader
  */
-public final class MaterializedViewReader implements ReadyCheckingSideInputReader {
-  final List<PCollectionView<?>> sideInputs;
-  final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> materializedViews;
+public final class InMemorySideInputReader implements ReadyCheckingSideInputReader {
+  final Collection<PCollectionView<?>> sideInputsToRead;
+  final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> inMemorySideInputs;
 
-  public MaterializedViewReader(final List<PCollectionView<?>> sideInputs) {
-    this.sideInputs = sideInputs;
-    this.materializedViews = new HashMap<>();
+  public InMemorySideInputReader(final Collection<PCollectionView<?>> sideInputsToRead) {
+    this.sideInputsToRead = sideInputsToRead;
+    this.inMemorySideInputs = new HashMap<>();
   }
 
   @Override
   public boolean isReady(final PCollectionView<?> view, final BoundedWindow window) {
-    return materializedViews.containsKey(Pair.of(view, window));
+    return inMemorySideInputs.containsKey(Pair.of(view, window));
   }
 
   @Nullable
   @Override
   public <T> T get(final PCollectionView<T> view, final BoundedWindow window) {
-    return (T) materializedViews.get(Pair.of(view, window));
+    return (T) inMemorySideInputs.get(Pair.of(view, window));
   }
 
   @Override
-  public <T> boolean contains(PCollectionView<T> view) {
-    return sideInputs.contains(view);
+  public <T> boolean contains(final PCollectionView<T> view) {
+    return sideInputsToRead.contains(view);
   }
 
   @Override
   public boolean isEmpty() {
-    return sideInputs.isEmpty();
+    return sideInputsToRead.isEmpty();
   }
 
-  public <T> void addView(final PCollectionView<T> view,
-                          final WindowedValue<T> materializedData) {
-    for (final BoundedWindow bw : materializedData.getWindows()) {
-      materializedViews.put(Pair.of(view, bw), materializedData.getValue());
+  public <T> void addSideInputValue(final PCollectionView<T> view,
+                                    final WindowedValue<T> sideInputValue) {
+    for (final BoundedWindow bw : sideInputValue.getWindows()) {
+      inMemorySideInputs.put(Pair.of(view, bw), sideInputValue.getValue());
     }
   }
 }
