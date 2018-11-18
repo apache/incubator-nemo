@@ -36,7 +36,7 @@ under the License.
         <connection>scm:git:https://gitbox.apache.org/repos/asf/incubator-nemo.git</connection>
         <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/incubator-nemo.git</developerConnection>
         <url>https://github.com/apache/incubator-nemo/tree/${project.scm.tag}</url>
-        <tag>nemo-project-0.1</tag>
+        <tag>master</tag>
     </scm>
 
     <properties>
