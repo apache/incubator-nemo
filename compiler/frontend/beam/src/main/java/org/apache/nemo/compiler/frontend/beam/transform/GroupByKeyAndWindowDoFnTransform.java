@@ -371,12 +371,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // TODO #270: consider early firing
       // TODO #270: This logic may not be applied to early firing outputs
 
-      if (getContext().getIRVertex().getId().equals("vertex16")) {
-        LOG.info("vertex16 GBKW data: {}", output);
-      } else if (getContext().getIRVertex().getId().equals("vertex10")) {
-        LOG.info("vertex10 GBKW data: {}", output);
-      }
-
       keyAndWatermarkHoldMap.put(output.getValue().getKey(),
         new Watermark(output.getTimestamp().getMillis() + 1));
       outputCollector.emit(output);
