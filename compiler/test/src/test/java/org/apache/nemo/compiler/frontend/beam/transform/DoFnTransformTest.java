@@ -20,21 +20,18 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.View;
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 import org.apache.reef.io.Tuple;
@@ -43,12 +40,10 @@ import org.junit.Test;
 
 import java.util.*;
 
-import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public final class DoFnTransformTest {
 
@@ -261,8 +256,8 @@ public final class DoFnTransformTest {
     final Map<Integer, PCollectionView<?>> sideInputMap = new HashMap<>();
     sideInputMap.put(0, view1);
     sideInputMap.put(1, view2);
-    final DoFnTransform<String, String> doFnTransform =
-      new DoFnTransform(
+    final PushBackDoFnTransform<String, String> doFnTransform =
+      new PushBackDoFnTransform(
         new SimpleSideInputDoFn<String>(view1, view2),
         NULL_INPUT_CODER,
         NULL_OUTPUT_CODERS,

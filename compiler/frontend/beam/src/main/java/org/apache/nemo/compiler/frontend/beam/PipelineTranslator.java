@@ -187,7 +187,7 @@ final class PipelineTranslator {
                                                   final TransformHierarchy.Node beamNode,
                                                   final ParDo.SingleOutput<?, ?> transform) {
     final Map<Integer, PCollectionView<?>> sideInputMap = getSideInputMap(transform.getSideInputs());
-    final DoFnTransform doFnTransform = createDoFnTransform(ctx, beamNode, sideInputMap);
+    final AbstractDoFnTransform doFnTransform = createDoFnTransform(ctx, beamNode, sideInputMap);
     final IRVertex vertex = new OperatorVertex(doFnTransform);
 
     ctx.addVertex(vertex);
@@ -203,7 +203,7 @@ final class PipelineTranslator {
                                                  final TransformHierarchy.Node beamNode,
                                                  final ParDo.MultiOutput<?, ?> transform) {
     final Map<Integer, PCollectionView<?>> sideInputMap = getSideInputMap(transform.getSideInputs());
-    final DoFnTransform doFnTransform = createDoFnTransform(ctx, beamNode, sideInputMap);
+    final AbstractDoFnTransform doFnTransform = createDoFnTransform(ctx, beamNode, sideInputMap);
     final IRVertex vertex = new OperatorVertex(doFnTransform);
     ctx.addVertex(vertex);
     beamNode.getInputs().values().stream()
@@ -356,9 +356,9 @@ final class PipelineTranslator {
     return IntStream.range(0, viewList.size()).boxed().collect(Collectors.toMap(Function.identity(), viewList::get));
   }
 
-  private static DoFnTransform createDoFnTransform(final PipelineTranslationContext ctx,
-                                                   final TransformHierarchy.Node beamNode,
-                                                   final Map<Integer, PCollectionView<?>> sideInputMap) {
+  private static AbstractDoFnTransform createDoFnTransform(final PipelineTranslationContext ctx,
+                                                           final TransformHierarchy.Node beamNode,
+                                                           final Map<Integer, PCollectionView<?>> sideInputMap) {
     try {
       final AppliedPTransform pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
       final DoFn doFn = ParDoTranslation.getDoFn(pTransform);
@@ -368,15 +368,28 @@ final class PipelineTranslator {
       final PCollection<?> mainInput = (PCollection<?>)
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
-      return new DoFnTransform(
-        doFn,
-        mainInput.getCoder(),
-        getOutputCoders(pTransform),
-        mainOutputTag,
-        additionalOutputTags.getAll(),
-        mainInput.getWindowingStrategy(),
-        sideInputMap,
-        ctx.getPipelineOptions());
+      if (sideInputMap.isEmpty()) {
+        return new DoFnTransform(
+          doFn,
+          mainInput.getCoder(),
+          getOutputCoders(pTransform),
+          mainOutputTag,
+          additionalOutputTags.getAll(),
+          mainInput.getWindowingStrategy(),
+          sideInputMap,
+          ctx.getPipelineOptions());
+      } else {
+        return new PushBackDoFnTransform(
+          doFn,
+          mainInput.getCoder(),
+          getOutputCoders(pTransform),
+          mainOutputTag,
+          additionalOutputTags.getAll(),
+          mainInput.getWindowingStrategy(),
+          sideInputMap,
+          ctx.getPipelineOptions());
+
+      }
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }

@@ -148,7 +148,11 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   final void checkAndInvokeBundle() {
     if (bundleFinished) {
       bundleFinished = false;
-      pushBackRunner.startBundle();
+      if (pushBackRunner == null) {
+        doFnRunner.startBundle();
+      } else {
+        pushBackRunner.startBundle();
+      }
       prevBundleStartTime = System.currentTimeMillis();
       currBundleCount = 0;
     }
@@ -163,7 +167,11 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     if (!bundleFinished) {
       if (force || currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
         bundleFinished = true;
-        pushBackRunner.finishBundle();
+        if (pushBackRunner == null) {
+          doFnRunner.finishBundle();
+        } else {
+          pushBackRunner.finishBundle();
+        }
       }
     }
   }
