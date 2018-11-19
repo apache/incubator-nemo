@@ -29,6 +29,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.datatransfer.MultiInputWatermarkManager;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -316,9 +317,9 @@ public final class TaskExecutor {
   }
 
   private void processWatermark(final InputWatermarkManager inputWatermarkManager,
-                                final WatermarkWithIndex watermarkWithIndex) {
-    inputWatermarkManager.trackAndEmitWatermarks(
-      watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
+                                final Watermark watermark,
+                                final int index) {
+    inputWatermarkManager.trackAndEmitWatermarks(index, watermark);
   }
 
   /**
@@ -399,9 +400,14 @@ public final class TaskExecutor {
         serializedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getSerializedBytes();
         encodedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getEncodedBytes();
       }
+    } else if (event instanceof Watermark) {
+      // Watermark
+      processWatermark(dataFetcher.getInputWatermarkManager(), (Watermark) event, 0);
     } else if (event instanceof WatermarkWithIndex) {
       // Watermark
-      processWatermark(dataFetcher.getInputWatermarkManager(), (WatermarkWithIndex) event);
+      final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) event;
+      processWatermark(
+        dataFetcher.getInputWatermarkManager(), watermarkWithIndex.getWatermark(), watermarkWithIndex.getIndex());
     } else {
       // Process data element
       processElement(dataFetcher.getOutputCollector(), event);

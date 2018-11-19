@@ -62,6 +62,8 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   private transient OutputCollector<WindowedValue<OutputT>> outputCollector;
   private transient DoFnRunner<InterT, OutputT> doFnRunner;
+
+  // null when there is no side input.
   private transient PushbackSideInputDoFnRunner<InterT, OutputT> pushBackRunner;
 
   private transient DoFnInvoker<InterT, OutputT> doFnInvoker;
@@ -213,10 +215,9 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       outputCoders,
       windowingStrategy);
 
-    pushBackRunner = SimplePushbackSideInputDoFnRunner.<InterT, OutputT>create(
-      doFnRunner,
-      sideInputs.values(),
-      sideInputReader);
+    pushBackRunner = sideInputs.isEmpty()
+      ? null
+      : SimplePushbackSideInputDoFnRunner.<InterT, OutputT>create(doFnRunner, sideInputs.values(), sideInputReader);
   }
 
   public final OutputCollector<WindowedValue<OutputT>> getOutputCollector() {

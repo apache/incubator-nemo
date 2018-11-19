@@ -50,6 +50,8 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   private long curInputWatermark;
   private long curOutputWatermark;
 
+  private final boolean noSideInput;
+
   /**
    * DoFnTransform Constructor.
    *
@@ -70,6 +72,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;
     this.curOutputWatermark = Long.MIN_VALUE;
+    this.noSideInput = sideInputs.isEmpty();
   }
 
   @Override
@@ -79,8 +82,19 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   public void onData(final Object data) {
+    // Do not need any push-back logic.
+    if (noSideInput) {
+      checkAndInvokeBundle();
+      final WindowedValue<InputT> mainInputElement = (WindowedValue<InputT>) data;
+      getDoFnRunner().processElement(mainInputElement);
+      checkAndFinishBundle(false);
+      return;
+    }
+
+    // Need to distinguish side/main inputs and push-back main inputs.
     if (data instanceof SideInputElement) {
       // This element is a Side Input
+      final SideInputElement sideInputElement = (SideInputElement) data;
       // TODO #287: Consider Explicit Multi-Input IR Transform
 
       // Flush out any current bundle-related states in the DoFn,
@@ -88,7 +102,6 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
       checkAndFinishBundle(true); // forced
 
       checkAndInvokeBundle();
-      final SideInputElement sideInputElement = (SideInputElement) data;
       final PCollectionView view = getSideInputs().get(sideInputElement.getSideInputIndex());
       final WindowedValue sideInputData = sideInputElement.getSideInputValue();
       getSideInputHandler().addSideInputValue(view, sideInputData);
@@ -112,9 +125,10 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
       onWatermark(new Watermark(curInputWatermark));
     } else {
       // This element is the Main Input
+      final WindowedValue<InputT> mainInputElement = (WindowedValue<InputT>) data;
       checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
-        getPushBackRunner().processElementInReadyWindows((WindowedValue<InputT>) data);
+        getPushBackRunner().processElementInReadyWindows(mainInputElement);
       for (final WindowedValue wv : pushedBack) {
         curPushedBackWatermark = Math.min(curPushedBackWatermark, wv.getTimestamp().getMillis());
         curPushedBacks.add(wv);

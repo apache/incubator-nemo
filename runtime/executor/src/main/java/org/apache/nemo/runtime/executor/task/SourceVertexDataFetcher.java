@@ -108,7 +108,7 @@ class SourceVertexDataFetcher extends DataFetcher {
     // Emit watermark
     if (!bounded && isWatermarkTriggerTime()) {
       // index=0 as there is only 1 input stream
-      return new WatermarkWithIndex(new Watermark(readable.readWatermark()), 0);
+      return new Watermark(readable.readWatermark());
     }
 
     // Data
