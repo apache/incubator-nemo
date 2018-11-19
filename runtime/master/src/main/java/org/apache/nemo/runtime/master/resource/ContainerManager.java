@@ -25,9 +25,7 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.driver.evaluator.AllocatedEvaluator;
-import org.apache.reef.driver.evaluator.EvaluatorRequest;
-import org.apache.reef.driver.evaluator.EvaluatorRequestor;
+import org.apache.reef.driver.evaluator.*;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Configurations;
 import org.apache.reef.tang.Tang;
@@ -42,6 +40,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
 
 /**
  * (WARNING) This class is not thread-safe.
@@ -80,10 +79,13 @@ public final class ContainerManager {
    */
   private final Map<String, ResourceSpecification> evaluatorIdToResourceSpec;
 
+  private final JVMProcessFactory jvmProcessFactory;
+
   @Inject
   private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                            final EvaluatorRequestor evaluatorRequestor,
-                           final MessageEnvironment messageEnvironment) {
+                           final MessageEnvironment messageEnvironment,
+                           final JVMProcessFactory jvmProcessFactory) {
     this.isTerminated = false;
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
@@ -92,6 +94,7 @@ public final class ContainerManager {
     this.evaluatorIdToResourceSpec = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
+    this.jvmProcessFactory = jvmProcessFactory;
   }
 
   /**
@@ -145,6 +148,10 @@ public final class ContainerManager {
       allocatedContainer.close();
       return;
     }
+
+    final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
+      .addOption("-Dio.netty.leakDetectionLevel=advanced");
+    allocatedContainer.setProcess(jvmProcess);
 
     final ResourceSpecification resourceSpecification = selectResourceSpecForContainer();
     evaluatorIdToResourceSpec.put(allocatedContainer.getId(), resourceSpecification);

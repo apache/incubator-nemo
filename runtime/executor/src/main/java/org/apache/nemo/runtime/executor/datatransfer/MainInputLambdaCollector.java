@@ -142,7 +142,6 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
         if (windowAndPartitionMap.get(fileName) == null) {
           windowAndPartitionMap.put(fileName, 0);
         }
-
         info = new Info(fileName, windowAndPartitionMap.get(fileName));
         windowAndInfoMap.put(fileName, info);
         windowAndPartitionMap.put(fileName, windowAndPartitionMap.get(fileName) + 1);
