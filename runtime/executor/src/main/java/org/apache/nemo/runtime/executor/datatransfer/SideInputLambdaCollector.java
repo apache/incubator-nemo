@@ -186,10 +186,10 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
 
         file.delete();
         // remove files
-        final DeleteObjectsRequest deleteObjectsRequest = new DeleteObjectsRequest(S3_BUCKET_NAME);
-        deleteObjectsRequest.setKeys(keys);
-        amazonS3.deleteObjects(deleteObjectsRequest);
-        System.out.println("Delete objects");
+        //final DeleteObjectsRequest deleteObjectsRequest = new DeleteObjectsRequest(S3_BUCKET_NAME);
+        //deleteObjectsRequest.setKeys(keys);
+        //amazonS3.deleteObjects(deleteObjectsRequest);
+        //System.out.println("Delete objects");
       });
     } catch (IOException e) {
       e.printStackTrace();

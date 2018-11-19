@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.lambda;
 
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.s3.AmazonS3;
@@ -32,7 +33,8 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
 
 	private static final Logger LOG = LogManager.getLogger(HelloHandler.class);
 	//private static final OutputSender sender = new OutputSender("18.182.129.182", 20312);
-	private static final AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
+	private static final AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
+    .withClientConfiguration(new ClientConfiguration().withMaxConnections(100)).build();
 
 	private static final String BUCKET_NAME = "nemo-serverless";
 	private static final String PATH = "/tmp/nexmark-0.2-SNAPSHOT-shaded.jar";
@@ -127,6 +129,8 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
           break;
         }
       }
+
+      s3Client.deleteObject(BUCKET_NAME, mainInputKey);
 
 
 		} catch (IOException e) {
