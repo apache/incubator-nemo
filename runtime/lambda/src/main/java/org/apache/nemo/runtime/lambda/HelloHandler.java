@@ -35,7 +35,7 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
 	private static final AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
 
 	private static final String BUCKET_NAME = "nemo-serverless";
-	private static final String PATH = "/tmp/nexmark-0.1-SNAPSHOT-shaded.jar";
+	private static final String PATH = "/tmp/nexmark-0.2-SNAPSHOT-shaded.jar";
 	//private static final String PATH = "/tmp/shaded.jar";
 	private URLClassLoader classLoader = null;
 	private LambdaSideInputHandler handler = null;
@@ -44,7 +44,7 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
 
 	private void createClassLoader() {
 		// read jar file
-		final S3Object result = s3Client.getObject(BUCKET_NAME, "jars/nexmark-0.1-SNAPSHOT-shaded.jar");
+		final S3Object result = s3Client.getObject(BUCKET_NAME, "jars/nexmark-0.2-SNAPSHOT-shaded.jar");
 		//final S3Object result = s3Client.getObject(BUCKET_NAME, "jars/shaded.jar");
 		if (!Files.exists(Paths.get(PATH))) {
 			LOG.info("Copying file...");

@@ -18,12 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.PutObjectRequest;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.commons.lang.SerializationUtils;
-import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -31,22 +27,13 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.lambda.LambdaDecoderFactory;
-import org.apache.nemo.runtime.lambda.SerializeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.apache.nemo.runtime.executor.datatransfer.AWSUtils.S3_BUCKET_NAME;
 
 /**
  * OutputCollector implementation.
@@ -63,12 +50,13 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
   private final IRVertex irVertex;
 
-  private final AmazonS3 amazonS3;
   private final Map<String, Info> windowAndInfoMap = new HashMap<>();
   private final Map<String, Integer> windowAndPartitionMap = new HashMap<>();
+
   private final EncoderFactory<O> encoderFactory;
   private EncoderFactory.Encoder<O> encoder;
   private final byte[] encodedDecoderFactory;
+  private final StorageObjectFactory storageObjectFactory;
 
   private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final long period = 5000;
@@ -80,12 +68,13 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   public MainInputLambdaCollector(
     final IRVertex irVertex,
     final List<StageEdge> outgoingEdges,
-    final SerializerManager serializerManager) {
+    final SerializerManager serializerManager,
+    final StorageObjectFactory storageObjectFactory) {
     this.irVertex = irVertex;
+    this.storageObjectFactory = storageObjectFactory;
 
     this.encoderFactory = ((NemoEventEncoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getEncoderFactory()).getValueEncoderFactory();
-    this.amazonS3 = AmazonS3ClientBuilder.standard().build();
     final LambdaDecoderFactory decoderFactory = new LambdaDecoderFactory(
       ((NemoEventDecoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getDecoderFactory()).getValueDecoderFactory());
@@ -93,7 +82,8 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
   }
 
-  private void checkAndFlush(final String fileName, final Info info) {
+  private void checkAndFlush(final String key) {
+    final Info info = windowAndInfoMap.get(key);
     info.cnt += 1;
     final long prevAccessTime = info.accessTime;
     info.accessTime = System.currentTimeMillis();
@@ -101,11 +91,11 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     //LOG.info("Info {}, count: {}", info.fname, info.cnt);
 
     //if (info.cnt >= 10000 || info.accessTime - prevAccessTime >= 2000) {
-    if (info.cnt >= 150000 || info.accessTime - prevAccessTime >= period) {
-        windowAndInfoMap.put(fileName, null);
+    if (info.cnt >= 1000 || info.accessTime - prevAccessTime >= period) {
+        windowAndInfoMap.put(key, null);
         // flush
         executorService.execute(() -> {
-          info.close();
+          info.storageObject.close();
         });
     }
 
@@ -142,22 +132,19 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
         if (windowAndPartitionMap.get(fileName) == null) {
           windowAndPartitionMap.put(fileName, 0);
         }
-        info = new Info(fileName, windowAndPartitionMap.get(fileName));
+
+        final int partition = windowAndPartitionMap.get(fileName);
+        info = new Info(storageObjectFactory.newInstance(
+          fileName, partition, encodedDecoderFactory, encoderFactory));
         windowAndInfoMap.put(fileName, info);
         windowAndPartitionMap.put(fileName, windowAndPartitionMap.get(fileName) + 1);
       }
 
-      try {
-        info.encoder.encode(wvv);
-        //LOG.info("Write count {}, of {}", info.dbos.getCount(), info.fname);
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
+      info.storageObject.encode(wvv);
+      //LOG.info("Write count {}, of {}", info.dbos.getCount(), info.fname);
 
       // time to flush?
-      final Info info1 = info;
-      checkAndFlush(fileName, info1);
+      checkAndFlush(fileName);
     }
 
     // send to serverless
@@ -174,48 +161,17 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   }
 
   final class Info {
-    public final EncoderFactory.Encoder encoder;
-    public final OutputStream outputStream;
-    public int cnt;
-    public long accessTime;
-    public final String fname;
-    private final AtomicBoolean closed = new AtomicBoolean(false);
-    //private final DirectByteArrayOutputStream dbos = new DirectByteArrayOutputStream();
+    public int cnt = 0;
+    public long accessTime = System.currentTimeMillis();
+    public final StorageObjectFactory.StorageObject storageObject;
 
-    public Info(final String fileName, final int partition) {
-      this.cnt = 0;
-      this.accessTime = System.currentTimeMillis();
-      this.fname = fileName + "-" + partition;
-      try {
-        this.outputStream = new FileOutputStream(fname);
-        outputStream.write(encodedDecoderFactory);
-        this.encoder = encoderFactory.create(outputStream);
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
+    Info(StorageObjectFactory.StorageObject storageObject) {
+      this.storageObject = storageObject;
     }
 
-    public void close() {
-      if (closed.compareAndSet(false, true)) {
-        try {
-          //dbos.close();
-          //LOG.info("Output Stream bytes: {}", dbos.getCount());
-          //dbos.writeTo(outputStream);
-          outputStream.close();
-          final File file = new File(fname);
-          LOG.info("Start to send main input data to S3 {}", file.getName());
-          final PutObjectRequest putObjectRequest =
-            new PutObjectRequest(S3_BUCKET_NAME + "/maininput", file.getName(), file);
-          amazonS3.putObject(putObjectRequest);
-          file.delete();
-          LOG.info("End of send main input to S3 {}", file.getName());
-
-        } catch (IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }
+    @Override
+    public String toString() {
+      return "{cnt: " + cnt + ", obj: " + storageObject + "}";
     }
   }
 
