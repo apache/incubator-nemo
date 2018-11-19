@@ -143,7 +143,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    * Checks whether the bundle is finished or not.
    * Starts the bundle if it is done.
    */
-  protected final void checkAndInvokeBundle() {
+  final void checkAndInvokeBundle() {
     if (bundleFinished) {
       bundleFinished = false;
       pushBackRunner.startBundle();
@@ -157,9 +157,9 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   /**
    * Checks whether it is time to finish the bundle and finish it.
    */
-  protected final void checkAndFinishBundle() {
+  final void checkAndFinishBundle(final boolean force) {
     if (!bundleFinished) {
-      if (currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
+      if (force || currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
         bundleFinished = true;
         pushBackRunner.finishBundle();
       }

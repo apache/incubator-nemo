@@ -23,6 +23,8 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.nemo.common.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
@@ -34,6 +36,8 @@ import java.util.Map;
  * TODO #290: Handle OOMs in InMemorySideInputReader
  */
 public final class InMemorySideInputReader implements ReadyCheckingSideInputReader {
+  private static final Logger LOG = LoggerFactory.getLogger(InMemorySideInputReader.class.getName());
+
   private final Collection<PCollectionView<?>> sideInputsToRead;
   private final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> inMemorySideInputs;
 

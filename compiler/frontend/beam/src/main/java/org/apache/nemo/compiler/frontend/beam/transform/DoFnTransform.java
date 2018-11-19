@@ -85,7 +85,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
       // Flush out any current bundle-related states in the DoFn,
       // as this sideinput may trigger the processing of pushed-back data.
-      checkAndFinishBundle();
+      checkAndFinishBundle(true); // forced
 
       checkAndInvokeBundle();
       final SideInputElement sideInputElement = (SideInputElement) data;
@@ -106,7 +106,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
       }
       curPushedBacks = pushedBackAgain;
       curPushedBackWatermark = pushedBackAgainWatermark;
-      checkAndFinishBundle();
+      checkAndFinishBundle(false);
 
       // See if we can emit a new watermark, as we may have processed some pushed-back elements
       onWatermark(new Watermark(curInputWatermark));
@@ -119,7 +119,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
         curPushedBackWatermark = Math.min(curPushedBackWatermark, wv.getTimestamp().getMillis());
         curPushedBacks.add(wv);
       }
-      checkAndFinishBundle();
+      checkAndFinishBundle(false);
     }
   }
 

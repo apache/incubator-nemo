@@ -119,7 +119,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
     keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
 
-    checkAndFinishBundle();
+    checkAndFinishBundle(false);
   }
 
   /**
