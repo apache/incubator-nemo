@@ -1,17 +1,20 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.compiler.frontend.beam;
 
@@ -38,22 +41,17 @@ public final class BeamFrontendALSTest {
     final DAG<IRVertex, IREdge> producedDAG = CompilerTestUtil.compileALSDAG();
 
     assertEquals(producedDAG.getTopologicalSort(), producedDAG.getTopologicalSort());
-    assertEquals(42, producedDAG.getVertices().size());
+    assertEquals(38, producedDAG.getVertices().size());
 
 //    producedDAG.getTopologicalSort().forEach(v -> System.out.println(v.getId()));
-    final IRVertex vertex11 = producedDAG.getTopologicalSort().get(5);
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex11).size());
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex11.getId()).size());
-    assertEquals(4, producedDAG.getOutgoingEdgesOf(vertex11).size());
+    final IRVertex vertexX = producedDAG.getTopologicalSort().get(5);
+    assertEquals(1, producedDAG.getIncomingEdgesOf(vertexX).size());
+    assertEquals(1, producedDAG.getIncomingEdgesOf(vertexX.getId()).size());
+    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertexX).size());
 
-    final IRVertex vertex17 = producedDAG.getTopologicalSort().get(10);
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex17).size());
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertex17.getId()).size());
-    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex17).size());
-
-    final IRVertex vertex18 = producedDAG.getTopologicalSort().get(16);
-    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex18).size());
-    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex18.getId()).size());
-    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex18).size());
+    final IRVertex vertexY = producedDAG.getTopologicalSort().get(10);
+    assertEquals(1, producedDAG.getIncomingEdgesOf(vertexY).size());
+    assertEquals(1, producedDAG.getIncomingEdgesOf(vertexY.getId()).size());
+    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertexY).size());
   }
 }

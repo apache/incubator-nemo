@@ -1,17 +1,20 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
@@ -53,7 +56,7 @@ import java.util.function.BiFunction;
 @Requires(CommunicationPatternProperty.class)
 public final class SkewReshapingPass extends ReshapingPass {
   private static final Logger LOG = LoggerFactory.getLogger(SkewReshapingPass.class.getName());
-
+  private static final String ADDITIONAL_OUTPUT_TAG = "DynOptData";
   /**
    * Default constructor.
    */
@@ -154,7 +157,7 @@ public final class SkewReshapingPass extends ReshapingPass {
         (dynOptData, outputCollector)-> {
           dynOptData.forEach((k, v) -> {
             final Pair<Object, Object> pairData = Pair.of(k, v);
-            outputCollector.emit(abv.getId(), pairData);
+            outputCollector.emit(ADDITIONAL_OUTPUT_TAG, pairData);
           });
           return dynOptData;
         };
@@ -180,7 +183,7 @@ public final class SkewReshapingPass extends ReshapingPass {
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     newEdge.setProperty(KeyExtractorProperty.of(new PairKeyExtractor()));
-    newEdge.setProperty(AdditionalOutputTagProperty.of("DynOptData"));
+    newEdge.setProperty(AdditionalOutputTagProperty.of(ADDITIONAL_OUTPUT_TAG));
 
     // Dynamic optimization handles statistics on key-value data by default.
     // We need to get coders for encoding/decoding the keys to send data to

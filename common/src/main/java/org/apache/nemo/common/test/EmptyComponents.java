@@ -1,17 +1,20 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.common.test;
 
@@ -30,9 +33,11 @@ import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.values.KV;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -132,7 +137,7 @@ public final class EmptyComponents {
    * @param <I> input type.
    * @param <O> output type.
    */
-  public static class EmptyTransform<I, O> implements Transform<I, O> {
+  public static class EmptyTransform<I, O> extends NoWatermarkEmitTransform<I, O> {
     private final String name;
 
     /**
@@ -202,6 +207,11 @@ public final class EmptyComponents {
     }
 
     @Override
+    public boolean isBounded() {
+      return true;
+    }
+
+    @Override
     public List<Readable<T>> getReadables(final int desirednumOfSplits) {
       final List list = new ArrayList(desirednumOfSplits);
       for (int i = 0; i < desirednumOfSplits; i++) {
@@ -227,13 +237,33 @@ public final class EmptyComponents {
    */
   static final class EmptyReadable<T> implements Readable<T> {
     @Override
-    public Iterable<T> read() {
-      return new ArrayList<>();
+    public void prepare() {
+
+    }
+
+    @Override
+    public T readCurrent() {
+      return null;
+    }
+
+    @Override
+    public long readWatermark() {
+      return 0;
+    }
+
+    @Override
+    public boolean isFinished() {
+      return true;
     }
 
     @Override
     public List<String> getLocations() {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void close() throws IOException {
+
     }
   }
 }

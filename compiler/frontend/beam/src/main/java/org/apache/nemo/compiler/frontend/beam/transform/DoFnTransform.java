@@ -1,17 +1,20 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
@@ -22,6 +25,10 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
+import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.punctuation.Watermark;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -34,6 +41,7 @@ import java.util.Map;
  * @param <OutputT> output type.
  */
 public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<InputT, InputT, OutputT> {
+  private static final Logger LOG = LoggerFactory.getLogger(DoFnTransform.class.getName());
 
   /**
    * DoFnTransform Constructor.
@@ -60,12 +68,28 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   public void onData(final WindowedValue<InputT> data) {
+    checkAndInvokeBundle();
     getDoFnRunner().processElement(data);
+    checkAndFinishBundle();
+  }
+
+  @Override
+  public void onWatermark(final Watermark watermark) {
+    checkAndInvokeBundle();
+    // TODO #216: We should consider push-back data that waits for side input
+    // TODO #216: If there are push-back data, input watermark >= output watermark
+    getOutputCollector().emitWatermark(watermark);
+    checkAndFinishBundle();
   }
 
   @Override
   protected void beforeClose() {
     // nothing
+  }
+
+  @Override
+  OutputCollector wrapOutputCollector(final OutputCollector oc) {
+    return oc;
   }
 
   @Override

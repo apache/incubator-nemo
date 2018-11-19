@@ -1,17 +1,20 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
@@ -29,6 +32,8 @@ import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -43,6 +48,7 @@ import java.util.Map;
  */
 public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   Transform<WindowedValue<InputT>, WindowedValue<OutputT>> {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractDoFnTransform.class.getName());
 
   private final TupleTag<OutputT> mainOutputTag;
   private final List<TupleTag<?>> additionalOutputTags;
@@ -58,6 +64,16 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   private transient SideInputReader sideInputReader;
   private transient DoFnInvoker<InterT, OutputT> doFnInvoker;
   private transient DoFnRunners.OutputManager outputManager;
+
+  // Variables for bundle.
+  // We consider count and time millis for start/finish bundle.
+  // If # of processed elements > bundleSize
+  // or elapsed time > bundleMillis, we finish the current bundle and start a new one
+  private transient long bundleSize;
+  private transient long bundleMillis;
+  private long prevBundleStartTime;
+  private long currBundleCount = 0;
+  private boolean bundleFinished = true;
 
   /**
    * AbstractDoFnTransform constructor.
@@ -112,15 +128,44 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     return doFn;
   }
 
+  /**
+   * Checks whether the bundle is finished or not.
+   * Starts the bundle if it is done.
+   */
+  protected final void checkAndInvokeBundle() {
+    if (bundleFinished) {
+      bundleFinished = false;
+      doFnRunner.startBundle();
+      prevBundleStartTime = System.currentTimeMillis();
+      currBundleCount = 0;
+    }
+    currBundleCount += 1;
+  }
+
+
+  /**
+   * Checks whether it is time to finish the bundle and finish it.
+   */
+  protected final void checkAndFinishBundle() {
+    if (!bundleFinished) {
+      if (currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
+        bundleFinished = true;
+        doFnRunner.finishBundle();
+      }
+    }
+  }
+
   @Override
   public final void prepare(final Context context, final OutputCollector<WindowedValue<OutputT>> oc) {
     // deserialize pipeline option
     final NemoPipelineOptions options = serializedOptions.get().as(NemoPipelineOptions.class);
-    this.outputCollector = oc;
+    this.outputCollector = wrapOutputCollector(oc);
+
+    this.bundleMillis = options.getMaxBundleTimeMills();
+    this.bundleSize = options.getMaxBundleSize();
 
     // create output manager
-    outputManager = new DefaultOutputManager<>(
-      outputCollector, context, mainOutputTag);
+    outputManager = new DefaultOutputManager<>(outputCollector, mainOutputTag);
 
     // create side input reader
     if (!sideInputs.isEmpty()) {
@@ -129,14 +174,12 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       sideInputReader = NullSideInputReader.of(sideInputs);
     }
 
-    // create step context
     // this transform does not support state and timer.
     final StepContext stepContext = new StepContext() {
       @Override
       public StateInternals stateInternals() {
         throw new UnsupportedOperationException("Not support stateInternals in DoFnTransform");
       }
-
       @Override
       public TimerInternals timerInternals() {
         throw new UnsupportedOperationException("Not support timerInternals in DoFnTransform");
@@ -162,14 +205,18 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       inputCoder,
       outputCoders,
       windowingStrategy);
+  }
 
-    doFnRunner.startBundle();
+  public final OutputCollector<WindowedValue<OutputT>> getOutputCollector() {
+    return outputCollector;
   }
 
   @Override
   public final void close() {
     beforeClose();
-    doFnRunner.finishBundle();
+    if (!bundleFinished) {
+      doFnRunner.finishBundle();
+    }
     doFnInvoker.invokeTeardown();
   }
 
@@ -179,6 +226,13 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    * @return wrapped doFn.
    */
   abstract DoFn wrapDoFn(final DoFn originalDoFn);
+
+  /**
+   * An abstract function that wraps the original output collector.
+   * @param oc the original outputCollector.
+   * @return wrapped output collector.
+   */
+  abstract OutputCollector wrapOutputCollector(final OutputCollector oc);
 
   @Override
   public abstract void onData(final WindowedValue<InputT> data);

@@ -1,20 +1,24 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.compiler.frontend.spark.source;
 
+import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.spark.*;
@@ -70,6 +74,11 @@ public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String>
   }
 
   @Override
+  public boolean isBounded() {
+    return true;
+  }
+
+  @Override
   public List<Readable<String>> getReadables(final int desiredNumOfSplits) {
     return readables;
   }
@@ -82,7 +91,7 @@ public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String>
   /**
    * A Readable wrapper for Spark text file.
    */
-  private final class SparkTextFileBoundedSourceReadable implements Readable<String> {
+  private final class SparkTextFileBoundedSourceReadable extends BoundedIteratorReadable<String> {
     private final SparkConf sparkConf;
     private final int partitionIndex;
     private final List<String> locations;
@@ -111,14 +120,8 @@ public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String>
     }
 
     @Override
-    public Iterable<String> read() throws IOException {
-      // for setting up the same environment in the executors.
-      final SparkContext sparkContext = SparkContext.getOrCreate(sparkConf);
-
-      // Spark does lazy evaluation: it doesn't load the full data in rdd, but only the partition it is asked for.
-      final RDD<String> rdd = sparkContext.textFile(inputPath, numPartitions);
-      return () -> JavaConverters.asJavaIteratorConverter(
-          rdd.iterator(rdd.getPartitions()[partitionIndex], TaskContext$.MODULE$.empty())).asJava();
+    public long readWatermark() {
+      throw new UnsupportedOperationException("No watermark");
     }
 
     @Override
@@ -128,6 +131,22 @@ public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String>
       } else {
         return locations;
       }
+    }
+
+    @Override
+    public void close() throws IOException {
+    }
+
+    @Override
+    protected Iterator<String> initializeIterator() {
+      // for setting up the same environment in the executors.
+      final SparkContext sparkContext = SparkContext.getOrCreate(sparkConf);
+
+      // Spark does lazy evaluation: it doesn't load the full data in rdd, but only the partition it is asked for.
+      final RDD<String> rdd = sparkContext.textFile(inputPath, numPartitions);
+      final Iterable<String> iterable = () -> JavaConverters.asJavaIteratorConverter(
+        rdd.iterator(rdd.getPartitions()[partitionIndex], TaskContext$.MODULE$.empty())).asJava();
+      return iterable.iterator();
     }
   }
 }

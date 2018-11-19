@@ -1,23 +1,27 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.common.ir.vertex.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.punctuation.Watermark;
+
 import java.io.Serializable;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -42,6 +46,14 @@ public interface Transform<I, O> extends Serializable {
   void onData(I element);
 
   /**
+   * On watermark received.
+   * This method should be called for the minimum watermark among input streams (input watermark).
+   * Transform may emit collected data after receiving watermarks.
+   * @param watermark watermark
+   */
+  void onWatermark(Watermark watermark);
+
+  /**
    * Close the transform.
    */
   void close();
@@ -54,7 +66,6 @@ public interface Transform<I, O> extends Serializable {
      * @return the broadcast variable.
      */
     Object getBroadcastVariable(Serializable id);
-    Map<String, String> getTagToAdditionalChildren();
 
     /**
      * Put serialized data to send to the executor.

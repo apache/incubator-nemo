@@ -1,17 +1,20 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.runtime.executor.data;
 
@@ -26,7 +29,6 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextDescriptor;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -196,7 +198,8 @@ public final class BlockManagerWorker {
         // Block resides in the evaluator
         return getDataFromLocalBlock(blockId, blockStore, keyRange);
       } else {
-        final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.newBuilder()
+        final ControlMessage.BlockTransferContextDescriptor descriptor =
+          ControlMessage.BlockTransferContextDescriptor.newBuilder()
             .setBlockId(blockId)
             .setBlockStore(convertBlockStore(blockStore))
             .setRuntimeEdgeId(runtimeEdgeId)
@@ -204,7 +207,7 @@ public final class BlockManagerWorker {
             .build();
         final CompletableFuture<ByteInputContext> contextFuture = blockTransferThrottler
             .requestTransferPermission(runtimeEdgeId)
-            .thenCompose(obj -> byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray()));
+            .thenCompose(obj -> byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), false));
 
         // whenComplete() ensures that blockTransferThrottler.onTransferFinished() is always called,
         // even on failures. Actual failure handling and Task retry will be done by DataFetcher.
@@ -325,8 +328,8 @@ public final class BlockManagerWorker {
    * @throws InvalidProtocolBufferException from errors during parsing context descriptor
    */
   public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
-    final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.PARSER
-        .parseFrom(outputContext.getContextDescriptor());
+    final ControlMessage.BlockTransferContextDescriptor descriptor =
+      ControlMessage.BlockTransferContextDescriptor.PARSER.parseFrom(outputContext.getContextDescriptor());
     final DataStoreProperty.Value blockStore = convertBlockStore(descriptor.getBlockStore());
     final String blockId = descriptor.getBlockId();
     final KeyRange keyRange = SerializationUtils.deserialize(descriptor.getKeyRange().toByteArray());

@@ -1,36 +1,59 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.common.ir;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  * Interface for readable.
  * @param <O> output type.
  */
 public interface Readable<O> extends Serializable {
+
   /**
-   * Method to read data from the source.
-   *
-   * @return an {@link Iterable} of the data read by the readable.
-   * @throws IOException exception while reading data.
+   * Prepare reading data.
    */
-  Iterable<O> read() throws IOException;
+  void prepare();
+
+  /**
+   * Method to read current data from the source.
+   * The caller should check whether the Readable is finished or not by using isFinished() method
+   * before calling this method.
+   *
+   * It can throw NoSuchElementException although it is not finished in Unbounded source.
+   * @return a data read by the readable.
+   */
+  O readCurrent() throws NoSuchElementException;
+
+  /**
+   * Read watermark.
+   * @return watermark
+   */
+  long readWatermark();
+
+  /**
+   * @return true if it reads all data.
+   */
+  boolean isFinished();
 
   /**
    * Returns the list of locations where this readable resides.
@@ -41,4 +64,9 @@ public interface Readable<O> extends Serializable {
    * @throws Exception                     any other exceptions on the way
    */
   List<String> getLocations() throws Exception;
+
+  /**
+   * Close.
+   */
+  void close() throws IOException;
 }

@@ -1,17 +1,20 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.runtime.master.scheduler;
 
@@ -47,7 +50,7 @@ import javax.inject.Inject;
 final class TaskDispatcher {
   private static final Logger LOG = LoggerFactory.getLogger(TaskDispatcher.class.getName());
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
-  private final ExecutorService schedulerThread;
+  private final ExecutorService dispatcherThread;
   private final PlanStateManager planStateManager;
   private boolean isSchedulerRunning;
   private boolean isTerminated;
@@ -64,7 +67,7 @@ final class TaskDispatcher {
                          final ExecutorRegistry executorRegistry,
                          final PlanStateManager planStateManager) {
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
-    this.schedulerThread = Executors.newSingleThreadExecutor(runnable ->
+    this.dispatcherThread = Executors.newSingleThreadExecutor(runnable ->
         new Thread(runnable, "TaskDispatcher thread"));
     this.planStateManager = planStateManager;
     this.isSchedulerRunning = false;
@@ -78,7 +81,7 @@ final class TaskDispatcher {
    * A separate thread is run to dispatch tasks to executors.
    * See comments in the {@link Scheduler} for avoiding race conditions.
    */
-  private final class SchedulerThread implements Runnable {
+  private final class TaskDispatcherThread implements Runnable {
     @Override
     public void run() {
       while (!isTerminated) {
@@ -164,8 +167,8 @@ final class TaskDispatcher {
    */
   void run() {
     if (!isTerminated && !isSchedulerRunning) {
-      schedulerThread.execute(new SchedulerThread());
-      schedulerThread.shutdown();
+      dispatcherThread.execute(new TaskDispatcherThread());
+      dispatcherThread.shutdown();
       isSchedulerRunning = true;
     }
   }

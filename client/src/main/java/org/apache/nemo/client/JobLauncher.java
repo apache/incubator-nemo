@@ -1,17 +1,20 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.client;
 
@@ -24,6 +27,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.parameters.JobMessageHandler;
@@ -56,6 +60,18 @@ import java.util.concurrent.CountDownLatch;
  * Job launcher.
  */
 public final class JobLauncher {
+
+  static {
+    System.out.println(
+        "\nPowered by\n"
+          + "    _   __                   \n"
+          + "   / | / /__  ____ ___  ____ \n"
+          + "  /  |/ / _ \\/ __ `__ \\/ __ \\\n"
+          + " / /|  /  __/ / / / / / /_/ /\n"
+          + "/_/ |_/\\___/_/ /_/ /_/\\____/ \n"
+    );
+  }
+
   private static final Tang TANG = Tang.Factory.getTang();
   private static final Logger LOG = LoggerFactory.getLogger(JobLauncher.class.getName());
   private static final int LOCAL_NUMBER_OF_EVALUATORS = 100; // hopefully large enough for our use....
@@ -70,6 +86,7 @@ public final class JobLauncher {
   private static CountDownLatch jobDoneLatch;
   private static String serializedDAG;
   private static final List<?> COLLECTED_DATA = new ArrayList<>();
+  private static final String[] EMPTY_USER_ARGS = new String[0];
 
   /**
    * private constructor.
@@ -84,9 +101,12 @@ public final class JobLauncher {
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
-    driverRPCServer = new DriverRPCServer();
+    // Get Job and Driver Confs
+    builtJobConf = getJobConf(args);
 
     // Registers actions for launching the DAG.
+    LOG.info("Launching RPC Server");
+    driverRPCServer = new DriverRPCServer();
     driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> {
         })
@@ -96,8 +116,6 @@ public final class JobLauncher {
             SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
         .run();
 
-    // Get Job and Driver Confs
-    builtJobConf = getJobConf(args);
     final Configuration driverConf = getDriverConf(builtJobConf);
     final Configuration driverNcsConf = getDriverNcsConf();
     final Configuration driverMessageConfg = getDriverMessageConf();
@@ -106,10 +124,11 @@ public final class JobLauncher {
     final Configuration bandwidthConfig = getJSONConf(builtJobConf, JobConf.BandwidthJSONPath.class,
         JobConf.BandwidthJSONContents.class);
     final Configuration clientConf = getClientConf();
+    final Configuration schedulerConf = getSchedulerConf(builtJobConf);
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfg,
-        executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration());
+        executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration(), schedulerConf);
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
@@ -119,6 +138,7 @@ public final class JobLauncher {
       if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
         throw new RuntimeException("Configuration for launching driver is not ready");
       }
+
 
       // Launch driver
       LOG.info("Launching driver");
@@ -222,7 +242,8 @@ public final class JobLauncher {
   private static void runUserProgramMain(final Configuration jobConf) throws Exception {
     final Injector injector = TANG.newInjector(jobConf);
     final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
-    final String[] args = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+    final String userArgsString = injector.getNamedInstance(JobConf.UserMainArguments.class);
+    final String[] args = userArgsString.isEmpty() ? EMPTY_USER_ARGS : userArgsString.split(" ");
     final Class userCode = Class.forName(className);
     final Method method = userCode.getMethod("main", String[].class);
     if (!Modifier.isStatic(method.getModifiers())) {
@@ -243,6 +264,16 @@ public final class JobLauncher {
   private static Configuration getClientConf() {
     final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
     jcb.bindNamedParameter(JobMessageHandler.class, NemoClient.JobMessageHandler.class);
+    return jcb.build();
+  }
+
+  private static Configuration getSchedulerConf(final Configuration jobConf)
+    throws ClassNotFoundException, InjectionException {
+    final Injector injector = TANG.newInjector(jobConf);
+    final String classImplName = injector.getNamedInstance(JobConf.SchedulerImplClassName.class);
+    final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
+    final Class schedulerImpl = ((Class<Scheduler>) Class.forName(classImplName));
+    jcb.bindImplementation(Scheduler.class, schedulerImpl);
     return jcb.build();
   }
 
@@ -328,6 +359,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerNumWorkingThreads.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportClientNumThreads.class);
     cl.registerShortNameOfClass(JobConf.MaxNumDownloadsForARuntimeEdge.class);
+    cl.registerShortNameOfClass(JobConf.SchedulerImplClassName.class);
     cl.processCommandLine(args);
     return confBuilder.build();
   }

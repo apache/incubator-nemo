@@ -1,17 +1,20 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.examples.beam;
 
@@ -129,14 +132,14 @@ final class HDFSWrite extends DoFn<String, Void> {
   }
 
   /**
-   * Start bundle.
-   * The number of output files are determined according to the parallelism.
+   * Writes to exactly one file.
+   * (The number of total output files are determined according to the parallelism.)
    * i.e. if parallelism is 2, then there are total 2 output files.
-   * Each output file is written as a bundle.
-   * @param c      bundle context {@link StartBundleContext}
    */
-  @StartBundle
-  public void startBundle(final StartBundleContext c) {
+  @Setup
+  public void setup() {
+    // Creating a side-effect in Setup is discouraged, but we do it anyways for now as we're extending DoFn.
+    // TODO #273: Our custom HDFSWrite should implement WriteOperation
     fileName = new Path(path + UUID.randomUUID().toString());
     try {
       fileSystem = fileName.getFileSystem(new JobConf());
@@ -163,12 +166,11 @@ final class HDFSWrite extends DoFn<String, Void> {
   }
 
   /**
-   * finish bundle.
-   * @param c             context
+   * Teardown.
    * @throws IOException  output stream exception
    */
-  @FinishBundle
-  public void finishBundle(final FinishBundleContext c) throws IOException {
+  @Teardown
+  public void tearDown() throws IOException {
     outputStream.close();
   }
 }

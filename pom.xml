@@ -1,28 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-Copyright (C) 2018 Seoul National University
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
   http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+      <groupId>org.apache</groupId>
+      <artifactId>apache</artifactId>
+      <version>21</version>
+    </parent>
 
     <groupId>org.apache.nemo</groupId>
     <artifactId>nemo-project</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.2-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Nemo Project</name>
+
+    <scm>
+        <connection>scm:git:https://gitbox.apache.org/repos/asf/incubator-nemo.git</connection>
+        <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/incubator-nemo.git</developerConnection>
+        <url>https://github.com/apache/incubator-nemo/tree/${project.scm.tag}</url>
+        <tag>master</tag>
+    </scm>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -56,18 +71,9 @@ limitations under the License.
         <module>conf</module>
         <module>client</module>
         <module>common</module>
-        <module>compiler/backend</module>
-        <module>compiler/frontend/beam</module>
-        <module>compiler/frontend/spark</module>
-        <module>compiler/optimizer</module>
-        <module>compiler/test</module>
-        <module>examples/beam</module>
-        <module>examples/spark</module>
-        <module>runtime/common</module>
-        <module>runtime/executor</module>
-        <module>runtime/master</module>
-        <module>runtime/driver</module>
-        <module>runtime/test</module>
+        <module>compiler</module>
+        <module>examples</module>
+        <module>runtime</module>
     </modules>
 
     <dependencies>
@@ -231,17 +237,24 @@ limitations under the License.
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.0.0</version>
                 <configuration>
-                    <excludePackageNames>*.org.apache.nemo.runtime.common.comm</excludePackageNames>
-                    <outputDirectory>docs/apidocs</outputDirectory>
-                    <reportOutputDirectory>docs/apidocs</reportOutputDirectory>
+                  <excludePackageNames>*.org.apache.nemo.runtime.common.comm</excludePackageNames>
+                  <outputDirectory>docs/apidocs</outputDirectory>
+                  <reportOutputDirectory>docs/apidocs</reportOutputDirectory>
                 </configuration>
                 <executions>
                     <execution>
-                        <id>aggregate</id>
-                        <goals>
-                            <goal>aggregate</goal>
-                        </goals>
-                        <phase>site</phase>
+                      <id>aggregate</id>
+                      <goals>
+                          <goal>aggregate</goal>
+                      </goals>
+                      <phase>site</phase>
+                    </execution>
+                    <execution>
+                      <id>test-javadoc</id>
+                      <goals>
+                        <goal>javadoc</goal>
+                      </goals>
+                      <phase>validate</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -272,8 +285,8 @@ limitations under the License.
                         <exclude>**/target/**</exclude>
                         <!-- REEF run files -->
                         <exclude>**/REEF_LOCAL_RUNTIME/**</exclude>
-                        <!-- Resources under examples -->
-                        <exclude>examples/resources/**</exclude>
+                        <!-- Resources -->
+                        <exclude>**/resources/**</exclude>
                         <!-- Logs -->
                         <exclude>**/*.log</exclude>
                         <!-- Web UI -->
@@ -285,6 +298,10 @@ limitations under the License.
                         <exclude>.editorconfig</exclude>
                         <!-- formatter.xml -->
                         <exclude>formatter.xml</exclude>
+                        <!-- javadoc -->
+                        <exclude>**/docs/**</exclude>
+                        <!-- dag files -->
+                        <exclude>**/dag/**</exclude>
                     </excludes>
                 </configuration>
             </plugin>

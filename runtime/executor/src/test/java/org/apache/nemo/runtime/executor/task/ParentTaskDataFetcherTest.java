@@ -1,25 +1,32 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.runtime.executor.datatransfer.BlockInputReader;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -37,19 +44,17 @@ import static org.mockito.Mockito.when;
  * Tests {@link ParentTaskDataFetcher}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({InputReader.class, VertexHarness.class})
+@PrepareForTest({InputReader.class, VertexHarness.class, BlockInputReader.class})
 public final class ParentTaskDataFetcherTest {
 
-  @Test(timeout=5000, expected = NoSuchElementException.class)
+  @Test(timeout=5000)
   public void testEmpty() throws Exception {
     final List<String> empty = new ArrayList<>(0); // empty data
     final InputReader inputReader = generateInputReader(generateCompletableFuture(empty.iterator()));
 
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
-
-    // Should trigger the expected 'NoSuchElementException'
-    fetcher.fetchDataElement();
+    assertEquals(Finishmark.getInstance(), fetcher.fetchDataElement());
   }
 
   @Test(timeout=5000)
@@ -118,11 +123,11 @@ public final class ParentTaskDataFetcherTest {
     return new ParentTaskDataFetcher(
         mock(IRVertex.class),
         readerForParentTask, // This is the only argument that affects the behavior of ParentTaskDataFetcher
-        mock(VertexHarness.class));
+        mock(OutputCollector.class));
   }
 
   private InputReader generateInputReader(final CompletableFuture completableFuture) {
-    final InputReader inputReader = mock(InputReader.class);
+    final InputReader inputReader = mock(InputReader.class, Mockito.CALLS_REAL_METHODS);
     when(inputReader.read()).thenReturn(Arrays.asList(completableFuture));
     return inputReader;
   }

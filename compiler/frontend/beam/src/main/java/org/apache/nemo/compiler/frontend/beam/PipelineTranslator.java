@@ -1,17 +1,20 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.compiler.frontend.beam;
 
@@ -21,23 +24,18 @@ import org.apache.beam.runners.core.construction.ParDoTranslation;
 import org.apache.beam.runners.core.construction.TransformInputs;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.AppliedPTransform;
-import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.beam.sdk.runners.TransformHierarchy;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.*;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.compiler.frontend.beam.PipelineVisitor.*;
-import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
-import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
 import org.apache.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
+import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.*;
 import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.io.Read;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.transforms.windowing.WindowFn;
@@ -50,43 +48,17 @@ import java.lang.annotation.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
- * Converts DAG of Beam root to Nemo IR DAG.
- * For a {@link PrimitiveTransformVertex}, it defines mapping to the corresponding {@link IRVertex}.
- * For a {@link CompositeTransformVertex}, it defines how to setup and clear {@link TranslationContext}
- * before start translating inner Beam transform hierarchy.
+ * A collection of translators for the Beam PTransforms.
  */
-public final class PipelineTranslator
-  implements BiFunction<CompositeTransformVertex, PipelineOptions, DAG<IRVertex, IREdge>> {
-
+final class PipelineTranslator {
+  public static final PipelineTranslator INSTANCE = new PipelineTranslator();
   private static final Logger LOG = LoggerFactory.getLogger(PipelineTranslator.class.getName());
-
-  private static final PipelineTranslator INSTANCE = new PipelineTranslator();
 
   private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator = new HashMap<>();
   private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator = new HashMap<>();
-
-  // TODO #220: Move this variable to TranslationContext
-  private static final AtomicReference<Pipeline> PIPELINE = new AtomicReference<>();
-
-  /**
-   * Static translator method.
-   * @param pipeline the original root
-   * @param root Top-level Beam transform hierarchy, usually given by {@link PipelineVisitor}
-   * @param pipelineOptions {@link PipelineOptions}
-   * @return Nemo IR DAG
-   */
-  public static DAG<IRVertex, IREdge> translate(final Pipeline pipeline,
-                                                final CompositeTransformVertex root,
-                                                final PipelineOptions pipelineOptions) {
-    PIPELINE.set(pipeline);
-    return INSTANCE.apply(root, pipelineOptions);
-  }
 
   /**
    * Creates the translator, while building a map between {@link PTransform}s and the corresponding translators.
@@ -99,7 +71,7 @@ public final class PipelineTranslator
         for (final Class<? extends PTransform> transform : primitive.value()) {
           if (primitiveTransformToTranslator.containsKey(transform)) {
             throw new RuntimeException(String.format("Translator for primitive transform %s is"
-                + "already registered: %s", transform, primitiveTransformToTranslator.get(transform)));
+              + "already registered: %s", transform, primitiveTransformToTranslator.get(transform)));
           }
           primitiveTransformToTranslator.put(transform, translator);
         }
@@ -108,7 +80,7 @@ public final class PipelineTranslator
         for (final Class<? extends PTransform> transform : composite.value()) {
           if (compositeTransformToTranslator.containsKey(transform)) {
             throw new RuntimeException(String.format("Translator for composite transform %s is"
-                + "already registered: %s", transform, compositeTransformToTranslator.get(transform)));
+              + "already registered: %s", transform, compositeTransformToTranslator.get(transform)));
           }
           compositeTransformToTranslator.put(transform, translator);
         }
@@ -116,254 +88,55 @@ public final class PipelineTranslator
     }
   }
 
-  @PrimitiveTransformTranslator(Read.Bounded.class)
-  private static void boundedReadTranslator(final TranslationContext ctx,
-                                            final PrimitiveTransformVertex transformVertex,
-                                            final Read.Bounded<?> transform) {
-    final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource());
-    ctx.addVertex(vertex);
-    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
-    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
-  }
-
-  private static DoFnTransform createDoFnTransform(final TranslationContext ctx,
-                                                   final PrimitiveTransformVertex transformVertex) {
-    try {
-      final AppliedPTransform pTransform = transformVertex.getNode().toAppliedPTransform(PIPELINE.get());
-      final DoFn doFn = ParDoTranslation.getDoFn(pTransform);
-      final TupleTag mainOutputTag = ParDoTranslation.getMainOutputTag(pTransform);
-      final List<PCollectionView<?>> sideInputs = ParDoTranslation.getSideInputs(pTransform);
-      final TupleTagList additionalOutputTags = ParDoTranslation.getAdditionalOutputTags(pTransform);
-
-      final PCollection<?> mainInput = (PCollection<?>)
-        Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
-
-      return new DoFnTransform(
-        doFn,
-        mainInput.getCoder(),
-        getOutputCoders(pTransform),
-        mainOutputTag,
-        additionalOutputTags.getAll(),
-        mainInput.getWindowingStrategy(),
-        sideInputs,
-        ctx.pipelineOptions);
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  @PrimitiveTransformTranslator(ParDo.SingleOutput.class)
-  private static void parDoSingleOutputTranslator(final TranslationContext ctx,
-                                                  final PrimitiveTransformVertex transformVertex,
-                                                  final ParDo.SingleOutput<?, ?> transform) {
-    final DoFnTransform doFnTransform = createDoFnTransform(ctx, transformVertex);
-    final IRVertex vertex = new OperatorVertex(doFnTransform);
-
-    ctx.addVertex(vertex);
-    transformVertex.getNode().getInputs().values().stream()
-      .filter(input -> !transform.getAdditionalInputs().values().contains(input))
-      .forEach(input -> ctx.addEdgeTo(vertex, input));
-    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
-    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
-  }
-
-  private static Map<TupleTag<?>, Coder<?>> getOutputCoders(final AppliedPTransform<?, ?, ?> ptransform) {
-    return ptransform
-      .getOutputs()
-      .entrySet()
-      .stream()
-      .filter(e -> e.getValue() instanceof PCollection)
-      .collect(Collectors.toMap(e -> e.getKey(), e -> ((PCollection) e.getValue()).getCoder()));
-  }
-
-  @PrimitiveTransformTranslator(ParDo.MultiOutput.class)
-  private static void parDoMultiOutputTranslator(final TranslationContext ctx,
-                                                 final PrimitiveTransformVertex transformVertex,
-                                                 final ParDo.MultiOutput<?, ?> transform) {
-    final DoFnTransform doFnTransform = createDoFnTransform(ctx, transformVertex);
-    final IRVertex vertex = new OperatorVertex(doFnTransform);
-    ctx.addVertex(vertex);
-    transformVertex.getNode().getInputs().values().stream()
-      .filter(input -> !transform.getAdditionalInputs().values().contains(input))
-      .forEach(input -> ctx.addEdgeTo(vertex, input));
-    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
-    transformVertex.getNode().getOutputs().entrySet().stream()
-      .filter(pValueWithTupleTag -> pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
-      .forEach(pValueWithTupleTag -> ctx.registerMainOutputFrom(vertex, pValueWithTupleTag.getValue()));
-    transformVertex.getNode().getOutputs().entrySet().stream()
-      .filter(pValueWithTupleTag -> !pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
-      .forEach(pValueWithTupleTag -> ctx.registerAdditionalOutputFrom(vertex, pValueWithTupleTag.getValue(),
-        pValueWithTupleTag.getKey()));
-  }
-
-  /**
-   * Create a group by key transform.
-   * It returns GroupByKeyAndWindowDoFnTransform if window function is not default.
-   * @param ctx translation context
-   * @param transformVertex transform vertex
-   * @return group by key transform
-   */
-  private static Transform createGBKTransform(
-    final TranslationContext ctx,
-    final TransformVertex transformVertex) {
-    final AppliedPTransform pTransform = transformVertex.getNode().toAppliedPTransform(PIPELINE.get());
-    final PCollection<?> mainInput = (PCollection<?>)
-      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
-    final TupleTag mainOutputTag = new TupleTag<>();
-
-    if (mainInput.getWindowingStrategy() == WindowingStrategy.globalDefault()) {
-      return new GroupByKeyTransform();
+  void translatePrimitive(final PipelineTranslationContext context,
+                          final TransformHierarchy.Node primitive) {
+    final PTransform<?, ?> transform = primitive.getTransform();
+    Class<?> clazz = transform.getClass();
+    final Method translator = primitiveTransformToTranslator.get(clazz);
+    if (translator == null) {
+      throw new UnsupportedOperationException(
+        String.format("Primitive transform %s is not supported", transform.getClass().getCanonicalName()));
     } else {
-      return new GroupByKeyAndWindowDoFnTransform(
-        getOutputCoders(pTransform),
-        mainOutputTag,
-        Collections.emptyList(),  /*  GBK does not have additional outputs */
-        mainInput.getWindowingStrategy(),
-        Collections.emptyList(), /*  GBK does not have additional side inputs */
-        ctx.pipelineOptions,
-        SystemReduceFn.buffering(mainInput.getCoder()));
+      try {
+        translator.setAccessible(true);
+        translator.invoke(null, context, primitive, transform);
+      } catch (final IllegalAccessException e) {
+        throw new RuntimeException(e);
+      } catch (final InvocationTargetException | RuntimeException e) {
+        throw new RuntimeException(String.format(
+          "Translator %s have failed to translate %s", translator, transform), e);
+      }
     }
   }
 
-  @PrimitiveTransformTranslator(GroupByKey.class)
-  private static void groupByKeyTranslator(final TranslationContext ctx,
-                                           final PrimitiveTransformVertex transformVertex,
-                                           final GroupByKey<?, ?> transform) {
-    final IRVertex vertex = new OperatorVertex(createGBKTransform(ctx, transformVertex));
-    ctx.addVertex(vertex);
-    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
-    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
-  }
+  /**
+   * @param context context.
+   * @param composite transform.
+   * @return behavior.
+   */
+  Pipeline.PipelineVisitor.CompositeBehavior translateComposite(final PipelineTranslationContext context,
+                                                                final TransformHierarchy.Node composite) {
+    final PTransform<?, ?> transform = composite.getTransform();
+    if (transform == null) {
+      // root beam node
+      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
+    }
 
-  @PrimitiveTransformTranslator({Window.class, Window.Assign.class})
-  private static void windowTranslator(final TranslationContext ctx,
-                                       final PrimitiveTransformVertex transformVertex,
-                                       final PTransform<?, ?> transform) {
-    final WindowFn windowFn;
-    if (transform instanceof Window) {
-      windowFn = ((Window) transform).getWindowFn();
-    } else if (transform instanceof Window.Assign) {
-      windowFn = ((Window.Assign) transform).getWindowFn();
+    Class<?> clazz = transform.getClass();
+    final Method translator = compositeTransformToTranslator.get(clazz);
+    if (translator == null) {
+      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
     } else {
-      throw new UnsupportedOperationException(String.format("%s is not supported", transform));
+      try {
+        translator.setAccessible(true);
+        return (Pipeline.PipelineVisitor.CompositeBehavior) translator.invoke(null, context, composite, transform);
+      } catch (final IllegalAccessException e) {
+        throw new RuntimeException(e);
+      } catch (final InvocationTargetException | RuntimeException e) {
+        throw new RuntimeException(String.format(
+          "Translator %s have failed to translate %s", translator, transform), e);
+      }
     }
-    final IRVertex vertex = new OperatorVertex(new WindowFnTransform(windowFn));
-    ctx.addVertex(vertex);
-    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
-    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
-  }
-
-  @PrimitiveTransformTranslator(View.CreatePCollectionView.class)
-  private static void createPCollectionViewTranslator(final TranslationContext ctx,
-                                                      final PrimitiveTransformVertex transformVertex,
-                                                      final View.CreatePCollectionView<?, ?> transform) {
-    final IRVertex vertex = new OperatorVertex(new CreateViewTransform<>(transform.getView()));
-    ctx.addVertex(vertex);
-    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
-    ctx.registerMainOutputFrom(vertex, transform.getView());
-    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
-  }
-
-  @PrimitiveTransformTranslator(Flatten.PCollections.class)
-  private static void flattenTranslator(final TranslationContext ctx,
-                                        final PrimitiveTransformVertex transformVertex,
-                                        final Flatten.PCollections<?> transform) {
-    final IRVertex vertex = new OperatorVertex(new FlattenTransform());
-    ctx.addVertex(vertex);
-    transformVertex.getNode().getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
-    transformVertex.getNode().getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(vertex, output));
-  }
-
-  /**
-   * Default translator for CompositeTransforms. Translates inner DAG without modifying {@link TranslationContext}.
-   *
-   * @param ctx provides translation context
-   * @param transformVertex the given CompositeTransform to translate
-   * @param transform transform which can be obtained from {@code transformVertex}
-   */
-  @CompositeTransformTranslator(PTransform.class)
-  private static void topologicalTranslator(final TranslationContext ctx,
-                                            final CompositeTransformVertex transformVertex,
-                                            final PTransform<?, ?> transform) {
-    transformVertex.getDAG().topologicalDo(ctx::translate);
-  }
-
-  /**
-   * Translator for Combine transform. Implements local combining before shuffling key-value pairs.
-   *
-   * @param ctx provides translation context
-   * @param transformVertex the given CompositeTransform to translate
-   * @param transform transform which can be obtained from {@code transformVertex}
-   */
-  @CompositeTransformTranslator({Combine.Globally.class, Combine.PerKey.class, Combine.GroupedValues.class})
-  private static void combineTranslator(final TranslationContext ctx,
-                                        final CompositeTransformVertex transformVertex,
-                                        final PTransform<?, ?> transform) {
-    // No optimization for BeamSQL that handles Beam 'Row's.
-    final boolean handlesBeamRow = Stream
-      .concat(transformVertex.getNode().getInputs().values().stream(),
-        transformVertex.getNode().getOutputs().values().stream())
-      .map(pValue -> (KvCoder) getCoder(pValue, ctx.root)) // Input and output of combine should be KV
-      .map(kvCoder -> kvCoder.getValueCoder().getEncodedTypeDescriptor()) // We're interested in the 'Value' of KV
-      .anyMatch(valueTypeDescriptor -> TypeDescriptor.of(Row.class).equals(valueTypeDescriptor));
-    if (handlesBeamRow) {
-      transformVertex.getDAG().topologicalDo(ctx::translate);
-      return; // return early and give up optimization - TODO #209: Enable Local Combiner for BeamSQL
-    }
-
-    // Local combiner optimization
-    final List<TransformVertex> topologicalOrdering = transformVertex.getDAG().getTopologicalSort();
-    final TransformVertex groupByKeyBeamTransform = topologicalOrdering.get(0);
-    final TransformVertex last = topologicalOrdering.get(topologicalOrdering.size() - 1);
-    if (groupByKeyBeamTransform.getNode().getTransform() instanceof GroupByKey) {
-      // Translate the given CompositeTransform under OneToOneEdge-enforced context.
-      final TranslationContext oneToOneEdgeContext = new TranslationContext(ctx,
-          OneToOneCommunicationPatternSelector.INSTANCE);
-      transformVertex.getDAG().topologicalDo(oneToOneEdgeContext::translate);
-
-      // Attempt to translate the CompositeTransform again.
-      // Add GroupByKey, which is the first transform in the given CompositeTransform.
-      // Make sure it consumes the output from the last vertex in OneToOneEdge-translated hierarchy.
-      final IRVertex groupByKeyIRVertex = new OperatorVertex(createGBKTransform(ctx, transformVertex));
-      ctx.addVertex(groupByKeyIRVertex);
-      last.getNode().getOutputs().values().forEach(outputFromCombiner
-          -> ctx.addEdgeTo(groupByKeyIRVertex, outputFromCombiner));
-      groupByKeyBeamTransform.getNode().getOutputs().values()
-          .forEach(outputFromGroupByKey -> ctx.registerMainOutputFrom(groupByKeyIRVertex, outputFromGroupByKey));
-
-      // Translate the remaining vertices.
-      topologicalOrdering.stream().skip(1).forEach(ctx::translate);
-    } else {
-      transformVertex.getDAG().topologicalDo(ctx::translate);
-    }
-  }
-
-  /**
-   * Pushes the loop vertex to the stack before translating the inner DAG, and pops it after the translation.
-   *
-   * @param ctx provides translation context
-   * @param transformVertex the given CompositeTransform to translate
-   * @param transform transform which can be obtained from {@code transformVertex}
-   */
-  @CompositeTransformTranslator(LoopCompositeTransform.class)
-  private static void loopTranslator(final TranslationContext ctx,
-                                     final CompositeTransformVertex transformVertex,
-                                     final LoopCompositeTransform<?, ?> transform) {
-    final LoopVertex loopVertex = new LoopVertex(transformVertex.getNode().getFullName());
-    ctx.builder.addVertex(loopVertex, ctx.loopVertexStack);
-    ctx.builder.removeVertex(loopVertex);
-    ctx.loopVertexStack.push(loopVertex);
-    topologicalTranslator(ctx, transformVertex, transform);
-    ctx.loopVertexStack.pop();
-  }
-
-  @Override
-  public DAG<IRVertex, IREdge> apply(final CompositeTransformVertex pipeline,
-                                     final PipelineOptions pipelineOptions) {
-    final TranslationContext ctx = new TranslationContext(pipeline, primitiveTransformToTranslator,
-        compositeTransformToTranslator, DefaultCommunicationPatternSelector.INSTANCE, pipelineOptions);
-    ctx.translate(pipeline);
-    return ctx.builder.build();
   }
 
   /**
@@ -384,286 +157,265 @@ public final class PipelineTranslator
     Class<? extends PTransform>[] value();
   }
 
-  private static Coder<?> getCoder(final PValue input, final CompositeTransformVertex pipeline) {
-    final Coder<?> coder;
-    if (input instanceof PCollection) {
-      coder = ((PCollection) input).getCoder();
-    } else if (input instanceof PCollectionView) {
-      coder = getCoderForView((PCollectionView) input, pipeline);
-    } else {
-      throw new RuntimeException(String.format("Coder for PValue %s cannot be determined", input));
-    }
-    return coder;
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////// PRIMITIVE TRANSFORMS
+
+  @PrimitiveTransformTranslator(Read.Unbounded.class)
+  private static void unboundedReadTranslator(final PipelineTranslationContext ctx,
+                                              final TransformHierarchy.Node beamNode,
+                                              final Read.Unbounded<?> transform) {
+    final IRVertex vertex = new BeamUnboundedSourceVertex<>(transform.getSource());
+    ctx.addVertex(vertex);
+    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
+    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
   }
 
+  @PrimitiveTransformTranslator(Read.Bounded.class)
+  private static void boundedReadTranslator(final PipelineTranslationContext ctx,
+                                            final TransformHierarchy.Node beamNode,
+                                            final Read.Bounded<?> transform) {
+    final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource());
+    ctx.addVertex(vertex);
+    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
+    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
+  }
+
+  @PrimitiveTransformTranslator(ParDo.SingleOutput.class)
+  private static void parDoSingleOutputTranslator(final PipelineTranslationContext ctx,
+                                                  final TransformHierarchy.Node beamNode,
+                                                  final ParDo.SingleOutput<?, ?> transform) {
+    final DoFnTransform doFnTransform = createDoFnTransform(ctx, beamNode);
+    final IRVertex vertex = new OperatorVertex(doFnTransform);
+
+    ctx.addVertex(vertex);
+    beamNode.getInputs().values().stream()
+      .filter(input -> !transform.getAdditionalInputs().values().contains(input))
+      .forEach(input -> ctx.addEdgeTo(vertex, input));
+    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
+    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
+  }
+
+  @PrimitiveTransformTranslator(ParDo.MultiOutput.class)
+  private static void parDoMultiOutputTranslator(final PipelineTranslationContext ctx,
+                                                 final TransformHierarchy.Node beamNode,
+                                                 final ParDo.MultiOutput<?, ?> transform) {
+    final DoFnTransform doFnTransform = createDoFnTransform(ctx, beamNode);
+    final IRVertex vertex = new OperatorVertex(doFnTransform);
+    ctx.addVertex(vertex);
+    beamNode.getInputs().values().stream()
+      .filter(input -> !transform.getAdditionalInputs().values().contains(input))
+      .forEach(input -> ctx.addEdgeTo(vertex, input));
+    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
+    beamNode.getOutputs().entrySet().stream()
+      .filter(pValueWithTupleTag -> pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
+      .forEach(pValueWithTupleTag -> ctx.registerMainOutputFrom(beamNode, vertex, pValueWithTupleTag.getValue()));
+    beamNode.getOutputs().entrySet().stream()
+      .filter(pValueWithTupleTag -> !pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
+      .forEach(pValueWithTupleTag -> ctx.registerAdditionalOutputFrom(beamNode, vertex, pValueWithTupleTag.getValue(),
+        pValueWithTupleTag.getKey()));
+  }
+
+  @PrimitiveTransformTranslator(GroupByKey.class)
+  private static void groupByKeyTranslator(final PipelineTranslationContext ctx,
+                                           final TransformHierarchy.Node beamNode,
+                                           final GroupByKey<?, ?> transform) {
+    final IRVertex vertex = new OperatorVertex(createGBKTransform(ctx, beamNode));
+    ctx.addVertex(vertex);
+    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
+    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
+  }
+
+  @PrimitiveTransformTranslator({Window.class, Window.Assign.class})
+  private static void windowTranslator(final PipelineTranslationContext ctx,
+                                       final TransformHierarchy.Node beamNode,
+                                       final PTransform<?, ?> transform) {
+    final WindowFn windowFn;
+    if (transform instanceof Window) {
+      windowFn = ((Window) transform).getWindowFn();
+    } else if (transform instanceof Window.Assign) {
+      windowFn = ((Window.Assign) transform).getWindowFn();
+    } else {
+      throw new UnsupportedOperationException(String.format("%s is not supported", transform));
+    }
+    final IRVertex vertex = new OperatorVertex(new WindowFnTransform(windowFn));
+    ctx.addVertex(vertex);
+    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
+    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
+  }
+
+  @PrimitiveTransformTranslator(View.CreatePCollectionView.class)
+  private static void createPCollectionViewTranslator(final PipelineTranslationContext ctx,
+                                                      final TransformHierarchy.Node beamNode,
+                                                      final View.CreatePCollectionView<?, ?> transform) {
+    final IRVertex vertex = new OperatorVertex(new CreateViewTransform(transform.getView().getViewFn()));
+    ctx.addVertex(vertex);
+    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
+    ctx.registerMainOutputFrom(beamNode, vertex, transform.getView());
+    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
+  }
+
+  @PrimitiveTransformTranslator(Flatten.PCollections.class)
+  private static void flattenTranslator(final PipelineTranslationContext ctx,
+                                        final TransformHierarchy.Node beamNode,
+                                        final Flatten.PCollections<?> transform) {
+    final IRVertex vertex = new OperatorVertex(new FlattenTransform());
+    ctx.addVertex(vertex);
+    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
+    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////// COMPOSITE TRANSFORMS
+
   /**
-   * Get appropriate coder for {@link PCollectionView}.
+   * {@link Combine.PerKey} = {@link GroupByKey} + {@link Combine.GroupedValues}
+   * ({@link Combine.Globally} internally uses {@link Combine.PerKey} which will also be optimized by this translator)
+   * Here, we translate this composite transform as a whole, exploiting its accumulator semantics.
    *
-   * @param view {@link PCollectionView} from the corresponding {@link View.CreatePCollectionView} transform
-   * @return appropriate {@link Coder} for {@link PCollectionView}
+   * @param ctx provides translation context
+   * @param beamNode the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code beamNode}
    */
-  private static Coder<?> getCoderForView(final PCollectionView view, final CompositeTransformVertex pipeline) {
-    final PrimitiveTransformVertex src = pipeline.getPrimitiveProducerOf(view);
-    final Coder<?> baseCoder = src.getNode().getInputs().values().stream()
-      .filter(v -> v instanceof PCollection).map(v -> (PCollection) v).findFirst()
-      .orElseThrow(() -> new RuntimeException(String.format("No incoming PCollection to %s", src)))
-      .getCoder();
-    final ViewFn viewFn = view.getViewFn();
-    if (viewFn instanceof PCollectionViews.IterableViewFn) {
-      return IterableCoder.of(baseCoder);
-    } else if (viewFn instanceof PCollectionViews.ListViewFn) {
-      return ListCoder.of(baseCoder);
-    } else if (viewFn instanceof PCollectionViews.MapViewFn) {
-      final KvCoder<?, ?> inputCoder = (KvCoder) baseCoder;
-      return MapCoder.of(inputCoder.getKeyCoder(), inputCoder.getValueCoder());
-    } else if (viewFn instanceof PCollectionViews.MultimapViewFn) {
-      final KvCoder<?, ?> inputCoder = (KvCoder) baseCoder;
-      return MapCoder.of(inputCoder.getKeyCoder(), IterableCoder.of(inputCoder.getValueCoder()));
-    } else if (viewFn instanceof PCollectionViews.SingletonViewFn) {
-      return baseCoder;
+  @CompositeTransformTranslator(Combine.PerKey.class)
+  private static Pipeline.PipelineVisitor.CompositeBehavior combinePerKeyTranslator(
+    final PipelineTranslationContext ctx,
+    final TransformHierarchy.Node beamNode,
+    final PTransform<?, ?> transform) {
+
+    // Check if the partial combining optimization can be applied.
+    // If not, simply use the default Combine implementation by entering into it.
+    if (!isGlobalWindow(beamNode, ctx.getPipeline())) {
+      // TODO #263: Partial Combining for Beam Streaming
+      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
+    }
+    final Combine.PerKey perKey = (Combine.PerKey) transform;
+    if (!perKey.getSideInputs().isEmpty()) {
+      // TODO #264: Partial Combining with Beam SideInputs
+      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
+    }
+
+    // This Combine can be optimized as the following sequence of Nemo IRVertices.
+    // Combine Input -> Combine(Partial Combine -> KV<InputT, AccumT> -> Final Combine) -> Combine Output
+    final CombineFnBase.GlobalCombineFn combineFn = perKey.getFn();
+
+    // (Step 1) To Partial Combine
+    final IRVertex partialCombine = new OperatorVertex(new CombineFnPartialTransform<>(combineFn));
+    ctx.addVertex(partialCombine);
+    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
+
+    // (Step 2) To Final Combine
+    final PCollection input = (PCollection) Iterables.getOnlyElement(
+      TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
+    final KvCoder inputCoder = (KvCoder) input.getCoder();
+    final Coder accumulatorCoder;
+    try {
+      accumulatorCoder =
+        combineFn.getAccumulatorCoder(ctx.getPipeline().getCoderRegistry(), inputCoder.getValueCoder());
+    } catch (CannotProvideCoderException e) {
+      throw new RuntimeException(e);
+    }
+    final IRVertex finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn));
+    ctx.addVertex(finalCombine);
+    final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, partialCombine, finalCombine);
+    ctx.addEdgeTo(
+      edge,
+      KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder),
+      input.getWindowingStrategy().getWindowFn().windowCoder());
+
+    // (Step 3) To Combine Output
+    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
+
+    // This composite transform has been translated in its entirety.
+    return Pipeline.PipelineVisitor.CompositeBehavior.DO_NOT_ENTER_TRANSFORM;
+  }
+
+  /**
+   * @param ctx provides translation context
+   * @param beamNode the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code beamNode}
+   * @
+   */
+  @CompositeTransformTranslator(LoopCompositeTransform.class)
+  private static Pipeline.PipelineVisitor.CompositeBehavior loopTranslator(
+    final PipelineTranslationContext ctx,
+    final TransformHierarchy.Node beamNode,
+    final LoopCompositeTransform<?, ?> transform) {
+    // Do nothing here, as the context handles the loop vertex stack.
+    // We just keep this method to signal that the loop vertex is acknowledged.
+    return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////// HELPER METHODS
+
+  private static DoFnTransform createDoFnTransform(final PipelineTranslationContext ctx,
+                                                   final TransformHierarchy.Node beamNode) {
+    try {
+      final AppliedPTransform pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
+      final DoFn doFn = ParDoTranslation.getDoFn(pTransform);
+      final TupleTag mainOutputTag = ParDoTranslation.getMainOutputTag(pTransform);
+      final List<PCollectionView<?>> sideInputs = ParDoTranslation.getSideInputs(pTransform);
+      final TupleTagList additionalOutputTags = ParDoTranslation.getAdditionalOutputTags(pTransform);
+
+      final PCollection<?> mainInput = (PCollection<?>)
+        Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+
+      return new DoFnTransform(
+        doFn,
+        mainInput.getCoder(),
+        getOutputCoders(pTransform),
+        mainOutputTag,
+        additionalOutputTags.getAll(),
+        mainInput.getWindowingStrategy(),
+        sideInputs,
+        ctx.getPipelineOptions());
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static Map<TupleTag<?>, Coder<?>> getOutputCoders(final AppliedPTransform<?, ?, ?> ptransform) {
+    return ptransform
+      .getOutputs()
+      .entrySet()
+      .stream()
+      .filter(e -> e.getValue() instanceof PCollection)
+      .collect(Collectors.toMap(e -> e.getKey(), e -> ((PCollection) e.getValue()).getCoder()));
+  }
+
+  /**
+   * Create a group by key transform.
+   * It returns GroupByKeyAndWindowDoFnTransform if window function is not default.
+   * @param ctx translation context
+   * @param beamNode transform vertex
+   * @return group by key transform
+   */
+  private static Transform createGBKTransform(
+    final PipelineTranslationContext ctx,
+    final TransformHierarchy.Node beamNode) {
+    final AppliedPTransform pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
+    final PCollection<?> mainInput = (PCollection<?>)
+      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+    final TupleTag mainOutputTag = new TupleTag<>();
+
+    if (isGlobalWindow(beamNode, ctx.getPipeline())) {
+      return new GroupByKeyTransform();
     } else {
-      throw new UnsupportedOperationException(String.format("Unsupported viewFn %s", viewFn.getClass()));
+      return new GroupByKeyAndWindowDoFnTransform(
+        getOutputCoders(pTransform),
+        mainOutputTag,
+        Collections.emptyList(),  /*  GBK does not have additional outputs */
+        mainInput.getWindowingStrategy(),
+        Collections.emptyList(), /*  GBK does not have additional side inputs */
+        ctx.getPipelineOptions(),
+        SystemReduceFn.buffering(mainInput.getCoder()));
     }
   }
 
-  /**
-   * Translation context.
-   */
-  private static final class TranslationContext {
-    private final CompositeTransformVertex root;
-    private final PipelineOptions pipelineOptions;
-    private final DAGBuilder<IRVertex, IREdge> builder;
-    private final Map<PValue, IRVertex> pValueToProducer;
-    private final Map<PValue, TupleTag<?>> pValueToTag;
-    private final Stack<LoopVertex> loopVertexStack;
-    private final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> communicationPatternSelector;
-
-    private final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator;
-    private final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator;
-
-    /**
-     * @param root the root to translate
-     * @param primitiveTransformToTranslator provides translators for PrimitiveTransform
-     * @param compositeTransformToTranslator provides translators for CompositeTransform
-     * @param selector provides {@link CommunicationPatternProperty.Value} for IR edges
-     * @param pipelineOptions {@link PipelineOptions}
-     */
-    private TranslationContext(final CompositeTransformVertex root,
-                               final Map<Class<? extends PTransform>, Method> primitiveTransformToTranslator,
-                               final Map<Class<? extends PTransform>, Method> compositeTransformToTranslator,
-                               final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> selector,
-                               final PipelineOptions pipelineOptions) {
-      this.root = root;
-      this.builder = new DAGBuilder<>();
-      this.pValueToProducer = new HashMap<>();
-      this.pValueToTag = new HashMap<>();
-      this.loopVertexStack = new Stack<>();
-      this.primitiveTransformToTranslator = primitiveTransformToTranslator;
-      this.compositeTransformToTranslator = compositeTransformToTranslator;
-      this.communicationPatternSelector = selector;
-      this.pipelineOptions = pipelineOptions;
-    }
-
-    /**
-     * Copy constructor, except for setting different CommunicationPatternProperty selector.
-     *
-     * @param ctx the original {@link TranslationContext}
-     * @param selector provides {@link CommunicationPatternProperty.Value} for IR edges
-     */
-    private TranslationContext(final TranslationContext ctx,
-                               final BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> selector) {
-      this.root = ctx.root;
-      this.pipelineOptions = ctx.pipelineOptions;
-      this.builder = ctx.builder;
-      this.pValueToProducer = ctx.pValueToProducer;
-      this.pValueToTag = ctx.pValueToTag;
-      this.loopVertexStack = ctx.loopVertexStack;
-      this.primitiveTransformToTranslator = ctx.primitiveTransformToTranslator;
-      this.compositeTransformToTranslator = ctx.compositeTransformToTranslator;
-
-      this.communicationPatternSelector = selector;
-    }
-
-    /**
-     * Selects appropriate translator to translate the given hierarchy.
-     *
-     * @param transformVertex the Beam transform hierarchy to translate
-     */
-    private void translate(final TransformVertex transformVertex) {
-      final boolean isComposite = transformVertex instanceof CompositeTransformVertex;
-      final PTransform<?, ?> transform = transformVertex.getNode().getTransform();
-      if (transform == null) {
-        // root node
-        topologicalTranslator(this, (CompositeTransformVertex) transformVertex, null);
-        return;
-      }
-
-      Class<?> clazz = transform.getClass();
-      while (true) {
-        final Method translator = (isComposite ? compositeTransformToTranslator : primitiveTransformToTranslator)
-            .get(clazz);
-        if (translator == null) {
-          if (clazz.getSuperclass() != null) {
-            clazz = clazz.getSuperclass();
-            continue;
-          }
-          throw new UnsupportedOperationException(String.format("%s transform %s is not supported",
-              isComposite ? "Composite" : "Primitive", transform.getClass().getCanonicalName()));
-        } else {
-          try {
-            translator.setAccessible(true);
-            translator.invoke(null, this, transformVertex, transform);
-            break;
-          } catch (final IllegalAccessException e) {
-            throw new RuntimeException(e);
-          } catch (final InvocationTargetException | RuntimeException e) {
-            throw new RuntimeException(String.format(
-                "Translator %s have failed to translate %s", translator, transform), e);
-          }
-        }
-      }
-    }
-
-    /**
-     * Add IR vertex to the builder.
-     *
-     * @param vertex IR vertex to add
-     */
-    private void addVertex(final IRVertex vertex) {
-      builder.addVertex(vertex, loopVertexStack);
-    }
-
-    /**
-     * Add IR edge to the builder.
-     *
-     * @param dst the destination IR vertex.
-     * @param input the {@link PValue} {@code dst} consumes
-     */
-    private void addEdgeTo(final IRVertex dst, final PValue input) {
-      final IRVertex src = pValueToProducer.get(input);
-      if (src == null) {
-        try {
-          throw new RuntimeException(String.format("Cannot find a vertex that emits pValue %s, "
-              + "while PTransform %s is known to produce it.", input, root.getPrimitiveProducerOf(input)));
-        } catch (final RuntimeException e) {
-          throw new RuntimeException(String.format("Cannot find a vertex that emits pValue %s, "
-              + "and the corresponding PTransform was not found", input));
-        }
-      }
-      final CommunicationPatternProperty.Value communicationPattern = communicationPatternSelector.apply(src, dst);
-      if (communicationPattern == null) {
-        throw new RuntimeException(String.format("%s have failed to determine communication pattern "
-            + "for an edge from %s to %s", communicationPatternSelector, src, dst));
-      }
-      final IREdge edge = new IREdge(communicationPattern, src, dst);
-      final Coder coder;
-      final Coder windowCoder;
-      if (input instanceof PCollection) {
-        coder = ((PCollection) input).getCoder();
-        windowCoder = ((PCollection) input).getWindowingStrategy().getWindowFn().windowCoder();
-      } else if (input instanceof PCollectionView) {
-        coder = getCoderForView((PCollectionView) input, root);
-        windowCoder = ((PCollectionView) input).getPCollection()
-          .getWindowingStrategy().getWindowFn().windowCoder();
-      } else {
-        throw new RuntimeException(String.format("While adding an edge from %s, to %s, coder for PValue %s cannot "
-          + "be determined", src, dst, input));
-      }
-
-      edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
-
-      if (coder instanceof KvCoder) {
-        Coder keyCoder = ((KvCoder) coder).getKeyCoder();
-        edge.setProperty(KeyEncoderProperty.of(new BeamEncoderFactory(keyCoder)));
-        edge.setProperty(KeyDecoderProperty.of(new BeamDecoderFactory(keyCoder)));
-      }
-
-      edge.setProperty(EncoderProperty.of(
-        new BeamEncoderFactory<>(WindowedValue.getFullCoder(coder, windowCoder))));
-      edge.setProperty(DecoderProperty.of(
-        new BeamDecoderFactory<>(WindowedValue.getFullCoder(coder, windowCoder))));
-
-      if (pValueToTag.containsKey(input)) {
-        edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
-      }
-
-      if (input instanceof PCollectionView) {
-        edge.setProperty(BroadcastVariableIdProperty.of((PCollectionView) input));
-      }
-
-      builder.connectVertices(edge);
-    }
-
-    /**
-     * Registers a {@link PValue} as a main output from the specified {@link IRVertex}.
-     *
-     * @param irVertex the IR vertex
-     * @param output the {@link PValue} {@code irVertex} emits as main output
-     */
-    private void registerMainOutputFrom(final IRVertex irVertex, final PValue output) {
-      pValueToProducer.put(output, irVertex);
-    }
-
-    /**
-     * Registers a {@link PValue} as an additional output from the specified {@link IRVertex}.
-     *
-     * @param irVertex the IR vertex
-     * @param output the {@link PValue} {@code irVertex} emits as additional output
-     * @param tag the {@link TupleTag} associated with this additional output
-     */
-    private void registerAdditionalOutputFrom(final IRVertex irVertex, final PValue output, final TupleTag<?> tag) {
-      pValueToTag.put(output, tag);
-      pValueToProducer.put(output, irVertex);
-    }
-  }
-
-  /**
-   * Default implementation for {@link CommunicationPatternProperty.Value} selector.
-   */
-  private static final class DefaultCommunicationPatternSelector
-      implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
-
-    private static final DefaultCommunicationPatternSelector INSTANCE = new DefaultCommunicationPatternSelector();
-
-    @Override
-    public CommunicationPatternProperty.Value apply(final IRVertex src, final IRVertex dst) {
-      final Class<?> constructUnionTableFn;
-      try {
-        constructUnionTableFn = Class.forName("org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");
-      } catch (final ClassNotFoundException e) {
-        throw new RuntimeException(e);
-      }
-
-      final Transform srcTransform = src instanceof OperatorVertex ? ((OperatorVertex) src).getTransform() : null;
-      final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
-      final DoFn srcDoFn = srcTransform instanceof DoFnTransform ? ((DoFnTransform) srcTransform).getDoFn() : null;
-
-      if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
-        return CommunicationPatternProperty.Value.Shuffle;
-      }
-      if (srcTransform instanceof FlattenTransform) {
-        return CommunicationPatternProperty.Value.OneToOne;
-      }
-      if (dstTransform instanceof GroupByKeyAndWindowDoFnTransform
-        || dstTransform instanceof GroupByKeyTransform) {
-        return CommunicationPatternProperty.Value.Shuffle;
-      }
-      if (dstTransform instanceof CreateViewTransform) {
-        return CommunicationPatternProperty.Value.BroadCast;
-      }
-      return CommunicationPatternProperty.Value.OneToOne;
-    }
-  }
-
-  /**
-   * A {@link CommunicationPatternProperty.Value} selector which always emits OneToOne.
-   */
-  private static final class OneToOneCommunicationPatternSelector
-      implements BiFunction<IRVertex, IRVertex, CommunicationPatternProperty.Value> {
-    private static final OneToOneCommunicationPatternSelector INSTANCE = new OneToOneCommunicationPatternSelector();
-    @Override
-    public CommunicationPatternProperty.Value apply(final IRVertex src, final IRVertex dst) {
-      return CommunicationPatternProperty.Value.OneToOne;
-    }
+  private static boolean isGlobalWindow(final TransformHierarchy.Node beamNode, final Pipeline pipeline) {
+    final AppliedPTransform pTransform = beamNode.toAppliedPTransform(pipeline);
+    final PCollection<?> mainInput = (PCollection<?>)
+      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+    return mainInput.getWindowingStrategy().getWindowFn() instanceof GlobalWindows;
   }
 }

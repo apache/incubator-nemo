@@ -1,17 +1,20 @@
 /*
- * Copyright (C) 2018 Seoul National University
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.nemo.runtime.master.resource;
 
@@ -26,6 +29,8 @@ import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
@@ -46,6 +51,8 @@ import java.util.stream.Stream;
  */
 @NotThreadSafe
 public final class ExecutorRepresenter {
+  private static final Logger LOG = LoggerFactory.getLogger(ExecutorRepresenter.class.getName());
+
   private final String executorId;
   private final ResourceSpecification resourceSpecification;
   private final Map<String, Task> runningComplyingTasks;
@@ -88,6 +95,8 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks all Tasks which were running in this executor as failed.
+   *
+   * @return set of identifiers of tasks that were running in this executor.
    */
   public Set<String> onExecutorFailed() {
     failedTasks.addAll(runningComplyingTasks.values());
@@ -101,25 +110,27 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks the Task as running, and sends scheduling message to the executor.
-   * @param task
+   * @param task the task to run
    */
   public void onTaskScheduled(final Task task) {
     (task.getPropertyValue(ResourceSlotProperty.class).orElse(true)
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
-    serializationExecutorService.submit(() -> {
+
+
+    serializationExecutorService.execute(() -> {
       final byte[] serialized = SerializationUtils.serialize(task);
       sendControlMessage(
-          ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.ScheduleTask)
-              .setScheduleTaskMsg(
-                  ControlMessage.ScheduleTaskMsg.newBuilder()
-                      .setTask(ByteString.copyFrom(serialized))
-                      .build())
-              .build());
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.ScheduleTask)
+          .setScheduleTaskMsg(
+            ControlMessage.ScheduleTaskMsg.newBuilder()
+              .setTask(ByteString.copyFrom(serialized))
+              .build())
+          .build());
     });
   }
 
@@ -133,7 +144,7 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks the specified Task as completed.
-   *
+   * @param taskId id of the completed task
    */
   public void onTaskExecutionComplete(final String taskId) {
     final Task completedTask = removeFromRunningTasks(taskId);
