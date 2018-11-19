@@ -82,11 +82,11 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
     // TODO: remove
     if (irVertex.getId().equals("vertex20")) {
-      sideInputOutputCollector = new SideInputLambdaCollector(irVertex, outgoingEdges, serializerManager);
+      //sideInputOutputCollector = new SideInputLambdaCollector(irVertex, outgoingEdges, serializerManager);
     }
 
     if (irVertex.getId().equals("vertex6")) {
-      mainInputLambdaCollector = new MainInputLambdaCollector(irVertex, outgoingEdges, serializerManager);
+      //mainInputLambdaCollector = new MainInputLambdaCollector(irVertex, outgoingEdges, serializerManager);
     }
   }
 
@@ -99,11 +99,11 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     // TODO: remove
     final String vertexId = irVertex.getId();
     if (vertexId.equals("vertex20")) {
-      sideInputOutputCollector.emit(output);
-      return;
+      //sideInputOutputCollector.emit(output);
+      //return;
     } else if (vertexId.equals("vertex6")) {
-      mainInputLambdaCollector.emit(output);
-      return;
+      //mainInputLambdaCollector.emit(output);
+      //return;
     }
 
     writer.write(output);
@@ -159,20 +159,31 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       }
     }
 
-    if (irVertex.getId().equals("vertex20")) {
-      sideInputOutputCollector.emitWatermark(watermark);
-    } else if (irVertex.getId().equals("vertex6")) {
-      mainInputLambdaCollector.emitWatermark(watermark);
-    } else {
-      // Emit watermarks to output writer
-      for (final OutputWriter outputWriter : externalMainOutputs) {
-        outputWriter.writeWatermark(watermark);
-      }
+//    if (irVertex.getId().equals("vertex20")) {
+//      sideInputOutputCollector.emitWatermark(watermark);
+//    } else if (irVertex.getId().equals("vertex6")) {
+//      mainInputLambdaCollector.emitWatermark(watermark);
+//    } else {
+//      // Emit watermarks to output writer
+//      for (final OutputWriter outputWriter : externalMainOutputs) {
+//        outputWriter.writeWatermark(watermark);
+//      }
+//
+//      for (final List<OutputWriter> externalVertices : externalAdditionalOutputs.values()) {
+//        for (final OutputWriter externalVertex : externalVertices) {
+//          externalVertex.writeWatermark(watermark);
+//        }
+//      }
+//    }
 
-      for (final List<OutputWriter> externalVertices : externalAdditionalOutputs.values()) {
-        for (final OutputWriter externalVertex : externalVertices) {
-          externalVertex.writeWatermark(watermark);
-        }
+    // Emit watermarks to output writer
+    for (final OutputWriter outputWriter : externalMainOutputs) {
+      outputWriter.writeWatermark(watermark);
+    }
+
+    for (final List<OutputWriter> externalVertices : externalAdditionalOutputs.values()) {
+      for (final OutputWriter externalVertex : externalVertices) {
+        externalVertex.writeWatermark(watermark);
       }
     }
   }

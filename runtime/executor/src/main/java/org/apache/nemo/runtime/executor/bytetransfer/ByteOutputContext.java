@@ -134,6 +134,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       final ByteBuf byteBuf = channel.alloc().ioBuffer(1, 1);
       byteBuf.writeByte(i);
       writeByteBuf(byteBuf);
+      //byteBuf.clear();
     }
 
     @Override
@@ -141,6 +142,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       final ByteBuf byteBuf = channel.alloc().ioBuffer(length, length);
       byteBuf.writeBytes(bytes, offset, length);
       writeByteBuf(byteBuf);
+      //byteBuf.clear();
     }
 
     /**
