@@ -36,6 +36,8 @@ import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
+import org.apache.reef.driver.evaluator.JVMProcess;
+import org.apache.reef.driver.evaluator.JVMProcessFactory;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerPort;
@@ -86,6 +88,8 @@ public final class NemoDriver {
   // Client for sending log messages
   private final RemoteClientMessageLoggingHandler handler;
 
+  private final JVMProcessFactory jvmProcessFactory;
+
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
                      final RuntimeMaster runtimeMaster,
@@ -97,7 +101,8 @@ public final class NemoDriver {
                      @Parameter(JobConf.BandwidthJSONContents.class) final String bandwidthString,
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
-                     @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory) {
+                     @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory,
+                     final JVMProcessFactory jvmProcessFactory) {
     IdManager.setInDriver();
     this.userApplicationRunner = userApplicationRunner;
     this.runtimeMaster = runtimeMaster;
@@ -108,6 +113,7 @@ public final class NemoDriver {
     this.localDirectory = localDirectory;
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
+    this.jvmProcessFactory = jvmProcessFactory;
     this.clientRPC = clientRPC;
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
@@ -158,6 +164,10 @@ public final class NemoDriver {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       final String executorId = RuntimeIdManager.generateExecutorId();
+      final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
+        .addOption("-Dio.netty.leakDetection.level=advanced")
+        .addOption("-XX:NewRatio=1");
+      allocatedEvaluator.setProcess(jvmProcess);
       runtimeMaster.onContainerAllocated(executorId, allocatedEvaluator,
           getExecutorConfiguration(executorId));
     }

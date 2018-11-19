@@ -79,13 +79,11 @@ public final class ContainerManager {
    */
   private final Map<String, ResourceSpecification> evaluatorIdToResourceSpec;
 
-  private final JVMProcessFactory jvmProcessFactory;
 
   @Inject
   private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                            final EvaluatorRequestor evaluatorRequestor,
-                           final MessageEnvironment messageEnvironment,
-                           final JVMProcessFactory jvmProcessFactory) {
+                           final MessageEnvironment messageEnvironment) {
     this.isTerminated = false;
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
@@ -94,7 +92,6 @@ public final class ContainerManager {
     this.evaluatorIdToResourceSpec = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
-    this.jvmProcessFactory = jvmProcessFactory;
   }
 
   /**
@@ -148,10 +145,6 @@ public final class ContainerManager {
       allocatedContainer.close();
       return;
     }
-
-    final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
-      .addOption("-Dio.netty.leakDetectionLevel=advanced");
-    allocatedContainer.setProcess(jvmProcess);
 
     final ResourceSpecification resourceSpecification = selectResourceSpecForContainer();
     evaluatorIdToResourceSpec.put(allocatedContainer.getId(), resourceSpecification);
