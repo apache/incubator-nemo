@@ -64,7 +64,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
 
   // TODO: remove
   private final AmazonS3 amazonS3;
-  private final AWSLambdaAsync awsLambdaAsync;
+  private final List<AWSLambdaAsync> awsLambdaAsyncs;
   private final AWSLambda awsLambda;
   private EncoderFactory<O> encoderFactory;
   private EncoderFactory.Encoder<O> encoder;
@@ -94,7 +94,10 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
     this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
     this.amazonS3 = AmazonS3ClientBuilder.standard().build();
     this.awsLambda = AWSUtils.AWS_LAMBDA;
-    this.awsLambdaAsync = AWSLambdaAsyncClientBuilder.standard().build();
+    this.awsLambdaAsyncs = new ArrayList(3);
+    for (int i = 0; i < 3; i++) {
+      awsLambdaAsyncs.add(AWSLambdaAsyncClientBuilder.standard().build());
+    }
   }
 
   private EncoderFactory.Encoder createEncoder(final String fileName) {
@@ -153,6 +156,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
         final List<Future<InvokeResult>> futures = new ArrayList<>(result.getObjectSummaries().size());
         final List<DeleteObjectsRequest.KeyVersion> keys = new ArrayList<>(result.getObjectSummaries().size());
 
+        int index = 0;
         for (final S3ObjectSummary objectSummary : result.getObjectSummaries()) {
           //System.out.printf(" - %s (size: %d)\n", objectSummary.getKey(), objectSummary.getSize());
           keys.add(new DeleteObjectsRequest.KeyVersion(objectSummary.getKey()));
@@ -163,8 +167,9 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
             .withPayload(String.format("{\"sideInput\":\"sideinput/%s\", \"mainInput\":\"%s\"}",
               fileName, objectSummary.getKey()));
 
-          futures.add(awsLambdaAsync.invokeAsync(request));
+          futures.add(awsLambdaAsyncs.get(index).invokeAsync(request));
           //LOG.info("End of Request sideinput lambda");
+          index = (index + 1) % awsLambdaAsyncs.size();
         }
 
 
