@@ -128,6 +128,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   @Override
   public void onWatermark(final Watermark watermark) {
     curInputWatermark = watermark.getTimestamp();
+    getSideInputHandler().trackCurWatermark(curInputWatermark);
 
     final long minOfInputAndPushback = Math.min(curInputWatermark, curPushedBackWatermark);
     if (minOfInputAndPushback > curOutputWatermark) {
@@ -142,9 +143,11 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   }
 
   private void hardFlushAllPushedbacks() {
+    checkAndInvokeBundle();
     // Instead of using the PushBackRunner, we directly use the DoFnRunner to not wait for sideinputs.
     curPushedBacks.forEach(wv -> getDoFnRunner().processElement(wv));
     curPushedBacks.clear();
+    checkAndFinishBundle(true);
   }
 
   @Override

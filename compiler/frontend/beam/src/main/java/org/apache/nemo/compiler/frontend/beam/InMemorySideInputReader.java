@@ -19,15 +19,18 @@
 package org.apache.nemo.compiler.frontend.beam;
 
 import org.apache.beam.runners.core.ReadyCheckingSideInputReader;
+import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.compiler.frontend.beam.transform.CreateViewTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,6 +41,8 @@ import java.util.Map;
 public final class InMemorySideInputReader implements ReadyCheckingSideInputReader {
   private static final Logger LOG = LoggerFactory.getLogger(InMemorySideInputReader.class.getName());
 
+  private long curWatermark = Long.MIN_VALUE;
+
   private final Collection<PCollectionView<?>> sideInputsToRead;
   private final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> inMemorySideInputs;
 
@@ -47,14 +52,21 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
   }
 
   @Override
-  public boolean isReady(final PCollectionView<?> view, final BoundedWindow window) {
-    return inMemorySideInputs.containsKey(Pair.of(view, window));
+  public boolean isReady(final PCollectionView view, final BoundedWindow window) {
+    return window.maxTimestamp().getMillis() < curWatermark
+      || inMemorySideInputs.containsKey(Pair.of(view, window));
   }
 
   @Nullable
   @Override
   public <T> T get(final PCollectionView<T> view, final BoundedWindow window) {
-    return (T) inMemorySideInputs.get(Pair.of(view, window));
+    // This gets called after isReady()
+    final T sideInputData = (T) inMemorySideInputs.get(Pair.of(view, window));
+    return sideInputData == null
+      // The upstream gave us an empty sideInput
+      ? ((ViewFn<Object, T>) view.getViewFn()).apply(new CreateViewTransform.MultiView<T>(Collections.emptyList()))
+      // The upstream gave us a concrete sideInput
+      : sideInputData;
   }
 
   @Override
@@ -72,5 +84,13 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
     for (final BoundedWindow bw : sideInputValue.getWindows()) {
       inMemorySideInputs.put(Pair.of(view, bw), sideInputValue.getValue());
     }
+  }
+
+  public void trackCurWatermark(final long newWatermark) {
+    if (curWatermark > newWatermark) {
+      // Cannot go backwards in time.
+      throw new IllegalStateException(curWatermark + " > " + newWatermark);
+    }
+    this.curWatermark = newWatermark;
   }
 }

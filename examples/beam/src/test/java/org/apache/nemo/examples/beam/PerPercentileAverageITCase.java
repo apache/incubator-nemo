@@ -46,7 +46,7 @@ public final class PerPercentileAverageITCase {
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
-  // @Before
+  @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
       .addResourceJson(executorResourceFileName)
@@ -54,7 +54,7 @@ public final class PerPercentileAverageITCase {
       .addUserArgs(inputFilePath, outputFilePath);
   }
 
-  // @After
+  @After
   public void tearDown() throws Exception {
     try {
       for (int i = 0; i < 10; i++) {
@@ -67,7 +67,7 @@ public final class PerPercentileAverageITCase {
     }
   }
 
-  // @Test (timeout = TIMEOUT)
+  @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
       .addJobId(PerPercentileAverage.class.getSimpleName())

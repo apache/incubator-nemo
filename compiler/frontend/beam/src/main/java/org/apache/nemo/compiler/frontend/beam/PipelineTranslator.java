@@ -376,7 +376,6 @@ final class PipelineTranslator {
           mainOutputTag,
           additionalOutputTags.getAll(),
           mainInput.getWindowingStrategy(),
-          sideInputMap,
           ctx.getPipelineOptions());
       } else {
         return new PushBackDoFnTransform(

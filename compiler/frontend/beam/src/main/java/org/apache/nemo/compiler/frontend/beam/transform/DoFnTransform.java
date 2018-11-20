@@ -22,7 +22,6 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -30,6 +29,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -51,13 +51,9 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
                        final TupleTag<OutputT> mainOutputTag,
                        final List<TupleTag<?>> additionalOutputTags,
                        final WindowingStrategy<?, ?> windowingStrategy,
-                       final Map<Integer, PCollectionView<?>> sideInputs,
                        final PipelineOptions options) {
     super(doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, sideInputs, options);
-    if (!sideInputs.isEmpty()) {
-      throw new IllegalStateException(sideInputs.toString());
-    }
+      additionalOutputTags, windowingStrategy, Collections.emptyMap(), options);
   }
 
   @Override
@@ -81,6 +77,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   protected void beforeClose() {
+    checkAndFinishBundle(true);
   }
 
   @Override

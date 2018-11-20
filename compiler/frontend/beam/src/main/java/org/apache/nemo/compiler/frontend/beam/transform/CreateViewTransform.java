@@ -121,13 +121,13 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
    * Represents {@code PrimitiveViewT} supplied to the {@link ViewFn}.
    * @param <T> primitive view type
    */
-  public final class MultiView<T> implements Materializations.MultimapView<Void, T>, Serializable {
+  public static final class MultiView<T> implements Materializations.MultimapView<Void, T>, Serializable {
     private final Iterable<T> iterable;
 
     /**
      * Constructor.
      */
-    MultiView(final Iterable<T> iterable) {
+    public MultiView(final Iterable<T> iterable) {
       // Create a placeholder for side input data. CreateViewTransform#onData stores data to this list.
       this.iterable = iterable;
     }
