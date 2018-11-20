@@ -131,7 +131,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
         encoder = createEncoder(fileName);
         outputStream.write(encodedDecoderFactory);
       }
-      encoder.encode((O) wv);
+      encoder.encode((O) output);
 
       closeEncoder();
 
