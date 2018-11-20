@@ -113,7 +113,7 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("CreateViewTransform:" + viewFn);
+    sb.append("CreateViewTransform  " + viewFn.getClass().getName());
     return sb.toString();
   }
 

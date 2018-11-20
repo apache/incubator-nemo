@@ -26,6 +26,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -77,7 +78,8 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        PipelineOptionsFactory.as(NemoPipelineOptions.class));
+        PipelineOptionsFactory.as(NemoPipelineOptions.class),
+        DisplayData.none());
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
@@ -110,7 +112,8 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        pipelineOptions);
+        pipelineOptions,
+        DisplayData.none());
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
@@ -153,7 +156,8 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        pipelineOptions);
+        pipelineOptions,
+        DisplayData.none());
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
@@ -204,7 +208,8 @@ public final class DoFnTransformTest {
         mainOutput,
         tags,
         WindowingStrategy.globalDefault(),
-        PipelineOptionsFactory.as(NemoPipelineOptions.class));
+        PipelineOptionsFactory.as(NemoPipelineOptions.class),
+        DisplayData.none());
 
     // mock context
     final Transform.Context context = mock(Transform.Context.class);
@@ -263,7 +268,8 @@ public final class DoFnTransformTest {
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
         sideInputMap, /* side inputs */
-        PipelineOptionsFactory.as(NemoPipelineOptions.class));
+        PipelineOptionsFactory.as(NemoPipelineOptions.class),
+        DisplayData.none());
 
     final TestOutputCollector<String> oc = new TestOutputCollector<>();
     doFnTransform.prepare(context, oc);

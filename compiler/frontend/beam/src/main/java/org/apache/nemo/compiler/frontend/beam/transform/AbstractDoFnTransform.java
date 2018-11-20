@@ -23,6 +23,7 @@ import org.apache.beam.runners.core.construction.SerializablePipelineOptions;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvokers;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -79,6 +80,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   private long prevBundleStartTime;
   private long currBundleCount = 0;
   private boolean bundleFinished = true;
+  private final DisplayData displayData;
 
   /**
    * AbstractDoFnTransform constructor.
@@ -90,6 +92,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    * @param windowingStrategy windowing strategy
    * @param sideInputs side inputs
    * @param options pipeline options
+   * @param displayData display data.
    */
   public AbstractDoFnTransform(final DoFn<InterT, OutputT> doFn,
                                final Coder<InputT> inputCoder,
@@ -98,7 +101,8 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
                                final List<TupleTag<?>> additionalOutputTags,
                                final WindowingStrategy<?, ?> windowingStrategy,
                                final Map<Integer, PCollectionView<?>> sideInputs,
-                               final PipelineOptions options) {
+                               final PipelineOptions options,
+                               final DisplayData displayData) {
     this.doFn = doFn;
     this.inputCoder = inputCoder;
     this.outputCoders = outputCoders;
@@ -107,6 +111,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     this.sideInputs = sideInputs;
     this.serializedOptions = new SerializablePipelineOptions(options);
     this.windowingStrategy = windowingStrategy;
+    this.displayData = displayData;
   }
 
   final Map<Integer, PCollectionView<?>> getSideInputs() {
@@ -250,6 +255,11 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     beforeClose();
     forceFinishBundle();
     doFnInvoker.invokeTeardown();
+  }
+
+  @Override
+  public final String toString() {
+    return this.getClass().getSimpleName() + " / " + displayData.toString().replace(":", " / ");
   }
 
   /**

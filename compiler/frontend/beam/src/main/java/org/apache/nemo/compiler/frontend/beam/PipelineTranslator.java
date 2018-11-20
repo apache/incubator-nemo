@@ -25,6 +25,7 @@ import org.apache.beam.runners.core.construction.TransformInputs;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.AppliedPTransform;
 import org.apache.beam.sdk.runners.TransformHierarchy;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -166,7 +167,7 @@ final class PipelineTranslator {
   private static void unboundedReadTranslator(final PipelineTranslationContext ctx,
                                               final TransformHierarchy.Node beamNode,
                                               final Read.Unbounded<?> transform) {
-    final IRVertex vertex = new BeamUnboundedSourceVertex<>(transform.getSource());
+    final IRVertex vertex = new BeamUnboundedSourceVertex<>(transform.getSource(), DisplayData.from(transform));
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
@@ -176,7 +177,7 @@ final class PipelineTranslator {
   private static void boundedReadTranslator(final PipelineTranslationContext ctx,
                                             final TransformHierarchy.Node beamNode,
                                             final Read.Bounded<?> transform) {
-    final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource());
+    final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource(), DisplayData.from(transform));
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
@@ -376,7 +377,8 @@ final class PipelineTranslator {
           mainOutputTag,
           additionalOutputTags.getAll(),
           mainInput.getWindowingStrategy(),
-          ctx.getPipelineOptions());
+          ctx.getPipelineOptions(),
+          DisplayData.from(beamNode.getTransform()));
       } else {
         return new PushBackDoFnTransform(
           doFn,
@@ -386,7 +388,8 @@ final class PipelineTranslator {
           additionalOutputTags.getAll(),
           mainInput.getWindowingStrategy(),
           sideInputMap,
-          ctx.getPipelineOptions());
+          ctx.getPipelineOptions(),
+          DisplayData.from(beamNode.getTransform()));
 
       }
     } catch (final IOException e) {
@@ -426,7 +429,8 @@ final class PipelineTranslator {
         mainOutputTag,
         mainInput.getWindowingStrategy(),
         ctx.getPipelineOptions(),
-        SystemReduceFn.buffering(mainInput.getCoder()));
+        SystemReduceFn.buffering(mainInput.getCoder()),
+        DisplayData.from(beamNode.getTransform()));
     }
   }
 

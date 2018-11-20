@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -51,10 +52,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   private long curOutputWatermark;
 
   /**
-   * DoFnTransform Constructor.
-   *
-   * @param doFn    doFn.
-   * @param options Pipeline options.
+   * PushBackDoFnTransform Constructor.
    */
   public PushBackDoFnTransform(final DoFn<InputT, OutputT> doFn,
                                final Coder<InputT> inputCoder,
@@ -63,9 +61,10 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
                                final List<TupleTag<?>> additionalOutputTags,
                                final WindowingStrategy<?, ?> windowingStrategy,
                                final Map<Integer, PCollectionView<?>> sideInputs,
-                               final PipelineOptions options) {
+                               final PipelineOptions options,
+                               final DisplayData displayData) {
     super(doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, sideInputs, options);
+      additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
     this.curPushedBacks = new ArrayList<>();
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;
@@ -157,12 +156,5 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   @Override
   OutputCollector wrapOutputCollector(final OutputCollector oc) {
     return oc;
-  }
-
-  @Override
-  public String toString() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("DoTransformWithPushback:" + getDoFn());
-    return sb.toString();
   }
 }
