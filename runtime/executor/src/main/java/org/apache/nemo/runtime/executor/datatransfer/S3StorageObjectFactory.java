@@ -99,6 +99,11 @@ public final class S3StorageObjectFactory implements StorageObjectFactory {
     public String getPrefix() {
       return prefix;
     }
+
+    @Override
+    public String toString() {
+      return fname;
+    }
   }
 
 }

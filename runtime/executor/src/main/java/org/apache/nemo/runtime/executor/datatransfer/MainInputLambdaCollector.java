@@ -95,6 +95,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
         windowAndInfoMap.put(key, null);
         // flush
         executorService.execute(() -> {
+          LOG.info("Close {}", info.storageObject);
           info.storageObject.close();
         });
     }
