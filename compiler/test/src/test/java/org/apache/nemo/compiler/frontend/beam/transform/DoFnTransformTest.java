@@ -33,7 +33,7 @@ import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.SideInputElement;
+import org.apache.nemo.common.SideInputElement;
 import org.apache.reef.io.Tuple;
 import org.junit.Before;
 import org.junit.Test;

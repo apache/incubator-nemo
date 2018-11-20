@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.frontend.beam;
+package org.apache.nemo.common;
 
 import org.apache.beam.sdk.util.WindowedValue;
 

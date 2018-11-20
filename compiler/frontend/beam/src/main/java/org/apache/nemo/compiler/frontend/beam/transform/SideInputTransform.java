@@ -22,7 +22,7 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.compiler.frontend.beam.SideInputElement;
+import org.apache.nemo.common.SideInputElement;
 
 /**
  * Side input transform implementation.
@@ -47,7 +47,6 @@ public final class SideInputTransform<T> implements Transform<WindowedValue<T>, 
 
   @Override
   public void onData(final WindowedValue<T> element) {
-    System.out.println("Start to emit side input " + element.getWindows() + ", " + System.currentTimeMillis());
     outputCollector.emit(new SideInputElement(index, element));
   }
 

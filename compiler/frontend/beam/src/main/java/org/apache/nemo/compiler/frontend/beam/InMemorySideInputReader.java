@@ -65,8 +65,6 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
 
   @Override
   public boolean isReady(final PCollectionView view, final BoundedWindow window) {
-    windowAccessMap.put(window, System.currentTimeMillis());
-
     return window.maxTimestamp().getMillis() < curWatermark
       || inMemorySideInputs.containsKey(Pair.of(view, window));
   }

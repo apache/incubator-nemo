@@ -20,7 +20,7 @@ package org.apache.nemo.compiler.frontend.beam.coder;
 
 import org.apache.beam.sdk.coders.AtomicCoder;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.nemo.compiler.frontend.beam.SideInputElement;
+import org.apache.nemo.common.SideInputElement;
 
 import java.io.*;
 
