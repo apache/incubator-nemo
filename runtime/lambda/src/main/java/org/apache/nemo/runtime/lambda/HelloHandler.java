@@ -131,6 +131,7 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
       }
 
       s3Client.deleteObject(BUCKET_NAME, mainInputKey);
+      System.out.println("Delete key " + mainInputKey);
 
 
 		} catch (IOException e) {
