@@ -122,7 +122,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
     // send to serverless
     final WindowedValue wv = (WindowedValue) output;
     final BoundedWindow window = (BoundedWindow) wv.getWindows().iterator().next();
-    LOG.info("Vertex20 Window: {} ********** {}", window, window.maxTimestamp().toString());
+    LOG.info("Vertex22 Window: {} ********** {}", window, window.maxTimestamp().toString());
 
     final String fileName = window.toString();
     try {
