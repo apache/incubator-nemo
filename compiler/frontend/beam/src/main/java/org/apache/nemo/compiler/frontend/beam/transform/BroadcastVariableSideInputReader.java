@@ -27,6 +27,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,19 +45,30 @@ public final class BroadcastVariableSideInputReader implements SideInputReader {
   // The list of side inputs that we're handling
   private final Collection<PCollectionView<?>> sideInputs;
 
+  private final ConcurrentMap<BoundedWindow, Long> windowAccessMap;
+
+  private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+
   BroadcastVariableSideInputReader(final Transform.Context context,
                                    final Collection<PCollectionView<?>> sideInputs) {
     this.context = context;
     this.sideInputs = sideInputs;
+    this.windowAccessMap = new ConcurrentHashMap<>();
+
+    scheduledExecutorService.scheduleAtFixedRate(() -> {
+      windowAccessMap.forEach((window, accessTime) -> {
+        System.out.println(window + ", " + "final access time: " + accessTime);
+      });
+    }, 5, 5, TimeUnit.SECONDS);
   }
 
   @Nullable
   @Override
   public <T> T get(final PCollectionView<T> view, final BoundedWindow window) {
     // TODO #216: implement side input and windowing
-    LOG.info("Try to get value of w {}, view {}", window, view);
     final T result = ((WindowedValue<T>) context.getBroadcastVariable(view, window)).getValue();
-    LOG.info("Return result {}", result);
+
+    windowAccessMap.put(window, System.currentTimeMillis());
     return result;
   }
 
