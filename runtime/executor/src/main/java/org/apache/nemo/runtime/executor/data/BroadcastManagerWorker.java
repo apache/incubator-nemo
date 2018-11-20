@@ -18,37 +18,94 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.protobuf.ByteString;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import net.jcip.annotations.ThreadSafe;
+import org.apache.commons.lang.SerializationUtils;
+import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import org.apache.nemo.runtime.executor.datatransfer.InputReader;
-import org.apache.reef.tang.annotations.DefaultImplementation;
-
+import javax.inject.Inject;
 import java.io.Serializable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Used by tasks to get/fetch (probably remote) broadcast variables.
  */
-@DefaultImplementation(DefaultBroadcastManagerWorkerImpl.class)
-public interface BroadcastManagerWorker {
+@ThreadSafe
+public final class BroadcastManagerWorker {
+  private static final Logger LOG = LoggerFactory.getLogger(BroadcastManagerWorker.class.getName());
+  private static BroadcastManagerWorker staticReference;
 
+  private final LoadingCache<Serializable, Object> idToVariableCache;
 
   /**
-   * When the broadcast variable can be read by an input reader.
-   * (i.e., the variable is expressed as an IREdge, and reside in a executor as a block)
+   * Initializes the cache for broadcast variables.
+   * This cache handles concurrent cache operations by multiple threads, and is able to fetch data from
+   * remote executors or the master.
    *
-   * @param id of the broadcast variable.
-   * @param inputReader the {@link InputReader} to register.
+   * @param executorId of the executor.
+   * @param toMaster connection.
    */
-  void registerInputReader(Serializable id,
-                                  InputReader inputReader);
-
-  default Object get(final Serializable id) {
-    return get(id, null);
+  @Inject
+  private BroadcastManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
+                                 final PersistentConnectionToMasterMap toMaster) {
+    staticReference = this;
+    this.idToVariableCache = CacheBuilder.newBuilder()
+      .maximumSize(100)
+      .expireAfterWrite(10, TimeUnit.MINUTES)
+      .build(
+        new CacheLoader<Serializable, Object>() {
+          public Object load(final Serializable id) throws Exception {
+            // Get from master
+            final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
+              .getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).request(
+                ControlMessage.Message.newBuilder()
+                  .setId(RuntimeIdManager.generateMessageId())
+                  .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+                  .setType(ControlMessage.MessageType.RequestBroadcastVariable)
+                  .setRequestbroadcastVariableMsg(
+                    ControlMessage.RequestBroadcastVariableMessage.newBuilder()
+                      .setExecutorId(executorId)
+                      .setBroadcastId(ByteString.copyFrom(SerializationUtils.serialize(id)))
+                      .build())
+                  .build());
+            return SerializationUtils.deserialize(
+              responseFromMasterFuture.get().getBroadcastVariableMsg().getVariable().toByteArray());
+          }
+        });
   }
+
 
   /**
    * Get the variable with the id.
    * @param id of the variable.
    * @return the variable.
    */
-  Object get(Serializable id, Object key);
+  public Object get(final Serializable id)  {
+    LOG.info("get {}", id);
+    try {
+      return idToVariableCache.get(id);
+    } catch (ExecutionException e) {
+      // TODO #207: Handle broadcast variable fetch exceptions
+      throw new IllegalStateException(e);
+    }
+  }
+
+  /**
+   * @return the static reference for those that do not use TANG and cannot access the singleton object.
+   */
+  public static BroadcastManagerWorker getStaticReference() {
+    return staticReference;
+  }
 }

@@ -20,7 +20,6 @@ package org.apache.nemo.common.dag;
 
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import org.apache.nemo.common.ir.vertex.*;
@@ -258,14 +257,6 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
    * Helper method to check that all execution properties are correct and makes sense.
    */
   private void executionPropertyCheck() {
-    // SideInput is not compatible with Push
-    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> e.getPropertyValue(BroadcastVariableIdProperty.class).isPresent())
-        .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
-        .forEach(e -> {
-          throw new CompileTimeOptimizationException("DAG execution property check: "
-              + "Broadcast edge is not compatible with push" + e.getId());
-        }));
     // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
         .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)

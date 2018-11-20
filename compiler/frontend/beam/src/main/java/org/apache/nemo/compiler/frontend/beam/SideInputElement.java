@@ -16,31 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.edge.executionproperty;
+package org.apache.nemo.compiler.frontend.beam;
 
-import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
-
-import java.io.Serializable;
+import org.apache.beam.sdk.util.WindowedValue;
 
 /**
- * Edges with this property fetch a broadcast variable.
+ * {@link org.apache.nemo.compiler.frontend.beam.transform.DoFnTransform} treats elements of this type as side inputs.
+ * TODO #289: Prevent using SideInputElement in UDFs
+ * @param <T> type of the side input value.
  */
-public final class BroadcastVariableIdProperty extends EdgeExecutionProperty<Serializable> {
+public final class SideInputElement<T> {
+  private final int sideInputIndex;
+  private final WindowedValue<T> sideInputValue;
 
-  /**
-   * Constructor.
-   * @param value id.
-   */
-  private BroadcastVariableIdProperty(final Serializable value) {
-    super(value);
+  public SideInputElement(final int sideInputIndex, final WindowedValue<T> sideInputValue) {
+    this.sideInputIndex = sideInputIndex;
+    this.sideInputValue = sideInputValue;
   }
 
-  /**
-   * Static method exposing constructor.
-   * @param value id.
-   * @return the newly created execution property.
-   */
-  public static BroadcastVariableIdProperty of(final Serializable value) {
-    return new BroadcastVariableIdProperty(value);
+  public int getSideInputIndex() {
+    return sideInputIndex;
+  }
+
+  public WindowedValue<T> getSideInputValue() {
+    return sideInputValue;
   }
 }

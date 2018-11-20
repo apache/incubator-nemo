@@ -24,6 +24,7 @@ import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.BlockInputReader;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
+import org.apache.nemo.runtime.executor.datatransfer.InputWatermarkManager;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -121,9 +122,10 @@ public final class ParentTaskDataFetcherTest {
 
   private ParentTaskDataFetcher createFetcher(final InputReader readerForParentTask) {
     return new ParentTaskDataFetcher(
-        mock(IRVertex.class),
-        readerForParentTask, // This is the only argument that affects the behavior of ParentTaskDataFetcher
-        mock(OutputCollector.class));
+      mock(IRVertex.class),
+      readerForParentTask, // This is the only argument that affects the behavior of ParentTaskDataFetcher
+      mock(OutputCollector.class),
+      mock(InputWatermarkManager.class));
   }
 
   private InputReader generateInputReader(final CompletableFuture completableFuture) {

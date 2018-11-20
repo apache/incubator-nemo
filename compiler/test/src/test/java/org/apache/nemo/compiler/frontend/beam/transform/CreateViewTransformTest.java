@@ -54,6 +54,7 @@ public final class CreateViewTransformTest {
   public void test() {
 
     final FixedWindows fixedwindows = FixedWindows.of(Duration.standardSeconds(1));
+
     final CreateViewTransform<String, Integer> viewTransform =
       new CreateViewTransform(new SumViewFn());
 

@@ -24,7 +24,6 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.beam.sdk.values.KV;
@@ -42,7 +41,7 @@ import java.util.*;
  * @param <InputT> input type.
  */
 public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
-  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> {
+  extends AbstractDoFnTransform<WindowedValue<KV<K, InputT>>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> {
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyAndWindowDoFnTransform.class.getName());
 
   private final SystemReduceFn reduceFn;
@@ -57,18 +56,16 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   public GroupByKeyAndWindowDoFnTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
                                           final TupleTag<KV<K, Iterable<InputT>>> mainOutputTag,
-                                          final List<TupleTag<?>> additionalOutputTags,
                                           final WindowingStrategy<?, ?> windowingStrategy,
-                                          final Collection<PCollectionView<?>> sideInputs,
                                           final PipelineOptions options,
                                           final SystemReduceFn reduceFn) {
     super(null, /* doFn */
       null, /* inputCoder */
       outputCoders,
       mainOutputTag,
-      additionalOutputTags,
+      Collections.emptyList(),  /*  GBK does not have additional outputs */
       windowingStrategy,
-      sideInputs,
+      Collections.emptyMap(), /*  GBK does not have additional side inputs */
       options);
     this.keyToValues = new HashMap<>();
     this.reduceFn = reduceFn;
@@ -93,7 +90,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         getWindowingStrategy(),
         inMemoryStateInternalsFactory,
         inMemoryTimerInternalsFactory,
-        getSideInputReader(),
+        getSideInputHandler(),
         reduceFn,
         getOutputManager(),
         getMainOutputTag());
@@ -122,7 +119,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
     keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
 
-    checkAndFinishBundle();
+    checkAndFinishBundle(false);
   }
 
   /**
@@ -134,6 +131,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private void processElementsAndTriggerTimers(final Watermark inputWatermark,
                                                final Instant processingTime,
                                                final Instant synchronizedTime) {
+    checkAndInvokeBundle();
     for (final Map.Entry<K, List<WindowedValue<InputT>>> entry : keyToValues.entrySet()) {
       final K key = entry.getKey();
       final List<WindowedValue<InputT>> values = entry.getValue();
@@ -154,6 +152,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // Remove values
       values.clear();
     }
+    checkAndFinishBundle(false);
   }
 
   /**
@@ -163,22 +162,18 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    * @param inputWatermark input watermark
    */
   private void emitOutputWatermark(final Watermark inputWatermark) {
-
-    if (keyAndWatermarkHoldMap.isEmpty()) {
-      return;
-    }
-
     // Find min watermark hold
-    final Watermark minWatermarkHold = Collections.min(keyAndWatermarkHoldMap.values());
+    final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
+      ? new Watermark(Long.MAX_VALUE) // set this to MAX, in order to just use the input watermark.
+      : Collections.min(keyAndWatermarkHoldMap.values());
+    final Watermark outputWatermarkCandidate = new Watermark(
+      Math.max(prevOutputWatermark.getTimestamp(),
+        Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("Watermark hold: {}, "
         + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
-
-    final Watermark outputWatermarkCandidate = new Watermark(
-      Math.max(prevOutputWatermark.getTimestamp(),
-        Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
@@ -195,15 +190,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   @Override
   public void onWatermark(final Watermark inputWatermark) {
-    if (getContext().getIRVertex().getId().equals("vertex10")) {
-      LOG.info("vertex10 watermark: {}", new Instant(inputWatermark.getTimestamp()));
-    }
-
-      checkAndInvokeBundle();
+    getSideInputHandler().trackCurWatermark(inputWatermark.getTimestamp());
     processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
     // Emit watermark to downstream operators
     emitOutputWatermark(inputWatermark);
-    checkAndFinishBundle();
   }
 
   /**
@@ -215,6 +205,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     // Finish any pending windows by advancing the input watermark to infinity.
     processElementsAndTriggerTimers(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()),
       BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE);
+    checkAndFinishBundle(true);
     // Emit watermark to downstream operators
     emitOutputWatermark(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()));
   }

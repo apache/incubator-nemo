@@ -50,11 +50,6 @@ public final class TransformContextImpl implements Transform.Context {
   }
 
   @Override
-  public Object getBroadcastVariable(Serializable id, Object key) {
-    return broadcastManagerWorker.get(id, key);
-  }
-
-  @Override
   public void setSerializedData(final String serializedData) {
     this.data = serializedData;
   }

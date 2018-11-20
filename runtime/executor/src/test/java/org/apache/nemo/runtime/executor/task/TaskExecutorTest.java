@@ -26,7 +26,6 @@ import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.BroadcastVariableIdProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
@@ -66,7 +65,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -422,16 +420,16 @@ public final class TaskExecutorTest {
         .buildWithoutSourceSinkCheck();
 
     final StageEdge taskOutEdge = mockStageEdgeFrom(operatorIRVertex2);
+    final StageEdge taskInEdge = mockStageEdgeTo(operatorIRVertex1);
 
-    final StageEdge broadcastInEdge = mockBroadcastVariableStageEdgeTo(
-      new OperatorVertex(singleListTransform), operatorIRVertex2, broadcastId, elements);
+    when(broadcastManagerWorker.get(broadcastId)).thenReturn(new ArrayList<>(elements));
 
     final Task task = new Task(
         "testSourceVertexDataFetching",
         generateTaskId(),
         TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
-        Arrays.asList(mockStageEdgeTo(operatorIRVertex1), broadcastInEdge),
+        Collections.singletonList(taskInEdge),
         Collections.singletonList(taskOutEdge),
         Collections.emptyMap());
 
@@ -537,23 +535,6 @@ public final class TaskExecutorTest {
       executionPropertyMap,
       new OperatorVertex(new RelayTransform()),
       irVertex,
-      mock(Stage.class),
-      mock(Stage.class));
-  }
-
-  private StageEdge mockBroadcastVariableStageEdgeTo(final IRVertex srcVertex,
-                                                     final IRVertex dstVertex,
-                                                     final Serializable broadcastVariableId,
-                                                     final Object broadcastVariable) {
-    when(broadcastManagerWorker.get(broadcastVariableId)).thenReturn(broadcastVariable);
-
-    final ExecutionPropertyMap executionPropertyMap =
-      ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne);
-    executionPropertyMap.put(BroadcastVariableIdProperty.of(broadcastVariableId));
-    return new StageEdge("runtime outgoing edge id",
-      executionPropertyMap,
-      srcVertex,
-      dstVertex,
       mock(Stage.class),
       mock(Stage.class));
   }

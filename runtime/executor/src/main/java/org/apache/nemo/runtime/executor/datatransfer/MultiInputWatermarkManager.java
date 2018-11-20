@@ -62,7 +62,6 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
 
   @Override
   public void trackAndEmitWatermarks(final int edgeIndex, final Watermark watermark) {
-
     if (LOG.isDebugEnabled()) {
       LOG.debug("Track watermark {} emitted from edge {}:, {}", watermark.getTimestamp(), edgeIndex,
         watermarks.toString());

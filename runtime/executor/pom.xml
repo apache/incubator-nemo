@@ -23,7 +23,7 @@ under the License.
     <parent>
         <groupId>org.apache.nemo</groupId>
         <artifactId>nemo-runtime</artifactId>
-        <version>0.2-SNAPSHOT</version>
+        <version>0.1-SNAPSHOT</version>
         <relativePath>../</relativePath>
     </parent>
 
@@ -61,7 +61,7 @@ under the License.
         <dependency>
             <groupId>org.apache.nemo</groupId>
             <artifactId>nemo-runtime-master</artifactId>
-            <version>0.2-SNAPSHOT</version>
+            <version>0.1-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
       <dependency>

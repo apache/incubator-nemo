@@ -22,7 +22,6 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -30,12 +29,12 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 /**
- * DoFn transform implementation.
+ * DoFn transform implementation when there is no side input.
  *
  * @param <InputT> input type.
  * @param <OutputT> output type.
@@ -47,9 +46,6 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   /**
    * DoFnTransform Constructor.
-   *
-   * @param doFn    doFn.
-   * @param options Pipeline options.
    */
   public DoFnTransform(final DoFn<InputT, OutputT> doFn,
                        final Coder<InputT> inputCoder,
@@ -57,10 +53,9 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
                        final TupleTag<OutputT> mainOutputTag,
                        final List<TupleTag<?>> additionalOutputTags,
                        final WindowingStrategy<?, ?> windowingStrategy,
-                       final Collection<PCollectionView<?>> sideInputs,
                        final PipelineOptions options) {
     super(doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, sideInputs, options);
+      additionalOutputTags, windowingStrategy, Collections.emptyMap(), options);
   }
 
   @Override
@@ -69,16 +64,18 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   }
 
   @Override
-  public void onData(final WindowedValue<InputT> data) {
-    if (inputWatermark > data.getTimestamp().getMillis()) {
+  public void onData(final Object data) {
+    final WindowedValue<InputT> mainInputElement = (WindowedValue<InputT>) data;
+    if (inputWatermark > mainInputElement.getTimestamp().getMillis()) {
       // late data!
       // just drop
       return;
     }
 
+    // Do not need any push-back logic.
     checkAndInvokeBundle();
-    getDoFnRunner().processElement(data);
-    checkAndFinishBundle();
+    getDoFnRunner().processElement(mainInputElement);
+    checkAndFinishBundle(false);
   }
 
   @Override
@@ -93,12 +90,11 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
     // TODO #216: We should consider push-back data that waits for side input
     // TODO #216: If there are push-back data, input watermark >= output watermark
     getOutputCollector().emitWatermark(watermark);
-    checkAndFinishBundle();
   }
 
   @Override
   protected void beforeClose() {
-    // nothing
+    checkAndFinishBundle(true);
   }
 
   @Override
