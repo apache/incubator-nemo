@@ -120,7 +120,7 @@ public final class ContainerManager {
       requestLatchByResourceSpecId.put(resourceSpecification.getResourceSpecId(),
           new CountDownLatch(numToRequest));
 
-      LOG.info(resourceSpecification.getMemory());
+      LOG.info("Memory: {}", resourceSpecification.getMemory());
       // Request the evaluators
       evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
           .setNumber(numToRequest)
