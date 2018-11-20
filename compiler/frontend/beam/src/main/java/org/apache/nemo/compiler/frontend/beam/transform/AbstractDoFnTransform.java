@@ -48,7 +48,7 @@ import java.util.Map;
  * @param <OutputT> output type.
  */
 public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
-  Transform<InputT, WindowedValue<OutputT>> {
+  Transform<WindowedValue<InputT>, WindowedValue<OutputT>> {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractDoFnTransform.class.getName());
 
   private final TupleTag<OutputT> mainOutputTag;
@@ -133,7 +133,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     return pushBackRunner;
   }
 
-  final InMemorySideInputReader getSideInputHandler() {
+  final InMemorySideInputReader getSideInputReader() {
     return sideInputReader;
   }
 
@@ -159,19 +159,32 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     currBundleCount += 1;
   }
 
-
   /**
    * Checks whether it is time to finish the bundle and finish it.
    */
-  final void checkAndFinishBundle(final boolean force) {
+  final void checkAndFinishBundle() {
     if (!bundleFinished) {
-      if (force || currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
+      if (currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
         bundleFinished = true;
         if (pushBackRunner == null) {
           doFnRunner.finishBundle();
         } else {
           pushBackRunner.finishBundle();
         }
+      }
+    }
+  }
+
+  /**
+   * Finish bundle without checking for conditions.
+   */
+  final void forceFinishBundle() {
+    if (!bundleFinished) {
+      bundleFinished = true;
+      if (pushBackRunner == null) {
+        doFnRunner.finishBundle();
+      } else {
+        pushBackRunner.finishBundle();
       }
     }
   }
@@ -235,9 +248,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   @Override
   public final void close() {
     beforeClose();
-    if (!bundleFinished) {
-      doFnRunner.finishBundle();
-    }
+    forceFinishBundle();
     doFnInvoker.invokeTeardown();
   }
 

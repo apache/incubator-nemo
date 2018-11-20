@@ -78,81 +78,80 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   }
 
   @Override
-  public void onData(final Object data) {
+  public void onData(final WindowedValue data) {
     // Need to distinguish side/main inputs and push-back main inputs.
-    if (data instanceof SideInputElement) {
+    if (data.getValue() instanceof SideInputElement) {
       // This element is a Side Input
-      final SideInputElement sideInputElement = (SideInputElement) data;
       // TODO #287: Consider Explicit Multi-Input IR Transform
+      final WindowedValue<SideInputElement> sideInputElement = (WindowedValue<SideInputElement>) data;
+      final PCollectionView view = getSideInputs().get(sideInputElement.getValue().getSideInputIndex());
+      getSideInputReader().addSideInputElement(view, data);
 
-      // Flush out any current bundle-related states in the DoFn,
-      // as this sideinput may trigger the processing of pushed-back data.
-      checkAndFinishBundle(true); // forced
-
-      checkAndInvokeBundle();
-      final PCollectionView view = getSideInputs().get(sideInputElement.getSideInputIndex());
-      final WindowedValue sideInputData = sideInputElement.getSideInputValue();
-      getSideInputHandler().addSideInputValue(view, sideInputData);
-
-      // With the new side input added, we may be able to process some pushed-back elements.
-      final List<WindowedValue<InputT>> pushedBackAgain = new ArrayList<>();
-      long pushedBackAgainWatermark = Long.MAX_VALUE;
-      for (WindowedValue<InputT> curPushedBack : curPushedBacks) {
-        final Iterable<WindowedValue<InputT>> pushedBack =
-          getPushBackRunner().processElementInReadyWindows(curPushedBack);
-        for (final WindowedValue<InputT> wv : pushedBack) {
-          pushedBackAgainWatermark = Math.min(pushedBackAgainWatermark, wv.getTimestamp().getMillis());
-          pushedBackAgain.add(wv);
-        }
-      }
-      curPushedBacks = pushedBackAgain;
-      curPushedBackWatermark = pushedBackAgainWatermark;
-      checkAndFinishBundle(false);
+      handlePushBacks();
 
       // See if we can emit a new watermark, as we may have processed some pushed-back elements
       onWatermark(new Watermark(curInputWatermark));
     } else {
       // This element is the Main Input
-      final WindowedValue<InputT> mainInputElement = (WindowedValue<InputT>) data;
       checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
-        getPushBackRunner().processElementInReadyWindows(mainInputElement);
+        getPushBackRunner().processElementInReadyWindows(data);
       for (final WindowedValue wv : pushedBack) {
         curPushedBackWatermark = Math.min(curPushedBackWatermark, wv.getTimestamp().getMillis());
         curPushedBacks.add(wv);
       }
-      checkAndFinishBundle(false);
+      checkAndFinishBundle();
     }
+  }
+
+  private void handlePushBacks() {
+    // Force-flush, before (possibly) processing pushed-back data.
+    //
+    // Main reason:
+    // {@link org.apache.beam.runners.core.SimplePushbackSideInputDoFnRunner}
+    // caches for each bundle the side inputs that are not ready.
+    // We need to re-start the bundle to advertise the (possibly) newly available side input.
+    forceFinishBundle(); // forced
+
+    checkAndInvokeBundle();
+    // With the new side input added, we may be able to process some pushed-back elements.
+    final List<WindowedValue<InputT>> pushedBackAgain = new ArrayList<>();
+    long pushedBackAgainWatermark = Long.MAX_VALUE;
+    for (WindowedValue<InputT> curPushedBack : curPushedBacks) {
+      final Iterable<WindowedValue<InputT>> pushedBack =
+        getPushBackRunner().processElementInReadyWindows(curPushedBack);
+      for (final WindowedValue<InputT> wv : pushedBack) {
+        pushedBackAgainWatermark = Math.min(pushedBackAgainWatermark, wv.getTimestamp().getMillis());
+        pushedBackAgain.add(wv);
+      }
+    }
+    curPushedBacks = pushedBackAgain;
+    curPushedBackWatermark = pushedBackAgainWatermark;
+    checkAndFinishBundle();
   }
 
   @Override
   public void onWatermark(final Watermark watermark) {
-    curInputWatermark = watermark.getTimestamp();
-    getSideInputHandler().trackCurWatermark(curInputWatermark);
-
-    final long minOfInputAndPushback = Math.min(curInputWatermark, curPushedBackWatermark);
-    if (minOfInputAndPushback > curOutputWatermark) {
-      // Watermark advances!
-      getOutputCollector().emitWatermark(new Watermark(minOfInputAndPushback));
-      curOutputWatermark = minOfInputAndPushback;
-    }
-
-    if (watermark.getTimestamp() >= BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()) {
-      hardFlushAllPushedbacks();
-    }
-  }
-
-  private void hardFlushAllPushedbacks() {
+    // TODO #298: Consider Processing DoFn PushBacks on Watermark
     checkAndInvokeBundle();
-    // Instead of using the PushBackRunner, we directly use the DoFnRunner to not wait for sideinputs.
-    curPushedBacks.forEach(wv -> getDoFnRunner().processElement(wv));
-    curPushedBacks.clear();
-    checkAndFinishBundle(true);
+    curInputWatermark = watermark.getTimestamp();
+    getSideInputReader().setCurrentWatermarkOfAllMainAndSideInputs(curInputWatermark);
+
+    final long outputWatermarkCandidate = Math.min(curInputWatermark, curPushedBackWatermark);
+    if (outputWatermarkCandidate > curOutputWatermark) {
+      // Watermark advances!
+      getOutputCollector().emitWatermark(new Watermark(outputWatermarkCandidate));
+      curOutputWatermark = outputWatermarkCandidate;
+    }
+    checkAndFinishBundle();
   }
 
   @Override
   protected void beforeClose() {
-    hardFlushAllPushedbacks();
+    // This makes all unavailable side inputs as available empty side inputs.
+    onWatermark(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()));
+    // All push-backs should be processed here.
+    handlePushBacks();
   }
 
   @Override

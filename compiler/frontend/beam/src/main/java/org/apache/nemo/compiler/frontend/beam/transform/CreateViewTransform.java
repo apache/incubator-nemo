@@ -38,7 +38,7 @@ import java.util.*;
  * @param <O> materialized output type
  */
 public final class CreateViewTransform<I, O> implements Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
-  private final ViewFn<Object, O> viewFn;
+  private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final Map<BoundedWindow, List<I>> windowListMap;
 
   private OutputCollector<WindowedValue<O>> outputCollector;
@@ -47,9 +47,9 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
 
   /**
    * Constructor of CreateViewTransform.
-   * @param viewFn the view function.
+   * @param viewFn the viewFn that materializes data.
    */
-  public CreateViewTransform(final ViewFn<Object, O> viewFn)  {
+  public CreateViewTransform(final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn)  {
     this.viewFn = viewFn;
     this.windowListMap = new HashMap<>();
     this.currentOutputWatermark = Long.MIN_VALUE;

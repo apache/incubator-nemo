@@ -29,8 +29,8 @@ import org.apache.nemo.compiler.frontend.beam.SideInputElement;
  * TODO #297: Consider Removing SideInputTransform
  * @param <T> input/output type.
  */
-public final class SideInputTransform<T> implements Transform<WindowedValue<T>, SideInputElement> {
-  private OutputCollector<SideInputElement> outputCollector;
+public final class SideInputTransform<T> implements Transform<WindowedValue<T>, WindowedValue<SideInputElement<T>>> {
+  private OutputCollector<WindowedValue<SideInputElement<T>>> outputCollector;
   private final int index;
 
   /**
@@ -41,13 +41,13 @@ public final class SideInputTransform<T> implements Transform<WindowedValue<T>, 
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<SideInputElement> oc) {
+  public void prepare(final Context context, final OutputCollector<WindowedValue<SideInputElement<T>>> oc) {
     this.outputCollector = oc;
   }
 
   @Override
   public void onData(final WindowedValue<T> element) {
-    outputCollector.emit(new SideInputElement(index, element));
+    outputCollector.emit(element.withValue(new SideInputElement<>(index, element.getValue())));
   }
 
   @Override
