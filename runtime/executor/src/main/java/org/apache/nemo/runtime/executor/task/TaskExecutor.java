@@ -250,8 +250,7 @@ public final class TaskExecutor {
         dataFetcherList.add(new SourceVertexDataFetcher(
           (SourceVertex) irVertex,
           sourceReader.get(),
-          outputCollector,
-          new SingleInputWatermarkManager(outputCollector)));
+          outputCollector));
       }
 
       // Parent-task read

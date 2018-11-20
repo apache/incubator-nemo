@@ -124,8 +124,7 @@ public final class ParentTaskDataFetcherTest {
     return new ParentTaskDataFetcher(
       mock(IRVertex.class),
       readerForParentTask, // This is the only argument that affects the behavior of ParentTaskDataFetcher
-      mock(OutputCollector.class),
-      mock(InputWatermarkManager.class));
+      mock(OutputCollector.class));
   }
 
   private InputReader generateInputReader(final CompletableFuture completableFuture) {
