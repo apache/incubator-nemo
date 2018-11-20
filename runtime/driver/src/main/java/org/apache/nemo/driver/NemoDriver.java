@@ -164,10 +164,9 @@ public final class NemoDriver {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       final String executorId = RuntimeIdManager.generateExecutorId();
-      final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
-        .addOption("-Dio.netty.leakDetection.level=advanced")
-        .addOption("-XX:NewRatio=1");
-      allocatedEvaluator.setProcess(jvmProcess);
+      //final JVMProcess jvmProcess = jvmProcessFactory.newEvaluatorProcess()
+      //  .addOption("-Dio.netty.leakDetection.level=advanced");
+      //allocatedEvaluator.setProcess(jvmProcess);
       runtimeMaster.onContainerAllocated(executorId, allocatedEvaluator,
           getExecutorConfiguration(executorId));
     }
