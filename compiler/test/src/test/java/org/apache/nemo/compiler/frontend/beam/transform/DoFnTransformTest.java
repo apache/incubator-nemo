@@ -40,7 +40,6 @@ import org.junit.Test;
 
 import java.util.*;
 
-import static java.util.Collections.emptyMap;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -75,7 +74,6 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        emptyMap(), /* side inputs */
         PipelineOptionsFactory.as(NemoPipelineOptions.class));
 
     final Transform.Context context = mock(Transform.Context.class);
@@ -109,7 +107,6 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        emptyMap(), /* side inputs */
         pipelineOptions);
 
     final Transform.Context context = mock(Transform.Context.class);
@@ -153,7 +150,6 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        emptyMap(), /* side inputs */
         pipelineOptions);
 
     final Transform.Context context = mock(Transform.Context.class);
@@ -205,7 +201,6 @@ public final class DoFnTransformTest {
         mainOutput,
         tags,
         WindowingStrategy.globalDefault(),
-        emptyMap(), /* side inputs */
         PipelineOptionsFactory.as(NemoPipelineOptions.class));
 
     // mock context
