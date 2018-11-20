@@ -25,7 +25,6 @@ import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
@@ -272,30 +271,18 @@ public final class TaskExecutor {
             final OutputCollector dataFetcherOutputCollector =
               new DataFetcherOutputCollector((OperatorVertex) irVertex, edgeIndex, watermarkManager);
 
-            // Watermark propagation flow:
-            // DataFetcher
-            // -> DataFetcher's inputWatermarkManager
-            // -> DataFetcher's outputCollector
-            // -> Consumer Operator's inputWatermarkManager
-            final InputWatermarkManager inputWatermarkManager = edge.getDataCommunicationPattern()
-              .equals(CommunicationPatternProperty.Value.OneToOne)
-              ? new SingleInputWatermarkManager(dataFetcherOutputCollector)
-              : new MultiInputWatermarkManager(edge.getSrc().getParallelism(), dataFetcherOutputCollector);
-
             if (parentTaskReader instanceof PipeInputReader) {
               dataFetcherList.add(
                 new MultiThreadParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
                   parentTaskReader,
-                  dataFetcherOutputCollector,
-                  inputWatermarkManager));
+                  dataFetcherOutputCollector));
             } else {
               dataFetcherList.add(
                 new ParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
                   parentTaskReader,
-                  dataFetcherOutputCollector,
-                  inputWatermarkManager));
+                  dataFetcherOutputCollector));
             }
           }
         });
@@ -316,10 +303,9 @@ public final class TaskExecutor {
     outputCollector.emit(dataElement);
   }
 
-  private void processWatermark(final InputWatermarkManager inputWatermarkManager,
-                                final Watermark watermark,
-                                final int index) {
-    inputWatermarkManager.trackAndEmitWatermarks(index, watermark);
+  private void processWatermark(final OutputCollector outputCollector,
+                                final Watermark watermark) {
+    outputCollector.emitWatermark(watermark);
   }
 
   /**
@@ -402,12 +388,7 @@ public final class TaskExecutor {
       }
     } else if (event instanceof Watermark) {
       // Watermark
-      processWatermark(dataFetcher.getInputWatermarkManager(), (Watermark) event, 0);
-    } else if (event instanceof WatermarkWithIndex) {
-      // Watermark
-      final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) event;
-      processWatermark(
-        dataFetcher.getInputWatermarkManager(), watermarkWithIndex.getWatermark(), watermarkWithIndex.getIndex());
+      processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
     } else {
       // Process data element
       processElement(dataFetcher.getOutputCollector(), event);

@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.task;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.slf4j.Logger;
@@ -59,11 +60,14 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   private int numOfIterators; // == numOfIncomingEdges
   private int numOfFinishMarks = 0;
 
+  // A watermark manager
+  private InputWatermarkManager inputWatermarkManager;
+
+
   MultiThreadParentTaskDataFetcher(final IRVertex dataSource,
                                    final InputReader readerForParentTask,
-                                   final OutputCollector outputCollector,
-                                   final InputWatermarkManager inputWatermarkManager) {
-    super(dataSource, outputCollector, inputWatermarkManager);
+                                   final OutputCollector outputCollector) {
+    super(dataSource, outputCollector);
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
     this.elementQueue = new ConcurrentLinkedQueue();
@@ -96,14 +100,33 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   private void fetchDataLazily() {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     numOfIterators = futures.size();
+
+    if (numOfIterators > 1) {
+      inputWatermarkManager = new MultiInputWatermarkManager(numOfIterators, new WatermarkCollector());
+    } else {
+      inputWatermarkManager = new SingleInputWatermarkManager(new WatermarkCollector());
+    }
+
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
       // A thread for each iterator
       queueInsertionThreads.submit(() -> {
         if (exception == null) {
           // Consume this iterator to the end.
           while (iterator.hasNext()) { // blocked on the iterator.
-            final Object event = iterator.next();
-            elementQueue.offer(event);
+            final Object element = iterator.next();
+            if (element instanceof WatermarkWithIndex) {
+              // watermark element
+              // the input watermark manager is accessed by multiple threads
+              // so we should synchronize it
+              synchronized (inputWatermarkManager) {
+                final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
+                inputWatermarkManager.trackAndEmitWatermarks(
+                  watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
+              }
+            } else {
+              // data element
+              elementQueue.offer(element);
+            }
           }
 
           // This iterator is finished.
@@ -146,5 +169,24 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   @Override
   public void close() throws Exception {
     queueInsertionThreads.shutdown();
+  }
+
+  /**
+   * Just adds the emitted watermark to the element queue.
+   * It receives the watermark from InputWatermarkManager.
+   */
+  private final class WatermarkCollector implements OutputCollector {
+    @Override
+    public void emit(final Object output) {
+      throw new IllegalStateException("Should not be called");
+    }
+    @Override
+    public void emitWatermark(final Watermark watermark) {
+      elementQueue.offer(watermark);
+    }
+    @Override
+    public void emit(final String dstVertexId, final Object output) {
+      throw new IllegalStateException("Should not be called");
+    }
   }
 }
