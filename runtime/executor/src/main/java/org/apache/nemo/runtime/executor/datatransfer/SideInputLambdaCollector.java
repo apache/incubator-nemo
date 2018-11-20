@@ -138,7 +138,6 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
 
       //LOG.info("Start to send sideinput {}", file.getName());
       final long st = System.currentTimeMillis();
-      System.out.println("!!! Start time of " + file.getName() + "::" + st);
 
       executorService.execute(() -> {
         final PutObjectRequest putObjectRequest =
