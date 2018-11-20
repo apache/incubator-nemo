@@ -103,6 +103,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     if (vertexId.equals("vertex22")) {
       System.out.println("Start to send side input!: " + System.currentTimeMillis() + ", output: " + output);
       sideInputOutputCollector.emit(output);
+      return;
     } else if (vertexId.equals("vertex6")) {
       mainInputLambdaCollector.emit(output);
       return;

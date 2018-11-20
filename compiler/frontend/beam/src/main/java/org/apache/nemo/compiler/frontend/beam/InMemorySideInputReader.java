@@ -74,6 +74,7 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
   @Nullable
   @Override
   public <T> T get(final PCollectionView<T> view, final BoundedWindow window) {
+    windowAccessMap.put(window, System.currentTimeMillis());
     // This gets called after isReady()
     final T sideInputData = (T) inMemorySideInputs.get(Pair.of(view, window));
     return sideInputData == null
