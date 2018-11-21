@@ -91,10 +91,6 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     final long prevAccessTime = info.accessTime;
     info.accessTime = System.currentTimeMillis();
 
-    if (info.storageObject.getPartition() == 90 || info.storageObject.getPartition() == 100) {
-      // warm up
-      warmer.warmup();
-    }
 
     //LOG.info("Info {}, count: {}", info.fname, info.cnt);
 
@@ -143,6 +139,12 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
         }
 
         final int partition = windowAndPartitionMap.get(fileName);
+
+        if (partition == 80 || partition == 100) {
+          // warm up
+          warmer.warmup();
+        }
+
         info = new Info(storageObjectFactory.newInstance(
           fileName, partition, encodedDecoderFactory, encoderFactory));
         windowAndInfoMap.put(fileName, info);
