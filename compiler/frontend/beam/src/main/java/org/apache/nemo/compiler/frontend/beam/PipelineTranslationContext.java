@@ -32,6 +32,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
@@ -121,9 +122,13 @@ final class PipelineTranslationContext {
 
       // Second edge: transform to the dstIRVertex
       final IREdge secondEdge =
-        new IREdge(CommunicationPatternProperty.Value.OneToOne, sideInputTransformVertex, dstVertex);
+        new IREdge(CommunicationPatternProperty.Value.BroadCast, sideInputTransformVertex, dstVertex);
       final WindowedValue.FullWindowedValueCoder sideInputElementCoder =
         WindowedValue.getFullCoder(SideInputCoder.of(viewCoder), windowCoder);
+
+      // The vertices should be Parallelism=1
+      srcVertex.setPropertyPermanently(ParallelismProperty.of(1));
+      sideInputTransformVertex.setPropertyPermanently(ParallelismProperty.of(1));
 
       secondEdge.setProperty(EncoderProperty.of(new BeamEncoderFactory(sideInputElementCoder)));
       secondEdge.setProperty(DecoderProperty.of(new BeamDecoderFactory(sideInputElementCoder)));
@@ -267,9 +272,11 @@ final class PipelineTranslationContext {
     } else if (viewFn instanceof PCollectionViews.ListViewFn) {
       return ListCoder.of(inputKVCoder.getValueCoder());
     } else if (viewFn instanceof PCollectionViews.MapViewFn) {
-      return MapCoder.of(inputKVCoder.getKeyCoder(), inputKVCoder.getValueCoder());
+      final KvCoder inputValueKVCoder = (KvCoder) inputKVCoder.getValueCoder();
+      return MapCoder.of(inputValueKVCoder.getKeyCoder(), inputValueKVCoder.getValueCoder());
     } else if (viewFn instanceof PCollectionViews.MultimapViewFn) {
-      return MapCoder.of(inputKVCoder.getKeyCoder(), IterableCoder.of(inputKVCoder.getValueCoder()));
+      final KvCoder inputValueKVCoder = (KvCoder) inputKVCoder.getValueCoder();
+      return MapCoder.of(inputValueKVCoder.getKeyCoder(), inputValueKVCoder.getValueCoder());
     } else if (viewFn instanceof PCollectionViews.SingletonViewFn) {
       return inputKVCoder;
     } else {

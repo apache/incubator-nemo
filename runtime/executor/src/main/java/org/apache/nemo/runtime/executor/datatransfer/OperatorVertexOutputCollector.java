@@ -77,7 +77,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emit(final O output) {
-
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       emit(internalVertex.getNextOperator(), output);
     }
@@ -89,7 +88,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
-
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
         emit(internalVertex.getNextOperator(), (O) output);
