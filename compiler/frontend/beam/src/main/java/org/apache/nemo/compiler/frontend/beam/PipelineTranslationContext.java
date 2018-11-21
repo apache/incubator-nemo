@@ -272,9 +272,11 @@ final class PipelineTranslationContext {
     } else if (viewFn instanceof PCollectionViews.ListViewFn) {
       return ListCoder.of(inputKVCoder.getValueCoder());
     } else if (viewFn instanceof PCollectionViews.MapViewFn) {
-      return MapCoder.of(inputKVCoder.getKeyCoder(), inputKVCoder.getValueCoder());
+      final KvCoder inputValueKVCoder = (KvCoder) inputKVCoder.getValueCoder();
+      return MapCoder.of(inputValueKVCoder.getKeyCoder(), inputValueKVCoder.getValueCoder());
     } else if (viewFn instanceof PCollectionViews.MultimapViewFn) {
-      return MapCoder.of(inputKVCoder.getKeyCoder(), IterableCoder.of(inputKVCoder.getValueCoder()));
+      final KvCoder inputValueKVCoder = (KvCoder) inputKVCoder.getValueCoder();
+      return MapCoder.of(inputValueKVCoder.getKeyCoder(), inputValueKVCoder.getValueCoder());
     } else if (viewFn instanceof PCollectionViews.SingletonViewFn) {
       return inputKVCoder;
     } else {
