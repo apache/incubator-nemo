@@ -21,6 +21,7 @@ package org.apache.nemo.examples.beam;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
+import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -54,7 +55,7 @@ public final class MultinomialLogisticRegressionITCase {
         .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
         .addUserMain(MultinomialLogisticRegression.class.getCanonicalName())
         .addUserArgs(input, numFeatures, numClasses, numIteration)
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .addResourceJson(executorResourceFileName)
         .build());
   }
