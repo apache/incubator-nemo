@@ -78,7 +78,7 @@ public final class WindowedWordCount {
       return p.apply(GenerateSequence
         .from(1)
         .withRate(2, Duration.standardSeconds(1))
-        .withTimestampFn(num -> new Instant(num * 500)))
+        .withTimestampFn(num -> new Instant(num * 500))) // 0.5 second between subsequent elements
         .apply(MapElements.via(new SimpleFunction<Long, KV<String, Long>>() {
           @Override
           public KV<String, Long> apply(final Long val) {

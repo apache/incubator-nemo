@@ -19,43 +19,44 @@
 package org.apache.nemo.compiler.frontend.beam.coder;
 
 import org.apache.beam.sdk.coders.AtomicCoder;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 
 import java.io.*;
 
 /**
- * EncoderFactory for float[].
+ * EncoderFactory for side inputs.
+ * @param <T> type of the side input value.
  */
-public final class FloatArrayCoder extends AtomicCoder<float[]> {
+public final class SideInputCoder<T> extends AtomicCoder<SideInputElement<T>> {
+  private final Coder<T> valueCoder;
+
   /**
    * Private constructor.
    */
-  private FloatArrayCoder() {
+  private SideInputCoder(final Coder<T> valueCoder) {
+    this.valueCoder = valueCoder;
   }
 
   /**
    * @return a new coder
    */
-  public static FloatArrayCoder of() {
-    return new FloatArrayCoder();
+  public static SideInputCoder of(final Coder valueCoder) {
+    return new SideInputCoder<>(valueCoder);
   }
 
   @Override
-  public void encode(final float[] ary, final OutputStream outStream) throws IOException {
+  public void encode(final SideInputElement<T> sideInputElement, final OutputStream outStream) throws IOException {
     final DataOutputStream dataOutputStream = new DataOutputStream(outStream);
-    dataOutputStream.writeInt(ary.length);
-    for (float f : ary) {
-      dataOutputStream.writeFloat(f);
-    }
+    dataOutputStream.writeInt(sideInputElement.getSideInputIndex());
+    valueCoder.encode(sideInputElement.getSideInputValue(), dataOutputStream);
   }
 
   @Override
-  public float[] decode(final InputStream inStream) throws IOException {
+  public SideInputElement<T> decode(final InputStream inStream) throws IOException {
     final DataInputStream dataInputStream = new DataInputStream(inStream);
-    final int floatArrayLen = dataInputStream.readInt();
-    final float[] floatArray = new float[floatArrayLen];
-    for (int i = 0; i < floatArrayLen; i++) {
-      floatArray[i] = dataInputStream.readFloat();
-    }
-    return floatArray;
+    final int index = dataInputStream.readInt();
+    final T value = valueCoder.decode(inStream);
+    return new SideInputElement<>(index, value);
   }
 }

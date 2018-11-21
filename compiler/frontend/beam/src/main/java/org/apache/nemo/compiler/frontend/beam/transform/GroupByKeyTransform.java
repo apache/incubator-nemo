@@ -69,12 +69,4 @@ public final class GroupByKeyTransform<I> extends NoWatermarkEmitTransform<I, Wi
       }
     }
   }
-
-  @Override
-  public String toString() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("GroupByKeyTransform:");
-    sb.append(super.toString());
-    return sb.toString();
-  }
 }
