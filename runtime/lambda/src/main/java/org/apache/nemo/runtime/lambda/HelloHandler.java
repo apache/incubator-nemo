@@ -88,6 +88,13 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
 			LOG.info("Create class loader: {}", classLoader);
 		}
 
+
+		if (input.isEmpty()) {
+		  // this is warmer, just return;
+      System.out.println("Warm up");
+		  return null;
+    }
+
 		final String sideInputKey = (String) input.get("sideInput");
 		final String mainInputKey = (String) input.get("mainInput");
 		final List<String> result = new ArrayList<>();
