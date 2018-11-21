@@ -10,7 +10,6 @@ import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.nemo.common.SideInputElement;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -38,7 +37,7 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
 	private URLClassLoader classLoader = null;
 	private LambdaSideInputHandler handler = null;
 
-	private final String serializedUserCode = "rO0ABXNyABZRdWVyeTdTaWRlSW5wdXRIYW5kbGVypSmVcwQgmRACAAB4cA==";
+	private final String serializedUserCode = "rO0ABXNyABZRdWVyeTdTaWRlSW5wdXRIYW5kbGVyMlM6Ib0vAkQCAAB4cA==";
 
 	private void createClassLoader() {
 		// read jar file
@@ -88,7 +87,7 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
 		  // this is warmer, just return;
       System.out.println("Warm up");
       try {
-        Thread.sleep(2000);
+        Thread.sleep(5000);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -119,7 +118,7 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
 		  final DecoderFactory.Decoder mainInputDecoder =
         mainInputDecoderFactory.create(mainInputStream);
 
-		  final SideInputElement sideInput = (SideInputElement) sideInputDecoder.decode();
+		  final WindowedValue sideInput = (WindowedValue) sideInputDecoder.decode();
 
 		  //System.out.println("Side input: " + sideInput);
 

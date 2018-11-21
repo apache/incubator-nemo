@@ -29,7 +29,6 @@ import com.amazonaws.services.s3.model.*;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.commons.lang.SerializationUtils;
-import org.apache.nemo.common.SideInputElement;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -120,7 +119,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
   public void emit(final O output) {
         // CreateViewTransform (side input)
     // send to serverless
-    final WindowedValue wv = ((SideInputElement)output).getSideInputValue();
+    final WindowedValue wv = ((WindowedValue) output);
     final BoundedWindow window = (BoundedWindow) wv.getWindows().iterator().next();
     LOG.info("Vertex22 Window: {} ********** {}", window, window.maxTimestamp().toString());
 
