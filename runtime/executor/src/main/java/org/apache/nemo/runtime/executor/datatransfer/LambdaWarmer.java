@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.lambda.AWSLambda;
 import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
@@ -41,7 +42,8 @@ public final class LambdaWarmer {
    * Constructor of the output collector.
    */
   public LambdaWarmer() {
-    this.awsLambda = AWSLambdaClientBuilder.standard().build();
+    this.awsLambda = AWSLambdaClientBuilder.standard().
+      withClientConfiguration(new ClientConfiguration().withMaxConnections(150)).build();
   }
 
   public void warmup() {
