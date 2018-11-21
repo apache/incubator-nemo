@@ -43,7 +43,7 @@ import java.util.*;
  * @param <O> materialized output type
  */
 public final class CreateViewTransform<I, O> implements Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
-  private final ViewFn<Object, O> viewFn;
+  private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final Map<BoundedWindow, List<I>> windowListMap;
   private static final Logger LOG = LoggerFactory.getLogger(CreateViewTransform.class.getName());
 
@@ -56,9 +56,9 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
 
   /**
    * Constructor of CreateViewTransform.
-   * @param viewFn the view function.
+   * @param viewFn the viewFn that materializes data.
    */
-  public CreateViewTransform(final ViewFn<Object, O> viewFn)  {
+  public CreateViewTransform(final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn)  {
     this.viewFn = viewFn;
     this.windowListMap = new HashMap<>();
     this.currentOutputWatermark = Long.MIN_VALUE;
@@ -144,7 +144,7 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("CreateViewTransform:" + viewFn);
+    sb.append("CreateViewTransform  " + viewFn.getClass().getName());
     return sb.toString();
   }
 

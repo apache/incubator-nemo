@@ -62,6 +62,8 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final long period = 5000;
 
+  private final LambdaWarmer warmer;
+
   /**
    * Constructor of the output collector.
    * @param irVertex the ir vertex that emits the output
@@ -80,6 +82,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
       ((NemoEventDecoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getDecoderFactory()).getValueDecoderFactory());
     this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
+    this.warmer = new LambdaWarmer();
 
   }
 
@@ -89,10 +92,15 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     final long prevAccessTime = info.accessTime;
     info.accessTime = System.currentTimeMillis();
 
+    if (info.storageObject.getPartition() == 90 || info.storageObject.getPartition() == 100) {
+      // warm up
+      warmer.warmup();
+    }
+
     //LOG.info("Info {}, count: {}", info.fname, info.cnt);
 
     //if (info.cnt >= 10000 || info.accessTime - prevAccessTime >= 2000) {
-    if (info.cnt >= 40000 || info.accessTime - prevAccessTime >= period) {
+    if (info.cnt >= 50000 || info.accessTime - prevAccessTime >= period) {
         windowAndInfoMap.put(key, null);
         // flush
         executorService.execute(() -> {

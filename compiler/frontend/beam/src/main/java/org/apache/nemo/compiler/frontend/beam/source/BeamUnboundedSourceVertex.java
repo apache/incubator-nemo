@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
@@ -44,22 +45,23 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
   private static final Logger LOG = LoggerFactory.getLogger(BeamUnboundedSourceVertex.class.getName());
   private UnboundedSource<O, M> source;
-  private final String sourceDescription;
+  private final DisplayData displayData;
 
   /**
    * The default constructor for beam unbounded source.
    * @param source unbounded source.
    */
-  public BeamUnboundedSourceVertex(final UnboundedSource<O, M> source) {
+  public BeamUnboundedSourceVertex(final UnboundedSource<O, M> source,
+                                   final DisplayData displayData) {
     super();
     this.source = source;
-    this.sourceDescription = source.toString();
+    this.displayData = displayData;
   }
 
   private BeamUnboundedSourceVertex(final BeamUnboundedSourceVertex<O, M> that) {
     super(that);
     this.source = that.source;
-    this.sourceDescription = that.source.toString();
+    this.displayData = that.displayData;
   }
 
   @Override
@@ -88,7 +90,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
   @Override
   public ObjectNode getPropertiesAsJsonNode() {
     final ObjectNode node = getIRVertexPropertiesAsJsonNode();
-    node.put("source", sourceDescription);
+    node.put("source", displayData.toString());
     return node;
   }
 

@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.runners.core.SystemReduceFn;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.*;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
@@ -91,7 +92,8 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
         outputTag,
         WindowingStrategy.of(slidingWindows),
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
-        SystemReduceFn.buffering(NULL_INPUT_CODER));
+        SystemReduceFn.buffering(NULL_INPUT_CODER),
+        DisplayData.none());
 
     final Instant ts1 = new Instant(1);
     final Instant ts2 = new Instant(100);

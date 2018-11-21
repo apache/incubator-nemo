@@ -23,7 +23,6 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
-import org.apache.nemo.runtime.executor.datatransfer.InputWatermarkManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,9 +52,8 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   ParentTaskDataFetcher(final IRVertex dataSource,
                         final InputReader readerForParentTask,
-                        final OutputCollector outputCollector,
-                        final InputWatermarkManager inputWatermarkManager) {
-    super(dataSource, outputCollector, inputWatermarkManager);
+                        final OutputCollector outputCollector) {
+    super(dataSource, outputCollector);
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
     this.currentIteratorIndex = 0;

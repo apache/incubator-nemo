@@ -19,8 +19,6 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import com.amazonaws.services.lambda.AWSLambda;
-import com.amazonaws.services.lambda.AWSLambdaAsync;
-import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
 import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
 
@@ -36,7 +34,7 @@ public final class LambdaWarmer {
 
   private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
   private final ExecutorService executorService = Executors.newCachedThreadPool();
-  private final int numOfInvocation = 60;
+  private final int numOfInvocation = 120;
 
 
   /**
@@ -46,17 +44,22 @@ public final class LambdaWarmer {
     this.awsLambda = AWSLambdaClientBuilder.standard().build();
   }
 
+  public void warmup() {
+    LOG.info("Warmup");
+    for (int i = 0; i < numOfInvocation; i++) {
+      // Trigger lambdas
+      executorService.submit(() -> {
+        final InvokeRequest request = new InvokeRequest()
+          .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
+          .withPayload("{}");
+        awsLambda.invoke(request);
+      });
+    }
+  }
+
   public void start() {
     scheduledExecutorService.scheduleAtFixedRate(() -> {
-      for (int i = 0; i < numOfInvocation; i++) {
-        // Trigger lambdas
-        executorService.submit(() -> {
-          final InvokeRequest request = new InvokeRequest()
-            .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
-            .withPayload("{}");
-          awsLambda.invoke(request);
-        });
-      }
-    }, 1, 60 * 4, TimeUnit.SECONDS);
+      warmup();
+    }, 1, 60 * 2, TimeUnit.SECONDS);
   }
 }

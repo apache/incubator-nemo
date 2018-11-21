@@ -16,9 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common;
-
-import org.apache.beam.sdk.util.WindowedValue;
+package org.apache.nemo.compiler.frontend.beam;
 
 /**
  * {@link org.apache.nemo.compiler.frontend.beam.transform.DoFnTransform} treats elements of this type as side inputs.
@@ -27,9 +25,9 @@ import org.apache.beam.sdk.util.WindowedValue;
  */
 public final class SideInputElement<T> {
   private final int sideInputIndex;
-  private final WindowedValue<T> sideInputValue;
+  private final T sideInputValue;
 
-  public SideInputElement(final int sideInputIndex, final WindowedValue<T> sideInputValue) {
+  public SideInputElement(final int sideInputIndex, final T sideInputValue) {
     this.sideInputIndex = sideInputIndex;
     this.sideInputValue = sideInputValue;
   }
@@ -38,7 +36,7 @@ public final class SideInputElement<T> {
     return sideInputIndex;
   }
 
-  public WindowedValue<T> getSideInputValue() {
+  public T getSideInputValue() {
     return sideInputValue;
   }
 }

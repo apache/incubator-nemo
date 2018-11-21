@@ -122,7 +122,9 @@ final class PipelineTranslationContext {
       // Second edge: transform to the dstIRVertex
       final IREdge secondEdge =
         new IREdge(CommunicationPatternProperty.Value.OneToOne, sideInputTransformVertex, dstVertex);
-      final Coder sideInputElementCoder = SideInputCoder.of(WindowedValue.getFullCoder(viewCoder, windowCoder));
+      final WindowedValue.FullWindowedValueCoder sideInputElementCoder =
+        WindowedValue.getFullCoder(SideInputCoder.of(viewCoder), windowCoder);
+
       secondEdge.setProperty(EncoderProperty.of(new BeamEncoderFactory(sideInputElementCoder)));
       secondEdge.setProperty(DecoderProperty.of(new BeamDecoderFactory(sideInputElementCoder)));
       builder.connectVertices(secondEdge);
@@ -158,7 +160,6 @@ final class PipelineTranslationContext {
   }
 
   void addEdge(final IREdge edge, final Coder elementCoder, final Coder windowCoder) {
-    // TODO key extractor only when many to many
     edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
     if (elementCoder instanceof KvCoder) {
       Coder keyCoder = ((KvCoder) elementCoder).getKeyCoder();

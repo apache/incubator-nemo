@@ -37,7 +37,6 @@ import java.util.concurrent.*;
 
 /**
  * Accumulates and provides side inputs in memory.
- * TODO #290: Handle OOMs in InMemorySideInputReader
  */
 public final class InMemorySideInputReader implements ReadyCheckingSideInputReader {
   private static final Logger LOG = LoggerFactory.getLogger(InMemorySideInputReader.class.getName());
@@ -92,18 +91,34 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
     return sideInputsToRead.isEmpty();
   }
 
-  public <T> void addSideInputValue(final PCollectionView<T> view,
-                                    final WindowedValue<T> sideInputValue) {
-    for (final BoundedWindow bw : sideInputValue.getWindows()) {
-      inMemorySideInputs.put(Pair.of(view, bw), sideInputValue.getValue());
+  /**
+   * Stores the side input in memory to be used with main inputs.
+   * @param view of the side input.
+   * @param sideInputElement to add.
+   */
+  public void addSideInputElement(final PCollectionView<?> view,
+                                  final WindowedValue<SideInputElement<?>> sideInputElement) {
+    for (final BoundedWindow bw : sideInputElement.getWindows()) {
+      inMemorySideInputs.put(Pair.of(view, bw), sideInputElement.getValue().getSideInputValue());
     }
   }
 
-  public void trackCurWatermark(final long newWatermark) {
+  /**
+   * Say a DoFn of this reader has 3 main inputs and 4 side inputs.
+   * {@link org.apache.nemo.runtime.executor.datatransfer.InputWatermarkManager} guarantees that the watermark here
+   * is the minimum of the all 7 input streams.
+   * @param newWatermark to set.
+   */
+  public void setCurrentWatermarkOfAllMainAndSideInputs(final long newWatermark) {
     if (curWatermark > newWatermark) {
       // Cannot go backwards in time.
       throw new IllegalStateException(curWatermark + " > " + newWatermark);
     }
+
     this.curWatermark = newWatermark;
+    // TODO #282: Handle late data
+    inMemorySideInputs.entrySet().removeIf(entry -> {
+      return entry.getKey().right().maxTimestamp().getMillis() <= this.curWatermark; // Discard old sideinputs.
+    });
   }
 }

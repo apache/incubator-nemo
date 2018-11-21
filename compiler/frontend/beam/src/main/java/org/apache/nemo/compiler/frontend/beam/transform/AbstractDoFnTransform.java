@@ -23,6 +23,7 @@ import org.apache.beam.runners.core.construction.SerializablePipelineOptions;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvokers;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -48,7 +49,7 @@ import java.util.Map;
  * @param <OutputT> output type.
  */
 public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
-  Transform<InputT, WindowedValue<OutputT>> {
+  Transform<WindowedValue<InputT>, WindowedValue<OutputT>> {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractDoFnTransform.class.getName());
 
   private final TupleTag<OutputT> mainOutputTag;
@@ -79,6 +80,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   private long prevBundleStartTime;
   private long currBundleCount = 0;
   private boolean bundleFinished = true;
+  private final DisplayData displayData;
 
   private transient Context context;
   /**
@@ -91,6 +93,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    * @param windowingStrategy windowing strategy
    * @param sideInputs side inputs
    * @param options pipeline options
+   * @param displayData display data.
    */
   public AbstractDoFnTransform(final DoFn<InterT, OutputT> doFn,
                                final Coder<InputT> inputCoder,
@@ -99,7 +102,8 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
                                final List<TupleTag<?>> additionalOutputTags,
                                final WindowingStrategy<?, ?> windowingStrategy,
                                final Map<Integer, PCollectionView<?>> sideInputs,
-                               final PipelineOptions options) {
+                               final PipelineOptions options,
+                               final DisplayData displayData) {
     this.doFn = doFn;
     this.inputCoder = inputCoder;
     this.outputCoders = outputCoders;
@@ -108,6 +112,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     this.sideInputs = sideInputs;
     this.serializedOptions = new SerializablePipelineOptions(options);
     this.windowingStrategy = windowingStrategy;
+    this.displayData = displayData;
   }
 
   final Map<Integer, PCollectionView<?>> getSideInputs() {
@@ -134,7 +139,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     return pushBackRunner;
   }
 
-  final InMemorySideInputReader getSideInputHandler() {
+  final InMemorySideInputReader getSideInputReader() {
     return sideInputReader;
   }
 
@@ -160,13 +165,12 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     currBundleCount += 1;
   }
 
-
   /**
    * Checks whether it is time to finish the bundle and finish it.
    */
-  final void checkAndFinishBundle(final boolean force) {
+  final void checkAndFinishBundle() {
     if (!bundleFinished) {
-      if (force || currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
+      if (currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
         bundleFinished = true;
         if (pushBackRunner == null) {
           doFnRunner.finishBundle();
@@ -179,6 +183,20 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   public Context getContext() {
     return context;
+  }
+
+  /**
+   * Finish bundle without checking for conditions.
+   */
+  final void forceFinishBundle() {
+    if (!bundleFinished) {
+      bundleFinished = true;
+      if (pushBackRunner == null) {
+        doFnRunner.finishBundle();
+      } else {
+        pushBackRunner.finishBundle();
+      }
+    }
   }
 
   @Override
@@ -241,10 +259,13 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   @Override
   public final void close() {
     beforeClose();
-    if (!bundleFinished) {
-      doFnRunner.finishBundle();
-    }
+    forceFinishBundle();
     doFnInvoker.invokeTeardown();
+  }
+
+  @Override
+  public final String toString() {
+    return this.getClass().getSimpleName() + " / " + displayData.toString().replace(":", " / ");
   }
 
   /**

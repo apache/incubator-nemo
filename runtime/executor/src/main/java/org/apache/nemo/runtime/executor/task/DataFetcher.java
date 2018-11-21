@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.runtime.executor.datatransfer.InputWatermarkManager;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
@@ -31,19 +30,15 @@ import java.util.NoSuchElementException;
 abstract class DataFetcher implements AutoCloseable {
   private final IRVertex dataSource;
   private final OutputCollector outputCollector;
-  private final InputWatermarkManager inputWatermarkManager;
 
   /**
    * @param dataSource to fetch from.
    * @param outputCollector for the data fetched.
-   * @param inputWatermarkManager for watermarks coming from the source (possibly with multiple input streams).
    */
   DataFetcher(final IRVertex dataSource,
-              final OutputCollector outputCollector,
-              final InputWatermarkManager inputWatermarkManager) {
+              final OutputCollector outputCollector) {
     this.dataSource = dataSource;
     this.outputCollector = outputCollector;
-    this.inputWatermarkManager = inputWatermarkManager;
   }
 
   /**
@@ -56,10 +51,6 @@ abstract class DataFetcher implements AutoCloseable {
 
   OutputCollector getOutputCollector() {
     return outputCollector;
-  }
-
-  InputWatermarkManager getInputWatermarkManager() {
-    return inputWatermarkManager;
   }
 
   IRVertex getDataSource() {
