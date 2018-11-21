@@ -104,7 +104,6 @@ class SourceVertexDataFetcher extends DataFetcher {
   private Object retrieveElement() throws NoSuchElementException, IOException {
     // Emit watermark
     if (!bounded && isWatermarkTriggerTime()) {
-      // index=0 as there is only 1 input stream
       return new Watermark(readable.readWatermark());
     }
 

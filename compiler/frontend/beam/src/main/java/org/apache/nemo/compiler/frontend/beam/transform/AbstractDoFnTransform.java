@@ -149,6 +149,10 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   /**
    * Checks whether the bundle is finished or not.
    * Starts the bundle if it is done.
+   *
+   * TODO #263: Partial Combining for Beam Streaming
+   * We may want to use separate methods for doFnRunner/pushBackRunner
+   * (same applies to the other bundle-related methods)
    */
   final void checkAndInvokeBundle() {
     if (bundleFinished) {
