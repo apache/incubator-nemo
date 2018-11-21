@@ -36,7 +36,7 @@ public final class LambdaWarmer {
 
   private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
   private final ExecutorService executorService = Executors.newCachedThreadPool();
-  private final int numOfInvocation = 60;
+  private final int numOfInvocation = 120;
 
 
   /**
@@ -57,6 +57,6 @@ public final class LambdaWarmer {
           awsLambda.invoke(request);
         });
       }
-    }, 1, 60 * 4, TimeUnit.SECONDS);
+    }, 1, 60 * 2, TimeUnit.SECONDS);
   }
 }

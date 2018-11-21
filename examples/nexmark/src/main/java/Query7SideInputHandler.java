@@ -1,7 +1,7 @@
 import org.apache.beam.sdk.nexmark.model.Bid;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.SideInputElement;
+import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 import org.apache.nemo.runtime.lambda.LambdaSideInputHandler;
 
 public final class Query7SideInputHandler implements

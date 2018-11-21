@@ -58,7 +58,7 @@ public final class WindowedWordCountITCase {
 
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
-        .addJobId(WindowedWordCountITCase.class.getSimpleName())
+        .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testBatchFixedWindow")
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
 
@@ -78,7 +78,7 @@ public final class WindowedWordCountITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName())
+      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testBatchSlidingWindow")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
 
@@ -98,7 +98,7 @@ public final class WindowedWordCountITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName())
+      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testStreamingSchedulerAndPipeFixedWindow")
       .addOptimizationPolicy(StreamingPolicyParallelismFive.class.getCanonicalName())
       .build());
 
@@ -119,7 +119,7 @@ public final class WindowedWordCountITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName())
+      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testStreamingSchedulerAndPipeSlidingWindow")
       .addOptimizationPolicy(StreamingPolicyParallelismFive.class.getCanonicalName())
       .build());
 

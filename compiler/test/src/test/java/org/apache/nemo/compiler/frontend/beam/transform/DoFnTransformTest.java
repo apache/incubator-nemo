@@ -26,14 +26,17 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.transforms.display.DisplayData;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.common.SideInputElement;
+import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 import org.apache.reef.io.Tuple;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,6 +44,7 @@ import org.junit.Test;
 import java.util.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
@@ -74,7 +78,8 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        PipelineOptionsFactory.as(NemoPipelineOptions.class));
+        PipelineOptionsFactory.as(NemoPipelineOptions.class),
+        DisplayData.none());
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
@@ -107,7 +112,8 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        pipelineOptions);
+        pipelineOptions,
+        DisplayData.none());
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
@@ -150,7 +156,8 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        pipelineOptions);
+        pipelineOptions,
+        DisplayData.none());
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
@@ -201,7 +208,8 @@ public final class DoFnTransformTest {
         mainOutput,
         tags,
         WindowingStrategy.globalDefault(),
-        PipelineOptionsFactory.as(NemoPipelineOptions.class));
+        PipelineOptionsFactory.as(NemoPipelineOptions.class),
+        DisplayData.none());
 
     // mock context
     final Transform.Context context = mock(Transform.Context.class);
@@ -245,12 +253,12 @@ public final class DoFnTransformTest {
     WindowedValue<String> firstElement = WindowedValue.valueInGlobalWindow("first");
     WindowedValue<String> secondElement = WindowedValue.valueInGlobalWindow("second");
 
-    WindowedValue<Iterable<String>> firstSideinput = WindowedValue.valueInGlobalWindow(ImmutableList.of("1"));
-    WindowedValue<Iterable<String>> secondSideinput = WindowedValue.valueInGlobalWindow(ImmutableList.of("2"));
+    SideInputElement firstSideinput = new SideInputElement<>(0, ImmutableList.of("1"));
+    SideInputElement secondSideinput = new SideInputElement(1, ImmutableList.of("2"));
 
     final Map<Integer, PCollectionView<?>> sideInputMap = new HashMap<>();
-    sideInputMap.put(0, view1);
-    sideInputMap.put(1, view2);
+    sideInputMap.put(firstSideinput.getSideInputIndex(), view1);
+    sideInputMap.put(secondSideinput.getSideInputIndex(), view2);
     final PushBackDoFnTransform<String, String> doFnTransform =
       new PushBackDoFnTransform(
         new SimpleSideInputDoFn<String>(view1, view2),
@@ -260,29 +268,44 @@ public final class DoFnTransformTest {
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
         sideInputMap, /* side inputs */
-        PipelineOptionsFactory.as(NemoPipelineOptions.class));
+        PipelineOptionsFactory.as(NemoPipelineOptions.class),
+        DisplayData.none());
 
     final TestOutputCollector<String> oc = new TestOutputCollector<>();
     doFnTransform.prepare(context, oc);
 
     // Main input first, Side inputs later
     doFnTransform.onData(firstElement);
-    doFnTransform.onData(new SideInputElement<>(0, firstSideinput));
-    doFnTransform.onData(new SideInputElement<>(1, secondSideinput));
+
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow(firstSideinput));
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow(secondSideinput));
     assertEquals(
       WindowedValue.valueInGlobalWindow(
-        concat(firstElement.getValue(), firstSideinput.getValue(), secondSideinput.getValue())),
+        concat(firstElement.getValue(), firstSideinput.getSideInputValue(), secondSideinput.getSideInputValue())),
       oc.getOutput().get(0));
 
     // Side inputs first, Main input later
     doFnTransform.onData(secondElement);
     assertEquals(
       WindowedValue.valueInGlobalWindow(
-        concat(secondElement.getValue(), firstSideinput.getValue(), secondSideinput.getValue())),
+        concat(secondElement.getValue(), firstSideinput.getSideInputValue(), secondSideinput.getSideInputValue())),
       oc.getOutput().get(1));
 
     // There should be only 2 final outputs
     assertEquals(2, oc.getOutput().size());
+
+    // The side inputs should be "READY"
+    assertTrue(doFnTransform.getSideInputReader().isReady(view1, GlobalWindow.INSTANCE));
+    assertTrue(doFnTransform.getSideInputReader().isReady(view2, GlobalWindow.INSTANCE));
+
+    // This watermark should remove the side inputs. (Now should be "NOT READY")
+    doFnTransform.onWatermark(new Watermark(GlobalWindow.TIMESTAMP_MAX_VALUE.getMillis()));
+    Iterable materializedSideInput1 = doFnTransform.getSideInputReader().get(view1, GlobalWindow.INSTANCE);
+    Iterable materializedSideInput2 = doFnTransform.getSideInputReader().get(view2, GlobalWindow.INSTANCE);
+    assertFalse(materializedSideInput1.iterator().hasNext());
+    assertFalse(materializedSideInput2.iterator().hasNext());
+
+    // There should be only 2 final outputs
     doFnTransform.close();
     assertEquals(2, oc.getOutput().size());
   }

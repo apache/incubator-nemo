@@ -23,7 +23,6 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.Finishmark;
-import org.apache.nemo.runtime.executor.datatransfer.InputWatermarkManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,9 +47,8 @@ class SourceVertexDataFetcher extends DataFetcher {
 
   SourceVertexDataFetcher(final SourceVertex dataSource,
                           final Readable readable,
-                          final OutputCollector outputCollector,
-                          final InputWatermarkManager inputWatermarkManager) {
-    super(dataSource, outputCollector, inputWatermarkManager);
+                          final OutputCollector outputCollector) {
+    super(dataSource, outputCollector);
     this.readable = readable;
     this.readable.prepare();
     this.bounded = dataSource.isBounded();
