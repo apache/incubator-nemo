@@ -92,7 +92,12 @@ public class HelloHandler implements RequestHandler<Map<String, Object>, Object>
 		if (input.isEmpty()) {
 		  // this is warmer, just return;
       System.out.println("Warm up");
-		  return null;
+      try {
+        Thread.sleep(2000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      return null;
     }
 
 		final String sideInputKey = (String) input.get("sideInput");

@@ -18,9 +18,11 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.lambda.AWSLambda;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
 import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
+import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.amazonaws.services.lambda.model.InvokeResult;
 import com.amazonaws.services.s3.AmazonS3;
@@ -64,7 +66,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
 
   // TODO: remove
   private final AmazonS3 amazonS3;
-  private final List<AWSLambdaAsync> awsLambdaAsyncs;
+  //private final List<AWSLambdaAsync> awsLambdaAsyncs;
   private final AWSLambda awsLambda;
   private EncoderFactory<O> encoderFactory;
   private EncoderFactory.Encoder<O> encoder;
@@ -74,6 +76,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
 
   int cnt = 0;
 
+  private final ExecutorService s3FetcherService = Executors.newSingleThreadExecutor();
   private final ExecutorService executorService = Executors.newCachedThreadPool();
 
 
@@ -93,12 +96,8 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
       .getDecoderFactory()).getValueDecoderFactory());
     this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
     this.amazonS3 = AmazonS3ClientBuilder.standard().build();
-    this.awsLambda = AWSUtils.AWS_LAMBDA;
-    final int size = 5;
-    this.awsLambdaAsyncs = new ArrayList(size);
-    for (int i = 0; i < size; i++) {
-      awsLambdaAsyncs.add(AWSLambdaAsyncClientBuilder.standard().build());
-    }
+    this.awsLambda = AWSLambdaClientBuilder.standard().withClientConfiguration(
+      new ClientConfiguration().withMaxConnections(100)).build();
   }
 
   private EncoderFactory.Encoder createEncoder(final String fileName) {
@@ -144,7 +143,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
       //LOG.info("Start to send sideinput {}", file.getName());
       final long st = System.currentTimeMillis();
 
-      executorService.execute(() -> {
+      s3FetcherService.execute(() -> {
         final PutObjectRequest putObjectRequest =
           new PutObjectRequest(S3_BUCKET_NAME + "/sideinput", file.getName(), file);
         amazonS3.putObject(putObjectRequest);
@@ -157,20 +156,21 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
         final List<Future<InvokeResult>> futures = new ArrayList<>(result.getObjectSummaries().size());
         final List<DeleteObjectsRequest.KeyVersion> keys = new ArrayList<>(result.getObjectSummaries().size());
 
-        int index = 0;
         for (final S3ObjectSummary objectSummary : result.getObjectSummaries()) {
           //System.out.printf(" - %s (size: %d)\n", objectSummary.getKey(), objectSummary.getSize());
           keys.add(new DeleteObjectsRequest.KeyVersion(objectSummary.getKey()));
 
-          // Trigger lambdas
-          final InvokeRequest request = new InvokeRequest()
-            .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
-            .withPayload(String.format("{\"sideInput\":\"sideinput/%s\", \"mainInput\":\"%s\"}",
-              fileName, objectSummary.getKey()));
+          futures.add(executorService.submit(() -> {
+            // Trigger lambdas
+            final InvokeRequest request = new InvokeRequest()
+              .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
+              .withPayload(String.format("{\"sideInput\":\"sideinput/%s\", \"mainInput\":\"%s\"}",
+                fileName, objectSummary.getKey()));
 
-          futures.add(awsLambdaAsyncs.get(index).invokeAsync(request));
-          //LOG.info("End of Request sideinput lambda");
-          index = (index + 1) % awsLambdaAsyncs.size();
+            return awsLambda.invoke(request);
+            //LOG.info("End of Request sideinput lambda");
+            //index = (index + 1) % awsLambdaAsyncs.size();
+          }));
         }
 
         final List<Object> results = futures.stream().map(future -> {

@@ -18,8 +18,10 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import com.amazonaws.services.lambda.AWSLambda;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
 import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
+import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
 
 import org.slf4j.Logger;
@@ -30,10 +32,10 @@ public final class LambdaWarmer {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaWarmer.class.getName());
 
   // TODO: remove
-  private final AWSLambdaAsync awsLambdaAsync;
+  private final AWSLambda awsLambda;
 
   private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-
+  private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final int numOfInvocation = 60;
 
 
@@ -41,17 +43,19 @@ public final class LambdaWarmer {
    * Constructor of the output collector.
    */
   public LambdaWarmer() {
-    this.awsLambdaAsync = AWSLambdaAsyncClientBuilder.standard().build();
+    this.awsLambda = AWSLambdaClientBuilder.standard().build();
   }
 
   public void start() {
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       for (int i = 0; i < numOfInvocation; i++) {
         // Trigger lambdas
-        final InvokeRequest request = new InvokeRequest()
-          .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
-          .withPayload("{}");
-        awsLambdaAsync.invokeAsync(request);
+        executorService.submit(() -> {
+          final InvokeRequest request = new InvokeRequest()
+            .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
+            .withPayload("{}");
+          awsLambda.invoke(request);
+        });
       }
     }, 1, 60 * 4, TimeUnit.SECONDS);
   }
