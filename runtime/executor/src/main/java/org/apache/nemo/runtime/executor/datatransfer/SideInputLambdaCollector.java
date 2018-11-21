@@ -150,10 +150,10 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
         amazonS3.putObject(putObjectRequest);
 
         // Get main input list
-        //LOG.info("Request sideinput lambda");
         final ListObjectsV2Request req =
           new ListObjectsV2Request().withBucketName(S3_BUCKET_NAME).withPrefix("maininput/" + file.getName());
         final ListObjectsV2Result result = amazonS3.listObjectsV2(req);
+        LOG.info("Request sideinput lambda: {}", result.getObjectSummaries().size());
         final List<Future<InvokeResult>> futures = new ArrayList<>(result.getObjectSummaries().size());
         final List<DeleteObjectsRequest.KeyVersion> keys = new ArrayList<>(result.getObjectSummaries().size());
 
