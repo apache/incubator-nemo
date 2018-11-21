@@ -1,4 +1,5 @@
 /*
+t
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -91,7 +92,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     //LOG.info("Info {}, count: {}", info.fname, info.cnt);
 
     //if (info.cnt >= 10000 || info.accessTime - prevAccessTime >= 2000) {
-    if (info.cnt >= 1000 || info.accessTime - prevAccessTime >= period) {
+    if (info.cnt >= 40000 || info.accessTime - prevAccessTime >= period) {
         windowAndInfoMap.put(key, null);
         // flush
         executorService.execute(() -> {
