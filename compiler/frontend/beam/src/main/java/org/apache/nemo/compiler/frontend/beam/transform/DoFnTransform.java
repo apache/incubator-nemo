@@ -21,8 +21,8 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -30,12 +30,12 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 /**
- * DoFn transform implementation.
+ * DoFn transform implementation when there is no side input.
  *
  * @param <InputT> input type.
  * @param <OutputT> output type.
@@ -45,9 +45,6 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   /**
    * DoFnTransform Constructor.
-   *
-   * @param doFn    doFn.
-   * @param options Pipeline options.
    */
   public DoFnTransform(final DoFn<InputT, OutputT> doFn,
                        final Coder<InputT> inputCoder,
@@ -55,10 +52,10 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
                        final TupleTag<OutputT> mainOutputTag,
                        final List<TupleTag<?>> additionalOutputTags,
                        final WindowingStrategy<?, ?> windowingStrategy,
-                       final Collection<PCollectionView<?>> sideInputs,
-                       final PipelineOptions options) {
+                       final PipelineOptions options,
+                       final DisplayData displayData) {
     super(doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, sideInputs, options);
+      additionalOutputTags, windowingStrategy, Collections.emptyMap(), options, displayData);
   }
 
   @Override
@@ -68,6 +65,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   public void onData(final WindowedValue<InputT> data) {
+    // Do not need any push-back logic.
     checkAndInvokeBundle();
     getDoFnRunner().processElement(data);
     checkAndFinishBundle();
@@ -76,26 +74,16 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   @Override
   public void onWatermark(final Watermark watermark) {
     checkAndInvokeBundle();
-    // TODO #216: We should consider push-back data that waits for side input
-    // TODO #216: If there are push-back data, input watermark >= output watermark
     getOutputCollector().emitWatermark(watermark);
     checkAndFinishBundle();
   }
 
   @Override
   protected void beforeClose() {
-    // nothing
   }
 
   @Override
   OutputCollector wrapOutputCollector(final OutputCollector oc) {
     return oc;
-  }
-
-  @Override
-  public String toString() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("DoTransform:" + getDoFn());
-    return sb.toString();
   }
 }

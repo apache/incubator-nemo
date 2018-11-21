@@ -63,6 +63,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   // A watermark manager
   private InputWatermarkManager inputWatermarkManager;
 
+
   MultiThreadParentTaskDataFetcher(final IRVertex dataSource,
                                    final InputReader readerForParentTask,
                                    final OutputCollector outputCollector) {
@@ -113,8 +114,6 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
           // Consume this iterator to the end.
           while (iterator.hasNext()) { // blocked on the iterator.
             final Object element = iterator.next();
-
-
             if (element instanceof WatermarkWithIndex) {
               // watermark element
               // the input watermark manager is accessed by multiple threads
@@ -177,17 +176,14 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
    * It receives the watermark from InputWatermarkManager.
    */
   private final class WatermarkCollector implements OutputCollector {
-
     @Override
     public void emit(final Object output) {
       throw new IllegalStateException("Should not be called");
     }
-
     @Override
     public void emitWatermark(final Watermark watermark) {
       elementQueue.offer(watermark);
     }
-
     @Override
     public void emit(final String dstVertexId, final Object output) {
       throw new IllegalStateException("Should not be called");

@@ -33,6 +33,7 @@ import static org.apache.nemo.examples.beam.WindowedWordCount.INPUT_TYPE_UNBOUND
 
 /**
  * Test Windowed word count program with JobLauncher.
+ * TODO #299: WindowedWordCountITCase Hangs (Heisenbug)
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
@@ -58,7 +59,7 @@ public final class WindowedWordCountITCase {
 
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
-        .addJobId(WindowedWordCountITCase.class.getSimpleName())
+        .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testBatchFixedWindow")
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
 
@@ -78,7 +79,7 @@ public final class WindowedWordCountITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName())
+      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testBatchSlidingWindow")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
 
@@ -98,7 +99,7 @@ public final class WindowedWordCountITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName())
+      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testStreamingSchedulerAndPipeFixedWindow")
       .addOptimizationPolicy(StreamingPolicyParallelismFive.class.getCanonicalName())
       .build());
 
@@ -119,7 +120,7 @@ public final class WindowedWordCountITCase {
 
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
-      .addJobId(WindowedWordCountITCase.class.getSimpleName())
+      .addJobId(WindowedWordCountITCase.class.getSimpleName() + "testStreamingSchedulerAndPipeSlidingWindow")
       .addOptimizationPolicy(StreamingPolicyParallelismFive.class.getCanonicalName())
       .build());
 
@@ -132,7 +133,7 @@ public final class WindowedWordCountITCase {
 
 
   // TODO #271: We currently disable this test because we cannot force close Nemo
-  //@Test (timeout = TIMEOUT)
+  // @Test (timeout = TIMEOUT)
   public void testUnboundedSlidingWindow() throws Exception {
     builder = new ArgBuilder()
       .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")

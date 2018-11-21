@@ -105,7 +105,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-
     if (LOG.isDebugEnabled()) {
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
     }

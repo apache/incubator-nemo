@@ -19,6 +19,7 @@
 package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
 
@@ -42,17 +43,18 @@ import org.slf4j.LoggerFactory;
 public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue<O>> {
   private static final Logger LOG = LoggerFactory.getLogger(BeamBoundedSourceVertex.class.getName());
   private BoundedSource<O> source;
-  private final String sourceDescription;
+  private final DisplayData displayData;
 
   /**
    * Constructor of BeamBoundedSourceVertex.
    *
    * @param source BoundedSource to read from.
+   * @param displayData data to display.
    */
-  public BeamBoundedSourceVertex(final BoundedSource<O> source) {
+  public BeamBoundedSourceVertex(final BoundedSource<O> source, final DisplayData displayData) {
     super();
     this.source = source;
-    this.sourceDescription = source.toString();
+    this.displayData = displayData;
   }
 
   /**
@@ -63,7 +65,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
   public BeamBoundedSourceVertex(final BeamBoundedSourceVertex that) {
     super(that);
     this.source = that.source;
-    this.sourceDescription = that.source.toString();
+    this.displayData = that.displayData;
   }
 
   @Override
@@ -94,7 +96,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
   @Override
   public ObjectNode getPropertiesAsJsonNode() {
     final ObjectNode node = getIRVertexPropertiesAsJsonNode();
-    node.put("source", sourceDescription);
+    node.put("source", displayData.toString());
     return node;
   }
 
