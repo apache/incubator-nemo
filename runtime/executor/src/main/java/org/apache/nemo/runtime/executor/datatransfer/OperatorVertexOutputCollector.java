@@ -177,7 +177,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       }
     }
 
-    /*
+/*
     // Emit watermarks to output writer
     for (final OutputWriter outputWriter : externalMainOutputs) {
       outputWriter.writeWatermark(watermark);

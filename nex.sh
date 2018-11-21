@@ -27,5 +27,5 @@ echo run query $1
 	-user_main org.apache.beam.sdk.nexmark.Main \
   -optimization_policy org.apache.nemo.compiler.optimizer.policy.StreamingPolicy \
   -scheduler_impl_class_name org.apache.nemo.runtime.master.scheduler.StreamingScheduler \
-	-user_args "--runner=org.apache.nemo.compiler.frontend.beam.NemoPipelineRunner --streaming=true --query=$1 --manageResources=false --monitorJobs=true --streamTimeout=200 --numEventGenerators=1 --numEvents=200000 --isRateLimited=true --firstEventRate=1000 --nextEventRate=1000 --windowSizeSec=15 --windowPeriodSec=15"
+	-user_args "--runner=org.apache.nemo.compiler.frontend.beam.NemoPipelineRunner --streaming=true --query=$1 --manageResources=false --monitorJobs=true --streamTimeout=400 --numEventGenerators=1 --numEvents=40000000 --isRateLimited=true --firstEventRate=100000 --nextEventRate=100000 --windowSizeSec=60 --windowPeriodSec=60"
 
