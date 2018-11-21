@@ -92,7 +92,7 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
     this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
     this.amazonS3 = AmazonS3ClientBuilder.standard().build();
     this.awsLambda = AWSLambdaClientBuilder.standard().withClientConfiguration(
-      new ClientConfiguration().withMaxConnections(100)).build();
+      new ClientConfiguration().withMaxConnections(150)).build();
   }
 
   private EncoderFactory.Encoder createEncoder(final String fileName) {
