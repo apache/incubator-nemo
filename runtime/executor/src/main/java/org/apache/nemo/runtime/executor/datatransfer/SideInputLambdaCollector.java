@@ -94,8 +94,9 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
     this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
     this.amazonS3 = AmazonS3ClientBuilder.standard().build();
     this.awsLambda = AWSUtils.AWS_LAMBDA;
-    this.awsLambdaAsyncs = new ArrayList(3);
-    for (int i = 0; i < 3; i++) {
+    final int size = 5;
+    this.awsLambdaAsyncs = new ArrayList(size);
+    for (int i = 0; i < size; i++) {
       awsLambdaAsyncs.add(AWSLambdaAsyncClientBuilder.standard().build());
     }
   }
@@ -171,7 +172,6 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
           //LOG.info("End of Request sideinput lambda");
           index = (index + 1) % awsLambdaAsyncs.size();
         }
-
 
         final List<Object> results = futures.stream().map(future -> {
           try {
