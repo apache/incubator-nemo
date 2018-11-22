@@ -101,7 +101,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 //    // TODO: remove
     final String vertexId = irVertex.getId();
     if (vertexId.equals("vertex15")) {
-      System.out.println("Start to send side input!: " + System.currentTimeMillis() + ", output: " + output);
+      System.out.println("Start to send side input!: " + System.currentTimeMillis() + ", output: " + output.toString());
       //sideInputOutputCollector.emit(output);
       //return;
     } else if (vertexId.equals("vertex6")) {
