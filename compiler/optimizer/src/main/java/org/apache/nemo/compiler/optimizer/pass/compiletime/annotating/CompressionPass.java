@@ -35,7 +35,7 @@ public final class CompressionPass extends AnnotatingPass {
    * Default constructor. Uses LZ4 as default.
    */
   public CompressionPass() {
-    this(CompressionProperty.Value.LZ4);
+    this(CompressionProperty.Value.None);
   }
 
   /**

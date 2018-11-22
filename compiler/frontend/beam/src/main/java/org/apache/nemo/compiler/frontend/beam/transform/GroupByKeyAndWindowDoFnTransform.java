@@ -118,7 +118,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     // drop late data
     if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
-    checkAndInvokeBundle();
+      checkAndInvokeBundle();
       // We can call Beam's DoFnRunner#processElement here,
       // but it may generate some overheads if we call the method for each data.
       // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
@@ -129,7 +129,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
       keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
 
-    checkAndFinishBundle();
+      checkAndFinishBundle();
     }
   }
 
