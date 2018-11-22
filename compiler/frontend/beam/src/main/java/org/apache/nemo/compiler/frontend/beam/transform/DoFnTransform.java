@@ -67,11 +67,6 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   public void onData(final WindowedValue<InputT> data) {
-    if (inputWatermark > data.getTimestamp().getMillis()) {
-      // late data!
-      // just drop
-      return;
-    }
     // Do not need any push-back logic.
     checkAndInvokeBundle();
     getDoFnRunner().processElement(data);

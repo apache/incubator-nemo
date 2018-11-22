@@ -30,6 +30,7 @@ import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.beam.sdk.values.KV;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +52,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
   private Watermark prevOutputWatermark;
   private final Map<K, Watermark> keyAndWatermarkHoldMap;
+  private final WindowingStrategy windowingStrategy;
 
   /**
    * GroupByKey constructor.
@@ -74,6 +76,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     this.reduceFn = reduceFn;
     this.prevOutputWatermark = new Watermark(Long.MIN_VALUE);
     this.keyAndWatermarkHoldMap = new HashMap<>();
+    this.windowingStrategy = windowingStrategy;
   }
 
   /**
@@ -112,10 +115,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     checkAndInvokeBundle();
-
-    if (getContext().getIRVertex().getId().equals("vertex9")) {
-      LOG.info("vertex9 onData - {}: {}", this.hashCode(), element);
-    }
 
     // We can call Beam's DoFnRunner#processElement here,
     // but it may generate some overheads if we call the method for each data.
@@ -181,14 +180,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     }
 
 
-    if (getContext().getIRVertex().getId().equals("vertex9")) {
-      LOG.info("Watermark hold - {}: {}, "
-        + "inputWatermark: {}, outputWatermark: {}", this.hashCode(),
-        new Instant(minWatermarkHold.getTimestamp()),
-        new Instant(inputWatermark.getTimestamp()),
-        new Instant(prevOutputWatermark.getTimestamp()));
-    }
-
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
       prevOutputWatermark = outputWatermarkCandidate;
@@ -206,9 +197,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   public void onWatermark(final Watermark inputWatermark) {
     checkAndInvokeBundle();
-      if (getContext().getIRVertex().getId().equals("vertex9")) {
-        LOG.info("onWatermark - {}: {}", this.hashCode(), new Instant(inputWatermark.getTimestamp()));
-      }
+
     processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
     // Emit watermark to downstream operators
     emitOutputWatermark(inputWatermark);
@@ -251,9 +240,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final List<TimerInternals.TimerData> timerDataList = getEligibleTimers(timerInternals);
 
     if (!timerDataList.isEmpty()) {
-      if (getContext().getIRVertex().getId().equals("vertex9")) {
-        LOG.info("Timer - {}: {}", this.hashCode(), timerDataList);
-      }
+
       // Trigger timers and emit windowed data
       final KeyedWorkItem<K, InputT> timerWorkItem =
         KeyedWorkItems.timersWorkItem(key, timerDataList);
@@ -369,27 +356,38 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
     @Override
     public void emit(final WindowedValue<KV<K, Iterable<InputT>>> output) {
-      // adds the output timestamp to the watermark hold of each key
-      // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
-      // TODO #270: consider early firing
-      // TODO #270: This logic may not be applied to early firing outputs
+      // handling late data
+      final Instant latenessConsideredTimestamp;
+      if (windowingStrategy.isAllowedLatenessSpecified()) {
+        final Duration lateness = windowingStrategy.getAllowedLateness();
+        latenessConsideredTimestamp = output.getTimestamp().plus(lateness);
+      } else {
+        latenessConsideredTimestamp = output.getTimestamp();
+      }
 
+      // We emit the data only when the data timestamp > watermark timestamp
+      if (latenessConsideredTimestamp.isAfter(prevOutputWatermark.getTimestamp())) {
+        final Watermark prevKeyWatermarkHold =
+          keyAndWatermarkHoldMap.getOrDefault(output.getValue().getKey(), new Watermark(Long.MIN_VALUE));
 
-    if (getContext().getIRVertex().getId().equals("vertex9")) {
-      LOG.info("Emit data - {}: {}, ", GroupByKeyAndWindowDoFnTransform.this.hashCode(), output);
-    }
+        // Adds the output timestamp to the watermark hold of each key
+        // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
+        // TODO #270: consider early firing
+        // TODO #270: This logic may not be applied to early firing outputs
 
-      keyAndWatermarkHoldMap.put(output.getValue().getKey(),
-        new Watermark(output.getTimestamp().getMillis() + 1));
-      outputCollector.emit(output);
+        // Late data should not be considered in calculating watermark
+        // so we pick the largest timestamp between current output and prev watermark hold
+        final Watermark keyWatermarkHold = new Watermark(
+          Math.max(prevKeyWatermarkHold.getTimestamp(), output.getTimestamp().getMillis() + 1));
+
+        keyAndWatermarkHoldMap.put(output.getValue().getKey(), keyWatermarkHold);
+
+        outputCollector.emit(output);
+      }
     }
     @Override
     public void emitWatermark(final Watermark watermark) {
 
-      if (getContext().getIRVertex().getId().equals("vertex9")) {
-        LOG.info("Emit watermark - {}: {}, ", GroupByKeyAndWindowDoFnTransform.this.hashCode(),
-          new Instant(watermark.getTimestamp()));
-      }
       outputCollector.emitWatermark(watermark);
     }
     @Override

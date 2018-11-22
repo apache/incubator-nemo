@@ -81,7 +81,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
 
     // TODO: remove
-//    if (irVertex.getId().equals("vertex22")) {
+//    if (irVertex.getId().equals("vertex15")) {
 //      sideInputOutputCollector = new SideInputLambdaCollector(irVertex, outgoingEdges, serializerManager);
 //    }
 //
@@ -100,7 +100,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
 //    // TODO: remove
     final String vertexId = irVertex.getId();
-    if (vertexId.equals("vertex22")) {
+    if (vertexId.equals("vertex15")) {
       System.out.println("Start to send side input!: " + System.currentTimeMillis() + ", output: " + output);
       //sideInputOutputCollector.emit(output);
       //return;
@@ -161,7 +161,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     }
 
 /*
-    if (irVertex.getId().equals("vertex22")) {
+    if (irVertex.getId().equals("vertex15")) {
       sideInputOutputCollector.emitWatermark(watermark);
     } else if (irVertex.getId().equals("vertex6")) {
       mainInputLambdaCollector.emitWatermark(watermark);
