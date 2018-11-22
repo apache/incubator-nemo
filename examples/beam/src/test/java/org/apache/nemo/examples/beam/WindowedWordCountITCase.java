@@ -33,6 +33,7 @@ import static org.apache.nemo.examples.beam.WindowedWordCount.INPUT_TYPE_UNBOUND
 
 /**
  * Test Windowed word count program with JobLauncher.
+ * TODO #299: WindowedWordCountITCase Hangs (Heisenbug)
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)

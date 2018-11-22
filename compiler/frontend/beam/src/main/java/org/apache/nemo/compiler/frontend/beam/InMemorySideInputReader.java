@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.*;
 
 /**
  * Accumulates and provides side inputs in memory.
@@ -45,7 +46,6 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
 
   private final Collection<PCollectionView<?>> sideInputsToRead;
   private final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> inMemorySideInputs;
-
 
   private final ConcurrentMap<BoundedWindow, Long> windowAccessMap;
 

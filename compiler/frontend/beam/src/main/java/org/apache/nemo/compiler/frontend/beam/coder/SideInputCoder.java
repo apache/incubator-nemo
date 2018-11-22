@@ -23,12 +23,16 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 
 import java.io.*;
+import org.apache.beam.sdk.coders.StructuredCoder;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * EncoderFactory for side inputs.
  * @param <T> type of the side input value.
  */
-public final class SideInputCoder<T> extends AtomicCoder<SideInputElement<T>> {
+public final class SideInputCoder<T> extends StructuredCoder<SideInputElement<T>> {
   private final Coder<T> valueCoder;
 
   /**
@@ -58,5 +62,15 @@ public final class SideInputCoder<T> extends AtomicCoder<SideInputElement<T>> {
     final int index = dataInputStream.readInt();
     final T value = valueCoder.decode(inStream);
     return new SideInputElement<>(index, value);
+  }
+
+  @Override
+  public List<? extends Coder<?>> getCoderArguments() {
+    return Collections.singletonList(valueCoder);
+  }
+
+  @Override
+  public void verifyDeterministic() throws NonDeterministicException {
+    verifyDeterministic(this, "Requires deterministic valueCoder", valueCoder);
   }
 }

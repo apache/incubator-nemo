@@ -104,7 +104,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   }
 
   private void handlePushBacks() {
-    // Force-flush, before (possibly) processing pushed-back data.
+    // Force-finish, before (possibly) processing pushed-back data.
     //
     // Main reason:
     // {@link org.apache.beam.runners.core.SimplePushbackSideInputDoFnRunner}
@@ -112,13 +112,14 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     // We need to re-start the bundle to advertise the (possibly) newly available side input.
     forceFinishBundle(); // forced
 
-    checkAndInvokeBundle();
     // With the new side input added, we may be able to process some pushed-back elements.
     final List<WindowedValue<InputT>> pushedBackAgain = new ArrayList<>();
     long pushedBackAgainWatermark = Long.MAX_VALUE;
-    for (WindowedValue<InputT> curPushedBack : curPushedBacks) {
+    for (final WindowedValue<InputT> curPushedBack : curPushedBacks) {
+      checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
         getPushBackRunner().processElementInReadyWindows(curPushedBack);
+      checkAndFinishBundle();
       for (final WindowedValue<InputT> wv : pushedBack) {
         pushedBackAgainWatermark = Math.min(pushedBackAgainWatermark, wv.getTimestamp().getMillis());
         pushedBackAgain.add(wv);
@@ -126,7 +127,6 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     }
     curPushedBacks = pushedBackAgain;
     curPushedBackWatermark = pushedBackAgainWatermark;
-    checkAndFinishBundle();
   }
 
   @Override

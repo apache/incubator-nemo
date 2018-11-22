@@ -86,7 +86,6 @@ public final class BroadcastManagerWorker {
         });
   }
 
-
   /**
    * Get the variable with the id.
    * @param id of the variable.

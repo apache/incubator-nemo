@@ -31,7 +31,6 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.MultiInputWatermarkManager;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.runtime.executor.datatransfer.MultiInputWatermarkManager;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -72,7 +71,7 @@ public final class TaskExecutor {
   private boolean isExecuted;
   private final String taskId;
   private final TaskStateManager taskStateManager;
-  private final List<DataFetcher> nonBroadcastDataFetchers;
+  private final List<DataFetcher> dataFetchers;
   private final BroadcastManagerWorker broadcastManagerWorker;
   private final List<VertexHarness> sortedHarnesses;
 
@@ -127,7 +126,7 @@ public final class TaskExecutor {
 
     // Prepare data structures
     final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, intermediateDataIOFactory);
-    this.nonBroadcastDataFetchers = pair.left();
+    this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
   }
 
@@ -345,7 +344,7 @@ public final class TaskExecutor {
     taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
 
     // Phase 1: Consume task-external input data.
-    if (!handleDataFetchers(nonBroadcastDataFetchers)) {
+    if (!handleDataFetchers(dataFetchers)) {
       return;
     }
 
