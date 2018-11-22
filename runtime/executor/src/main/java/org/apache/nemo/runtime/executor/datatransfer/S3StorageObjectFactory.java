@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.PutObjectRequest;
@@ -21,7 +22,8 @@ public final class S3StorageObjectFactory implements StorageObjectFactory {
   public static final S3StorageObjectFactory INSTACE = new S3StorageObjectFactory();
 
   private S3StorageObjectFactory() {
-    this.amazonS3 = AmazonS3ClientBuilder.standard().build();
+    this.amazonS3 = AmazonS3ClientBuilder.standard()
+      .withClientConfiguration(new ClientConfiguration().withMaxConnections(150)).build();
   }
 
   @Override

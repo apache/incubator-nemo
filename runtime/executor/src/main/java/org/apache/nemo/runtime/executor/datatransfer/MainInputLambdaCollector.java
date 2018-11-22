@@ -83,7 +83,6 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
       .getDecoderFactory()).getValueDecoderFactory());
     this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
     this.warmer = new LambdaWarmer();
-
   }
 
   private void checkAndFlush(final String key) {

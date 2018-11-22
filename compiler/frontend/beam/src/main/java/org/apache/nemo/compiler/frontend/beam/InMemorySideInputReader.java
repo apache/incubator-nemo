@@ -34,7 +34,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.*;
 
 /**
  * Accumulates and provides side inputs in memory.
@@ -49,17 +48,10 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
 
   private final ConcurrentMap<BoundedWindow, Long> windowAccessMap;
 
-  private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
   public InMemorySideInputReader(final Collection<PCollectionView<?>> sideInputsToRead) {
     this.sideInputsToRead = sideInputsToRead;
     this.inMemorySideInputs = new HashMap<>();
-    this.windowAccessMap = new ConcurrentHashMap<>();
-
-    scheduledExecutorService.scheduleAtFixedRate(() -> {
-      windowAccessMap.forEach((window, accessTime) -> {
-        System.out.println(window + ", " + "final access time: " + accessTime);
-      });
-    }, 5, 5, TimeUnit.SECONDS);
+    this.windowAccessMap = WindowAccessMap.MAP;
   }
 
   @Override
