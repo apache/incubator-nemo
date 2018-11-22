@@ -81,15 +81,15 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
 
     // TODO: remove
-//    if (irVertex.getId().equals("vertex15")) {
-//      sideInputOutputCollector = new SideInputLambdaCollector(irVertex, outgoingEdges, serializerManager);
-//    }
-//
-//    if (irVertex.getId().equals("vertex6")) {
-//      mainInputLambdaCollector =
-//        new MainInputLambdaCollector(irVertex, outgoingEdges,
-//          serializerManager, S3StorageObjectFactory.INSTACE);
-//    }
+    if (irVertex.getId().equals("vertex15")) {
+      sideInputOutputCollector = new SideInputLambdaCollector(irVertex, outgoingEdges, serializerManager);
+    }
+
+    if (irVertex.getId().equals("vertex6")) {
+      mainInputLambdaCollector =
+        new MainInputLambdaCollector(irVertex, outgoingEdges,
+          serializerManager, S3StorageObjectFactory.INSTACE);
+    }
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
