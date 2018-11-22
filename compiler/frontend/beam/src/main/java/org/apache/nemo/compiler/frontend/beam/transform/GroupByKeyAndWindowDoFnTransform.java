@@ -53,6 +53,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private Watermark prevOutputWatermark;
   private final Map<K, Watermark> keyAndWatermarkHoldMap;
   private final WindowingStrategy windowingStrategy;
+  private Watermark inputWatermark;
 
   /**
    * GroupByKey constructor.
@@ -75,6 +76,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     this.keyToValues = new HashMap<>();
     this.reduceFn = reduceFn;
     this.prevOutputWatermark = new Watermark(Long.MIN_VALUE);
+    this.inputWatermark = new Watermark(Long.MIN_VALUE);
     this.keyAndWatermarkHoldMap = new HashMap<>();
     this.windowingStrategy = windowingStrategy;
   }
@@ -114,28 +116,29 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
+    // drop late data
+    if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
     checkAndInvokeBundle();
+      // We can call Beam's DoFnRunner#processElement here,
+      // but it may generate some overheads if we call the method for each data.
+      // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
+      // TODO #250: But, this approach can delay the event processing in streaming,
+      // TODO #250: if the watermark is not triggered for a long time.
 
-    // We can call Beam's DoFnRunner#processElement here,
-    // but it may generate some overheads if we call the method for each data.
-    // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
-    // TODO #250: But, this approach can delay the event processing in streaming,
-    // TODO #250: if the watermark is not triggered for a long time.
-    final KV<K, InputT> kv = element.getValue();
-    keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
-    keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
+      final KV<K, InputT> kv = element.getValue();
+      keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
+      keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
 
     checkAndFinishBundle();
+    }
   }
 
   /**
    * Process the collected data and trigger timers.
-   * @param inputWatermark current input watermark
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
    */
-  private void processElementsAndTriggerTimers(final Watermark inputWatermark,
-                                               final Instant processingTime,
+  private void processElementsAndTriggerTimers(final Instant processingTime,
                                                final Instant synchronizedTime) {
     for (final Map.Entry<K, List<WindowedValue<InputT>>> entry : keyToValues.entrySet()) {
       final K key = entry.getKey();
@@ -152,7 +155,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       }
 
       // Trigger timers
-      triggerTimers(key, inputWatermark, processingTime, synchronizedTime);
+      triggerTimers(key, processingTime, synchronizedTime);
 
       // Remove values
       values.clear();
@@ -163,9 +166,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    * Output watermark
    * = max(prev output watermark,
    *          min(input watermark, watermark holds)).
-   * @param inputWatermark input watermark
    */
-  private void emitOutputWatermark(final Watermark inputWatermark) {
+  private void emitOutputWatermark() {
     // Find min watermark hold
     final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
       ? new Watermark(Long.MAX_VALUE) // set this to MAX, in order to just use the input watermark.
@@ -195,12 +197,12 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   }
 
   @Override
-  public void onWatermark(final Watermark inputWatermark) {
+  public void onWatermark(final Watermark watermark) {
     checkAndInvokeBundle();
-
-    processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
+    inputWatermark = watermark;
+    processElementsAndTriggerTimers(Instant.now(), Instant.now());
     // Emit watermark to downstream operators
-    emitOutputWatermark(inputWatermark);
+    emitOutputWatermark();
     checkAndFinishBundle();
   }
 
@@ -211,26 +213,24 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   protected void beforeClose() {
     // Finish any pending windows by advancing the input watermark to infinity.
-    processElementsAndTriggerTimers(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()),
-      BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE);
+    inputWatermark = new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis());
+    processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE);
   }
 
   /**
    * Trigger times for current key.
    * When triggering, it emits the windowed data to downstream operators.
    * @param key key
-   * @param watermark watermark
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
    */
   private void triggerTimers(final K key,
-                             final Watermark watermark,
                              final Instant processingTime,
                              final Instant synchronizedTime) {
     final InMemoryTimerInternals timerInternals = (InMemoryTimerInternals)
       inMemoryTimerInternalsFactory.timerInternalsForKey(key);
     try {
-      timerInternals.advanceInputWatermark(new Instant(watermark.getTimestamp()));
+      timerInternals.advanceInputWatermark(new Instant(inputWatermark.getTimestamp()));
       timerInternals.advanceProcessingTime(processingTime);
       timerInternals.advanceSynchronizedProcessingTime(synchronizedTime);
     } catch (final Exception e) {
@@ -356,35 +356,15 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
     @Override
     public void emit(final WindowedValue<KV<K, Iterable<InputT>>> output) {
-      // handling late data
-      final Instant latenessConsideredTimestamp;
-      if (windowingStrategy.isAllowedLatenessSpecified()) {
-        final Duration lateness = windowingStrategy.getAllowedLateness();
-        latenessConsideredTimestamp = output.getTimestamp().plus(lateness);
-      } else {
-        latenessConsideredTimestamp = output.getTimestamp();
-      }
-
-      // We emit the data only when the data timestamp > watermark timestamp
-      if (latenessConsideredTimestamp.isAfter(prevOutputWatermark.getTimestamp())) {
-        final Watermark prevKeyWatermarkHold =
-          keyAndWatermarkHoldMap.getOrDefault(output.getValue().getKey(), new Watermark(Long.MIN_VALUE));
-
-        // Adds the output timestamp to the watermark hold of each key
-        // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
-        // TODO #270: consider early firing
-        // TODO #270: This logic may not be applied to early firing outputs
-
-        // Late data should not be considered in calculating watermark
-        // so we pick the largest timestamp between current output and prev watermark hold
-        final Watermark keyWatermarkHold = new Watermark(
-          Math.max(prevKeyWatermarkHold.getTimestamp(), output.getTimestamp().getMillis() + 1));
-
-        keyAndWatermarkHoldMap.put(output.getValue().getKey(), keyWatermarkHold);
-
-        outputCollector.emit(output);
-      }
+      // adds the output timestamp to the watermark hold of each key
+      // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
+      // TODO #270: consider early firing
+      // TODO #270: This logic may not be applied to early firing outputs
+      keyAndWatermarkHoldMap.put(output.getValue().getKey(),
+        new Watermark(output.getTimestamp().getMillis() + 1));
+      outputCollector.emit(output);
     }
+
     @Override
     public void emitWatermark(final Watermark watermark) {
 
