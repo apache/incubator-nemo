@@ -36,7 +36,6 @@ import org.junit.Test;
 
 import java.util.*;
 
-import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 
@@ -247,5 +246,86 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
       oc.watermarks.get(0).getTimestamp());
 
     doFnTransform.close();
+  }
+
+  //
+  // [-------window0-------]        (late)
+  // ts1 -- ts2 -- ts3 -- w -- w2 -- ts4 -- w3
+  //                        (window0 should be emitted again at w3)
+  @Test
+  public void latenessTest() {
+
+    final TupleTag<String> outputTag = new TupleTag<>("main-output");
+    final FixedWindows fixedWindows = FixedWindows.of(Duration.standardSeconds(1));
+    final Window window = Window.into(fixedWindows)
+      .withAllowedLateness(Duration.millis(600));
+
+    final GroupByKeyAndWindowDoFnTransform<String, String> doFnTransform =
+      new GroupByKeyAndWindowDoFnTransform(
+        NULL_OUTPUT_CODERS,
+        outputTag,
+        WindowingStrategy.of(window.getWindowFn()),
+        PipelineOptionsFactory.as(NemoPipelineOptions.class),
+        SystemReduceFn.buffering(NULL_INPUT_CODER),
+        DisplayData.none());
+
+    final Instant ts1 = new Instant(1);
+    final Instant ts2 = new Instant(100);
+    final Instant ts3 = new Instant(300);
+    final Watermark watermark = new Watermark(1003);
+    final Watermark watermark2 = new Watermark(1300);
+    final Instant ts4 = new Instant(800);
+    final Instant ts5 = new Instant(1600);
+    final Watermark watermark3 = new Watermark(2100);
+
+    final IntervalWindow window0 = fixedWindows.assignWindow(ts1);
+
+    final Transform.Context context = mock(Transform.Context.class);
+    final TestOutputCollector<KV<String, Iterable<String>>> oc = new TestOutputCollector();
+    doFnTransform.prepare(context, oc);
+
+    doFnTransform.onData(WindowedValue.of(
+      KV.of("1", "hello"), ts1, fixedWindows.assignWindow(ts1), PaneInfo.NO_FIRING));
+
+    doFnTransform.onData(WindowedValue.of(
+      KV.of("1", "world"), ts2, fixedWindows.assignWindow(ts2), PaneInfo.NO_FIRING));
+
+    doFnTransform.onData(WindowedValue.of(
+      KV.of("2", "hello"), ts3, fixedWindows.assignWindow(ts3), PaneInfo.NO_FIRING));
+
+    doFnTransform.onWatermark(watermark);
+
+    // output
+    // 1: ["hello", "world"]
+    // 2: ["hello"]
+    Collections.sort(oc.outputs, (o1, o2) -> o1.getValue().getKey().compareTo(o2.getValue().getKey()));
+
+    // windowed result for key 1
+    assertEquals(Arrays.asList(window0), oc.outputs.get(0).getWindows());
+    checkOutput(KV.of("1", Arrays.asList("hello", "world")), oc.outputs.get(0).getValue());
+
+    // windowed result for key 2
+    assertEquals(Arrays.asList(window0), oc.outputs.get(1).getWindows());
+    checkOutput(KV.of("2", Arrays.asList("hello")), oc.outputs.get(1).getValue());
+
+    assertEquals(2, oc.outputs.size());
+    assertEquals(1, oc.watermarks.size());
+
+    // check output watermark
+    assertEquals(1000,
+      oc.watermarks.get(0).getTimestamp());
+
+    oc.outputs.clear();
+    oc.watermarks.clear();
+
+
+    doFnTransform.onWatermark(watermark2);
+    // late data!
+    doFnTransform.onData(WindowedValue.of(
+      KV.of("1", "a"), ts4, fixedWindows.assignWindow(ts4), PaneInfo.NO_FIRING));
+
+    doFnTransform.onWatermark(watermark3);
+
+    assertEquals(0, oc.outputs.size()); // late data dropped
   }
 }
