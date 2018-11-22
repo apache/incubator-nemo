@@ -113,6 +113,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     checkAndInvokeBundle();
 
+    if (getContext().getIRVertex().getId().equals("vertex9")) {
+      LOG.info("vertex9 onData - {}: {}", this.hashCode(), element);
+    }
+
     // We can call Beam's DoFnRunner#processElement here,
     // but it may generate some overheads if we call the method for each data.
     // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
@@ -176,10 +180,20 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
 
+
+    if (getContext().getIRVertex().getId().equals("vertex9")) {
+      LOG.info("Watermark hold - {}: {}, "
+        + "inputWatermark: {}, outputWatermark: {}", this.hashCode(),
+        new Instant(minWatermarkHold.getTimestamp()),
+        new Instant(inputWatermark.getTimestamp()),
+        new Instant(prevOutputWatermark.getTimestamp()));
+    }
+
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
       prevOutputWatermark = outputWatermarkCandidate;
       // emit watermark
+
       getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
@@ -192,6 +206,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   public void onWatermark(final Watermark inputWatermark) {
     checkAndInvokeBundle();
+      if (getContext().getIRVertex().getId().equals("vertex9")) {
+        LOG.info("onWatermark - {}: {}", this.hashCode(), new Instant(inputWatermark.getTimestamp()));
+      }
     processElementsAndTriggerTimers(inputWatermark, Instant.now(), Instant.now());
     // Emit watermark to downstream operators
     emitOutputWatermark(inputWatermark);
@@ -234,6 +251,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final List<TimerInternals.TimerData> timerDataList = getEligibleTimers(timerInternals);
 
     if (!timerDataList.isEmpty()) {
+      if (getContext().getIRVertex().getId().equals("vertex9")) {
+        LOG.info("Timer - {}: {}", this.hashCode(), timerDataList);
+      }
       // Trigger timers and emit windowed data
       final KeyedWorkItem<K, InputT> timerWorkItem =
         KeyedWorkItems.timersWorkItem(key, timerDataList);
@@ -354,12 +374,22 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // TODO #270: consider early firing
       // TODO #270: This logic may not be applied to early firing outputs
 
+
+    if (getContext().getIRVertex().getId().equals("vertex9")) {
+      LOG.info("Emit data - {}: {}, ", GroupByKeyAndWindowDoFnTransform.this.hashCode(), output);
+    }
+
       keyAndWatermarkHoldMap.put(output.getValue().getKey(),
         new Watermark(output.getTimestamp().getMillis() + 1));
       outputCollector.emit(output);
     }
     @Override
     public void emitWatermark(final Watermark watermark) {
+
+      if (getContext().getIRVertex().getId().equals("vertex9")) {
+        LOG.info("Emit watermark - {}: {}, ", GroupByKeyAndWindowDoFnTransform.this.hashCode(),
+          new Instant(watermark.getTimestamp()));
+      }
       outputCollector.emitWatermark(watermark);
     }
     @Override

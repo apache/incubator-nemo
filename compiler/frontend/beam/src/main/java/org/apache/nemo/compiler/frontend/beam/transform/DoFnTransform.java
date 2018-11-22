@@ -81,6 +81,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   @Override
   public void onWatermark(final Watermark watermark) {
     checkAndInvokeBundle();
+    inputWatermark = watermark.getTimestamp();
     getOutputCollector().emitWatermark(watermark);
     checkAndFinishBundle();
   }
