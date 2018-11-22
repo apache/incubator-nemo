@@ -47,11 +47,18 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
   private final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> inMemorySideInputs;
 
   private final ConcurrentMap<BoundedWindow, Long> windowAccessMap;
+  final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
   public InMemorySideInputReader(final Collection<PCollectionView<?>> sideInputsToRead) {
     this.sideInputsToRead = sideInputsToRead;
     this.inMemorySideInputs = new HashMap<>();
-    this.windowAccessMap = WindowAccessMap.MAP;
+    this.windowAccessMap = new ConcurrentHashMap<>();
+
+    scheduledExecutorService.scheduleAtFixedRate(() -> {
+      windowAccessMap.forEach((window, accessTime) -> {
+        System.out.println(window + ", " + "final access time: " + accessTime);
+      });
+    }, 5, 5, TimeUnit.SECONDS);
   }
 
   @Override
