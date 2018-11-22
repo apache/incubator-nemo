@@ -461,31 +461,34 @@ public final class TaskExecutor {
 
       final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
       final long currentTime = System.currentTimeMillis();
-      // We check pending data every polling interval
-      while (pendingIterator.hasNext()
-        && isPollingTime(pollingInterval, currentTime, prevPollingTime)) {
+
+
+      if (isPollingTime(pollingInterval, currentTime, prevPollingTime)) {
+        // We check pending data every polling interval
         prevPollingTime = currentTime;
 
-        final DataFetcher dataFetcher = pendingIterator.next();
-        try {
-          final Object element = dataFetcher.fetchDataElement();
-          onEventFromDataFetcher(element, dataFetcher);
+        while (pendingIterator.hasNext()) {
+          final DataFetcher dataFetcher = pendingIterator.next();
+          try {
+            final Object element = dataFetcher.fetchDataElement();
+            onEventFromDataFetcher(element, dataFetcher);
 
-          // We processed data. This means the data fetcher is now available.
-          // Add current data fetcher to available
-          pendingIterator.remove();
-          if (!(element instanceof Finishmark)) {
-            availableFetchers.add(dataFetcher);
+            // We processed data. This means the data fetcher is now available.
+            // Add current data fetcher to available
+            pendingIterator.remove();
+            if (!(element instanceof Finishmark)) {
+              availableFetchers.add(dataFetcher);
+            }
+
+          } catch (final NoSuchElementException e) {
+            // The current data fetcher is still pending.. try next data fetcher
+          } catch (final IOException e) {
+            // IOException means that this task should be retried.
+            taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
+              Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
+            LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
+            return false;
           }
-
-        } catch (final NoSuchElementException e) {
-          // The current data fetcher is still pending.. try next data fetcher
-        } catch (final IOException e) {
-          // IOException means that this task should be retried.
-          taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
-            Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
-          LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
-          return false;
         }
       }
 
