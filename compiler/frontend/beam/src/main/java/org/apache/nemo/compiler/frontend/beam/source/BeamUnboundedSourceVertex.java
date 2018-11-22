@@ -100,13 +100,12 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
    * @param <M> checkpoint mark type.
    */
   private static final class UnboundedSourceReadable<O, M extends UnboundedSource.CheckpointMark>
-      implements Readable<Object> {
+    implements Readable<Object> {
     private final UnboundedSource<O, M> unboundedSource;
     private UnboundedSource.UnboundedReader<O> reader;
     private boolean isStarted = false;
     private boolean isCurrentAvailable = false;
     private boolean isFinished = false;
-    private Instant currentInputWatermark = new Instant(Long.MIN_VALUE);
 
     UnboundedSourceReadable(final UnboundedSource<O, M> unboundedSource) {
       this.unboundedSource = unboundedSource;
@@ -136,12 +135,6 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
       if (isCurrentAvailable) {
         final O elem = reader.getCurrent();
-        final Instant timestamp = reader.getCurrentTimestamp();
-        if (timestamp.getMillis() < currentInputWatermark.getMillis()) {
-          // this is late-data
-          // drop
-          throw new NoSuchElementException();
-        }
         return WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp());
       } else {
         throw new NoSuchElementException();
@@ -150,10 +143,10 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
     @Override
     public long readWatermark() {
-      currentInputWatermark = reader.getWatermark();
+      final Instant watermark = reader.getWatermark();
       // Finish if the watermark == TIMESTAMP_MAX_VALUE
-      isFinished = (currentInputWatermark.getMillis() >= GlobalWindow.TIMESTAMP_MAX_VALUE.getMillis());
-      return currentInputWatermark.getMillis();
+      isFinished = (watermark.getMillis() >= GlobalWindow.TIMESTAMP_MAX_VALUE.getMillis());
+      return watermark.getMillis();
     }
 
     @Override
