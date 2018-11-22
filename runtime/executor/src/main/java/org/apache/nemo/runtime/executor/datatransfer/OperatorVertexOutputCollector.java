@@ -81,6 +81,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
 
     // TODO: remove
+    /*
     if (irVertex.getId().equals("vertex15")) {
       sideInputOutputCollector = new SideInputLambdaCollector(irVertex, outgoingEdges, serializerManager);
     }
@@ -90,6 +91,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
         new MainInputLambdaCollector(irVertex, outgoingEdges,
           serializerManager, S3StorageObjectFactory.INSTACE);
     }
+    */
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
