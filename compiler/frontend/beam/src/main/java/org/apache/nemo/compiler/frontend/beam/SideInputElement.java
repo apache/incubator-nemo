@@ -39,4 +39,9 @@ public final class SideInputElement<T> {
   public T getSideInputValue() {
     return sideInputValue;
   }
+
+  @Override
+  public String toString() {
+    return "SideInput: (" + sideInputIndex + ", " + sideInputValue.toString() + ")";
+  }
 }

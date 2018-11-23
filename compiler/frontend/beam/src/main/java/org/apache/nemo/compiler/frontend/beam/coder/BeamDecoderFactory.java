@@ -25,6 +25,7 @@ import org.apache.beam.sdk.coders.VoidCoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -86,7 +87,7 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
       try {
         return beamCoder.decode(inputStream);
       } catch (final CoderException e) {
-        throw new IOException(e);
+        throw e;
       }
     }
 
@@ -146,7 +147,7 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
     @Override
     public T2 decode() throws IOException {
       if (getInputStream().read() == -1) {
-        throw new IOException("End of stream reached");
+        throw new EOFException("End of stream reached");
       }
       return decodeInternal();
     }
