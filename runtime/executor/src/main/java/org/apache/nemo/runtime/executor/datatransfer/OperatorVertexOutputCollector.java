@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -103,7 +104,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 //    // TODO: remove
     final String vertexId = irVertex.getId();
     if (vertexId.equals("vertex15")) {
-      System.out.println("Start to send side input!: " + System.currentTimeMillis() + ", output: " + output.toString());
+      System.out.println("Start to send side input!: " + System.currentTimeMillis() + ", output: " +
+        ((WindowedValue) output).getWindows().toString());
       //sideInputOutputCollector.emit(output);
       //return;
     } else if (vertexId.equals("vertex6")) {
