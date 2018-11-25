@@ -93,20 +93,20 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private void checkAndFlush(final String key) {
     final Info info = windowAndInfoMap.get(key);
     info.cnt += 1;
-    final long prevAccessTime = info.accessTime;
-    info.accessTime = System.currentTimeMillis();
-
 
     //LOG.info("Info {}, count: {}", info.fname, info.cnt);
 
     //if (info.cnt >= 10000 || info.accessTime - prevAccessTime >= 2000) {
-    if (info.accessTime - prevAccessTime >= period) {
-        windowAndInfoMap.put(key, null);
-        // flush
-        executorService.execute(() -> {
-          LOG.info("Close {}", info.storageObject);
-          info.storageObject.close();
-        });
+    final long currtime = System.currentTimeMillis();
+    if (System.currentTimeMillis() - info.triggerTime >= period) {
+      info.triggerTime = currtime;
+
+      windowAndInfoMap.put(key, null);
+      // flush
+      executorService.execute(() -> {
+        LOG.info("Close {}", info.storageObject);
+        info.storageObject.close();
+      });
     }
 
     final long currTime = System.currentTimeMillis();
@@ -181,7 +181,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
   final class Info {
     public int cnt = 0;
-    public long accessTime = System.currentTimeMillis();
+    public long triggerTime = System.currentTimeMillis();
     public final StorageObjectFactory.StorageObject storageObject;
 
     Info(StorageObjectFactory.StorageObject storageObject) {
