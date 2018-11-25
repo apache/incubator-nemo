@@ -22,6 +22,7 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
+import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.apache.nemo.examples.beam.policy.TransientResourcePolicyParallelismTen;
 import org.junit.After;
 import org.junit.Before;
@@ -71,7 +72,7 @@ public final class AlternatingLeastSquareITCase {
     JobLauncher.main(builder
         .addResourceJson(noPoisonResources)
         .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_default")
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 

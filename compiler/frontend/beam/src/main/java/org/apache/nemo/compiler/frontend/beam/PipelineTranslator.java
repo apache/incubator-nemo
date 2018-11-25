@@ -25,6 +25,7 @@ import org.apache.beam.runners.core.construction.TransformInputs;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.AppliedPTransform;
 import org.apache.beam.sdk.runners.TransformHierarchy;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -48,7 +49,9 @@ import java.lang.annotation.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * A collection of translators for the Beam PTransforms.
@@ -164,7 +167,7 @@ final class PipelineTranslator {
   private static void unboundedReadTranslator(final PipelineTranslationContext ctx,
                                               final TransformHierarchy.Node beamNode,
                                               final Read.Unbounded<?> transform) {
-    final IRVertex vertex = new BeamUnboundedSourceVertex<>(transform.getSource());
+    final IRVertex vertex = new BeamUnboundedSourceVertex<>(transform.getSource(), DisplayData.from(transform));
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
@@ -174,7 +177,7 @@ final class PipelineTranslator {
   private static void boundedReadTranslator(final PipelineTranslationContext ctx,
                                             final TransformHierarchy.Node beamNode,
                                             final Read.Bounded<?> transform) {
-    final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource());
+    final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource(), DisplayData.from(transform));
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
@@ -184,14 +187,15 @@ final class PipelineTranslator {
   private static void parDoSingleOutputTranslator(final PipelineTranslationContext ctx,
                                                   final TransformHierarchy.Node beamNode,
                                                   final ParDo.SingleOutput<?, ?> transform) {
-    final DoFnTransform doFnTransform = createDoFnTransform(ctx, beamNode);
+    final Map<Integer, PCollectionView<?>> sideInputMap = getSideInputMap(transform.getSideInputs());
+    final AbstractDoFnTransform doFnTransform = createDoFnTransform(ctx, beamNode, sideInputMap);
     final IRVertex vertex = new OperatorVertex(doFnTransform);
 
     ctx.addVertex(vertex);
     beamNode.getInputs().values().stream()
       .filter(input -> !transform.getAdditionalInputs().values().contains(input))
       .forEach(input -> ctx.addEdgeTo(vertex, input));
-    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
+    ctx.addSideInputEdges(vertex, sideInputMap);
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
   }
 
@@ -199,13 +203,14 @@ final class PipelineTranslator {
   private static void parDoMultiOutputTranslator(final PipelineTranslationContext ctx,
                                                  final TransformHierarchy.Node beamNode,
                                                  final ParDo.MultiOutput<?, ?> transform) {
-    final DoFnTransform doFnTransform = createDoFnTransform(ctx, beamNode);
+    final Map<Integer, PCollectionView<?>> sideInputMap = getSideInputMap(transform.getSideInputs());
+    final AbstractDoFnTransform doFnTransform = createDoFnTransform(ctx, beamNode, sideInputMap);
     final IRVertex vertex = new OperatorVertex(doFnTransform);
     ctx.addVertex(vertex);
     beamNode.getInputs().values().stream()
       .filter(input -> !transform.getAdditionalInputs().values().contains(input))
       .forEach(input -> ctx.addEdgeTo(vertex, input));
-    transform.getSideInputs().forEach(input -> ctx.addEdgeTo(vertex, input));
+    ctx.addSideInputEdges(vertex, sideInputMap);
     beamNode.getOutputs().entrySet().stream()
       .filter(pValueWithTupleTag -> pValueWithTupleTag.getKey().equals(transform.getMainOutputTag()))
       .forEach(pValueWithTupleTag -> ctx.registerMainOutputFrom(beamNode, vertex, pValueWithTupleTag.getValue()));
@@ -237,7 +242,8 @@ final class PipelineTranslator {
     } else {
       throw new UnsupportedOperationException(String.format("%s is not supported", transform));
     }
-    final IRVertex vertex = new OperatorVertex(new WindowFnTransform(windowFn));
+    final IRVertex vertex = new OperatorVertex(
+      new WindowFnTransform(windowFn, DisplayData.from(beamNode.getTransform())));
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
@@ -317,7 +323,7 @@ final class PipelineTranslator {
     final IRVertex finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn));
     ctx.addVertex(finalCombine);
     final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, partialCombine, finalCombine);
-    ctx.addEdgeTo(
+    ctx.addEdge(
       edge,
       KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder),
       input.getWindowingStrategy().getWindowFn().windowCoder());
@@ -348,27 +354,45 @@ final class PipelineTranslator {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////// HELPER METHODS
 
-  private static DoFnTransform createDoFnTransform(final PipelineTranslationContext ctx,
-                                                   final TransformHierarchy.Node beamNode) {
+  private static Map<Integer, PCollectionView<?>> getSideInputMap(final List<PCollectionView<?>> viewList) {
+    return IntStream.range(0, viewList.size()).boxed().collect(Collectors.toMap(Function.identity(), viewList::get));
+  }
+
+  private static AbstractDoFnTransform createDoFnTransform(final PipelineTranslationContext ctx,
+                                                           final TransformHierarchy.Node beamNode,
+                                                           final Map<Integer, PCollectionView<?>> sideInputMap) {
     try {
       final AppliedPTransform pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
       final DoFn doFn = ParDoTranslation.getDoFn(pTransform);
       final TupleTag mainOutputTag = ParDoTranslation.getMainOutputTag(pTransform);
-      final List<PCollectionView<?>> sideInputs = ParDoTranslation.getSideInputs(pTransform);
       final TupleTagList additionalOutputTags = ParDoTranslation.getAdditionalOutputTags(pTransform);
 
       final PCollection<?> mainInput = (PCollection<?>)
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
-      return new DoFnTransform(
-        doFn,
-        mainInput.getCoder(),
-        getOutputCoders(pTransform),
-        mainOutputTag,
-        additionalOutputTags.getAll(),
-        mainInput.getWindowingStrategy(),
-        sideInputs,
-        ctx.getPipelineOptions());
+      if (sideInputMap.isEmpty()) {
+        return new DoFnTransform(
+          doFn,
+          mainInput.getCoder(),
+          getOutputCoders(pTransform),
+          mainOutputTag,
+          additionalOutputTags.getAll(),
+          mainInput.getWindowingStrategy(),
+          ctx.getPipelineOptions(),
+          DisplayData.from(beamNode.getTransform()));
+      } else {
+        return new PushBackDoFnTransform(
+          doFn,
+          mainInput.getCoder(),
+          getOutputCoders(pTransform),
+          mainOutputTag,
+          additionalOutputTags.getAll(),
+          mainInput.getWindowingStrategy(),
+          sideInputMap,
+          ctx.getPipelineOptions(),
+          DisplayData.from(beamNode.getTransform()));
+
+      }
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
@@ -404,11 +428,10 @@ final class PipelineTranslator {
       return new GroupByKeyAndWindowDoFnTransform(
         getOutputCoders(pTransform),
         mainOutputTag,
-        Collections.emptyList(),  /*  GBK does not have additional outputs */
         mainInput.getWindowingStrategy(),
-        Collections.emptyList(), /*  GBK does not have additional side inputs */
         ctx.getPipelineOptions(),
-        SystemReduceFn.buffering(mainInput.getCoder()));
+        SystemReduceFn.buffering(mainInput.getCoder()),
+        DisplayData.from(beamNode.getTransform()));
     }
   }
 
