@@ -38,7 +38,7 @@ public final class LambdaWarmer {
 
   private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
   private final ExecutorService executorService = Executors.newCachedThreadPool();
-  private final int numOfInvocation = 120;
+  private final int numOfInvocation = 60;
 
 
   /**
