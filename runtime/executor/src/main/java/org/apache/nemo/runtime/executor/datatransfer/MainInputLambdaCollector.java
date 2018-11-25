@@ -60,7 +60,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private final StorageObjectFactory storageObjectFactory;
 
   private final ExecutorService executorService = Executors.newCachedThreadPool();
-  private final long period = 5000;
+  private final long period = 20000;
 
   private final LambdaWarmer warmer;
 
@@ -82,7 +82,12 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
       ((NemoEventDecoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getDecoderFactory()).getValueDecoderFactory());
     this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
-    this.warmer = new LambdaWarmer();
+    if (LambdaWarmer.TICKET.getAndIncrement() == 0) {
+      this.warmer = new LambdaWarmer();
+      warmer.warmup();
+    } else {
+      this.warmer = null;
+    }
   }
 
   private void checkAndFlush(final String key) {
@@ -95,7 +100,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     //LOG.info("Info {}, count: {}", info.fname, info.cnt);
 
     //if (info.cnt >= 10000 || info.accessTime - prevAccessTime >= 2000) {
-    if (info.cnt >= 50000 || info.accessTime - prevAccessTime >= period) {
+    if (info.accessTime - prevAccessTime >= period) {
         windowAndInfoMap.put(key, null);
         // flush
         executorService.execute(() -> {
@@ -140,10 +145,13 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
         final int partition = windowAndPartitionMap.get(fileName);
 
-        if (partition == 80 || partition == 100) {
-          // warm up
-          warmer.warmup();
+        if (warmer != null) {
+          if (partition == 5) {
+            // warm up
+            warmer.warmup();
+          }
         }
+
 
         info = new Info(storageObjectFactory.newInstance(
           fileName, partition, encodedDecoderFactory, encoderFactory));

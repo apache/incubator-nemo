@@ -26,9 +26,12 @@ import com.amazonaws.services.lambda.model.InvokeRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class LambdaWarmer {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaWarmer.class.getName());
+
+  public static final AtomicInteger TICKET = new AtomicInteger(0);
 
   // TODO: remove
   private final AWSLambda awsLambda;
