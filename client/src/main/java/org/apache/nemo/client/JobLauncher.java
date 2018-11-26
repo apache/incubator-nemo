@@ -102,7 +102,7 @@ public final class JobLauncher {
    */
   public static void main(final String[] args) throws Exception {
     try {
-      setUp(args);
+      setup(args);
       // Launch client main. The shutdown() method is called inside the launchDAG() method.
       runUserProgramMain(builtJobConf);
     } catch (final InjectionException e) {
@@ -117,7 +117,7 @@ public final class JobLauncher {
    * @throws ClassNotFoundException class not found exception.
    * @throws IOException IO exception.
    */
-  public static void setUp(final String[] args) throws InjectionException, ClassNotFoundException, IOException {
+  public static void setup(final String[] args) throws InjectionException, ClassNotFoundException, IOException {
     // Get Job and Driver Confs
     builtJobConf = getJobConf(args);
 
@@ -227,7 +227,7 @@ public final class JobLauncher {
     // launch driver if it hasn't been already
     if (driverReadyLatch == null) {
       try {
-        setUp(new String[]{"-job_id", jobId});
+        setup(new String[]{"-job_id", jobId});
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
