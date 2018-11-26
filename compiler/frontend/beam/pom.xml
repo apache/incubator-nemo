@@ -29,9 +29,10 @@ under the License.
 
     <artifactId>nemo-compiler-frontend-beam</artifactId>
     <name>Nemo Compiler Frontend: Beam</name>
+    <packaging>jar</packaging>
 
     <dependencies>
-	    <dependency>
+	      <dependency>
             <groupId>org.apache.nemo</groupId>
             <artifactId>nemo-common</artifactId>
             <version>${project.version}</version>
@@ -46,11 +47,11 @@ under the License.
             <artifactId>beam-sdks-java-core</artifactId>
             <version>${beam.version}</version>
         </dependency>
-      <dependency>
+        <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-core-java</artifactId>
             <version>${beam.version}</version>
-      </dependency>
+        </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-io-hadoop-input-format</artifactId>
@@ -61,6 +62,12 @@ under the License.
             <artifactId>hadoop-mapreduce-client-core</artifactId>
             <version>${hadoop.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.auto.service</groupId>
+            <artifactId>auto-service</artifactId>
+            <version>${auto-service.version}</version>
+            <optional>true</optional>
         </dependency>
     </dependencies>
 </project>

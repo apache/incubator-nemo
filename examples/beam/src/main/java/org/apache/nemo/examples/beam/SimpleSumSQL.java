@@ -26,7 +26,7 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.*;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineRunner;
+import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -50,7 +50,7 @@ public final class SimpleSumSQL {
     final String outputFilePath = args[0];
 
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
-    options.setRunner(NemoPipelineRunner.class);
+    options.setRunner(NemoRunner.class);
     options.setJobName("SimpleSumSQL");
     final Pipeline p = Pipeline.create(options);
 
