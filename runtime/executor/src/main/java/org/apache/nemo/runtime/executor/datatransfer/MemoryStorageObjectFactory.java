@@ -213,11 +213,14 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
       final ConcurrentLinkedQueue<MemoryStorageObject> queue = prefixAndObjectMap.get(sideInputKey);
       final int size = prefixAndSizeMap.get(sideInputKey).get();
 
+      LOG.info("Side Input Key: {}", sideInputKey);
       final List<MemoryStorageObject> list = new ArrayList<>(size+5);
       while (!queue.isEmpty()) {
         final MemoryStorageObject object = queue.poll();
         list.add(object);
       }
+
+      LOG.info("MemoryStorageObject size: {}", list.size());
 
       final List<Future<InvokeResult>> futures = new ArrayList<>(list.size());
       // 0. Trigger lambdas
@@ -227,10 +230,12 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
           final InvokeRequest request = new InvokeRequest()
             .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
             .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-              ADDRESS, PORT));
+              "13.115.49.52", PORT));
           return awsLambda.invoke(request);
         }));
       }
+
+      LOG.info("End of invocation of lambdas: {}", list.size());
 
       // 1. lambda initialized
       for (int i = 0; i < list.size(); i++) {
@@ -284,6 +289,9 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
           throw new RuntimeException(e);
         }
       }).collect(Collectors.toList());
+
+      prefixAndObjectMap.remove(sideInputKey);
+      prefixAndSizeMap.remove(sideInputKey);
 
       return results;
     }
