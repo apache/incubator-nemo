@@ -88,6 +88,9 @@ public final class TaskExecutor {
 
   private final SerializerManager serializerManager;
 
+  //private static final StorageObjectFactory SOFACTORY = MemoryStorageObjectFactory.INSTACE;
+  private static final StorageObjectFactory SOFACTORY = S3StorageObjectFactory.INSTACE;
+
   /**
    * Constructor.
    *
@@ -242,7 +245,7 @@ public final class TaskExecutor {
           .collect(Collectors.toList());
         outputCollector = new OperatorVertexOutputCollector(
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
-          externalMainOutputs, externalAdditionalOutputMap, oedges, serializerManager);
+          externalMainOutputs, externalAdditionalOutputMap, oedges, SOFACTORY, serializerManager);
       }
 
       // Create VERTEX HARNESS

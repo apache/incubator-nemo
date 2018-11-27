@@ -73,6 +73,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     final List<OutputWriter> externalMainOutputs,
     final Map<String, List<OutputWriter>> externalAdditionalOutputs,
     final List<StageEdge> outgoingEdges,
+    final StorageObjectFactory storageObjectFactory,
     final SerializerManager serializerManager) {
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
@@ -84,14 +85,14 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     // TODO: remove
     if (irVertex.getId().equals("vertex15")) {
       sideInputOutputCollector = new SideInputLambdaCollector(
-        irVertex, new S3SideInputProcessor(serializerManager,
+        irVertex, storageObjectFactory.sideInputProcessor(serializerManager,
         outgoingEdges.get(0).getId()));
     }
 
     if (irVertex.getId().equals("vertex6")) {
       mainInputLambdaCollector =
         new MainInputLambdaCollector(irVertex, outgoingEdges,
-          serializerManager, S3StorageObjectFactory.INSTACE);
+          serializerManager, storageObjectFactory);
     }
   }
 
