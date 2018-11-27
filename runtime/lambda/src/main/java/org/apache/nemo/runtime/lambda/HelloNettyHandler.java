@@ -165,10 +165,12 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
 
     // client handshake
     opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.CLIENT_HANDSHAKE, new byte[0]));
+    System.out.println("Write handshake");
 
     final LambdaEventHandler handler = (LambdaEventHandler) map.get(opendChannel);
     try {
       // wait until end
+      System.out.println("Wait end flag");
       final Integer endFlag = handler.endBlockingQueue.take();
     } catch (InterruptedException e) {
       e.printStackTrace();
@@ -202,6 +204,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
       switch (nemoEvent.getType()) {
         case SIDE: {
           // receive side input
+          System.out.println("Receive side");
           final ByteArrayInputStream bis = new ByteArrayInputStream(nemoEvent.getBytes());
           sideInputDecoderFactory =
             SerializeUtils.deserialize(bis, classLoader);
@@ -215,6 +218,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
           break;
         }
         case MAIN:
+          System.out.println("Receive main");
           // receive main input
           if (sideInput == null) {
             throw new IllegalStateException("SideInput should not be null");
