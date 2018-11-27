@@ -76,7 +76,8 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
     final ServerBootstrap serverBootstrap = new ServerBootstrap();
     serverBootstrap.group(this.serverBossGroup, this.serverWorkerGroup)
       .channel(NioServerSocketChannel.class)
-      .childHandler(new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler))
+      .childHandler(new NettyChannelInitializer(
+        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)))
       .option(ChannelOption.SO_BACKLOG, 128)
       .option(ChannelOption.SO_REUSEADDR, true)
       .childOption(ChannelOption.SO_KEEPALIVE, true);

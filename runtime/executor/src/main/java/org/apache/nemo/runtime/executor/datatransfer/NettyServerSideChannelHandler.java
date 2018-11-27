@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.group.ChannelGroup;
@@ -7,6 +8,7 @@ import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
 
 
+@ChannelHandler.Sharable
 final class NettyServerSideChannelHandler extends ChannelInboundHandlerAdapter {
 
   private final ChannelGroup channelGroup;
