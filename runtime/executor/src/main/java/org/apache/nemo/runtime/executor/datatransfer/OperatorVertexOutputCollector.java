@@ -82,9 +82,10 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
 
     // TODO: remove
-    /*
     if (irVertex.getId().equals("vertex15")) {
-      sideInputOutputCollector = new SideInputLambdaCollector(irVertex, outgoingEdges, serializerManager);
+      sideInputOutputCollector = new SideInputLambdaCollector(
+        irVertex, new S3SideInputProcessor(serializerManager,
+        outgoingEdges.get(0).getId()));
     }
 
     if (irVertex.getId().equals("vertex6")) {
@@ -92,7 +93,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
         new MainInputLambdaCollector(irVertex, outgoingEdges,
           serializerManager, S3StorageObjectFactory.INSTACE);
     }
-    */
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -106,11 +106,11 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     if (vertexId.equals("vertex15")) {
       System.out.println("Start to send side input!: " + System.currentTimeMillis() + ", output: " +
         ((WindowedValue) output).getWindows().toString());
-      //sideInputOutputCollector.emit(output);
-      //return;
+      sideInputOutputCollector.emit(output);
+      return;
     } else if (vertexId.equals("vertex6")) {
-     // mainInputLambdaCollector.emit(output);
-      //return;
+      //mainInputLambdaCollector.emit(output);
+      return;
     }
 
     writer.write(output);
@@ -164,7 +164,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       }
     }
 
-/*
     if (irVertex.getId().equals("vertex15")) {
       sideInputOutputCollector.emitWatermark(watermark);
     } else if (irVertex.getId().equals("vertex6")) {
@@ -182,7 +181,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       }
     }
 
-    */
+/*
     // Emit watermarks to output writer
     for (final OutputWriter outputWriter : externalMainOutputs) {
       outputWriter.writeWatermark(watermark);
@@ -193,5 +192,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
         externalVertex.writeWatermark(watermark);
       }
     }
+    */
   }
 }

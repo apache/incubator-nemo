@@ -60,7 +60,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private final StorageObjectFactory storageObjectFactory;
 
   private final ExecutorService executorService = Executors.newCachedThreadPool();
-  private final long period = 20000;
+  private final long period = 5000;
 
   private final LambdaWarmer warmer;
 
@@ -100,6 +100,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     final long currtime = System.currentTimeMillis();
     if (System.currentTimeMillis() - info.triggerTime >= period) {
       info.triggerTime = currtime;
+      LOG.info("Trigger");
 
       windowAndInfoMap.put(key, null);
       // flush
@@ -146,9 +147,9 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
         final int partition = windowAndPartitionMap.get(fileName);
 
         if (warmer != null) {
-          if (partition == 5) {
+          if (partition == 1) {
             // warm up
-            warmer.warmup();
+            //warmer.warmup();
           }
         }
 

@@ -35,7 +35,6 @@ public final class SerializeUtils {
     }
   }
 
-
   /**
    * Read the object from Base64 string with the external class loader.
    * @param classLoader an external class loader
@@ -75,6 +74,21 @@ public final class SerializeUtils {
       final byte[] data = Base64.getDecoder().decode(s);
       final ExternalJarObjectInputStream stream = new ExternalJarObjectInputStream(
         classLoader, data);
+      final T object = (T) stream.readObject();
+      stream.close();
+      return object;
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static <T> T deserialize(
+    final byte[] bytes,
+    final ClassLoader classLoader) {
+    try {
+      final ExternalJarObjectInputStream stream = new ExternalJarObjectInputStream(
+        classLoader, bytes);
       final T object = (T) stream.readObject();
       stream.close();
       return object;

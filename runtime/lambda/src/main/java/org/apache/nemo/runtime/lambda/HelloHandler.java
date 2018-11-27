@@ -10,9 +10,11 @@ import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.reef.wake.EventHandler;
 
 import java.io.*;
 import java.net.MalformedURLException;
@@ -23,6 +25,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 public class HelloHandler implements RequestHandler<Map<String, Object>, Object> {
 
