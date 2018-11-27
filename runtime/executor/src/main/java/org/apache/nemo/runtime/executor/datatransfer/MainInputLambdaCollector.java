@@ -155,7 +155,8 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
 
         info = new Info(storageObjectFactory.newInstance(
-          fileName, partition, encodedDecoderFactory, encoderFactory));
+          wvv.getWindows().iterator().next().toString() ,
+          "__" + this.hashCode(), partition, encodedDecoderFactory, encoderFactory));
         windowAndInfoMap.put(fileName, info);
         windowAndPartitionMap.put(fileName, windowAndPartitionMap.get(fileName) + 1);
       }

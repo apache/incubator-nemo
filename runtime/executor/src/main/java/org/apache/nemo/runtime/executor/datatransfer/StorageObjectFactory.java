@@ -8,6 +8,7 @@ import java.util.Collection;
 public interface StorageObjectFactory<T> {
 
   StorageObject<T> newInstance(String prefix,
+                               String suffix,
                                int partition,
                                byte[] encodedDecoderFactory,
                                EncoderFactory encoderFactory);

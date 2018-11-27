@@ -28,10 +28,12 @@ public final class S3StorageObjectFactory implements StorageObjectFactory {
 
   @Override
   public StorageObject newInstance(String prefix,
+                                   String suffix,
                                    int partition,
                                    byte[] encodedDecoderFactory,
                                    EncoderFactory encoderFactory) {
-    return new S3StorageObject(prefix, partition, encodedDecoderFactory, encoderFactory);
+    return new S3StorageObject(prefix + suffix,
+      partition, encodedDecoderFactory, encoderFactory);
   }
 
   @Override
