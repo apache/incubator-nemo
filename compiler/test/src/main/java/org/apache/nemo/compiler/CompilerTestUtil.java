@@ -86,8 +86,9 @@ public final class CompilerTestUtil {
     final Method userMainMethod = userMainClass.getMethod("main", String[].class);
 
     final ArgumentCaptor<DAG> captor = ArgumentCaptor.forClass(DAG.class);
+    final ArgumentCaptor<String> stringArg = ArgumentCaptor.forClass(String.class);
     PowerMockito.mockStatic(JobLauncher.class);
-    PowerMockito.doNothing().when(JobLauncher.class, "launchDAG", captor.capture());
+    PowerMockito.doNothing().when(JobLauncher.class, "launchDAG", captor.capture(), stringArg.capture());
     userMainMethod.invoke(null, (Object) userMainMethodArgs);
     return captor.getValue();
   }
