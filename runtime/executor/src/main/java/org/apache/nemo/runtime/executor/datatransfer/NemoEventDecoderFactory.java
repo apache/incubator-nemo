@@ -75,7 +75,6 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
 
       if (isWatermark == 0x00) {
         // this is not a watermark
-        final Object next = valueDecoder.decode();
         return valueDecoder.decode();
       } else if (isWatermark == 0x01) {
         // this is a watermark

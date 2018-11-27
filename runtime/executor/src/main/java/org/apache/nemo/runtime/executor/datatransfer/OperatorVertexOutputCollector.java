@@ -109,7 +109,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       sideInputOutputCollector.emit(output);
       return;
     } else if (vertexId.equals("vertex6")) {
-      //mainInputLambdaCollector.emit(output);
+      mainInputLambdaCollector.emit(output);
       return;
     }
 
