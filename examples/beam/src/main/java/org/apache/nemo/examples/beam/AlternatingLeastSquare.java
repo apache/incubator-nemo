@@ -21,8 +21,6 @@ package org.apache.nemo.examples.beam;
 import com.github.fommil.netlib.BLAS;
 import com.github.fommil.netlib.LAPACK;
 import org.apache.nemo.compiler.frontend.beam.NemoRunner;
-import org.apache.nemo.compiler.frontend.beam.coder.FloatArrayCoder;
-import org.apache.nemo.compiler.frontend.beam.coder.IntArrayCoder;
 import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.CoderProviders;

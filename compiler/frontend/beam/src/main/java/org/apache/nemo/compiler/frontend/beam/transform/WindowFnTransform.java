@@ -19,6 +19,7 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
 import com.google.common.collect.Iterables;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -40,14 +41,16 @@ import java.util.Collection;
 public final class WindowFnTransform<T, W extends BoundedWindow>
   implements Transform<WindowedValue<T>, WindowedValue<T>> {
   private final WindowFn windowFn;
+  private final DisplayData displayData;
   private OutputCollector<WindowedValue<T>> outputCollector;
 
   /**
    * Default Constructor.
    * @param windowFn windowFn for the Transform.
    */
-  public WindowFnTransform(final WindowFn windowFn) {
+  public WindowFnTransform(final WindowFn windowFn, final DisplayData displayData) {
     this.windowFn = windowFn;
+    this.displayData = displayData;
   }
 
   @Override
@@ -101,7 +104,7 @@ public final class WindowFnTransform<T, W extends BoundedWindow>
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("WindowFnTransform:" + windowFn);
+    sb.append("WindowFnTransform / " + displayData.toString().replaceAll(":", " / "));
     return sb.toString();
   }
 }
