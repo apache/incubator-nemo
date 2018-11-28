@@ -240,6 +240,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
                 handler.processMainAndSideInput(mainInput, sideInput, outputCollector);
                 cnt += 1;
               } catch (final IOException e) {
+                e.printStackTrace();
                 if(e.getMessage().contains("EOF")) {
                   System.out.println("Cnt: " + cnt + ", eof!");
                 } else {
