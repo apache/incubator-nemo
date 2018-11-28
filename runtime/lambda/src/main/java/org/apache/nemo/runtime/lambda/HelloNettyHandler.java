@@ -232,15 +232,18 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
             SerializeUtils.deserialize(bis, classLoader);
           try {
             final DecoderFactory.Decoder mainInputDecoder = mainInputDecoderFactory.create(bis);
+            WindowedValue mainInput = null;
+            int cnt = 0;
             while (true) {
               try {
-                final WindowedValue mainInput = (WindowedValue) mainInputDecoder.decode();
+                mainInput = (WindowedValue) mainInputDecoder.decode();
                 handler.processMainAndSideInput(mainInput, sideInput, outputCollector);
-                //System.out.println("Windowed value: " + mainInput);
+                cnt += 1;
               } catch (final IOException e) {
                 if(e.getMessage().contains("EOF")) {
-                  System.out.println("eof!");
+                  System.out.println("Cnt: " + cnt + ", eof!");
                 } else {
+                  System.out.println("Cnt: " + cnt + "Windowed value: " + mainInput + ", sideInput: " + sideInput + ", oc: " + outputCollector);
                   throw e;
                 }
                 break;

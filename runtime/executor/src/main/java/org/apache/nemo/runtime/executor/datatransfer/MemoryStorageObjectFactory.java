@@ -49,7 +49,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = MemoryStorageObjectFactory.class.getName();
   private static final String ADDRESS = "172.31.21.224";
-  private static final String PUBLIC_ADDRESS = "54.95.95.157";
+  private static final String PUBLIC_ADDRESS = "13.231.60.66";
   private static final int PORT = 20332;
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
@@ -116,7 +116,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
     private boolean finished = false;
     private final int partition;
     private final String prefix;
-
+    int cnt = 0;
     public MemoryStorageObject(final String prefix, final int partition,
                                final byte[] encodedDecoderFactory,
                                final EncoderFactory encoderFactory) {
@@ -136,6 +136,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
     @Override
     public void encode(Object object) {
       try {
+        cnt += 1;
         encoder.encode(object);
       } catch (IOException e) {
         e.printStackTrace();
@@ -282,7 +283,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
           obj.close();
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.MAIN,
             obj.outputStream.getBufDirectly()));
-          LOG.info("Write main input to {}", channel);
+          LOG.info("Write {} main input to {}", obj.cnt, channel);
         });
       }
 
