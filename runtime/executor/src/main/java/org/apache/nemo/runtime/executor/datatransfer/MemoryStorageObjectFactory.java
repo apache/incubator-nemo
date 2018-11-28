@@ -52,6 +52,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = MemoryStorageObjectFactory.class.getName();
   private static final String ADDRESS = "172.31.21.224";
+  private static final String PUBLIC_ADDRESS = "54.95.95.157";
   private static final int PORT = 20332;
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
@@ -232,7 +233,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
           final InvokeRequest request = new InvokeRequest()
             .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
             .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-              "13.115.49.52", PORT));
+              PUBLIC_ADDRESS, PORT));
           return awsLambda.invoke(request);
         }));
       }
