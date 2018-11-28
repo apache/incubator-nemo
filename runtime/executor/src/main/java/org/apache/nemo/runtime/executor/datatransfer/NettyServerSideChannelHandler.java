@@ -1,11 +1,13 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
+import org.apache.nemo.common.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,10 +16,10 @@ import org.slf4j.LoggerFactory;
 final class NettyServerSideChannelHandler extends ChannelInboundHandlerAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(NettyServerSideChannelHandler.class.getName());
   private final ChannelGroup channelGroup;
-  private final EventHandler<NemoEvent> eventHandler;
+  private final EventHandler<Pair<Channel,NemoEvent>> eventHandler;
 
   NettyServerSideChannelHandler(final ChannelGroup channelGroup,
-                                final EventHandler<NemoEvent> eventHandler) {
+                                final EventHandler<Pair<Channel,NemoEvent>> eventHandler) {
     this.channelGroup = channelGroup;
     this.eventHandler = eventHandler;
   }
@@ -36,7 +38,7 @@ final class NettyServerSideChannelHandler extends ChannelInboundHandlerAdapter {
   @Override
   public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
     LOG.info("Channel read from {}, {}", ctx.channel(), msg);
-    eventHandler.onNext((NemoEvent)msg);
+    eventHandler.onNext(Pair.of(ctx.channel(), (NemoEvent)msg));
   }
 
   /**

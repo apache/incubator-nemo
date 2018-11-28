@@ -18,10 +18,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.commons.lang.SerializationUtils;
-import org.apache.nemo.common.DirectByteArrayOutputStream;
-import org.apache.nemo.common.EventHandler;
-import org.apache.nemo.common.NemoEvent;
-import org.apache.nemo.common.NettyChannelInitializer;
+import org.apache.nemo.common.*;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
@@ -175,22 +172,23 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
     }
   }
 
-  final class NemoEventHandler implements EventHandler<NemoEvent> {
+  final class NemoEventHandler implements EventHandler<Pair<Channel,NemoEvent>> {
 
-    private final BlockingQueue<NemoEvent> handshakeQueue;
+    private final BlockingQueue<Pair<Channel,NemoEvent>> handshakeQueue;
 
     NemoEventHandler() {
       this.handshakeQueue = new LinkedBlockingQueue<>();
     }
 
     @Override
-    public void onNext(NemoEvent nemoEvent) {
-      switch (nemoEvent.getType()) {
+    public void onNext(Pair<Channel,NemoEvent> nemoEvent) {
+      final NemoEvent event = (NemoEvent) nemoEvent.right();
+      switch (event.getType()) {
         case CLIENT_HANDSHAKE:
           handshakeQueue.add(nemoEvent);
           break;
         default:
-          throw new IllegalStateException("Illegal type: " + nemoEvent.getType().name());
+          throw new IllegalStateException("Illegal type: " + event.getType().name());
       }
     }
   }
@@ -244,11 +242,12 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
       }
 
       LOG.info("End of invocation of lambdas: {}", list.size());
+      final List<Channel> channels = new ArrayList<>(list.size());
 
       // 1. lambda initialized
       for (int i = 0; i < list.size(); i++) {
         try {
-          nemoEventHandler.handshakeQueue.take();
+          channels.add(nemoEventHandler.handshakeQueue.take().left());
         } catch (InterruptedException e) {
           e.printStackTrace();
           throw new RuntimeException(e);
@@ -269,11 +268,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
 
       final byte[] sideInputBytes = bos.getBufDirectly();
 
-      int index = 0;
-      final Iterator<Channel> iterator = serverChannelGroup.iterator();
-      while (iterator.hasNext()) {
-        final Channel channel = iterator.next();
-        final int ind = index;
+      for (final Channel channel : channels) {
         executorService.submit(() -> {
           // 2. send side input
           //LOG.info("Write side input: {}", sideInputBytes);
@@ -295,11 +290,9 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.MAIN,
             obj.outputStream.getBufDirectly()));
         });
-
-        index += 1;
       }
 
-      LOG.info("# of invocations: {}, # of message send: {}", list.size(), index);
+      LOG.info("# of invocations: {}, # of message send: {}", list.size(), channels.size());
 
       // wait results
       final List<Object> results = futures.stream().map(future -> {
