@@ -116,6 +116,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
     private final DirectByteArrayOutputStream outputStream;
     public final String fname;
     private final AtomicBoolean closed = new AtomicBoolean(false);
+    private boolean finished = false;
     private final int partition;
     private final String prefix;
 
@@ -150,6 +151,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
       if (closed.compareAndSet(false, true)) {
         try {
           outputStream.close();
+          finished = true;
         } catch (IOException e) {
           e.printStackTrace();
           throw new RuntimeException(e);
@@ -281,6 +283,15 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
           // 3. send main inputs
           final MemoryStorageObject obj = list.get(ind);
           LOG.info("Write main input to {}", channel);
+
+          while (!obj.finished) {
+            try {
+              Thread.sleep(100);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.MAIN,
             obj.outputStream.getBufDirectly()));
         });

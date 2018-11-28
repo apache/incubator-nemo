@@ -235,6 +235,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
             while (true) {
               try {
                 final WindowedValue mainInput = (WindowedValue) mainInputDecoder.decode();
+                System.out.println("MainInput: " + mainInput + ", handler: " + handler);
                 handler.processMainAndSideInput(mainInput, sideInput, outputCollector);
                 //System.out.println("Windowed value: " + mainInput);
               } catch (final IOException e) {
