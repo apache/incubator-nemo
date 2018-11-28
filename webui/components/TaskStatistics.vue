@@ -39,6 +39,9 @@ under the License.
         :key="col"
         :prop="col"/>
     </el-table>
+    <p v-if="taskMetric.length !== 0">
+      Duration sum: <b>{{taskMetric.map(t => t.duration).reduce((a, b) => a + b)}}</b>ms
+    </p>
   </el-card>
 </template>
 
