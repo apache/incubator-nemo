@@ -250,6 +250,8 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
         }
       }
 
+      LOG.info("End of handshake");
+
       final DirectByteArrayOutputStream bos = new DirectByteArrayOutputStream();
       try {
         bos.write(sideInputDecodedFactory);
@@ -269,10 +271,12 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
         final int ind = index;
         executorService.submit(() -> {
           // 2. send side input
+          LOG.info("Write side input: {}", sideInputBytes);
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.SIDE, sideInputBytes));
 
           // 3. send main inputs
           final MemoryStorageObject obj = list.get(ind);
+          LOG.info("Write main input: {}", obj.outputStream.getBufDirectly());
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.MAIN,
             obj.outputStream.getBufDirectly()));
         });
