@@ -553,8 +553,9 @@ export default {
         g.setDefaultEdgeLabel(function () { return {}; });
 
         innerVertices.forEach(vertex => {
-          let label = vertex.properties.class === "OperatorVertex" ?
-            vertex.properties.transform.split("Transform:")[0] : vertex.properties.class;
+          let label = vertex.properties.class === "OperatorVertex"
+            ? vertex.properties.transform.match("([A-Z])\\w+Transform")[0].split("Transform")[0]
+            : vertex.properties.class;
           g.setNode(vertex.id, {
             label: label,
             id: vertex.id,
