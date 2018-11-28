@@ -78,7 +78,6 @@ public final class PipeOutputWriter implements OutputWriter {
 
   private void writeData(final Object element, final List<ByteOutputContext> pipeList) {
     pipeList.forEach(pipe -> {
-
       try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
         // Serialize (Do not compress)
         final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
@@ -149,10 +148,14 @@ public final class PipeOutputWriter implements OutputWriter {
   }
 
   private List<ByteOutputContext> getPipeToWrite(final Object element) {
-    return runtimeEdge.getPropertyValue(CommunicationPatternProperty.class)
-      .get()
-      .equals(CommunicationPatternProperty.Value.OneToOne)
-      ? Collections.singletonList(pipes.get(0))
-      : Collections.singletonList(pipes.get((int) partitioner.partition(element)));
+    final CommunicationPatternProperty.Value comm =
+      (CommunicationPatternProperty.Value) runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get();
+    if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
+      return Collections.singletonList(pipes.get(0));
+    } else if (comm.equals(CommunicationPatternProperty.Value.BroadCast)) {
+      return pipes;
+    } else {
+      return Collections.singletonList(pipes.get((int) partitioner.partition(element)));
+    }
   }
 }

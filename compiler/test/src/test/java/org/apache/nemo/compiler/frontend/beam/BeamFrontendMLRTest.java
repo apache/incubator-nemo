@@ -41,7 +41,7 @@ public class BeamFrontendMLRTest {
     final DAG<IRVertex, IREdge> producedDAG = CompilerTestUtil.compileMLRDAG();
 
     assertEquals(producedDAG.getTopologicalSort(), producedDAG.getTopologicalSort());
-    assertEquals(36, producedDAG.getVertices().size());
+    assertEquals(39, producedDAG.getVertices().size());
 
     final IRVertex vertexX = producedDAG.getTopologicalSort().get(5);
     assertEquals(1, producedDAG.getIncomingEdgesOf(vertexX).size());
@@ -51,6 +51,6 @@ public class BeamFrontendMLRTest {
     final IRVertex vertexY = producedDAG.getTopologicalSort().get(13);
     assertEquals(1, producedDAG.getIncomingEdgesOf(vertexY).size());
     assertEquals(1, producedDAG.getIncomingEdgesOf(vertexY.getId()).size());
-    assertEquals(2, producedDAG.getOutgoingEdgesOf(vertexY).size());
+    assertEquals(1, producedDAG.getOutgoingEdgesOf(vertexY).size());
   }
 }

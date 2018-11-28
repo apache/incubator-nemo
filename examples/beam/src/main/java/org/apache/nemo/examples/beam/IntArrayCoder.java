@@ -16,46 +16,46 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.frontend.beam.coder;
+package org.apache.nemo.examples.beam;
 
 import org.apache.beam.sdk.coders.AtomicCoder;
 
 import java.io.*;
 
 /**
- * EncoderFactory for float[].
+ * EncoderFactory for int[].
  */
-public final class FloatArrayCoder extends AtomicCoder<float[]> {
+public final class IntArrayCoder extends AtomicCoder<int[]> {
   /**
    * Private constructor.
    */
-  private FloatArrayCoder() {
+  private IntArrayCoder() {
   }
 
   /**
    * @return a new coder
    */
-  public static FloatArrayCoder of() {
-    return new FloatArrayCoder();
+  public static IntArrayCoder of() {
+    return new IntArrayCoder();
   }
 
   @Override
-  public void encode(final float[] ary, final OutputStream outStream) throws IOException {
+  public void encode(final int[] ary, final OutputStream outStream) throws IOException {
     final DataOutputStream dataOutputStream = new DataOutputStream(outStream);
     dataOutputStream.writeInt(ary.length);
-    for (float f : ary) {
-      dataOutputStream.writeFloat(f);
+    for (int i : ary) {
+      dataOutputStream.writeInt(i);
     }
   }
 
   @Override
-  public float[] decode(final InputStream inStream) throws IOException {
+  public int[] decode(final InputStream inStream) throws IOException {
     final DataInputStream dataInputStream = new DataInputStream(inStream);
-    final int floatArrayLen = dataInputStream.readInt();
-    final float[] floatArray = new float[floatArrayLen];
-    for (int i = 0; i < floatArrayLen; i++) {
-      floatArray[i] = dataInputStream.readFloat();
+    final int intArrayLen = dataInputStream.readInt();
+    final int[] intArray = new int[intArrayLen];
+    for (int i = 0; i < intArrayLen; i++) {
+      intArray[i] = dataInputStream.readInt();
     }
-    return floatArray;
+    return intArray;
   }
 }

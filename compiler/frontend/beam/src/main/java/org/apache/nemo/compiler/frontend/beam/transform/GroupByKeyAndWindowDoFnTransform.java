@@ -22,9 +22,9 @@ import org.apache.beam.runners.core.*;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.beam.sdk.values.KV;
@@ -57,19 +57,19 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   public GroupByKeyAndWindowDoFnTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
                                           final TupleTag<KV<K, Iterable<InputT>>> mainOutputTag,
-                                          final List<TupleTag<?>> additionalOutputTags,
                                           final WindowingStrategy<?, ?> windowingStrategy,
-                                          final Collection<PCollectionView<?>> sideInputs,
                                           final PipelineOptions options,
-                                          final SystemReduceFn reduceFn) {
+                                          final SystemReduceFn reduceFn,
+                                          final DisplayData displayData) {
     super(null, /* doFn */
       null, /* inputCoder */
       outputCoders,
       mainOutputTag,
-      additionalOutputTags,
+      Collections.emptyList(),  /*  GBK does not have additional outputs */
       windowingStrategy,
-      sideInputs,
-      options);
+      Collections.emptyMap(), /*  GBK does not have additional side inputs */
+      options,
+      displayData);
     this.keyToValues = new HashMap<>();
     this.reduceFn = reduceFn;
     this.prevOutputWatermark = new Watermark(Long.MIN_VALUE);
@@ -93,7 +93,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         getWindowingStrategy(),
         inMemoryStateInternalsFactory,
         inMemoryTimerInternalsFactory,
-        getSideInputReader(),
+        null, // GBK has no sideinput.
         reduceFn,
         getOutputManager(),
         getMainOutputTag());
@@ -163,22 +163,18 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    * @param inputWatermark input watermark
    */
   private void emitOutputWatermark(final Watermark inputWatermark) {
-
-    if (keyAndWatermarkHoldMap.isEmpty()) {
-      return;
-    }
-
     // Find min watermark hold
-    final Watermark minWatermarkHold = Collections.min(keyAndWatermarkHoldMap.values());
+    final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
+      ? new Watermark(Long.MAX_VALUE) // set this to MAX, in order to just use the input watermark.
+      : Collections.min(keyAndWatermarkHoldMap.values());
+    final Watermark outputWatermarkCandidate = new Watermark(
+      Math.max(prevOutputWatermark.getTimestamp(),
+        Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("Watermark hold: {}, "
         + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
-
-    final Watermark outputWatermarkCandidate = new Watermark(
-      Math.max(prevOutputWatermark.getTimestamp(),
-        Math.min(minWatermarkHold.getTimestamp(), inputWatermark.getTimestamp())));
 
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
@@ -211,8 +207,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     // Finish any pending windows by advancing the input watermark to infinity.
     processElementsAndTriggerTimers(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()),
       BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE);
-    // Emit watermark to downstream operators
-    emitOutputWatermark(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()));
   }
 
   /**
@@ -256,13 +250,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
       timerInternals.advanceOutputWatermark(new Instant(keyOutputTimestamp));
     }
-  }
-
-  @Override
-  public String toString() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("GroupByKeyAndWindowDoFnTransform:");
-    return sb.toString();
   }
 
   /**

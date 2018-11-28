@@ -20,12 +20,15 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
  * This is a special implementation for single input data stream for optimization.
  */
 public final class SingleInputWatermarkManager implements InputWatermarkManager {
+  private static final Logger LOG = LoggerFactory.getLogger(SingleInputWatermarkManager.class.getName());
 
   private final OutputCollector watermarkCollector;
 

@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.runners.core.SystemReduceFn;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.*;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
@@ -89,11 +90,10 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
       new GroupByKeyAndWindowDoFnTransform(
         NULL_OUTPUT_CODERS,
         outputTag,
-        Collections.emptyList(), /* additional outputs */
         WindowingStrategy.of(slidingWindows),
-        emptyList(), /* side inputs */
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
-        SystemReduceFn.buffering(NULL_INPUT_CODER));
+        SystemReduceFn.buffering(NULL_INPUT_CODER),
+        DisplayData.none());
 
     final Instant ts1 = new Instant(1);
     final Instant ts2 = new Instant(100);
@@ -167,10 +167,17 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     doFnTransform.onData(WindowedValue.of(
       KV.of("1", "a"), ts4, slidingWindows.assignWindows(ts4), PaneInfo.NO_FIRING));
 
-    // do not emit anything
+
     doFnTransform.onWatermark(watermark2);
-    assertEquals(0, oc.outputs.size());
-    assertEquals(0, oc.watermarks.size());
+
+    assertEquals(0, oc.outputs.size()); // do not emit anything
+   assertEquals(1, oc.watermarks.size());
+
+    // check output watermark
+    assertEquals(1400,
+      oc.watermarks.get(0).getTimestamp());
+
+    oc.watermarks.clear();
 
     doFnTransform.onData(WindowedValue.of(
       KV.of("3", "a"), ts5, slidingWindows.assignWindows(ts5), PaneInfo.NO_FIRING));

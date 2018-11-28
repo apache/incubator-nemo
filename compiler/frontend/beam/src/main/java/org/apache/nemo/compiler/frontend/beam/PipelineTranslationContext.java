@@ -32,9 +32,11 @@ import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
+import org.apache.nemo.compiler.frontend.beam.coder.SideInputCoder;
 import org.apache.nemo.compiler.frontend.beam.transform.*;
 
 import java.util.*;
@@ -92,68 +94,87 @@ final class PipelineTranslationContext {
   }
 
   /**
+   * Say the dstIRVertex consumes three views: view0, view1, and view2.
+   *
+   * We translate that as the following:
+   * view0 -> SideInputTransform(index=0) ->
+   * view1 -> SideInputTransform(index=1) -> dstIRVertex(with a map from indices to PCollectionViews)
+   * view2 -> SideInputTransform(index=2) ->
+   *
+   * @param dstVertex vertex.
+   * @param sideInputs of the vertex.
+   */
+  void addSideInputEdges(final IRVertex dstVertex, final Map<Integer, PCollectionView<?>> sideInputs) {
+    for (final Map.Entry<Integer, PCollectionView<?>> entry : sideInputs.entrySet()) {
+      final int index = entry.getKey();
+      final PCollectionView view = entry.getValue();
+
+      final IRVertex srcVertex = pValueToProducerVertex.get(view);
+      final IRVertex sideInputTransformVertex = new OperatorVertex(new SideInputTransform(index));
+      addVertex(sideInputTransformVertex);
+      final Coder viewCoder = getCoderForView(view, this);
+      final Coder windowCoder = view.getPCollection().getWindowingStrategy().getWindowFn().windowCoder();
+
+      // First edge: view to transform
+      final IREdge firstEdge =
+        new IREdge(CommunicationPatternProperty.Value.OneToOne, srcVertex, sideInputTransformVertex);
+      addEdge(firstEdge, viewCoder, windowCoder);
+
+      // Second edge: transform to the dstIRVertex
+      final IREdge secondEdge =
+        new IREdge(CommunicationPatternProperty.Value.BroadCast, sideInputTransformVertex, dstVertex);
+      final WindowedValue.FullWindowedValueCoder sideInputElementCoder =
+        WindowedValue.getFullCoder(SideInputCoder.of(viewCoder), windowCoder);
+
+      // The vertices should be Parallelism=1
+      srcVertex.setPropertyPermanently(ParallelismProperty.of(1));
+      sideInputTransformVertex.setPropertyPermanently(ParallelismProperty.of(1));
+
+      secondEdge.setProperty(EncoderProperty.of(new BeamEncoderFactory(sideInputElementCoder)));
+      secondEdge.setProperty(DecoderProperty.of(new BeamDecoderFactory(sideInputElementCoder)));
+      builder.connectVertices(secondEdge);
+    }
+  }
+
+  /**
    * Add IR edge to the builder.
    *
    * @param dst the destination IR vertex.
    * @param input the {@link PValue} {@code dst} consumes
    */
   void addEdgeTo(final IRVertex dst, final PValue input) {
-    final Coder coder;
     if (input instanceof PCollection) {
-      coder = ((PCollection) input).getCoder();
-    } else if (input instanceof PCollectionView) {
-      coder = getCoderForView((PCollectionView) input, this);
+      final Coder elementCoder = ((PCollection) input).getCoder();
+      final Coder windowCoder = ((PCollection) input).getWindowingStrategy().getWindowFn().windowCoder();
+      final IRVertex src = pValueToProducerVertex.get(input);
+      if (src == null) {
+        throw new IllegalStateException(String.format("Cannot find a vertex that emits pValue %s", input));
+      }
+
+      final CommunicationPatternProperty.Value communicationPattern = getCommPattern(src, dst);
+      final IREdge edge = new IREdge(communicationPattern, src, dst);
+
+      if (pValueToTag.containsKey(input)) {
+        edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
+      }
+
+      addEdge(edge, elementCoder, windowCoder);
     } else {
-      throw new RuntimeException(String.format("While adding an edge to %s, coder for PValue %s cannot "
-        + "be determined", dst, input));
+      throw new IllegalStateException(input.toString());
     }
-    addEdgeTo(dst, input, coder);
   }
 
-  void addEdgeTo(final IRVertex dst, final PValue input, final Coder elementCoder) {
-    final IRVertex src = pValueToProducerVertex.get(input);
-    if (src == null) {
-      throw new IllegalStateException(String.format("Cannot find a vertex that emits pValue %s", input));
-    }
-
-    final Coder windowCoder;
-    final CommunicationPatternProperty.Value communicationPattern = getCommPattern(src, dst);
-    final IREdge edge = new IREdge(communicationPattern, src, dst);
-
-    if (pValueToTag.containsKey(input)) {
-      edge.setProperty(AdditionalOutputTagProperty.of(pValueToTag.get(input).getId()));
-    }
-    if (input instanceof PCollectionView) {
-      edge.setProperty(BroadcastVariableIdProperty.of((PCollectionView) input));
-    }
-    if (input instanceof PCollection) {
-      windowCoder = ((PCollection) input).getWindowingStrategy().getWindowFn().windowCoder();
-    } else if (input instanceof PCollectionView) {
-      windowCoder = ((PCollectionView) input).getPCollection()
-        .getWindowingStrategy().getWindowFn().windowCoder();
-    } else {
-      throw new RuntimeException(String.format("While adding an edge from %s, to %s, coder for PValue %s cannot "
-        + "be determined", src, dst, input));
-    }
-
-    addEdgeTo(edge, elementCoder, windowCoder);
-  }
-
-  void addEdgeTo(final IREdge edge,
-                 final Coder elementCoder,
-                 final Coder windowCoder) {
+  void addEdge(final IREdge edge, final Coder elementCoder, final Coder windowCoder) {
     edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
-
     if (elementCoder instanceof KvCoder) {
       Coder keyCoder = ((KvCoder) elementCoder).getKeyCoder();
       edge.setProperty(KeyEncoderProperty.of(new BeamEncoderFactory(keyCoder)));
       edge.setProperty(KeyDecoderProperty.of(new BeamDecoderFactory(keyCoder)));
     }
 
-    edge.setProperty(EncoderProperty.of(
-      new BeamEncoderFactory<>(WindowedValue.getFullCoder(elementCoder, windowCoder))));
-    edge.setProperty(DecoderProperty.of(
-      new BeamDecoderFactory<>(WindowedValue.getFullCoder(elementCoder, windowCoder))));
+    final WindowedValue.FullWindowedValueCoder coder = WindowedValue.getFullCoder(elementCoder, windowCoder);
+    edge.setProperty(EncoderProperty.of(new BeamEncoderFactory<>(coder)));
+    edge.setProperty(DecoderProperty.of(new BeamDecoderFactory<>(coder)));
 
     builder.connectVertices(edge);
   }
@@ -251,9 +272,11 @@ final class PipelineTranslationContext {
     } else if (viewFn instanceof PCollectionViews.ListViewFn) {
       return ListCoder.of(inputKVCoder.getValueCoder());
     } else if (viewFn instanceof PCollectionViews.MapViewFn) {
-      return MapCoder.of(inputKVCoder.getKeyCoder(), inputKVCoder.getValueCoder());
+      final KvCoder inputValueKVCoder = (KvCoder) inputKVCoder.getValueCoder();
+      return MapCoder.of(inputValueKVCoder.getKeyCoder(), inputValueKVCoder.getValueCoder());
     } else if (viewFn instanceof PCollectionViews.MultimapViewFn) {
-      return MapCoder.of(inputKVCoder.getKeyCoder(), IterableCoder.of(inputKVCoder.getValueCoder()));
+      final KvCoder inputValueKVCoder = (KvCoder) inputKVCoder.getValueCoder();
+      return MapCoder.of(inputValueKVCoder.getKeyCoder(), inputValueKVCoder.getValueCoder());
     } else if (viewFn instanceof PCollectionViews.SingletonViewFn) {
       return inputKVCoder;
     } else {

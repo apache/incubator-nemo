@@ -23,6 +23,7 @@ import org.apache.beam.runners.core.construction.SerializablePipelineOptions;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvokers;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -31,11 +32,12 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.compiler.frontend.beam.InMemorySideInputReader;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -52,7 +54,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   private final TupleTag<OutputT> mainOutputTag;
   private final List<TupleTag<?>> additionalOutputTags;
-  private final Collection<PCollectionView<?>> sideInputs;
+  private final Map<Integer, PCollectionView<?>> sideInputs;
   private final WindowingStrategy<?, ?> windowingStrategy;
   private final DoFn<InterT, OutputT> doFn;
   private final SerializablePipelineOptions serializedOptions;
@@ -61,9 +63,13 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   private transient OutputCollector<WindowedValue<OutputT>> outputCollector;
   private transient DoFnRunner<InterT, OutputT> doFnRunner;
-  private transient SideInputReader sideInputReader;
+
+  // null when there is no side input.
+  private transient PushbackSideInputDoFnRunner<InterT, OutputT> pushBackRunner;
+
   private transient DoFnInvoker<InterT, OutputT> doFnInvoker;
   private transient DoFnRunners.OutputManager outputManager;
+  private transient InMemorySideInputReader sideInputReader;
 
   // Variables for bundle.
   // We consider count and time millis for start/finish bundle.
@@ -74,6 +80,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   private long prevBundleStartTime;
   private long currBundleCount = 0;
   private boolean bundleFinished = true;
+  private final DisplayData displayData;
 
   /**
    * AbstractDoFnTransform constructor.
@@ -85,6 +92,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    * @param windowingStrategy windowing strategy
    * @param sideInputs side inputs
    * @param options pipeline options
+   * @param displayData display data.
    */
   public AbstractDoFnTransform(final DoFn<InterT, OutputT> doFn,
                                final Coder<InputT> inputCoder,
@@ -92,8 +100,9 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
                                final TupleTag<OutputT> mainOutputTag,
                                final List<TupleTag<?>> additionalOutputTags,
                                final WindowingStrategy<?, ?> windowingStrategy,
-                               final Collection<PCollectionView<?>> sideInputs,
-                               final PipelineOptions options) {
+                               final Map<Integer, PCollectionView<?>> sideInputs,
+                               final PipelineOptions options,
+                               final DisplayData displayData) {
     this.doFn = doFn;
     this.inputCoder = inputCoder;
     this.outputCoders = outputCoders;
@@ -102,26 +111,35 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     this.sideInputs = sideInputs;
     this.serializedOptions = new SerializablePipelineOptions(options);
     this.windowingStrategy = windowingStrategy;
+    this.displayData = displayData;
   }
 
-  protected final DoFnRunners.OutputManager getOutputManager() {
+  final Map<Integer, PCollectionView<?>> getSideInputs() {
+    return sideInputs;
+  }
+
+  final DoFnRunners.OutputManager getOutputManager() {
     return outputManager;
   }
 
-  protected final WindowingStrategy getWindowingStrategy() {
+  final WindowingStrategy getWindowingStrategy() {
     return windowingStrategy;
   }
 
-  protected final SideInputReader getSideInputReader() {
-    return sideInputReader;
-  }
-
-  protected final TupleTag<OutputT> getMainOutputTag() {
+  final TupleTag<OutputT> getMainOutputTag() {
     return mainOutputTag;
   }
 
-  protected final DoFnRunner<InterT, OutputT> getDoFnRunner() {
+  final DoFnRunner<InterT, OutputT> getDoFnRunner() {
     return doFnRunner;
+  }
+
+  final PushbackSideInputDoFnRunner<InterT, OutputT> getPushBackRunner() {
+    return pushBackRunner;
+  }
+
+  final InMemorySideInputReader getSideInputReader() {
+    return sideInputReader;
   }
 
   public final DoFn getDoFn() {
@@ -131,26 +149,51 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   /**
    * Checks whether the bundle is finished or not.
    * Starts the bundle if it is done.
+   *
+   * TODO #263: Partial Combining for Beam Streaming
+   * We may want to use separate methods for doFnRunner/pushBackRunner
+   * (same applies to the other bundle-related methods)
    */
-  protected final void checkAndInvokeBundle() {
+  final void checkAndInvokeBundle() {
     if (bundleFinished) {
       bundleFinished = false;
-      doFnRunner.startBundle();
+      if (pushBackRunner == null) {
+        doFnRunner.startBundle();
+      } else {
+        pushBackRunner.startBundle();
+      }
       prevBundleStartTime = System.currentTimeMillis();
       currBundleCount = 0;
     }
     currBundleCount += 1;
   }
 
-
   /**
    * Checks whether it is time to finish the bundle and finish it.
    */
-  protected final void checkAndFinishBundle() {
+  final void checkAndFinishBundle() {
     if (!bundleFinished) {
       if (currBundleCount >= bundleSize || System.currentTimeMillis() - prevBundleStartTime >= bundleMillis) {
         bundleFinished = true;
+        if (pushBackRunner == null) {
+          doFnRunner.finishBundle();
+        } else {
+          pushBackRunner.finishBundle();
+        }
+      }
+    }
+  }
+
+  /**
+   * Finish bundle without checking for conditions.
+   */
+  final void forceFinishBundle() {
+    if (!bundleFinished) {
+      bundleFinished = true;
+      if (pushBackRunner == null) {
         doFnRunner.finishBundle();
+      } else {
+        pushBackRunner.finishBundle();
       }
     }
   }
@@ -168,11 +211,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     outputManager = new DefaultOutputManager<>(outputCollector, mainOutputTag);
 
     // create side input reader
-    if (!sideInputs.isEmpty()) {
-      sideInputReader = new BroadcastVariableSideInputReader(context, sideInputs);
-    } else {
-      sideInputReader = NullSideInputReader.of(sideInputs);
-    }
+    sideInputReader = new InMemorySideInputReader(new ArrayList<>(sideInputs.values()));
 
     // this transform does not support state and timer.
     final StepContext stepContext = new StepContext() {
@@ -205,6 +244,10 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       inputCoder,
       outputCoders,
       windowingStrategy);
+
+    pushBackRunner = sideInputs.isEmpty()
+      ? null
+      : SimplePushbackSideInputDoFnRunner.<InterT, OutputT>create(doFnRunner, sideInputs.values(), sideInputReader);
   }
 
   public final OutputCollector<WindowedValue<OutputT>> getOutputCollector() {
@@ -214,10 +257,13 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   @Override
   public final void close() {
     beforeClose();
-    if (!bundleFinished) {
-      doFnRunner.finishBundle();
-    }
+    forceFinishBundle();
     doFnInvoker.invokeTeardown();
+  }
+
+  @Override
+  public final String toString() {
+    return this.getClass().getSimpleName() + " / " + displayData.toString().replace(":", " / ");
   }
 
   /**
@@ -233,9 +279,6 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    * @return wrapped output collector.
    */
   abstract OutputCollector wrapOutputCollector(final OutputCollector oc);
-
-  @Override
-  public abstract void onData(final WindowedValue<InputT> data);
 
   /**
    * An abstract function that is called before close.

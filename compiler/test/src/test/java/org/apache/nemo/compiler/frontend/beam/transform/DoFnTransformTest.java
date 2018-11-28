@@ -20,14 +20,14 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.View;
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.display.DisplayData;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
@@ -36,17 +36,17 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
+import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 import org.apache.reef.io.Tuple;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.*;
 
-import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public final class DoFnTransformTest {
 
@@ -78,8 +78,8 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        emptyList(), /* side inputs */
-        PipelineOptionsFactory.as(NemoPipelineOptions.class));
+        PipelineOptionsFactory.as(NemoPipelineOptions.class),
+        DisplayData.none());
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
@@ -112,8 +112,8 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        emptyList(), /* side inputs */
-        pipelineOptions);
+        pipelineOptions,
+        DisplayData.none());
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
@@ -156,8 +156,8 @@ public final class DoFnTransformTest {
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        emptyList(), /* side inputs */
-        pipelineOptions);
+        pipelineOptions,
+        DisplayData.none());
 
     final Transform.Context context = mock(Transform.Context.class);
     final OutputCollector<WindowedValue<String>> oc = new TestOutputCollector<>();
@@ -208,8 +208,8 @@ public final class DoFnTransformTest {
         mainOutput,
         tags,
         WindowingStrategy.globalDefault(),
-        emptyList(), /* side inputs */
-        PipelineOptionsFactory.as(NemoPipelineOptions.class));
+        PipelineOptionsFactory.as(NemoPipelineOptions.class),
+        DisplayData.none());
 
     // mock context
     final Transform.Context context = mock(Transform.Context.class);
@@ -244,48 +244,70 @@ public final class DoFnTransformTest {
     doFnTransform.close();
   }
 
-  // TODO #216: implement side input and windowing
   @Test
   public void testSideInputs() {
     // mock context
     final Transform.Context context = mock(Transform.Context.class);
-    when(context.getBroadcastVariable(view1)).thenReturn(
-      WindowedValue.valueInGlobalWindow(ImmutableList.of("1")));
-    when(context.getBroadcastVariable(view2)).thenReturn(
-      WindowedValue.valueInGlobalWindow(ImmutableList.of("2")));
-
     TupleTag<Tuple<String, Iterable<String>>> outputTag = new TupleTag<>("main-output");
 
-    WindowedValue<String> first = WindowedValue.valueInGlobalWindow("first");
-    WindowedValue<String> second = WindowedValue.valueInGlobalWindow("second");
+    WindowedValue<String> firstElement = WindowedValue.valueInGlobalWindow("first");
+    WindowedValue<String> secondElement = WindowedValue.valueInGlobalWindow("second");
 
-    final Map<String, PCollectionView<Iterable<String>>> eventAndViewMap =
-      ImmutableMap.of(first.getValue(), view1, second.getValue(), view2);
+    SideInputElement firstSideinput = new SideInputElement<>(0, ImmutableList.of("1"));
+    SideInputElement secondSideinput = new SideInputElement(1, ImmutableList.of("2"));
 
-    final DoFnTransform<String, Tuple<String, Iterable<String>>> doFnTransform =
-      new DoFnTransform<>(
-        new SimpleSideInputDoFn<>(eventAndViewMap),
+    final Map<Integer, PCollectionView<?>> sideInputMap = new HashMap<>();
+    sideInputMap.put(firstSideinput.getSideInputIndex(), view1);
+    sideInputMap.put(secondSideinput.getSideInputIndex(), view2);
+    final PushBackDoFnTransform<String, String> doFnTransform =
+      new PushBackDoFnTransform(
+        new SimpleSideInputDoFn<String>(view1, view2),
         NULL_INPUT_CODER,
         NULL_OUTPUT_CODERS,
         outputTag,
         Collections.emptyList(),
         WindowingStrategy.globalDefault(),
-        ImmutableList.of(view1, view2), /* side inputs */
-        PipelineOptionsFactory.as(NemoPipelineOptions.class));
+        sideInputMap, /* side inputs */
+        PipelineOptionsFactory.as(NemoPipelineOptions.class),
+        DisplayData.none());
 
-    final OutputCollector<WindowedValue<Tuple<String, Iterable<String>>>> oc = new TestOutputCollector<>();
+    final TestOutputCollector<String> oc = new TestOutputCollector<>();
     doFnTransform.prepare(context, oc);
 
-    doFnTransform.onData(first);
-    doFnTransform.onData(second);
+    // Main input first, Side inputs later
+    doFnTransform.onData(firstElement);
 
-    assertEquals(WindowedValue.valueInGlobalWindow(new Tuple<>("first", ImmutableList.of("1"))),
-      ((TestOutputCollector<Tuple<String,Iterable<String>>>) oc).getOutput().get(0));
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow(firstSideinput));
+    doFnTransform.onData(WindowedValue.valueInGlobalWindow(secondSideinput));
+    assertEquals(
+      WindowedValue.valueInGlobalWindow(
+        concat(firstElement.getValue(), firstSideinput.getSideInputValue(), secondSideinput.getSideInputValue())),
+      oc.getOutput().get(0));
 
-    assertEquals(WindowedValue.valueInGlobalWindow(new Tuple<>("second", ImmutableList.of("2"))),
-      ((TestOutputCollector<Tuple<String,Iterable<String>>>) oc).getOutput().get(1));
+    // Side inputs first, Main input later
+    doFnTransform.onData(secondElement);
+    assertEquals(
+      WindowedValue.valueInGlobalWindow(
+        concat(secondElement.getValue(), firstSideinput.getSideInputValue(), secondSideinput.getSideInputValue())),
+      oc.getOutput().get(1));
 
+    // There should be only 2 final outputs
+    assertEquals(2, oc.getOutput().size());
+
+    // The side inputs should be "READY"
+    assertTrue(doFnTransform.getSideInputReader().isReady(view1, GlobalWindow.INSTANCE));
+    assertTrue(doFnTransform.getSideInputReader().isReady(view2, GlobalWindow.INSTANCE));
+
+    // This watermark should remove the side inputs. (Now should be "NOT READY")
+    doFnTransform.onWatermark(new Watermark(GlobalWindow.TIMESTAMP_MAX_VALUE.getMillis()));
+    Iterable materializedSideInput1 = doFnTransform.getSideInputReader().get(view1, GlobalWindow.INSTANCE);
+    Iterable materializedSideInput2 = doFnTransform.getSideInputReader().get(view2, GlobalWindow.INSTANCE);
+    assertFalse(materializedSideInput1.iterator().hasNext());
+    assertFalse(materializedSideInput2.iterator().hasNext());
+
+    // There should be only 2 final outputs
     doFnTransform.close();
+    assertEquals(2, oc.getOutput().size());
   }
 
 
@@ -334,19 +356,28 @@ public final class DoFnTransformTest {
    * Side input do fn.
    * @param <T> type
    */
-  private static class SimpleSideInputDoFn<T, V> extends DoFn<T, Tuple<T, V>> {
-    private final Map<T, PCollectionView<V>> idAndViewMap;
+  private static class SimpleSideInputDoFn<T> extends DoFn<T, String> {
+    private final PCollectionView<?> view1;
+    private final PCollectionView<?> view2;
 
-    public SimpleSideInputDoFn(final Map<T, PCollectionView<V>> idAndViewMap) {
-      this.idAndViewMap = idAndViewMap;
+    public SimpleSideInputDoFn(final PCollectionView<?> view1,
+                               final PCollectionView<?> view2) {
+      this.view1 = view1;
+      this.view2 = view2;
     }
 
     @ProcessElement
     public void processElement(final ProcessContext c) throws Exception {
-      final PCollectionView<V> view = idAndViewMap.get(c.element());
-      final V sideInput = c.sideInput(view);
-      c.output(new Tuple<>(c.element(), sideInput));
+      final T element = c.element();
+      final Object view1Value = c.sideInput(view1);
+      final Object view2Value = c.sideInput(view2);
+
+      c.output(concat(element, view1Value, view2Value));
     }
+  }
+
+  private static String concat(final Object obj1, final Object obj2, final Object obj3) {
+    return obj1.toString() + " / " + obj2 + " / " + obj3;
   }
 
 

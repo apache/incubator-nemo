@@ -31,6 +31,10 @@ abstract class DataFetcher implements AutoCloseable {
   private final IRVertex dataSource;
   private final OutputCollector outputCollector;
 
+  /**
+   * @param dataSource to fetch from.
+   * @param outputCollector for the data fetched.
+   */
   DataFetcher(final IRVertex dataSource,
               final OutputCollector outputCollector) {
     this.dataSource = dataSource;
@@ -47,5 +51,9 @@ abstract class DataFetcher implements AutoCloseable {
 
   OutputCollector getOutputCollector() {
     return outputCollector;
+  }
+
+  IRVertex getDataSource() {
+    return dataSource;
   }
 }
