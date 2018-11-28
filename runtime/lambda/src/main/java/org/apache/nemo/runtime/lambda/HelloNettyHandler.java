@@ -164,7 +164,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
     System.out.println("Open channel: " + opendChannel);
 
     // client handshake
-    opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.CLIENT_HANDSHAKE, new byte[0]));
+    opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.CLIENT_HANDSHAKE, new byte[0], 0));
     System.out.println("Write handshake");
 
     final LambdaEventHandler handler = (LambdaEventHandler) map.get(opendChannel);

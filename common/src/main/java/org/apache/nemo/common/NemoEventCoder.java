@@ -14,10 +14,10 @@ public final class NemoEventCoder {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, NemoEvent msg, List<Object> out) throws Exception {
-      final ByteBuf buf = ctx.alloc().buffer(4 + msg.getBytes().length);
-      System.out.println("Encoded bytes: " + msg.getBytes().length + 4);
+      final ByteBuf buf = ctx.alloc().buffer(8 + msg.getLen());
+      System.out.println("Encoded bytes: " + msg.getLen() + 8);
       buf.writeInt(msg.getType().ordinal());
-      buf.writeBytes(msg.getBytes());
+      buf.writeBytes(msg.getBytes(), 0, msg.getLen());
       out.add(buf);
     }
   }
@@ -31,7 +31,7 @@ public final class NemoEventCoder {
       // copy the ByteBuf content to a byte array
       byte[] array = new byte[msg.readableBytes()];
       msg.readBytes(array);
-      out.add(new NemoEvent(NemoEvent.Type.values()[typeOrdinal], array));
+      out.add(new NemoEvent(NemoEvent.Type.values()[typeOrdinal], array, array.length));
     }
   }
 

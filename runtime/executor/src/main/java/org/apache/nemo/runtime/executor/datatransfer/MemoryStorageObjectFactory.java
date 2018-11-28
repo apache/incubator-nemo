@@ -8,6 +8,7 @@ import com.amazonaws.services.lambda.model.InvokeResult;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
@@ -276,13 +277,13 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
           // 2. send side input
           //LOG.info("Write side input: {}", sideInputBytes);
           LOG.info("Write side input to {}", channel);
-          channel.writeAndFlush(new NemoEvent(NemoEvent.Type.SIDE, sideInputBytes));
+          channel.writeAndFlush(new NemoEvent(NemoEvent.Type.SIDE, sideInputBytes, bos.getCount()));
 
           // 3. send main inputs
           final MemoryStorageObject obj = list.get(ind);
           obj.close();
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.MAIN,
-            obj.outputStream.getBufDirectly()));
+            obj.outputStream.getBufDirectly(), obj.outputStream.getCount()));
           LOG.info("Write {} main input to {}", obj.cnt, channel);
         });
       }

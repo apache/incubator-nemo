@@ -13,11 +13,14 @@ public final class NemoEvent implements Serializable {
 
   private final Type type;
   private final byte[] bytes;
+  private final int len;
 
   public NemoEvent(final Type type,
-                   final byte[] bytes) {
+                   final byte[] bytes,
+                   final int len) {
     this.type = type;
     this.bytes = bytes;
+    this.len = len;
   }
 
   public Type getType() {
@@ -26,6 +29,10 @@ public final class NemoEvent implements Serializable {
 
   public byte[] getBytes() {
     return bytes;
+  }
+
+  public int getLen() {
+    return len;
   }
 
   @Override
