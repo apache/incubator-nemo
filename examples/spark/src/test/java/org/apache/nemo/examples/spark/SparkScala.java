@@ -117,7 +117,7 @@ public final class SparkScala {
       .build());
   }
 
-  @Test(timeout = TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testALSEmptyUserArgs() throws Exception {
     JobLauncher.main(builder
       .addJobId(SparkALS.class.getSimpleName() + "_test")
