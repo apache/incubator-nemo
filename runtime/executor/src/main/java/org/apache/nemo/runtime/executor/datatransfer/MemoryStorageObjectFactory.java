@@ -268,7 +268,9 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
 
       final byte[] sideInputBytes = bos.getBufDirectly();
 
-      for (final Channel channel : channels) {
+      for (int index = 0; index < channels.size(); index++) {
+        final Channel channel = channels.get(index);
+        final int ind = index;
         executorService.submit(() -> {
           // 2. send side input
           //LOG.info("Write side input: {}", sideInputBytes);
