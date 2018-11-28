@@ -158,7 +158,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
         throw new RuntimeException(sb.toString());
       }
       opendChannel = channelFuture.channel();
-      map.put(opendChannel, new LambdaEventHandler(outputCollector));
+      map.put(opendChannel, new LambdaEventHandler(outputCollector, opendChannel));
     }
 
     System.out.println("Open channel: " + opendChannel);
@@ -194,9 +194,12 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
     private final OutputCollector outputCollector;
 
     private final BlockingQueue<Integer> endBlockingQueue = new LinkedBlockingQueue<>();
+    private final Channel opendChannel;
 
-    public LambdaEventHandler(final OutputCollector outputCollector) {
+    public LambdaEventHandler(final OutputCollector outputCollector,
+                              final Channel opendChannel) {
       this.outputCollector = outputCollector;
+      this.opendChannel = opendChannel;
     }
 
     @Override
@@ -204,13 +207,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
       switch (nemoEvent.getType()) {
         case SIDE: {
           // receive side input
-          System.out.println("Receive side: [");
-          for (int i = 0; i < nemoEvent.getBytes().length; i++) {
-            System.out.print(nemoEvent.getBytes()[i]);
-            System.out.print(", ");
-          }
-          System.out.println("]");
-
+          System.out.println("Receive side");
           final ByteArrayInputStream bis = new ByteArrayInputStream(nemoEvent.getBytes());
           sideInputDecoderFactory =
             SerializeUtils.deserialize(bis, classLoader);
@@ -224,7 +221,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
           break;
         }
         case MAIN:
-          System.out.println("Receive main " + nemoEvent.getBytes().toString());
+          System.out.println("Receive main ");
           // receive main input
           if (sideInput == null) {
             throw new IllegalStateException("SideInput should not be null");
@@ -250,6 +247,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
               }
             }
 
+            sideInput = null;
             endBlockingQueue.add(1);
           } catch (IOException e) {
             e.printStackTrace();

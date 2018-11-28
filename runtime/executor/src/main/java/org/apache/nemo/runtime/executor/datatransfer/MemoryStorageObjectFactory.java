@@ -213,6 +213,9 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
     @Override
     public Object processSideAndMainInput(Object output, String sideInputKey) {
       // Invoke lambdas
+
+      final long startTime = System.currentTimeMillis();
+
       final ConcurrentLinkedQueue<MemoryStorageObject> queue = prefixAndObjectMap.get(sideInputKey);
       final int size = prefixAndSizeMap.get(sideInputKey).get();
 
@@ -271,18 +274,21 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
         final int ind = index;
         executorService.submit(() -> {
           // 2. send side input
-          LOG.info("Write side input: {}", sideInputBytes);
+          //LOG.info("Write side input: {}", sideInputBytes);
+          LOG.info("Write side input to {}", channel);
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.SIDE, sideInputBytes));
 
           // 3. send main inputs
           final MemoryStorageObject obj = list.get(ind);
-          LOG.info("Write main input: {}", obj.outputStream.getBufDirectly());
+          LOG.info("Write main input to {}", channel);
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.MAIN,
             obj.outputStream.getBufDirectly()));
         });
 
         index += 1;
       }
+
+      LOG.info("# of invocations: {}, # of message send: {}", list.size(), index);
 
       // wait results
       final List<Object> results = futures.stream().map(future -> {
