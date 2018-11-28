@@ -203,7 +203,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
     }
 
     @Override
-    public void onNext(final NemoEvent nemoEvent) {
+    public synchronized void onNext(final NemoEvent nemoEvent) {
       switch (nemoEvent.getType()) {
         case SIDE: {
           // receive side input

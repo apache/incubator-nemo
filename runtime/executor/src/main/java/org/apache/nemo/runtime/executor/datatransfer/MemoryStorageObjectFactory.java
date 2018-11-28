@@ -279,15 +279,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
 
           // 3. send main inputs
           final MemoryStorageObject obj = list.get(ind);
-
-          while (!obj.finished) {
-            try {
-              Thread.sleep(100);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
-          }
-
+          obj.close();
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.MAIN,
             obj.outputStream.getBufDirectly()));
           LOG.info("Write main input to {}", channel);

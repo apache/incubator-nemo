@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.lambda;
 
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.apache.nemo.common.EventHandler;
@@ -12,6 +13,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 
+@ChannelHandler.Sharable
 public final class NettyLambdaInboundHandler extends ChannelInboundHandlerAdapter {
 
   private final ConcurrentMap<Channel, EventHandler<NemoEvent>> channelMap;
