@@ -29,7 +29,7 @@ public final class NemoEventCoder {
       final int typeOrdinal = msg.readInt();
       // copy the ByteBuf content to a byte array
       byte[] array = new byte[msg.readableBytes()];
-      msg.getBytes(0, array);
+      msg.readBytes(array);
       out.add(new NemoEvent(NemoEvent.Type.values()[typeOrdinal], array));
     }
   }

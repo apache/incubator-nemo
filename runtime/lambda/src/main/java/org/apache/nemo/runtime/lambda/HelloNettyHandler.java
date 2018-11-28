@@ -204,7 +204,13 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
       switch (nemoEvent.getType()) {
         case SIDE: {
           // receive side input
-          System.out.println("Receive side: " + nemoEvent.getBytes().toString());
+          System.out.println("Receive side: [");
+          for (int i = 0; i < nemoEvent.getBytes().length; i++) {
+            System.out.print(nemoEvent.getBytes()[i]);
+            System.out.print(", ");
+          }
+          System.out.println("]");
+
           final ByteArrayInputStream bis = new ByteArrayInputStream(nemoEvent.getBytes());
           sideInputDecoderFactory =
             SerializeUtils.deserialize(bis, classLoader);
