@@ -50,13 +50,17 @@ public final class LambdaWarmer {
   }
 
   public void warmup() {
+    warmup("{}");
+  }
+
+  public void warmup(String payload) {
     LOG.info("Warmup");
     for (int i = 0; i < numOfInvocation; i++) {
       // Trigger lambdas
       executorService.submit(() -> {
         final InvokeRequest request = new InvokeRequest()
           .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
-          .withPayload("{}");
+          .withPayload(payload);
         awsLambda.invoke(request);
       });
     }

@@ -17,7 +17,6 @@ public final class NemoEventCoder {
       final ByteBuf buf = ctx.alloc().buffer(4 + msg.getBytes().length);
       buf.writeInt(msg.getType().ordinal());
       buf.writeBytes(msg.getBytes());
-      System.out.println("Encode length: " + msg.getBytes().length + 4);
       out.add(buf);
     }
   }
@@ -26,7 +25,6 @@ public final class NemoEventCoder {
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) throws Exception {
-      System.out.println("Decode length: " + msg.readableBytes());
       final int typeOrdinal = msg.readInt();
       // copy the ByteBuf content to a byte array
       byte[] array = new byte[msg.readableBytes()];
