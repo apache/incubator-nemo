@@ -20,6 +20,7 @@ package org.apache.nemo.examples.spark;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
+import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.apache.nemo.examples.spark.sql.JavaUserDefinedTypedAggregation;
@@ -38,10 +39,8 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 @PowerMockIgnore("javax.management.*")
 public final class SparkJava {
-  private static final int TIMEOUT = 180000;
   private static ArgBuilder builder;
-  private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
-  private static final String executorResourceFileName = fileBasePath + "spark_test_executor_resources.json";
+  private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "inputs/spark_test_executor_resources.json";
 
   @Before
   public void setUp() {
@@ -49,7 +48,7 @@ public final class SparkJava {
         .addResourceJson(executorResourceFileName);
   }
 
-  @Test(timeout = TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testSparkPi() throws Exception {
     final String numParallelism = "3";
 
@@ -61,10 +60,10 @@ public final class SparkJava {
         .build());
   }
 
-  @Test(timeout = TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testSparkSQLUserDefinedTypedAggregation() throws Exception {
-    final String inputFileName = "test_input_employees.json";
-    final String inputFilePath = fileBasePath + inputFileName;
+    final String inputFileName = "inputs/test_input_employees.json";
+    final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
 
     JobLauncher.main(builder
         .addJobId(JavaUserDefinedTypedAggregation.class.getSimpleName() + "_test")
@@ -74,10 +73,10 @@ public final class SparkJava {
         .build());
   }
 
-  @Test(timeout = TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testSparkSQLUserDefinedUntypedAggregation() throws Exception {
-    final String inputFileName = "test_input_employees.json";
-    final String inputFilePath = fileBasePath + inputFileName;
+    final String inputFileName = "inputs/test_input_employees.json";
+    final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
 
     JobLauncher.main(builder
         .addJobId(JavaUserDefinedUntypedAggregation.class.getSimpleName() + "_test")
@@ -87,12 +86,12 @@ public final class SparkJava {
         .build());
   }
 
-  @Test(timeout = TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testSparkSQLExample() throws Exception {
-    final String peopleJson = "test_input_people.json";
-    final String peopleTxt = "test_input_people.txt";
-    final String inputFileJson = fileBasePath + peopleJson;
-    final String inputFileTxt = fileBasePath + peopleTxt;
+    final String peopleJson = "inputs/test_input_people.json";
+    final String peopleTxt = "inputs/test_input_people.txt";
+    final String inputFileJson = ExampleTestArgs.getFileBasePath() + peopleJson;
+    final String inputFileTxt = ExampleTestArgs.getFileBasePath() + peopleTxt;
 
     //    TODO#12: Frontend support for Scala Spark.
     //    JobLauncher.main(builder

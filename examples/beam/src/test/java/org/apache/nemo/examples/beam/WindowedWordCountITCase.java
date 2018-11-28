@@ -20,6 +20,7 @@ package org.apache.nemo.examples.beam;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
+import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.apache.nemo.examples.beam.policy.*;
@@ -38,20 +39,17 @@ import static org.apache.nemo.examples.beam.WindowedWordCount.INPUT_TYPE_UNBOUND
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class WindowedWordCountITCase {
-
-  private static final int TIMEOUT = 120000;
   private static ArgBuilder builder;
-  private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
-  private static final String inputFileName = "test_input_windowed_wordcount";
+  private static final String inputFileName = "inputs/test_input_windowed_wordcount";
   private static final String outputFileName = "test_output_windowed_wordcount";
-  private static final String expectedOutputFileName = "expected_output_windowed_wordcount";
-  private static final String expectedSlidingWindowOutputFileName = "expected_output_sliding_windowed_wordcount";
-  private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
-  private static final String inputFilePath =  fileBasePath + inputFileName;
-  private static final String outputFilePath =  fileBasePath + outputFileName;
+  private static final String expectedOutputFileName = "outputs/expected_output_windowed_wordcount";
+  private static final String expectedSlidingWindowOutputFileName = "outputs/expected_output_sliding_windowed_wordcount";
+  private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
+  private static final String inputFilePath =  ExampleTestArgs.getFileBasePath() + inputFileName;
+  private static final String outputFilePath =  ExampleTestArgs.getFileBasePath() + outputFileName;
 
-  @Test (timeout = TIMEOUT)
+  @Test (timeout = ExampleTestArgs.TIMEOUT)
   public void testBatchFixedWindow() throws Exception {
     builder = new ArgBuilder()
       .addUserMain(WindowedWordCount.class.getCanonicalName())
@@ -64,14 +62,14 @@ public final class WindowedWordCountITCase {
         .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
 
 
-  @Test (timeout = TIMEOUT)
+  @Test (timeout = ExampleTestArgs.TIMEOUT)
   public void testBatchSlidingWindow() throws Exception {
     builder = new ArgBuilder()
       .addUserMain(WindowedWordCount.class.getCanonicalName())
@@ -84,13 +82,13 @@ public final class WindowedWordCountITCase {
       .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedSlidingWindowOutputFileName);
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedSlidingWindowOutputFileName);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
 
-  @Test (timeout = TIMEOUT)
+  @Test (timeout = ExampleTestArgs.TIMEOUT)
   public void testStreamingSchedulerAndPipeFixedWindow() throws Exception {
     builder = new ArgBuilder()
       .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
@@ -104,14 +102,14 @@ public final class WindowedWordCountITCase {
       .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
 
 
-  @Test (timeout = TIMEOUT)
+  @Test (timeout = ExampleTestArgs.TIMEOUT)
   public void testStreamingSchedulerAndPipeSlidingWindow() throws Exception {
     builder = new ArgBuilder()
       .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
@@ -125,9 +123,9 @@ public final class WindowedWordCountITCase {
       .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedSlidingWindowOutputFileName);
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedSlidingWindowOutputFileName);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
 
@@ -147,7 +145,7 @@ public final class WindowedWordCountITCase {
       .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedSlidingWindowOutputFileName);
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedSlidingWindowOutputFileName);
     } finally {
     }
   }

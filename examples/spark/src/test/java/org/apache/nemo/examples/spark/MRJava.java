@@ -20,6 +20,7 @@ package org.apache.nemo.examples.spark;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
+import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.junit.Before;
@@ -36,10 +37,8 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 @PowerMockIgnore("javax.management.*")
 public final class MRJava {
-  private static final int TIMEOUT = 180000;
   private static ArgBuilder builder;
-  private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
-  private static final String executorResourceFileName = fileBasePath + "spark_test_executor_resources.json";
+  private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "/executors/spark_test_executor_resources.json";
 
   @Before
   public void setUp() {
@@ -47,13 +46,13 @@ public final class MRJava {
         .addResourceJson(executorResourceFileName);
   }
 
-  @Test(timeout = TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testSparkWordCount() throws Exception {
-    final String inputFileName = "test_input_wordcount_spark";
+    final String inputFileName = "/inputs/test_input_wordcount_spark";
     final String outputFileName = "test_output_wordcount_spark";
-    final String expectedOutputFilename = "expected_output_wordcount_spark";
-    final String inputFilePath = fileBasePath + inputFileName;
-    final String outputFilePath = fileBasePath + outputFileName;
+    final String expectedOutputFilename = "/outputs/expected_output_wordcount_spark";
+    final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
+    final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
     JobLauncher.main(builder
         .addJobId(JavaWordCount.class.getSimpleName() + "_test")
@@ -63,19 +62,19 @@ public final class MRJava {
         .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFilename);
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFilename);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
 
-  @Test(timeout = TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testSparkWordAndLineCount() throws Exception {
-    final String inputFileName = "test_input_wordcount_spark";
+    final String inputFileName = "/inputs/test_input_wordcount_spark";
     final String outputFileName = "test_output_word_and_line_count";
-    final String expectedOutputFilename = "expected_output_word_and_line_count";
-    final String inputFilePath = fileBasePath + inputFileName;
-    final String outputFilePath = fileBasePath + outputFileName;
+    final String expectedOutputFilename = "/outputs/expected_output_word_and_line_count";
+    final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
+    final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
     JobLauncher.main(builder
         .addJobId(JavaWordAndLineCount.class.getSimpleName() + "_test")
@@ -85,9 +84,9 @@ public final class MRJava {
         .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFilename);
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFilename);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
 }
