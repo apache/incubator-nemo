@@ -88,7 +88,7 @@ public final class PipeOutputWriter implements OutputWriter {
         wrapped.close();
 
         // Write
-        pipeToWriteTo.write(bytesOutputStream.getBufDirectly());
+        pipeToWriteTo.write(bytesOutputStream.getBufDirectly(), 0, bytesOutputStream.getCount());
       } catch (IOException e) {
         throw new RuntimeException(e); // For now we crash the executor on IOException
       }
