@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import io.netty.buffer.ByteBufOutputStream;
+import io.netty.channel.Channel;
 import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -79,16 +81,17 @@ public final class PipeOutputWriter implements OutputWriter {
   private void writeData(final Object element, final List<ByteOutputContext> pipeList) {
     pipeList.forEach(pipe -> {
       try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
-        // Serialize (Do not compress)
-        final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
+        final Channel channel = pipe.getChannel();
+        final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(channel.alloc().ioBuffer());
         final OutputStream wrapped =
-          DataUtil.buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
+          DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
         final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
         encoder.encode(element);
         wrapped.close();
 
         // Write
-        pipeToWriteTo.write(bytesOutputStream.getBufDirectly(), 0, bytesOutputStream.getCount());
+        //pipeToWriteTo.write(byteBufOutputStream.buffer(), 0, byteBufOutputStream.);
+        pipeToWriteTo.writeByteBuf(byteBufOutputStream.buffer());
       } catch (IOException e) {
         throw new RuntimeException(e); // For now we crash the executor on IOException
       }

@@ -79,6 +79,10 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
     return currentByteOutputStream;
   }
 
+
+  public Channel getChannel() {
+    return channel;
+  }
   /**
    * Closes this stream.
    *
@@ -194,7 +198,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * Writes a data frame, from {@link ByteBuf}.
      * @param byteBuf {@link ByteBuf} to write.
      */
-    private void writeByteBuf(final ByteBuf byteBuf) throws IOException {
+    public void writeByteBuf(final ByteBuf byteBuf) throws IOException {
       if (byteBuf.readableBytes() > 0) {
         writeDataFrame(byteBuf, byteBuf.readableBytes());
       }
