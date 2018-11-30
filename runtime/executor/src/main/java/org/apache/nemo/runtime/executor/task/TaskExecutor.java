@@ -88,8 +88,8 @@ public final class TaskExecutor {
 
   private final SerializerManager serializerManager;
 
-  //private static final StorageObjectFactory SOFACTORY = MemoryStorageObjectFactory.INSTACE;
-  private static final StorageObjectFactory SOFACTORY = S3StorageObjectFactory.INSTACE;
+  private static final StorageObjectFactory SOFACTORY = MemoryStorageObjectFactory.INSTACE;
+  //private static final StorageObjectFactory SOFACTORY = S3StorageObjectFactory.INSTACE;
 
   /**
    * Constructor.

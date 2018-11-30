@@ -50,7 +50,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = MemoryStorageObjectFactory.class.getName();
   private static final String ADDRESS = "172.31.21.224";
-  private static final String PUBLIC_ADDRESS = "13.231.60.66";
+  private static final String PUBLIC_ADDRESS = "52.194.185.159";
   private static final int PORT = 20332;
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
