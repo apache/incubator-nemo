@@ -19,6 +19,7 @@
 package org.apache.nemo.examples.spark;
 
 import org.apache.nemo.client.JobLauncher;
+import org.apache.nemo.common.exception.InvalidUserMainException;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
@@ -124,6 +125,17 @@ public final class SparkScala {
       .addJobId(SparkALS.class.getSimpleName() + "_test")
       .addUserMain(SparkALS.class.getCanonicalName())
       .addUserArgs("")
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
+  }
+
+  @Test(expected = InvalidUserMainException.class)
+  public void testNotExistingUserMain() throws Exception {
+    final String notExistingClassName = "XX";
+     JobLauncher.main(builder
+      .addJobId(SparkALS.class.getSimpleName() + "_test")
+      .addUserMain(notExistingClassName)
+      .addUserArgs("100")
       .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
       .build());
   }

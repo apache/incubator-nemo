@@ -21,6 +21,7 @@ package org.apache.nemo.client;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.exception.InvalidUserMainException;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.driver.NemoDriver;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -103,6 +104,7 @@ public final class JobLauncher {
   public static void main(final String[] args) throws Exception {
     // Get Job and Driver Confs
     builtJobConf = getJobConf(args);
+    validateJobConfig(builtJobConf);
 
     // Registers actions for launching the DAG.
     LOG.info("Launching RPC Server");
@@ -183,6 +185,29 @@ public final class JobLauncher {
   }
 
   /**
+   * Validate the configuration of the application's main method.
+   * @param jobConf Configuration of the application.
+   * @throws InvalidUserMainException when the user main is invalid (e.g., non-existing class/method).
+   */
+  private static void validateJobConfig(final Configuration jobConf) throws InvalidUserMainException {
+    final Injector injector = TANG.newInjector(jobConf);
+    try {
+      final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
+      final Class userCode = Class.forName(className);
+      final Method method = userCode.getMethod("main", String[].class);
+      if (!Modifier.isStatic(method.getModifiers())) {
+        throw new InvalidUserMainException("User Main Method not static");
+      }
+      if (!Modifier.isPublic(userCode.getModifiers())) {
+        throw new InvalidUserMainException("User Main Class not public");
+      }
+
+    } catch (final InjectionException | ClassNotFoundException | NoSuchMethodException e) {
+      throw new InvalidUserMainException(e);
+    }
+  }
+
+  /**
    * Launch application using the application DAG.
    * Notice that we launch the DAG one at a time, as the result of a DAG has to be immediately returned to the
    * Java variable before the application can be resumed.
@@ -246,12 +271,6 @@ public final class JobLauncher {
     final String[] args = userArgsString.isEmpty() ? EMPTY_USER_ARGS : userArgsString.split(" ");
     final Class userCode = Class.forName(className);
     final Method method = userCode.getMethod("main", String[].class);
-    if (!Modifier.isStatic(method.getModifiers())) {
-      throw new RuntimeException("User Main Method not static");
-    }
-    if (!Modifier.isPublic(userCode.getModifiers())) {
-      throw new RuntimeException("User Main Class not public");
-    }
 
     LOG.info("User program started");
     method.invoke(null, (Object) args);
