@@ -243,7 +243,8 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
         }));
       }
 
-      LOG.info("End of invocation of lambdas: {}", list.size());
+      LOG.info("End of invocation of lambdas: {}, {}", list.size(),
+        System.currentTimeMillis() - startTime);
       final List<Channel> channels = new ArrayList<>(list.size());
 
       // 1. lambda initialized
@@ -256,7 +257,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
         }
       }
 
-      LOG.info("End of handshake");
+      LOG.info("End of handshake: {}", System.currentTimeMillis() - startTime);
 
       final DirectByteArrayOutputStream bos = new DirectByteArrayOutputStream();
       try {
@@ -288,7 +289,8 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
         });
       }
 
-      LOG.info("# of invocations: {}, # of message send: {}", list.size(), channels.size());
+      LOG.info("{}: # of invocations: {}, # of message send: {}",
+        System.currentTimeMillis() - startTime, list.size(), channels.size());
 
       // wait results
       final List<Object> results = futures.stream().map(future -> {
