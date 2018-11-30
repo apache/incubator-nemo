@@ -47,7 +47,8 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
   private static final Logger LOG = LoggerFactory.getLogger(ByteOutputContext.class.getName());
 
   private final Channel channel;
-  private final AtomicBoolean closed = new AtomicBoolean(false);
+  private volatile boolean closed = false;
+
 
   /**
    * Creates a output context.
@@ -133,7 +134,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
                                            final long length,
                                            final boolean newSubStream) throws IOException {
     ensureNoException();
-    if (closed.get()) {
+    if (closed) {
       throw new IOException("Stream already closed.");
     }
     channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, newSubStream))
@@ -162,9 +163,10 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
    * @throws IOException if an exception was set
    */
   @Override
-  public void close() throws IOException {
+  public synchronized void close() throws IOException {
     ensureNoException();
-    if (closed.compareAndSet(false, true)) {
+    if (!closed) {
+      closed = true;
       channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId()))
         .addListener(getChannelWriteListener());
       deregister();
