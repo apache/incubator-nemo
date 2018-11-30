@@ -45,7 +45,7 @@ public final class ExampleTestUtil {
    * @param resourcePath root folder for both resources.
    * @param outputFileName output file name.
    * @param testResourceFileName the test result file name.
-   * @throws RuntimeException if the output is invalid.
+   * @throws IOException if the output is invalid.
    */
   public static void ensureOutputValidity(final String resourcePath,
                                           final String outputFileName,

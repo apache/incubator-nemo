@@ -25,10 +25,16 @@ package org.apache.nemo.common.punctuation;
 public final class Finishmark {
   private static final Finishmark INSTANCE = new Finishmark();
 
+  /**
+   * private constructor.
+   */
   private Finishmark() {
 
   }
 
+  /**
+   * @return the finish mark.
+   */
   public static Finishmark getInstance() {
     return INSTANCE;
   }

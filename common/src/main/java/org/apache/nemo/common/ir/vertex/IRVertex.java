@@ -106,9 +106,16 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
     return executionProperties;
   }
 
+  /**
+   * Mark that this IRVertex has been added to stage.
+   */
   public final void setStagePartitioned() {
     stagePartitioned = true;
   }
+
+  /**
+   * @return whether or not this IRVertex has been added to a stage.
+   */
   public final boolean getStagePartitioned() {
     return stagePartitioned;
   }

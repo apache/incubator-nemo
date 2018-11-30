@@ -40,6 +40,7 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
 
   /**
    * Static initializer of the encoder.
+   * @return the initializer.
    */
   public static BytesEncoderFactory of() {
     return BYTES_ENCODER_FACTORY;
