@@ -267,6 +267,12 @@ public final class JobLauncher {
     return jcb.build();
   }
 
+  /**
+   * @param jobConf job configuration.
+   * @return scheduler configuration.
+   * @throws ClassNotFoundException class not found with given {@code jobConf}.
+   * @throws InjectionException exception while injection.
+   */
   private static Configuration getSchedulerConf(final Configuration jobConf)
     throws ClassNotFoundException, InjectionException {
     final Injector injector = TANG.newInjector(jobConf);
