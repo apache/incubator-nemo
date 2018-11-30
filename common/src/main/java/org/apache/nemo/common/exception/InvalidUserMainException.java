@@ -36,7 +36,7 @@ public final class InvalidUserMainException extends Exception {
    * InvalidUserMainException.
    * @param message message
    */
-  public InvalidUserMainException(String message) {
+  public InvalidUserMainException(final String message) {
     super(message);
   }
 }
