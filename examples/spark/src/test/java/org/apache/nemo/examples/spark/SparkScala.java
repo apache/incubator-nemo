@@ -20,6 +20,7 @@ package org.apache.nemo.examples.spark;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
+import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.junit.Before;
@@ -36,10 +37,8 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 @PowerMockIgnore("javax.management.*")
 public final class SparkScala {
-  private static final int TIMEOUT = 120000;
   private static ArgBuilder builder;
-  private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
-  private static final String executorResourceFileName = fileBasePath + "spark_test_executor_resources.json";
+  private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/spark_test_executor_resources.json";
 
   @Before
   public void setUp() {
@@ -47,7 +46,7 @@ public final class SparkScala {
         .addResourceJson(executorResourceFileName);
   }
 
-  @Test(timeout = TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testPi() throws Exception {
     final String numParallelism = "3";
 
@@ -59,13 +58,13 @@ public final class SparkScala {
         .build());
   }
 
-  @Test(timeout = TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testWordCount() throws Exception {
-    final String inputFileName = "test_input_wordcount_spark";
-    final String outputFileName = "test_output_wordcount_spark";
-    final String expectedOutputFilename = "expected_output_wordcount_spark";
-    final String inputFilePath = fileBasePath + inputFileName;
-    final String outputFilePath = fileBasePath + outputFileName;
+    final String inputFileName = "inputs/test_input_wordcount_spark";
+    final String outputFileName = "inputs/test_output_wordcount_spark";
+    final String expectedOutputFilename = "/outputs/expected_output_wordcount_spark";
+    final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
+    final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
     JobLauncher.main(builder
         .addJobId(SparkWordCount.class.getSimpleName() + "_test")
@@ -75,22 +74,22 @@ public final class SparkScala {
         .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, expectedOutputFilename);
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFilename);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
 
-  @Test(timeout = TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testCachingWordCount() throws Exception {
-    final String inputFileName = "test_input_wordcount_spark";
+    final String inputFileName = "inputs/test_input_wordcount_spark";
     final String outputFileName1 = "test_output_wordcount_spark";
     final String outputFileName2 = "test_output_reversed_wordcount_spark";
-    final String expectedOutputFilename1 = "expected_output_wordcount_spark";
-    final String expectedOutputFilename2 = "expected_output_reversed_wordcount_spark";
-    final String inputFilePath = fileBasePath + inputFileName;
-    final String outputFilePath1 = fileBasePath + outputFileName1;
-    final String outputFilePath2 = fileBasePath + outputFileName2;
+    final String expectedOutputFilename1 = "outputs/expected_output_wordcount_spark";
+    final String expectedOutputFilename2 = "outputs/expected_output_reversed_wordcount_spark";
+    final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
+    final String outputFilePath1 = ExampleTestArgs.getFileBasePath() + outputFileName1;
+    final String outputFilePath2 = ExampleTestArgs.getFileBasePath() + outputFileName2;
 
     JobLauncher.main(builder
         .addJobId(SparkCachingWordCount.class.getSimpleName() + "_test")
@@ -100,15 +99,15 @@ public final class SparkScala {
         .build());
 
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName1, expectedOutputFilename1);
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName2, expectedOutputFilename2);
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName1, expectedOutputFilename1);
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName2, expectedOutputFilename2);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName1);
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName2);
+      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName1);
+      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName2);
     }
   }
 
-  @Test(timeout = TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testALS() throws Exception {
     JobLauncher.main(builder
       .addJobId(SparkALS.class.getSimpleName() + "_test")
@@ -118,7 +117,7 @@ public final class SparkScala {
       .build());
   }
 
-  @Test(timeout = TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testALSEmptyUserArgs() throws Exception {
     JobLauncher.main(builder
       .addJobId(SparkALS.class.getSimpleName() + "_test")
