@@ -35,9 +35,10 @@ import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Container for multiple output streams. Represents a transfer context on sender-side.
+ * Output context for sending data to the channel. Represents a transfer context on sender-side.
  *
  * <p>Public methods are thread safe,
  * although the execution order may not be linearized if they were called from different threads.</p>
@@ -46,8 +47,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
   private static final Logger LOG = LoggerFactory.getLogger(ByteOutputContext.class.getName());
 
   private final Channel channel;
-
-  private volatile boolean closed = false;
+  private final AtomicBoolean closed = new AtomicBoolean(false);
 
   /**
    * Creates a output context.
@@ -76,7 +76,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
   }
 
   /**
-   * Write an element to channel.
+   * Write an element to the channel.
    * @param element element
    * @param serializer serializer for the element
    */
@@ -133,7 +133,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
                                            final long length,
                                            final boolean newSubStream) throws IOException {
     ensureNoException();
-    if (closed) {
+    if (closed.get()) {
       throw new IOException("Stream already closed.");
     }
     channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, newSubStream))
@@ -164,15 +164,12 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
   @Override
   public void close() throws IOException {
     ensureNoException();
-    if (closed) {
-      return;
+    if (closed.compareAndSet(false, true)) {
+      channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId()))
+        .addListener(getChannelWriteListener());
+      deregister();
     }
-    channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId()))
-      .addListener(getChannelWriteListener());
-    deregister();
-    closed = true;
   }
-
 
   @Override
   public void onChannelError(@Nullable final Throwable cause) {
