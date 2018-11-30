@@ -58,11 +58,16 @@ public final class ClientRPC {
   private ClientRPC(final TransportFactory transportFactory,
                     final LocalAddressProvider localAddressProvider,
                     @Parameter(JobConf.ClientSideRPCServerHost.class) final String clientHost,
-                    @Parameter(JobConf.ClientSideRPCServerPort.class) final int clientPort) throws IOException {
+                    @Parameter(JobConf.ClientSideRPCServerPort.class) final int clientPort) {
     transport = transportFactory.newInstance(localAddressProvider.getLocalAddress(),
         0, new SyncStage<>(new RPCEventHandler()), null, RETRY_COUNT, RETRY_TIMEOUT);
     final SocketAddress clientAddress = new InetSocketAddress(clientHost, clientPort);
-    link = transport.open(clientAddress, ENCODER, LINK_LISTENER);
+    try {
+      link = transport.open(clientAddress, ENCODER, LINK_LISTENER);
+    } catch (final IOException e) {
+      throw new IllegalStateException("Failed to setup an RPC connection to the Client. "
+        + "A failure at the client-side is suspected.");
+    }
   }
 
   /**
