@@ -20,6 +20,7 @@ package org.apache.nemo.examples.beam;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
+import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.apache.nemo.examples.beam.policy.LargeShufflePolicyParallelismFive;
@@ -36,16 +37,14 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class PartitionWordsByLengthITCase {
-  private static final int TIMEOUT = 120000;
   private static ArgBuilder builder;
-  private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
-  private static final String inputFileName = "test_input_tag";
+  private static final String inputFileName = "inputs/test_input_tag";
   private static final String outputFileName = "test_output_tag";
-  private static final String expectedOutputFileName = "expected_output_tag";
-  private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
-  private static final String inputFilePath =  fileBasePath + inputFileName;
-  private static final String outputFilePath =  fileBasePath + outputFileName;
+  private static final String expectedOutputFileName = "outputs/expected_output_tag";
+  private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
+  private static final String inputFilePath =  ExampleTestArgs.getFileBasePath() + inputFileName;
+  private static final String outputFilePath =  ExampleTestArgs.getFileBasePath() + outputFileName;
 
   @Before
   public void setUp() throws Exception {
@@ -57,16 +56,16 @@ public final class PartitionWordsByLengthITCase {
   @After
   public void tearDown() throws Exception {
     try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_short", expectedOutputFileName + "_short");
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_long", expectedOutputFileName + "_long");
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_very_long", expectedOutputFileName + "_very_long");
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_very_very_long", expectedOutputFileName + "_very_very_long");
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName + "_short", expectedOutputFileName + "_short");
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName + "_long", expectedOutputFileName + "_long");
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName + "_very_long", expectedOutputFileName + "_very_long");
+      ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName + "_very_very_long", expectedOutputFileName + "_very_very_long");
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
 
-  @Test (timeout = TIMEOUT)
+  @Test (timeout = ExampleTestArgs.TIMEOUT)
   public void testLargeShuffle() throws Exception {
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
@@ -75,7 +74,7 @@ public final class PartitionWordsByLengthITCase {
         .build());
   }
 
-  @Test (timeout = TIMEOUT)
+  @Test (timeout = ExampleTestArgs.TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)

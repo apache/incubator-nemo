@@ -20,6 +20,7 @@ package org.apache.nemo.examples.beam;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
+import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.junit.Before;
@@ -34,19 +35,17 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class MultinomialLogisticRegressionITCase {
-  private static final int TIMEOUT = 240000;
   private static ArgBuilder builder = new ArgBuilder();
-  private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
-  private static final String executorResourceFileName = fileBasePath + "beam_test_executor_resources.json";
+  private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder();
   }
 
-  @Test (timeout = TIMEOUT)
+  @Test (timeout = ExampleTestArgs.TIMEOUT)
   public void test() throws Exception {
-    final String input = fileBasePath + "test_input_mlr";
+    final String input = ExampleTestArgs.getFileBasePath() + "inputs/test_input_mlr";
     final String numFeatures = "100";
     final String numClasses = "5";
     final String numIteration = "3";

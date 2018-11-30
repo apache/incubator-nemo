@@ -344,16 +344,12 @@ public final class BlockManagerWorker {
                 || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
-                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
-                  os.writeFileArea(fileArea);
-                }
+                outputContext.writeFileArea(fileArea);
               }
             } else {
               final Iterable<SerializedPartition> partitions = optionalBlock.get().readSerializedPartitions(keyRange);
               for (final SerializedPartition partition : partitions) {
-                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
-                  os.writeSerializedPartition(partition);
-                }
+                outputContext.writeSerializedPartition(partition);
               }
             }
             handleDataPersistence(blockStore, blockId);
