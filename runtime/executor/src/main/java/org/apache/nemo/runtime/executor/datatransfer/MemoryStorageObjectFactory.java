@@ -253,22 +253,6 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
         }));
       }
 
-      LOG.info("End of invocation of lambdas: {}, {}", list.size(),
-        System.currentTimeMillis() - startTime);
-      final List<Channel> channels = new ArrayList<>(list.size());
-
-      // 1. lambda initialized
-      for (int i = 0; i < list.size(); i++) {
-        try {
-          channels.add(nemoEventHandler.handshakeQueue.take().left());
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }
-
-      LOG.info("End of handshake: {}", System.currentTimeMillis() - startTime);
-
       final DirectByteArrayOutputStream bos = new DirectByteArrayOutputStream();
       try {
         bos.write(sideInputDecodedFactory);
@@ -281,22 +265,32 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
 
       final byte[] sideInputBytes = bos.getBufDirectly();
 
-      for (int index = 0; index < channels.size(); index++) {
-        final Channel channel = channels.get(index);
-        final int ind = index;
-        executorService.submit(() -> {
-          // 2. send side input
-          //LOG.info("Write side input: {}", sideInputBytes);
-          LOG.info("Write side input to {}", channel);
-          channel.writeAndFlush(new NemoEvent(NemoEvent.Type.SIDE, sideInputBytes, bos.getCount()));
+      LOG.info("End of invocation of lambdas: {}, {}", list.size(),
+        System.currentTimeMillis() - startTime);
+      final List<Channel> channels = new ArrayList<>(list.size());
 
-          // 3. send main inputs
-          final MemoryStorageObject obj = list.get(ind);
-          obj.close();
-          channel.writeAndFlush(new NemoEvent(NemoEvent.Type.MAIN,
-            obj.outputStream.getBufDirectly(), obj.outputStream.getCount()));
-          LOG.info("Write {} main input to {}", obj.cnt, channel);
-        });
+      // 1. lambda initialized
+      for (int i = 0; i < list.size(); i++) {
+        try {
+          final Channel channel = nemoEventHandler.handshakeQueue.take().left();
+          final int ind = i;
+          executorService.submit(() -> {
+            // 2. send side input
+            //LOG.info("Write side input: {}", sideInputBytes);
+            LOG.info("Write side input to {}", channel);
+            channel.writeAndFlush(new NemoEvent(NemoEvent.Type.SIDE, sideInputBytes, bos.getCount()));
+
+            // 3. send main inputs
+            final MemoryStorageObject obj = list.get(ind);
+            obj.close();
+            channel.writeAndFlush(new NemoEvent(NemoEvent.Type.MAIN,
+              obj.outputStream.getBufDirectly(), obj.outputStream.getCount()));
+            LOG.info("Write {} main input to {}", obj.cnt, channel);
+          });
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
       }
 
       LOG.info("{}: # of invocations: {}, # of message send: {}",
