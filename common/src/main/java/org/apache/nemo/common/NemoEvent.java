@@ -8,6 +8,7 @@ public final class NemoEvent implements Serializable {
     CLIENT_HANDSHAKE,
     SIDE,
     MAIN,
+    RESULT,
     END
   }
 

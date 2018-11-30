@@ -2,6 +2,8 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.lambda.AWSLambda;
+import com.amazonaws.services.lambda.AWSLambdaAsync;
+import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
 import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.amazonaws.services.lambda.model.InvokeResult;
@@ -57,7 +59,8 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   private final EventLoopGroup serverBossGroup;
   private final EventLoopGroup serverWorkerGroup;
   private final Channel acceptor;
-  private final AWSLambda awsLambda;
+  //private final AWSLambda awsLambda;
+  private final AWSLambdaAsync awsLambda;
 
   private final NemoEventHandler nemoEventHandler;
 
@@ -65,7 +68,9 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   private MemoryStorageObjectFactory() {
     this.prefixAndObjectMap = new ConcurrentHashMap<>();
     this.prefixAndSizeMap = new ConcurrentHashMap<>();
-    this.awsLambda = AWSLambdaClientBuilder.standard().withClientConfiguration(
+    //this.awsLambda = AWSLambdaClientBuilder.standard().withClientConfiguration(
+    //  new ClientConfiguration().withMaxConnections(150)).build();
+    this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
       new ClientConfiguration().withMaxConnections(150)).build();
     this.serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
         new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
@@ -177,9 +182,11 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   final class NemoEventHandler implements EventHandler<Pair<Channel,NemoEvent>> {
 
     private final BlockingQueue<Pair<Channel,NemoEvent>> handshakeQueue;
+    private final BlockingQueue<Pair<Channel,NemoEvent>> resultQueue;
 
     NemoEventHandler() {
       this.handshakeQueue = new LinkedBlockingQueue<>();
+      this.resultQueue = new LinkedBlockingQueue<>();
     }
 
     @Override
@@ -188,6 +195,9 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
       switch (event.getType()) {
         case CLIENT_HANDSHAKE:
           handshakeQueue.add(nemoEvent);
+          break;
+        case RESULT:
+          resultQueue.add(nemoEvent);
           break;
         default:
           throw new IllegalStateException("Illegal type: " + event.getType().name());
@@ -230,7 +240,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
 
       LOG.info("MemoryStorageObject size: {}", list.size());
 
-      final List<Future<InvokeResult>> futures = new ArrayList<>(list.size());
+      final List<Future> futures = new ArrayList<>(list.size());
       // 0. Trigger lambdas
       for (int i = 0; i < list.size(); i++) {
         futures.add(executorService.submit(() -> {
@@ -239,7 +249,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
             .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
             .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
               PUBLIC_ADDRESS, PORT));
-          return awsLambda.invoke(request);
+          return awsLambda.invokeAsync(request);
         }));
       }
 
@@ -292,10 +302,22 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
       LOG.info("{}: # of invocations: {}, # of message send: {}",
         System.currentTimeMillis() - startTime, list.size(), channels.size());
 
+      final List<Object> results = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) {
+        try {
+          results.add(nemoEventHandler.resultQueue.take());
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }
+
+
+      /*
       // wait results
       final List<Object> results = futures.stream().map(future -> {
         try {
-          return future.get().getPayload().toString();
+          return future.get().toString();
         } catch (InterruptedException e) {
           e.printStackTrace();
           throw new RuntimeException(e);
@@ -304,7 +326,9 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
           throw new RuntimeException(e);
         }
       }).collect(Collectors.toList());
+      */
 
+      LOG.info("Receive all results: {}", System.currentTimeMillis() - startTime);
       prefixAndObjectMap.remove(sideInputKey);
       prefixAndSizeMap.remove(sideInputKey);
 

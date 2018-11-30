@@ -172,7 +172,14 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
       // wait until end
       System.out.println("Wait end flag");
       final Integer endFlag = handler.endBlockingQueue.take();
-    } catch (InterruptedException e) {
+
+      // send result
+      final byte[] bytes = result.toString().getBytes();
+      final ChannelFuture future =
+        opendChannel.writeAndFlush(
+          new NemoEvent(NemoEvent.Type.RESULT, bytes, bytes.length));
+      future.get();
+    } catch (InterruptedException | ExecutionException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
@@ -181,7 +188,8 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
 		//ois.close();
 		//return object;
 
-    return result.toString();
+    return null;
+    //return result.toString();
 
 	}
 
