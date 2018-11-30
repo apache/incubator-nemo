@@ -59,7 +59,7 @@ public final class LambdaWarmer {
       // Trigger lambdas
       executorService.submit(() -> {
         final InvokeRequest request = new InvokeRequest()
-          .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME)
+          .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
           .withPayload(payload);
         awsLambda.invoke(request);
       });
