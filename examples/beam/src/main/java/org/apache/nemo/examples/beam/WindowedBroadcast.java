@@ -44,6 +44,10 @@ public final class WindowedBroadcast {
   private WindowedBroadcast() {
   }
 
+  /**
+   * @param p pipeline.
+   * @return source.
+   */
   private static PCollection<Long> getSource(final Pipeline p) {
     return p.apply(GenerateSequence
       .from(1)

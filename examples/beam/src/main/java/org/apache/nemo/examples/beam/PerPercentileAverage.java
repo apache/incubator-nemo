@@ -108,32 +108,62 @@ public final class PerPercentileAverage {
     private int percentile;
     private int score;
 
+    /**
+     * Constructor.
+     * @param id student id.
+     * @param percentile student percentile.
+     * @param score student score.
+     */
     Student(final int id, final int percentile, final int score) {
       this.id = id;
       this.percentile = percentile;
       this.score = score;
     }
 
+    /**
+     * Getter for student id.
+     * @return id.
+     */
     public int getId() {
       return id;
     }
 
+    /**
+     * Setter for student id.
+     * @param id id.
+     */
     public void setId(final int id) {
       this.id = id;
     }
 
+    /**
+     * Getter for student percentile.
+     * @return percentile.
+     */
     public int getPercentile() {
       return percentile;
     }
 
+    /**
+     * Setter for student percentile.
+     * @param percentile percentile.
+     */
     public void setPercentile(final int percentile) {
       this.percentile = percentile;
     }
 
+    /**
+     * Getter for student score.
+     * @return score.
+     */
     public int getScore() {
       return score;
     }
 
+    /**
+     * Setter for student score.
+     * @param score score.
+     */
     public void setScore(final int score) {
       this.score = score;
     }

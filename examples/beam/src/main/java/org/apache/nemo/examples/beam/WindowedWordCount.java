@@ -48,6 +48,11 @@ public final class WindowedWordCount {
   private static final String SPLITTER = "!";
 
 
+  /**
+   * @param p pipeline.
+   * @param args arguments.
+   * @return source.
+   */
   private static PCollection<KV<String, Long>> getSource(
     final Pipeline p,
     final String[] args) {
