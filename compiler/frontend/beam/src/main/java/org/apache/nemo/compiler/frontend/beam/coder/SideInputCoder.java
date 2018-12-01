@@ -35,12 +35,14 @@ public final class SideInputCoder<T> extends StructuredCoder<SideInputElement<T>
 
   /**
    * Private constructor.
+   * @param valueCoder input value coder.
    */
   private SideInputCoder(final Coder<T> valueCoder) {
     this.valueCoder = valueCoder;
   }
 
   /**
+   * @param valueCoder input value coder.
    * @return a new coder
    */
   public static SideInputCoder of(final Coder valueCoder) {

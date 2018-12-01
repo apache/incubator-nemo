@@ -24,5 +24,5 @@ under the License.
 
 <suppressions>
     <suppress checks="JavadocMethod"
-              files="[\\/]runtime[\\/]|[\\/]frontend[\\/]|[\\/]examples[\\/]|.*Test.*\.java"/>
+              files="[\\/]runtime[\\/]|[\\/]examples[\\/]|.*Test.*\.java"/>
 </suppressions>

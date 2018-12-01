@@ -91,6 +91,10 @@ final class PipelineTranslator {
     }
   }
 
+  /**
+   * @param context provides translation context.
+   * @param primitive primitive node.
+   */
   void translatePrimitive(final PipelineTranslationContext context,
                           final TransformHierarchy.Node primitive) {
     final PTransform<?, ?> transform = primitive.getTransform();
@@ -148,6 +152,9 @@ final class PipelineTranslator {
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   private @interface PrimitiveTransformTranslator {
+    /**
+     * @return primitive transform.
+     */
     Class<? extends PTransform>[] value();
   }
 
@@ -157,12 +164,20 @@ final class PipelineTranslator {
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   private @interface CompositeTransformTranslator {
+    /**
+     * @return composite transform.
+     */
     Class<? extends PTransform>[] value();
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////// PRIMITIVE TRANSFORMS
 
+  /**
+   * @param ctx provides translation context
+   * @param beamNode the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code beamNode}
+   */
   @PrimitiveTransformTranslator(Read.Unbounded.class)
   private static void unboundedReadTranslator(final PipelineTranslationContext ctx,
                                               final TransformHierarchy.Node beamNode,
@@ -173,6 +188,11 @@ final class PipelineTranslator {
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
   }
 
+  /**
+   * @param ctx provides translation context
+   * @param beamNode the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code beamNode}
+   */
   @PrimitiveTransformTranslator(Read.Bounded.class)
   private static void boundedReadTranslator(final PipelineTranslationContext ctx,
                                             final TransformHierarchy.Node beamNode,
@@ -183,6 +203,11 @@ final class PipelineTranslator {
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
   }
 
+  /**
+   * @param ctx provides translation context
+   * @param beamNode the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code beamNode}
+   */
   @PrimitiveTransformTranslator(ParDo.SingleOutput.class)
   private static void parDoSingleOutputTranslator(final PipelineTranslationContext ctx,
                                                   final TransformHierarchy.Node beamNode,
@@ -199,6 +224,11 @@ final class PipelineTranslator {
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
   }
 
+  /**
+   * @param ctx provides translation context
+   * @param beamNode the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code beamNode}
+   */
   @PrimitiveTransformTranslator(ParDo.MultiOutput.class)
   private static void parDoMultiOutputTranslator(final PipelineTranslationContext ctx,
                                                  final TransformHierarchy.Node beamNode,
@@ -220,6 +250,11 @@ final class PipelineTranslator {
         pValueWithTupleTag.getKey()));
   }
 
+  /**
+   * @param ctx provides translation context
+   * @param beamNode the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code beamNode}
+   */
   @PrimitiveTransformTranslator(GroupByKey.class)
   private static void groupByKeyTranslator(final PipelineTranslationContext ctx,
                                            final TransformHierarchy.Node beamNode,
@@ -230,6 +265,11 @@ final class PipelineTranslator {
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
   }
 
+  /**
+   * @param ctx provides translation context
+   * @param beamNode the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code beamNode}
+   */
   @PrimitiveTransformTranslator({Window.class, Window.Assign.class})
   private static void windowTranslator(final PipelineTranslationContext ctx,
                                        final TransformHierarchy.Node beamNode,
@@ -249,6 +289,11 @@ final class PipelineTranslator {
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
   }
 
+  /**
+   * @param ctx provides translation context
+   * @param beamNode the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code beamNode}
+   */
   @PrimitiveTransformTranslator(View.CreatePCollectionView.class)
   private static void createPCollectionViewTranslator(final PipelineTranslationContext ctx,
                                                       final TransformHierarchy.Node beamNode,
@@ -260,6 +305,11 @@ final class PipelineTranslator {
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
   }
 
+  /**
+   * @param ctx provides translation context
+   * @param beamNode the given CompositeTransform to translate
+   * @param transform transform which can be obtained from {@code beamNode}
+   */
   @PrimitiveTransformTranslator(Flatten.PCollections.class)
   private static void flattenTranslator(final PipelineTranslationContext ctx,
                                         final TransformHierarchy.Node beamNode,
@@ -281,6 +331,7 @@ final class PipelineTranslator {
    * @param ctx provides translation context
    * @param beamNode the given CompositeTransform to translate
    * @param transform transform which can be obtained from {@code beamNode}
+   * @return behavior.
    */
   @CompositeTransformTranslator(Combine.PerKey.class)
   private static Pipeline.PipelineVisitor.CompositeBehavior combinePerKeyTranslator(
@@ -339,7 +390,7 @@ final class PipelineTranslator {
    * @param ctx provides translation context
    * @param beamNode the given CompositeTransform to translate
    * @param transform transform which can be obtained from {@code beamNode}
-   * @
+   * @return behavior.
    */
   @CompositeTransformTranslator(LoopCompositeTransform.class)
   private static Pipeline.PipelineVisitor.CompositeBehavior loopTranslator(
@@ -354,10 +405,20 @@ final class PipelineTranslator {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////// HELPER METHODS
 
+  /**
+   * @param viewList list of {@link PCollectionView}s.
+   * @return side inputs map.
+   */
   private static Map<Integer, PCollectionView<?>> getSideInputMap(final List<PCollectionView<?>> viewList) {
     return IntStream.range(0, viewList.size()).boxed().collect(Collectors.toMap(Function.identity(), viewList::get));
   }
 
+  /**
+   * @param ctx provides translation context.
+   * @param beamNode transform vertex.
+   * @param sideInputMap side inputs.
+   * @return created do function transform.
+   */
   private static AbstractDoFnTransform createDoFnTransform(final PipelineTranslationContext ctx,
                                                            final TransformHierarchy.Node beamNode,
                                                            final Map<Integer, PCollectionView<?>> sideInputMap) {
@@ -398,6 +459,10 @@ final class PipelineTranslator {
     }
   }
 
+  /**
+   * @param ptransform applied ptransform.
+   * @return the output coders.
+   */
   private static Map<TupleTag<?>, Coder<?>> getOutputCoders(final AppliedPTransform<?, ?, ?> ptransform) {
     return ptransform
       .getOutputs()
@@ -435,6 +500,11 @@ final class PipelineTranslator {
     }
   }
 
+  /**
+   * @param beamNode beam node.
+   * @param pipeline pipeline.
+   * @return whether or not is the global window.
+   */
   private static boolean isGlobalWindow(final TransformHierarchy.Node beamNode, final Pipeline pipeline) {
     final AppliedPTransform pTransform = beamNode.toAppliedPTransform(pipeline);
     final PCollection<?> mainInput = (PCollection<?>)
