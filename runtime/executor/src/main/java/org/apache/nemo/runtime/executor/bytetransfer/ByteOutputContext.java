@@ -234,7 +234,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * @param length      the length of the body, in bytes
      * @throws IOException when an exception has been set or this stream was closed
      */
-    private synchronized void writeDataFrame(final Object body, final long length) throws IOException {
+    private void writeDataFrame(final Object body, final long length) throws IOException {
       ensureNoException();
       if (closed) {
         throw new IOException("Stream already closed.");
