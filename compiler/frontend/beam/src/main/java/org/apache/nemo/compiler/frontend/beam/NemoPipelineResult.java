@@ -57,10 +57,7 @@ public final class NemoPipelineResult extends ClientEndpoint implements Pipeline
 
   @Override
   public State waitUntilFinish() {
-    throw new UnsupportedOperationException();
-    // TODO #208: NemoPipelineResult#waitUntilFinish hangs
-    // Previous code that hangs the job:
-    // return (State) super.waitUntilJobFinish();
+    return waitUntilFinish(Duration.ZERO);
   }
 
   @Override
