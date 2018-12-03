@@ -169,7 +169,7 @@ under the License.
         <module name="InterfaceIsType"/>
         <module name="VisibilityModifier"/>
 
-      <!-- Miscellaneous other checks.                   -->
+        <!-- Miscellaneous other checks.                   -->
         <!-- See http://checkstyle.sf.net/config_misc.html -->
         <module name="ArrayTypeStyle"/>
         <module name="FinalParameters"/>
@@ -177,5 +177,9 @@ under the License.
         <module name="UpperEll"/>
 
         <module name="SuppressWarningsHolder" />
+    </module>
+
+    <module name="RegexpHeader">
+      <property name="headerFile" value="${checkstyle.header.file}" />
     </module>
 </module>
