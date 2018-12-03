@@ -185,7 +185,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
     }
 
     @Override
-    public synchronized void close() throws IOException {
+    public void close() throws IOException {
       if (closed) {
         return;
       }
