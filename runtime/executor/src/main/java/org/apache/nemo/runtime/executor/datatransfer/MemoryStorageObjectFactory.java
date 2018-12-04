@@ -45,8 +45,8 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
 
   public static final MemoryStorageObjectFactory INSTACE = new MemoryStorageObjectFactory();
 
-  private final ConcurrentMap<String, ConcurrentLinkedQueue<MemoryStorageObject>> prefixAndObjectMap;
-  private final ConcurrentMap<String, AtomicInteger> prefixAndSizeMap;
+  private ConcurrentMap<String, ConcurrentLinkedQueue<MemoryStorageObject>> prefixAndObjectMap;
+  private ConcurrentMap<String, AtomicInteger> prefixAndSizeMap;
 
   private static final int SERVER_BOSS_NUM_THREADS = 3;
   private static final int SERVER_WORKER_NUM_THREADS = 10;
@@ -56,41 +56,49 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   private static final int PORT = 20332;
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-  private final EventLoopGroup serverBossGroup;
-  private final EventLoopGroup serverWorkerGroup;
-  private final Channel acceptor;
+  private EventLoopGroup serverBossGroup;
+  private EventLoopGroup serverWorkerGroup;
+  private Channel acceptor;
   //private final AWSLambda awsLambda;
-  private final AWSLambdaAsync awsLambda;
+  private AWSLambdaAsync awsLambda;
 
-  private final NemoEventHandler nemoEventHandler;
+  private NemoEventHandler nemoEventHandler;
 
+  private boolean initialized = false;
 
   private MemoryStorageObjectFactory() {
-    this.prefixAndObjectMap = new ConcurrentHashMap<>();
-    this.prefixAndSizeMap = new ConcurrentHashMap<>();
-    //this.awsLambda = AWSLambdaClientBuilder.standard().withClientConfiguration(
-    //  new ClientConfiguration().withMaxConnections(150)).build();
-    this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
-      new ClientConfiguration().withMaxConnections(150)).build();
-    this.serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
+
+  }
+
+  private synchronized void lazyInit() {
+    if (!initialized) {
+      this.prefixAndObjectMap = new ConcurrentHashMap<>();
+      this.prefixAndSizeMap = new ConcurrentHashMap<>();
+      //this.awsLambda = AWSLambdaClientBuilder.standard().withClientConfiguration(
+      //  new ClientConfiguration().withMaxConnections(150)).build();
+      this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
+        new ClientConfiguration().withMaxConnections(150)).build();
+      this.serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
         new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
-    this.serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
+      this.serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
         new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
-    this.nemoEventHandler = new NemoEventHandler();
-    final ServerBootstrap serverBootstrap = new ServerBootstrap();
-    serverBootstrap.group(this.serverBossGroup, this.serverWorkerGroup)
-      .channel(NioServerSocketChannel.class)
-      .childHandler(new NettyChannelInitializer(
-        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)))
-      .option(ChannelOption.SO_BACKLOG, 128)
-      .option(ChannelOption.SO_REUSEADDR, true)
-      .childOption(ChannelOption.SO_KEEPALIVE, true);
-    try {
-      this.acceptor = serverBootstrap.bind(
-        new InetSocketAddress(ADDRESS, PORT)).sync().channel();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
+      this.nemoEventHandler = new NemoEventHandler();
+      final ServerBootstrap serverBootstrap = new ServerBootstrap();
+      serverBootstrap.group(this.serverBossGroup, this.serverWorkerGroup)
+        .channel(NioServerSocketChannel.class)
+        .childHandler(new NettyChannelInitializer(
+          new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)))
+        .option(ChannelOption.SO_BACKLOG, 128)
+        .option(ChannelOption.SO_REUSEADDR, true)
+        .childOption(ChannelOption.SO_KEEPALIVE, true);
+      try {
+        this.acceptor = serverBootstrap.bind(
+          new InetSocketAddress(ADDRESS, PORT)).sync().channel();
+        initialized = true;
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
     }
   }
 
@@ -100,6 +108,8 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
                                    int partition,
                                    byte[] encodedDecoderFactory,
                                    EncoderFactory encoderFactory) {
+
+    lazyInit();
     final MemoryStorageObject memoryStorageObject =
       new MemoryStorageObject(prefix+suffix, partition, encodedDecoderFactory, encoderFactory);
     prefixAndObjectMap.putIfAbsent(prefix, new ConcurrentLinkedQueue<>());
