@@ -49,57 +49,9 @@ const COLUMNS = {
   'boundedSourceReadTime': 'Source read time',
   'containerId': 'Container ID',
 }
-const NOT_AVAILABLE = -1;
-
-const _bytesToHumanReadable = function(bytes) {
-  var i = bytes === 0 ? 0 :
-    Math.floor(Math.log(bytes) / Math.log(1024));
-  return (bytes / Math.pow(1024, i)).toFixed(2) * 1
-    + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
-};
-
-// this function will preprocess TaskMetric metric array.
-const _preprocessMetric = function(metric) {
-  let newMetric = Object.assign({}, metric);
-
-  Object.keys(newMetric).forEach(key => {
-    // replace NOT_AVAILBLE to 'N/A'
-    if (newMetric[key] === NOT_AVAILABLE) {
-      newMetric[key] = 'N/A';
-    }
-
-    if (newMetric[key] !== 'N/A' && key.toLowerCase().endsWith('bytes')) {
-      newMetric[key] = _bytesToHumanReadable(newMetric[key]);
-    }
-  });
-
-  if (newMetric.stateTransitionEvents) {
-    const ste = newMetric.stateTransitionEvents;
-    if (ste.length > 2) {
-      const firstEvent = ste[0], lastEvent = ste[ste.length - 1];
-      if (_isDoneTaskEvent(lastEvent)) {
-        newMetric.duration = lastEvent.timestamp - firstEvent.timestamp;
-      } else {
-        newMetric.duration = 'N/A';
-      }
-    } else {
-      newMetric.duration = 'N/A';
-    }
-  }
-
-  return newMetric;
-};
-
-const _isDoneTaskEvent = function(event) {
-  if (event.newState === STATE.COMPLETE
-    || event.newState === STATE.FAILED) {
-    return true;
-  }
-  return false;
-};
 
 export default {
-  props: ['metricLookupMap'],
+  props: ['taskStatistics'],
 
   data: function() {
     return { 
@@ -114,44 +66,12 @@ export default {
      * Computed property which consists table data.
      */
     taskMetric() {
-      return Object.keys(this.metricLookupMap)
-        .filter(key => this.metricLookupMap[key].group === 'TaskMetric')
-        .map(key => _preprocessMetric(this.metricLookupMap[key]));
-    },
-
-    /**
-     * Computed property of column string array.
-     * This property will look first element of `taskMetric` array and
-     * extract object keys and filter by EXECLUDE_COLUMN.
-     */
-    columnArray() {
-      if (!this.taskMetric[0]) {
-        return [];
-      }
-
-      return Object.keys(this.taskMetric[0])
-        .filter(k => !EXCLUDE_COLUMN.includes(k));
+      return this.taskStatistics.tableView
     },
   },
 
   //METHODS
   methods: {
-    _sortFunc(_a, _b, column) {
-      let a = _a[column], b = _b[column];
-      if (a === 'N/A') {
-        return -1;
-      } else if (b === 'N/A') {
-        return 1;
-      } else if (a === b) {
-        return 0;
-      } else if (a > b) {
-        return 1;
-      } else if (a < b) {
-        return -1;
-      }
-      return 0;
-    },
-
     /**
      * Fetch last stateTransitionEvents element and extract
      * newState property. See STATE constant.

@@ -181,7 +181,7 @@ under the License.
     <br><br><br>
 
     <!--Selected Job-->
-    <job-view :selected-job-status="selectedJobStatus" :selected-job-metric-data-set="selectedJobMetricDataSet"/>
+    <job-view :selected-job-status="selectedJobStatus" :selected-job-metric-data-set="selectedJobMetricDataSet" :selectedTaskStatistics="selectedTaskStatistics"/>
     <!--<job-view :selectedJobId="selectedJobId"/>-->
   </el-card>
 </template>
@@ -192,11 +192,61 @@ import JobView from './detail/JobView';
 import uuid from 'uuid/v4';
 import { DataSet } from 'vue2vis';
 import { STATE, JOB_STATUS } from '../../assets/constants';
+import TaskStatisticsVue from '../TaskStatistics.vue';
+
+const NOT_AVAILABLE = -1;
 
 function _isDone(status) {
   return status === JOB_STATUS.COMPLETE ||
     status === JOB_STATUS.FAILED;
 }
+
+const _bytesToHumanReadable = function(bytes) {
+  var i = bytes === 0 ? 0 :
+    Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(2) * 1
+    + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
+};
+
+// this function will preprocess TaskMetric metric array.
+const _preprocessMetric = function(metric) {
+  let newMetric = Object.assign({}, metric);
+
+  Object.keys(newMetric).forEach(key => {
+    // replace NOT_AVAILBLE to 'N/A'
+    if (newMetric[key] === NOT_AVAILABLE) {
+      newMetric[key] = 'N/A';
+    }
+
+    if (newMetric[key] !== 'N/A' && key.toLowerCase().endsWith('bytes')) {
+      newMetric[key] = _bytesToHumanReadable(newMetric[key]);
+    }
+  });
+
+  if (newMetric.stateTransitionEvents) {
+    const ste = newMetric.stateTransitionEvents;
+    if (ste.length > 2) {
+      const firstEvent = ste[0], lastEvent = ste[ste.length - 1];
+      if (_isDoneTaskEvent(lastEvent)) {
+        newMetric.duration = lastEvent.timestamp - firstEvent.timestamp;
+      } else {
+        newMetric.duration = 'N/A';
+      }
+    } else {
+      newMetric.duration = 'N/A';
+    }
+  }
+
+  return newMetric;
+};
+
+const _isDoneTaskEvent = function(event) {
+  if (event.newState === STATE.COMPLETE
+    || event.newState === STATE.FAILED) {
+    return true;
+  }
+  return false;
+};
 
 export default {
   components: {
@@ -256,7 +306,14 @@ export default {
       } else {
         return '';
       }
-    }
+    },
+    selectedTaskStatistics() {
+      if (this.selectedJobId !== '') {
+        return this.jobs[this.selectedJobId].taskStatistics;
+      } else {
+        return {metricItems: {}, tableView: []};
+      }
+    },
   },
 
   //METHODS
@@ -415,6 +472,10 @@ export default {
         metricDataSet: new DataSet([]),
         dagStageState: {},
         status: '',
+        taskStatistics: {
+          metricItems: {}, // id to metric object
+          tableView: [], // array of metric objects
+        },
       });
     },
 
@@ -755,6 +816,13 @@ export default {
         Vue.set(job.metricLookupMap, metric.id, metric);
       } else if (metric.group === 'TaskMetric') {
         Vue.set(job.metricLookupMap, metric.id, metric);
+        const processedMetric = _preprocessMetric(metric)
+        if (!(metric.id in job.taskStatistics.metricItems)) {
+          job.taskStatistics.tableView.push(processedMetric)
+          job.taskStatistics.metricItems[metric.id] = processedMetric
+        } else {
+          Object.assign(job.taskStatistics.metricItems[metric.id], processedMetric)
+        }
       }
       this.$eventBus.$emit('build-table-data', {
         metricId: metric.id,
