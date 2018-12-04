@@ -274,6 +274,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
       // lateness
       .withAllowedLateness(lateness)
       .triggering(trigger)
+      // TODO #308: Test discarding of refinements
       .accumulatingFiredPanes().getWindowFn();
 
     final TupleTag<String> outputTag = new TupleTag<>("main-output");
@@ -312,6 +313,8 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
       e.printStackTrace();
     }
 
+    // GBKTransform emits data when receiving watermark
+    // TODO #250: element-wise processing
     doFnTransform.onWatermark(new Watermark(5));
     assertEquals(1, oc.outputs.size());
     assertEquals(EARLY, oc.outputs.get(0).getPane().getTiming());
@@ -339,14 +342,14 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     // the data timestamp + allowed lateness > current watermark,
     // so it should be accumulated to the prev window
     doFnTransform.onData(WindowedValue.of(
-      KV.of("1", "hello!"), new Instant(4500),
+      KV.of("1", "bye!"), new Instant(4500),
       window.assignWindow(new Instant(4500)), PaneInfo.NO_FIRING));
     doFnTransform.onWatermark(new Watermark(6000));
     assertEquals(1, oc.outputs.size());
     assertEquals(LATE, oc.outputs.get(0).getPane().getTiming());
     LOG.info("Output: {}", oc.outputs.get(0));
     // The data should  be accumulated to the previous window because it allows 1 second lateness
-    checkOutput(KV.of("1", Arrays.asList("hello", "world", "!!", "hello!")), oc.outputs.get(0).getValue());
+    checkOutput(KV.of("1", Arrays.asList("hello", "world", "!!", "bye!")), oc.outputs.get(0).getValue());
     oc.outputs.clear();
 
     // LATE DATA
@@ -355,13 +358,13 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     // data timestamp + allowed lateness < current watermark
     // It should not be accumulated to the prev window
     doFnTransform.onData(WindowedValue.of(
-      KV.of("1", "hello!"), new Instant(4800),
+      KV.of("1", "hello again!"), new Instant(4800),
       window.assignWindow(new Instant(4800)), PaneInfo.NO_FIRING));
     doFnTransform.onWatermark(new Watermark(6300));
     assertEquals(1, oc.outputs.size());
     assertEquals(LATE, oc.outputs.get(0).getPane().getTiming());
     LOG.info("Output: {}", oc.outputs.get(0));
-    checkOutput(KV.of("1", Arrays.asList("hello!")), oc.outputs.get(0).getValue());
+    checkOutput(KV.of("1", Arrays.asList("hello again!")), oc.outputs.get(0).getValue());
     oc.outputs.clear();
 
 
