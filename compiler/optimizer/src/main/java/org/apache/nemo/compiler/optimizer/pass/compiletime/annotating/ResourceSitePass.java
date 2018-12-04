@@ -91,7 +91,7 @@ public final class ResourceSitePass extends AnnotatingPass {
   }
 
   /**
-   * @param nodes to share the task.
+   * @param nodes to distribute the shares
    * @param parallelism number of parallel tasks.
    * @return share for each node.
    */
@@ -106,7 +106,7 @@ public final class ResourceSitePass extends AnnotatingPass {
   }
 
   /**
-   * @param dag dag.
+   * @param dag IR DAG.
    * @param bandwidthSpecification bandwidth specification.
    */
   private static void assignNodeShares(
@@ -273,7 +273,7 @@ public final class ResourceSitePass extends AnnotatingPass {
     }
 
     /**
-     * @param nodeName the node name to read bandwidth information.
+     * @param nodeName the node name to read uplink bandwidth information.
      * @return the uplink bandwidth.
      */
     int up(final String nodeName) {
@@ -281,7 +281,7 @@ public final class ResourceSitePass extends AnnotatingPass {
     }
 
     /**
-     * @param nodeName the node name to read bandwidth information.
+     * @param nodeName the node name to read downlink bandwidth information.
      * @return the downlink bandwidth.
      */
     int down(final String nodeName) {

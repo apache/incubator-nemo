@@ -47,7 +47,7 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   /**
    * @param dag that contains the {@code v}.
    * @param v to inspect.
-   * @return whether or not the vertex has parent with metric collect transform vertex.
+   * @return whether or not the vertex has parent with MetricCollectTransform.
    */
   private boolean hasParentWithMetricCollectTransform(final DAG<IRVertex, IREdge> dag,
                                                       final IRVertex v) {

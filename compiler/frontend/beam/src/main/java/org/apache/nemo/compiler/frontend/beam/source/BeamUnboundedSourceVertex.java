@@ -50,7 +50,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
   /**
    * The default constructor for beam unbounded source.
    * @param source unbounded source.
-   * @param displayData display data.
+   * @param displayData static display data associated with a pipeline component.
    */
   public BeamUnboundedSourceVertex(final UnboundedSource<O, M> source,
                                    final DisplayData displayData) {

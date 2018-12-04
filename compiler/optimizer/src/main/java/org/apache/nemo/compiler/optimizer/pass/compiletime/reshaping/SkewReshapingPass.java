@@ -138,7 +138,7 @@ public final class SkewReshapingPass extends ReshapingPass {
   }
 
   /**
-   * @param edge to collect the metric of.
+   * @param edge to collect the metric.
    * @return the generated vertex.
    */
   private OperatorVertex generateMetricCollectVertex(final IREdge edge) {
@@ -176,7 +176,7 @@ public final class SkewReshapingPass extends ReshapingPass {
 
   /**
    * @param edge the original shuffle edge.
-   * @param mcv the metric collect vertex.
+   * @param mcv the vertex with MetricCollectTransform.
    * @return the generated edge to {@code mcv}.
    */
   private IREdge generateEdgeToMCV(final IREdge edge, final OperatorVertex mcv) {
@@ -189,8 +189,8 @@ public final class SkewReshapingPass extends ReshapingPass {
 
   /**
    * @param edge the original shuffle edge.
-   * @param mcv the metric collect vertex.
-   * @param abv the aggregation barrier vertex.
+   * @param mcv the vertex with MetricCollectTransform.
+   * @param abv the vertex with AggregateMetricTransform.
    * @return the generated egde from {@code mcv} to {@code abv}.
    */
   private IREdge generateEdgeToABV(final IREdge edge,

@@ -119,7 +119,7 @@ final class PipelineTranslator {
   /**
    * @param context context.
    * @param composite transform.
-   * @return behavior.
+   * @return behavior controls whether or not child transforms are visited.
    */
   Pipeline.PipelineVisitor.CompositeBehavior translateComposite(final PipelineTranslationContext context,
                                                                 final TransformHierarchy.Node composite) {
@@ -175,7 +175,7 @@ final class PipelineTranslator {
 
   /**
    * @param ctx provides translation context
-   * @param beamNode the given CompositeTransform to translate
+   * @param beamNode the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(Read.Unbounded.class)
@@ -190,7 +190,7 @@ final class PipelineTranslator {
 
   /**
    * @param ctx provides translation context
-   * @param beamNode the given CompositeTransform to translate
+   * @param beamNode the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(Read.Bounded.class)
@@ -205,7 +205,7 @@ final class PipelineTranslator {
 
   /**
    * @param ctx provides translation context
-   * @param beamNode the given CompositeTransform to translate
+   * @param beamNode the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(ParDo.SingleOutput.class)
@@ -226,7 +226,7 @@ final class PipelineTranslator {
 
   /**
    * @param ctx provides translation context
-   * @param beamNode the given CompositeTransform to translate
+   * @param beamNode the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(ParDo.MultiOutput.class)
@@ -252,7 +252,7 @@ final class PipelineTranslator {
 
   /**
    * @param ctx provides translation context
-   * @param beamNode the given CompositeTransform to translate
+   * @param beamNode the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(GroupByKey.class)
@@ -267,7 +267,7 @@ final class PipelineTranslator {
 
   /**
    * @param ctx provides translation context
-   * @param beamNode the given CompositeTransform to translate
+   * @param beamNode the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator({Window.class, Window.Assign.class})
@@ -291,7 +291,7 @@ final class PipelineTranslator {
 
   /**
    * @param ctx provides translation context
-   * @param beamNode the given CompositeTransform to translate
+   * @param beamNode the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(View.CreatePCollectionView.class)
@@ -307,7 +307,7 @@ final class PipelineTranslator {
 
   /**
    * @param ctx provides translation context
-   * @param beamNode the given CompositeTransform to translate
+   * @param beamNode the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
   @PrimitiveTransformTranslator(Flatten.PCollections.class)
@@ -329,9 +329,9 @@ final class PipelineTranslator {
    * Here, we translate this composite transform as a whole, exploiting its accumulator semantics.
    *
    * @param ctx provides translation context
-   * @param beamNode the given CompositeTransform to translate
+   * @param beamNode the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
-   * @return behavior.
+   * @return behavior controls whether or not child transforms are visited.
    */
   @CompositeTransformTranslator(Combine.PerKey.class)
   private static Pipeline.PipelineVisitor.CompositeBehavior combinePerKeyTranslator(
@@ -388,9 +388,9 @@ final class PipelineTranslator {
 
   /**
    * @param ctx provides translation context
-   * @param beamNode the given CompositeTransform to translate
+   * @param beamNode the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
-   * @return behavior.
+   * @return behavior controls whether or not child transforms are visited.
    */
   @CompositeTransformTranslator(LoopCompositeTransform.class)
   private static Pipeline.PipelineVisitor.CompositeBehavior loopTranslator(
@@ -407,7 +407,7 @@ final class PipelineTranslator {
 
   /**
    * @param viewList list of {@link PCollectionView}s.
-   * @return side inputs map.
+   * @return map of side inputs.
    */
   private static Map<Integer, PCollectionView<?>> getSideInputMap(final List<PCollectionView<?>> viewList) {
     return IntStream.range(0, viewList.size()).boxed().collect(Collectors.toMap(Function.identity(), viewList::get));
@@ -415,9 +415,9 @@ final class PipelineTranslator {
 
   /**
    * @param ctx provides translation context.
-   * @param beamNode transform vertex.
+   * @param beamNode the beam node to be translated.
    * @param sideInputMap side inputs.
-   * @return created do function transform.
+   * @return the created DoFnTransform.
    */
   private static AbstractDoFnTransform createDoFnTransform(final PipelineTranslationContext ctx,
                                                            final TransformHierarchy.Node beamNode,
@@ -460,7 +460,7 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param ptransform applied ptransform.
+   * @param ptransform PTransform to get coders for its outputs
    * @return the output coders.
    */
   private static Map<TupleTag<?>, Coder<?>> getOutputCoders(final AppliedPTransform<?, ?, ?> ptransform) {
@@ -476,7 +476,7 @@ final class PipelineTranslator {
    * Create a group by key transform.
    * It returns GroupByKeyAndWindowDoFnTransform if window function is not default.
    * @param ctx translation context
-   * @param beamNode transform vertex
+   * @param beamNode the beam node to be translated
    * @return group by key transform
    */
   private static Transform createGBKTransform(
@@ -501,9 +501,9 @@ final class PipelineTranslator {
   }
 
   /**
-   * @param beamNode beam node.
+   * @param beamNode the beam node to be translated.
    * @param pipeline pipeline.
-   * @return whether or not is the global window.
+   * @return true if the main input has global window.
    */
   private static boolean isGlobalWindow(final TransformHierarchy.Node beamNode, final Pipeline pipeline) {
     final AppliedPTransform pTransform = beamNode.toAppliedPTransform(pipeline);
