@@ -19,12 +19,11 @@ under the License.
 <template>
   <el-card>
     <el-table
-      v-if="columnArray.length !== 0"
       border
       :data="taskMetric"
       empty-text="No data">
-      <el-table-column label="id" prop="id" sortable/>
-      <el-table-column label="state" align="center">
+      <el-table-column label="ID" prop="id"/>
+      <el-table-column label="State" align="center">
         <template slot-scope="scope">
           <el-tag :type="toStateType(scope.row.stateTransitionEvents)">
             {{ toStateText(scope.row.stateTransitionEvents) }}
@@ -32,33 +31,24 @@ under the License.
         </template>
       </el-table-column>
       <el-table-column
-        v-for="col in columnArray"
-        sortable
-        :sort-method="(a, b) => _sortFunc(a, b, col)"
-        :label="col"
+        v-for="col in Object.keys(columns)"
+        :label="columns[col]"
         :key="col"
         :prop="col"/>
     </el-table>
-    <p v-if="taskMetric.length !== 0">
-      Duration sum: <b>{{taskMetric.map(t => t.duration).reduce((a, b) => a + b)}}</b>ms
-    </p>
   </el-card>
 </template>
 
 <script>
 import { STATE } from '../assets/constants';
 
-export const EXCLUDE_COLUMN = [
-  'id',
-  'state',
-  'group',
-  'start',
-  'end',
-  'stateTransitionEvents',
-  'content',
-  'metricId',
-];
-
+const COLUMNS = {
+  'serializedReadBytes': 'Bytes read (compressed)',
+  'encodedReadBytes': 'Bytes read',
+  'writtenBytes': 'Bytes written',
+  'boundedSourceReadTime': 'Source read time',
+  'containerId': 'Container ID',
+}
 const NOT_AVAILABLE = -1;
 
 const _bytesToHumanReadable = function(bytes) {
@@ -110,6 +100,13 @@ const _isDoneTaskEvent = function(event) {
 
 export default {
   props: ['metricLookupMap'],
+
+  data: function() {
+    return { 
+      columns: COLUMNS,
+      columnKeys: Object.keys(COLUMNS),
+    };
+  },
 
   //COMPUTED
   computed: {
