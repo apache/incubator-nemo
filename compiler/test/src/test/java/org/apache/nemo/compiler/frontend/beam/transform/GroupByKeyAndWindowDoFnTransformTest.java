@@ -33,16 +33,21 @@ import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-import static java.util.Collections.emptyList;
+import static org.apache.beam.sdk.transforms.windowing.PaneInfo.Timing.EARLY;
+import static org.apache.beam.sdk.transforms.windowing.PaneInfo.Timing.LATE;
+import static org.apache.beam.sdk.transforms.windowing.PaneInfo.Timing.ON_TIME;
+import static org.apache.beam.sdk.values.WindowingStrategy.AccumulationMode.ACCUMULATING_FIRED_PANES;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 
 // TODO #270: Test different triggers
 public final class GroupByKeyAndWindowDoFnTransformTest {
-
+  private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyAndWindowDoFnTransformTest.class.getName());
   private final static Coder NULL_INPUT_CODER = null;
   private final static Map<TupleTag<?>, Coder<?>> NULL_OUTPUT_CODERS = null;
 
@@ -247,5 +252,125 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
       oc.watermarks.get(0).getTimestamp());
 
     doFnTransform.close();
+  }
+
+  /**
+   * Test complex triggers that emit early, late firing.
+   */
+  @Test
+  public void eventTimeTriggerTest() {
+    final Duration lateness = Duration.standardSeconds(1);
+    // early and late firing
+    final AfterWatermark.AfterWatermarkEarlyAndLate trigger = AfterWatermark.pastEndOfWindow()
+      // During the month, get near real-time estimates.
+      .withEarlyFirings(
+        AfterProcessingTime
+          .pastFirstElementInPane()
+          // early firing 1 sec after receiving an element
+          .plusDelayOf(Duration.millis(1000)))
+      // Fire on any late data.
+      .withLateFirings(AfterPane.elementCountAtLeast(1));
+
+    final FixedWindows window = (FixedWindows) Window.into(
+      FixedWindows.of(Duration.standardSeconds(5)))
+      .withAllowedLateness(lateness)
+      .triggering(trigger)
+      .accumulatingFiredPanes().getWindowFn();
+
+    final TupleTag<String> outputTag = new TupleTag<>("main-output");
+    final GroupByKeyAndWindowDoFnTransform<String, String> doFnTransform =
+      new GroupByKeyAndWindowDoFnTransform(
+        NULL_OUTPUT_CODERS,
+        outputTag,
+        WindowingStrategy.of(window).withTrigger(trigger)
+          .withMode(ACCUMULATING_FIRED_PANES)
+        .withAllowedLateness(lateness),
+        PipelineOptionsFactory.as(NemoPipelineOptions.class),
+        SystemReduceFn.buffering(NULL_INPUT_CODER),
+        DisplayData.none());
+
+
+    final Transform.Context context = mock(Transform.Context.class);
+    final TestOutputCollector<KV<String, Iterable<String>>> oc = new TestOutputCollector();
+    doFnTransform.prepare(context, oc);
+
+    final Instant ts1 = new Instant(1);
+    final Instant ts2 = new Instant(2);
+    doFnTransform.onData(WindowedValue.of(
+      KV.of("1", "hello"), new Instant(1), window.assignWindow(ts1), PaneInfo.NO_FIRING));
+
+
+    // early firing is not related to the watermark progress
+    doFnTransform.onWatermark(new Watermark(ts1.getMillis() + 1));
+    assertEquals(1, oc.outputs.size());
+    assertEquals(EARLY, oc.outputs.get(0).getPane().getTiming());
+    LOG.info("Output: {}", oc.outputs.get(0));
+    oc.outputs.clear();
+
+
+    doFnTransform.onData(WindowedValue.of(
+      KV.of("1", "world"), new Instant(2), window.assignWindow(ts2), PaneInfo.NO_FIRING));
+    // EARLY firing... waiting >= 1 sec
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    doFnTransform.onWatermark(new Watermark(ts1.getMillis() + 5));
+    assertEquals(1, oc.outputs.size());
+    assertEquals(EARLY, oc.outputs.get(0).getPane().getTiming());
+    // ACCUMULATION MODE
+    checkOutput(KV.of("1", Arrays.asList("hello", "world")), oc.outputs.get(0).getValue());
+    LOG.info("Output: {}", oc.outputs.get(0));
+    oc.outputs.clear();
+
+    // ON TIME
+    doFnTransform.onData(WindowedValue.of(
+      KV.of("1", "!!"), new Instant(3), window.assignWindow(ts2), PaneInfo.NO_FIRING));
+    doFnTransform.onWatermark(new Watermark(5001));
+    assertEquals(1, oc.outputs.size());
+    assertEquals(ON_TIME, oc.outputs.get(0).getPane().getTiming());
+    LOG.info("Output: {}", oc.outputs.get(0));
+    // ACCUMULATION MODE
+    checkOutput(KV.of("1", Arrays.asList("hello", "world", "!!")), oc.outputs.get(0).getValue());
+    oc.outputs.clear();
+
+    // LATE DATA
+    // actual window: [0-5000)
+    // allowed lateness: 1000 (ms)
+    // current watermark: 5001
+    // data: 4500
+    // the data timestamp + allowed lateness > current watermark,
+    // so it should be accumulated to the prev window
+    doFnTransform.onData(WindowedValue.of(
+      KV.of("1", "hello!"), new Instant(4500),
+      window.assignWindow(new Instant(4500)), PaneInfo.NO_FIRING));
+    doFnTransform.onWatermark(new Watermark(6000));
+    assertEquals(1, oc.outputs.size());
+    assertEquals(LATE, oc.outputs.get(0).getPane().getTiming());
+    LOG.info("Output: {}", oc.outputs.get(0));
+    // The data should  be accumulated to the previous window because it allows 1 second lateness
+    checkOutput(KV.of("1", Arrays.asList("hello", "world", "!!", "hello!")), oc.outputs.get(0).getValue());
+    oc.outputs.clear();
+
+    // LATE DATA
+    // data timestamp: 4800
+    // current watermark: 6000
+    // data timestamp + allowed lateness < current watermark
+    // It should not be accumulated to the prev window
+    doFnTransform.onData(WindowedValue.of(
+      KV.of("1", "hello!"), new Instant(4800),
+      window.assignWindow(new Instant(4800)), PaneInfo.NO_FIRING));
+    doFnTransform.onWatermark(new Watermark(6300));
+    assertEquals(1, oc.outputs.size());
+    assertEquals(LATE, oc.outputs.get(0).getPane().getTiming());
+    LOG.info("Output: {}", oc.outputs.get(0));
+    checkOutput(KV.of("1", Arrays.asList("hello!")), oc.outputs.get(0).getValue());
+    oc.outputs.clear();
+
+
+    doFnTransform.close();
+
   }
 }
