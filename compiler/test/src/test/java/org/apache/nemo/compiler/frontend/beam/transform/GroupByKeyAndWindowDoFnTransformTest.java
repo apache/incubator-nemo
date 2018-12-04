@@ -45,7 +45,6 @@ import static org.apache.beam.sdk.values.WindowingStrategy.AccumulationMode.ACCU
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 
-// TODO #270: Test different triggers
 public final class GroupByKeyAndWindowDoFnTransformTest {
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyAndWindowDoFnTransformTest.class.getName());
   private final static Coder NULL_INPUT_CODER = null;
@@ -255,24 +254,24 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
   }
 
   /**
-   * Test complex triggers that emit early, late firing.
+   * Test complex triggers that emit early and late firing.
    */
   @Test
   public void eventTimeTriggerTest() {
     final Duration lateness = Duration.standardSeconds(1);
-    // early and late firing
     final AfterWatermark.AfterWatermarkEarlyAndLate trigger = AfterWatermark.pastEndOfWindow()
-      // During the month, get near real-time estimates.
+      // early firing
       .withEarlyFirings(
         AfterProcessingTime
           .pastFirstElementInPane()
           // early firing 1 sec after receiving an element
           .plusDelayOf(Duration.millis(1000)))
-      // Fire on any late data.
+      // late firing: Fire on any late data.
       .withLateFirings(AfterPane.elementCountAtLeast(1));
 
     final FixedWindows window = (FixedWindows) Window.into(
       FixedWindows.of(Duration.standardSeconds(5)))
+      // lateness
       .withAllowedLateness(lateness)
       .triggering(trigger)
       .accumulatingFiredPanes().getWindowFn();
@@ -294,22 +293,18 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     final TestOutputCollector<KV<String, Iterable<String>>> oc = new TestOutputCollector();
     doFnTransform.prepare(context, oc);
 
-    final Instant ts1 = new Instant(1);
-    final Instant ts2 = new Instant(2);
     doFnTransform.onData(WindowedValue.of(
-      KV.of("1", "hello"), new Instant(1), window.assignWindow(ts1), PaneInfo.NO_FIRING));
-
+      KV.of("1", "hello"), new Instant(1), window.assignWindow(new Instant(1)), PaneInfo.NO_FIRING));
 
     // early firing is not related to the watermark progress
-    doFnTransform.onWatermark(new Watermark(ts1.getMillis() + 1));
+    doFnTransform.onWatermark(new Watermark(2));
     assertEquals(1, oc.outputs.size());
     assertEquals(EARLY, oc.outputs.get(0).getPane().getTiming());
     LOG.info("Output: {}", oc.outputs.get(0));
     oc.outputs.clear();
 
-
     doFnTransform.onData(WindowedValue.of(
-      KV.of("1", "world"), new Instant(2), window.assignWindow(ts2), PaneInfo.NO_FIRING));
+      KV.of("1", "world"), new Instant(3), window.assignWindow(new Instant(3)), PaneInfo.NO_FIRING));
     // EARLY firing... waiting >= 1 sec
     try {
       Thread.sleep(2000);
@@ -317,7 +312,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
       e.printStackTrace();
     }
 
-    doFnTransform.onWatermark(new Watermark(ts1.getMillis() + 5));
+    doFnTransform.onWatermark(new Watermark(5));
     assertEquals(1, oc.outputs.size());
     assertEquals(EARLY, oc.outputs.get(0).getPane().getTiming());
     // ACCUMULATION MODE
@@ -327,7 +322,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
 
     // ON TIME
     doFnTransform.onData(WindowedValue.of(
-      KV.of("1", "!!"), new Instant(3), window.assignWindow(ts2), PaneInfo.NO_FIRING));
+      KV.of("1", "!!"), new Instant(3), window.assignWindow(new Instant(3)), PaneInfo.NO_FIRING));
     doFnTransform.onWatermark(new Watermark(5001));
     assertEquals(1, oc.outputs.size());
     assertEquals(ON_TIME, oc.outputs.get(0).getPane().getTiming());
