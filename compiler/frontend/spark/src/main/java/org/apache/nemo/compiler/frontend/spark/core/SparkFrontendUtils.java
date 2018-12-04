@@ -105,7 +105,7 @@ public final class SparkFrontendUtils {
     builder.connectVertices(newEdge);
 
     // launch DAG
-    JobLauncher.launchDAG(builder.build(), SparkBroadcastVariables.getAll());
+    JobLauncher.launchDAG(builder.build(), SparkBroadcastVariables.getAll(), "");
 
     return (List<T>) JobLauncher.getCollectedData();
   }
