@@ -81,6 +81,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     // Need to distinguish side/main inputs and push-back main inputs.
     if (data.getValue() instanceof SideInputElement) {
       // This element is a Side Input
+      LOG.info("Receive Side input at {}: {}", this.hashCode(), data);
       // TODO #287: Consider Explicit Multi-Input IR Transform
       final WindowedValue<SideInputElement> sideInputElement = (WindowedValue<SideInputElement>) data;
       final PCollectionView view = getSideInputs().get(sideInputElement.getValue().getSideInputIndex());
