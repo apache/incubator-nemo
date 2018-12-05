@@ -23,9 +23,6 @@ under the License.
 
     <!--Jobs information-->
     <p>
-      <b>User: </b><span>{ TODO }</span><br>
-      <b>Total Uptime: </b><span>{ TODO }</span><br>
-      <b>Scheduling Mode: </b><span>{ TODO }</span><br>
       <b @click="jump($event, JOB_STATUS.RUNNING)"><a>
         Active Jobs: </a></b><el-badge type="primary" :value="activeJobsData.length"></el-badge><br>
       <b @click="jump($event, JOB_STATUS.COMPLETE)"><a>
@@ -35,11 +32,13 @@ under the License.
     </p>
 
     <!--Stage Timeline-->
+    <!--
     <el-collapse>
       <el-collapse-item title="Event Timeline" name="1">
         { TODO: JOBS TIMELINE }
       </el-collapse-item>
     </el-collapse>
+    -->
 
     <!--Jobs list-->
     <h2 ref="activeJobs">Active Jobs
@@ -53,11 +52,12 @@ under the License.
             {{ _getFrom(scope.row.jobId) }}
           </template>
         </el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
+        <!--el-table-column label="Description" width="180"></el-table-column>
         <el-table-column label="Submitted" width="180"></el-table-column>
         <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Tasks (for all stages): Succeeded/Total"></el-table-column>
+        <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column-->
+        <!--el-table-column label="Tasks (for all stages): Succeeded/Total">
+        </el-table-column-->
         <!--<el-table-column label="Status">-->
         <!--<template slot-scope="scope">-->
         <!--<el-tag :type="_fromJobStatusToType(scope.row.status)">-->
@@ -215,10 +215,10 @@ const _preprocessMetric = function(metric) {
   Object.keys(newMetric).forEach(key => {
     // replace NOT_AVAILBLE to 'N/A'
     if (newMetric[key] === NOT_AVAILABLE) {
-      newMetric[key] = 'N/A';
+      newMetric[key] = '';
     }
 
-    if (newMetric[key] !== 'N/A' && key.toLowerCase().endsWith('bytes')) {
+    if (newMetric[key] !== '' && key.toLowerCase().endsWith('bytes')) {
       newMetric[key] = _bytesToHumanReadable(newMetric[key]);
     }
   });
@@ -230,10 +230,10 @@ const _preprocessMetric = function(metric) {
       if (_isDoneTaskEvent(lastEvent)) {
         newMetric.duration = lastEvent.timestamp - firstEvent.timestamp;
       } else {
-        newMetric.duration = 'N/A';
+        newMetric.duration = '';
       }
     } else {
-      newMetric.duration = 'N/A';
+      newMetric.duration = '';
     }
   }
 
