@@ -72,9 +72,14 @@ public final class PipeOutputWriter implements OutputWriter {
     this.pipeAndStreamMap = new HashMap<>();
   }
 
-  private void writeData(final Object element, final List<ByteOutputContext> pipeList) {
+  private void writeData(final Object element,
+                         final List<ByteOutputContext> pipeList, final boolean flush) {
     pipeList.forEach(pipe -> {
-      pipeAndStreamMap.get(pipe).writeElement(element, serializer);
+      final ByteOutputContext.ByteOutputStream stream = pipeAndStreamMap.get(pipe);
+      stream.writeElement(element, serializer);
+      if (flush) {
+        stream.flush();
+      }
     });
   }
 
@@ -89,7 +94,7 @@ public final class PipeOutputWriter implements OutputWriter {
       doInitialize();
     }
 
-    writeData(element, getPipeToWrite(element));
+    writeData(element, getPipeToWrite(element), false);
   }
 
   @Override
@@ -99,7 +104,8 @@ public final class PipeOutputWriter implements OutputWriter {
     }
 
     final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermark, srcTaskIndex);
-    writeData(watermarkWithIndex, pipes);
+    // flush data whenever receiving watermarks
+    writeData(watermarkWithIndex, pipes, true);
   }
 
   @Override
