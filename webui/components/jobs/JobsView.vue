@@ -45,7 +45,7 @@ under the License.
       <el-badge type="primary" :value="activeJobsData.length"></el-badge></h2>
     <div v-if="activeJobsData.length !== 0">
       <!--TODO: 이거 component로 refactor 하기-->
-      <el-table class="active-jobs-table" :data="activeJobsData"
+      <el-table key="aTable" class="active-jobs-table" :data="activeJobsData"
                 @row-click="handleSelect" stripe>
         <el-table-column label="Job id">
           <template slot-scope="scope">
@@ -98,7 +98,7 @@ under the License.
     <h2 ref="completedJobs">Completed Jobs
       <el-badge type="success" :value="completedJobsData.length"></el-badge></h2>
     <div v-if="completedJobsData.length !== 0">
-      <el-table class="completed-jobs-table" :data="completedJobsData"
+      <el-table key="aTable" class="completed-jobs-table" :data="completedJobsData"
                 @row-click="handleSelect" stripe>
         <el-table-column label="Job id">
           <template slot-scope="scope">
@@ -106,7 +106,9 @@ under the License.
           </template>
         </el-table-column>
         <el-table-column label="Progress">
-          <el-progress :text-inside="true" :stroke-width="18" :percentage="100"></el-progress>
+          <template slot-scope="scope">
+            <el-progress :text-inside="true" :stroke-width="18" :percentage="100"></el-progress>
+          </template>
         </el-table-column>
       </el-table>
     </div>
