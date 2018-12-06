@@ -25,16 +25,6 @@ under the License.
     <p>
       <b>Status: </b>
       <el-tag :type="_fromJobStatusToType(selectedJobStatus)">{{ selectedJobStatus }}</el-tag><br>
-      <b @click="jump($event, STATE.READY)"><a>
-        Pending Stages: </a></b><el-badge type="warning" :value="pendingStagesData.length"></el-badge><br>
-      <b @click="jump($event, STATE.EXECUTING)"><a>
-        Active Stages: </a></b><el-badge type="primary" :value="activeStagesData.length"></el-badge><br>
-      <b @click="jump($event, STATE.COMPLETE)"><a>
-        Completed Stages: </a></b><el-badge type="success" :value="completedStagesData.length"></el-badge><br>
-      <b @click="jump($event, STATE.INCOMPLETE)"><a>
-        Skipped Stages: </a></b><el-badge type="info" :value="skippedStagesData.length"></el-badge><br>
-      <b @click="jump($event, STATE.FAILED)"><a>
-        Failed Stages: </a></b><el-badge type="danger" :value="failedStagesData.length"></el-badge><br>
     </p>
 
     <el-collapse accordion @change="handleCollapse">
@@ -88,116 +78,24 @@ under the License.
     </el-collapse>
 
     <!--Stages List-->
-    <!--Pending Stages-->
-    <h2 ref="pendingStages">Pending Stages
-      <el-badge type="warning" :value="pendingStagesData.length"></el-badge></h2>
+    <h2 ref="stages">Stages
+      <el-badge type="info" :value="stageList.length"></el-badge></h2>
     <div>
       <!--<div v-if="pendingStagesData.length !== 0">-->
-      <el-table class="pending-stages-table" :data="pendingStagesData" stripe>
-        <el-table-column label="Stage id" width="80">
+      <el-table class="pending-stages-table" :data="stageList" stripe>
+        <el-table-column label="Stage id">
           <template slot-scope="scope">
             {{ scope.row }}
           </template>
         </el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
-        <el-table-column label="Submitted" width="180"></el-table-column>
-        <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Input" width="60"></el-table-column>
-        <el-table-column label="Output" width="70"></el-table-column>
-        <el-table-column label="Shuffle Read"></el-table-column>
-        <el-table-column label="Shuffle Write"></el-table-column>
+        <el-table-column label="State">
+          <template slot-scope="scope">
+            <el-tag :type="_fromStageStatusToType(selectedTaskStatistics.stageState[scope.row] == null ? STATE.INCOMPLETE : selectedTaskStatistics.stageState[scope.row])">{{ selectedTaskStatistics.stageState[scope.row] == null ? STATE.INCOMPLETE : selectedTaskStatistics.stageState[scope.row] }}</el-tag><br>
+          </template>
+        </el-table-column>
       </el-table>
     </div>
 
-    <!--Active Stages-->
-    <h2 ref="activeStages">Active Stages
-      <el-badge type="primary" :value="activeStagesData.length"></el-badge></h2>
-    <div>
-    <!--<div v-if="activeStagesData.length !== 0">-->
-      <el-table class="active-stages-table" :data="activeStagesData" stripe>
-        <el-table-column label="Stage id" width="80">
-          <template slot-scope="scope">
-            {{ scope.row }}
-          </template>
-        </el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
-        <el-table-column label="Submitted" width="180"></el-table-column>
-        <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Input" width="60"></el-table-column>
-        <el-table-column label="Output" width="70"></el-table-column>
-        <el-table-column label="Shuffle Read"></el-table-column>
-        <el-table-column label="Shuffle Write"></el-table-column>
-      </el-table>
-    </div>
-
-    <!--Completed Stages-->
-    <h2 ref="completedStages">Completed Stages
-      <el-badge type="success" :value="completedStagesData.length"></el-badge></h2>
-    <div>
-      <!--<div v-if="completedStagesData.length !== 0">-->
-      <el-table class="completed-stages-table" :data="completedStagesData" stripe>
-        <el-table-column label="Stage id" width="80">
-          <template slot-scope="scope">
-            {{ scope.row }}
-          </template>
-        </el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
-        <el-table-column label="Submitted" width="180"></el-table-column>
-        <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Input" width="60"></el-table-column>
-        <el-table-column label="Output" width="70"></el-table-column>
-        <el-table-column label="Shuffle Read"></el-table-column>
-        <el-table-column label="Shuffle Write"></el-table-column>
-      </el-table>
-    </div>
-
-    <!--Skipped Stages-->
-    <h2 ref="skippedStages">Skipped Stages
-      <el-badge type="info" :value="skippedStagesData.length"></el-badge></h2>
-    <div>
-    <!--<div v-if="skippedStagesData.length !== 0">-->
-      <el-table class="skipped-stages-table" :data="skippedStagesData" stripe>
-        <el-table-column label="Stage id" width="80">
-          <template slot-scope="scope">
-            {{ scope.row }}
-          </template>
-        </el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
-        <el-table-column label="Submitted" width="180"></el-table-column>
-        <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Input" width="60"></el-table-column>
-        <el-table-column label="Output" width="70"></el-table-column>
-        <el-table-column label="Shuffle Read"></el-table-column>
-        <el-table-column label="Shuffle Write"></el-table-column>
-      </el-table>
-    </div>
-
-    <!--Failed Stages-->
-    <h2 ref="failedStages">Failed Stages
-      <el-badge type="danger" :value="failedStagesData.length"></el-badge></h2>
-    <div>
-      <!--<div v-if="failedStagesData.length !== 0">-->
-      <el-table class="failed-stages-table" :data="failedStagesData" stripe>
-        <el-table-column label="Stage id" width="80">
-          <template slot-scope="scope">
-            {{ scope.row }}
-          </template>
-        </el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
-        <el-table-column label="Submitted" width="180"></el-table-column>
-        <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Tasks: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Input" width="60"></el-table-column>
-        <el-table-column label="Output" width="70"></el-table-column>
-        <el-table-column label="Shuffle Read"></el-table-column>
-        <el-table-column label="Shuffle Write"></el-table-column>
-        <el-table-column label="Failure Reason" width="200"></el-table-column>
-      </el-table>
-    </div>
   </el-card>
 </template>
 
@@ -264,23 +162,6 @@ export default {
     // All stages
     stageList() {
       return Object.keys(this.metricLookupMap).filter(id => /^Stage[0-9]+$/.test(id.trim()));
-    },
-    // Stages by its status
-    pendingStagesData() {
-      return []
-    },
-    activeStagesData() {
-      return []
-    },
-    completedStagesData() {
-      // TODO: make this more meaningful.
-      return Object.keys(this.metricLookupMap).filter(id => /^Stage[0-9]+$/.test(id.trim()));
-    },
-    skippedStagesData() {
-      return []
-    },
-    failedStagesData() {
-      return [];
     },
   },
 
@@ -403,6 +284,18 @@ export default {
         case JOB_STATUS.RUNNING:
           return 'primary';
         case JOB_STATUS.COMPLETE:
+          return 'success';
+        case JOB_STATUS.FAILED:
+          return 'danger';
+        default:
+          return 'info';
+      }
+    },
+    _fromStageStatusToType(status) {
+      switch (status) {
+        case STATE.INCOMPLETE:
+          return 'primary';
+        case STATE.COMPLETE:
           return 'success';
         case JOB_STATUS.FAILED:
           return 'danger';

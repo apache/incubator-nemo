@@ -100,16 +100,14 @@ under the License.
     <div v-if="completedJobsData.length !== 0">
       <el-table class="completed-jobs-table" :data="completedJobsData"
                 @row-click="handleSelect" stripe>
-        <el-table-column label="Job id" width="100">
+        <el-table-column label="Job id">
           <template slot-scope="scope">
             {{ _getFrom(scope.row.jobId) }}
           </template>
         </el-table-column>
-        <el-table-column label="Description" width="180"></el-table-column>
-        <el-table-column label="Submitted" width="180"></el-table-column>
-        <el-table-column label="Duration" width="90"></el-table-column>
-        <el-table-column label="Stages: Succeeded/Total" width="200"></el-table-column>
-        <el-table-column label="Tasks (for all stages): Succeeded/Total"></el-table-column>
+        <el-table-column label="Progress">
+          <el-progress :text-inside="true" :stroke-width="18" :percentage="100"></el-progress>
+        </el-table-column>
       </el-table>
     </div>
 
@@ -318,7 +316,7 @@ export default {
       if (this.selectedJobId !== '') {
         return this.jobs[this.selectedJobId].taskStatistics;
       } else {
-        return {metricItems: {}, tableView: [], totalTasks: 0, completedTasks: 0, progress: 0};
+        return {metricItems: {}, tableView: [], totalTasks: 0, completedTasks: 0, progress: 0, stageState: {}};
       }
     },
   },
@@ -485,6 +483,7 @@ export default {
           totalTasks: 0,
           completedTasks: 0,
           progress: 0,
+          stageState: {},
         },
       });
     },
@@ -675,6 +674,7 @@ export default {
                 break;
             }
           } else if (metricType === 'StageMetric') {
+            job.taskStatistics.stageState[data.id] = newState
             // INCOMPLETE -> COMPLETE
             switch (newState) {
               case STATE.COMPLETE:
