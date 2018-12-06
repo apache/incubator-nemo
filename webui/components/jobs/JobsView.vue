@@ -53,6 +53,9 @@ under the License.
           </template>
         </el-table-column>
         <el-table-column label="Progress">
+          <template slot-scope="scope">
+            <el-progress :text-inside="true" :stroke-width="18" :percentage="jobs[scope.row.jobId].taskStatistics.progress"></el-progress>
+          </template>
         </el-table-column>
         <!--el-table-column label="Description" width="180"></el-table-column>
         <el-table-column label="Submitted" width="180"></el-table-column>
@@ -846,7 +849,7 @@ export default {
             ts.completedTasks += 1
           }
         }
-        ts.progress = ts.totalTasks === 0 ? 0 : ts.completedTasks / ts.totalTasks
+        ts.progress = ts.totalTasks === 0 ? 0 : (ts.completedTasks / ts.totalTasks) * 100
       }
       this.$eventBus.$emit('build-table-data', {
         metricId: metric.id,
