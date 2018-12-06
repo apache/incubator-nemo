@@ -47,10 +47,12 @@ under the License.
       <!--TODO: 이거 component로 refactor 하기-->
       <el-table class="active-jobs-table" :data="activeJobsData"
                 @row-click="handleSelect" stripe>
-        <el-table-column label="Job id" width="100">
+        <el-table-column label="Job id">
           <template slot-scope="scope">
             {{ _getFrom(scope.row.jobId) }}
           </template>
+        </el-table-column>
+        <el-table-column label="Progress">
         </el-table-column>
         <!--el-table-column label="Description" width="180"></el-table-column>
         <el-table-column label="Submitted" width="180"></el-table-column>
@@ -211,6 +213,7 @@ const _bytesToHumanReadable = function(bytes) {
 // this function will preprocess TaskMetric metric array.
 const _preprocessMetric = function(metric) {
   let newMetric = Object.assign({}, metric);
+  newMetric.isCompleted = false
 
   Object.keys(newMetric).forEach(key => {
     // replace NOT_AVAILBLE to 'N/A'
@@ -232,6 +235,7 @@ const _preprocessMetric = function(metric) {
       } else {
         newMetric.duration = '';
       }
+      newMetric.isCompleted = lastEvent.newState === STATE.COMPLETE
     } else {
       newMetric.duration = '';
     }
@@ -311,7 +315,7 @@ export default {
       if (this.selectedJobId !== '') {
         return this.jobs[this.selectedJobId].taskStatistics;
       } else {
-        return {metricItems: {}, tableView: [], totalTasks: 0, completedTasks: 0};
+        return {metricItems: {}, tableView: [], totalTasks: 0, completedTasks: 0, progress: 0};
       }
     },
   },
@@ -477,6 +481,7 @@ export default {
           tableView: [], // array of metric objects
           totalTasks: 0,
           completedTasks: 0,
+          progress: 0,
         },
       });
     },
@@ -821,6 +826,7 @@ export default {
      */
     addMetricToMetricLookupMap(metric, jobId) {
       const job = this.jobs[jobId];
+      const ts = job.taskStatistics
       if (metric.group === 'JobMetric') {
         Vue.set(job.metricLookupMap, metric.id, metric);
       } else if (metric.group === 'TaskMetric') {
@@ -829,9 +835,18 @@ export default {
         if (!(metric.id in job.taskStatistics.metricItems)) {
           job.taskStatistics.tableView.push(processedMetric)
           job.taskStatistics.metricItems[metric.id] = processedMetric
+          if (processedMetric.isCompleted) {
+            ts.completedTasks += 1
+          }
         } else {
-          Object.assign(job.taskStatistics.metricItems[metric.id], processedMetric)
+          const oldCompleted = ts.metricItems[metric.id].isCompleted
+          Object.assign(ts.metricItems[metric.id], processedMetric)
+          const newCompleted = ts.metricItems[metric.id].isCompleted
+          if ((!oldCompleted) && newCompleted) {
+            ts.completedTasks += 1
+          }
         }
+        ts.progress = ts.totalTasks === 0 ? 0 : ts.completedTasks / ts.totalTasks
       }
       this.$eventBus.$emit('build-table-data', {
         metricId: metric.id,
