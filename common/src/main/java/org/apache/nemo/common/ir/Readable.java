@@ -68,7 +68,7 @@ public interface Readable<O> extends Serializable {
 
   /**
    * Close.
-   * @throws IOException when file-based reader throws.
+   * @throws IOException if file-based reader throws any.
    */
   void close() throws IOException;
 }
