@@ -311,7 +311,7 @@ export default {
       if (this.selectedJobId !== '') {
         return this.jobs[this.selectedJobId].taskStatistics;
       } else {
-        return {metricItems: {}, tableView: []};
+        return {metricItems: {}, tableView: [], totalTasks: 0, completedTasks: 0};
       }
     },
   },
@@ -475,6 +475,8 @@ export default {
         taskStatistics: {
           metricItems: {}, // id to metric object
           tableView: [], // array of metric objects
+          totalTasks: 0,
+          completedTasks: 0,
         },
       });
     },
@@ -704,6 +706,7 @@ export default {
           states: job.dagStageState,
         });
         this.buildMetricLookupMapWithDAG(jobId);
+        this.updateTotalTasksWithDAG(jobId, data.dag)
       }
       newItem.metricId = data.id;
 
@@ -781,6 +784,12 @@ export default {
       });
 
       return newMetric;
+    },
+
+    updateTotalTasksWithDAG(jobId, dag) {
+      const job = this.jobs[jobId]
+      const stages = dag.vertices
+      job.taskStatistics.totalTasks = stages.map(stage => parseInt(stage.properties.executionProperties['org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty'])).reduce((a, b) => a + b, 0)
     },
 
     /**
