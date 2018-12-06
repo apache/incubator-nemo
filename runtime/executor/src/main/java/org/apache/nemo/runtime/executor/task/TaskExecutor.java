@@ -445,8 +445,17 @@ public final class TaskExecutor {
     // Previous polling time
     long prevPollingTime = System.currentTimeMillis();
 
+
+    long logTime = System.currentTimeMillis();
+
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
+
+      if (System.currentTimeMillis() - logTime >= 2000) {
+        LOG.info("{} Availables: {}, Pending: {}", this.hashCode(), availableFetchers, pendingFetchers);
+        logTime = System.currentTimeMillis();
+      }
+
       // We first fetch data from available data fetchers
       final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
 
