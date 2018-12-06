@@ -24,6 +24,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
@@ -246,15 +247,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // The DoFnRunner interface requires WindowedValue,
       // but this windowed value is actually not used in the ReduceFnRunner internal.
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
-
-      // output watermark
-      // we set output watermark to the minimum of the timer data
-      long keyOutputTimestamp = Long.MAX_VALUE;
-      for (final TimerInternals.TimerData timer : timerDataList) {
-        keyOutputTimestamp = Math.min(keyOutputTimestamp, timer.getTimestamp().getMillis());
-      }
-
-      timerInternals.advanceOutputWatermark(new Instant(keyOutputTimestamp));
     }
   }
 
@@ -371,14 +363,21 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
     @Override
     public void emit(final WindowedValue<KV<K, Iterable<InputT>>> output) {
-      // adds the output timestamp to the watermark hold of each key
-      // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
-      // TODO #270: consider early firing
-      // TODO #270: This logic may not be applied to early firing outputs
-      keyAndWatermarkHoldMap.put(output.getValue().getKey(),
-        new Watermark(output.getTimestamp().getMillis() + 1));
+
+      // The watermark advances only in ON_TIME
+      if (output.getPane().getTiming().equals(PaneInfo.Timing.ON_TIME)) {
+        final K key = output.getValue().getKey();
+        final InMemoryTimerInternals timerInternals = (InMemoryTimerInternals)
+          inMemoryTimerInternalsFactory.timerInternalsForKey(key);
+        keyAndWatermarkHoldMap.put(key,
+          // adds the output timestamp to the watermark hold of each key
+          // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
+          new Watermark(output.getTimestamp().getMillis() + 1));
+        timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
+      }
       outputCollector.emit(output);
     }
+
     @Override
     public void emitWatermark(final Watermark watermark) {
       outputCollector.emitWatermark(watermark);

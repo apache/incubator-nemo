@@ -29,7 +29,7 @@ import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineRunner;
+import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 
@@ -111,7 +111,7 @@ public final class WindowedWordCount {
     }
 
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
-    options.setRunner(NemoPipelineRunner.class);
+    options.setRunner(NemoRunner.class);
     options.setJobName("WindowedWordCount");
 
     final Pipeline p = Pipeline.create(options);
