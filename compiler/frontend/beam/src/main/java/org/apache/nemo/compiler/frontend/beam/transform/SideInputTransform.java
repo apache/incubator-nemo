@@ -35,6 +35,7 @@ public final class SideInputTransform<T> implements Transform<WindowedValue<T>, 
 
   /**
    * Constructor.
+   * @param index side input index.
    */
   public SideInputTransform(final int index) {
     this.index = index;

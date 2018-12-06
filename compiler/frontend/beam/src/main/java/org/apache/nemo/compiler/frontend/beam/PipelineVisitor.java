@@ -33,6 +33,10 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   private static PipelineTranslator pipelineTranslator = PipelineTranslator.INSTANCE;
   private final PipelineTranslationContext context;
 
+  /**
+   * @param pipeline to visit.
+   * @param pipelineOptions pipeline options.
+   */
   PipelineVisitor(final Pipeline pipeline, final NemoPipelineOptions pipelineOptions) {
     this.context = new PipelineTranslationContext(pipeline, pipelineOptions);
   }
@@ -56,6 +60,9 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
     context.leaveCompositeTransform(node);
   }
 
+  /**
+   * @return the converted pipeline.
+   */
   DAG<IRVertex, IREdge> getConvertedPipeline() {
     return context.getBuilder().build();
   }

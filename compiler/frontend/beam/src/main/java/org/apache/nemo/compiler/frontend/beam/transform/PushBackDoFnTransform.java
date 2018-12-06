@@ -53,6 +53,15 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
   /**
    * PushBackDoFnTransform Constructor.
+   * @param doFn doFn
+   * @param inputCoder input coder
+   * @param outputCoders output coders
+   * @param mainOutputTag main output tag
+   * @param additionalOutputTags additional output tags
+   * @param windowingStrategy windowing strategy
+   * @param sideInputs side inputs
+   * @param options pipeline options
+   * @param displayData display data.
    */
   public PushBackDoFnTransform(final DoFn<InputT, OutputT> doFn,
                                final Coder<InputT> inputCoder,
@@ -103,6 +112,9 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     }
   }
 
+  /**
+   * handle pushbacks.
+   */
   private void handlePushBacks() {
     // Force-finish, before (possibly) processing pushed-back data.
     //

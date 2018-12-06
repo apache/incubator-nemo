@@ -37,7 +37,7 @@ public abstract class SourceVertex<O> extends IRVertex {
   }
 
   /**
-   * @return whether it is bounded source or not
+   * @return true if it is bounded source
    */
   public abstract boolean isBounded();
 
