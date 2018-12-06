@@ -50,6 +50,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
   /**
    * The default constructor for beam unbounded source.
    * @param source unbounded source.
+   * @param displayData static display data associated with a pipeline component.
    */
   public BeamUnboundedSourceVertex(final UnboundedSource<O, M> source,
                                    final DisplayData displayData) {
@@ -58,6 +59,10 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     this.displayData = displayData;
   }
 
+  /**
+   * Copy constructor.
+   * @param that the original vertex.
+   */
   private BeamUnboundedSourceVertex(final BeamUnboundedSourceVertex<O, M> that) {
     super(that);
     this.source = that.source;
@@ -107,6 +112,10 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     private boolean isCurrentAvailable = false;
     private boolean isFinished = false;
 
+    /**
+     * Constructor.
+     * @param unboundedSource unbounded source.
+     */
     UnboundedSourceReadable(final UnboundedSource<O, M> unboundedSource) {
       this.unboundedSource = unboundedSource;
     }

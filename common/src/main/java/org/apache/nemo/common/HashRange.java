@@ -33,6 +33,7 @@ public final class HashRange implements KeyRange<Integer> {
    * Private constructor.
    * @param rangeBeginInclusive point at which the hash range starts (inclusive).
    * @param rangeEndExclusive point at which the hash range ends (exclusive).
+   * @param isSkewed whether or not the range is skewed
    */
   private HashRange(final int rangeBeginInclusive, final int rangeEndExclusive, final boolean isSkewed) {
     if (rangeBeginInclusive < 0 || rangeEndExclusive < 0) {
@@ -53,6 +54,7 @@ public final class HashRange implements KeyRange<Integer> {
   /**
    * @param rangeStartInclusive the start of the range (inclusive)
    * @param rangeEndExclusive   the end of the range (exclusive)
+   * @param isSkewed  whether or not the range is skewed
    * @return A hash range descriptor representing [{@code rangeBeginInclusive}, {@code rangeEndExclusive})
    */
   public static HashRange of(final int rangeStartInclusive, final int rangeEndExclusive, final boolean isSkewed) {
@@ -119,6 +121,9 @@ public final class HashRange implements KeyRange<Integer> {
     return true;
   }
 
+  /**
+   * @return the hash value.
+   */
   @Override
   public int hashCode() {
     return Arrays.hashCode(new Object[] {
@@ -128,6 +133,9 @@ public final class HashRange implements KeyRange<Integer> {
     });
   }
 
+  /**
+   * @return whether or not the range is skewed.
+   */
   public boolean isSkewed() {
     return isSkewed;
   }

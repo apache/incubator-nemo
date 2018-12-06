@@ -55,6 +55,12 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   /**
    * GroupByKey constructor.
+   * @param outputCoders output coders
+   * @param mainOutputTag main output tag
+   * @param windowingStrategy windowing strategy
+   * @param options pipeline options
+   * @param reduceFn reduce function
+   * @param displayData display data.
    */
   public GroupByKeyAndWindowDoFnTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
                                           final TupleTag<KV<K, Iterable<InputT>>> mainOutputTag,
@@ -246,6 +252,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   /**
    * Get timer data.
+   * @param timerInternals in-memory timer internals.
+   * @return list of timer datas.
    */
   private List<TimerInternals.TimerData> getEligibleTimers(final InMemoryTimerInternals timerInternals) {
     final List<TimerInternals.TimerData> timerData = new LinkedList<>();
@@ -281,6 +289,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     private StateInternals stateInternals;
     private TimerInternals timerInternals;
 
+    /**
+     * @param stateInternals state internals.
+     * @param timerInternals timer internals.
+     */
     StateAndTimerForKey(final StateInternals stateInternals,
                         final TimerInternals timerInternals) {
       this.stateInternals = stateInternals;
@@ -294,6 +306,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   final class InMemoryStateInternalsFactory implements StateInternalsFactory<K> {
     private final Map<K, StateAndTimerForKey> map;
 
+    /**
+     * @param map initial map.
+     */
     InMemoryStateInternalsFactory(final Map<K, StateAndTimerForKey> map) {
       this.map = map;
     }
@@ -315,6 +330,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   final class InMemoryTimerInternalsFactory implements TimerInternalsFactory<K> {
     private final Map<K, StateAndTimerForKey> map;
 
+    /**
+     * @param map initial map.
+     */
     InMemoryTimerInternalsFactory(final Map<K, StateAndTimerForKey> map) {
       this.map = map;
     }
@@ -335,6 +353,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   final class GBKWOutputCollector implements OutputCollector<WindowedValue<KV<K, Iterable<InputT>>>> {
     private final OutputCollector<WindowedValue<KV<K, Iterable<InputT>>>> outputCollector;
+
+    /**
+     * @param outputCollector output collector.
+     */
     GBKWOutputCollector(final OutputCollector<WindowedValue<KV<K, Iterable<InputT>>>> outputCollector) {
       this.outputCollector = outputCollector;
     }

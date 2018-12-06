@@ -438,6 +438,7 @@ public final class JobLauncher {
    * @param jobConf           job configuration to get json path.
    * @param pathParameter     named parameter represents path to the json file, or an empty string
    * @param contentsParameter named parameter represents contents of the file
+   * @param defaultContent    the default configuration
    * @return configuration with contents of the file, or an empty string as value for {@code contentsParameter}
    * @throws InjectionException exception while injection.
    */

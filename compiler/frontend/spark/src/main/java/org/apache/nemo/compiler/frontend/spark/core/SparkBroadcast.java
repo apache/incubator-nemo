@@ -27,6 +27,11 @@ import scala.reflect.ClassTag$;
 public final class SparkBroadcast<T> extends org.apache.spark.broadcast.Broadcast<T> {
   private final long tag;
 
+  /**
+   * Constructor.
+   * @param tag broadcast id.
+   * @param classType class type.
+   */
   SparkBroadcast(final long tag, final Class<T> classType) {
     super(tag, ClassTag$.MODULE$.apply(classType));
     this.tag = tag;

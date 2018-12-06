@@ -194,6 +194,9 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     return asJsonNode().toString();
   }
 
+  /**
+   * @return {@link com.fasterxml.jackson.databind.JsonNode} for this execution property map.
+   */
   public ObjectNode asJsonNode() {
     final ObjectMapper mapper = new ObjectMapper();
     final ObjectNode node = mapper.createObjectNode();

@@ -25,10 +25,16 @@ public final class ExampleTestArgs {
   public static final int TIMEOUT = 240000;
   private static String fileBasePath;
 
+  /**
+   * private constructor.
+   */
   private ExampleTestArgs() {
 
   }
 
+  /**
+   * @return the file base path.
+   */
   public static String getFileBasePath() {
     if (fileBasePath == null) {
       fileBasePath = System.getProperty("user.dir") + "/../resources/";

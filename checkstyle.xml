@@ -77,6 +77,10 @@ under the License.
         <property name="message" value="Line has trailing spaces."/>
     </module>
 
+    <module name="SuppressionFilter">
+        <property name="file" value="suppressions.xml"/>
+    </module>
+
     <module name="SuppressWarningsFilter" />
 
     <module name="TreeWalker">
@@ -84,7 +88,7 @@ under the License.
         <!-- Checks for Javadoc comments.                     -->
         <!-- See http://checkstyle.sf.net/config_javadoc.html -->
         <module name="JavadocMethod">
-            <property name="severity" value="warning"/>
+            <property name="severity" value="error"/>
         </module>
         <module name="JavadocType"/>
         <!--<module name="JavadocVariable"/>-->
