@@ -17,7 +17,7 @@ specific language governing permissions and limitations
 under the License.
 -->
 <template>
-  <el-card>
+  <el-card shadow="never">
     <!--Title-->
     <h1>Nemo Jobs</h1>
 
@@ -107,7 +107,7 @@ under the License.
         </el-table-column>
         <el-table-column label="Progress">
           <template slot-scope="scope">
-            <el-progress :text-inside="true" :stroke-width="18" :percentage="100"></el-progress>
+            <el-progress :text-inside="true" :stroke-width="18" :percentage="100" status="success"></el-progress>
           </template>
         </el-table-column>
       </el-table>
@@ -851,7 +851,7 @@ export default {
             ts.completedTasks += 1
           }
         }
-        ts.progress = ts.totalTasks === 0 ? 0 : (ts.completedTasks / ts.totalTasks) * 100
+        ts.progress = ts.totalTasks === 0 ? 0 : Math.round((ts.completedTasks / ts.totalTasks) * 10000) / 100
       }
       this.$eventBus.$emit('build-table-data', {
         metricId: metric.id,

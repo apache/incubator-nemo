@@ -18,7 +18,7 @@ under the License.
 -->
 <template>
   <!--(toggle for debugging)-->
-  <el-card v-if="selectedJobId" style="background-color: ghostwhite;">
+  <el-card v-if="selectedJobId" style="background-color: ghostwhite;" shadow="never">
   <!--<el-card>-->
     <h1>Details for Job {{ jobFrom ? jobFrom : 'NULL' }}</h1>
 
@@ -90,7 +90,7 @@ under the License.
         </el-table-column>
         <el-table-column label="State">
           <template slot-scope="scope">
-            <el-tag :type="_fromStageStatusToType(selectedTaskStatistics.stageState[scope.row] == null ? STATE.INCOMPLETE : selectedTaskStatistics.stageState[scope.row])">{{ selectedTaskStatistics.stageState[scope.row] == null ? STATE.INCOMPLETE : selectedTaskStatistics.stageState[scope.row] }}</el-tag><br>
+            <el-tag :type="_fromStageStatusToType(_getStageState(selectedTaskStatistics.stageState[scope.row]))">{{ _getStageState(selectedTaskStatistics.stageState[scope.row]) }}</el-tag><br>
           </template>
         </el-table-column>
       </el-table>
@@ -290,6 +290,15 @@ export default {
         default:
           return 'info';
       }
+    },
+    _getStageState(status) {
+      if (this.selectedJobStatus === JOB_STATUS.COMPLETE) {
+        return STATE.COMPLETE
+      }
+      if (status == null) {
+        return STATE.INCOMPLETE
+      }
+      return status
     },
     _fromStageStatusToType(status) {
       switch (status) {
