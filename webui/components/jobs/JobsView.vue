@@ -838,7 +838,7 @@ export default {
         Vue.set(job.metricLookupMap, metric.id, metric);
         const processedMetric = _preprocessMetric(metric)
         if (!(metric.id in job.taskStatistics.metricItems)) {
-          job.taskStatistics.tableView.push(processedMetric)
+          job.taskStatistics.tableView.unshift(processedMetric)
           job.taskStatistics.metricItems[metric.id] = processedMetric
           if (processedMetric.isCompleted) {
             ts.completedTasks += 1
