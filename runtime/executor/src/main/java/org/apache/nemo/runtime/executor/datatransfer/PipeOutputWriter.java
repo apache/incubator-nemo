@@ -30,9 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Represents the output data transfer from a task.
@@ -50,6 +48,7 @@ public final class PipeOutputWriter implements OutputWriter {
   private boolean initialized;
   private Serializer serializer;
   private List<ByteOutputContext> pipes;
+  private final Map<ByteOutputContext, ByteOutputContext.ByteOutputStream> pipeAndStreamMap;
 
   /**
    * Constructor.
@@ -70,20 +69,18 @@ public final class PipeOutputWriter implements OutputWriter {
     this.partitioner = OutputWriter.getPartitioner(runtimeEdge, hashRangeMultiplier);
     this.runtimeEdge = runtimeEdge;
     this.srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(srcTaskId);
+    this.pipeAndStreamMap = new HashMap<>();
   }
 
   private void writeData(final Object element, final List<ByteOutputContext> pipeList) {
     pipeList.forEach(pipe -> {
-      try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
-        pipeToWriteTo.writeElement(element, serializer);
-      } catch (IOException e) {
-        throw new RuntimeException(e); // For now we crash the executor on IOException
-      }
+      pipeAndStreamMap.get(pipe).writeElement(element, serializer);
     });
   }
 
   /**
    * Writes output element.
+   * This method is not a thread-safe.
    * @param element the element to write.
    */
   @Override
@@ -119,6 +116,7 @@ public final class PipeOutputWriter implements OutputWriter {
 
     pipes.forEach(pipe -> {
       try {
+        pipeAndStreamMap.get(pipe).close();
         pipe.close();
       } catch (IOException e) {
         throw new RuntimeException(e);
@@ -134,6 +132,14 @@ public final class PipeOutputWriter implements OutputWriter {
     this.pipes = pipeManagerWorker.getOutputContexts(runtimeEdge, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
     LOG.info("Finish - doInitialize() {}", runtimeEdge);
+    pipes.forEach(pipe -> {
+      try {
+        pipeAndStreamMap.put(pipe, pipe.newOutputStream());
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    });
   }
 
   private List<ByteOutputContext> getPipeToWrite(final Object element) {

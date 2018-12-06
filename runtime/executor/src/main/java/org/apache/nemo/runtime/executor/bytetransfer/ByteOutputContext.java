@@ -47,7 +47,6 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
   private final Channel channel;
 
-  private volatile ByteOutputStream currentByteOutputStream = null;
   private volatile boolean closed = false;
 
   /**
@@ -76,11 +75,8 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
     if (closed) {
       throw new IOException("Context already closed.");
     }
-    if (currentByteOutputStream != null) {
-      currentByteOutputStream.close();
-    }
-    currentByteOutputStream = new ByteOutputStream();
-    return currentByteOutputStream;
+
+    return new ByteOutputStream();
   }
 
 
@@ -97,9 +93,6 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
     ensureNoException();
     if (closed) {
       return;
-    }
-    if (currentByteOutputStream != null) {
-      currentByteOutputStream.close();
     }
     channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId()))
       .addListener(getChannelWriteListener());
@@ -174,12 +167,14 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       final Path path = Paths.get(fileArea.getPath());
       long cursor = fileArea.getPosition();
       long bytesToSend = fileArea.getCount();
+      boolean init = true;
       while (bytesToSend > 0) {
         final long size = Math.min(bytesToSend, DataFrameEncoder.LENGTH_MAX);
         final FileRegion fileRegion = new DefaultFileRegion(FileChannel.open(path), cursor, size);
-        writeDataFrame(fileRegion, size);
+        writeDataFrame(fileRegion, size, init);
         cursor += size;
         bytesToSend -= size;
+        init = false;
       }
       return this;
     }
@@ -191,8 +186,10 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       }
       if (newSubStream) {
         // to emit a frame with new sub-stream flag
-        writeDataFrame(null, 0);
+        writeDataFrame(null, 0, true);
       }
+
+      channel.flush();
       closed = true;
     }
 
@@ -202,7 +199,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      */
     private void writeByteBuf(final ByteBuf byteBuf) throws IOException {
       if (byteBuf.readableBytes() > 0) {
-        writeDataFrame(byteBuf, byteBuf.readableBytes());
+        writeDataFrame(byteBuf, byteBuf.readableBytes(), true);
       }
     }
 
@@ -228,20 +225,25 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       }
     }
 
+    @Override
+    public void flush() {
+      channel.flush();
+    }
+
     /**
      * Writes a data frame.
      * @param body        the body or {@code null}
      * @param length      the length of the body, in bytes
      * @throws IOException when an exception has been set or this stream was closed
      */
-    private void writeDataFrame(final Object body, final long length) throws IOException {
+    private void writeDataFrame(
+      final Object body, final long length, final boolean openSubStream) throws IOException {
       ensureNoException();
       if (closed) {
         throw new IOException("Stream already closed.");
       }
-      channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, newSubStream))
+      channel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
         .addListener(getChannelWriteListener());
-      newSubStream = false;
     }
   }
 }
