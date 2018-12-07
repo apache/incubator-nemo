@@ -90,8 +90,9 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
       LOG.info("{}, Add side input at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
 
-      handlePushBacks();
-      LOG.info("{}, Handle pushback at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
+
+      LOG.info("{}, Handle pushback cnt: {} at {}: {}", System.currentTimeMillis() - st,
+        handlePushBacks(), this.hashCode(), data);
 
       // See if we can emit a new watermark, as we may have processed some pushed-back elements
       onWatermark(new Watermark(curInputWatermark));
@@ -109,7 +110,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     }
   }
 
-  private void handlePushBacks() {
+  private int handlePushBacks() {
     // Force-finish, before (possibly) processing pushed-back data.
     //
     // Main reason:
@@ -121,11 +122,13 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     // With the new side input added, we may be able to process some pushed-back elements.
     final List<WindowedValue<InputT>> pushedBackAgain = new ArrayList<>();
     long pushedBackAgainWatermark = Long.MAX_VALUE;
+    int cnt = 0;
     for (final WindowedValue<InputT> curPushedBack : curPushedBacks) {
       checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
         getPushBackRunner().processElementInReadyWindows(curPushedBack);
       checkAndFinishBundle();
+      cnt += 1;
       for (final WindowedValue<InputT> wv : pushedBack) {
         pushedBackAgainWatermark = Math.min(pushedBackAgainWatermark, wv.getTimestamp().getMillis());
         pushedBackAgain.add(wv);
@@ -133,6 +136,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     }
     curPushedBacks = pushedBackAgain;
     curPushedBackWatermark = pushedBackAgainWatermark;
+    return cnt;
   }
 
   @Override
