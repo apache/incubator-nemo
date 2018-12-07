@@ -81,16 +81,21 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     // Need to distinguish side/main inputs and push-back main inputs.
     if (data.getValue() instanceof SideInputElement) {
       // This element is a Side Input
+      final long st = System.currentTimeMillis();
       LOG.info("Receive Side input at {}: {}", this.hashCode(), data);
       // TODO #287: Consider Explicit Multi-Input IR Transform
       final WindowedValue<SideInputElement> sideInputElement = (WindowedValue<SideInputElement>) data;
       final PCollectionView view = getSideInputs().get(sideInputElement.getValue().getSideInputIndex());
       getSideInputReader().addSideInputElement(view, data);
 
+      LOG.info("{}, Add side input at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
+
       handlePushBacks();
+      LOG.info("{}, Handle pushback at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
 
       // See if we can emit a new watermark, as we may have processed some pushed-back elements
       onWatermark(new Watermark(curInputWatermark));
+      LOG.info("{}, On watermark at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
     } else {
       // This element is the Main Input
       checkAndInvokeBundle();
