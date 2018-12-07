@@ -48,6 +48,8 @@ import org.apache.nemo.runtime.executor.datatransfer.*;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
@@ -444,6 +446,9 @@ public final class TaskExecutor {
 
     // Previous polling time
     long prevPollingTime = System.currentTimeMillis();
+    long handleCnt = 0;
+    long missCnt = 0;
+    long prevLogTime = System.currentTimeMillis();
 
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
@@ -453,16 +458,24 @@ public final class TaskExecutor {
       final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
 
       while (availableIterator.hasNext()) {
+
+        if (System.currentTimeMillis() - prevLogTime >= 2000) {
+          LOG.info("{} Handle: {}, Miss: {}", taskId, handleCnt, missCnt);
+          prevLogTime = System.currentTimeMillis();
+        }
+
         final DataFetcher dataFetcher = availableIterator.next();
         try {
           final Object element = dataFetcher.fetchDataElement();
           onEventFromDataFetcher(element, dataFetcher);
+          handleCnt += 1;
           if (element instanceof Finishmark) {
             availableIterator.remove();
           }
         } catch (final NoSuchElementException e) {
           // No element in current data fetcher, fetch data from next fetcher
           // move current data fetcher to pending.
+          missCnt += 1;
           availableIterator.remove();
           pendingFetchers.add(dataFetcher);
         } catch (final IOException e) {
@@ -483,10 +496,16 @@ public final class TaskExecutor {
         prevPollingTime = currentTime;
 
         while (pendingIterator.hasNext()) {
+
+          if (System.currentTimeMillis() - prevLogTime >= 2000) {
+            LOG.info("{} Handle: {}, Miss: {}", taskId, handleCnt, missCnt);
+            prevLogTime = System.currentTimeMillis();
+          }
           final DataFetcher dataFetcher = pendingIterator.next();
           try {
             final Object element = dataFetcher.fetchDataElement();
             onEventFromDataFetcher(element, dataFetcher);
+            handleCnt += 1;
 
             // We processed data. This means the data fetcher is now available.
             // Add current data fetcher to available
@@ -497,6 +516,7 @@ public final class TaskExecutor {
 
           } catch (final NoSuchElementException e) {
             // The current data fetcher is still pending.. try next data fetcher
+            missCnt += 1;
           } catch (final IOException e) {
             // IOException means that this task should be retried.
             taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
@@ -507,6 +527,10 @@ public final class TaskExecutor {
         }
       }
 
+      if (System.currentTimeMillis() - prevLogTime >= 2000) {
+        LOG.info("{} Handle: {}, Miss: {}", taskId, handleCnt, missCnt);
+        prevLogTime = System.currentTimeMillis();
+      }
       // If there are no available fetchers,
       // Sleep and retry fetching element from pending fetchers every polling interval
       if (availableFetchers.isEmpty() && !pendingFetchers.isEmpty()) {
