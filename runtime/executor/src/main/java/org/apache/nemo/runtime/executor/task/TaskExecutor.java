@@ -449,6 +449,7 @@ public final class TaskExecutor {
     long prevLogTime = System.currentTimeMillis();
     long processingTime = 0;
     long fetchTime = 0;
+    final long pd = 3000;
 
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
@@ -459,7 +460,7 @@ public final class TaskExecutor {
 
       while (availableIterator.hasNext()) {
 
-        if (System.currentTimeMillis() - prevLogTime >= 2000) {
+        if (System.currentTimeMillis() - prevLogTime >= pd) {
           LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
           prevLogTime = System.currentTimeMillis();
         }
@@ -501,7 +502,7 @@ public final class TaskExecutor {
 
         while (pendingIterator.hasNext()) {
 
-          if (System.currentTimeMillis() - prevLogTime >= 2000) {
+          if (System.currentTimeMillis() - prevLogTime >= pd) {
             LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
             prevLogTime = System.currentTimeMillis();
           }
@@ -535,7 +536,7 @@ public final class TaskExecutor {
         }
       }
 
-      if (System.currentTimeMillis() - prevLogTime >= 2000) {
+      if (System.currentTimeMillis() - prevLogTime >= pd) {
         LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
         prevLogTime = System.currentTimeMillis();
       }
