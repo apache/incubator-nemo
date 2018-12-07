@@ -91,8 +91,9 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       LOG.info("{}, Add side input at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
 
 
+      int cnt = handlePushBacks();
       LOG.info("{}, Handle pushback cnt: {} at {}: {}", System.currentTimeMillis() - st,
-        handlePushBacks(), this.hashCode(), data);
+        cnt, this.hashCode(), data);
 
       // See if we can emit a new watermark, as we may have processed some pushed-back elements
       onWatermark(new Watermark(curInputWatermark));
