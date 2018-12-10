@@ -341,7 +341,7 @@ final class PipelineTranslator {
 
     // Check if the partial combining optimization can be applied.
     // If not, simply use the default Combine implementation by entering into it.
-    if (!isMainInputBounded(beamNode, ctx.getPipeline())) {
+    if (!(isMainInputBounded(beamNode, ctx.getPipeline()) && isGlobalWindow(beamNode, ctx.getPipeline()))) {
       // TODO #263: Partial Combining for Beam Streaming
       return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
     }
