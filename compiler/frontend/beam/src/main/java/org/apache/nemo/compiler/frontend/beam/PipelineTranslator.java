@@ -341,7 +341,7 @@ final class PipelineTranslator {
 
     // Check if the partial combining optimization can be applied.
     // If not, simply use the default Combine implementation by entering into it.
-    if (!isGlobalWindow(beamNode, ctx.getPipeline())) {
+    if (!(isMainInputBounded(beamNode, ctx.getPipeline()) && isGlobalWindow(beamNode, ctx.getPipeline()))) {
       // TODO #263: Partial Combining for Beam Streaming
       return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
     }
@@ -500,6 +500,7 @@ final class PipelineTranslator {
     }
   }
 
+
   /**
    * @param beamNode the beam node to be translated.
    * @param pipeline pipeline.
@@ -510,5 +511,17 @@ final class PipelineTranslator {
     final PCollection<?> mainInput = (PCollection<?>)
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
     return mainInput.getWindowingStrategy().getWindowFn() instanceof GlobalWindows;
+  }
+
+  /**
+   * @param beamNode the beam node to be translated.
+   * @param pipeline pipeline.
+   * @return true if the main input bounded.
+   */
+  private static boolean isMainInputBounded(final TransformHierarchy.Node beamNode, final Pipeline pipeline) {
+    final AppliedPTransform pTransform = beamNode.toAppliedPTransform(pipeline);
+    final PCollection<?> mainInput = (PCollection<?>)
+      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+    return mainInput.isBounded() == PCollection.IsBounded.BOUNDED;
   }
 }
