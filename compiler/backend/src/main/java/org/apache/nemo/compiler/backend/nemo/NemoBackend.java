@@ -39,6 +39,7 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
 
   /**
    * Constructor.
+   * @param physicalPlanGenerator physical plan generator.
    */
   @Inject
   private NemoBackend(final PhysicalPlanGenerator physicalPlanGenerator) {

@@ -126,6 +126,7 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
 
     /**
      * Constructor.
+     * @param iterable placeholder for side input data.
      */
     public MultiView(final Iterable<T> iterable) {
       // Create a placeholder for side input data. CreateViewTransform#onData stores data to this list.

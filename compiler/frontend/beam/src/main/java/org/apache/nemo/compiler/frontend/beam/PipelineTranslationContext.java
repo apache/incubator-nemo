@@ -69,6 +69,9 @@ final class PipelineTranslationContext {
     this.pipelineOptions = pipelineOptions;
   }
 
+  /**
+   * @param compositeTransform composite transform.
+   */
   void enterCompositeTransform(final TransformHierarchy.Node compositeTransform) {
     if (compositeTransform.getTransform() instanceof LoopCompositeTransform) {
       final LoopVertex loopVertex = new LoopVertex(compositeTransform.getFullName());
@@ -78,6 +81,9 @@ final class PipelineTranslationContext {
     }
   }
 
+  /**
+   * @param compositeTransform composite transform.
+   */
   void leaveCompositeTransform(final TransformHierarchy.Node compositeTransform) {
     if (compositeTransform.getTransform() instanceof LoopCompositeTransform) {
       loopVertexStack.pop();
@@ -164,6 +170,11 @@ final class PipelineTranslationContext {
     }
   }
 
+  /**
+   * @param edge IR edge to add.
+   * @param elementCoder element coder.
+   * @param windowCoder window coder.
+   */
   void addEdge(final IREdge edge, final Coder elementCoder, final Coder windowCoder) {
     edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
     if (elementCoder instanceof KvCoder) {
@@ -209,22 +220,40 @@ final class PipelineTranslationContext {
     pValueToProducerVertex.put(output, irVertex);
   }
 
+  /**
+   * @return the pipeline.
+   */
   Pipeline getPipeline() {
     return pipeline;
   }
 
+  /**
+   * @return the pipeline options.
+   */
   PipelineOptions getPipelineOptions() {
     return pipelineOptions;
   }
 
+  /**
+   * @return the dag builder of this translation context.
+   */
   DAGBuilder getBuilder() {
     return builder;
   }
 
+  /**
+   * @param pValue {@link PValue}
+   * @return the producer beam node.
+   */
   TransformHierarchy.Node getProducerBeamNodeOf(final PValue pValue) {
     return pValueToProducerBeamNode.get(pValue);
   }
 
+  /**
+   * @param src source IR vertex.
+   * @param dst destination IR vertex.
+   * @return the communication pattern property value.
+   */
   private CommunicationPatternProperty.Value getCommPattern(final IRVertex src, final IRVertex dst) {
     final Class<?> constructUnionTableFn;
     try {
@@ -256,6 +285,7 @@ final class PipelineTranslationContext {
   /**
    * Get appropriate coder for {@link PCollectionView}.
    * @param view {@link PCollectionView}
+   * @param context translation context.
    * @return appropriate {@link Coder} for {@link PCollectionView}
    */
   private static Coder<?> getCoderForView(final PCollectionView view, final PipelineTranslationContext context) {

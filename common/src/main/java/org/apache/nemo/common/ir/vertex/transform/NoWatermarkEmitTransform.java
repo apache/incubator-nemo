@@ -28,6 +28,9 @@ import org.apache.nemo.common.punctuation.Watermark;
  */
 public abstract class NoWatermarkEmitTransform<I, O> implements Transform<I, O> {
 
+  /**
+   * @param watermark watermark
+   */
   @Override
   public final void onWatermark(final Watermark watermark) {
     // do nothing

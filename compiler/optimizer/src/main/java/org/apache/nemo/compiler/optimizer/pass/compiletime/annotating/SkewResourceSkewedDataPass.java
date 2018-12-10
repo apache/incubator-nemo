@@ -44,6 +44,11 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
     super(SkewResourceSkewedDataPass.class);
   }
 
+  /**
+   * @param dag that contains the {@code v}.
+   * @param v to inspect.
+   * @return whether or not the vertex has parent with MetricCollectTransform.
+   */
   private boolean hasParentWithMetricCollectTransform(final DAG<IRVertex, IREdge> dag,
                                                       final IRVertex v) {
     List<IRVertex> parents = dag.getParents(v.getId());

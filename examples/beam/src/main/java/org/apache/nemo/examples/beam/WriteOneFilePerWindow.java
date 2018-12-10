@@ -42,6 +42,12 @@ public final class WriteOneFilePerWindow extends PTransform<PCollection<String>,
   private String filenamePrefix;
   @Nullable
   private Integer numShards;
+
+   /**
+    * Constructor.
+    * @param filenamePrefix file name prefix.
+    * @param numShards number of shards.
+    */
    public WriteOneFilePerWindow(final String filenamePrefix, final Integer numShards) {
     this.filenamePrefix = filenamePrefix;
     this.numShards = numShards;
@@ -67,9 +73,19 @@ public final class WriteOneFilePerWindow extends PTransform<PCollection<String>,
    */
   public static final class PerWindowFiles extends FileBasedSink.FilenamePolicy {
      private final ResourceId baseFilename;
+
+     /**
+      * Constructor.
+      * @param baseFilename base file name.
+      */
      PerWindowFiles(final ResourceId baseFilename) {
       this.baseFilename = baseFilename;
     }
+
+     /**
+      * @param window interval window
+      * @return file name prefix.
+      */
      String filenamePrefixForWindow(final IntervalWindow window) {
       final String prefix =
           baseFilename.isDirectory() ? "" : firstNonNull(baseFilename.getFilename(), "");
