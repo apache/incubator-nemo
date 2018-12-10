@@ -26,6 +26,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.AppliedPTransform;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.display.DisplayData;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -486,7 +487,7 @@ final class PipelineTranslator {
       Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
     final TupleTag mainOutputTag = new TupleTag<>();
 
-    if (isMainInputBounded(beamNode, ctx.getPipeline())) {
+    if (isGlobalWindow(beamNode, ctx.getPipeline())) {
       return new GroupByKeyTransform();
     } else {
       return new GroupByKeyAndWindowDoFnTransform(
@@ -497,6 +498,19 @@ final class PipelineTranslator {
         SystemReduceFn.buffering(mainInput.getCoder()),
         DisplayData.from(beamNode.getTransform()));
     }
+  }
+
+
+  /**
+   * @param beamNode the beam node to be translated.
+   * @param pipeline pipeline.
+   * @return true if the main input has global window.
+   */
+  private static boolean isGlobalWindow(final TransformHierarchy.Node beamNode, final Pipeline pipeline) {
+    final AppliedPTransform pTransform = beamNode.toAppliedPTransform(pipeline);
+    final PCollection<?> mainInput = (PCollection<?>)
+      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+    return mainInput.getWindowingStrategy().getWindowFn() instanceof GlobalWindows;
   }
 
   /**
