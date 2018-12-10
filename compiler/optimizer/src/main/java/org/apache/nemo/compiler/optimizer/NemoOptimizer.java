@@ -54,6 +54,12 @@ public final class NemoOptimizer implements Optimizer {
   private final Map<UUID, Integer> cacheIdToParallelism = new HashMap<>();
   private int irDagCount = 0;
 
+  /**
+   * @param dagDirectory to store JSON representation of intermediate DAGs.
+   * @param optimizationPolicy the name of the optimization policy.
+   * @param pubSubEventHandlerWrapper pub/sub event handler.
+   * @param injector reef injector.
+   */
   @Inject
   private NemoOptimizer(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                         @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,

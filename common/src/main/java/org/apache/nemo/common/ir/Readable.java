@@ -41,6 +41,7 @@ public interface Readable<O> extends Serializable {
    *
    * It can throw NoSuchElementException although it is not finished in Unbounded source.
    * @return a data read by the readable.
+   * @throws NoSuchElementException when no element exists
    */
   O readCurrent() throws NoSuchElementException;
 
@@ -67,6 +68,7 @@ public interface Readable<O> extends Serializable {
 
   /**
    * Close.
+   * @throws IOException if file-based reader throws any.
    */
   void close() throws IOException;
 }

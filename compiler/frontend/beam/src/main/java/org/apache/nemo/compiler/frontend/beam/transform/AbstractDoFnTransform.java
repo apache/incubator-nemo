@@ -114,34 +114,66 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     this.displayData = displayData;
   }
 
+  /**
+   * Getter function for side inputs.
+   * @return the side inputs
+   */
   final Map<Integer, PCollectionView<?>> getSideInputs() {
     return sideInputs;
   }
 
+  /**
+   * Getter function for output manager.
+   * @return the output manager.
+   */
   final DoFnRunners.OutputManager getOutputManager() {
     return outputManager;
   }
 
+  /**
+   * Getter function for windowing strategy.
+   * @return the windowing strategy.
+   */
   final WindowingStrategy getWindowingStrategy() {
     return windowingStrategy;
   }
 
+  /**
+   * Getter function for output tag.
+   * @return main output tag.
+   */
   final TupleTag<OutputT> getMainOutputTag() {
     return mainOutputTag;
   }
 
+  /**
+   * Getter function for DoFn runner.
+   * @return DoFn runner.
+   */
   final DoFnRunner<InterT, OutputT> getDoFnRunner() {
     return doFnRunner;
   }
 
+  /**
+   * Getter function for push back runner.
+   * @return push back runner.
+   */
   final PushbackSideInputDoFnRunner<InterT, OutputT> getPushBackRunner() {
     return pushBackRunner;
   }
 
+  /**
+   * Getter function for side input reader.
+   * @return side input reader.
+   */
   final InMemorySideInputReader getSideInputReader() {
     return sideInputReader;
   }
 
+  /**
+   * Getter function for DoFn.
+   * @return DoFn.
+   */
   public final DoFn getDoFn() {
     return doFn;
   }
@@ -250,6 +282,10 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       : SimplePushbackSideInputDoFnRunner.<InterT, OutputT>create(doFnRunner, sideInputs.values(), sideInputReader);
   }
 
+  /**
+   * Getter function for output collector.
+   * @return output collector.
+   */
   public final OutputCollector<WindowedValue<OutputT>> getOutputCollector() {
     return outputCollector;
   }

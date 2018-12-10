@@ -47,6 +47,9 @@ import java.util.List;
 public final class EmptyComponents {
   public static final Transform EMPTY_TRANSFORM = new EmptyTransform("");
 
+  /**
+   * private constructor.
+   */
   private EmptyComponents() {
   }
 

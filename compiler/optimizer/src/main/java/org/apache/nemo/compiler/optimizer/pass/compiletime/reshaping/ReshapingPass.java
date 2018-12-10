@@ -43,6 +43,9 @@ public abstract class ReshapingPass extends CompileTimePass {
         ? new HashSet<>() : new HashSet<>(Arrays.asList(requires.value()));
   }
 
+  /**
+   * @return the prerequisite execution properties.
+   */
   public final Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties() {
     return prerequisiteExecutionProperties;
   }

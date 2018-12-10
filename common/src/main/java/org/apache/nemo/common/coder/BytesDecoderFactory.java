@@ -43,6 +43,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
 
   /**
    * Static initializer of the decoder.
+   * @return the initializer.
    */
   public static BytesDecoderFactory of() {
     return BYTES_DECODER_FACTORY;

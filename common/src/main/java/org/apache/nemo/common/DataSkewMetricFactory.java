@@ -28,11 +28,15 @@ public final class DataSkewMetricFactory implements MetricFactory<Map<Integer, K
 
   /**
    * Default constructor.
+   * @param metric metric.
    */
   public DataSkewMetricFactory(final Map<Integer, KeyRange> metric) {
     this.metric = metric;
   }
 
+  /**
+   * @return the metric.
+   */
   public Map<Integer, KeyRange> getMetric() {
     return metric;
   }

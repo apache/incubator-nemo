@@ -63,6 +63,7 @@ public interface Transform<I, O> extends Serializable {
    */
   interface Context extends Serializable {
     /**
+     * @param id of the variable to get.
      * @return the broadcast variable.
      */
     Object getBroadcastVariable(Serializable id);

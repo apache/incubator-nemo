@@ -29,6 +29,9 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourceLocalityProper
 @Annotates(ResourceLocalityProperty.class)
 public final class ResourceLocalityPass extends AnnotatingPass {
 
+  /**
+   * Constructor.
+   */
   public ResourceLocalityPass() {
     super(ResourceLocalityPass.class);
   }

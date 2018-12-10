@@ -39,6 +39,8 @@ public final class AggregateMetricTransform<I, O> extends NoWatermarkEmitTransfo
 
   /**
    * Default constructor.
+   * @param aggregatedDynOptData per-stage aggregated dynamic optimization data.
+   * @param dynOptDataAggregator aggregator to use.
    */
   public AggregateMetricTransform(final O aggregatedDynOptData,
                                   final BiFunction<Object, O, O> dynOptDataAggregator) {

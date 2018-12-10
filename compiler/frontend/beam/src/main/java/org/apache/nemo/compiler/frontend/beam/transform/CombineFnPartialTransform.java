@@ -52,6 +52,7 @@ public final class CombineFnPartialTransform<K, I, A>
 
   /**
    * Constructor.
+   * @param combineFn combine function.
    */
   public CombineFnPartialTransform(final CombineFnBase.GlobalCombineFn<I, A, ?> combineFn) {
     this.combineFnRunner = GlobalCombineFnRunners.create(combineFn);

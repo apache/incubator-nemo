@@ -61,7 +61,7 @@ public final class StateMachine {
    * Sets the current state as a certain state.
    *
    * @param state a state
-   * @throws RuntimeException if the state is unknown state, or the transition
+   * @throws IllegalStateTransitionException the state is unknown state, or the transition
    * from the current state to the specified state is illegal
    */
   public synchronized void setState(final Enum state) throws IllegalStateTransitionException {
@@ -86,7 +86,7 @@ public final class StateMachine {
    * @param state a state
    * @return {@code true} if successful. {@code false} indicates that
    * the actual value was not equal to the expected value.
-   * @throws RuntimeException if the state is unknown state, or the transition
+   * @throws IllegalStateTransitionException if the state is unknown state, or the transition
    * from the current state to the specified state is illegal
    */
   public synchronized boolean compareAndSetState(final Enum expectedCurrentState,

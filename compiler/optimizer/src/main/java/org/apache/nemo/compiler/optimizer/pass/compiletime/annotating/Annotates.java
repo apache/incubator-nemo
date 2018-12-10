@@ -29,5 +29,8 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 public @interface Annotates {
+  /**
+   * @return the execution property the class annotates.
+   */
   Class<? extends ExecutionProperty>[] value() default {};
 }
