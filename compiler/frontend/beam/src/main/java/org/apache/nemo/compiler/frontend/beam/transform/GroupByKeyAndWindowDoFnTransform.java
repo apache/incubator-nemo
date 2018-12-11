@@ -201,10 +201,16 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   public void onWatermark(final Watermark watermark) {
     checkAndInvokeBundle();
     inputWatermark = watermark;
+
+    final long st = System.currentTimeMillis();
     processElementsAndTriggerTimers(Instant.now(), Instant.now());
     // Emit watermark to downstream operators
     emitOutputWatermark();
     checkAndFinishBundle();
+
+    final long et = System.currentTimeMillis();
+    LOG.info("{}/{} latency {}",
+      getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st));
   }
 
   /**
