@@ -83,10 +83,18 @@ public final class ResourceSitePass extends AnnotatingPass {
     return dag;
   }
 
+  /**
+   * @param value bandwidth information in serialized JSON string.
+   */
   public static void setBandwidthSpecificationString(final String value) {
     bandwidthSpecificationString = value;
   }
 
+  /**
+   * @param nodes to distribute the shares
+   * @param parallelism number of parallel tasks.
+   * @return share for each node.
+   */
   private static HashMap<String, Integer> getEvenShares(final List<String> nodes, final int parallelism) {
     final HashMap<String, Integer> shares = new HashMap<>();
     final int defaultShare = parallelism / nodes.size();
@@ -97,6 +105,10 @@ public final class ResourceSitePass extends AnnotatingPass {
     return shares;
   }
 
+  /**
+   * @param dag IR DAG.
+   * @param bandwidthSpecification bandwidth specification.
+   */
   private static void assignNodeShares(
       final DAG<IRVertex, IREdge> dag,
       final BandwidthSpecification bandwidthSpecification) {
@@ -230,9 +242,16 @@ public final class ResourceSitePass extends AnnotatingPass {
     private final Map<String, Integer> uplinkBandwidth = new HashMap<>();
     private final Map<String, Integer> downlinkBandwidth = new HashMap<>();
 
+    /**
+     * Private constructor.
+     */
     private BandwidthSpecification() {
     }
 
+    /**
+     * @param jsonString serialized bandwidth specification.
+     * @return the bandwidth specification.
+     */
     static BandwidthSpecification fromJsonString(final String jsonString) {
       final BandwidthSpecification specification = new BandwidthSpecification();
       try {
@@ -253,14 +272,25 @@ public final class ResourceSitePass extends AnnotatingPass {
       return specification;
     }
 
+    /**
+     * @param nodeName the node name to read uplink bandwidth information.
+     * @return the uplink bandwidth.
+     */
     int up(final String nodeName) {
       return uplinkBandwidth.get(nodeName);
     }
 
+    /**
+     * @param nodeName the node name to read downlink bandwidth information.
+     * @return the downlink bandwidth.
+     */
     int down(final String nodeName) {
       return downlinkBandwidth.get(nodeName);
     }
 
+    /**
+     * @return the list of nodes.
+     */
     List<String> getNodes() {
       return nodeNames;
     }

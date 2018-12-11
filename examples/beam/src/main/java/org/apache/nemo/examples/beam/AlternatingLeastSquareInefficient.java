@@ -19,7 +19,7 @@
 package org.apache.nemo.examples.beam;
 
 import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineRunner;
+import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.CoderProviders;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -116,7 +116,7 @@ public final class AlternatingLeastSquareInefficient {
     }
 
     final PipelineOptions options = PipelineOptionsFactory.create();
-    options.setRunner(NemoPipelineRunner.class);
+    options.setRunner(NemoRunner.class);
     options.setJobName("ALS");
     options.setStableUniqueNames(PipelineOptions.CheckEnabled.OFF);
 

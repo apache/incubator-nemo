@@ -29,6 +29,9 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 @Annotates(ResourceSlotProperty.class)
 public final class ResourceSlotPass extends AnnotatingPass {
 
+  /**
+   * Constructor.
+   */
   public ResourceSlotPass() {
     super(ResourceSlotPass.class);
   }

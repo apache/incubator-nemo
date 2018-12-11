@@ -28,7 +28,7 @@ import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineRunner;
+import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 
@@ -44,6 +44,10 @@ public final class WindowedBroadcast {
   private WindowedBroadcast() {
   }
 
+  /**
+   * @param p pipeline.
+   * @return source.
+   */
   private static PCollection<Long> getSource(final Pipeline p) {
     return p.apply(GenerateSequence
       .from(1)
@@ -62,7 +66,7 @@ public final class WindowedBroadcast {
       .every(Duration.standardSeconds(1)));
 
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
-    options.setRunner(NemoPipelineRunner.class);
+    options.setRunner(NemoRunner.class);
     options.setJobName("WindowedBroadcast");
 
     final Pipeline p = Pipeline.create(options);

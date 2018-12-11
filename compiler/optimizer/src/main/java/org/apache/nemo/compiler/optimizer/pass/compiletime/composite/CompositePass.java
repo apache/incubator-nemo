@@ -77,6 +77,9 @@ public abstract class CompositePass extends CompileTimePass {
     }
   }
 
+  /**
+   * @return the prerequisite execution properties.
+   */
   public final Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties() {
     return prerequisiteExecutionProperties;
   }

@@ -53,6 +53,7 @@ public final class CombineFnFinalTransform<K, A, O>
 
   /**
    * Constructor.
+   * @param combineFn combine function.
    */
   public CombineFnFinalTransform(final CombineFnBase.GlobalCombineFn<?, A, O> combineFn) {
     this.combineFnRunner = GlobalCombineFnRunners.create(combineFn);
