@@ -358,13 +358,22 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // The watermark advances only in ON_TIME
       if (output.getPane().getTiming().equals(PaneInfo.Timing.ON_TIME)) {
         final K key = output.getValue().getKey();
-        final InMemoryTimerInternals timerInternals = (InMemoryTimerInternals)
-          inMemoryTimerInternalsFactory.timerInternalsForKey(key);
-        keyAndWatermarkHoldMap.put(key,
-          // adds the output timestamp to the watermark hold of each key
-          // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
-          new Watermark(output.getTimestamp().getMillis() + 1));
-        timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
+
+        // GC for the last pane
+        if (output.getPane().isLast()) {
+          keyAndWatermarkHoldMap.remove(key);
+          keyToValues.remove(key);
+          inMemoryTimerInternalsFactory.map.remove(key);
+          inMemoryStateInternalsFactory.map.remove(key);
+        } else {
+          final InMemoryTimerInternals timerInternals = (InMemoryTimerInternals)
+            inMemoryTimerInternalsFactory.timerInternalsForKey(key);
+          keyAndWatermarkHoldMap.put(key,
+            // adds the output timestamp to the watermark hold of each key
+            // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
+            new Watermark(output.getTimestamp().getMillis() + 1));
+          timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
+        }
       }
       outputCollector.emit(output);
     }
