@@ -118,7 +118,8 @@ public final class JobLauncher {
    * @throws ClassNotFoundException class not found exception.
    * @throws IOException IO exception.
    */
-  public static void setup(final String[] args) throws InjectionException, ClassNotFoundException, IOException {
+  public static void setup(final String[] args)
+    throws InjectionException, ClassNotFoundException, IOException, InvalidUserMainException {
     // Get Job and Driver Confs
     builtJobConf = getJobConf(args);
     validateJobConfig(builtJobConf);
