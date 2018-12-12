@@ -227,14 +227,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
         keyAndWatermarkHoldMap.entrySet()
-          .removeIf(entry -> {
-            if (entry.getValue().getTimestamp() == minWatermarkHold.getTimestamp()) {
-              keyToValues.remove(entry.getKey());
-              return true;
-            } else {
-              return false;
-            }
-          });
+          .removeIf(entry -> entry.getValue().getTimestamp() == minWatermarkHold.getTimestamp());
       }
     }
   }
