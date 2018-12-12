@@ -159,14 +159,13 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       }
     }
 
-    LOG.info("{} time to process element: {}", getContext().getIRVertex().getId(),
-      (System.currentTimeMillis() - st));
+    final long e = System.currentTimeMillis();
 
     // Trigger timers
     triggerTimers(processingTime, synchronizedTime);
 
-    LOG.info("{} time to trigger: {}", getContext().getIRVertex().getId(),
-      (System.currentTimeMillis() - st));
+    LOG.info("{} time to elem: {} trigger: {} keys: {}", getContext().getIRVertex().getId(),
+      e, (System.currentTimeMillis() - st), keyToValues.size());
   }
 
   /**
