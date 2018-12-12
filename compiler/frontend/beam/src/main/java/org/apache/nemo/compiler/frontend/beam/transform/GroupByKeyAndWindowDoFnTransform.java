@@ -162,10 +162,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final long e = System.currentTimeMillis();
 
     // Trigger timers
-    triggerTimers(processingTime, synchronizedTime);
+    final boolean isTriggered = triggerTimers(processingTime, synchronizedTime);
 
-    LOG.info("{} time to elem: {} trigger: {} keys: {}", getContext().getIRVertex().getId(),
-      e, (System.currentTimeMillis() - st), keyToValues.size());
+    LOG.info("{} time to elem: {} trigger: {} isTriggered: {} keys: {}", getContext().getIRVertex().getId(),
+      (e-st), (System.currentTimeMillis() - st), isTriggered, keyToValues.size());
   }
 
   /**
@@ -242,7 +242,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
    */
-  private void triggerTimers(final Instant processingTime,
+  private boolean triggerTimers(final Instant processingTime,
                              final Instant synchronizedTime) {
     final InMemoryTimerInternals timerInternals = (InMemoryTimerInternals)
       inMemoryTimerInternalsFactory.timerInternalsForKey(null);
@@ -265,7 +265,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         // but this windowed value is actually not used in the ReduceFnRunner internal.
         getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
       }
+      return true;
     }
+
+    return false;
   }
 
   /**
