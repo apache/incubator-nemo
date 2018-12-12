@@ -142,6 +142,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private void processElementsAndTriggerTimers(final Instant processingTime,
                                                final Instant synchronizedTime) {
     final long st = System.currentTimeMillis();
+    int numOfProcessedKeys = 0;
     for (final Map.Entry<K, List<WindowedValue<InputT>>> entry : keyToValues.entrySet()) {
       final K key = entry.getKey();
       final List<WindowedValue<InputT>> values = entry.getValue();
@@ -156,6 +157,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
         // Remove values
         values.clear();
+        numOfProcessedKeys += 1;
       }
     }
 
@@ -164,8 +166,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     // Trigger timers
     final boolean isTriggered = triggerTimers(processingTime, synchronizedTime);
 
-    LOG.info("{} time to elem: {} trigger: {} isTriggered: {} keys: {}", getContext().getIRVertex().getId(),
-      (e-st), (System.currentTimeMillis() - st), isTriggered, keyToValues.size());
+    LOG.info("{} time to elem: {} trigger: {} isTriggered: {} processedKey: {}, keys: {}", getContext().getIRVertex().getId(),
+      (e-st), (System.currentTimeMillis() - st), isTriggered, numOfProcessedKeys, keyToValues.size());
   }
 
   /**
