@@ -91,7 +91,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   protected DoFn wrapDoFn(final DoFn doFn) {
     final Map<K, StateAndTimerForKey> map = new HashMap<>();
     this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory(map);
-    this.inMemoryTimerInternalsFactory = new InMemoryTimerInternalsFactory(map);
+    this.inMemoryTimerInternalsFactory = new InMemoryTimerInternalsFactory();
 
     // This function performs group by key and window operation
     return
@@ -141,6 +141,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    */
   private void processElementsAndTriggerTimers(final Instant processingTime,
                                                final Instant synchronizedTime) {
+    final long st = System.currentTimeMillis();
     for (final Map.Entry<K, List<WindowedValue<InputT>>> entry : keyToValues.entrySet()) {
       final K key = entry.getKey();
       final List<WindowedValue<InputT>> values = entry.getValue();
@@ -153,14 +154,19 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         // The DoFnRunner interface requires WindowedValue,
         // but this windowed value is actually not used in the ReduceFnRunner internal.
         getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
+        // Remove values
+        values.clear();
       }
-
-      // Trigger timers
-      triggerTimers(key, processingTime, synchronizedTime);
-
-      // Remove values
-      values.clear();
     }
+
+    LOG.info("{} time to process element: {}", getContext().getIRVertex().getId(),
+      (System.currentTimeMillis() - st));
+
+    // Trigger timers
+    triggerTimers(processingTime, synchronizedTime);
+
+    LOG.info("{} time to trigger: {}", getContext().getIRVertex().getId(),
+      (System.currentTimeMillis() - st));
   }
 
   /**
@@ -227,15 +233,13 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   /**
    * Trigger times for current key.
    * When triggering, it emits the windowed data to downstream operators.
-   * @param key key
    * @param processingTime processing time
    * @param synchronizedTime synchronized time
    */
-  private void triggerTimers(final K key,
-                             final Instant processingTime,
+  private void triggerTimers(final Instant processingTime,
                              final Instant synchronizedTime) {
     final InMemoryTimerInternals timerInternals = (InMemoryTimerInternals)
-      inMemoryTimerInternalsFactory.timerInternalsForKey(key);
+      inMemoryTimerInternalsFactory.timerInternalsForKey(null);
     try {
       timerInternals.advanceInputWatermark(new Instant(inputWatermark.getTimestamp()));
       timerInternals.advanceProcessingTime(processingTime);
@@ -247,13 +251,14 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final List<TimerInternals.TimerData> timerDataList = getEligibleTimers(timerInternals);
 
     if (!timerDataList.isEmpty()) {
-
-      // Trigger timers and emit windowed data
-      final KeyedWorkItem<K, InputT> timerWorkItem =
-        KeyedWorkItems.timersWorkItem(key, timerDataList);
-      // The DoFnRunner interface requires WindowedValue,
-      // but this windowed value is actually not used in the ReduceFnRunner internal.
-      getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
+      for (final Map.Entry<K, List<WindowedValue<InputT>>> entry : keyToValues.entrySet()) {
+        // Trigger timers and emit windowed data
+        final KeyedWorkItem<K, InputT> timerWorkItem =
+          KeyedWorkItems.timersWorkItem(entry.getKey(), timerDataList);
+        // The DoFnRunner interface requires WindowedValue,
+        // but this windowed value is actually not used in the ReduceFnRunner internal.
+        getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
+      }
     }
   }
 
@@ -326,20 +331,15 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    * InMemoryTimerInternalsFactory.
    */
   final class InMemoryTimerInternalsFactory implements TimerInternalsFactory<K> {
-    private final Map<K, StateAndTimerForKey> map;
+    private final TimerInternals timerInternals;
 
-    InMemoryTimerInternalsFactory(final Map<K, StateAndTimerForKey> map) {
-      this.map = map;
+    InMemoryTimerInternalsFactory() {
+      this.timerInternals = new InMemoryTimerInternals();
     }
 
     @Override
     public TimerInternals timerInternalsForKey(final K key) {
-      map.putIfAbsent(key, new StateAndTimerForKey(null, new InMemoryTimerInternals()));
-      final StateAndTimerForKey stateAndTimerForKey = map.get(key);
-      if (stateAndTimerForKey.timerInternals == null) {
-        stateAndTimerForKey.timerInternals = new InMemoryTimerInternals();
-      }
-      return stateAndTimerForKey.timerInternals;
+      return timerInternals;
     }
   }
 
@@ -358,22 +358,13 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // The watermark advances only in ON_TIME
       if (output.getPane().getTiming().equals(PaneInfo.Timing.ON_TIME)) {
         final K key = output.getValue().getKey();
-
-        // GC for the last pane
-        if (output.getPane().isLast()) {
-          keyAndWatermarkHoldMap.remove(key);
-          keyToValues.remove(key);
-          inMemoryTimerInternalsFactory.map.remove(key);
-          inMemoryStateInternalsFactory.map.remove(key);
-        } else {
-          final InMemoryTimerInternals timerInternals = (InMemoryTimerInternals)
-            inMemoryTimerInternalsFactory.timerInternalsForKey(key);
-          keyAndWatermarkHoldMap.put(key,
-            // adds the output timestamp to the watermark hold of each key
-            // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
-            new Watermark(output.getTimestamp().getMillis() + 1));
-          timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
-        }
+        final InMemoryTimerInternals timerInternals = (InMemoryTimerInternals)
+          inMemoryTimerInternalsFactory.timerInternalsForKey(key);
+        keyAndWatermarkHoldMap.put(key,
+          // adds the output timestamp to the watermark hold of each key
+          // +1 to the output timestamp because if the window is [0-5000), the timestamp is 4999
+          new Watermark(output.getTimestamp().getMillis() + 1));
+        timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
       }
       outputCollector.emit(output);
     }
