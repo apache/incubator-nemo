@@ -188,8 +188,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       }
     }
 
-    LOG.info("{} time to elem: {} trigger: {} triggeredKey: {} processedKey: {}, keys: {}", getContext().getIRVertex().getId(),
-      (e-st), (triggerTime - st), triggeredKeys, numOfProcessedKeys, keyToValues.size());
+    LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {} processedKey: {}, keys: {}", getContext().getIRVertex().getId(),
+      (e-st), (triggerTime - st), triggeredKeys > 0, triggeredKeys, numOfProcessedKeys, keyToValues.size());
   }
 
   private boolean hasNextTimer(final InMemoryTimerInternals timerInternals) {
