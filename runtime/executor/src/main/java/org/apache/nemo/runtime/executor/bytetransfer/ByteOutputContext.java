@@ -227,7 +227,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
     @Override
     public void flush() {
-      //channel.flush();
+      channel.flush();
     }
 
     /**
@@ -242,7 +242,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       if (closed) {
         throw new IOException("Stream already closed.");
       }
-      channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
+      channel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
         .addListener(getChannelWriteListener());
     }
   }
