@@ -125,7 +125,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     // drop late data
-    //if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
+    if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
       checkAndInvokeBundle();
       // We can call Beam's DoFnRunner#processElement here,
       // but it may generate some overheads if we call the method for each data.
@@ -144,7 +144,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // but this windowed value is actually not used in the ReduceFnRunner internal.
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
       checkAndFinishBundle();
-    //}
+    }
   }
 
   /**
@@ -187,8 +187,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final int triggeredKeys = triggerTimers(processingTime, synchronizedTime);
     final long triggerTime = System.currentTimeMillis();
 
-    //LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {}", getContext().getIRVertex().getId(),
-    //  (e-st), (triggerTime - st), triggeredKeys > 0, triggeredKeys);
+    LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {}", getContext().getIRVertex().getId(),
+      (e-st), (triggerTime - st), triggeredKeys > 0, triggeredKeys);
   }
 
   /**
@@ -237,8 +237,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     checkAndFinishBundle();
 
     final long et = System.currentTimeMillis();
-    //LOG.info("{}/{} latency {}",
-    //  getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st));
+    LOG.info("{}/{} latency {}",
+      getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st));
   }
 
   /**
