@@ -136,7 +136,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
 
       checkAndFinishBundle();
-   }
+    }
   }
 
   /**
@@ -161,6 +161,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
           KeyedWorkItems.elementsWorkItem(key, values);
         // The DoFnRunner interface requires WindowedValue,
         // but this windowed value is actually not used in the ReduceFnRunner internal.
+        getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
         // Remove values
         numOfProcessedKeys += 1;
       }
@@ -247,13 +248,15 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
    * @param synchronizedTime synchronized time
    */
   private int triggerTimers(final Instant processingTime,
-                                final Instant synchronizedTime) {
+                            final Instant synchronizedTime) {
 
     inMemoryTimerInternalsFactory.inputWatermarkTime = new Instant(inputWatermark.getTimestamp());
     inMemoryTimerInternalsFactory.processingTime = processingTime;
     inMemoryTimerInternalsFactory.synchronizedProcessingTime = synchronizedTime;
 
+    LOG.info("Watermark timers: {}", inMemoryTimerInternalsFactory.watermarkTimers);
     final List<Pair<K, TimerInternals.TimerData>> timers = getEligibleTimers();
+
 
     for (final Pair<K, TimerInternals.TimerData> timer : timers) {
       final NemoTimerInternals timerInternals =
