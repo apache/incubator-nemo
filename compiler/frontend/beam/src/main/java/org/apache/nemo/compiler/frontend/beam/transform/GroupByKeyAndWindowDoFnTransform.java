@@ -254,7 +254,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     inMemoryTimerInternalsFactory.processingTime = processingTime;
     inMemoryTimerInternalsFactory.synchronizedProcessingTime = synchronizedTime;
 
-    LOG.info("Watermark timers: {}", inMemoryTimerInternalsFactory.watermarkTimers);
     final List<Pair<K, TimerInternals.TimerData>> timers = getEligibleTimers();
 
 
