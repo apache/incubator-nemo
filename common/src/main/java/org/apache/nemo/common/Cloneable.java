@@ -29,7 +29,7 @@ package org.apache.nemo.common;
  *
  * @param <T> the type of objects that this class can clone
  */
-public interface Cloneable<T extends Cloneable<T>> {
+public interface Cloneable<T extends java.lang.Cloneable> {
 
   /**
    * Creates and returns a copy of this object.
