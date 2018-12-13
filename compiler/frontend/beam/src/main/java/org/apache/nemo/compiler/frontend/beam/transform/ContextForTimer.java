@@ -1,9 +1,26 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.beam.runners.core.TimerInternals;
 import org.apache.beam.sdk.state.TimeDomain;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
-import org.apache.beam.sdk.util.WindowTracing;
 import org.apache.nemo.common.Pair;
 import org.joda.time.Instant;
 
@@ -13,6 +30,10 @@ import java.util.Map;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 
+/**
+ * This class contains necessary data for timers.
+ * @param <K> key type
+ */
 final class ContextForTimer<K> {
   // Pending input watermark timers of all keys, in timestamp order.
   private final NavigableSet<Pair<K, TimerInternals.TimerData>> watermarkTimers;
@@ -106,13 +127,6 @@ final class ContextForTimer<K> {
   @Nullable
   public Pair<K, TimerInternals.TimerData> removeNextEventTimer() {
     final Pair<K, TimerInternals.TimerData> timer = removeNextTimer(inputWatermarkTime, TimeDomain.EVENT_TIME);
-    if (timer != null) {
-      WindowTracing.trace(
-        "{}.removeNextEventTimer: firing {} at {}",
-        getClass().getSimpleName(),
-        timer,
-        inputWatermarkTime);
-    }
     return timer;
   }
 
@@ -120,13 +134,6 @@ final class ContextForTimer<K> {
   @Nullable
   public Pair<K, TimerInternals.TimerData> removeNextProcessingTimer() {
     final Pair<K, TimerInternals.TimerData> timer = removeNextTimer(processingTime, TimeDomain.PROCESSING_TIME);
-    if (timer != null) {
-      WindowTracing.trace(
-        "{}.removeNextProcessingTimer: firing {} at {}",
-        getClass().getSimpleName(),
-        timer,
-        processingTime);
-  }
     return timer;
   }
 
@@ -135,13 +142,6 @@ final class ContextForTimer<K> {
   public Pair<K, TimerInternals.TimerData> removeNextSynchronizedProcessingTimer() {
     final Pair<K, TimerInternals.TimerData> timer =
       removeNextTimer(synchronizedProcessingTime, TimeDomain.SYNCHRONIZED_PROCESSING_TIME);
-    if (timer != null) {
-      WindowTracing.trace(
-        "{}.removeNextSynchronizedProcessingTimer: firing {} at {}",
-        getClass().getSimpleName(),
-        timer,
-        synchronizedProcessingTime);
-    }
     return timer;
   }
 
