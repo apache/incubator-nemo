@@ -20,7 +20,7 @@ package org.apache.nemo.examples.beam;
 
 import com.github.fommil.netlib.BLAS;
 import com.github.fommil.netlib.LAPACK;
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineRunner;
+import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.CoderProviders;
@@ -311,6 +311,10 @@ public final class AlternatingLeastSquare {
     private final int numFeatures;
     private final boolean isDeterministic;
 
+    /**
+     * @param numFeatures number of the features.
+     * @param isDeterministic whether or not to initialize the matrix in deterministic mode.
+     */
     CreateInitialMatrix(final int numFeatures,
                         final boolean isDeterministic) {
       this.numFeatures = numFeatures;
@@ -371,7 +375,7 @@ public final class AlternatingLeastSquare {
     }
 
     final PipelineOptions options = PipelineOptionsFactory.create();
-    options.setRunner(NemoPipelineRunner.class);
+    options.setRunner(NemoRunner.class);
     options.setJobName("ALS");
     options.setStableUniqueNames(PipelineOptions.CheckEnabled.OFF);
 

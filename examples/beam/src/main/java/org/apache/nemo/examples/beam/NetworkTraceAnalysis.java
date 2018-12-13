@@ -19,7 +19,7 @@
 package org.apache.nemo.examples.beam;
 
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineRunner;
+import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -59,7 +59,7 @@ public final class NetworkTraceAnalysis {
     final String input1FilePath = args[1];
     final String outputFilePath = args[2];
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
-    options.setRunner(NemoPipelineRunner.class);
+    options.setRunner(NemoRunner.class);
     options.setJobName("NetworkTraceAnalysis");
 
     // Given "4 0.0 192.168.3.1 -> 192.168.0.2 Len=29", this finds "192.168.3.1", "192.168.0.2" and "29"
@@ -123,6 +123,10 @@ public final class NetworkTraceAnalysis {
     p.run();
   }
 
+  /**
+   * @param data data
+   * @return extracted long typed data
+   */
   private static long getLong(final Iterable<Long> data) {
     for (final long datum : data) {
       return datum;
@@ -130,6 +134,10 @@ public final class NetworkTraceAnalysis {
     return 0;
   }
 
+  /**
+   * @param data list of data
+   * @return standard deviation of data.
+   */
   private static long stdev(final Iterable<KV<String, Long>> data) {
     final StandardDeviation stdev = new StandardDeviation();
     final List<Long> elements = new ArrayList<>();

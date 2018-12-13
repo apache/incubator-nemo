@@ -42,6 +42,9 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
   private final Collection<PCollectionView<?>> sideInputsToRead;
   private final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> inMemorySideInputs;
 
+  /**
+   * @param sideInputsToRead side inputs to read.
+   */
   public InMemorySideInputReader(final Collection<PCollectionView<?>> sideInputsToRead) {
     this.sideInputsToRead = sideInputsToRead;
     this.inMemorySideInputs = new HashMap<>();

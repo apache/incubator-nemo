@@ -16,26 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.punctuation;
+package org.apache.nemo.common.test;
 
 /**
- * Finish mark that notifies the data fetching is finished.
- * This is only used for bounded source because unbounded source does not finish.
+ * Test Arguments for Examples.
  */
-public final class Finishmark {
-  private static final Finishmark INSTANCE = new Finishmark();
+public final class ExampleTestArgs {
+  public static final int TIMEOUT = 240000;
+  private static String fileBasePath;
 
   /**
    * private constructor.
    */
-  private Finishmark() {
+  private ExampleTestArgs() {
 
   }
 
   /**
-   * @return the finish mark.
+   * @return the file base path.
    */
-  public static Finishmark getInstance() {
-    return INSTANCE;
+  public static String getFileBasePath() {
+    if (fileBasePath == null) {
+      fileBasePath = System.getProperty("user.dir") + "/../resources/";
+    }
+    return fileBasePath;
   }
 }

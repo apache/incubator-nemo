@@ -41,6 +41,9 @@ public final class MetricCollectTransform<I, O> extends NoWatermarkEmitTransform
 
   /**
    * MetricCollectTransform constructor.
+   * @param dynOptData per-task dynamic optimization data.
+   * @param dynOptDataCollector that collects the data.
+   * @param closer callback function to be invoked when closing the transform.
    */
   public MetricCollectTransform(final O dynOptData,
                                 final BiFunction<Object, O, O> dynOptDataCollector,

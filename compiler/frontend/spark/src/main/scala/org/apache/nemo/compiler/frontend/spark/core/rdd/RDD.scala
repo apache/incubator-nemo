@@ -230,7 +230,7 @@ final class RDD[T: ClassTag] protected[rdd] (
     newEdge.setProperty(keyExtractorProperty)
 
     builder.connectVertices(newEdge)
-    JobLauncher.launchDAG(builder.build, SparkBroadcastVariables.getAll)
+    JobLauncher.launchDAG(builder.build, SparkBroadcastVariables.getAll, "")
   }
 
   /////////////// CACHING ///////////////

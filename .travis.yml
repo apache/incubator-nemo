@@ -23,13 +23,9 @@ language:
   # For web ui build
   - node_js
 dist: trusty
-<<<<<<< HEAD
-sudo: false
 before_install:
   - sudo apt update && sudo apt install -y libgif-dev
-=======
 sudo: required
->>>>>>> apache/master
 install: true
 jdk:
   - oraclejdk8

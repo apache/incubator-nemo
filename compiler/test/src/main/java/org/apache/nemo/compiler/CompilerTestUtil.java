@@ -86,15 +86,16 @@ public final class CompilerTestUtil {
     final Method userMainMethod = userMainClass.getMethod("main", String[].class);
 
     final ArgumentCaptor<DAG> captor = ArgumentCaptor.forClass(DAG.class);
+    final ArgumentCaptor<String> stringArg = ArgumentCaptor.forClass(String.class);
     PowerMockito.mockStatic(JobLauncher.class);
-    PowerMockito.doNothing().when(JobLauncher.class, "launchDAG", captor.capture());
+    PowerMockito.doNothing().when(JobLauncher.class, "launchDAG", captor.capture(), stringArg.capture());
     userMainMethod.invoke(null, (Object) userMainMethodArgs);
     return captor.getValue();
   }
 
   public static DAG<IRVertex, IREdge> compileWordCountDAG() throws Exception {
-    final String input = ROOT_DIR + "/examples/resources/test_input_wordcount";
-    final String output = ROOT_DIR + "/examples/resources/test_output";
+    final String input = ROOT_DIR + "/examples/resources/inputs/test_input_wordcount";
+    final String output = ROOT_DIR + "/examples/resources/inputs/test_output";
     final String main = "org.apache.nemo.examples.beam.WordCount";
 
     final ArgBuilder mrArgBuilder = new ArgBuilder()
@@ -105,7 +106,7 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileALSDAG() throws Exception {
-    final String input = ROOT_DIR + "/examples/resources/test_input_als";
+    final String input = ROOT_DIR + "/examples/resources/inputs/test_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
     final String main = "org.apache.nemo.examples.beam.AlternatingLeastSquare";
@@ -118,7 +119,7 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileALSInefficientDAG() throws Exception {
-    final String input = ROOT_DIR + "/examples/resources/test_input_als";
+    final String input = ROOT_DIR + "/examples/resources/inputs/test_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
     final String main = "org.apache.nemo.examples.beam.AlternatingLeastSquareInefficient";
@@ -131,7 +132,7 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileMLRDAG() throws Exception {
-    final String input = ROOT_DIR + "/examples/resources/test_input_mlr";
+    final String input = ROOT_DIR + "/examples/resources/inputs/test_input_mlr";
     final String numFeatures = "100";
     final String numClasses = "5";
     final String numIteration = "3";

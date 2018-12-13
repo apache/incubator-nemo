@@ -82,7 +82,7 @@ public final class SkewReshapingPass extends ReshapingPass {
           if (CommunicationPatternProperty.Value.Shuffle
                 .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
             final OperatorVertex abv = generateMetricAggregationVertex();
-            final OperatorVertex mcv = generateMetricCollectVertex(edge, abv);
+            final OperatorVertex mcv = generateMetricCollectVertex(edge);
             metricCollectVertices.add(mcv);
             builder.addVertex(v);
             builder.addVertex(mcv);
@@ -112,6 +112,9 @@ public final class SkewReshapingPass extends ReshapingPass {
     return newDAG;
   }
 
+  /**
+   * @return the generated vertex.
+   */
   private OperatorVertex generateMetricAggregationVertex() {
     // Define a custom data aggregator for skew handling.
     // Here, the aggregator gathers key frequency data used in shuffle data repartitioning.
@@ -134,7 +137,11 @@ public final class SkewReshapingPass extends ReshapingPass {
     return new OperatorVertex(abt);
   }
 
-  private OperatorVertex generateMetricCollectVertex(final IREdge edge, final OperatorVertex abv) {
+  /**
+   * @param edge to collect the metric.
+   * @return the generated vertex.
+   */
+  private OperatorVertex generateMetricCollectVertex(final IREdge edge) {
     final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
     // Define a custom data collector for skew handling.
     // Here, the collector gathers key frequency data used in shuffle data repartitioning.
@@ -167,6 +174,11 @@ public final class SkewReshapingPass extends ReshapingPass {
     return new OperatorVertex(mct);
   }
 
+  /**
+   * @param edge the original shuffle edge.
+   * @param mcv the vertex with MetricCollectTransform.
+   * @return the generated edge to {@code mcv}.
+   */
   private IREdge generateEdgeToMCV(final IREdge edge, final OperatorVertex mcv) {
     final IREdge newEdge =
       new IREdge(CommunicationPatternProperty.Value.OneToOne, edge.getSrc(), mcv);
@@ -175,6 +187,12 @@ public final class SkewReshapingPass extends ReshapingPass {
     return newEdge;
   }
 
+  /**
+   * @param edge the original shuffle edge.
+   * @param mcv the vertex with MetricCollectTransform.
+   * @param abv the vertex with AggregateMetricTransform.
+   * @return the generated egde from {@code mcv} to {@code abv}.
+   */
   private IREdge generateEdgeToABV(final IREdge edge,
                                    final OperatorVertex mcv,
                                    final OperatorVertex abv) {

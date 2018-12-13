@@ -29,5 +29,8 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 public @interface Requires {
+  /**
+   * @return the execution property the class requires as prerequisites.
+   */
   Class<? extends ExecutionProperty>[] value() default {};
 }

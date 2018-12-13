@@ -20,6 +20,7 @@ package org.apache.nemo.examples.beam;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
+import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
@@ -37,16 +38,13 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class AlternatingLeastSquareITCase {
-  private static final int TIMEOUT = 240 * 1000;
   private static ArgBuilder builder;
-  private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
-
-  private static final String input = fileBasePath + "test_input_als";
+  private static final String input = ExampleTestArgs.getFileBasePath() + "inputs/test_input_als";
   private static final String outputFileName = "test_output_als";
-  private static final String output = fileBasePath + outputFileName;
-  private static final String expectedOutputFileName = "expected_output_als";
-  private static final String noPoisonResources = fileBasePath + "beam_test_executor_resources.json";
-  private static final String poisonedResource = fileBasePath + "beam_test_poisoned_executor_resources.json";
+  private static final String output = ExampleTestArgs.getFileBasePath() + outputFileName;
+  private static final String expectedOutputFileName = "outputs/expected_output_als";
+  private static final String noPoisonResources = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
+  private static final String poisonedResource = ExampleTestArgs.getFileBasePath() + "executors/beam_test_poisoned_executor_resources.json";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
   private static final String lambda = "0.05";
@@ -61,13 +59,13 @@ public final class AlternatingLeastSquareITCase {
   @After
   public void tearDown() throws Exception {
     try {
-      ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, expectedOutputFileName);
+      ExampleTestUtil.ensureALSOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFileName);
     } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+      ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
 
-  @Test (timeout = TIMEOUT)
+  @Test (timeout = ExampleTestArgs.TIMEOUT)
   public void testDefault() throws Exception {
     JobLauncher.main(builder
         .addResourceJson(noPoisonResources)

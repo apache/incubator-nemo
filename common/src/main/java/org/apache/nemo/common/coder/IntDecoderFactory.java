@@ -36,6 +36,7 @@ public final class IntDecoderFactory implements DecoderFactory<Integer> {
 
   /**
    * Static initializer of the coder.
+   * @return the initializer.
    */
   public static IntDecoderFactory of() {
     return INT_DECODER_FACTORY;
