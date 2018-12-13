@@ -52,13 +52,15 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyAndWindowDoFnTransform.class.getName());
 
   private final SystemReduceFn reduceFn;
-  private final Map<K, List<WindowedValue<InputT>>> keyToValues;
+  //private final Map<K, List<WindowedValue<InputT>>> keyToValues;
   private transient InMemoryTimerInternalsFactory inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
   private Watermark prevOutputWatermark;
   private final Map<K, Watermark> keyAndWatermarkHoldMap;
   private final WindowingStrategy windowingStrategy;
   private Watermark inputWatermark;
+
+  int numProcessedData = 0;
 
   /**
    * GroupByKey constructor.
@@ -78,7 +80,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       Collections.emptyMap(), /*  GBK does not have additional side inputs */
       options,
       displayData);
-    this.keyToValues = new HashMap<>();
+    //this.keyToValues = new HashMap<>();
     this.reduceFn = reduceFn;
     this.prevOutputWatermark = new Watermark(Long.MIN_VALUE);
     this.inputWatermark = new Watermark(Long.MIN_VALUE);
@@ -123,7 +125,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     // drop late data
-    if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
+    //if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
       checkAndInvokeBundle();
       // We can call Beam's DoFnRunner#processElement here,
       // but it may generate some overheads if we call the method for each data.
@@ -132,11 +134,17 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // TODO #250: if the watermark is not triggered for a long time.
 
       final KV<K, InputT> kv = element.getValue();
-      keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
-      keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
-
+      //keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
+      //keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
+      final KeyedWorkItem<K, InputT> keyedWorkItem =
+        KeyedWorkItems.elementsWorkItem(kv.getKey(),
+          Collections.singletonList(element.withValue(kv.getValue())));
+      numProcessedData += 1;
+      // The DoFnRunner interface requires WindowedValue,
+      // but this windowed value is actually not used in the ReduceFnRunner internal.
+      getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
       checkAndFinishBundle();
-    }
+    //}
   }
 
   /**
@@ -148,6 +156,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
                                                final Instant synchronizedTime) {
     final long st = System.currentTimeMillis();
     int numOfProcessedKeys = 0;
+
+    /*
     final Iterator<Map.Entry<K, List<WindowedValue<InputT>>>> iterator = keyToValues.entrySet().iterator();
     while (iterator.hasNext()) {
       final Map.Entry<K, List<WindowedValue<InputT>>> entry = iterator.next();
@@ -168,6 +178,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
       iterator.remove();
     }
+    */
 
     final long e = System.currentTimeMillis();
 
@@ -176,8 +187,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final int triggeredKeys = triggerTimers(processingTime, synchronizedTime);
     final long triggerTime = System.currentTimeMillis();
 
-    LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {} processedKey: {}, keys: {}", getContext().getIRVertex().getId(),
-      (e-st), (triggerTime - st), triggeredKeys > 0, triggeredKeys, numOfProcessedKeys, keyToValues.size());
+    //LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {}", getContext().getIRVertex().getId(),
+    //  (e-st), (triggerTime - st), triggeredKeys > 0, triggeredKeys);
   }
 
   /**
@@ -226,8 +237,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     checkAndFinishBundle();
 
     final long et = System.currentTimeMillis();
-    LOG.info("{}/{} latency {}",
-      getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st));
+    //LOG.info("{}/{} latency {}",
+    //  getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st));
   }
 
   /**
