@@ -46,7 +46,7 @@ import org.apache.nemo.runtime.executor.TransformContextImpl;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -181,6 +181,20 @@ public final class TaskExecutor {
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
 
+    reverseTopologicallySorted.forEach(irVertex ->{
+      if (irVertex.getId().equals("vertex14")) {
+        final File f = new File(irVertex.getId() + "-serialized.txt");
+        try {
+          final FileWriter writer = new FileWriter(f);
+          writer.write(serializeToString(irVertex));
+          writer.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }
+    });
+
     // Build a map for edge as a key and edge index as a value
     // This variable is used for creating NextIntraTaskOperatorInfo
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
@@ -198,6 +212,7 @@ public final class TaskExecutor {
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
     final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap = new HashMap<>();
     reverseTopologicallySorted.forEach(childVertex -> {
+
       if (childVertex instanceof OperatorVertex) {
         final List<Edge> edges = getAllIncomingEdges(task, irVertexDag, childVertex);
         if (edges.size() == 1) {
@@ -747,5 +762,25 @@ public final class TaskExecutor {
     // TODO #236: Decouple metric collection and sending logic
     metricMessageSender.send("TaskMetric", taskId,
       "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
+  }
+
+
+  /**
+   * Write the object to a Base64 string.
+   * @param obj object
+   * @return serialized object
+   * @throws IOException
+   */
+  public static String serializeToString(final Serializable obj) {
+    try {
+      final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      final ObjectOutputStream oos = new ObjectOutputStream(baos);
+      oos.writeObject(obj);
+      oos.close();
+      return Base64.getEncoder().encodeToString(baos.toByteArray());
+    } catch (final IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 }
