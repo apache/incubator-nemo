@@ -123,7 +123,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     // drop late data
-    //if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
+    if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
       checkAndInvokeBundle();
       // We can call Beam's DoFnRunner#processElement here,
       // but it may generate some overheads if we call the method for each data.
@@ -136,7 +136,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
 
       checkAndFinishBundle();
-   //}
+   }
   }
 
   /**
@@ -161,8 +161,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
           KeyedWorkItems.elementsWorkItem(key, values);
         // The DoFnRunner interface requires WindowedValue,
         // but this windowed value is actually not used in the ReduceFnRunner internal.
-        LOG.info("{}, {}", getDoFnRunner(), keyedWorkItem);
-        getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
         // Remove values
         numOfProcessedKeys += 1;
       }
@@ -177,8 +175,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final int triggeredKeys = triggerTimers(processingTime, synchronizedTime);
     final long triggerTime = System.currentTimeMillis();
 
-    //LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {} processedKey: {}, keys: {}", getContext().getIRVertex().getId(),
-    //  (e-st), (triggerTime - st), triggeredKeys > 0, triggeredKeys, numOfProcessedKeys, keyToValues.size());
+    LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {} processedKey: {}, keys: {}", getContext().getIRVertex().getId(),
+      (e-st), (triggerTime - st), triggeredKeys > 0, triggeredKeys, numOfProcessedKeys, keyToValues.size());
   }
 
   /**
@@ -227,8 +225,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     checkAndFinishBundle();
 
     final long et = System.currentTimeMillis();
-    //LOG.info("{}/{} latency {}",
-    //  getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st));
+    LOG.info("{}/{} latency {}",
+      getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st));
   }
 
   /**
