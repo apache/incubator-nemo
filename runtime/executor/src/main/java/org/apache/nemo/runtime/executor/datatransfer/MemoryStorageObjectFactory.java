@@ -1,25 +1,6 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import com.amazonaws.ClientConfiguration;
-import com.amazonaws.services.lambda.AWSLambda;
-import com.amazonaws.services.lambda.AWSLambdaAsync;
-import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
-import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
-import com.amazonaws.services.lambda.model.InvokeRequest;
-import com.amazonaws.services.lambda.model.InvokeResult;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.util.concurrent.DefaultThreadFactory;
-import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.coder.DecoderFactory;
@@ -29,16 +10,12 @@ import org.apache.nemo.runtime.lambda.LambdaDecoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   private static final Logger LOG = LoggerFactory.getLogger(MemoryStorageObjectFactory.class.getName());
@@ -48,22 +25,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   private ConcurrentMap<String, ConcurrentLinkedQueue<MemoryStorageObject>> prefixAndObjectMap;
   private ConcurrentMap<String, AtomicInteger> prefixAndSizeMap;
 
-  private static final int SERVER_BOSS_NUM_THREADS = 3;
-  private static final int SERVER_WORKER_NUM_THREADS = 10;
-  private static final String CLASS_NAME = MemoryStorageObjectFactory.class.getName();
-  private static final String ADDRESS = "172.31.21.224";
-  private static final String PUBLIC_ADDRESS = "52.194.185.159";
-  private static final int PORT = 20332;
-
-  private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-  private EventLoopGroup serverBossGroup;
-  private EventLoopGroup serverWorkerGroup;
-  private Channel acceptor;
-  //private final AWSLambda awsLambda;
-  private AWSLambdaAsync awsLambda;
-
-  private NemoEventHandler nemoEventHandler;
-
+  private NettyServerLambdaTransport lambdaTransport;
   private boolean initialized = false;
 
   private MemoryStorageObjectFactory() {
@@ -74,31 +36,8 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
     if (!initialized) {
       this.prefixAndObjectMap = new ConcurrentHashMap<>();
       this.prefixAndSizeMap = new ConcurrentHashMap<>();
-      //this.awsLambda = AWSLambdaClientBuilder.standard().withClientConfiguration(
-      //  new ClientConfiguration().withMaxConnections(150)).build();
-      this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
-        new ClientConfiguration().withMaxConnections(150)).build();
-      this.serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
-        new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
-      this.serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
-        new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
-      this.nemoEventHandler = new NemoEventHandler();
-      final ServerBootstrap serverBootstrap = new ServerBootstrap();
-      serverBootstrap.group(this.serverBossGroup, this.serverWorkerGroup)
-        .channel(NioServerSocketChannel.class)
-        .childHandler(new NettyChannelInitializer(
-          new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)))
-        .option(ChannelOption.SO_BACKLOG, 128)
-        .option(ChannelOption.SO_REUSEADDR, true)
-        .childOption(ChannelOption.SO_KEEPALIVE, true);
-      try {
-        this.acceptor = serverBootstrap.bind(
-          new InetSocketAddress(ADDRESS, PORT)).sync().channel();
-        initialized = true;
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
+      this.lambdaTransport = NettyServerLambdaTransport.INSTANCE;
+      initialized = true;
     }
   }
 
@@ -189,31 +128,6 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
     }
   }
 
-  final class NemoEventHandler implements EventHandler<Pair<Channel,NemoEvent>> {
-
-    private final BlockingQueue<Pair<Channel,NemoEvent>> handshakeQueue;
-    private final BlockingQueue<Pair<Channel,NemoEvent>> resultQueue;
-
-    NemoEventHandler() {
-      this.handshakeQueue = new LinkedBlockingQueue<>();
-      this.resultQueue = new LinkedBlockingQueue<>();
-    }
-
-    @Override
-    public void onNext(Pair<Channel,NemoEvent> nemoEvent) {
-      final NemoEvent event = (NemoEvent) nemoEvent.right();
-      switch (event.getType()) {
-        case CLIENT_HANDSHAKE:
-          handshakeQueue.add(nemoEvent);
-          break;
-        case RESULT:
-          resultQueue.add(nemoEvent);
-          break;
-        default:
-          throw new IllegalStateException("Illegal type: " + event.getType().name());
-      }
-    }
-  }
 
   final class MemorySideInputProcessor implements SideInputProcessor {
     private final ExecutorService executorService = Executors.newCachedThreadPool();
@@ -250,17 +164,10 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
 
       LOG.info("MemoryStorageObject size: {}", list.size());
 
-      final List<Future> futures = new ArrayList<>(list.size());
+      final List<Future<Channel>> futures = new ArrayList<>(list.size());
       // 0. Trigger lambdas
       for (int i = 0; i < list.size(); i++) {
-        futures.add(executorService.submit(() -> {
-          // Trigger lambdas
-          final InvokeRequest request = new InvokeRequest()
-            .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
-            .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-              PUBLIC_ADDRESS, PORT));
-          return awsLambda.invokeAsync(request);
-        }));
+        futures.add(lambdaTransport.createLambdaChannel());
       }
 
       final DirectByteArrayOutputStream bos = new DirectByteArrayOutputStream();
@@ -282,7 +189,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
       // 1. lambda initialized
       for (int i = 0; i < list.size(); i++) {
         try {
-          final Channel channel = nemoEventHandler.handshakeQueue.take().left();
+          final Channel channel = futures.get(i).get();
           final int ind = i;
           executorService.submit(() -> {
             // 2. send side input
@@ -300,6 +207,9 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
         } catch (InterruptedException e) {
           e.printStackTrace();
           throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
         }
       }
 
@@ -308,12 +218,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
 
       final List<Object> results = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
-        try {
-          results.add(nemoEventHandler.resultQueue.take());
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
+        results.add(lambdaTransport.takeResult());
       }
 
 

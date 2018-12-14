@@ -256,13 +256,20 @@ public final class TaskExecutor {
         outputCollector = new DynOptDataOutputCollector(
           irVertex, persistentConnectionToMasterMap, this);
       } else {
+        final List<RuntimeEdge<IRVertex>> internalEdges =
+          irVertexDag.getOutgoingEdgesOf(irVertex.getId())
+          .stream()
+          .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+          .collect(Collectors.toList());
+
         final List<StageEdge> outgoingEdges = task.getTaskOutgoingEdges();
         final List<StageEdge> oedges =
           outgoingEdges.stream().filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
           .collect(Collectors.toList());
         outputCollector = new OperatorVertexOutputCollector(
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
-          externalMainOutputs, externalAdditionalOutputMap, oedges, SOFACTORY, serializerManager);
+          externalMainOutputs, externalAdditionalOutputMap, oedges, SOFACTORY, serializerManager,
+          internalEdges);
       }
 
       // Create VERTEX HARNESS

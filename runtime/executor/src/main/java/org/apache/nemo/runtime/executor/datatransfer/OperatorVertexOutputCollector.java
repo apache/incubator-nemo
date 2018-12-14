@@ -19,11 +19,15 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.joda.time.Instant;
@@ -53,10 +57,14 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
   private final List<OutputWriter> externalMainOutputs;
   private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
+  private final List<RuntimeEdge<IRVertex>> internalEdges;
 
   // TODO: remove
   private SideInputLambdaCollector sideInputOutputCollector;
   private MainInputLambdaCollector mainInputLambdaCollector;
+
+  // query8
+  private GBKLambdaEmitter gbkLambdaEmitter;
 
   /**
    * Constructor of the output collector.
@@ -74,15 +82,18 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     final Map<String, List<OutputWriter>> externalAdditionalOutputs,
     final List<StageEdge> outgoingEdges,
     final StorageObjectFactory storageObjectFactory,
-    final SerializerManager serializerManager) {
+    final SerializerManager serializerManager,
+    final List<RuntimeEdge<IRVertex>> internalEdges) {
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.externalMainOutputs = externalMainOutputs;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
-
+    this.internalEdges = internalEdges;
 
     // TODO: remove
+    // query 7
+    /*
     if (irVertex.getId().equals("vertex15")) {
       sideInputOutputCollector = new SideInputLambdaCollector(
         irVertex, storageObjectFactory.sideInputProcessor(serializerManager,
@@ -94,16 +105,37 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
         new MainInputLambdaCollector(irVertex, outgoingEdges,
           serializerManager, storageObjectFactory);
     }
+    */
+
+    // query 8
+    if (irVertex.getId().equals("vertex15")) {
+      final EncoderFactory encoderFactory =
+        internalEdges.get(0).getPropertyValue(EncoderProperty.class).get();
+      final DecoderFactory decoderFactory =
+        internalEdges.get(0).getPropertyValue(DecoderProperty.class).get();
+      gbkLambdaEmitter = new GBKLambdaEmitter(encoderFactory, decoderFactory);
+    }
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
+
+    final String vertexId = irVertex.getId();
+
+    // QUERY8
+    if (vertexId.equals("vertex15")) {
+      gbkLambdaEmitter.emit(output);
+      return;
+    }
+
     vertex.getTransform().onData(output);
   }
 
   private void emit(final OutputWriter writer, final O output) {
 
-//    // TODO: remove
     final String vertexId = irVertex.getId();
+//    // TODO: remove
+    /*
+    // QUERY7
     if (vertexId.equals("vertex15")) {
       System.out.println("Start to send side input!: " + System.currentTimeMillis() + ", output: " +
         ((WindowedValue) output).getWindows().toString());
@@ -113,6 +145,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       mainInputLambdaCollector.emit(output);
       return;
     }
+    */
 
     writer.write(output);
   }
@@ -165,6 +198,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       }
     }
 
+    // QUERY7
+    /*
     if (irVertex.getId().equals("vertex15")) {
       sideInputOutputCollector.emitWatermark(watermark);
     } else if (irVertex.getId().equals("vertex6")) {
@@ -180,6 +215,12 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
           externalVertex.writeWatermark(watermark);
         }
       }
+    }
+    */
+
+    // QUERY 8
+    if (irVertex.getId().equals("vertex15")) {
+      gbkLambdaEmitter.emitWatermark(watermark);
     }
 
 /*

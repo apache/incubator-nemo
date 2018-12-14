@@ -182,7 +182,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
         throw new RuntimeException(sb.toString());
       }
       opendChannel = channelFuture.channel();
-      map.put(opendChannel, new LambdaEventHandler(outputCollector, opendChannel));
+      map.put(opendChannel, new LambdaEventHandler(outputCollector, opendChannel, result));
     }
 
     System.out.println("Open channel: " + opendChannel);
@@ -196,14 +196,19 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
       // wait until end
       System.out.println("Wait end flag");
       final Integer endFlag = handler.endBlockingQueue.take();
-
       // send result
       final byte[] bytes = result.toString().getBytes();
       final ChannelFuture future =
         opendChannel.writeAndFlush(
           new NemoEvent(NemoEvent.Type.RESULT, bytes, bytes.length));
-      future.get();
-    } catch (InterruptedException | ExecutionException e) {
+      try {
+        future.get();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      } catch (ExecutionException e) {
+        e.printStackTrace();
+      }
+    } catch (InterruptedException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
@@ -222,22 +227,26 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
     private WindowedValue sideInput;
     private LambdaDecoderFactory sideInputDecoderFactory;
     private LambdaDecoderFactory mainInputDecoderFactory;
+    private DecoderFactory gbkDecoderFactory;
 
     private final OutputCollector outputCollector;
 
     private final BlockingQueue<Integer> endBlockingQueue = new LinkedBlockingQueue<>();
     private final Channel opendChannel;
+    private final List<String> result;
 
     public LambdaEventHandler(final OutputCollector outputCollector,
-                              final Channel opendChannel) {
+                              final Channel opendChannel,
+                              final List<String> result) {
       this.outputCollector = outputCollector;
       this.opendChannel = opendChannel;
+      this.result = result;
     }
 
     @Override
     public synchronized void onNext(final NemoEvent nemoEvent) {
       switch (nemoEvent.getType()) {
-        case SIDE: {
+        case SIDE: { // query 7
           // receive side input
           System.out.println("Receive side");
           final ByteArrayInputStream bis = new ByteArrayInputStream(nemoEvent.getBytes());
@@ -253,7 +262,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
           }
           break;
         }
-        case MAIN:
+        case MAIN: { // query 7
           System.out.println("Receive main ");
           // receive main input
           if (sideInput == null) {
@@ -274,7 +283,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
                 headVertex.getTransform().onData(mainInput);
                 cnt += 1;
               } catch (final IOException e) {
-                if(e.getMessage().contains("EOF")) {
+                if (e.getMessage().contains("EOF")) {
                   System.out.println("Cnt: " + cnt + ", eof!");
                 } else {
                   System.out.println("Cnt: " + cnt + "Windowed value: " + mainInput + ", sideInput: " + sideInput + ", oc: " + outputCollector);
@@ -291,7 +300,46 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
             throw new RuntimeException(e);
           }
           break;
+        }
+        case GBK_START: { // query 8
+          System.out.println("Start gbk");
+          final ByteArrayInputStream bis = new ByteArrayInputStream(nemoEvent.getBytes());
+          gbkDecoderFactory =
+            SerializeUtils.deserialize(bis, classLoader);
+          break;
+        }
+        case GBK: {// query 8
+          // TODO
+          System.out.println("Receive gbk data");
+          final ByteArrayInputStream bis = new ByteArrayInputStream(nemoEvent.getBytes());
+          try {
+            final DecoderFactory.Decoder gbkDecoder = gbkDecoderFactory.create(bis);
+            WindowedValue mainInput = null;
+            int cnt = 0;
+            while (true) {
+              try {
+                mainInput = (WindowedValue) gbkDecoder.decode();
+                //handler.processMainAndSideInput(mainInput, sideInput, outputCollector);
+                headVertex.getTransform().onData(mainInput);
+                cnt += 1;
+              } catch (final IOException e) {
+                if (e.getMessage().contains("EOF")) {
+                  System.out.println("Cnt: " + cnt + ", eof!");
+                } else {
+                  System.out.println("Cnt: " + cnt + "Windowed value: " + mainInput + ", sideInput: " + sideInput + ", oc: " + outputCollector);
+                  throw e;
+                }
+                break;
+              }
+            }
+          } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+          break;
+        }
         case END:
+          endBlockingQueue.add(1);
           // end of event
           // update handler
           break;
@@ -331,7 +379,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
 
     @Override
     public void emit(Object output) {
-      System.out.println("Emit output: " + output);
+      System.out.println("Emit output: " + output.toString());
       result.add(output.toString());
     }
 

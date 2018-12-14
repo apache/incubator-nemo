@@ -1,5 +1,7 @@
 package org.apache.nemo.common;
 
+import io.netty.buffer.ByteBuf;
+
 import java.io.Serializable;
 
 public final class NemoEvent implements Serializable {
@@ -8,6 +10,8 @@ public final class NemoEvent implements Serializable {
     CLIENT_HANDSHAKE,
     SIDE,
     MAIN,
+    GBK_START,
+    GBK,
     RESULT,
     END
   }
@@ -15,6 +19,7 @@ public final class NemoEvent implements Serializable {
   private final Type type;
   private final byte[] bytes;
   private final int len;
+  private ByteBuf byteBuf;
 
   public NemoEvent(final Type type,
                    final byte[] bytes,
@@ -22,6 +27,18 @@ public final class NemoEvent implements Serializable {
     this.type = type;
     this.bytes = bytes;
     this.len = len;
+  }
+
+  public NemoEvent(final Type type,
+                   final ByteBuf byteBuf) {
+    this.type = type;
+    this.bytes = null;
+    this.byteBuf = byteBuf;
+    this.len = 0;
+  }
+
+  public ByteBuf getByteBuf() {
+    return byteBuf;
   }
 
   public Type getType() {

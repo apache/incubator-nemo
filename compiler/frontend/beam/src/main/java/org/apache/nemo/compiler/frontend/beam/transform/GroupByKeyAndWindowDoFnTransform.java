@@ -31,10 +31,10 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.beam.sdk.values.KV;
+import org.apache.nemo.common.GBKLambdaEvent;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -267,6 +267,13 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
     final List<Pair<K, TimerInternals.TimerData>> timers = getEligibleTimers();
 
+    // TODO: send start event
+    final WindowedValue<KV<K, Iterable<InputT>>> startEvent =
+      WindowedValue.valueInGlobalWindow(
+        KV.of((K) new GBKLambdaEvent(GBKLambdaEvent.Type.START, new Integer(timers.size())),
+          Collections.emptyList()));
+    getOutputCollector().emit(startEvent);
+    // TODO: end
 
     for (final Pair<K, TimerInternals.TimerData> timer : timers) {
       final NemoTimerInternals timerInternals =
@@ -282,6 +289,14 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // but this windowed value is actually not used in the ReduceFnRunner internal.
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
     }
+
+    // TODO: send end event
+    final WindowedValue<KV<K, Iterable<InputT>>> endEvent =
+      WindowedValue.valueInGlobalWindow(
+        KV.of((K) new GBKLambdaEvent(GBKLambdaEvent.Type.END, new Integer(timers.size())),
+          Collections.emptyList()));
+    getOutputCollector().emit(endEvent);
+    // send end signal
 
     return timers.size();
   }
@@ -493,6 +508,14 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
     @Override
     public void emit(final WindowedValue<KV<K, Iterable<InputT>>> output) {
+
+      // TODO: remove
+      if (output.getValue().getKey() instanceof  GBKLambdaEvent) {
+        outputCollector.emit(output);
+        return;
+      }
+      // TODO: remove
+
 
       // The watermark advances only in ON_TIME
       if (output.getPane().getTiming().equals(PaneInfo.Timing.ON_TIME)) {
