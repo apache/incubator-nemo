@@ -133,11 +133,11 @@ Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 ```bash
 ./bin/run_beam.sh \
 	-job_id als \
-	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
+	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
   	-user_main org.apache.nemo.examples.beam.AlternatingLeastSquare \
   	-optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
   	-dag_dir "./dag/als" \
-  	-user_args "`pwd`/examples/resources/test_input_als 10 3"
+  	-user_args "`pwd`/examples/resources/inputs/test_input_als 10 3"
 ```
 
 ## Speeding up builds 
