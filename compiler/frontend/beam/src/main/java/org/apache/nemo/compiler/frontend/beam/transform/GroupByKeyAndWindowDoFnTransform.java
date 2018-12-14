@@ -268,11 +268,13 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final List<Pair<K, TimerInternals.TimerData>> timers = getEligibleTimers();
 
     // TODO: send start event
-    final WindowedValue<KV<K, Iterable<InputT>>> startEvent =
-      WindowedValue.valueInGlobalWindow(
-        KV.of((K) new GBKLambdaEvent(GBKLambdaEvent.Type.START, new Integer(timers.size())),
-          Collections.emptyList()));
-    getOutputCollector().emit(startEvent);
+    if (!timers.isEmpty()) {
+      final WindowedValue<KV<K, Iterable<InputT>>> startEvent =
+        WindowedValue.valueInGlobalWindow(
+          KV.of((K) new GBKLambdaEvent(GBKLambdaEvent.Type.START, new Integer(timers.size())),
+            Collections.emptyList()));
+      getOutputCollector().emit(startEvent);
+    }
     // TODO: end
 
     for (final Pair<K, TimerInternals.TimerData> timer : timers) {
@@ -291,12 +293,13 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     }
 
     // TODO: send end event
-    final WindowedValue<KV<K, Iterable<InputT>>> endEvent =
-      WindowedValue.valueInGlobalWindow(
-        KV.of((K) new GBKLambdaEvent(GBKLambdaEvent.Type.END, new Integer(timers.size())),
-          Collections.emptyList()));
-    getOutputCollector().emit(endEvent);
-    // send end signal
+    if (!timers.isEmpty()) {
+      final WindowedValue<KV<K, Iterable<InputT>>> endEvent =
+        WindowedValue.valueInGlobalWindow(
+          KV.of((K) new GBKLambdaEvent(GBKLambdaEvent.Type.END, new Integer(timers.size())),
+            Collections.emptyList()));
+      getOutputCollector().emit(endEvent);
+    }
 
     return timers.size();
   }
