@@ -181,6 +181,7 @@ public final class TaskExecutor {
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
 
+    /*
     reverseTopologicallySorted.forEach(irVertex ->{
       if (irVertex.getId().equals("vertex14")) {
         final File f = new File(irVertex.getId() + "-serialized.txt");
@@ -194,6 +195,7 @@ public final class TaskExecutor {
         }
       }
     });
+    */
 
     // Build a map for edge as a key and edge index as a value
     // This variable is used for creating NextIntraTaskOperatorInfo
