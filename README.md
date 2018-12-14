@@ -77,7 +77,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ## MapReduce example
 ./bin/run_beam.sh \
 	-job_id mr_default \
-	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
+	-executor_json `pwd`/examples/resources/executor/beam_test_executor_resources.json \
 	-optimization_policy org.apache.nemo.compiler.optimizer.policy.DefaultPolicy \
 	-user_main org.apache.nemo.examples.beam.WordCount \
 	-user_args "`pwd`/examples/resources/test_input_wordcount `pwd`/examples/resources/test_output_wordcount"
@@ -86,7 +86,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ./bin/run_beam.sh \
 	-deploy_mode yarn \
  	-job_id mr_transient \
-	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
+	-executor_json `pwd`/examples/resources/executor/beam_test_executor_resources.json \
  	-user_main org.apache.nemo.examples.beam.WordCount \
  	-optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
 	-user_args "hdfs://v-m:9000/test_input_wordcount hdfs://v-m:9000/test_output_wordcount"
