@@ -122,8 +122,11 @@ public final class Executor {
   private void launchTask(final Task task) {
     LOG.info("Launch task: {}", task.getTaskId());
     try {
+      final long deserializationStartTime = System.currentTimeMillis();
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
           SerializationUtils.deserialize(task.getSerializedIRDag());
+      metricMessageSender.send("TaskMetric", task.getTaskId(), "taskDeserializationTime",
+        SerializationUtils.serialize(System.currentTimeMillis() - deserializationStartTime));
       final TaskStateManager taskStateManager =
           new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 

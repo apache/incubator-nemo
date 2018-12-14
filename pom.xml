@@ -307,6 +307,11 @@ under the License.
                         <exclude>**/resources/**</exclude>
                         <!-- Logs -->
                         <exclude>**/*.log</exclude>
+                        <!-- Web UI -->
+                        <exclude>webui/.nuxt/**</exclude>
+                        <exclude>webui/node_modules/**</exclude>
+                        <exclude>**/*.json</exclude>
+                        <exclude>**/.editorconfig</exclude>
                         <!-- EditorConfig -->
                         <exclude>.editorconfig</exclude>
                         <!-- formatter.xml -->
