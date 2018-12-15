@@ -151,6 +151,11 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
 		if (input.isEmpty()) {
 		  // this is warmer, just return;
       System.out.println("Warm up");
+      try {
+        Thread.sleep(5000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
       return null;
     }
 
