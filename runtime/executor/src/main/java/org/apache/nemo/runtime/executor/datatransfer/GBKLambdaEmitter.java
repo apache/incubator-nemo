@@ -31,7 +31,7 @@ public class GBKLambdaEmitter implements OutputCollector {
   private final EncoderFactory encoderFactory;
   private final DecoderFactory decoderFactory;
 
-  private static final int PARTITION_SIZE = 9000;
+  private static final int PARTITION_SIZE = 5000;
 
   private BlockingQueue<Channel> readyChannels;
   private List<Channel> channels;
