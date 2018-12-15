@@ -68,47 +68,7 @@ export default {
     }
   },
 
-  mounted() {
-    // this event is emitted by JobView, which processes incoming metric.
-    this.$eventBus.$on('set-timeline-items', metricDataSet => {
-      this.metricDataSet = metricDataSet;
-      this.filterAndSend(metricDataSet);
-    });
-
-    // this event is emitted by JobView, which processes incoming metric.
-    this.$eventBus.$on('add-timeline-item', ({ jobId, item }) => {
-      if (jobId !== this.selectedJobId) {
-        return;
-      }
-
-      if (this.filterItem(item)) {
-        this.newMetricDataSet.add(item);
-      }
-    });
-
-    // this event is emitted by JobView, which processes incoming metric.
-    this.$eventBus.$on('update-timeline-item', ({ jobId, item }) => {
-      if (jobId !== this.selectedJobId) {
-        return;
-      }
-
-      if (this.filterItem(item)) {
-        this.newMetricDataSet.update(item);
-      }
-    });
-
-    // should be emitted when metric was deselected or job was cleared.
-    this.$eventBus.$on('clear-stage-select', () => {
-      this.selectData = [];
-    });
-  },
-
-  beforeDestroy() {
-    LISTENING_EVENT_LIST.forEach(e => {
-      this.$eventBus.$off(e);
-    });
-  },
-
+  //COMPUTED
   computed: {
     /**
      * Temporary computed property which filter StageMetric metric id
@@ -120,8 +80,8 @@ export default {
     },
   },
 
+  //METHODS
   methods: {
-
     /**
      * Handler that handles change in stage filter selection.
      * If there is no selected stage, this method will emit
@@ -193,10 +153,55 @@ export default {
       this.selectData = [];
       this.handleSelectChange(this.selectData);
     },
+  },
 
-  }
+  //HOOKS
+  mounted() {
+    // this event is emitted by JobsView, which processes incoming metric.
+    this.$eventBus.$on('set-timeline-items', metricDataSet => {
+      this.metricDataSet = metricDataSet;
+      this.filterAndSend(metricDataSet);
+      this.selectAll();
+    });
+
+    // this event is emitted by JobsView, which processes incoming metric.
+    this.$eventBus.$on('add-timeline-item', ({ jobId, item }) => {
+      if (jobId !== this.selectedJobId) {
+        return;
+      }
+
+      if (this.filterItem(item)) {
+        this.newMetricDataSet.add(item);
+      }
+      this.selectAll();
+    });
+
+    // this event is emitted by JobsView, which processes incoming metric.
+    this.$eventBus.$on('update-timeline-item', ({ jobId, item }) => {
+      if (jobId !== this.selectedJobId) {
+        return;
+      }
+
+      if (this.filterItem(item)) {
+        this.newMetricDataSet.update(item);
+      }
+      this.selectAll();
+    });
+
+    // should be emitted when metric was deselected or job was cleared.
+    this.$eventBus.$on('clear-stage-select', () => {
+      this.selectData = [];
+    });
+  },
+
+  beforeDestroy() {
+    LISTENING_EVENT_LIST.forEach(e => {
+      this.$eventBus.$off(e);
+    });
+  },
 }
 </script>
+
 <style>
 .oper-button {
   margin-bottom: 15px;

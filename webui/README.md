@@ -21,3 +21,12 @@ $ npm run generate
 # run unit test
 $ npm test
 ```
+
+For more information about the commands, refer to [this link](https://nuxtjs.org/guide/commands)
+
+## References
+
+- [VueJS](https://vuejs.org)
+- [NuxtJS](https://nuxtjs.org)
+- [ElementUI](https://element.eleme.io/#/en-US)
+- [Vis](http://visjs.org/)

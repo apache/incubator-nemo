@@ -42,6 +42,65 @@ const LISTENING_EVENT_LIST = [
 export default {
   props: ['selectedJobId', 'groups', 'metricLookupMap'],
 
+  data() {
+    return {
+      options: {
+        onInitialDrawComplete: this.fitTimeline,
+        start: Date.now(),
+        end: Date.now(),
+      },
+
+      fitThrottleTimer: null,
+    };
+  },
+
+  //COMPUTED
+  computed: {
+    timeline() {
+      return this.$refs.timeline;
+    },
+  },
+
+  //METHODS
+  methods: {
+    /**
+     * Redraw timeline. If timeline layout is collapsed or
+     * twingled, this method should be called.
+     * This method also fit the timeline synchronously.
+     */
+    redrawTimeline() {
+      this.timeline.redraw();
+      this.timeline.fit();
+    },
+
+    /**
+     * Fit timeline to make all available elements visible.
+     * It may be throw error if element is not ready or
+     * timeline itself it not ready, but it's ignorable.
+     */
+    fitTimeline() {
+      try {
+        this.timeline.fit();
+      } catch (e) {
+        console.warn('Error when fitting the timeline');
+      }
+    },
+
+    /**
+     * Move timeline to specific timestamp.
+     * It may be throw error if element is not ready or
+     * timeline itself it not ready, but it's ignorable.
+     * @param time timestamp or Date to move.
+     */
+    moveTimeline(time) {
+      try {
+        this.timeline.moveTo(time, false);
+      } catch (e) {
+        console.warn('Error when moving the timeline');
+      }
+    },
+  },
+
   beforeMount() {
     // listen to redraw-timeline event.
     this.$eventBus.$on('redraw-timeline', async () => {
@@ -99,63 +158,5 @@ export default {
       this.$eventBus.$off(e);
     });
   },
-
-  data() {
-    return {
-      options: {
-        onInitialDrawComplete: this.fitTimeline,
-        start: Date.now(),
-        end: Date.now(),
-      },
-
-      fitThrottleTimer: null,
-    };
-  },
-
-  computed: {
-    timeline() {
-      return this.$refs.timeline;
-    },
-  },
-
-  methods: {
-    /**
-     * Redraw timeline. If timeline layout is collapsed or
-     * twingled, this method should be called.
-     * This method also fit the timeline synchronously.
-     */
-    redrawTimeline() {
-      this.timeline.redraw();
-      this.timeline.fit();
-    },
-
-    /**
-     * Fit timeline to make all available elements visible.
-     * It may be throw error if element is not ready or
-     * timeline itself it not ready, but it's ignorable.
-     */
-    fitTimeline() {
-      try {
-        this.timeline.fit();
-      } catch (e) {
-        console.warn('Error when fitting the timeline');
-      }
-    },
-
-    /**
-     * Move timeline to specific timestamp.
-     * It may be throw error if element is not ready or
-     * timeline itself it not ready, but it's ignorable.
-     * @param time timestamp or Date to move.
-     */
-    moveTimeline(time) {
-      try {
-        this.timeline.moveTo(time, false);
-      } catch (e) {
-        console.warn('Error when moving the timeline');
-      }
-    },
-  }
-
 }
 </script>

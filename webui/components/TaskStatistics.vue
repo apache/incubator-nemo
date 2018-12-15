@@ -39,6 +39,9 @@ under the License.
         :key="col"
         :prop="col"/>
     </el-table>
+    <p v-if="taskMetric.length !== 0">
+      Duration sum: <b>{{taskMetric.map(t => t.duration).reduce((a, b) => a + b)}}</b>ms
+    </p>
   </el-card>
 </template>
 
@@ -63,7 +66,7 @@ const _bytesToHumanReadable = function(bytes) {
     Math.floor(Math.log(bytes) / Math.log(1024));
   return (bytes / Math.pow(1024, i)).toFixed(2) * 1
     + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
-}
+};
 
 // this function will preprocess TaskMetric metric array.
 const _preprocessMetric = function(metric) {
@@ -108,6 +111,33 @@ const _isDoneTaskEvent = function(event) {
 export default {
   props: ['metricLookupMap'],
 
+  //COMPUTED
+  computed: {
+    /**
+     * Computed property which consists table data.
+     */
+    taskMetric() {
+      return Object.keys(this.metricLookupMap)
+        .filter(key => this.metricLookupMap[key].group === 'TaskMetric')
+        .map(key => _preprocessMetric(this.metricLookupMap[key]));
+    },
+
+    /**
+     * Computed property of column string array.
+     * This property will look first element of `taskMetric` array and
+     * extract object keys and filter by EXECLUDE_COLUMN.
+     */
+    columnArray() {
+      if (!this.taskMetric[0]) {
+        return [];
+      }
+
+      return Object.keys(this.taskMetric[0])
+        .filter(k => !EXCLUDE_COLUMN.includes(k));
+    },
+  },
+
+  //METHODS
   methods: {
     _sortFunc(_a, _b, column) {
       let a = _a[column], b = _b[column];
@@ -160,29 +190,6 @@ export default {
     }
   },
 
-  computed: {
-    /**
-     * Computed property which consists table data.
-     */
-    taskMetric() {
-      return Object.keys(this.metricLookupMap)
-        .filter(key => this.metricLookupMap[key].group === 'TaskMetric')
-        .map(key => _preprocessMetric(this.metricLookupMap[key]));
-    },
 
-    /**
-     * Computed property of column string array.
-     * This property will look first element of `taskMetric` array and
-     * extract object keys and filter by EXECLUDE_COLUMN.
-     */
-    columnArray() {
-      if (!this.taskMetric[0]) {
-        return [];
-      }
-
-      return Object.keys(this.taskMetric[0])
-        .filter(k => !EXCLUDE_COLUMN.includes(k));
-    },
-  },
 }
 </script>

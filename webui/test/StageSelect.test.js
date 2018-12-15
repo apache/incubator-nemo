@@ -18,7 +18,7 @@
  */
 import test from 'ava';
 import Vue from 'vue';
-import StageSelect from '../components/StageSelect';
+import StageSelect from '../components/jobs/detail/StageSelect';
 
 test.before('initialize', async t => {
   // load all plugins

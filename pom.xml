@@ -312,6 +312,7 @@ under the License.
                         <exclude>webui/node_modules/**</exclude>
                         <exclude>**/*.json</exclude>
                         <exclude>**/.editorconfig</exclude>
+                        <exclude>**/config.gypi</exclude>
                         <!-- EditorConfig -->
                         <exclude>.editorconfig</exclude>
                         <!-- formatter.xml -->

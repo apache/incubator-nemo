@@ -30,26 +30,30 @@ import { fabric } from 'fabric';
 import { Graph } from '@dagrejs/graphlib';
 import graphlib from '@dagrejs/graphlib';
 import dagre from 'dagre';
-import { STATE } from '../assets/constants';
+import { STATE } from '../../../assets/constants';
 
 const DEBOUNCE_INTERVAL = 200;
 
-const VERTEX_WIDTH = 50;
-const VERTEX_HEIGHT = 30;
-const VERTEX_RADIUS = 6;
-const PAN_MARGIN = 20;
+const STAGE_VERTEX_WIDTH = 50;
+const STAGE_VERTEX_HEIGHT = 50;
 const RECT_ROUND_RADIUS = 4;
 const RECT_STROKE_WIDTH = 2;
-const EDGE_STROKE_WIDTH = 2;
+
+const VERTEX_SQUARE_SIDE = 20;
+const VERTEX_DOT_RADIUS = 7;
+const PAN_MARGIN = 20;
+const INTER_STAGE_EDGE_STROKE_WIDTH = 3;
+const INTRA_STAGE_EDGE_STROKE_WIDTH = 3;
 const ARROW_SIDE = 3;
-const FONT_SIZE = 2;
+const VERTEX_FONT_SIZE = 12;
+const STAGE_FONT_SIZE = 15;
 
 const GRAPH_MARGIN = 15;
 
-const SUCCESS_COLOR = '#67C23A';
-const DANGER_COLOR = '#F56C6C';
+const SUCCESS_COLOR = '#b0ff82';
+const DANGER_COLOR = '#ff7375';
 
-const BACKGROUND_COLOR = '#F2F6FC';
+const BACKGROUND_COLOR = '#f6f9ff';
 const CANVAS_RATIO = 0.75;
 const MAX_ZOOM = 20;
 const MIN_ZOOM = 0.1;
@@ -103,6 +107,8 @@ export default {
       stageInnerObjects: {},
       // array of stage label text object
       stageTextObjects: [],
+      // array of vertex label text object
+      vertexTextObjects: [],
     };
   },
 
@@ -123,19 +129,19 @@ export default {
         .map(e => this.stageGraph.edge(e))
         .map(edge => edge.points)
         .reduce((acc, curr) => acc.concat(curr))
-        .map(point => point.x)
+        .map(point => point.x);
 
       const stagesXCoordsRight = stages
         .map(node => this.stageGraph.node(node))
-        .map(stage => stage.x + stage.width / 2)
+        .map(stage => stage.x + stage.width / 2);
       const stagesXCoordsLeft = stages
         .map(node => this.stageGraph.node(node))
-        .map(stage => stage.x - stage.width / 2)
+        .map(stage => stage.x - stage.width / 2);
 
       const coordMax = Math.max(...(edgesXCoords.concat(stagesXCoordsRight)));
       const coordMin = Math.min(...(edgesXCoords.concat(stagesXCoordsLeft)));
 
-      return coordMax - coordMin + EDGE_STROKE_WIDTH * 2;
+      return coordMax - coordMin + INTER_STAGE_EDGE_STROKE_WIDTH * 2;
     },
 
     /**
@@ -163,7 +169,7 @@ export default {
       const coordMax = Math.max(...(edgesYCoords.concat(stagesYCoordsBottom)));
       const coordMin = Math.min(...(edgesYCoords.concat(stagesYCoordsTop)));
 
-      return coordMax - coordMin + EDGE_STROKE_WIDTH * 2;
+      return coordMax - coordMin + INTER_STAGE_EDGE_STROKE_WIDTH * 2;
     },
 
     /**
@@ -181,15 +187,15 @@ export default {
         .map(e => this.stageGraph.edge(e))
         .map(edge => edge.points)
         .reduce((acc, curr) => acc.concat(curr))
-        .map(point => point.x)
+        .map(point => point.x);
 
       const stagesXCoordsLeft = stages
         .map(node => this.stageGraph.node(node))
-        .map(stage => stage.x - stage.width / 2)
+        .map(stage => stage.x - stage.width / 2);
 
       const coordMin = Math.min(...(edgesXCoords.concat(stagesXCoordsLeft)));
 
-      return coordMin - EDGE_STROKE_WIDTH;
+      return coordMin - INTER_STAGE_EDGE_STROKE_WIDTH;
     },
 
     /**
@@ -206,14 +212,14 @@ export default {
         .map(e => this.stageGraph.edge(e))
         .map(edge => edge.points)
         .reduce((acc, curr) => acc.concat(curr))
-        .map(point => point.y)
+        .map(point => point.y);
 
       const stagesYCoordsTop = stages
         .map(node => this.stageGraph.node(node))
-        .map(stage => stage.y - stage.height / 2)
+        .map(stage => stage.y - stage.height / 2);
       const coordMin = Math.min(...(edgesYCoords.concat(stagesYCoordsTop)));
 
-      return coordMin - EDGE_STROKE_WIDTH;
+      return coordMin - INTER_STAGE_EDGE_STROKE_WIDTH;
     },
 
     /**
@@ -448,7 +454,7 @@ export default {
         } else if (!options.target && !this.objectSelected) {
           this.$eventBus.$emit('metric-deselect');
         }
-      })
+      });
     },
 
     /**
@@ -481,9 +487,13 @@ export default {
      * Rearrange font size according to the canvas zoom ratio.
      */
     rearrangeFontSize(ratio) {
+      // Disable for now.
       this.stageTextObjects.forEach(text => {
-        text.set('fontSize', FONT_SIZE * ratio);
+        // text.set('fontSize', STAGE_FONT_SIZE * ratio);
       });
+      this.vertexTextObjects.forEach(text => {
+        // text.set('fontSize', VERTEX_FONT_SIZE * ratio);
+      })
     },
 
     /**
@@ -539,14 +549,18 @@ export default {
         this.verticesGraph[stageId] = new Graph();
         let g = this.verticesGraph[stageId];
 
-        g.setGraph({});
+        g.setGraph({  rankdir: 'LR' });
         g.setDefaultEdgeLabel(function () { return {}; });
 
         innerVertices.forEach(vertex => {
+          let label = vertex.properties.class === "OperatorVertex"
+            ? vertex.properties.transform.match("([A-Z])\\w+Transform")[0].split("Transform")[0]
+            : vertex.properties.class;
           g.setNode(vertex.id, {
-            label: vertex.id,
-            width: VERTEX_WIDTH,
-            height: VERTEX_HEIGHT,
+            label: label,
+            id: vertex.id,
+            width: STAGE_VERTEX_WIDTH,
+            height: STAGE_VERTEX_HEIGHT,
           });
         });
 
@@ -565,8 +579,8 @@ export default {
         // create vertex circles
         g.nodes().map(node => g.node(node)).forEach(vertex => {
           let vertexCircle = new fabric.Circle({
-            metricId: vertex.label,
-            radius: VERTEX_RADIUS,
+            metricId: vertex.id,
+            radius: VERTEX_DOT_RADIUS,
             left: vertex.x,
             top: vertex.y,
             originX: 'center',
@@ -578,11 +592,28 @@ export default {
             lockMovementY: true,
           });
 
+          // let top = vertex.label.length > 10 ?
+          //   vertex.y + (vertex.height * 5 / 12) : vertex.y + (vertex.height * 7 / 24);
+          let top = vertex.y + (vertex.height * 7 / 24);
+          let vertexLabelObj = new fabric.Text(vertex.label, {
+            left: vertex.x,
+            top: top,
+            fontSize: VERTEX_FONT_SIZE,
+            originX: 'center',
+            originY: 'center',
+            metricId: vertex.id,
+            selectable: false,
+          });
+          this.vertexTextObjects.push(vertexLabelObj);
+
           this.vertexObjects[vertex.label] = vertexCircle;
           this.stageInnerObjects[stageId].push(vertexCircle);
+          this.stageInnerObjects[stageId].push(vertexLabelObj);
           objectArray.push(vertexCircle);
+          objectArray.push(vertexLabelObj);
         });
 
+        // create internal edges
         g.edges().map(e => g.edge(e)).forEach(edge => {
           let path = this.drawSVGEdgeWithArrow(edge);
 
@@ -591,7 +622,7 @@ export default {
             metricId: edge.label,
             fill: 'transparent',
             stroke: 'black',
-            strokeWidth: 2,
+            strokeWidth: INTRA_STAGE_EDGE_STROKE_WIDTH,
             perPixelTargetFind: true,
             hasControls: false,
             hasRotatingPoint: false,
@@ -654,10 +685,11 @@ export default {
 
         let stageLabelObj = new fabric.Text(stage.label, {
           left: stage.x,
-          top: stage.y - stage.height / 2 + FONT_SIZE * 2,
-          fontSize: FONT_SIZE,
+          top: stage.y - (stage.height / 2) + (STAGE_FONT_SIZE / 3),
+          fontSize: STAGE_FONT_SIZE,
           originX: 'center',
           originY: 'center',
+          metricId: stage.label,
           selectable: false,
         });
         this.stageTextObjects.push(stageLabelObj);
@@ -678,7 +710,7 @@ export default {
           metricId: edge.label,
           fill: 'transparent',
           stroke: 'black',
-          strokeWidth: EDGE_STROKE_WIDTH,
+          strokeWidth: INTER_STAGE_EDGE_STROKE_WIDTH,
           perPixelTargetFind: true,
           hasControls: false,
           hasRotatingPoint: false,
@@ -752,6 +784,7 @@ export default {
   }
 }
 </script>
+
 <style>
 .dag-canvas {
   box-sizing: border-box;
