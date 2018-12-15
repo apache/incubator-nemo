@@ -108,7 +108,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     */
 
     // query 8
-    /*
     if (irVertex.getId().equals("vertex15")) {
       final EncoderFactory encoderFactory =
         internalEdges.get(0).getPropertyValue(EncoderProperty.class).get();
@@ -116,7 +115,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
         internalEdges.get(0).getPropertyValue(DecoderProperty.class).get();
       gbkLambdaEmitter = new GBKLambdaEmitter(encoderFactory, decoderFactory);
     }
-    */
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -124,12 +122,10 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     final String vertexId = irVertex.getId();
 
     // QUERY8
-    /*
     if (vertexId.equals("vertex15")) {
       gbkLambdaEmitter.emit(output);
       return;
     }
-    */
 
     vertex.getTransform().onData(output);
   }

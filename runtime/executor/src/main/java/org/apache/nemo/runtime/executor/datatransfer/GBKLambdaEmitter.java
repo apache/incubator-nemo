@@ -86,7 +86,7 @@ public class GBKLambdaEmitter implements OutputCollector {
               lambdaTransport.setChannelHandler(channel, channelHandler);
               channel.writeAndFlush(new NemoEvent(NemoEvent.Type.GBK_START,
                 serializedDecoderFactory, serializedDecoderFactory.length));
-              readyChannels.add(lambdaTransport.createLambdaChannel().get());
+              readyChannels.add(channel);
             } catch (InterruptedException e) {
               e.printStackTrace();
               throw new RuntimeException(e);
@@ -149,7 +149,7 @@ public class GBKLambdaEmitter implements OutputCollector {
       final ByteBuf buffer = channel.alloc().buffer();
       buffer.writeInt(NemoEvent.Type.GBK.ordinal());
       final ByteBufOutputStream byteBufOutputStream =
-        new ByteBufOutputStream(channel.alloc().buffer());
+        new ByteBufOutputStream(buffer);
 
       try {
         final EncoderFactory.Encoder encoder = encoderFactory.create(byteBufOutputStream);

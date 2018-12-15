@@ -18,6 +18,8 @@ import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.NettyChannelInitializer;
 import org.apache.nemo.common.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
@@ -29,8 +31,9 @@ public final class NettyServerLambdaTransport {
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = NettyServerLambdaTransport.class.getName();
   private static final String ADDRESS = "172.31.6.35";
-  private static final String PUBLIC_ADDRESS = "13.231.167.41";
+  private static final String PUBLIC_ADDRESS = "54.178.162.9";
   private static final int PORT = 20332;
+  private static final Logger LOG = LoggerFactory.getLogger(NettyServerLambdaTransport.class.getName());
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
   private EventLoopGroup serverBossGroup;
@@ -61,6 +64,7 @@ public final class NettyServerLambdaTransport {
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
       new ClientConfiguration().withMaxConnections(150)).build();
 
+    LOG.info("Server bootstrap");
     final ServerBootstrap serverBootstrap = new ServerBootstrap();
     serverBootstrap.group(this.serverBossGroup, this.serverWorkerGroup)
       .channel(NioServerSocketChannel.class)
@@ -72,6 +76,7 @@ public final class NettyServerLambdaTransport {
     try {
       this.acceptor = serverBootstrap.bind(
         new InetSocketAddress(ADDRESS, PORT)).sync().channel();
+      LOG.info("Acceptor end");
     } catch (InterruptedException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
