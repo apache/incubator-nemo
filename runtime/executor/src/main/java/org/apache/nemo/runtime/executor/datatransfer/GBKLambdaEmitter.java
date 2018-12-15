@@ -31,7 +31,7 @@ public class GBKLambdaEmitter implements OutputCollector {
   private final EncoderFactory encoderFactory;
   private final DecoderFactory decoderFactory;
 
-  private static final int PARTITION_SIZE = 500;
+  private static final int PARTITION_SIZE = 9000;
 
   private BlockingQueue<Channel> readyChannels;
   private List<Channel> channels;
@@ -48,12 +48,16 @@ public class GBKLambdaEmitter implements OutputCollector {
   private GBKChannelHandler channelHandler;
   private final AtomicInteger numResults = new AtomicInteger(0);
 
+  private final LambdaWarmer warmer;
+
   public GBKLambdaEmitter(final EncoderFactory encoderFactory,
                           final DecoderFactory decoderFactory) {
     this.encoderFactory = encoderFactory;
     this.decoderFactory = decoderFactory;
     this.serializedDecoderFactory = SerializationUtils.serialize(decoderFactory);
     this.lambdaTransport = NettyServerLambdaTransport.INSTANCE;
+    this.warmer = new LambdaWarmer();
+    warmer.warmup();
   }
 
   @Override
