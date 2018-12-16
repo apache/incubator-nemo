@@ -237,8 +237,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     checkAndFinishBundle();
 
     final long et = System.currentTimeMillis();
-    LOG.info("{}/{} latency {}",
-      getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st));
+    LOG.info("{}/{} latency {}, watermark: {}",
+      getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st),
+      new Instant(watermark.getTimestamp()));
   }
 
   /**
