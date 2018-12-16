@@ -127,8 +127,8 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
 			createClassLoader();
 
       final List<String> serializedVertices = Arrays.asList(
-        SerializedQueries.QUERY8_1,
-        SerializedQueries.QUERY8_2);
+        SerializedQueries.QUERY9_1,
+        SerializedQueries.QUERY9_2);
 
       vertices = buildOperatorChain(serializedVertices, classLoader);
       headVertex = vertices.get(0);
@@ -315,7 +315,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
         }
         case GBK: {// query 8
           // TODO
-          System.out.println("Receive gbk data");
+          //System.out.println("Receive gbk data");
           final ByteArrayInputStream bis = new ByteArrayInputStream(nemoEvent.getBytes());
           try {
             final DecoderFactory.Decoder gbkDecoder = gbkDecoderFactory.create(bis);
@@ -329,7 +329,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
                 cnt += 1;
               } catch (final IOException e) {
                 if (e.getMessage().contains("EOF")) {
-                  System.out.println("Cnt: " + cnt + ", eof!");
+                  //System.out.println("Cnt: " + cnt + ", eof!");
                 } else {
                   System.out.println("Cnt: " + cnt + "Windowed value: " + mainInput + ", sideInput: " + sideInput + ", oc: " + outputCollector);
                   throw e;
@@ -384,7 +384,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
 
     @Override
     public void emit(Object output) {
-      System.out.println("Emit output: " + output.toString());
+      //System.out.println("Emit output: " + output.toString());
       result.add(output.toString());
     }
 
