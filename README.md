@@ -124,21 +124,24 @@ This example configuration specifies
 * 12 transient containers with 4 cores and 1024MB memory each
 * 1 reserved container with 2 cores and 1024MB memory
 
-## Monitoring your job using web UI
-Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
-* `-dag_dir` command line option is used to specify the directory where the JSON files are stored. The default directory is `./dag`.
-  Using our [online visualizer](https:/nemo.snuspl.snu.ac.kr:50443/nemo-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
+## Monitoring your job using Web UI
+Please refer to the instructions at `web-ui/README.md` to run the frontend.
 
-### Examples
-```bash
-./bin/run_beam.sh \
-	-job_id als \
-	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
-  	-user_main org.apache.nemo.examples.beam.AlternatingLeastSquare \
-  	-optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
-  	-dag_dir "./dag/als" \
-  	-user_args "`pwd`/examples/resources/inputs/test_input_als 10 3"
+### Visualizing metric on run-time
+
+While Nemo driver is alive, it can post runtime metrics through websocket. At your frontend, add websocket endpoint
+
 ```
+ws://<DRIVER>:10101/api/websocket
+```
+
+where `<DRIVER>` is the hostname that Nemo driver runs.
+
+### Post-job analysis
+
+On job completion, the Nemo driver creates `metric.json` at the directory specified by `-dag_dir` option. At your frontend, add the JSON file to do post-job analysis.
+
+Other JSON files are for legacy Web UI, hosted here [online visualizer](https:/nemo.snuspl.snu.ac.kr:50443/nemo-dag/). It uses [Graphviz](https://www.graphviz.org/) to visualize IR DAGs and execution plans.
 
 ## Speeding up builds 
 * To exclude Spark related packages: mvn clean install -T 2C -DskipTests -pl \\!compiler/frontend/spark,\\!examples/spark
