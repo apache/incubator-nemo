@@ -54,37 +54,43 @@ public final class NettyServerLambdaTransport {
 
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
+  private final List<Channel> channelPool;
+  private int channelCnt = 0;
+
   private NettyServerLambdaTransport() {
     lazyInit();
     initialized.set(true);
+    this.channelPool = new ArrayList<>(poolSize);
 
     warmer.scheduleAtFixedRate(() -> {
-      for (int i = 0; i < poolSize; i++) {
-        executorService.submit(() -> {
-          // Trigger lambdas
-          final InvokeRequest request = new InvokeRequest()
-            .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
-            .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-              PUBLIC_ADDRESS, PORT));
-          return awsLambda.invokeAsync(request);
+      synchronized (channelPool) {
+        channelPool.clear();
+
+        for (int i = 0; i < poolSize; i++) {
+          executorService.submit(() -> {
+            // Trigger lambdas
+            final InvokeRequest request = new InvokeRequest()
+              .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
+              .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
+                PUBLIC_ADDRESS, PORT));
+            return awsLambda.invokeAsync(request);
+          });
+        }
+
+        // take
+        for (int i = 0; i < poolSize; i++) {
+          try {
+            channelPool.add(nemoEventHandler.getHandshakeQueue().take().left());
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+
+        // send end event
+        channelPool.forEach(channel -> {
+          channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
         });
       }
-
-      // take
-      final List<Channel> list = new ArrayList<>(poolSize);
-      for (int i = 0; i < poolSize; i++) {
-        try {
-          list.add(nemoEventHandler.getHandshakeQueue().take().left());
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-
-      // send end event
-      list.forEach(channel -> {
-        channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
-      });
-
 
     }, 0, warmupPeriod, TimeUnit.SECONDS);
 
@@ -136,6 +142,37 @@ public final class NettyServerLambdaTransport {
       lazyInit();
     }
 
+    synchronized (channelPool) {
+      final int index = (channelCnt++) % channelPool.size();
+      return new Future<Channel>() {
+        @Override
+        public boolean cancel(boolean mayInterruptIfRunning) {
+          return false;
+        }
+
+        @Override
+        public boolean isCancelled() {
+          return false;
+        }
+
+        @Override
+        public boolean isDone() {
+          return false;
+        }
+
+        @Override
+        public Channel get() throws InterruptedException, ExecutionException {
+          return null;
+        }
+
+        @Override
+        public Channel get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+          return channelPool.get(index);
+        }
+      };
+    }
+
+    /*
     executorService.submit(() -> {
       // Trigger lambdas
       final InvokeRequest request = new InvokeRequest()
@@ -176,6 +213,7 @@ public final class NettyServerLambdaTransport {
         return get();
       }
     };
+    */
   }
 
 

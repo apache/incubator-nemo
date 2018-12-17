@@ -350,6 +350,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
           // update handler
           break;
         case WARMUP_END:
+          System.out.println("Warmup end");
           endBlockingQueue.add(1);
           break;
       }
