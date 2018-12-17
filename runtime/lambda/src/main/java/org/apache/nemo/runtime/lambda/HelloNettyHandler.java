@@ -195,6 +195,20 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
       throw new RuntimeException(e);
     }
 
+    if (result.size() > 0) {
+      final byte[] bytes = result.toString().getBytes();
+      final ChannelFuture future =
+        opendChannel.writeAndFlush(
+          new NemoEvent(NemoEvent.Type.RESULT, bytes, bytes.length));
+      try {
+        future.get();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      } catch (ExecutionException e) {
+        e.printStackTrace();
+      }
+    }
+
     //final Decoder object  = (T)ois.readObject();
 		//ois.close();
 		//return object;
@@ -277,17 +291,6 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
 
             sideInput = null;
             // send result
-            final byte[] bytes = result.toString().getBytes();
-            final ChannelFuture future =
-              opendChannel.writeAndFlush(
-                new NemoEvent(NemoEvent.Type.RESULT, bytes, bytes.length));
-            try {
-              future.get();
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            } catch (ExecutionException e) {
-              e.printStackTrace();
-            }
             endBlockingQueue.add(1);
           } catch (IOException e) {
             e.printStackTrace();
@@ -338,13 +341,6 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
           final ChannelFuture future =
             opendChannel.writeAndFlush(
               new NemoEvent(NemoEvent.Type.RESULT, bytes, bytes.length));
-          try {
-            future.get();
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          } catch (ExecutionException e) {
-            e.printStackTrace();
-          }
           endBlockingQueue.add(1);
           // end of event
           // update handler
