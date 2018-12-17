@@ -18,7 +18,7 @@ under the License.
 -->
 <template>
   <el-container>
-    <!--el-header>
+    <el-header>
       <el-menu :default-active="activeIndex" class="el-menu-demo" mode="horizontal" @select="handleSelect">
         <el-menu-item index="0" disabled><a href="/">LOGO</a></el-menu-item>
         <el-menu-item index="1">Jobs</el-menu-item>
@@ -28,7 +28,7 @@ under the License.
         <el-menu-item index="5">Executors</el-menu-item>
         <el-menu-item index="6" disabled style="float: right;">Nemo Web UI</el-menu-item>
       </el-menu>
-    </el-header-->
+    </el-header>
 
     <el-main>
       <!--Jobs-->

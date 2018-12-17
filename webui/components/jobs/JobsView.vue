@@ -44,7 +44,7 @@ under the License.
     <h2 ref="activeJobs">Active Jobs
       <el-badge type="primary" :value="activeJobsData.length"></el-badge></h2>
     <div v-if="activeJobsData.length !== 0">
-      <!--TODO: 이거 component로 refactor 하기-->
+      <!--TODO: Refactor this as component-->
       <el-table key="aTable" class="active-jobs-table" :data="activeJobsData"
                 @row-click="handleSelect" stripe>
         <el-table-column label="Job id">

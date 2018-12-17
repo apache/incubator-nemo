@@ -57,7 +57,7 @@ export default {
   props: ['taskStatistics'],
 
   data: function() {
-    return { 
+    return {
       columns: COLUMNS,
       pageSize: TASKS_PER_PAGE,
       currentPage: 1.
