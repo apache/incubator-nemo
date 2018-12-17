@@ -58,7 +58,6 @@ public final class NettyServerLambdaTransport {
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   private final List<Channel> channelPool;
-  private int channelCnt = 0;
 
   private NettyServerLambdaTransport() {
     lazyInit();
@@ -66,7 +65,6 @@ public final class NettyServerLambdaTransport {
     this.channelPool = new ArrayList<>(poolSize);
 
     warmer.scheduleAtFixedRate(() -> {
-      synchronized (channelPool) {
         channelPool.clear();
 
         for (int i = 0; i < poolSize; i++) {
@@ -95,7 +93,6 @@ public final class NettyServerLambdaTransport {
         channelPool.forEach(channel -> {
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
         });
-      }
 
     }, 0, warmupPeriod, TimeUnit.SECONDS);
   }
@@ -146,38 +143,6 @@ public final class NettyServerLambdaTransport {
       lazyInit();
     }
 
-    return new Future<Channel>() {
-      @Override
-      public boolean cancel(boolean mayInterruptIfRunning) {
-        return false;
-      }
-
-      @Override
-      public boolean isCancelled() {
-        return false;
-      }
-
-      @Override
-      public boolean isDone() {
-        return false;
-      }
-
-      @Override
-      public Channel get() throws InterruptedException, ExecutionException {
-        return null;
-      }
-
-      @Override
-      public Channel get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-        synchronized (channelPool) {
-          final int index = (channelCnt++) % channelPool.size();
-          LOG.info("Get channel {}", index);
-          return channelPool.get(index);
-        }
-      }
-    };
-
-    /*
     executorService.submit(() -> {
       // Trigger lambdas
       final InvokeRequest request = new InvokeRequest()
@@ -218,7 +183,6 @@ public final class NettyServerLambdaTransport {
         return get();
       }
     };
-    */
   }
 
 
