@@ -48,7 +48,7 @@ public class GBKLambdaEmitter implements OutputCollector {
   private GBKChannelHandler channelHandler;
   private final AtomicInteger numResults = new AtomicInteger(0);
 
-  private final LambdaWarmer warmer;
+  //private final LambdaWarmer warmer;
 
   public GBKLambdaEmitter(final EncoderFactory encoderFactory,
                           final DecoderFactory decoderFactory) {
@@ -56,8 +56,8 @@ public class GBKLambdaEmitter implements OutputCollector {
     this.decoderFactory = decoderFactory;
     this.serializedDecoderFactory = SerializationUtils.serialize(decoderFactory);
     this.lambdaTransport = NettyServerLambdaTransport.INSTANCE;
-    this.warmer = new LambdaWarmer();
-    warmer.warmup();
+    //this.warmer = new LambdaWarmer();
+    //warmer.warmup();
   }
 
   @Override
