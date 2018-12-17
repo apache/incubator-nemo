@@ -141,7 +141,7 @@ where `<DRIVER>` is the hostname that Nemo driver runs.
 
 On job completion, the Nemo driver creates `metric.json` at the directory specified by `-dag_dir` option. At your frontend, add the JSON file to do post-job analysis.
 
-Other JSON files are for legacy Web UI, hosted here [online visualizer](https:/nemo.snuspl.snu.ac.kr:50443/nemo-dag/). It uses [Graphviz](https://www.graphviz.org/) to visualize IR DAGs and execution plans.
+Other JSON files are for legacy Web UI, hosted [here](https:/nemo.snuspl.snu.ac.kr:50443/nemo-dag/). It uses [Graphviz](https://www.graphviz.org/) to visualize IR DAGs and execution plans.
 
 ## Speeding up builds 
 * To exclude Spark related packages: mvn clean install -T 2C -DskipTests -pl \\!compiler/frontend/spark,\\!examples/spark
