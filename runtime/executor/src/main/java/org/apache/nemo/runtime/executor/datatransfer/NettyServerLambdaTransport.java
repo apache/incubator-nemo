@@ -18,22 +18,23 @@ import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.NettyChannelInitializer;
 import org.apache.nemo.common.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class NettyServerLambdaTransport {
   private static final int SERVER_BOSS_NUM_THREADS = 3;
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = NettyServerLambdaTransport.class.getName();
   private static final String ADDRESS = "172.31.6.35";
-  private static final String PUBLIC_ADDRESS = "54.178.162.9";
+  private static final String PUBLIC_ADDRESS = "18.182.36.12";
   private static final int PORT = 20332;
-  private static final Logger LOG = LoggerFactory.getLogger(NettyServerLambdaTransport.class.getName());
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
   private EventLoopGroup serverBossGroup;
@@ -46,10 +47,47 @@ public final class NettyServerLambdaTransport {
 
   public static final NettyServerLambdaTransport INSTANCE = new NettyServerLambdaTransport();
 
+  private final ScheduledExecutorService warmer = Executors.newSingleThreadScheduledExecutor();
+
+  private final int poolSize = 200;
+  private final int warmupPeriod = 90; // sec
+
   private final AtomicBoolean initialized = new AtomicBoolean(false);
+
   private NettyServerLambdaTransport() {
     lazyInit();
     initialized.set(true);
+
+    warmer.scheduleAtFixedRate(() -> {
+      for (int i = 0; i < poolSize; i++) {
+        executorService.submit(() -> {
+          // Trigger lambdas
+          final InvokeRequest request = new InvokeRequest()
+            .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
+            .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
+              PUBLIC_ADDRESS, PORT));
+          return awsLambda.invokeAsync(request);
+        });
+      }
+
+      // take
+      final List<Channel> list = new ArrayList<>(poolSize);
+      for (int i = 0; i < poolSize; i++) {
+        try {
+          list.add(nemoEventHandler.getHandshakeQueue().take().left());
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      // send end event
+      list.forEach(channel -> {
+        channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
+      });
+
+
+    }, 0, warmupPeriod, TimeUnit.SECONDS);
+
   }
 
   private void lazyInit() {
@@ -62,9 +100,7 @@ public final class NettyServerLambdaTransport {
     //this.awsLambda = AWSLambdaClientBuilder.standard().withClientConfiguration(
     //  new ClientConfiguration().withMaxConnections(150)).build();
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
-      new ClientConfiguration().withMaxConnections(150)).build();
-
-    LOG.info("Server bootstrap");
+      new ClientConfiguration().withMaxConnections(500)).build();
     final ServerBootstrap serverBootstrap = new ServerBootstrap();
     serverBootstrap.group(this.serverBossGroup, this.serverWorkerGroup)
       .channel(NioServerSocketChannel.class)
@@ -76,7 +112,6 @@ public final class NettyServerLambdaTransport {
     try {
       this.acceptor = serverBootstrap.bind(
         new InetSocketAddress(ADDRESS, PORT)).sync().channel();
-      LOG.info("Acceptor end");
     } catch (InterruptedException e) {
       e.printStackTrace();
       throw new RuntimeException(e);

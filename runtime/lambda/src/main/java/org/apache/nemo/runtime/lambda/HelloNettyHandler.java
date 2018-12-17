@@ -148,17 +148,6 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
     final OperatorVertex finalVertex = vertices.get(vertices.size()-1);
       finalVertex.getTransform().prepare(new LambdaRuntimeContext(finalVertex), outputCollector);
 
-		if (input.isEmpty()) {
-		  // this is warmer, just return;
-      System.out.println("Warm up");
-      try {
-        Thread.sleep(5000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-      return null;
-    }
-
     boolean channelOpen = false;
     Channel opendChannel = null;
     for (final Map.Entry<Channel, EventHandler<NemoEvent>> entry : map.entrySet()) {
@@ -171,7 +160,6 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
         break;
       }
     }
-
 
     if (opendChannel == null) {
       final String address = (String) input.get("address");
@@ -194,6 +182,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
 
     // client handshake
     opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.CLIENT_HANDSHAKE, new byte[0], 0));
+
     System.out.println("Write handshake");
 
     final LambdaEventHandler handler = (LambdaEventHandler) map.get(opendChannel);
@@ -201,18 +190,6 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
       // wait until end
       System.out.println("Wait end flag");
       final Integer endFlag = handler.endBlockingQueue.take();
-      // send result
-      final byte[] bytes = result.toString().getBytes();
-      final ChannelFuture future =
-        opendChannel.writeAndFlush(
-          new NemoEvent(NemoEvent.Type.RESULT, bytes, bytes.length));
-      try {
-        future.get();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      } catch (ExecutionException e) {
-        e.printStackTrace();
-      }
     } catch (InterruptedException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -299,6 +276,18 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
             }
 
             sideInput = null;
+            // send result
+            final byte[] bytes = result.toString().getBytes();
+            final ChannelFuture future =
+              opendChannel.writeAndFlush(
+                new NemoEvent(NemoEvent.Type.RESULT, bytes, bytes.length));
+            try {
+              future.get();
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            } catch (ExecutionException e) {
+              e.printStackTrace();
+            }
             endBlockingQueue.add(1);
           } catch (IOException e) {
             e.printStackTrace();
@@ -344,9 +333,24 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
           break;
         }
         case END:
+          // send result
+          final byte[] bytes = result.toString().getBytes();
+          final ChannelFuture future =
+            opendChannel.writeAndFlush(
+              new NemoEvent(NemoEvent.Type.RESULT, bytes, bytes.length));
+          try {
+            future.get();
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          } catch (ExecutionException e) {
+            e.printStackTrace();
+          }
           endBlockingQueue.add(1);
           // end of event
           // update handler
+          break;
+        case WARMUP_END:
+          endBlockingQueue.add(1);
           break;
       }
     }

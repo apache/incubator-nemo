@@ -13,6 +13,7 @@ public final class NemoEvent implements Serializable {
     GBK_START,
     GBK,
     RESULT,
+    WARMUP_END,
     END
   }
 
