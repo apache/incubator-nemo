@@ -18,6 +18,8 @@ import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.NettyChannelInitializer;
 import org.apache.nemo.common.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -29,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class NettyServerLambdaTransport {
+  private static final Logger LOG = LoggerFactory.getLogger(NettyServerLambdaTransport.class.getName());
   private static final int SERVER_BOSS_NUM_THREADS = 3;
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = NettyServerLambdaTransport.class.getName();
@@ -86,6 +89,8 @@ public final class NettyServerLambdaTransport {
           }
         }
 
+        LOG.info("Warmup end");
+
         // send end event
         channelPool.forEach(channel -> {
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
@@ -93,7 +98,6 @@ public final class NettyServerLambdaTransport {
       }
 
     }, 0, warmupPeriod, TimeUnit.SECONDS);
-
   }
 
   private void lazyInit() {
@@ -142,35 +146,36 @@ public final class NettyServerLambdaTransport {
       lazyInit();
     }
 
-    synchronized (channelPool) {
-      final int index = (channelCnt++) % channelPool.size();
-      return new Future<Channel>() {
-        @Override
-        public boolean cancel(boolean mayInterruptIfRunning) {
-          return false;
-        }
+    return new Future<Channel>() {
+      @Override
+      public boolean cancel(boolean mayInterruptIfRunning) {
+        return false;
+      }
 
-        @Override
-        public boolean isCancelled() {
-          return false;
-        }
+      @Override
+      public boolean isCancelled() {
+        return false;
+      }
 
-        @Override
-        public boolean isDone() {
-          return false;
-        }
+      @Override
+      public boolean isDone() {
+        return false;
+      }
 
-        @Override
-        public Channel get() throws InterruptedException, ExecutionException {
-          return null;
-        }
+      @Override
+      public Channel get() throws InterruptedException, ExecutionException {
+        return null;
+      }
 
-        @Override
-        public Channel get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+      @Override
+      public Channel get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        synchronized (channelPool) {
+          final int index = (channelCnt++) % channelPool.size();
+          LOG.info("Get channel {}", index);
           return channelPool.get(index);
         }
-      };
-    }
+      }
+    };
 
     /*
     executorService.submit(() -> {
