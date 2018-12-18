@@ -63,9 +63,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   private SideInputLambdaCollector sideInputOutputCollector;
   private MainInputLambdaCollector mainInputLambdaCollector;
 
-  // query8
-  private GBKLambdaEmitter gbkLambdaEmitter;
-
   /**
    * Constructor of the output collector.
    * @param irVertex the ir vertex that emits the output
@@ -106,31 +103,11 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
           serializerManager, storageObjectFactory);
     }
     */
-
-    // query 8
-    /*
-    if (irVertex.getId().equals("vertex15")) {
-      final EncoderFactory encoderFactory =
-        internalEdges.get(0).getPropertyValue(EncoderProperty.class).get();
-      final DecoderFactory decoderFactory =
-        internalEdges.get(0).getPropertyValue(DecoderProperty.class).get();
-      gbkLambdaEmitter = new GBKLambdaEmitter(encoderFactory, decoderFactory);
-    }
-    */
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
 
     final String vertexId = irVertex.getId();
-
-    // QUERY8
-    /*
-    if (vertexId.equals("vertex15")) {
-      gbkLambdaEmitter.emit(output);
-      return;
-    }
-    */
-
     vertex.getTransform().onData(output);
   }
 
@@ -219,13 +196,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
           externalVertex.writeWatermark(watermark);
         }
       }
-    }
-    */
-
-    // QUERY 8
-    /*
-    if (irVertex.getId().equals("vertex15")) {
-      gbkLambdaEmitter.emitWatermark(watermark);
     }
     */
 

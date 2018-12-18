@@ -13,31 +13,42 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class GBKLambdaEmitter implements OutputCollector {
+public class GBKLambdaEmitter<O> implements OutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(GBKLambdaEmitter.class.getName());
+
+  private final IRVertex irVertex;
+  private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
+  private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
+  private final List<OutputWriter> externalMainOutputs;
+  private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
+  private final List<RuntimeEdge<IRVertex>> internalEdges;
+
 
   private final EncoderFactory encoderFactory;
   private final DecoderFactory decoderFactory;
 
-  private static final int PARTITION_SIZE = 5000;
+  private static final int PARTITION_SIZE = 1000;
 
   private BlockingQueue<Channel> readyChannels;
   private List<Channel> channels;
 
-  private boolean initialized = false;
   private int index = 0;
   private int numLambdas = 0;
 
@@ -47,27 +58,52 @@ public class GBKLambdaEmitter implements OutputCollector {
   private long startTime;
   private final NettyServerLambdaTransport lambdaTransport;
   private GBKChannelHandler channelHandler;
-  private final AtomicInteger numResults = new AtomicInteger(0);
+
+  private boolean toLambda = false;
 
   //private final LambdaWarmer warmer;
 
-  public GBKLambdaEmitter(final EncoderFactory encoderFactory,
-                          final DecoderFactory decoderFactory) {
-    this.encoderFactory = encoderFactory;
-    this.decoderFactory = decoderFactory;
+  public GBKLambdaEmitter(final IRVertex irVertex,
+                          final List<NextIntraTaskOperatorInfo> internalMainOutputs,
+                          final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
+                          final List<OutputWriter> externalMainOutputs,
+                          final Map<String, List<OutputWriter>> externalAdditionalOutputs,
+                          final List<RuntimeEdge<IRVertex>> internalEdges) {
+    this.irVertex = irVertex;
+    this.internalMainOutputs = internalMainOutputs;
+    this.internalAdditionalOutputs = internalAdditionalOutputs;
+    this.externalMainOutputs = externalMainOutputs;
+    this.externalAdditionalOutputs = externalAdditionalOutputs;
+    this.internalEdges = internalEdges;
+    this.encoderFactory = internalEdges.get(0).getPropertyValue(EncoderProperty.class).get();
+    this.decoderFactory = internalEdges.get(0).getPropertyValue(DecoderProperty.class).get();
     this.serializedDecoderFactory = SerializationUtils.serialize(decoderFactory);
     this.lambdaTransport = NettyServerLambdaTransport.INSTANCE;
     //this.warmer = new LambdaWarmer();
     //warmer.warmup();
   }
 
+  private void emit(final OperatorVertex vertex, final O output) {
+    vertex.getTransform().onData(output);
+  }
+
   @Override
-  public void emit(Object output) {
+  public void emit(O output) {
     final WindowedValue<KV<Object, Iterable>> value = (WindowedValue<KV<Object, Iterable>>) output;
 
     if (value.getValue().getKey() instanceof GBKLambdaEvent) {
       final GBKLambdaEvent event = (GBKLambdaEvent) value.getValue().getKey();
       if (event.type.equals(GBKLambdaEvent.Type.START)) {
+
+        final Integer numKeys = (Integer) event.data;
+        if (numKeys < PARTITION_SIZE) {
+          LOG.info("toLambda: false");
+          toLambda = false;
+          return;
+        } else {
+          LOG.info("toLambda: true");
+          toLambda = true;
+        }
 
         startTime = System.currentTimeMillis();
 
@@ -79,7 +115,6 @@ public class GBKLambdaEmitter implements OutputCollector {
 
         // TODO: start lambda
         // number of lambdas
-        final Integer numKeys = (Integer) event.data;
         numLambdas = numKeys / PARTITION_SIZE + (numKeys % PARTITION_SIZE == 0 ? 0 : 1);
         LOG.info("GBK Star, invoke {}, keys: {}", numLambdas, numKeys);
         readyChannels = new LinkedBlockingQueue<>();
@@ -106,6 +141,10 @@ public class GBKLambdaEmitter implements OutputCollector {
         // TODO: end lambda
         // flush all data
         // wait for results
+
+        if (!toLambda) {
+          return;
+        }
 
         LOG.info("Receive END of GBK");
 
@@ -137,6 +176,15 @@ public class GBKLambdaEmitter implements OutputCollector {
         System.out.println("GBK latency: " + (System.currentTimeMillis() - startTime));
       }
     } else {
+
+      if (!toLambda) {
+        for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+          emit(internalVertex.getNextOperator(), output);
+        }
+
+        return;
+      }
+
       // TODO: serialize data and send it to lambda
       Channel channel = null;
       if (channels.size() < numLambdas) {

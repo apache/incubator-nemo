@@ -268,10 +268,18 @@ public final class TaskExecutor {
         final List<StageEdge> oedges =
           outgoingEdges.stream().filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
           .collect(Collectors.toList());
-        outputCollector = new OperatorVertexOutputCollector(
-          irVertex, internalMainOutputs, internalAdditionalOutputMap,
-          externalMainOutputs, externalAdditionalOutputMap, oedges, SOFACTORY, serializerManager,
-          internalEdges);
+
+        // query 8
+        if (irVertex.getId().equals("vertex15")) {
+          outputCollector = new GBKLambdaEmitter(
+            irVertex, internalMainOutputs, internalAdditionalOutputMap,
+            externalMainOutputs, externalAdditionalOutputMap, internalEdges);
+        } else {
+          outputCollector = new OperatorVertexOutputCollector(
+            irVertex, internalMainOutputs, internalAdditionalOutputMap,
+            externalMainOutputs, externalAdditionalOutputMap, oedges, SOFACTORY, serializerManager,
+            internalEdges);
+        }
       }
 
       // Create VERTEX HARNESS
