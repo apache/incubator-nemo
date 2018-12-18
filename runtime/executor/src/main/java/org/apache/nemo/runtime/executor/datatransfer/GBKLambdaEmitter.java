@@ -47,7 +47,7 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
   private static final int PARTITION_SIZE = 1000;
 
   private BlockingQueue<Channel> readyChannels;
-  private List<Channel> channels;
+  private List<Pair<Channel, ByteBuf>> channels;
 
   private int index = 0;
   private int numLambdas = 0;
@@ -153,13 +153,16 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
           try {
             LOG.info("Waiting end ... {}/{}", channels.size(), numLambdas);
             final Channel channel = readyChannels.take();
-            channels.add(channel);
+            channels.add(Pair.of(channel, channel.alloc().ioBuffer()));
           } catch (InterruptedException e) {
             e.printStackTrace();
           }
         }
 
-        for (final Channel channel : channels) {
+        for (final Pair<Channel, ByteBuf> pair : channels) {
+          final Channel channel = pair.left();
+          final ByteBuf buffer = pair.right();
+          channel.write(new NemoEvent(NemoEvent.Type.GBK, buffer));
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.END, new byte[0], 0));
         }
 
@@ -190,16 +193,16 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
       if (channels.size() < numLambdas) {
         try {
           channel = readyChannels.take();
-          channels.add(channel);
+          channels.add(Pair.of(channel, channel.alloc().ioBuffer()));
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
       }
 
-      channel = channels.get(index);
+      channel = channels.get(index).left();
       index = (index + 1) % channels.size();
 
-      final ByteBuf buffer = channel.alloc().ioBuffer();
+      final ByteBuf buffer = channels.get(index).right();
       buffer.writeInt(NemoEvent.Type.GBK.ordinal());
       final ByteBufOutputStream byteBufOutputStream =
         new ByteBufOutputStream(buffer);
@@ -210,7 +213,7 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
         byteBufOutputStream.close();
 
         // write data!
-        channel.write(new NemoEvent(NemoEvent.Type.GBK, buffer));
+        //channel.write(new NemoEvent(NemoEvent.Type.GBK, buffer));
 
       } catch (IOException e) {
         e.printStackTrace();
