@@ -9,6 +9,7 @@ import org.apache.commons.lang.SerializationUtils;
 import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.GBKLambdaEvent;
 import org.apache.nemo.common.NemoEvent;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -150,7 +151,7 @@ public class GBKLambdaEmitter implements OutputCollector {
       channel = channels.get(index);
       index = (index + 1) % channels.size();
 
-      final ByteBuf buffer = channel.alloc().buffer();
+      final ByteBuf buffer = channel.alloc().ioBuffer();
       buffer.writeInt(NemoEvent.Type.GBK.ordinal());
       final ByteBufOutputStream byteBufOutputStream =
         new ByteBufOutputStream(buffer);
