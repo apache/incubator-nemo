@@ -233,13 +233,15 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final long st = System.currentTimeMillis();
     processElementsAndTriggerTimers(Instant.now(), Instant.now());
     // Emit watermark to downstream operators
+
     emitOutputWatermark();
+    final long et1 = System.currentTimeMillis();
     checkAndFinishBundle();
 
     final long et = System.currentTimeMillis();
-    LOG.info("{}/{} latency {}, watermark: {}",
+    LOG.info("{}/{} latency {}, watermark: {}, emitOutputWatermarkTime: {}",
       getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st),
-      new Instant(watermark.getTimestamp()));
+      new Instant(watermark.getTimestamp()), (et - et1));
   }
 
   /**
@@ -266,7 +268,11 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     inMemoryTimerInternalsFactory.processingTime = processingTime;
     inMemoryTimerInternalsFactory.synchronizedProcessingTime = synchronizedTime;
 
+    final long st = System.currentTimeMillis();
     final List<Pair<K, TimerInternals.TimerData>> timers = getEligibleTimers();
+
+    LOG.info("{}/{} GetEligibleTimer time: {}", getContext().getIRVertex().getId(),
+      Thread.currentThread().getId(), (System.currentTimeMillis() - st));
 
     // TODO: send start event
     if (!timers.isEmpty()) {
