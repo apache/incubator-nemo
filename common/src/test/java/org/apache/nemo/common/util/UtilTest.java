@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package edu.snu.nemo.common.util;
+package org.apache.nemo.common.util;
 
 import static org.junit.Assert.assertEquals;
 
