@@ -77,18 +77,18 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ## MapReduce example
 ./bin/run_beam.sh \
 	-job_id mr_default \
-	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
-	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy \
-	-user_main edu.snu.nemo.examples.beam.WordCount \
-	-user_args "`pwd`/examples/resources/test_input_wordcount `pwd`/examples/resources/test_output_wordcount"
+	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
+	-optimization_policy org.apache.nemo.compiler.optimizer.policy.DefaultPolicy \
+	-user_main org.apache.nemo.examples.beam.WordCount \
+        -user_args "`pwd`/examples/resources/inputs/test_input_wordcount `pwd`/outputs/wordcount"
 
 ## YARN cluster example
 ./bin/run_beam.sh \
 	-deploy_mode yarn \
  	-job_id mr_transient \
-	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
- 	-user_main edu.snu.nemo.examples.beam.WordCount \
- 	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy \
+	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
+ 	-user_main org.apache.nemo.examples.beam.WordCount \
+ 	-optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
 	-user_args "hdfs://v-m:9000/test_input_wordcount hdfs://v-m:9000/test_output_wordcount"
 ```
 ## Resource Configuration
@@ -127,17 +127,17 @@ This example configuration specifies
 ## Monitoring your job using web UI
 Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 * `-dag_dir` command line option is used to specify the directory where the JSON files are stored. The default directory is `./dag`.
-  Using our [online visualizer](http://cmscluster.snu.ac.kr:50080/nemo-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
+  Using our [online visualizer](https:/nemo.snuspl.snu.ac.kr:50443/nemo-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
 
 ### Examples
 ```bash
 ./bin/run_beam.sh \
 	-job_id als \
-	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
-  	-user_main edu.snu.nemo.examples.beam.AlternatingLeastSquare \
-  	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.TransientResourcePolicy \
+	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
+  	-user_main org.apache.nemo.examples.beam.AlternatingLeastSquare \
+  	-optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
   	-dag_dir "./dag/als" \
-  	-user_args "`pwd`/examples/resources/test_input_als 10 3"
+  	-user_args "`pwd`/examples/resources/inputs/test_input_als 10 3"
 ```
 
 ## Speeding up builds 

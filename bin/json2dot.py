@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 #
-# Copyright (C) 2018 Seoul National University
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 
 '''
 json2dot.py: Generates Graphviz representation of Nemo DAG::toString
@@ -133,7 +135,7 @@ class NormalVertex:
     def dot(self):
         color = 'black'
         try:
-            placement = self.properties['executionProperties']['edu.snu.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty']
+            placement = self.properties['executionProperties']['org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty']
             if (placement == 'Transient'):
                 color = 'orange'
             if (placement == 'Reserved'):
@@ -157,9 +159,9 @@ class NormalVertex:
             label += '<BR/>{}:{}'.format(transform_name, class_name)
         except:
             pass
-        if ('class' in self.properties and self.properties['class'] == 'MetricCollectionBarrierVertex'):
+        if ('class' in self.properties and self.properties['class'] == 'AggregationBarrierVertex'):
             shape = ', shape=box'
-            label += '<BR/>MetricCollectionBarrier'
+            label += '<BR/>AggregationBarrier'
         else:
             shape = ''
         try:
