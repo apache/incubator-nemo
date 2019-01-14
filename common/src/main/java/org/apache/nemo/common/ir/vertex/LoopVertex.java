@@ -27,6 +27,7 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
+import org.apache.nemo.common.util.Util;
 
 import java.io.Serializable;
 import java.util.*;
@@ -307,6 +308,15 @@ public final class LoopVertex extends IRVertex {
    */
   private void decreaseMaxNumberOfIterations() {
     this.maxNumberOfIterations--;
+  }
+
+  public boolean terminationConditionEquals(final LoopVertex that) {
+    if (this.maxNumberOfIterations.equals(that.getMaxNumberOfIterations()) && Util
+        .checkEqualityOfIntPredicates(this.terminationCondition, that.getTerminationCondition(),
+            this.maxNumberOfIterations)) {
+      return true;
+    }
+    return false;
   }
 
   /**
