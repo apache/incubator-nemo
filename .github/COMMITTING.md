@@ -34,6 +34,6 @@ After clicking on the button, you should see the options to fill out the commit 
 
 Please copy & paste the title of the PR, that has been shown at the top of the PR interface, and the contents, after clicking on the 'Edit' button, which you can see by clicking on the ... button.
 
-![image](https://user-images.githubusercontent.com/6691311/51306770-7f476700-1a81-11e9-8e7a-7a270c1d87f1.png)
+![image](https://user-images.githubusercontent.com/6691311/51306853-a2721680-1a81-11e9-9df8-4e10ecc58b0b.png)
 
 After then, by hitting 'confirm squash and merge', you can perform a successful merge! Congrats! :tada:
