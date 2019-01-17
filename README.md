@@ -65,6 +65,10 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 
 ## Running Beam applications
 
+Apache Nemo is an official runner of Apache Beam, and it can be executed from Beam, using NemoRunner, as well as directly from the Nemo project. 
+The details of using NemoRunner from Beam is shown on the [NemoRunner page of the Apache Beam website](https://beam.apache.org/documentation/runners/nemo/).
+Below describes how Beam applications can be run directly on Nemo.
+
 ### Configurable options
 * `-job_id`: ID of the Beam job
 * `-user_main`: Canonical name of the Beam application
