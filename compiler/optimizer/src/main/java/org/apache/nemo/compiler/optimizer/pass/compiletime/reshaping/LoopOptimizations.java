@@ -139,9 +139,7 @@ public final class LoopOptimizations {
         loopsToBeFused.add(loopVertex);
         independentLoops.forEach(independentLoop -> {
           // add them to the list if those independent loops have equal termination conditions.
-          if (independentLoop.getMaxNumberOfIterations().equals(numberOfIterations)
-              && checkEqualityOfIntPredicates(independentLoop.getTerminationCondition(), terminationCondition,
-              numberOfIterations)) {
+          if (loopVertex.terminationConditionEquals(independentLoop)) {
             loopsToBeFused.add(independentLoop);
           }
         });
@@ -226,25 +224,6 @@ public final class LoopOptimizations {
         loopVertex.getDagOutgoingEdges().forEach((v, es) -> es.forEach(mergedLoopVertex::addDagOutgoingEdge));
       });
       return mergedLoopVertex;
-    }
-
-    /**
-     * Check the equality of two intPredicates.
-     * @param predicate1 the first IntPredicate.
-     * @param predicate2 the second IntPredicate.
-     * @param numberToTestUntil Number to check the IntPredicates from.
-     * @return whether or not we can say that they are equal.
-     */
-    private Boolean checkEqualityOfIntPredicates(final IntPredicate predicate1, final IntPredicate predicate2,
-                                                 final Integer numberToTestUntil) {
-      // TODO #11: Generalize Equality of Int Predicates for Loops.
-      if (numberToTestUntil.equals(0)) {
-        return predicate1.test(numberToTestUntil) == predicate2.test(numberToTestUntil);
-      } else if (predicate1.test(numberToTestUntil) != predicate2.test(numberToTestUntil)) {
-        return false;
-      } else {
-        return checkEqualityOfIntPredicates(predicate1, predicate2, numberToTestUntil - 1);
-      }
     }
   }
 
