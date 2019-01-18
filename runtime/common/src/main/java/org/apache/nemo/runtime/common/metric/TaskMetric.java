@@ -37,6 +37,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   private long encodedReadBytes = -1;
   private long writtenBytes = -1;
   private long boundedSourceReadTime = -1;
+  private long taskDeserializationTime = -1;
   private int scheduleAttempt = -1;
   private String containerId = "";
 
@@ -68,6 +69,14 @@ public class TaskMetric implements StateMetric<TaskState.State> {
 
   private void setBoundedSourceReadTime(final long boundedSourceReadTime) {
     this.boundedSourceReadTime = boundedSourceReadTime;
+  }
+
+  public final long getTaskDeserializationTime() {
+    return taskDeserializationTime;
+  }
+
+  private void setTaskDeserializationTime(final long taskDeserializationTime) {
+    this.taskDeserializationTime = taskDeserializationTime;
   }
 
   public final long getWrittenBytes() {
@@ -128,6 +137,9 @@ public class TaskMetric implements StateMetric<TaskState.State> {
         break;
       case "writtenBytes":
         setWrittenBytes(SerializationUtils.deserialize(metricValue));
+        break;
+      case "taskDeserializationTime":
+        setTaskDeserializationTime(SerializationUtils.deserialize(metricValue));
         break;
       case "stateTransitionEvent":
         final StateTransitionEvent<TaskState.State> newStateTransitionEvent =

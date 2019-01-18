@@ -19,9 +19,11 @@
 package org.apache.nemo.runtime.master;
 
 import com.google.protobuf.ByteString;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
@@ -35,13 +37,12 @@ import org.apache.nemo.runtime.master.resource.ContainerManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
-
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.annotations.Parameter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHandler;
 import org.slf4j.Logger;
@@ -51,6 +52,7 @@ import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.inject.Inject;
+import java.nio.file.Paths;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
@@ -92,11 +94,13 @@ public final class RuntimeMaster {
   private final PlanStateManager planStateManager;
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
+  private final String dagDirectory;
   private final Set<IRVertex> irVertices;
   private final AtomicInteger resourceRequestCount;
   private CountDownLatch metricCountDownLatch;
   // REST API server for web metric visualization ui.
   private final Server metricServer;
+  private final MetricStore metricStore;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
@@ -105,7 +109,8 @@ public final class RuntimeMaster {
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
                         final MetricManagerMaster metricManagerMaster,
-                        final PlanStateManager planStateManager) {
+                        final PlanStateManager planStateManager,
+                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
@@ -130,10 +135,12 @@ public final class RuntimeMaster {
         .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.clientRPC = clientRPC;
     this.metricManagerMaster = metricManagerMaster;
+    this.dagDirectory = dagDirectory;
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
     this.metricServer = startRestMetricServer();
+    this.metricStore = MetricStore.getStore();
     this.planStateManager = planStateManager;
   }
 
@@ -221,6 +228,7 @@ public final class RuntimeMaster {
         throw new RuntimeException("Failed to stop rest api server.");
       }
 
+      metricStore.dumpAllMetricToFile(Paths.get(dagDirectory, "metric.json").toString());
     });
 
     // Do not shutdown runtimeMasterThread. We need it to clean things up.

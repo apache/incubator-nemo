@@ -65,6 +65,10 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 
 ## Running Beam applications
 
+Apache Nemo is an official runner of Apache Beam, and it can be executed from Beam, using NemoRunner, as well as directly from the Nemo project. 
+The details of using NemoRunner from Beam is shown on the [NemoRunner page of the Apache Beam website](https://beam.apache.org/documentation/runners/nemo/).
+Below describes how Beam applications can be run directly on Nemo.
+
 ### Configurable options
 * `-job_id`: ID of the Beam job
 * `-user_main`: Canonical name of the Beam application
@@ -77,16 +81,16 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 ## MapReduce example
 ./bin/run_beam.sh \
 	-job_id mr_default \
-	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
+	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
 	-optimization_policy org.apache.nemo.compiler.optimizer.policy.DefaultPolicy \
 	-user_main org.apache.nemo.examples.beam.WordCount \
-	-user_args "`pwd`/examples/resources/test_input_wordcount `pwd`/examples/resources/test_output_wordcount"
+        -user_args "`pwd`/examples/resources/inputs/test_input_wordcount `pwd`/outputs/wordcount"
 
 ## YARN cluster example
 ./bin/run_beam.sh \
 	-deploy_mode yarn \
  	-job_id mr_transient \
-	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
+	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
  	-user_main org.apache.nemo.examples.beam.WordCount \
  	-optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
 	-user_args "hdfs://v-m:9000/test_input_wordcount hdfs://v-m:9000/test_output_wordcount"
@@ -133,11 +137,11 @@ Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 ```bash
 ./bin/run_beam.sh \
 	-job_id als \
-	-executor_json `pwd`/examples/resources/beam_test_executor_resources.json \
+	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
   	-user_main org.apache.nemo.examples.beam.AlternatingLeastSquare \
   	-optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
   	-dag_dir "./dag/als" \
-  	-user_args "`pwd`/examples/resources/test_input_als 10 3"
+  	-user_args "`pwd`/examples/resources/inputs/test_input_als 10 3"
 ```
 
 ## Speeding up builds 

@@ -28,7 +28,7 @@ under the License.
 
     <groupId>org.apache.nemo</groupId>
     <artifactId>nemo-project</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.2-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Nemo Project</name>
 
@@ -307,6 +307,12 @@ under the License.
                         <exclude>**/resources/**</exclude>
                         <!-- Logs -->
                         <exclude>**/*.log</exclude>
+                        <!-- Web UI -->
+                        <exclude>webui/.nuxt/**</exclude>
+                        <exclude>webui/node_modules/**</exclude>
+                        <exclude>**/*.json</exclude>
+                        <exclude>**/.editorconfig</exclude>
+                        <exclude>**/config.gypi</exclude>
                         <!-- EditorConfig -->
                         <exclude>.editorconfig</exclude>
                         <!-- formatter.xml -->
