@@ -13,6 +13,8 @@ Before contributing to our project, keep in mind that we go through the followin
 
 When you contribute code, you affirm that the contribution is your original work and that you license the work to the project under the project's open source license. Whether or not you state this explicitly, by submitting any copyrighted material via pull request, email, or other means you agree to license the material under the project's open source license and warrant that you have the legal authority to do so.
 
+Also, we have a [dev list](mailto:dev@nemo.apache.org), where you can ask questions before contributing.
+
 ## Things to know before getting started
 
 - [Our Docs](http://nemo.apache.org/docs/home/)
@@ -41,4 +43,6 @@ When you contribute code, you affirm that the contribution is your original work
 6. [Open a pull request](https://github.com/apache/incubator-nemo/pull/new/master) following the [PR template](pull_request_template.md).
   - the PR title should be of form `[NEMO-##] Title`, specifying the relevant JIRA ticket number, and a short description of the change.
   - if the PR is still a work in progress and is not ready to be merged, add `[WIP]` before the title.
+  - Set yourself as the assignee, this is a little trick for how we easily identify the author of each PRs.
   - Consider identifying the reviewer of the PR, with the suggestions provided by GitHub.
+  - Be sure to replace the `#GITHUB_PR_NUMBER` on your PR message with the appropriate PR number on GitHub, by hitting on edit after sending your PR.
