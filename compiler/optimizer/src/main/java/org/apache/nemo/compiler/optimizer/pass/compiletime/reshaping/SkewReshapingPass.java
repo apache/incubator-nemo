@@ -35,6 +35,7 @@ import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.MetricCollectTransform;
 import org.apache.nemo.compiler.optimizer.PairKeyExtractor;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.Annotates;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +54,7 @@ import java.util.function.BiFunction;
  * 2) Stage-level statistic aggregation is done via vertex with {@link AggregateMetricTransform}
  * inserted before shuffle edges.
  * */
+@Annotates(MetricCollectionProperty.class)
 @Requires(CommunicationPatternProperty.class)
 public final class SkewReshapingPass extends ReshapingPass {
   private static final Logger LOG = LoggerFactory.getLogger(SkewReshapingPass.class.getName());
@@ -95,10 +97,17 @@ public final class SkewReshapingPass extends ReshapingPass {
             final IREdge edgeToOriginalDstV =
               new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
             edge.copyExecutionPropertiesTo(edgeToOriginalDstV);
+            edgeToOriginalDstV.setPropertyPermanently(
+              MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
 
             builder.connectVertices(edgeToMCV);
             builder.connectVertices(edgeToABV);
             builder.connectVertices(edgeToOriginalDstV);
+
+            // Add an control dependency (no output)
+            final IREdge emptyEdge =
+              new IREdge(CommunicationPatternProperty.Value.BroadCast, abv, v);
+            builder.connectVertices(emptyEdge);
           } else {
             builder.connectVertices(edge);
           }
@@ -199,7 +208,7 @@ public final class SkewReshapingPass extends ReshapingPass {
     final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mcv, abv);
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
-    newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
     newEdge.setProperty(KeyExtractorProperty.of(new PairKeyExtractor()));
     newEdge.setProperty(AdditionalOutputTagProperty.of(ADDITIONAL_OUTPUT_TAG));
 
@@ -210,12 +219,13 @@ public final class SkewReshapingPass extends ReshapingPass {
       && edge.getPropertyValue(KeyDecoderProperty.class).isPresent()) {
       final EncoderFactory keyEncoderFactory = edge.getPropertyValue(KeyEncoderProperty.class).get();
       final DecoderFactory keyDecoderFactory = edge.getPropertyValue(KeyDecoderProperty.class).get();
-      newEdge.setProperty(EncoderProperty.of(PairEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
-      newEdge.setProperty(DecoderProperty.of(PairDecoderFactory.of(keyDecoderFactory, LongDecoderFactory.of())));
+      newEdge.setPropertyPermanently(
+        EncoderProperty.of(PairEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
+      newEdge.setPropertyPermanently(
+        DecoderProperty.of(PairDecoderFactory.of(keyDecoderFactory, LongDecoderFactory.of())));
     } else {
       // If not specified, follow encoder/decoder of the given shuffle edge.
-      newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
-      newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
+      throw new RuntimeException("Skew optimization request for none key - value format data!");
     }
 
     return newEdge;

@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.data.partitioner;
+package org.apache.nemo.runtime.common.partitioner;
 
 import org.apache.nemo.common.KeyExtractor;
+import org.apache.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +33,7 @@ import java.math.BigInteger;
  * When we need to split or recombine the output data from a task after it is stored,
  * we multiply the hash range with a multiplier, which is commonly-known by the source and destination tasks,
  * to prevent the extra deserialize - rehash - serialize process.
- * For more information, please check {@link org.apache.nemo.conf.JobConf.HashRangeMultiplier}.
+ * For more information, please check {@link DataSkewRuntimePass#HASH_RANGE_MULTIPLIER}.
  */
 public final class DataSkewHashPartitioner implements Partitioner<Integer> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewHashPartitioner.class.getName());
@@ -43,17 +44,15 @@ public final class DataSkewHashPartitioner implements Partitioner<Integer> {
   /**
    * Constructor.
    *
-   * @param hashRangeMultiplier the hash range multiplier.
    * @param dstParallelism      the number of destination tasks.
    * @param keyExtractor        the key extractor that extracts keys from elements.
    */
-  public DataSkewHashPartitioner(final int hashRangeMultiplier,
-                                 final int dstParallelism,
+  public DataSkewHashPartitioner(final int dstParallelism,
                                  final KeyExtractor keyExtractor) {
     this.keyExtractor = keyExtractor;
     // For this hash range, please check the description of HashRangeMultiplier in JobConf.
     // For actual hash range to use, we calculate a prime number right next to the desired hash range.
-    this.hashRangeBase = new BigInteger(String.valueOf(dstParallelism * hashRangeMultiplier));
+    this.hashRangeBase = new BigInteger(String.valueOf(dstParallelism * DataSkewRuntimePass.HASH_RANGE_MULTIPLIER));
     this.hashRange = hashRangeBase.nextProbablePrime().intValue();
     LOG.info("hashRangeBase {} resulting hashRange {}", hashRangeBase, hashRange);
   }

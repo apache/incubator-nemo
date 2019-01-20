@@ -211,19 +211,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Hash range multiplier.
-   * If we need to split or recombine an output data from a task after it is stored,
-   * we multiply the hash range with this factor in advance
-   * to prevent the extra deserialize - rehash - serialize process.
-   * In these cases, the hash range will be (hash range multiplier X destination task parallelism).
-   * The reason why we do not divide the output into a fixed number is that the fixed number can be smaller than
-   * the destination task parallelism.
-   */
-  @NamedParameter(doc = "Hash range multiplier", short_name = "hash_range_multiplier", default_value = "10")
-  public final class HashRangeMultiplier implements Name<Integer> {
-  }
-
-  /**
    * The TCP port to which local block transfer binds. 0 means random port.
    */
   @NamedParameter(doc = "Port to which PartitionTransport binds (0 means random port)",
