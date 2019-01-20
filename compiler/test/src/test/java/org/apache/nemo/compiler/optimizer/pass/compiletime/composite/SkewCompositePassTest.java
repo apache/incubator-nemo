@@ -101,8 +101,13 @@ public class SkewCompositePassTest {
     processedDAG.filterVertices(v -> v instanceof OperatorVertex
       && ((OperatorVertex) v).getTransform() instanceof MetricCollectTransform)
       .forEach(metricV -> {
-          List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());
-          reducerV.forEach(rV -> assertTrue(rV.getPropertyValue(ResourceSkewedDataProperty.class).get()));
-        });
+          final List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());
+          reducerV.forEach(rV -> {
+            if (rV instanceof OperatorVertex &&
+              !(((OperatorVertex) rV).getTransform() instanceof AggregateMetricTransform)) {
+              assertTrue(rV.getPropertyValue(ResourceSkewedDataProperty.class).get());
+            }
+          });
+      });
   }
 }
