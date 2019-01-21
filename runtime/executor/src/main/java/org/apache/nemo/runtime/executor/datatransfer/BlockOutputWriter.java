@@ -26,7 +26,7 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.block.Block;
-import org.apache.nemo.runtime.executor.data.partitioner.*;
+import org.apache.nemo.runtime.common.partitioner.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,21 +53,19 @@ public final class BlockOutputWriter implements OutputWriter {
   /**
    * Constructor.
    *
-   * @param hashRangeMultiplier the {@link org.apache.nemo.conf.JobConf.HashRangeMultiplier}.
    * @param srcTaskId           the id of the source task.
    * @param dstIrVertex         the destination IR vertex.
    * @param runtimeEdge         the {@link RuntimeEdge}.
    * @param blockManagerWorker  the {@link BlockManagerWorker}.
    */
-  BlockOutputWriter(final int hashRangeMultiplier,
-                    final String srcTaskId,
+  BlockOutputWriter(final String srcTaskId,
                     final IRVertex dstIrVertex,
                     final RuntimeEdge<?> runtimeEdge,
                     final BlockManagerWorker blockManagerWorker) {
     this.runtimeEdge = runtimeEdge;
     this.dstIrVertex = dstIrVertex;
 
-    this.partitioner = OutputWriter.getPartitioner(runtimeEdge, hashRangeMultiplier);
+    this.partitioner = Partitioner.getPartitioner(runtimeEdge);
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class)
       .orElseThrow(() -> new RuntimeException("No data store property on the edge"));

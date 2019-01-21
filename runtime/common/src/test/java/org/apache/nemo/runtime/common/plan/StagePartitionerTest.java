@@ -49,7 +49,7 @@ public final class StagePartitionerTest {
   @Before
   public void setup() throws InjectionException {
     stagePartitioner = Tang.Factory.getTang().newInjector().getInstance(StagePartitioner.class);
-    stagePartitioner.addIgnoredPropertyKey(DynamicOptimizationProperty.class);
+    stagePartitioner.addIgnoredPropertyKey(IgnoreSchedulingTempDataReceiverProperty.class);
   }
 
   /**
@@ -151,7 +151,7 @@ public final class StagePartitionerTest {
   public void testNotSplitByIgnoredProperty() {
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     final IRVertex v0 = newVertex(1, 0,
-        Arrays.asList(DynamicOptimizationProperty.of(DynamicOptimizationProperty.Value.DataSkewRuntimePass)));
+        Arrays.asList(IgnoreSchedulingTempDataReceiverProperty.of()));
     final IRVertex v1 = newVertex(1, 0, Collections.emptyList());
     dagBuilder.addVertex(v0);
     dagBuilder.addVertex(v1);

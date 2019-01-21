@@ -26,10 +26,7 @@ import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
@@ -98,11 +95,15 @@ public final class EmptyComponents {
     shuffleEdgeBetweenT1AndT2.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor()));
     shuffleEdgeBetweenT1AndT2.setProperty(EncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
     shuffleEdgeBetweenT1AndT2.setProperty(DecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
+    shuffleEdgeBetweenT1AndT2.setProperty(KeyEncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
+    shuffleEdgeBetweenT1AndT2.setProperty(KeyDecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
 
     final IREdge shuffleEdgeBetweenT3AndT4 = new IREdge(CommunicationPatternProperty.Value.Shuffle, t3, t4);
     shuffleEdgeBetweenT3AndT4.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor()));
     shuffleEdgeBetweenT3AndT4.setProperty(EncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
     shuffleEdgeBetweenT3AndT4.setProperty(DecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
+    shuffleEdgeBetweenT3AndT4.setProperty(KeyEncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
+    shuffleEdgeBetweenT3AndT4.setProperty(KeyDecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
 
     dagBuilder.addVertex(s);
     dagBuilder.addVertex(t1);

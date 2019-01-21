@@ -61,6 +61,7 @@ public final class DynOptDataOutputCollector<O> implements OutputCollector<O> {
     aggregatedDynOptData.forEach((key, size) ->
       partitionSizeEntries.add(
         ControlMessage.PartitionSizeEntry.newBuilder()
+          // TODO #325: Add (de)serialization for non-string key types in data metric collection
           .setKey(key == null ? NULL_KEY : String.valueOf(key))
           .setSize(size)
           .build())

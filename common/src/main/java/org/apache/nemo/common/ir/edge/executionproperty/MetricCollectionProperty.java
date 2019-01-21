@@ -21,7 +21,7 @@ package org.apache.nemo.common.ir.edge.executionproperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
- * MetricCollection ExecutionProperty.
+ * MetricCollection ExecutionProperty that indicates the edge of which data metric will be collected.
  */
 public final class MetricCollectionProperty extends EdgeExecutionProperty<MetricCollectionProperty.Value> {
   /**

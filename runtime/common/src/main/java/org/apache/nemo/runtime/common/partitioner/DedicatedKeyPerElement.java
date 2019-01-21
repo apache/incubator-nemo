@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.data.partitioner;
+package org.apache.nemo.runtime.common.partitioner;
 
 import java.lang.annotation.*;
 

@@ -29,11 +29,10 @@ import org.apache.beam.sdk.values.KV;
 final class BeamKeyExtractor implements KeyExtractor {
   @Override
   public Object extractKey(final Object element) {
-    final WindowedValue windowedValue = (WindowedValue) element;
-    final Object value = windowedValue.getValue();
-    if (value instanceof KV) {
+    final Object valueToExtract = element instanceof WindowedValue ? ((WindowedValue) element).getValue() : element;
+    if (valueToExtract instanceof KV) {
       // Handle null keys, since Beam allows KV with null keys.
-      final Object key = ((KV) value).getKey();
+      final Object key = ((KV) valueToExtract).getKey();
       return key == null ? 0 : key;
     } else {
       return element;

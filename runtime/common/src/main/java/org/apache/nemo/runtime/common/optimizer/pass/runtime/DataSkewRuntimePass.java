@@ -23,10 +23,13 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.eventhandler.RuntimeEventHandler;
 
+import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.runtime.common.eventhandler.DynamicOptimizationEventHandler;
+import org.apache.nemo.runtime.common.partitioner.DataSkewHashPartitioner;
+import org.apache.nemo.runtime.common.partitioner.Partitioner;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.nemo.runtime.common.plan.StageEdge;
@@ -44,27 +47,37 @@ import java.util.stream.Collectors;
  */
 public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<Object, Long>>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
+  private static final int DEFAULT_NUM_SKEWED_KEYS = 1;
+  /*
+   * Hash range multiplier.
+   * If we need to split or recombine an output data from a task after it is stored,
+   * we multiply the hash range with this factor in advance
+   * to prevent the extra deserialize - rehash - serialize process.
+   * In these cases, the hash range will be (hash range multiplier X destination task parallelism).
+   * The reason why we do not divide the output into a fixed number is that the fixed number can be smaller than
+   * the destination task parallelism.
+   */
+  public static final int HASH_RANGE_MULTIPLIER = 10;
+
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
   // Skewed keys denote for top n keys in terms of partition size.
-  public static final int DEFAULT_NUM_SKEWED_KEYS = 1;
-  private int numSkewedKeys;
+  private final int numSkewedKeys;
 
   /**
-   * Constructor.
+   * Constructor without expected number of skewed keys.
    */
   public DataSkewRuntimePass() {
-    this.eventHandlers = Collections.singleton(DynamicOptimizationEventHandler.class);
-    this.numSkewedKeys = DEFAULT_NUM_SKEWED_KEYS;
+    this(DEFAULT_NUM_SKEWED_KEYS);
   }
 
+  /**
+   * Constructor with expected number of skewed keys.
+   *
+   * @param numOfSkewedKeys the expected number of skewed keys.
+   */
   public DataSkewRuntimePass(final int numOfSkewedKeys) {
-    this();
+    this.eventHandlers = Collections.singleton(DynamicOptimizationEventHandler.class);
     this.numSkewedKeys = numOfSkewedKeys;
-  }
-
-  public DataSkewRuntimePass setNumSkewedKeys(final int numOfSkewedKeys) {
-    numSkewedKeys = numOfSkewedKeys;
-    return this;
   }
 
   @Override
@@ -79,9 +92,15 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<O
     // Get number of evaluators of the next stage (number of blocks).
     final Integer dstParallelism = targetEdge.getDst().getPropertyValue(ParallelismProperty.class).
         orElseThrow(() -> new RuntimeException("No parallelism on a vertex"));
+    if (!PartitionerProperty.Value.DataSkewHashPartitioner
+      .equals(targetEdge.getPropertyValue(PartitionerProperty.class)
+        .orElseThrow(() -> new RuntimeException("No partitioner property!")))) {
+      throw new RuntimeException("Invalid partitioner is assigned to the target edge!");
+    }
+    final DataSkewHashPartitioner partitioner = (DataSkewHashPartitioner) Partitioner.getPartitioner(targetEdge);
 
     // Calculate keyRanges.
-    final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), dstParallelism);
+    final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), dstParallelism, partitioner);
     final Map<Integer, KeyRange> taskIdxToKeyRange = new HashMap<>();
     for (int i = 0; i < dstParallelism; i++) {
       taskIdxToKeyRange.put(i, keyRanges.get(i));
@@ -129,25 +148,39 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<O
 
   /**
    * Evenly distribute the skewed data to the destination tasks.
-   * Partition denotes for a keyed portion of a Task output, whose key is a key.
-   * Using a map of key to partition size, this method groups the given partitions
-   * to a key range of partitions with approximate size of (total size of partitions / the number of tasks).
+   * Partition denotes for a keyed portion of a Task output.
+   * Using a map of actual data key to count, this method gets the size of each the given partitions and
+   * redistribute the key range of partitions with approximate size of (total size of partitions / the number of tasks).
+   * Assumption: the returned key of the partitioner is always 0 or positive integer.
    *
-   * @param keyToPartitionSizeMap a map of key to partition size.
+   * @param keyToCountMap  a map of actual key to count.
    * @param dstParallelism the number of tasks that receive this data as input.
+   * @param partitioner    the partitioner.
    * @return the list of key ranges calculated.
    */
   @VisibleForTesting
-  public List<KeyRange> calculateKeyRanges(final Map<Object, Long> keyToPartitionSizeMap,
-                                           final Integer dstParallelism) {
-    final List<Long> partitionSizeList = new ArrayList<>();
-    keyToPartitionSizeMap.forEach((k, v) -> partitionSizeList.add(v));
+  public List<KeyRange> calculateKeyRanges(final Map<Object, Long> keyToCountMap,
+                                           final Integer dstParallelism,
+                                           final Partitioner<Integer> partitioner) {
+    final Map<Integer, Long> partitionKeyToPartitionCount = new HashMap<>();
+    int lastKey = 0;
+    // Aggregate the counts per each "partition key" assigned by Partitioner.
 
-    // Get the last index.
-    final int lastKey = partitionSizeList.size() - 1;
+    for (final Map.Entry<Object, Long> entry : keyToCountMap.entrySet()) {
+      final int partitionKey = partitioner.partition(entry.getKey());
+      lastKey = Math.max(lastKey, partitionKey);
+      partitionKeyToPartitionCount.compute(partitionKey,
+        (existPartitionKey, prevCount) -> (prevCount == null) ? entry.getValue() : prevCount + entry.getValue());
+    }
+
+    final List<Long> partitionSizeList = new ArrayList<>(lastKey + 1);
+    for (int i = 0; i <= lastKey; i++) {
+      final long countsForKey = partitionKeyToPartitionCount.getOrDefault(i, 0L);
+      partitionSizeList.add(countsForKey);
+    }
 
     // Identify skewed sizes, which is top numSkewedKeys number of keys.
-    List<Long> skewedSizes = identifySkewedKeys(partitionSizeList);
+    final List<Long> skewedSizes = identifySkewedKeys(partitionSizeList);
 
     // Calculate the ideal size for each destination task.
     final Long totalSize = partitionSizeList.stream().mapToLong(n -> n).sum(); // get total size
