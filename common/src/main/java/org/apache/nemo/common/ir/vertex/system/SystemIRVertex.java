@@ -16,25 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.optimizer.pass.compiletime;
+package org.apache.nemo.common.ir.vertex.system;
 
-import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
-import org.apache.nemo.common.pass.Pass;
-
-import java.util.Set;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 
 /**
- * Abstract class for compile-time optimization passes that processes the DAG.
- * It is a function that takes an original DAG to produce a processed DAG, after an optimization.
+ * SystemIRVertex
+ *
  */
-public abstract class CompileTimePass extends Pass {
-  /**
-   * Getter for prerequisite execution properties.
-   * @return set of prerequisite execution properties.
-   */
-  public abstract Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties();
-
-
-  public abstract void optimize(final IRDAG dag);
+public abstract class SystemIRVertex extends IRVertex {
 }
