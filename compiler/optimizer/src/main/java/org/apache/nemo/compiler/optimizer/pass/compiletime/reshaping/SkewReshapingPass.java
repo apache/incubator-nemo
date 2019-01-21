@@ -21,7 +21,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.*;
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -67,7 +67,7 @@ public final class SkewReshapingPass extends ReshapingPass {
   }
 
   @Override
-  public void optimize(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final IRDAG dag) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
     final List<OperatorVertex> metricCollectVertices = new ArrayList<>();
 
@@ -117,7 +117,7 @@ public final class SkewReshapingPass extends ReshapingPass {
         dag.getIncomingEdgesOf(v).forEach(builder::connectVertices);
       }
     });
-    final DAG<IRVertex, IREdge> newDAG = builder.build();
+    final IRDAG newDAG = builder.build();
     return newDAG;
   }
 

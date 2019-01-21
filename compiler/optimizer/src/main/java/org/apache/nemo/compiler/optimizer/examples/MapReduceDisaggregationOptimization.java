@@ -19,7 +19,7 @@
 package org.apache.nemo.compiler.optimizer.examples;
 
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -66,7 +66,7 @@ public final class MapReduceDisaggregationOptimization {
     final IREdge edge2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, map, reduce);
     builder.connectVertices(edge2);
 
-    final DAG<IRVertex, IREdge> dag = builder.build();
+    final IRDAG dag = builder.build();
     LOG.info("Before Optimization");
     LOG.info(dag.toString());
 

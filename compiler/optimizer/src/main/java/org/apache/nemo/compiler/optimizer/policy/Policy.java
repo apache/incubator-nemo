@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -39,7 +39,7 @@ public interface Policy extends Serializable {
    * @param dagDirectory directory to save the DAG information.
    * @return optimized DAG, reshaped or tagged with execution properties.
    */
-  DAG<IRVertex, IREdge> runCompileTimeOptimization(DAG<IRVertex, IREdge> dag, String dagDirectory);
+  IRDAG runCompileTimeOptimization(IRDAG dag, String dagDirectory);
 
   /**
    * Register runtime optimizations to the event handler.

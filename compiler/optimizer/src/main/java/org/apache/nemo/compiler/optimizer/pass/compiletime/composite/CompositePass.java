@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
@@ -58,7 +58,7 @@ public abstract class CompositePass extends CompileTimePass {
   }
 
   @Override
-  public final void optimize(final DAG<IRVertex, IREdge> irVertexIREdgeDAG) {
+  public final void optimize(final IRDAG irVertexIREdgeDAG) {
     getPassList().forEach(pass -> pass.optimize(irVertexIREdgeDAG));
   }
 

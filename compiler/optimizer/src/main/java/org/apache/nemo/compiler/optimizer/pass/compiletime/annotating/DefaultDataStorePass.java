@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -36,7 +36,7 @@ public final class DefaultDataStorePass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final IRDAG dag) {
     dag.getVertices().forEach(vertex -> {
       dag.getIncomingEdgesOf(vertex).stream()
           .filter(edge -> !edge.getPropertyValue(DataStoreProperty.class).isPresent())

@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
@@ -46,8 +46,7 @@ public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
   }
 
   @Override
-  public void optimize(final DAG<IRVertex, IREdge> dag) {
-    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+  public void optimize(final IRDAG dag) {
     dag.topologicalDo(v -> {
       builder.addVertex(v);
       // We care about OperatorVertices that have any incoming edge that

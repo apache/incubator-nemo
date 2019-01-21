@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer;
 
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
@@ -78,17 +78,17 @@ public final class NemoOptimizer implements Optimizer {
    * @return optimized DAG, reshaped or tagged with execution properties.
    */
   @Override
-  public DAG<IRVertex, IREdge> optimizeDag(final DAG<IRVertex, IREdge> dag) {
+  public IRDAG optimizeDag(final IRDAG dag) {
     final String irDagId = "ir-" + irDagCount++ + "-";
     dag.storeJSON(dagDirectory, irDagId, "IR before optimization");
 
-    final DAG<IRVertex, IREdge> optimizedDAG;
+    final IRDAG optimizedDAG;
     final Policy optimizationPolicy;
     final Map<UUID, IREdge> cacheIdToEdge = new HashMap<>();
 
     try {
       // Handle caching first.
-      final DAG<IRVertex, IREdge> cacheFilteredDag = handleCaching(dag, cacheIdToEdge);
+      final IRDAG cacheFilteredDag = handleCaching(dag, cacheIdToEdge);
       if (!cacheIdToEdge.isEmpty()) {
         cacheFilteredDag.storeJSON(dagDirectory, irDagId + "FilterCache",
             "IR after cache filtering");
@@ -142,7 +142,7 @@ public final class NemoOptimizer implements Optimizer {
    * @param cacheIdToEdge the map from cache ID to edge to update.
    * @return the cropped dag regarding to caching.
    */
-  private DAG<IRVertex, IREdge> handleCaching(final DAG<IRVertex, IREdge> dag,
+  private IRDAG handleCaching(final IRDAG dag,
                                               final Map<UUID, IREdge> cacheIdToEdge) {
     dag.topologicalDo(irVertex ->
         dag.getIncomingEdgesOf(irVertex).forEach(
@@ -172,7 +172,7 @@ public final class NemoOptimizer implements Optimizer {
    * @param irVertex the ir vertex to consider to add.
    * @param builder  the filtered dag builder.
    */
-  private void addNonCachedVerticesAndEdges(final DAG<IRVertex, IREdge> dag,
+  private void addNonCachedVerticesAndEdges(final IRDAG dag,
                                             final IRVertex irVertex,
                                             final DAGBuilder<IRVertex, IREdge> builder) {
     if (irVertex.getPropertyValue(IgnoreSchedulingTempDataReceiverProperty.class).orElse(false)

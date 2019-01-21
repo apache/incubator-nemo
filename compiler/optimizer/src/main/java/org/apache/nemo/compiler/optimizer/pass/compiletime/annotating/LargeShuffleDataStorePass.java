@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
@@ -40,7 +40,7 @@ public final class LargeShuffleDataStorePass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final IRDAG dag) {
     dag.getVertices().forEach(vertex -> {
       // Find the merger vertex inserted by reshaping pass.
       if (dag.getIncomingEdgesOf(vertex).stream().anyMatch(irEdge ->

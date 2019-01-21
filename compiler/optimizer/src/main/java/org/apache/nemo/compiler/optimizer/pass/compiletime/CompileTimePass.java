@@ -20,7 +20,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime;
 
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.common.pass.Pass;
 
@@ -38,5 +38,5 @@ public abstract class CompileTimePass extends Pass {
   public abstract Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties();
 
 
-  public abstract void optimize(final DAG<IRVertex, IREdge> dag);
+  public abstract void optimize(final IRDAG dag);
 }

@@ -27,7 +27,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
@@ -50,7 +50,7 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
   }
 
   @Override
-  public void optimize(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final IRDAG dag) {
     // find and collect vertices with equivalent transforms
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
     final Map<Transform, List<OperatorVertex>> operatorVerticesToBeMerged = new HashMap<>();
@@ -137,7 +137,7 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
    * @param outEdges outgoing edges information.
    */
   private static void mergeAndAddToBuilder(final List<OperatorVertex> ovs, final DAGBuilder<IRVertex, IREdge> builder,
-                                           final DAG<IRVertex, IREdge> dag,
+                                           final IRDAG dag,
                                            final Map<OperatorVertex, Set<IREdge>> inEdges,
                                            final Map<OperatorVertex, Set<IREdge>> outEdges) {
     if (ovs.size() > 0) {

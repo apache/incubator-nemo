@@ -20,7 +20,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -74,7 +74,7 @@ public final class ResourceSitePass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final IRDAG dag) {
     if (bandwidthSpecificationString.isEmpty()) {
       dag.topologicalDo(irVertex -> irVertex.setProperty(ResourceSiteProperty.of(EMPTY_MAP)));
     } else {
@@ -109,7 +109,7 @@ public final class ResourceSitePass extends AnnotatingPass {
    * @param bandwidthSpecification bandwidth specification.
    */
   private static void assignNodeShares(
-      final DAG<IRVertex, IREdge> dag,
+      final IRDAG dag,
       final BandwidthSpecification bandwidthSpecification) {
     dag.topologicalDo(irVertex -> {
       final Collection<IREdge> inEdges = dag.getIncomingEdgesOf(irVertex);

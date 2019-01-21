@@ -18,5 +18,5 @@
  */
 package org.apache.nemo.common.ir.vertex.system;
 
-public class MetricAggregationVertex {
+public class MessageBarrierVertex {
 }

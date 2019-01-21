@@ -20,13 +20,20 @@ package org.apache.nemo.common.ir;
 
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
+import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.system.StreamVertex;
 
 import java.util.Map;
 import java.util.Set;
 
+/**
+ *
+ */
 public class IRDAG extends DAG<IRVertex, IREdge> {
   public IRDAG(final Set<IRVertex> vertices,
                final Map<IRVertex, Set<IREdge>> incomingEdges,
@@ -36,8 +43,33 @@ public class IRDAG extends DAG<IRVertex, IREdge> {
     super(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
   }
 
-  void insert(final StreamVertex streamVertex, final IREdge edgeToReplace) {
+  /**
+   * Before: src > edgeToStreamize > dst
+   * After: src > edgeToStreamize > streamVertex > oneToOneEdge > dst
+   * (replaces the "Before" relationships)
+   *
+   * @param streamVertex to insert.
+   * @param edgeToStreamize for inserting.
+   */
+  void insert(final StreamVertex streamVertex, final IREdge edgeToStreamize) {
+    builder.addVertex(streamVertex);
+    edge.copyExecutionPropertiesTo(edgeToStreamize);
+    final IREdge newEdgeFromMerger = new IREdge(CommunicationPatternProperty.Value.OneToOne, streamVertex, v);
+    newEdgeFromMerger.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
+    newEdgeFromMerger.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
+    builder.connectVertices(edgeToStreamize);
+    builder.connectVertices(newEdgeFromMerger);
   }
 
+  /**
+   * Before: src > edgeToGetStatisticsOf > dst
+   * After: src > oneToOneEdge(clone of edgeToGetStatisticsOf) > messageBarrierVertex
+   * (leaves the "Before" relationships unmodified)
+   *
+   * @param messageBarrierVertex
+   * @param edgeToGetStatisticsOf
+   */
+  void insert(final MessageBarrierVertex messageBarrierVertex, final IREdge edgeToGetStatisticsOf) {
+  }
 
 }

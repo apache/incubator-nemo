@@ -24,7 +24,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
@@ -64,7 +64,7 @@ public final class LoopOptimizations {
    * @param outEdges outgoing Edges of LoopVertices.
    * @param builder builder to build the rest of the DAG on.
    */
-  private static void collectLoopVertices(final DAG<IRVertex, IREdge> dag,
+  private static void collectLoopVertices(final IRDAG dag,
                                           final List<LoopVertex> loopVertices,
                                           final Map<LoopVertex, List<IREdge>> inEdges,
                                           final Map<LoopVertex, List<IREdge>> outEdges,
@@ -112,7 +112,7 @@ public final class LoopOptimizations {
     }
 
     @Override
-    public void optimize(final DAG<IRVertex, IREdge> dag) {
+    public void optimize(final IRDAG dag) {
       final List<LoopVertex> loopVertices = new ArrayList<>();
       final Map<LoopVertex, List<IREdge>> inEdges = new HashMap<>();
       final Map<LoopVertex, List<IREdge>> outEdges = new HashMap<>();
@@ -211,7 +211,7 @@ public final class LoopOptimizations {
           String.join("+", loopVertices.stream().map(LoopVertex::getName).collect(Collectors.toList()));
       final LoopVertex mergedLoopVertex = new LoopVertex(newName);
       loopVertices.forEach(loopVertex -> {
-        final DAG<IRVertex, IREdge> dagToCopy = loopVertex.getDAG();
+        final IRDAG dagToCopy = loopVertex.getDAG();
         dagToCopy.topologicalDo(v -> {
           mergedLoopVertex.getBuilder().addVertex(v);
           dagToCopy.getIncomingEdgesOf(v).forEach(mergedLoopVertex.getBuilder()::connectVertices);
@@ -240,7 +240,7 @@ public final class LoopOptimizations {
     }
 
     @Override
-    public void optimize(final DAG<IRVertex, IREdge> dag) {
+    public void optimize(final IRDAG dag) {
       final List<LoopVertex> loopVertices = new ArrayList<>();
       final Map<LoopVertex, List<IREdge>> inEdges = new HashMap<>();
       final Map<LoopVertex, List<IREdge>> outEdges = new HashMap<>();
@@ -295,7 +295,7 @@ public final class LoopOptimizations {
         outEdges.getOrDefault(loopVertex, new ArrayList<>()).forEach(builder::connectVertices);
       });
 
-      final DAG<IRVertex, IREdge> newDag = builder.build();
+      final IRDAG newDag = builder.build();
       if (dag.getVertices().size() == newDag.getVertices().size()) {
         return newDag;
       } else {

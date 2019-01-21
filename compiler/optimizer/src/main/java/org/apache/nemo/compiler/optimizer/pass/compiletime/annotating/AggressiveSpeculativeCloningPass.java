@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
@@ -37,7 +37,7 @@ public final class AggressiveSpeculativeCloningPass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final IRDAG dag) {
     // Speculative execution policy.
     final double fractionToWaitFor = 0.00000001; // Aggressive
     final double medianTimeMultiplier = 1.00000001; // Aggressive

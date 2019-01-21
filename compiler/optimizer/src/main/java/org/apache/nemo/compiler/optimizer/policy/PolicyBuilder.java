@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -103,7 +103,7 @@ public final class PolicyBuilder {
    * @return the PolicyBuilder which registers the compileTimePass.
    */
   public PolicyBuilder registerCompileTimePass(final CompileTimePass compileTimePass,
-                                               final Predicate<DAG<IRVertex, IREdge>> condition) {
+                                               final Predicate<IRDAG> condition) {
     compileTimePass.addCondition(condition);
     return this.registerCompileTimePass(compileTimePass);
   }
@@ -130,7 +130,7 @@ public final class PolicyBuilder {
    */
   public PolicyBuilder registerRuntimePass(final RuntimePass<?> runtimePass,
                                            final CompileTimePass runtimePassRegisterer,
-                                           final Predicate<DAG<IRVertex, IREdge>> condition) {
+                                           final Predicate<IRDAG> condition) {
     runtimePass.addCondition(condition);
     return this.registerRuntimePass(runtimePass, runtimePassRegisterer);
   }
