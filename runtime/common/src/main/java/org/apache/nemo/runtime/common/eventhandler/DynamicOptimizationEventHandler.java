@@ -26,6 +26,7 @@ import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.reef.wake.impl.PubSubEventHandler;
 
 import javax.inject.Inject;
+import java.util.Set;
 
 /**
  * Class for handling event to perform dynamic optimization.
@@ -51,9 +52,9 @@ public final class DynamicOptimizationEventHandler implements RuntimeEventHandle
   public void onNext(final DynamicOptimizationEvent dynamicOptimizationEvent) {
     final PhysicalPlan physicalPlan = dynamicOptimizationEvent.getPhysicalPlan();
     final Object dynOptData = dynamicOptimizationEvent.getDynOptData();
-    final StageEdge targetEdge = dynamicOptimizationEvent.getTargetEdge();
+    final Set<StageEdge> targetEdges = dynamicOptimizationEvent.getTargetEdges();
 
-    final PhysicalPlan newPlan = RunTimeOptimizer.dynamicOptimization(physicalPlan, dynOptData, targetEdge);
+    final PhysicalPlan newPlan = RunTimeOptimizer.dynamicOptimization(physicalPlan, dynOptData, targetEdges);
 
     pubSubEventHandler.onNext(new UpdatePhysicalPlanEvent(newPlan, dynamicOptimizationEvent.getTaskId(),
         dynamicOptimizationEvent.getExecutorId()));

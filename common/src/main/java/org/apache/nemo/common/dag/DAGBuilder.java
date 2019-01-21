@@ -259,8 +259,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   private void executionPropertyCheck() {
     // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
-            .equals(e.getPropertyValue(MetricCollectionProperty.class)))
+        .filter(e -> e.getPropertyValue(MetricCollectionProperty.class).isPresent())
         .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
         .forEach(e -> {
           throw new CompileTimeOptimizationException("DAG execution property check: "

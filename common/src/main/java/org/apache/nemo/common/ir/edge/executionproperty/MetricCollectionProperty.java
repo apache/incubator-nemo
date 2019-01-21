@@ -23,12 +23,12 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 /**
  * MetricCollection ExecutionProperty that indicates the edge of which data metric will be collected.
  */
-public final class MetricCollectionProperty extends EdgeExecutionProperty<MetricCollectionProperty.Value> {
+public final class MetricCollectionProperty extends EdgeExecutionProperty<Integer> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private MetricCollectionProperty(final Value value) {
+  private MetricCollectionProperty(final Integer value) {
     super(value);
   }
 
@@ -37,14 +37,7 @@ public final class MetricCollectionProperty extends EdgeExecutionProperty<Metric
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static MetricCollectionProperty of(final Value value) {
+  public static MetricCollectionProperty of(final Integer value) {
     return new MetricCollectionProperty(value);
-  }
-
-  /**
-   * Possible values of MetricCollection ExecutionProperty.
-   */
-  public enum Value {
-    DataSkewRuntimePass
   }
 }

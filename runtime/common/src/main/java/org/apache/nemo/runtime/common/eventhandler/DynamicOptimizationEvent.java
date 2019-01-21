@@ -22,6 +22,8 @@ import org.apache.nemo.common.eventhandler.RuntimeEvent;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 
+import java.util.Set;
+
 /**
  * An event for triggering dynamic optimization.
  */
@@ -30,24 +32,27 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
   private final Object dynOptData;
   private final String taskId;
   private final String executorId;
-  private final StageEdge targetEdge;
+  private final Set<StageEdge> targetEdges;
 
   /**
    * Default constructor.
-   * @param physicalPlan physical plan to be optimized.
-   * @param taskId id of the task which triggered the dynamic optimization.
-   * @param executorId the id of executor which executes {@code taskId}
+   *
+   * @param physicalPlan the physical plan to be optimized.
+   * @param dynOptData   the metric data.
+   * @param taskId       the ID of the task which triggered the dynamic optimization.
+   * @param executorId   the ID of executor which executes {@code taskId}
+   * @param targetEdges  the target edges.
    */
   public DynamicOptimizationEvent(final PhysicalPlan physicalPlan,
                                   final Object dynOptData,
                                   final String taskId,
                                   final String executorId,
-                                  final StageEdge targetEdge) {
+                                  final Set<StageEdge> targetEdges) {
     this.physicalPlan = physicalPlan;
     this.taskId = taskId;
     this.dynOptData = dynOptData;
     this.executorId = executorId;
-    this.targetEdge = targetEdge;
+    this.targetEdges = targetEdges;
   }
 
   /**
@@ -75,7 +80,7 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
     return this.dynOptData;
   }
 
-  public StageEdge getTargetEdge() {
-    return this.targetEdge;
+  public Set<StageEdge> getTargetEdges() {
+    return this.targetEdges;
   }
 }

@@ -38,18 +38,20 @@ public final class RunTimeOptimizer {
   /**
    * Dynamic optimization method to process the dag with an appropriate pass, decided by the stats.
    *
-   * @param originalPlan original physical execution plan.
+   * @param originalPlan the original physical execution plan.
+   * @param dynOptData   the data metric.
+   * @param targetEdges  the target edges.
    * @return the newly updated optimized physical plan.
    */
   public static synchronized PhysicalPlan dynamicOptimization(
           final PhysicalPlan originalPlan,
           final Object dynOptData,
-          final StageEdge targetEdge) {
+          final Set<StageEdge> targetEdges) {
     // Data for dynamic optimization used in DataSkewRuntimePass
     // is a map of <hash value, partition size>.
     final PhysicalPlan physicalPlan =
       new DataSkewRuntimePass()
-        .apply(originalPlan, Pair.of(targetEdge, (Map<Object, Long>) dynOptData));
+        .apply(originalPlan, Pair.of(targetEdges, (Map<Object, Long>) dynOptData));
     return physicalPlan;
   }
 }

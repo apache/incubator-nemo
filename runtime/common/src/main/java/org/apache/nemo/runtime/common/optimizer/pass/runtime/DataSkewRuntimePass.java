@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
  * this RuntimePass identifies a number of keys with big partition sizes(skewed key)
  * and evenly redistributes data via overwriting incoming edges of destination tasks.
  */
-public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<Object, Long>>> {
+public final class DataSkewRuntimePass extends RuntimePass<Pair<Set<StageEdge>, Map<Object, Long>>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
   private static final int DEFAULT_NUM_SKEWED_KEYS = 1;
   /*
@@ -87,8 +87,8 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<StageEdge, Map<O
 
   @Override
   public PhysicalPlan apply(final PhysicalPlan originalPlan,
-                            final Pair<StageEdge, Map<Object, Long>> metricData) {
-    final StageEdge targetEdge = metricData.left();
+                            final Pair<Set<StageEdge>, Map<Object, Long>> metricData) {
+    final Set<StageEdge> targetEdges = metricData.left();
     // Get number of evaluators of the next stage (number of blocks).
     final Integer dstParallelism = targetEdge.getDst().getPropertyValue(ParallelismProperty.class).
         orElseThrow(() -> new RuntimeException("No parallelism on a vertex"));
