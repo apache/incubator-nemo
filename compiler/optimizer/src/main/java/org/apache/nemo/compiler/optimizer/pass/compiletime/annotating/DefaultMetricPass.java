@@ -44,7 +44,7 @@ public final class DefaultMetricPass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(dst ->
       dag.getIncomingEdgesOf(dst).forEach(edge -> {
         if (CommunicationPatternProperty.Value.Shuffle
@@ -57,6 +57,5 @@ public final class DefaultMetricPass extends AnnotatingPass {
           edge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(metric)));
         }
       }));
-    return dag;
   }
 }

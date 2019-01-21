@@ -40,7 +40,7 @@ public final class LargeShuffleResourceSlotPass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final DAG<IRVertex, IREdge> dag) {
     // On every vertex that receive push edge, if ResourceSlotProperty is not set, put it as false.
     // For other vertices, if ResourceSlotProperty is not set, put it as true.
     dag.getVertices().stream()
@@ -55,6 +55,5 @@ public final class LargeShuffleResourceSlotPass extends AnnotatingPass {
             v.setPropertyPermanently(ResourceSlotProperty.of(true));
           }
         });
-    return dag;
   }
 }

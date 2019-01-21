@@ -39,7 +39,7 @@ public final class SkewPartitionerPass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices()
       .forEach(v -> dag.getOutgoingEdgesOf(v).stream()
         .filter(edge -> edge.getPropertyValue(MetricCollectionProperty.class).isPresent())
@@ -47,6 +47,5 @@ public final class SkewPartitionerPass extends AnnotatingPass {
           .setPropertyPermanently(PartitionerProperty.of(PartitionerProperty.Value.DataSkewHashPartitioner))
         )
       );
-    return dag;
   }
 }

@@ -40,7 +40,7 @@ public final class DefaultDataPersistencePass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(irVertex ->
         dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
           if (!irEdge.getPropertyValue(DataPersistenceProperty.class).isPresent()) {
@@ -54,6 +54,5 @@ public final class DefaultDataPersistencePass extends AnnotatingPass {
             }
           }
         }));
-    return dag;
   }
 }

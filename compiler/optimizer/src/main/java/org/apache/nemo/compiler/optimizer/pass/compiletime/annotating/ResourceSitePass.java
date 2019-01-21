@@ -74,13 +74,12 @@ public final class ResourceSitePass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final DAG<IRVertex, IREdge> dag) {
     if (bandwidthSpecificationString.isEmpty()) {
       dag.topologicalDo(irVertex -> irVertex.setProperty(ResourceSiteProperty.of(EMPTY_MAP)));
     } else {
       assignNodeShares(dag, BandwidthSpecification.fromJsonString(bandwidthSpecificationString));
     }
-    return dag;
   }
 
   /**

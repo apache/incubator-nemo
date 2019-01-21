@@ -37,11 +37,10 @@ public final class ResourceLocalityPass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final DAG<IRVertex, IREdge> dag) {
     // On every vertex, if ResourceLocalityProperty is not set, put it as true.
     dag.getVertices().stream()
         .filter(v -> !v.getPropertyValue(ResourceLocalityProperty.class).isPresent())
         .forEach(v -> v.setProperty(ResourceLocalityProperty.of(true)));
-    return dag;
   }
 }

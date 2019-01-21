@@ -46,7 +46,7 @@ public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final DAG<IRVertex, IREdge> dag) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
     dag.topologicalDo(v -> {
       builder.addVertex(v);

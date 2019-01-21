@@ -16,27 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.optimizer.pass.compiletime;
+package org.apache.nemo.common.ir;
 
+import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
-import org.apache.nemo.common.pass.Pass;
+import org.apache.nemo.common.ir.vertex.LoopVertex;
+import org.apache.nemo.common.ir.vertex.system.StreamVertex;
 
+import java.util.Map;
 import java.util.Set;
 
-/**
- * Abstract class for compile-time optimization passes that processes the DAG.
- * It is a function that takes an original DAG to produce a processed DAG, after an optimization.
- */
-public abstract class CompileTimePass extends Pass {
-  /**
-   * Getter for prerequisite execution properties.
-   * @return set of prerequisite execution properties.
-   */
-  public abstract Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties();
+public class IRDAG extends DAG<IRVertex, IREdge> {
+  public IRDAG(final Set<IRVertex> vertices,
+               final Map<IRVertex, Set<IREdge>> incomingEdges,
+               final Map<IRVertex, Set<IREdge>> outgoingEdges,
+               final Map<IRVertex, LoopVertex> assignedLoopVertexMap,
+               final Map<IRVertex, Integer> loopStackDepthMap) {
+    super(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
+  }
+
+  void insert(final StreamVertex streamVertex, final IREdge edgeToReplace) {
+  }
 
 
-  public abstract void optimize(final DAG<IRVertex, IREdge> dag);
 }

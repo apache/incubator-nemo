@@ -112,7 +112,7 @@ public final class LoopOptimizations {
     }
 
     @Override
-    public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+    public void optimize(final DAG<IRVertex, IREdge> dag) {
       final List<LoopVertex> loopVertices = new ArrayList<>();
       final Map<LoopVertex, List<IREdge>> inEdges = new HashMap<>();
       final Map<LoopVertex, List<IREdge>> outEdges = new HashMap<>();
@@ -240,7 +240,7 @@ public final class LoopOptimizations {
     }
 
     @Override
-    public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+    public void optimize(final DAG<IRVertex, IREdge> dag) {
       final List<LoopVertex> loopVertices = new ArrayList<>();
       final Map<LoopVertex, List<IREdge>> inEdges = new HashMap<>();
       final Map<LoopVertex, List<IREdge>> outEdges = new HashMap<>();

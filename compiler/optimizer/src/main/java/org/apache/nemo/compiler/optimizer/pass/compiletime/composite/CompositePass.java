@@ -58,23 +58,8 @@ public abstract class CompositePass extends CompileTimePass {
   }
 
   @Override
-  public final DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> irVertexIREdgeDAG) {
-    return recursivelyApply(irVertexIREdgeDAG, getPassList().iterator());
-  }
-
-  /**
-   * Recursively apply the give list of passes.
-   * @param dag dag.
-   * @param passIterator pass iterator.
-   * @return dag.
-   */
-  private DAG<IRVertex, IREdge> recursivelyApply(final DAG<IRVertex, IREdge> dag,
-                                                 final Iterator<CompileTimePass> passIterator) {
-    if (passIterator.hasNext()) {
-      return recursivelyApply(passIterator.next().apply(dag), passIterator);
-    } else {
-      return dag;
-    }
+  public final void optimize(final DAG<IRVertex, IREdge> irVertexIREdgeDAG) {
+    getPassList().forEach(pass -> pass.optimize(irVertexIREdgeDAG));
   }
 
   /**

@@ -38,7 +38,7 @@ public final class LoopUnrollingPass extends ReshapingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final DAG<IRVertex, IREdge> dag) {
     return recursivelyUnroll(dag);
   }
 

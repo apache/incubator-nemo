@@ -40,7 +40,7 @@ public final class LargeShuffleDataStorePass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().forEach(vertex -> {
       // Find the merger vertex inserted by reshaping pass.
       if (dag.getIncomingEdgesOf(vertex).stream().anyMatch(irEdge ->
@@ -58,6 +58,5 @@ public final class LargeShuffleDataStorePass extends AnnotatingPass {
             edgeFromMerger.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore)));
       }
     });
-    return dag;
   }
 }

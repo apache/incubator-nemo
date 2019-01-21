@@ -44,7 +44,7 @@ public final class LargeShuffleEncoderPass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().forEach(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       inEdges.forEach(edge -> {
@@ -56,6 +56,5 @@ public final class LargeShuffleEncoderPass extends AnnotatingPass {
         }
       });
     });
-    return dag;
   }
 }

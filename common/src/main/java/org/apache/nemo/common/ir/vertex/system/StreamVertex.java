@@ -16,52 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.vertex;
+package org.apache.nemo.common.ir.vertex.system;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.RelayTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 
 /**
  * IRVertex that transforms input data.
  * It is to be constructed in the compiler frontend with language-specific data transform logic.
  */
-public class OperatorVertex extends IRVertex {
-  private final Transform transform;
-
+public final class StreamVertex extends OperatorVertex {
   /**
    * Constructor of OperatorVertex.
    * @param t transform for the OperatorVertex.
    */
-  public OperatorVertex(final Transform t) {
-    super();
-    this.transform = t;
-  }
-
-  /**
-   * Copy Constructor of OperatorVertex.
-   * @param that the source object for copying
-   */
-  public OperatorVertex(final OperatorVertex that) {
-    super();
-    this.transform = that.transform;
-  }
-
-  @Override
-  public OperatorVertex getClone() {
-    return new OperatorVertex(this);
-  }
-
-  /**
-   * @return the transform in the OperatorVertex.
-   */
-  public Transform getTransform() {
-    return transform;
-  }
-
-  @Override
-  public ObjectNode getPropertiesAsJsonNode() {
-    final ObjectNode node = getIRVertexPropertiesAsJsonNode();
-    node.put("transform", transform.toString());
-    return node;
+  public StreamVertex(final Transform t) {
+    super(new RelayTransform());
   }
 }

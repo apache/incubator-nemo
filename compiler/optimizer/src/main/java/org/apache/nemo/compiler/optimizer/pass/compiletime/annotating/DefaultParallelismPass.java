@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -60,7 +59,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public void optimize(final DAG<IRVertex, IREdge> dag) {
     // Propagate forward source parallelism
     dag.topologicalDo(vertex -> {
       try {
@@ -103,8 +102,6 @@ public final class DefaultParallelismPass extends AnnotatingPass {
         throw new RuntimeException(e);
       }
     });
-    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
-    return builder.build();
   }
 
   /**
