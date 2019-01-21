@@ -18,7 +18,8 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 
-import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.*;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.SkewPartitionerPass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.SkewResourceSkewedDataPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.SkewReshapingPass;
 
 import java.util.Arrays;

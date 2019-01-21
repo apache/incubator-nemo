@@ -18,21 +18,21 @@
  */
 package org.apache.nemo.compiler.optimizer;
 
-import org.apache.nemo.common.ir.IRDAG;
+import net.jcip.annotations.NotThreadSafe;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.exception.DynamicOptimizationException;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.CachedSourceVertex;
 import org.apache.nemo.common.ir.edge.executionproperty.CacheIDProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.vertex.CachedSourceVertex;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
 import org.apache.nemo.conf.JobConf;
-import net.jcip.annotations.NotThreadSafe;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
 

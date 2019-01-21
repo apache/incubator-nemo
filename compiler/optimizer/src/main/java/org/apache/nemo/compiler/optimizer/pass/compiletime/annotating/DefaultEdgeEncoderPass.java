@@ -20,9 +20,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 
 /**
  * Pass for initiating IREdge Encoder ExecutionProperty with default dummy coder.

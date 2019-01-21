@@ -18,17 +18,17 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import org.apache.nemo.common.ir.IRDAG;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.dag.Vertex;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
-import org.apache.commons.lang3.mutable.MutableInt;
 
 import java.util.*;
 
