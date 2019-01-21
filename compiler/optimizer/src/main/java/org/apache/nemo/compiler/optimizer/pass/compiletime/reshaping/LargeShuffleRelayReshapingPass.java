@@ -24,14 +24,12 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.system.StreamVertex;
 import org.apache.nemo.common.ir.vertex.transform.RelayTransform;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
- * Pass to modify the DAG for a job to batch the disk seek.
- * It adds a {@link OperatorVertex} with {@link RelayTransform} before the vertices
- * receiving shuffle edges,
- * to merge the shuffled data in memory and write to the disk at once.
+ * Inserts the StreamVertex for each shuffle edge.
  */
 @Requires(CommunicationPatternProperty.class)
 public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
@@ -43,6 +41,20 @@ public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
     super(LargeShuffleRelayReshapingPass.class);
   }
 
+
+  @Override
+  public void optimize(final IRDAG dag) {
+    dag.topologicalDo(vertex -> {
+      dag.getIncomingEdgesOf(vertex).forEach(edge -> {
+        if (CommunicationPatternProperty.Value.Shuffle
+          .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+          dag.insert(new StreamVertex(), edge);
+        }
+      });
+    });
+  }
+
+  /*
   @Override
   public void optimize(final IRDAG dag) {
     dag.topologicalDo(v -> {
@@ -79,4 +91,5 @@ public final class LargeShuffleRelayReshapingPass extends ReshapingPass {
     });
     return builder.build();
   }
+  */
 }

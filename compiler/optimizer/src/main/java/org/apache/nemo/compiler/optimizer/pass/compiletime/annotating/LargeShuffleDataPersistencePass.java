@@ -41,11 +41,11 @@ public final class LargeShuffleDataPersistencePass extends AnnotatingPass {
   @Override
   public void optimize(final IRDAG dag) {
     dag.topologicalDo(irVertex ->
-        dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          final DataFlowProperty.Value dataFlowModel = irEdge.getPropertyValue(DataFlowProperty.class).get();
-          if (DataFlowProperty.Value.Push.equals(dataFlowModel)) {
-            irEdge.setPropertyPermanently(DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard));
-          }
-        }));
+      dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
+        final DataFlowProperty.Value dataFlowModel = irEdge.getPropertyValue(DataFlowProperty.class).get();
+        if (DataFlowProperty.Value.Push.equals(dataFlowModel)) {
+          irEdge.setPropertyPermanently(DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard));
+        }
+      }));
   }
 }
