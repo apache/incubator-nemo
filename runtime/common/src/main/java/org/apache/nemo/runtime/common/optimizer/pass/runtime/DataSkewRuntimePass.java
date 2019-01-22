@@ -90,14 +90,17 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<Set<StageEdge>, 
                             final Pair<Set<StageEdge>, Map<Object, Long>> metricData) {
     final Set<StageEdge> targetEdges = metricData.left();
     // Get number of evaluators of the next stage (number of blocks).
-    final Integer dstParallelism = targetEdge.getDst().getPropertyValue(ParallelismProperty.class).
-        orElseThrow(() -> new RuntimeException("No parallelism on a vertex"));
+    final StageEdge firstEdge = targetEdges.stream().findFirst()
+      .orElseThrow(() -> new RuntimeException("Empty target edge set!"));
+    final Integer dstParallelism =  firstEdge
+      .getDst().getPropertyValue(ParallelismProperty.class)
+      .orElseThrow(() -> new RuntimeException("No parallelism on a vertex"));
     if (!PartitionerProperty.Value.DataSkewHashPartitioner
-      .equals(targetEdge.getPropertyValue(PartitionerProperty.class)
+      .equals(firstEdge.getPropertyValue(PartitionerProperty.class)
         .orElseThrow(() -> new RuntimeException("No partitioner property!")))) {
       throw new RuntimeException("Invalid partitioner is assigned to the target edge!");
     }
-    final DataSkewHashPartitioner partitioner = (DataSkewHashPartitioner) Partitioner.getPartitioner(targetEdge);
+    final DataSkewHashPartitioner partitioner = (DataSkewHashPartitioner) Partitioner.getPartitioner(firstEdge);
 
     // Calculate keyRanges.
     final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), dstParallelism, partitioner);
@@ -108,10 +111,9 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<Set<StageEdge>, 
 
     // Overwrite the previously assigned key range in the physical DAG with the new range.
     final DAG<Stage, StageEdge> stageDAG = originalPlan.getStageDAG();
-    for (Stage stage : stageDAG.getVertices()) {
-      List<StageEdge> stageEdges = stageDAG.getOutgoingEdgesOf(stage);
-      for (StageEdge edge : stageEdges) {
-        if (edge.equals(targetEdge)) {
+    for (final Stage stage : stageDAG.getVertices()) {
+      for (final StageEdge edge : stageDAG.getOutgoingEdgesOf(stage)) {
+        if (targetEdges.contains(edge)) {
           edge.setTaskIdxToKeyRange(taskIdxToKeyRange);
         }
       }
@@ -163,12 +165,11 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<Set<StageEdge>, 
                                            final Integer dstParallelism,
                                            final Partitioner<Integer> partitioner) {
     final Map<Integer, Long> partitionKeyToPartitionCount = new HashMap<>();
-    int lastKey = 0;
+    int lastKey = dstParallelism * HASH_RANGE_MULTIPLIER - 1;
     // Aggregate the counts per each "partition key" assigned by Partitioner.
 
     for (final Map.Entry<Object, Long> entry : keyToCountMap.entrySet()) {
       final int partitionKey = partitioner.partition(entry.getKey());
-      lastKey = Math.max(lastKey, partitionKey);
       partitionKeyToPartitionCount.compute(partitionKey,
         (existPartitionKey, prevCount) -> (prevCount == null) ? entry.getValue() : prevCount + entry.getValue());
     }

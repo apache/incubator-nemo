@@ -24,7 +24,6 @@ import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -466,7 +465,8 @@ public final class BatchScheduler implements Scheduler {
       targetEdges.addAll(targetEdgesFound);
     }
 
-    LOG.info("Target edges to optimize: {}", targetEdges.stream().map(edge -> edge.getId()).collect(Collectors.toSet()));
+    LOG.info("Target edges to optimize: {}",
+      targetEdges.stream().map(edge -> edge.getId()).collect(Collectors.toSet()));
     return targetEdges;
   }
 

@@ -41,9 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 
@@ -70,8 +68,8 @@ public final class SkewReshapingPass extends ReshapingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     int mcCount = 0;
-    // destination vertex ID to metric aggregation info map
-    final Map<String, AggregationInfo> dstVtxIdToABV = new HashMap<>();
+    // destination vertex ID to metric aggregation vertex - ID pair map
+    final Map<String, Pair<OperatorVertex, Integer>> dstVtxIdToABV = new HashMap<>();
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     for (final IRVertex v : dag.getTopologicalSort()) {
@@ -98,12 +96,12 @@ public final class SkewReshapingPass extends ReshapingPass {
               builder.addVertex(abv);
 
               abv.setPropertyPermanently(ResourceSlotProperty.of(false));
-              dstVtxIdToABV.put(dstId, new AggregationInfo(abv, metricCollectionId));
+              dstVtxIdToABV.put(dstId, Pair.of(abv, metricCollectionId));
             } else {
               // There is a metric aggregation vertex for this destination vertex already.
-              final AggregationInfo aggrInfo = dstVtxIdToABV.get(dstId);
-              metricCollectionId = aggrInfo.getMcId();
-              abv = aggrInfo.getAbv();
+              final Pair<OperatorVertex, Integer> aggrPair = dstVtxIdToABV.get(dstId);
+              metricCollectionId = aggrPair.right();
+              abv = aggrPair.left();
             }
 
             final OperatorVertex mcv = generateMetricCollectVertex(edge);
@@ -249,24 +247,5 @@ public final class SkewReshapingPass extends ReshapingPass {
     }
 
     return newEdge;
-  }
-
-  private final class AggregationInfo {
-    private final OperatorVertex abv;
-    private final int mcId;
-
-    AggregationInfo(final OperatorVertex abv,
-                    final int mcId) {
-      this.abv = abv;
-      this.mcId = mcId;
-    }
-
-    OperatorVertex getAbv() {
-      return abv;
-    }
-
-    int getMcId() {
-      return mcId;
-    }
   }
 }

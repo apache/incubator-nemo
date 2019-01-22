@@ -95,7 +95,7 @@ public final class NetworkTraceAnalysisITCase {
   @Test (timeout = ExampleTestArgs.TIMEOUT)
   public void testDataSkew() throws Exception {
     JobLauncher.main(builder
-      .addJobId(NetworkTraceAnalysisITCase.class.getSimpleName())
+      .addJobId(NetworkTraceAnalysisITCase.class.getSimpleName() + "_skew")
       .addOptimizationPolicy(DataSkewPolicyParallelismFive.class.getCanonicalName())
       .build());
   }
