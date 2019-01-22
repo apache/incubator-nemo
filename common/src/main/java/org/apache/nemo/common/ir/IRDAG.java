@@ -107,6 +107,10 @@ public class IRDAG {
     return dag.getChildren(vertexId);
   }
 
+  public DAG<IRVertex, IREdge> getUnderlyingDAG() {
+    return dag;
+  }
+
   ////////////////////////////////////////////////// Reshaping methods.
 
   /**

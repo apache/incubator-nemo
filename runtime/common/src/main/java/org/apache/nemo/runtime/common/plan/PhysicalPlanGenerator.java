@@ -47,7 +47,7 @@ import java.util.function.Function;
 /**
  * A function that converts an IR DAG to physical DAG.
  */
-public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdge>, DAG<Stage, StageEdge>> {
+public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, StageEdge>> {
   private final String dagDirectory;
   private final StagePartitioner stagePartitioner;
   private static final Logger LOG = LoggerFactory.getLogger(PhysicalPlanGenerator.class.getName());

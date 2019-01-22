@@ -19,7 +19,6 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.client.JobLauncher;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -63,10 +62,10 @@ public class LoopFusionPassTest {
     groupedDAG = new LoopExtractionPass().optimize(originalALSDAG);
 
     groupedDAG.topologicalDo(v -> {
-      dagToBeFusedBuilder.addVertex(v, groupedDAG);
+      dagToBeFusedBuilder.addVertex(v, groupedDAG.getUnderlyingDAG());
       groupedDAG.getIncomingEdgesOf(v).forEach(dagToBeFusedBuilder::connectVertices);
 
-      dagNotToBeFusedBuilder.addVertex(v, groupedDAG);
+      dagNotToBeFusedBuilder.addVertex(v, groupedDAG.getUnderlyingDAG());
       groupedDAG.getIncomingEdgesOf(v).forEach(dagNotToBeFusedBuilder::connectVertices);
     });
     final Optional<LoopVertex> loopInDAG = groupedDAG.getTopologicalSort().stream()
