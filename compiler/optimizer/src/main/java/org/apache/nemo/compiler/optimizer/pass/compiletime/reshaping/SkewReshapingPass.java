@@ -31,6 +31,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.MetricCollectTransform;
 import org.apache.nemo.compiler.optimizer.PairKeyExtractor;
@@ -40,9 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 
@@ -68,10 +67,12 @@ public final class SkewReshapingPass extends ReshapingPass {
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+    int mcCount = 0;
+    // destination vertex ID to metric aggregation vertex - ID pair map
+    final Map<String, Pair<OperatorVertex, Integer>> dstVtxIdToABV = new HashMap<>();
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
-    final List<OperatorVertex> metricCollectVertices = new ArrayList<>();
 
-    dag.topologicalDo(v -> {
+    for (final IRVertex v : dag.getTopologicalSort()) {
       // We care about OperatorVertices that have shuffle incoming edges with main output.
       // TODO #210: Data-aware dynamic optimization at run-time
       if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
@@ -80,15 +81,32 @@ public final class SkewReshapingPass extends ReshapingPass {
         && dag.getIncomingEdgesOf(v).stream().noneMatch(irEdge ->
       irEdge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())) {
 
-        dag.getIncomingEdgesOf(v).forEach(edge -> {
+        for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
           if (CommunicationPatternProperty.Value.Shuffle
-                .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-            final OperatorVertex abv = generateMetricAggregationVertex();
+            .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+            final String dstId = edge.getDst().getId();
+
+            // Get or generate a metric collection vertex.
+            final int metricCollectionId;
+            final OperatorVertex abv;
+            if (!dstVtxIdToABV.containsKey(dstId)) {
+              // There is no metric aggregation vertex for this destination vertex.
+              metricCollectionId = mcCount++;
+              abv = generateMetricAggregationVertex();
+              builder.addVertex(abv);
+
+              abv.setPropertyPermanently(ResourceSlotProperty.of(false));
+              dstVtxIdToABV.put(dstId, Pair.of(abv, metricCollectionId));
+            } else {
+              // There is a metric aggregation vertex for this destination vertex already.
+              final Pair<OperatorVertex, Integer> aggrPair = dstVtxIdToABV.get(dstId);
+              metricCollectionId = aggrPair.right();
+              abv = aggrPair.left();
+            }
+
             final OperatorVertex mcv = generateMetricCollectVertex(edge);
-            metricCollectVertices.add(mcv);
             builder.addVertex(v);
             builder.addVertex(mcv);
-            builder.addVertex(abv);
 
             // We then insert the vertex with MetricCollectTransform and vertex with AggregateMetricTransform
             // between the vertex and incoming vertices.
@@ -97,8 +115,8 @@ public final class SkewReshapingPass extends ReshapingPass {
             final IREdge edgeToOriginalDstV =
               new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
             edge.copyExecutionPropertiesTo(edgeToOriginalDstV);
-            edgeToOriginalDstV.setPropertyPermanently(
-              MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
+            edgeToOriginalDstV.setPropertyPermanently(MetricCollectionProperty.of(metricCollectionId));
+            edgeToABV.setPropertyPermanently(MetricCollectionProperty.of(metricCollectionId));
 
             builder.connectVertices(edgeToMCV);
             builder.connectVertices(edgeToABV);
@@ -111,12 +129,12 @@ public final class SkewReshapingPass extends ReshapingPass {
           } else {
             builder.connectVertices(edge);
           }
-        });
+        }
       } else { // Others are simply added to the builder, unless it comes from an updated vertex
         builder.addVertex(v);
         dag.getIncomingEdgesOf(v).forEach(builder::connectVertices);
       }
-    });
+    }
     final DAG<IRVertex, IREdge> newDAG = builder.build();
     return newDAG;
   }

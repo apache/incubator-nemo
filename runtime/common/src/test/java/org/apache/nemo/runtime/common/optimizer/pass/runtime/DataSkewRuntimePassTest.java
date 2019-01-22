@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.common.optimizer.pass.runtime;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.KeyRange;
-import org.apache.nemo.runtime.common.partitioner.HashPartitioner;
+import org.apache.nemo.runtime.common.partitioner.DataSkewHashPartitioner;
 import org.apache.nemo.runtime.common.partitioner.Partitioner;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,9 +39,9 @@ public class DataSkewRuntimePassTest {
   @Before
   public void setUp() {
     // Skewed partition size lists
-    buildPartitionSizeList(Arrays.asList(5L, 5L, 10L, 50L, 100L));
-    buildPartitionSizeList(Arrays.asList(5L, 10L, 5L, 0L, 0L));
-    buildPartitionSizeList(Arrays.asList(10L, 5L, 5L, 0L, 0L));
+    buildPartitionSizeList(Arrays.asList(5L, 5L, 10L, 50L, 110L, 5L, 5L, 10L, 50L, 100L));
+    buildPartitionSizeList(Arrays.asList(5L, 10L, 5L, 0L, 0L, 5L, 10L, 5L, 0L, 0L));
+    buildPartitionSizeList(Arrays.asList(10L, 5L, 5L, 0L, 0L, 10L, 5L, 5L, 0L, 0L));
   }
 
   /**
@@ -50,31 +50,22 @@ public class DataSkewRuntimePassTest {
    */
   @Test
   public void testDataSkewDynamicOptimizationPass() {
-    final Integer taskNum = 5;
+    final Integer taskNum = 2;
     final KeyExtractor asIsExtractor = new AsIsKeyExtractor();
-    final Partitioner partitioner = new HashPartitioner(taskNum, asIsExtractor);
+    final Partitioner partitioner = new DataSkewHashPartitioner(taskNum, asIsExtractor);
 
     final List<KeyRange> keyRanges =
-        new DataSkewRuntimePass(2).calculateKeyRanges(testMetricData, taskNum, partitioner);
+        new DataSkewRuntimePass(1).calculateKeyRanges(testMetricData, taskNum, partitioner);
 
     // Test whether it correctly redistributed hash ranges.
     assertEquals(0, keyRanges.get(0).rangeBeginInclusive());
-    assertEquals(2, keyRanges.get(0).rangeEndExclusive());
-    assertEquals(2, keyRanges.get(1).rangeBeginInclusive());
-    assertEquals(3, keyRanges.get(1).rangeEndExclusive());
-    assertEquals(3, keyRanges.get(2).rangeBeginInclusive());
-    assertEquals(4, keyRanges.get(2).rangeEndExclusive());
-    assertEquals(4, keyRanges.get(3).rangeBeginInclusive());
-    assertEquals(5, keyRanges.get(3).rangeEndExclusive());
-    assertEquals(5, keyRanges.get(4).rangeBeginInclusive());
-    assertEquals(5, keyRanges.get(4).rangeEndExclusive());
+    assertEquals(5, keyRanges.get(0).rangeEndExclusive());
+    assertEquals(5, keyRanges.get(1).rangeBeginInclusive());
+    assertEquals(10, keyRanges.get(1).rangeEndExclusive());
 
     // Test whether it caught the provided skewness.
-    assertEquals(false, ((HashRange)keyRanges.get(0)).isSkewed());
+    assertEquals(true, ((HashRange)keyRanges.get(0)).isSkewed());
     assertEquals(false, ((HashRange)keyRanges.get(1)).isSkewed());
-    assertEquals(true, ((HashRange)keyRanges.get(2)).isSkewed());
-    assertEquals(true, ((HashRange)keyRanges.get(3)).isSkewed());
-    assertEquals(false, ((HashRange)keyRanges.get(4)).isSkewed());
   }
 
   /**

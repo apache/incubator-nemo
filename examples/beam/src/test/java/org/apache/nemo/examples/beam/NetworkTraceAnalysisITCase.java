@@ -22,6 +22,7 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
+import org.apache.nemo.examples.beam.policy.DataSkewPolicyParallelismFive;
 import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.apache.nemo.examples.beam.policy.TransientResourcePolicyParallelismFive;
 import org.apache.nemo.examples.beam.policy.LargeShufflePolicyParallelismFive;
@@ -85,5 +86,17 @@ public final class NetworkTraceAnalysisITCase {
         .addJobId(NetworkTraceAnalysisITCase.class.getSimpleName() + "_transient")
         .addOptimizationPolicy(TransientResourcePolicyParallelismFive.class.getCanonicalName())
         .build());
+  }
+
+  /**
+   * Testing data skew dynamic optimization.
+   * @throws Exception exception on the way.
+   */
+  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  public void testDataSkew() throws Exception {
+    JobLauncher.main(builder
+      .addJobId(NetworkTraceAnalysisITCase.class.getSimpleName() + "_skew")
+      .addOptimizationPolicy(DataSkewPolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 }

@@ -23,8 +23,6 @@ import org.apache.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigInteger;
-
 /**
  * An implementation of {@link Partitioner} which hashes output data from a source task appropriate to detect data skew.
  * It hashes data finer than {@link HashPartitioner}.
@@ -38,7 +36,6 @@ import java.math.BigInteger;
 public final class DataSkewHashPartitioner implements Partitioner<Integer> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewHashPartitioner.class.getName());
   private final KeyExtractor keyExtractor;
-  private final BigInteger hashRangeBase;
   private final int hashRange;
 
   /**
@@ -51,10 +48,7 @@ public final class DataSkewHashPartitioner implements Partitioner<Integer> {
                                  final KeyExtractor keyExtractor) {
     this.keyExtractor = keyExtractor;
     // For this hash range, please check the description of HashRangeMultiplier in JobConf.
-    // For actual hash range to use, we calculate a prime number right next to the desired hash range.
-    this.hashRangeBase = new BigInteger(String.valueOf(dstParallelism * DataSkewRuntimePass.HASH_RANGE_MULTIPLIER));
-    this.hashRange = hashRangeBase.nextProbablePrime().intValue();
-    LOG.info("hashRangeBase {} resulting hashRange {}", hashRangeBase, hashRange);
+    this.hashRange = dstParallelism * DataSkewRuntimePass.HASH_RANGE_MULTIPLIER;
   }
 
   @Override
