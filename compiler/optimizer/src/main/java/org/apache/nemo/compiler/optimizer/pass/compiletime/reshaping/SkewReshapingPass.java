@@ -28,6 +28,7 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.MetricCollectTransform;
 import org.apache.nemo.compiler.optimizer.PairKeyExtractor;
@@ -66,7 +67,29 @@ public final class SkewReshapingPass extends ReshapingPass {
   @Override
   public void optimize(final IRDAG dag) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
-    final List<OperatorVertex> metricCollectVertices = new ArrayList<>();
+
+
+    final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
+
+
+    // Define a custom data collector for skew handling.
+    // Here, the collector gathers key frequency data used in shuffle data repartitioning.
+    final BiFunction<Object, Map<Object, Object>, Map<Object, Object>> dynOptDataCollector =
+      (BiFunction<Object, Map<Object, Object>, Map<Object, Object>> & Serializable)
+        (element, dynOptData) -> {
+          Object key = keyExtractor.extractKey(element);
+          if (dynOptData.containsKey(key)) {
+            dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
+          } else {
+            dynOptData.put(key, 1L);
+          }
+          return dynOptData;
+        };
+
+    final MessageBarrierVertex mbv = new MessageBarrierVertex(dynOptDataCollector);
+
+
+
 
     dag.topologicalDo(v -> {
       // We care about OperatorVertices that have shuffle incoming edges with main output.
@@ -82,7 +105,6 @@ public final class SkewReshapingPass extends ReshapingPass {
                 .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
             final OperatorVertex abv = generateMetricAggregationVertex();
             final OperatorVertex mcv = generateMetricCollectVertex(edge);
-            metricCollectVertices.add(mcv);
             builder.addVertex(v);
             builder.addVertex(mcv);
             builder.addVertex(abv);
@@ -117,4 +139,5 @@ public final class SkewReshapingPass extends ReshapingPass {
     final IRDAG newDAG = builder.build();
     return newDAG;
   }
+
 }

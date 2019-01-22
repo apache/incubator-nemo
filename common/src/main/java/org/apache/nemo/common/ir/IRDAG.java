@@ -18,13 +18,13 @@
  */
 package org.apache.nemo.common.ir;
 
+import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.system.StreamVertex;
 import org.apache.nemo.common.ir.vertex.system.SystemIRVertex;
@@ -125,13 +125,21 @@ public class IRDAG {
    * @param edgeToGetStatisticsOf
    */
   public void insert(final MessageBarrierVertex messageBarrierVertex, final IREdge edgeToGetStatisticsOf) {
-    dag.getIncomingEdgesOf(v).forEach(edge -> {
-      if (CommunicationPatternProperty.Value.Shuffle
-        .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+    // Create a completely new DAG with the vertex inserted.
+    final DAGBuilder builder = new DAGBuilder();
+
+    // Insert the vertex.
+    builder.addVertex(streamVertex);
+
+    dag.topologicalDo(v -> {
+      // None of the existing vertices are deleted.
+      builder.addVertex(v);
+
+      if (edgeToGetStatisticsOf.getDst().equals(v)
+        && dag.getIncomingEdgesOf(v).stream().anyMatch(e -> e.equals(edgeToGetStatisticsOf))) {
         final OperatorVertex abv = generateMetricAggregationVertex();
         final OperatorVertex mcv = generateMetricCollectVertex(edge);
         metricCollectVertices.add(mcv);
-        builder.addVertex(v);
         builder.addVertex(mcv);
         builder.addVertex(abv);
 
@@ -150,19 +158,28 @@ public class IRDAG {
         builder.connectVertices(edgeToOriginalDstV);
 
         // Add an control dependency (no output)
-        final IREdge emptyEdge =
-          new IREdge(CommunicationPatternProperty.Value.BroadCast, abv, v);
+        final IREdge emptyEdge = new IREdge(CommunicationPatternProperty.Value.BroadCast, abv, v);
         builder.connectVertices(emptyEdge);
       } else {
-        builder.connectVertices(edge);
+        dag.getIncomingEdgesOf(v).forEach(builder::connectVertices);
       }
     });
-  } else { // Others are simply added to the builder, unless it comes from an updated vertex
-    builder.addVertex(v);
-    dag.getIncomingEdgesOf(v).forEach(builder::connectVertices);
   }
-}
 
+  /**
+   * @param systemIRVertexToDelete to delete.
+   */
+  public void delete(final SystemIRVertex systemIRVertexToDelete) {
+    // TODO: recursively delete backwards
+  }
+
+  ////////////////////////////////////////////////// "Un-safe" direct reshaping (semantic-preserving is not guaranteed).
+
+  public void unSafeDirectReshaping(final Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> unsafeReshaping) {
+    this.dag = unsafeReshaping.apply(dag);
+  }
+
+  ////////////////////////////////////////////////// Private helper methods.
 
   /**
    * @param edge the original shuffle edge.
@@ -199,7 +216,7 @@ public class IRDAG {
     if (edge.getPropertyValue(KeyEncoderProperty.class).isPresent()
       && edge.getPropertyValue(KeyDecoderProperty.class).isPresent()) {
       final EncoderFactory keyEncoderFactory = edge.getPropertyValue(KeyEncoderProperty.class).get();
-      final DecoderFactory keyDecoderFactory = edge.getPropertyValue(KeyDecoderProperty.class).get();
+      final DecoderFactory keyDecoderFactory = edge.getPropertyValue(KeyDecoderProperty.class).get()
       newEdge.setPropertyPermanently(
         EncoderProperty.of(PairEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
       newEdge.setPropertyPermanently(
@@ -210,20 +227,5 @@ public class IRDAG {
     }
 
     return newEdge;
-  }
-
-
-
-  /**
-   * @param systemIRVertexToDelete to delete.
-   */
-  public void delete(final SystemIRVertex systemIRVertexToDelete) {
-    // TODO: recursively delete backwards
-  }
-
-  ////////////////////////////////////////////////// "Un-safe" direct reshaping (semantic-preserving not guaranteed)
-
-  public void unSafeDirectReshaping(final Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> unsafeReshaping) {
-    this.dag = unsafeReshaping.apply(dag);
   }
 }

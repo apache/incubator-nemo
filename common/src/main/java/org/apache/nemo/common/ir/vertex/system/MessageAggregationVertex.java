@@ -18,6 +18,15 @@
  */
 package org.apache.nemo.common.ir.vertex.system;
 
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
+
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.BiFunction;
+
 public class MessageAggregationVertex {
   /**
    * @return the generated vertex.

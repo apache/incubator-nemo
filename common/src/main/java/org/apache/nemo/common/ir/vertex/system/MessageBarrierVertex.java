@@ -18,27 +18,23 @@
  */
 package org.apache.nemo.common.ir.vertex.system;
 
-public class MessageBarrierVertex {
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.MetricCollectTransform;
+
+import java.util.HashMap;
+import java.util.function.BiFunction;
+
+public class MessageBarrierVertex implements OperatorVertex {
+  public MessageBarrierVertex(final BiFunction messageFunction) {
+    super(new MetricCollectTransform(new HashMap<>(), dynOptDataCollector, messageFunction));
+
+  }
 
   /**
    * @param edge to collect the metric.
    * @return the generated vertex.
    */
   private OperatorVertex generateMetricCollectVertex(final IREdge edge) {
-    final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
-    // Define a custom data collector for skew handling.
-    // Here, the collector gathers key frequency data used in shuffle data repartitioning.
-    final BiFunction<Object, Map<Object, Object>, Map<Object, Object>> dynOptDataCollector =
-      (BiFunction<Object, Map<Object, Object>, Map<Object, Object>> & Serializable)
-        (element, dynOptData) -> {
-          Object key = keyExtractor.extractKey(element);
-          if (dynOptData.containsKey(key)) {
-            dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
-          } else {
-            dynOptData.put(key, 1L);
-          }
-          return dynOptData;
-        };
 
     // Define a custom transform closer for skew handling.
     // Here, we emit key to frequency data map type data when closing transform.
