@@ -83,6 +83,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       // This element is a Side Input
       final long st = System.currentTimeMillis();
       LOG.info("Receive Side input at {}: {}", this.hashCode(), data);
+      System.out.println("Receive Side input at " + data);
       // TODO #287: Consider Explicit Multi-Input IR Transform
       final WindowedValue<SideInputElement> sideInputElement = (WindowedValue<SideInputElement>) data;
       final PCollectionView view = getSideInputs().get(sideInputElement.getValue().getSideInputIndex());
@@ -94,6 +95,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       int cnt = handlePushBacks();
       LOG.info("{}, Handle pushback cnt: {} at {}: {}", System.currentTimeMillis() - st,
         cnt, this.hashCode(), data);
+      System.out.println("{}, Handle pushback cnt: " + cnt + " data : " + data);
 
       // See if we can emit a new watermark, as we may have processed some pushed-back elements
       onWatermark(new Watermark(curInputWatermark));
@@ -103,10 +105,13 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
         getPushBackRunner().processElementInReadyWindows(data);
+      int cnt = 0;
       for (final WindowedValue wv : pushedBack) {
+        cnt += 1;
         curPushedBackWatermark = Math.min(curPushedBackWatermark, wv.getTimestamp().getMillis());
         curPushedBacks.add(wv);
       }
+      System.out.println("pushback count: " + cnt);
       checkAndFinishBundle();
     }
   }
