@@ -240,67 +240,69 @@ public final class LoopOptimizations {
     }
 
     @Override
-    public void optimize(final IRDAG dag) {
-      final List<LoopVertex> loopVertices = new ArrayList<>();
-      final Map<LoopVertex, List<IREdge>> inEdges = new HashMap<>();
-      final Map<LoopVertex, List<IREdge>> outEdges = new HashMap<>();
-      final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+    public void optimize(final IRDAG inputDAG) {
+      inputDAG.unSafeDirectReshaping(dag -> {
+        final List<LoopVertex> loopVertices = new ArrayList<>();
+        final Map<LoopVertex, List<IREdge>> inEdges = new HashMap<>();
+        final Map<LoopVertex, List<IREdge>> outEdges = new HashMap<>();
+        final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
-      collectLoopVertices(dag, loopVertices, inEdges, outEdges, builder);
+        collectLoopVertices(dag, loopVertices, inEdges, outEdges, builder);
 
-      // Refactor those with same data scan / operation, without dependencies in the loop.
-      loopVertices.forEach(loopVertex -> {
-        final List<Map.Entry<IRVertex, Set<IREdge>>> candidates = loopVertex.getNonIterativeIncomingEdges().entrySet()
+        // Refactor those with same data scan / operation, without dependencies in the loop.
+        loopVertices.forEach(loopVertex -> {
+          final List<Map.Entry<IRVertex, Set<IREdge>>> candidates = loopVertex.getNonIterativeIncomingEdges().entrySet()
             .stream().filter(entry ->
-                loopVertex.getDAG().getIncomingEdgesOf(entry.getKey()).size() == 0 // no internal inEdges
-                    // no external inEdges
-                    && loopVertex.getIterativeIncomingEdges().getOrDefault(entry.getKey(), new HashSet<>()).size() == 0)
+              loopVertex.getDAG().getIncomingEdgesOf(entry.getKey()).size() == 0 // no internal inEdges
+                // no external inEdges
+                && loopVertex.getIterativeIncomingEdges().getOrDefault(entry.getKey(), new HashSet<>()).size() == 0)
             .collect(Collectors.toList());
-        candidates.forEach(candidate -> {
-          // add refactored vertex to builder.
-          builder.addVertex(candidate.getKey());
-          // connect incoming edges.
-          candidate.getValue().forEach(builder::connectVertices);
-          // connect outgoing edges.
-          loopVertex.getDAG().getOutgoingEdgesOf(candidate.getKey()).forEach(loopVertex::addDagIncomingEdge);
-          loopVertex.getDAG().getOutgoingEdgesOf(candidate.getKey()).forEach(loopVertex::addNonIterativeIncomingEdge);
-          // modify incoming edges of loopVertex.
-          final List<IREdge> edgesToRemove = new ArrayList<>();
-          final List<IREdge> edgesToAdd = new ArrayList<>();
-          inEdges.getOrDefault(loopVertex, new ArrayList<>()).stream().filter(e ->
+          candidates.forEach(candidate -> {
+            // add refactored vertex to builder.
+            builder.addVertex(candidate.getKey());
+            // connect incoming edges.
+            candidate.getValue().forEach(builder::connectVertices);
+            // connect outgoing edges.
+            loopVertex.getDAG().getOutgoingEdgesOf(candidate.getKey()).forEach(loopVertex::addDagIncomingEdge);
+            loopVertex.getDAG().getOutgoingEdgesOf(candidate.getKey()).forEach(loopVertex::addNonIterativeIncomingEdge);
+            // modify incoming edges of loopVertex.
+            final List<IREdge> edgesToRemove = new ArrayList<>();
+            final List<IREdge> edgesToAdd = new ArrayList<>();
+            inEdges.getOrDefault(loopVertex, new ArrayList<>()).stream().filter(e ->
               // filter edges that have their sources as the refactored vertices.
               candidate.getValue().stream().map(IREdge::getSrc).anyMatch(edgeSrc -> edgeSrc.equals(e.getSrc())))
               .forEach(edge -> {
                 edgesToRemove.add(edge);
                 final IREdge newEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-                    candidate.getKey(), edge.getDst());
+                  candidate.getKey(), edge.getDst());
                 newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
                 newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
                 edgesToAdd.add(newEdge);
               });
-          final List<IREdge> listToModify = inEdges.getOrDefault(loopVertex, new ArrayList<>());
-          listToModify.removeAll(edgesToRemove);
-          listToModify.addAll(edgesToAdd);
-          // clear garbage.
-          loopVertex.getBuilder().removeVertex(candidate.getKey());
-          loopVertex.getDagIncomingEdges().remove(candidate.getKey());
-          loopVertex.getNonIterativeIncomingEdges().remove(candidate.getKey());
+            final List<IREdge> listToModify = inEdges.getOrDefault(loopVertex, new ArrayList<>());
+            listToModify.removeAll(edgesToRemove);
+            listToModify.addAll(edgesToAdd);
+            // clear garbage.
+            loopVertex.getBuilder().removeVertex(candidate.getKey());
+            loopVertex.getDagIncomingEdges().remove(candidate.getKey());
+            loopVertex.getNonIterativeIncomingEdges().remove(candidate.getKey());
+          });
         });
-      });
 
-      // Add LoopVertices.
-      loopVertices.forEach(loopVertex -> {
-        builder.addVertex(loopVertex);
-        inEdges.getOrDefault(loopVertex, new ArrayList<>()).forEach(builder::connectVertices);
-        outEdges.getOrDefault(loopVertex, new ArrayList<>()).forEach(builder::connectVertices);
-      });
+        // Add LoopVertices.
+        loopVertices.forEach(loopVertex -> {
+          builder.addVertex(loopVertex);
+          inEdges.getOrDefault(loopVertex, new ArrayList<>()).forEach(builder::connectVertices);
+          outEdges.getOrDefault(loopVertex, new ArrayList<>()).forEach(builder::connectVertices);
+        });
 
-      final IRDAG newDag = builder.build();
-      if (dag.getVertices().size() == newDag.getVertices().size()) {
-        return newDag;
-      } else {
-        return apply(newDag);
-      }
+        final IRDAG newDag = builder.build();
+        if (dag.getVertices().size() == newDag.getVertices().size()) {
+          return newDag;
+        } else {
+          return apply(newDag);
+        }
+      });
     }
   }
 }

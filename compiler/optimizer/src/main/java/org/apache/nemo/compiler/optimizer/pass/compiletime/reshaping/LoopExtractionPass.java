@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
+import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -49,9 +50,11 @@ public final class LoopExtractionPass extends ReshapingPass {
   }
 
   @Override
-  public void optimize(final IRDAG dag) {
-    final Integer maxStackDepth = this.findMaxLoopVertexStackDepth(dag);
-    return groupLoops(dag, maxStackDepth);
+  public void optimize(final IRDAG inputDAG) {
+    inputDAG.unSafeDirectReshaping(dag -> {
+      final Integer maxStackDepth = this.findMaxLoopVertexStackDepth(dag);
+      return groupLoops(dag, maxStackDepth);
+    });
   }
 
   /**
@@ -60,7 +63,7 @@ public final class LoopExtractionPass extends ReshapingPass {
    * @return The maximum stack depth of the DAG.
    * @throws Exception exceptions through the way.
    */
-  private Integer findMaxLoopVertexStackDepth(final IRDAG dag) {
+  private Integer findMaxLoopVertexStackDepth(final DAG<IRVertex, IREdge> dag) {
     final OptionalInt maxDepth = dag.getVertices().stream().filter(dag::isCompositeVertex)
         .mapToInt(dag::getLoopStackDepthOf)
         .max();
@@ -76,7 +79,7 @@ public final class LoopExtractionPass extends ReshapingPass {
    * @return processed DAG.
    * @throws Exception exceptions through the way.
    */
-  private IRDAG groupLoops(final IRDAG dag, final Integer depth) {
+  private DAG<IRVertex, IREdge> groupLoops(final DAG<IRVertex, IREdge> dag, final Integer depth) {
     if (depth <= 0) {
       return dag;
     } else {
@@ -143,7 +146,7 @@ public final class LoopExtractionPass extends ReshapingPass {
    * @param dstVertex the destination vertex that belongs to a certain loop.
    * @param assignedLoopVertex the loop that dstVertex belongs to.
    */
-  private static void connectElementToLoop(final IRDAG dag, final DAGBuilder<IRVertex, IREdge> builder,
+  private static void connectElementToLoop(final DAG<IRVertex, IREdge> dag, final DAGBuilder<IRVertex, IREdge> builder,
                                            final IRVertex dstVertex, final LoopVertex assignedLoopVertex) {
     assignedLoopVertex.getBuilder().addVertex(dstVertex, dag);
 
@@ -178,7 +181,7 @@ public final class LoopExtractionPass extends ReshapingPass {
    * @return Processed DAG.
    * @throws Exception exceptions through the way.
    */
-  private IRDAG loopRolling(final IRDAG dag) {
+  private DAG<IRVertex, IREdge> loopRolling(final DAG<IRVertex, IREdge> dag) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
     final HashMap<LoopVertex, LoopVertex> loopVerticesOfSameLoop = new HashMap<>();
     final HashMap<LoopVertex, HashMap<IRVertex, IRVertex>> equivalentVerticesOfLoops = new HashMap<>();
@@ -275,7 +278,7 @@ public final class LoopExtractionPass extends ReshapingPass {
    * @param dag DAG to observe the incoming edges of the vertex.
    * @param loopVerticesOfSameLoop List that keeps track of the iterations of the identical loop.
    */
-  private static void addVertexToBuilder(final DAGBuilder<IRVertex, IREdge> builder, final IRDAG dag,
+  private static void addVertexToBuilder(final DAGBuilder<IRVertex, IREdge> builder, final DAG<IRVertex, IREdge> dag,
                                          final IRVertex irVertex,
                                          final Map<LoopVertex, LoopVertex> loopVerticesOfSameLoop) {
     builder.addVertex(irVertex, dag);

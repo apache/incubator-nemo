@@ -31,6 +31,7 @@ import org.apache.nemo.common.ir.vertex.system.SystemIRVertex;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * An IRDAG object captures a high-level data processing application (e.g., Spark/Beam application).
@@ -135,7 +136,7 @@ public class IRDAG {
 
   ////////////////////////////////////////////////// "Un-safe" direct reshaping (semantic-preserving not guaranteed)
 
-  public void unSafeDirectReshaping(final Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge> unsafeReshaping) {
+  public void unSafeDirectReshaping(final Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> unsafeReshaping) {
     this.dag = unsafeReshaping.apply(dag);
   }
 }
