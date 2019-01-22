@@ -91,6 +91,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
       .getDecoderFactory()).getValueDecoderFactory());
     this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
 
+
     /*
     if (LambdaWarmer.TICKET.getAndIncrement() == 0) {
       this.warmer = new LambdaWarmer();

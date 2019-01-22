@@ -280,10 +280,10 @@ public final class TaskExecutor {
         if (irVertex.getId().equals("vertex15")) {
           outputCollector = new SideInputLambdaCollector(
             internalMainOutputs, irVertex, SOFACTORY.sideInputProcessor(serializerManager,
-            outgoingEdges.get(0).getId()));
+            oedges.get(0).getId()));
         } else if (irVertex.getId().equals("vertex6")) {
           outputCollector =
-            new MainInputLambdaCollector(irVertex, internalMainOutputs, outgoingEdges,
+            new MainInputLambdaCollector(irVertex, internalMainOutputs, oedges,
               serializerManager, SOFACTORY);
         }
 
