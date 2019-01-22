@@ -52,4 +52,8 @@ public class MessageBarrierVertex implements OperatorVertex {
       = new MetricCollectTransform(new HashMap<>(), dynOptDataCollector, closer);
     return new OperatorVertex(mct);
   }
+
+
+  
+
 }
