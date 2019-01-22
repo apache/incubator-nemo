@@ -79,8 +79,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final List<StageEdge> outgoingEdges,
     final SerializerManager serializerManager,
-    final StorageObjectFactory storageObjectFactory,
-    final OutputCollector<O> mainOutputColletor) {
+    final StorageObjectFactory storageObjectFactory) {
     this.irVertex = irVertex;
     this.storageObjectFactory = storageObjectFactory;
     this.internalMainOutputs = internalMainOutputs;

@@ -283,8 +283,8 @@ public final class TaskExecutor {
             outgoingEdges.get(0).getId()));
         } else if (irVertex.getId().equals("vertex6")) {
           outputCollector =
-            new MainInputLambdaCollector(irVertex, outgoingEdges,
-              serializerManager, SOFACTORY, outputCollector);
+            new MainInputLambdaCollector(irVertex, internalMainOutputs, outgoingEdges,
+              serializerManager, SOFACTORY);
         }
 
         // query 8
