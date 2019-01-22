@@ -19,7 +19,7 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.*;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.LargeShuffleRelayReshapingPass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.LargeShuffleReshapingPass;
 
 import java.util.Arrays;
 
@@ -33,16 +33,8 @@ public final class LargeShuffleCompositePass extends CompositePass {
    */
   public LargeShuffleCompositePass() {
     super(Arrays.asList(
-        new LargeShuffleRelayReshapingPass(),
-        new LargeShuffleDataFlowPass(),
-        new LargeShuffleDataStorePass(),
-        new LargeShuffleDecoderPass(),
-        new LargeShuffleEncoderPass(),
-        new LargeShufflePartitionerPass(),
-        new LargeShuffleCompressionPass(),
-        new LargeShuffleDecompressionPass(),
-        new LargeShuffleDataPersistencePass(),
-        new LargeShuffleResourceSlotPass()
+        new LargeShuffleReshapingPass(),
+        new LargeShuffleAnnotatingPass()
     ));
   }
 }
