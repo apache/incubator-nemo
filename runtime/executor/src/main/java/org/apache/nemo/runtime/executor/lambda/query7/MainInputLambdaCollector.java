@@ -67,7 +67,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private final StorageObjectFactory storageObjectFactory;
 
   private final ExecutorService executorService = Executors.newCachedThreadPool();
-  private final long period = 5000;
+  private final long period = 10000;
 
   private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
   /**
