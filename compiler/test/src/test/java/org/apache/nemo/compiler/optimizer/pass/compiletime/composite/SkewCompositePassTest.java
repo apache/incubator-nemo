@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -50,7 +51,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class SkewCompositePassTest {
-  private DAG<IRVertex, IREdge> mrDAG;
+  private IRDAG mrDAG;
   private static final long NUM_OF_PASSES_IN_DATA_SKEW_PASS = 3;
 
   @Before
@@ -94,7 +95,7 @@ public class SkewCompositePassTest {
             .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get())
             && !irEdge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent()))
       .count();
-    final DAG<IRVertex, IREdge> processedDAG = new SkewCompositePass().apply(mrDAG);
+    final IRDAG processedDAG = new SkewCompositePass().optimize(mrDAG);
     assertEquals(originalVerticesNum + numOfShuffleEdgesWithOutAdditionalOutputTag * 2,
       processedDAG.getVertices().size());
 

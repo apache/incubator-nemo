@@ -19,10 +19,8 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 
 import org.apache.nemo.client.JobLauncher;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.CompilerTestUtil;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DisaggregationEdgeDataStorePass;
@@ -41,7 +39,7 @@ import static org.junit.Assert.assertEquals;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class DisaggregationPassTest {
-  private DAG<IRVertex, IREdge> compiledDAG;
+  private IRDAG compiledDAG;
 
   @Before
   public void setUp() throws Exception {
@@ -50,10 +48,10 @@ public class DisaggregationPassTest {
 
   @Test
   public void testDisaggregation() throws Exception {
-    final DAG<IRVertex, IREdge> processedDAG =
-        new DisaggregationEdgeDataStorePass().apply(
-            new DefaultDataStorePass().apply(
-                  new DefaultParallelismPass().apply(compiledDAG)));
+    final IRDAG processedDAG =
+        new DisaggregationEdgeDataStorePass().optimize(
+            new DefaultDataStorePass().optimize(
+                  new DefaultParallelismPass().optimize(compiledDAG)));
 
     processedDAG.getTopologicalSort().forEach(irVertex ->
       processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger ->

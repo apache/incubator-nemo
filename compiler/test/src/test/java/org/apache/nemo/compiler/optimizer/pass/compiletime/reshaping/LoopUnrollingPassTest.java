@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.CompilerTestUtil;
@@ -42,7 +43,7 @@ import static org.junit.Assert.assertEquals;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class LoopUnrollingPassTest {
-  private DAG<IRVertex, IREdge> compiledDAG;
+  private IRDAG compiledDAG;
 
   @Before
   public void setUp() throws Exception {
@@ -51,8 +52,8 @@ public class LoopUnrollingPassTest {
 
   @Test
   public void testLoopUnrollingPass() throws Exception {
-    final DAG<IRVertex, IREdge> processedDAG =
-        new LoopUnrollingPass().apply(new LoopExtractionPass().apply(compiledDAG));
+    final IRDAG processedDAG =
+        new LoopUnrollingPass().optimize(new LoopExtractionPass().optimize(compiledDAG));
 
     assertEquals(compiledDAG.getTopologicalSort().size(), processedDAG.getTopologicalSort().size());
     // zip vertices

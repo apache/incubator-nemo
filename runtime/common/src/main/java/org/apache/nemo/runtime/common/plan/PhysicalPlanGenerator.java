@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.common.plan;
 
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
@@ -71,7 +72,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
    * @return {@link PhysicalPlan} to execute.
    */
   @Override
-  public DAG<Stage, StageEdge> apply(final DAG<IRVertex, IREdge> irDAG) {
+  public DAG<Stage, StageEdge> apply(final IRDAG irDAG) {
     // first, stage-partition the IR DAG.
     final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG);
 
@@ -131,7 +132,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
    * @param irDAG stage-partitioned IR DAG.
    * @return the DAG composed of stages and stage edges.
    */
-  public DAG<Stage, StageEdge> stagePartitionIrDAG(final DAG<IRVertex, IREdge> irDAG) {
+  public DAG<Stage, StageEdge> stagePartitionIrDAG(final IRDAG irDAG) {
     final DAGBuilder<Stage, StageEdge> dagOfStagesBuilder = new DAGBuilder<>();
     final Set<IREdge> interStageEdges = new HashSet<>();
     final Map<Integer, Stage> stageIdToStageMap = new HashMap<>();

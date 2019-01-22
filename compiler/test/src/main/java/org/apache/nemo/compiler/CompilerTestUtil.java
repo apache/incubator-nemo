@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.compiler;
 
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -68,7 +69,7 @@ public final class CompilerTestUtil {
     return folder.getAbsolutePath();
   }
 
-  private static DAG<IRVertex, IREdge> compileDAG(final String[] args) throws Exception {
+  private static IRDAG compileDAG(final String[] args) throws Exception {
     final String userMainClassName;
     final String[] userMainMethodArgs;
 
@@ -90,10 +91,10 @@ public final class CompilerTestUtil {
     PowerMockito.mockStatic(JobLauncher.class);
     PowerMockito.doNothing().when(JobLauncher.class, "launchDAG", captor.capture(), stringArg.capture());
     userMainMethod.invoke(null, (Object) userMainMethodArgs);
-    return captor.getValue();
+    return new IRDAG(captor.getValue());
   }
 
-  public static DAG<IRVertex, IREdge> compileWordCountDAG() throws Exception {
+  public static IRDAG compileWordCountDAG() throws Exception {
     final String input = ROOT_DIR + "/examples/resources/inputs/test_input_wordcount";
     final String output = ROOT_DIR + "/examples/resources/inputs/test_output";
     final String main = "org.apache.nemo.examples.beam.WordCount";
@@ -105,7 +106,7 @@ public final class CompilerTestUtil {
     return compileDAG(mrArgBuilder.build());
   }
 
-  public static DAG<IRVertex, IREdge> compileALSDAG() throws Exception {
+  public static IRDAG compileALSDAG() throws Exception {
     final String input = ROOT_DIR + "/examples/resources/inputs/test_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
@@ -118,7 +119,7 @@ public final class CompilerTestUtil {
     return compileDAG(alsArgBuilder.build());
   }
 
-  public static DAG<IRVertex, IREdge> compileALSInefficientDAG() throws Exception {
+  public static IRDAG compileALSInefficientDAG() throws Exception {
     final String input = ROOT_DIR + "/examples/resources/inputs/test_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
@@ -131,7 +132,7 @@ public final class CompilerTestUtil {
     return compileDAG(alsArgBuilder.build());
   }
 
-  public static DAG<IRVertex, IREdge> compileMLRDAG() throws Exception {
+  public static IRDAG compileMLRDAG() throws Exception {
     final String input = ROOT_DIR + "/examples/resources/inputs/test_input_mlr";
     final String numFeatures = "100";
     final String numClasses = "5";

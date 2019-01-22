@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.CompilerTestUtil;
@@ -37,7 +38,7 @@ import static org.junit.Assert.assertEquals;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class LoopExtractionPassTest {
-  private DAG<IRVertex, IREdge> compiledDAG;
+  private IRDAG compiledDAG;
 
   @Before
   public void setUp() throws Exception {
@@ -46,7 +47,7 @@ public class LoopExtractionPassTest {
 
   @Test
   public void testLoopGrouping() {
-    final DAG<IRVertex, IREdge> processedDAG = new LoopExtractionPass().apply(compiledDAG);
+    final IRDAG processedDAG = new LoopExtractionPass().optimize(compiledDAG);
 
     assertEquals(9, processedDAG.getTopologicalSort().size());
   }

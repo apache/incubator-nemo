@@ -59,9 +59,9 @@ public final class DoFnTransformTest {
 
   @Before
   public void setUp() {
-    Pipeline.create().apply(Create.of("1"));
-    view1 = Pipeline.create().apply(Create.of("1")).apply(View.asIterable());
-    view2 = Pipeline.create().apply(Create.of("2")).apply(View.asIterable());
+    Pipeline.create().optimize(Create.of("1"));
+    view1 = Pipeline.create().optimize(Create.of("1")).optimize(View.asIterable());
+    view2 = Pipeline.create().optimize(Create.of("2")).optimize(View.asIterable());
   }
 
   @Test

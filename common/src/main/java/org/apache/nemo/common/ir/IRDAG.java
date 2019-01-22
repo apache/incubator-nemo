@@ -34,6 +34,7 @@ import org.apache.nemo.common.ir.vertex.system.StreamVertex;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * An IRDAG object captures a high-level data processing application (e.g., Spark/Beam application).
@@ -92,6 +93,18 @@ public class IRDAG {
 
   public IRVertex getVertexById(final String id) {
     return dag.getVertexById(id);
+  }
+
+  public List<IRVertex> filterVertices(final Predicate<IRVertex> condition) {
+    return dag.filterVertices(condition);
+  }
+
+  public List<IRVertex> getParents(final String vertexId) {
+    return dag.getParents(vertexId);
+  }
+
+  public List<IRVertex> getChildren(final String vertexId) {
+    return dag.getChildren(vertexId);
   }
 
   ////////////////////////////////////////////////// Reshaping methods.

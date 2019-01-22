@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.frontend.beam;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.CompilerTestUtil;
@@ -38,7 +39,7 @@ import static org.junit.Assert.assertEquals;
 public final class BeamFrontendALSTest {
   @Test
   public void testALSDAG() throws Exception {
-    final DAG<IRVertex, IREdge> producedDAG = CompilerTestUtil.compileALSDAG();
+    final IRDAG producedDAG = CompilerTestUtil.compileALSDAG();
 
     assertEquals(producedDAG.getTopologicalSort(), producedDAG.getTopologicalSort());
     assertEquals(44, producedDAG.getVertices().size());

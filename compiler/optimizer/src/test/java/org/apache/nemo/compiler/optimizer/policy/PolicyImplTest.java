@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.optimizer.policy;
 
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import org.apache.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
@@ -32,13 +33,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class PolicyImplTest {
-  private DAG dag;
-  private DAG dagForSkew;
+  private IRDAG dag;
+  private IRDAG dagForSkew;
 
   @Before
   public void setUp() {
-    this.dag = EmptyComponents.buildEmptyDAG();
-    this.dagForSkew = EmptyComponents.buildEmptyDAGForSkew();
+    this.dag = new IRDAG(EmptyComponents.buildEmptyDAG());
+    this.dagForSkew = new IRDAG(EmptyComponents.buildEmptyDAGForSkew());
   }
 
   @Rule
