@@ -410,7 +410,7 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
 
     @Override
     public void emit(Object output) {
-      //System.out.println("Emit output: " + output.toString());
+      System.out.println("Emit output: " + output.toString());
       result.add(output.toString());
     }
 

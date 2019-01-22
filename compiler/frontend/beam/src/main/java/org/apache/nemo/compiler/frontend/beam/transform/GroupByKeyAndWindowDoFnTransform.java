@@ -521,7 +521,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
       // TODO: remove
       if (output.getValue().getKey() instanceof  GBKLambdaEvent) {
-        outputCollector.emit(output);
+        //outputCollector.emit(output); // this commnet should be remove for query 8
         return;
       }
       // TODO: remove

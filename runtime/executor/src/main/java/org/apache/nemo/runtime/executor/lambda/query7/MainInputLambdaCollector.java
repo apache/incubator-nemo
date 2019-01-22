@@ -70,6 +70,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private final long period = 10000;
 
   private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
+  private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
   /**
    * Constructor of the output collector.
    * @param irVertex the ir vertex that emits the output
@@ -77,12 +78,14 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   public MainInputLambdaCollector(
     final IRVertex irVertex,
     final List<NextIntraTaskOperatorInfo> internalMainOutputs,
+    final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<StageEdge> outgoingEdges,
     final SerializerManager serializerManager,
     final StorageObjectFactory storageObjectFactory) {
     this.irVertex = irVertex;
     this.storageObjectFactory = storageObjectFactory;
     this.internalMainOutputs = internalMainOutputs;
+    this.internalAdditionalOutputs = internalAdditionalOutputs;
 
     this.encoderFactory = ((NemoEventEncoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getEncoderFactory()).getValueEncoderFactory();
@@ -211,6 +214,16 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   @Override
   public void emitWatermark(final Watermark watermark) {
 
+    // Emit watermarks to internal vertices
+    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
+    }
+
+    for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
+      for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
+        internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
+      }
+    }
   }
 
   final class Info {
