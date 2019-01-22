@@ -24,9 +24,11 @@ import org.apache.commons.lang.SerializationUtils;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.datatransfer.NextIntraTaskOperatorInfo;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.apache.nemo.runtime.executor.lambda.LambdaWarmer;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
@@ -67,21 +69,21 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final long period = 5000;
 
-  private final OutputCollector<O> mainOutputCollector;
-
+  private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
   /**
    * Constructor of the output collector.
    * @param irVertex the ir vertex that emits the output
    */
   public MainInputLambdaCollector(
     final IRVertex irVertex,
+    final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final List<StageEdge> outgoingEdges,
     final SerializerManager serializerManager,
     final StorageObjectFactory storageObjectFactory,
     final OutputCollector<O> mainOutputColletor) {
     this.irVertex = irVertex;
     this.storageObjectFactory = storageObjectFactory;
-    this.mainOutputCollector = mainOutputColletor;
+    this.internalMainOutputs = internalMainOutputs;
 
     this.encoderFactory = ((NemoEventEncoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getEncoderFactory()).getValueEncoderFactory();
@@ -188,9 +190,21 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     // do nothing
   }
 
+
+  private void emit(final OperatorVertex vertex, final O output) {
+
+    final String vertexId = irVertex.getId();
+    vertex.getTransform().onData(output);
+  }
+
   @Override
   public void emit(O output) {
-    mainOutputCollector.emit(output);
+    // emit internal
+    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      emit(internalVertex.getNextOperator(), output);
+    }
+
+    // emit lambda
     toLambda(output);
   }
 
