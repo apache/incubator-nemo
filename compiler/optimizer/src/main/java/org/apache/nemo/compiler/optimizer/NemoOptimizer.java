@@ -160,7 +160,7 @@ public final class NemoOptimizer implements Optimizer {
 
       sinkVertices.forEach(sinkVtx -> addNonCachedVerticesAndEdges(dag, sinkVtx, filteredDagBuilder));
 
-      return filteredDagBuilder.buildWithoutSourceCheck();
+      return new IRDAG(filteredDagBuilder.buildWithoutSourceCheck());
     }
   }
 

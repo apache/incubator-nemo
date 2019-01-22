@@ -65,12 +65,12 @@ public final class MapReduceDisaggregationOptimization {
     final IREdge edge2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, map, reduce);
     builder.connectVertices(edge2);
 
-    final IRDAG dag = builder.build();
+    final IRDAG dag = new IRDAG(builder.build());
     LOG.info("Before Optimization");
     LOG.info(dag.toString());
 
     // Optimize
-    final DAG optimizedDAG = new DisaggregationPolicy().runCompileTimeOptimization(dag, EMPTY_DAG_DIRECTORY);
+    final IRDAG optimizedDAG = new DisaggregationPolicy().runCompileTimeOptimization(dag, EMPTY_DAG_DIRECTORY);
 
     // After
     LOG.info("After Optimization");

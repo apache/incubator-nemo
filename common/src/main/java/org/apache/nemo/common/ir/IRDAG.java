@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.common.ir;
 
+import org.apache.nemo.common.KeyExtractor;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
@@ -28,7 +30,6 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.system.MessageAggregationVertex;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.system.StreamVertex;
-import org.apache.nemo.common.ir.vertex.system.SystemIRVertex;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -51,7 +52,7 @@ public class IRDAG {
     this.dag = dag;
   }
 
-  ////////////////////////////////////////////////// Read-only traversal methods for annotations.
+  ////////////////////////////////////////////////// Read-only traversal methods.
 
   public void topologicalDo(final Consumer<IRVertex> function) {
     dag.topologicalDo(function);
@@ -67,6 +68,30 @@ public class IRDAG {
 
   public List<IREdge> getIncomingEdgesOf(final IRVertex v) {
     return dag.getIncomingEdgesOf(v);
+  }
+
+  public List<IREdge> getOutgoingEdgesOf(final IRVertex v) {
+    return dag.getOutgoingEdgesOf(v);
+  }
+
+  public List<IREdge> getOutgoingEdgesOf(final String vertexId) {
+    return dag.getOutgoingEdgesOf(vertexId);
+  }
+
+  public void storeJSON(final String directory, final String name, final String description) {
+    dag.storeJSON(directory, name, description);
+  }
+
+  public List<IRVertex> getTopologicalSort() {
+    return dag.getTopologicalSort();
+  }
+
+  public List<IRVertex> getDescendants(final String vertexId) {
+    return dag.getDescendants(vertexId);
+  }
+
+  public IRVertex getVertexById(final String id) {
+    return dag.getVertexById(id);
   }
 
   ////////////////////////////////////////////////// Reshaping methods.
@@ -126,7 +151,8 @@ public class IRDAG {
    * Inserts a new vertex that analyzes intermediate data, and triggers a dynamic optimization.
    *
    * Before: src > edgeToGetStatisticsOf > dst
-   * After: src > oneToOneEdge(a clone of edgeToGetStatisticsOf) > messageBarrierVertex > messageAggregationVertex > dst
+   * After: src > oneToOneEdge(a clone of edgeToGetStatisticsOf) > messageBarrierVertex >
+   *        shuffleEdge > messageAggregationVertex > broadcastEdge > dst
    * (the "Before" relationships are unmodified)
    *
    * @param messageBarrierVertex to insert.
@@ -160,7 +186,7 @@ public class IRDAG {
           builder.connectVertices(clone);
 
           // messageBarrierVertex to the messageAggregationVertex
-          final IREdge edgeToABV = generateEdgeToABV(edge, messageBarrierVertex, messageAggregationVertex);
+          final IREdge edgeToABV = edgeBetweenMessageVertices(edge, messageBarrierVertex, messageAggregationVertex);
           builder.connectVertices(edgeToABV);
 
           // Connection vertex
@@ -172,25 +198,18 @@ public class IRDAG {
           // The original edge
           // We then insert the vertex with MessageBarrierTransform and vertex with MessageAggregateTransform
           // between the vertex and incoming vertices.
-          final IREdge edgeToOriginalDstV =
+          final IREdge edgeToOriginalDst =
             new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
-          edge.copyExecutionPropertiesTo(edgeToOriginalDstV);
-          edgeToOriginalDstV.setPropertyPermanently(
+          edge.copyExecutionPropertiesTo(edgeToOriginalDst);
+          edgeToOriginalDst.setPropertyPermanently(
             MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
-          builder.connectVertices(edgeToOriginalDstV);
+          builder.connectVertices(edgeToOriginalDst);
         } else {
           // NO MATCH, so simply connect vertices as before.
           builder.connectVertices(edge);
         }
       }
     });
-  }
-
-  /**
-   * @param systemIRVertexToDelete to delete.
-   */
-  public void delete(final SystemIRVertex systemIRVertexToDelete) {
-    // TODO: recursively delete backwards
   }
 
   ////////////////////////////////////////////////// "Un-safe" direct reshaping (semantic-preserving is not guaranteed).
@@ -207,14 +226,21 @@ public class IRDAG {
    * @param abv the vertex with MessageAggregateTransform.
    * @return the generated egde from {@code mcv} to {@code abv}.
    */
-  private IREdge generateEdgeToABV(final IREdge edge,
-                                   final OperatorVertex mcv,
-                                   final OperatorVertex abv) {
+  private IREdge edgeBetweenMessageVertices(final IREdge edge,
+                                            final OperatorVertex mcv,
+                                            final OperatorVertex abv) {
     final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mcv, abv);
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
-    newEdge.setProperty(KeyExtractorProperty.of(new PairKeyExtractor()));
+    final KeyExtractor pairKeyExtractor = (element) -> {
+      if (element instanceof Pair) {
+        return ((Pair) element).left();
+      } else {
+        throw new IllegalStateException(element.toString());
+      }
+    };
+    newEdge.setProperty(KeyExtractorProperty.of(pairKeyExtractor));
 
     // Dynamic optimization handles statistics on key-value data by default.
     // We need to get coders for encoding/decoding the keys to send data to
