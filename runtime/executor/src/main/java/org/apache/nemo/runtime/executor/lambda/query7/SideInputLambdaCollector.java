@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.lambda.query7;
 
 
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
@@ -26,13 +26,13 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 
+import org.apache.nemo.runtime.executor.lambda.SideInputProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(SideInputLambdaCollector.class.getName());

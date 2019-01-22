@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.lambda;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;

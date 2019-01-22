@@ -48,14 +48,17 @@ import org.apache.nemo.runtime.executor.datatransfer.*;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.nemo.runtime.executor.datatransfer.DynOptDataOutputCollector;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
+import org.apache.nemo.runtime.executor.lambda.MemoryStorageObjectFactory;
+import org.apache.nemo.runtime.executor.lambda.StorageObjectFactory;
+import org.apache.nemo.runtime.executor.lambda.query7.MainInputLambdaCollector;
+import org.apache.nemo.runtime.executor.lambda.query7.SideInputLambdaCollector;
+import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -251,7 +254,7 @@ public final class TaskExecutor {
       final List<OutputWriter> externalMainOutputs =
         getExternalMainOutputs(irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory);
 
-      final OutputCollector outputCollector;
+      OutputCollector outputCollector;
 
       if (irVertex instanceof OperatorVertex
         && ((OperatorVertex) irVertex).getTransform() instanceof AggregateMetricTransform) {
@@ -269,17 +272,29 @@ public final class TaskExecutor {
           outgoingEdges.stream().filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
           .collect(Collectors.toList());
 
+        outputCollector = new OperatorVertexOutputCollector(
+          irVertex, internalMainOutputs, internalAdditionalOutputMap,
+          externalMainOutputs, externalAdditionalOutputMap);
+
+        // query 7
+        if (irVertex.getId().equals("vertex15")) {
+          outputCollector = new SideInputLambdaCollector(
+            irVertex, SOFACTORY.sideInputProcessor(serializerManager,
+            outgoingEdges.get(0).getId()));
+        } else if (irVertex.getId().equals("vertex6")) {
+          outputCollector =
+            new MainInputLambdaCollector(irVertex, outgoingEdges,
+              serializerManager, SOFACTORY);
+        }
+
         // query 8
+        /*
         if (irVertex.getId().equals("vertex15")) {
           outputCollector = new GBKLambdaEmitter(
             irVertex, internalMainOutputs, internalAdditionalOutputMap,
             externalMainOutputs, externalAdditionalOutputMap, internalEdges);
-        } else {
-          outputCollector = new OperatorVertexOutputCollector(
-            irVertex, internalMainOutputs, internalAdditionalOutputMap,
-            externalMainOutputs, externalAdditionalOutputMap, oedges, SOFACTORY, serializerManager,
-            internalEdges);
         }
+        */
       }
 
       // Create VERTEX HARNESS

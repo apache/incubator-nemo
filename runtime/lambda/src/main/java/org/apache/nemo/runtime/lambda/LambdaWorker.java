@@ -15,6 +15,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.nemo.common.EventHandler;
@@ -25,14 +26,13 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -42,12 +42,12 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
-public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Object> {
+public class LambdaWorker implements RequestHandler<Map<String, Object>, Object> {
 
-	private static final Logger LOG = LogManager.getLogger(HelloNettyHandler.class);
+	private static final Logger LOG = LogManager.getLogger(LambdaWorker.class);
 	//private static final OutputSender sender = new OutputSender("18.182.129.182", 20312);
 	private static final AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
-    .withClientConfiguration(new ClientConfiguration().withMaxConnections(100)).build();
+    .withClientConfiguration(new ClientConfiguration().withMaxConnections(10)).build();
 
 	private static final String BUCKET_NAME = "nemo-serverless";
 	private static final String PATH = "/tmp/nexmark-0.2-SNAPSHOT-shaded.jar";
@@ -69,6 +69,9 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
   private final ConcurrentMap<Channel, EventHandler<NemoEvent>> map;
 
   private List<OperatorVertex> vertices;
+
+  // current states of lambda
+  private LambdaStatus status;
 
 	private void createClassLoader() {
 		// read jar file
@@ -97,7 +100,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
 		}
   }
 
-	public HelloNettyHandler() {
+	public LambdaWorker() {
 		LOG.info("Handler is created! {}", this);
           this.clientWorkerGroup = new NioEventLoopGroup(1,
         new DefaultThreadFactory("hello" + "-ClientWorker"));
@@ -108,6 +111,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
         .handler(new NettyChannelInitializer(new NettyLambdaInboundHandler(map)))
         .option(ChannelOption.SO_REUSEADDR, true)
         .option(ChannelOption.SO_KEEPALIVE, true);
+    this.status = LambdaStatus.INIT;
 	}
 
 	private final List<OperatorVertex> buildOperatorChain(final List<String> serializedVertices, final ClassLoader classLoader) {
@@ -118,31 +122,53 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
     return vertices;
   }
 
+
+  private void initialize(final Map<String, Object> input, final List<String> result) {
+    // 1) connect to the VM worker
+    final String address = (String) input.get("address");
+    final Integer port = (Integer) input.get("port");
+
+    final ChannelFuture channelFuture;
+    channelFuture = clientBootstrap.connect(new InetSocketAddress(address, port));
+    channelFuture.awaitUninterruptibly();
+    assert channelFuture.isDone();
+    if (!channelFuture.isSuccess()) {
+      final StringBuilder sb = new StringBuilder("A connection failed at Source - ");
+      sb.append(channelFuture.cause());
+      throw new RuntimeException(sb.toString());
+    }
+    final Channel opendChannel = channelFuture.channel();
+
+
+    // load class loader
+    createClassLoader();
+    map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
+
+    final List<String> serializedVertices = Arrays.asList(
+      SerializedQueries.QUERY7);
+
+    vertices = buildOperatorChain(serializedVertices, classLoader);
+    headVertex = vertices.get(0);
+
+    // connect vertices
+    for (int i = 0; i < vertices.size() - 1; i++) {
+      vertices.get(i).getTransform().prepare(
+        new LambdaRuntimeContext(vertices.get(i)), new ChainOutputHandler(vertices.get(i+1)));
+    }
+
+    status = LambdaStatus.READY;
+    LOG.info("Create class loader: {}", classLoader);
+  }
+
 	@Override
 	public Object handleRequest(Map<String, Object> input, Context context) {
 		System.out.println("Input: " + input);
+    final List<String> result = new ArrayList<>();
 
+		if (status.equals(LambdaStatus.INIT)) {
+		  initialize(input, result);
+    }
 
-		if (classLoader == null) {
-			createClassLoader();
-
-      final List<String> serializedVertices = Arrays.asList(
-        SerializedQueries.QUERY9_1,
-        SerializedQueries.QUERY9_2);
-
-      vertices = buildOperatorChain(serializedVertices, classLoader);
-      headVertex = vertices.get(0);
-
-      // connect vertices
-      for (int i = 0; i < vertices.size() - 1; i++) {
-        vertices.get(i).getTransform().prepare(
-          new LambdaRuntimeContext(vertices.get(i)), new ChainOutputHandler(vertices.get(i+1)));
-      }
-
-			LOG.info("Create class loader: {}", classLoader);
-		}
-
-		final List<String> result = new ArrayList<>();
     final OutputCollector outputCollector = new LambdaOutputHandler(result);
 
     final OperatorVertex finalVertex = vertices.get(vertices.size()-1);
@@ -159,23 +185,6 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
         opendChannel = channel;
         break;
       }
-    }
-
-    if (opendChannel == null) {
-      final String address = (String) input.get("address");
-      final Integer port = (Integer) input.get("port");
-
-      final ChannelFuture channelFuture;
-      channelFuture = clientBootstrap.connect(new InetSocketAddress(address, port));
-      channelFuture.awaitUninterruptibly();
-      assert channelFuture.isDone();
-      if (!channelFuture.isSuccess()) {
-        final StringBuilder sb = new StringBuilder("A connection failed at Source - ");
-        sb.append(channelFuture.cause());
-        throw new RuntimeException(sb.toString());
-      }
-      opendChannel = channelFuture.channel();
-      map.put(opendChannel, new LambdaEventHandler(outputCollector, opendChannel, result));
     }
 
     System.out.println("Open channel: " + opendChannel);
@@ -225,16 +234,12 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
     private LambdaDecoderFactory mainInputDecoderFactory;
     private DecoderFactory gbkDecoderFactory;
 
-    private final OutputCollector outputCollector;
-
     private final BlockingQueue<Integer> endBlockingQueue = new LinkedBlockingQueue<>();
     private final Channel opendChannel;
     private final List<String> result;
 
-    public LambdaEventHandler(final OutputCollector outputCollector,
-                              final Channel opendChannel,
+    public LambdaEventHandler(final Channel opendChannel,
                               final List<String> result) {
-      this.outputCollector = outputCollector;
       this.opendChannel = opendChannel;
       this.result = result;
     }
@@ -242,6 +247,26 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
     @Override
     public synchronized void onNext(final NemoEvent nemoEvent) {
       switch (nemoEvent.getType()) {
+        /*
+        case JAR: {
+          // load jar
+          try {
+            final FileOutputStream fc = new FileOutputStream(PATH);
+            fc.write(nemoEvent.getBytes());
+            fc.close();
+            createClassLoader();
+            status = LambdaStatus.READY;
+            waitJarLoad.countDown();
+          } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+          break;
+        }
+        */
         case SIDE: { // query 7
           // receive side input
           System.out.println("Receive side");
@@ -282,7 +307,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
                 if (e.getMessage().contains("EOF")) {
                   System.out.println("Cnt: " + cnt + ", eof!");
                 } else {
-                  System.out.println("Cnt: " + cnt + "Windowed value: " + mainInput + ", sideInput: " + sideInput + ", oc: " + outputCollector);
+                  System.out.println("Cnt: " + cnt + "Windowed value: " + mainInput + ", sideInput: " + sideInput);
                   throw e;
                 }
                 break;
@@ -323,7 +348,7 @@ public class HelloNettyHandler implements RequestHandler<Map<String, Object>, Ob
                 if (e.getMessage().contains("EOF")) {
                   //System.out.println("Cnt: " + cnt + ", eof!");
                 } else {
-                  System.out.println("Cnt: " + cnt + "Windowed value: " + mainInput + ", sideInput: " + sideInput + ", oc: " + outputCollector);
+                  System.out.println("Cnt: " + cnt + "Windowed value: " + mainInput + ", sideInput: " + sideInput);
                   throw e;
                 }
                 break;

@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.lambda;
 
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.s3.AmazonS3;
@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class S3StorageObjectFactory implements StorageObjectFactory {

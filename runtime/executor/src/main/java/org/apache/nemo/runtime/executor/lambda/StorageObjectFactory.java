@@ -1,9 +1,7 @@
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.lambda;
 
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
-
-import java.util.Collection;
 
 public interface StorageObjectFactory<T> {
 

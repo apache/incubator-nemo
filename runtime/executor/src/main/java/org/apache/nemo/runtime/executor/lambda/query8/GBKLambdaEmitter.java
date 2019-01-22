@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.lambda.query8;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
@@ -19,16 +19,15 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
-import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.datatransfer.NextIntraTaskOperatorInfo;
+import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.executor.lambda.NettyServerLambdaTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class GBKLambdaEmitter<O> implements OutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(GBKLambdaEmitter.class.getName());

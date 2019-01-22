@@ -49,6 +49,7 @@ import org.apache.nemo.runtime.executor.TaskStateManager;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.*;
+import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

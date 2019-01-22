@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.lambda;
 
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
@@ -18,17 +18,17 @@ import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.NettyChannelInitializer;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.runtime.executor.datatransfer.AWSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public final class NettyServerLambdaTransport {
   private static final Logger LOG = LoggerFactory.getLogger(NettyServerLambdaTransport.class.getName());
@@ -36,7 +36,7 @@ public final class NettyServerLambdaTransport {
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = NettyServerLambdaTransport.class.getName();
   private static final String ADDRESS = "172.31.6.35";
-  private static final String PUBLIC_ADDRESS = "13.231.167.215";
+  private static final String PUBLIC_ADDRESS = "52.199.125.79";
   private static final int PORT = 20332;
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
@@ -63,6 +63,7 @@ public final class NettyServerLambdaTransport {
     lazyInit();
     initialized.set(true);
     this.channelPool = new ArrayList<>(poolSize);
+
 
     warmer.scheduleAtFixedRate(() -> {
         channelPool.clear();

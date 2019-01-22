@@ -54,7 +54,7 @@ functions:
     handler: org.apache.nemo.runtime.lambda.HelloHandler
     events:
   imhandler:
-    handler: org.apache.nemo.runtime.lambda.HelloNettyHandler
+    handler: org.apache.nemo.runtime.lambda.LambdaWorker
 #      - stream:
 #        arn: arn:aws:kinesis:ap-northeast-1:835596193924:stream/nemo
 #        type: kinesis

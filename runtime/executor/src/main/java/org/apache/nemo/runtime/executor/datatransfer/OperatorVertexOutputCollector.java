@@ -18,23 +18,13 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.nemo.common.coder.DecoderFactory;
-import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.runtime.common.plan.RuntimeEdge;
-import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.runtime.executor.data.SerializerManager;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
 import java.util.*;
 
 /**
@@ -57,11 +47,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
   private final List<OutputWriter> externalMainOutputs;
   private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
-  private final List<RuntimeEdge<IRVertex>> internalEdges;
-
-  // TODO: remove
-  private SideInputLambdaCollector sideInputOutputCollector;
-  private MainInputLambdaCollector mainInputLambdaCollector;
 
   /**
    * Constructor of the output collector.
@@ -76,17 +61,12 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
-    final Map<String, List<OutputWriter>> externalAdditionalOutputs,
-    final List<StageEdge> outgoingEdges,
-    final StorageObjectFactory storageObjectFactory,
-    final SerializerManager serializerManager,
-    final List<RuntimeEdge<IRVertex>> internalEdges) {
+    final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.externalMainOutputs = externalMainOutputs;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
-    this.internalEdges = internalEdges;
 
     // TODO: remove
     // query 7

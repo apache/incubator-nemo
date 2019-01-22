@@ -18,8 +18,6 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
-import com.amazonaws.services.kinesis.AmazonKinesis;
-import com.amazonaws.services.kinesis.AmazonKinesisClientBuilder;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -29,7 +27,6 @@ import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.runtime.executor.datatransfer.MainInputLambdaCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

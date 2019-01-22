@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.runtime.executor.lambda.LambdaWarmer;
 import org.junit.Test;
 
 public final class LambdaWarmerTest {

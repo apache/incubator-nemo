@@ -17,7 +17,7 @@ t
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.lambda.query7;
 
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.commons.lang.SerializationUtils;
@@ -27,6 +27,10 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.lambda.LambdaWarmer;
+import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
+import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
+import org.apache.nemo.runtime.executor.lambda.StorageObjectFactory;
 import org.apache.nemo.runtime.lambda.LambdaDecoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,6 +86,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
       ((NemoEventDecoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getDecoderFactory()).getValueDecoderFactory());
     this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
+
     if (LambdaWarmer.TICKET.getAndIncrement() == 0) {
       this.warmer = new LambdaWarmer();
       warmer.warmup();

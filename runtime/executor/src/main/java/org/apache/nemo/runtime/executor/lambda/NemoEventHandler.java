@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.lambda;
 
 import io.netty.channel.Channel;
 import org.apache.nemo.common.EventHandler;
@@ -34,6 +34,7 @@ public final class NemoEventHandler implements EventHandler<Pair<Channel,NemoEve
     public BlockingQueue<Pair<Channel, NemoEvent>> getEndQueue() {
       return endQueue;
     }
+
 
     @Override
     public void onNext(Pair<Channel,NemoEvent> nemoEvent) {
