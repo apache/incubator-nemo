@@ -162,7 +162,7 @@ public class IRDAG {
           builder.connectVertices(emptyEdge);
 
           // The original edge
-          // We then insert the vertex with MetricCollectTransform and vertex with AggregateMetricTransform
+          // We then insert the vertex with MessageBarrierTransform and vertex with MessageAggregateTransform
           // between the vertex and incoming vertices.
           final IREdge edgeToOriginalDstV =
             new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
@@ -195,29 +195,26 @@ public class IRDAG {
 
   /**
    * @param edge the original shuffle edge.
-   * @param mcv the vertex with MetricCollectTransform.
-   * @param abv the vertex with AggregateMetricTransform.
+   * @param mcv the vertex with MessageBarrierTransform.
+   * @param abv the vertex with MessageAggregateTransform.
    * @return the generated egde from {@code mcv} to {@code abv}.
    */
   private IREdge generateEdgeToABV(final IREdge edge,
                                    final OperatorVertex mcv,
                                    final OperatorVertex abv) {
     final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mcv, abv);
-
-    
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
     newEdge.setProperty(KeyExtractorProperty.of(new PairKeyExtractor()));
-    newEdge.setProperty(AdditionalOutputTagProperty.of(ADDITIONAL_OUTPUT_TAG));
 
     // Dynamic optimization handles statistics on key-value data by default.
     // We need to get coders for encoding/decoding the keys to send data to
-    // vertex with AggregateMetricTransform.
+    // vertex with MessageAggregateTransform.
     if (edge.getPropertyValue(KeyEncoderProperty.class).isPresent()
       && edge.getPropertyValue(KeyDecoderProperty.class).isPresent()) {
       final EncoderFactory keyEncoderFactory = edge.getPropertyValue(KeyEncoderProperty.class).get();
-      final DecoderFactory keyDecoderFactory = edge.getPropertyValue(KeyDecoderProperty.class).get()
+      final DecoderFactory keyDecoderFactory = edge.getPropertyValue(KeyDecoderProperty.class).get();
       newEdge.setPropertyPermanently(
         EncoderProperty.of(PairEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
       newEdge.setPropertyPermanently(

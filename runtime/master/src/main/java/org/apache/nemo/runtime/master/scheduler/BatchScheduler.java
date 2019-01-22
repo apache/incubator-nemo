@@ -439,7 +439,7 @@ public final class BatchScheduler implements Scheduler {
       .findFirst()
       .orElseThrow(() -> new RuntimeException());
 
-    // Stage put on hold, i.e. stage with vertex containing AggregateMetricTransform
+    // Stage put on hold, i.e. stage with vertex containing MessageAggregateTransform
     // should have a parent stage whose outgoing edges contain the target edge of dynamic optimization.
     final List<Stage> parentStages = planStateManager.getPhysicalPlan().getStageDAG()
       .getParents(stagePutOnHold.getId());

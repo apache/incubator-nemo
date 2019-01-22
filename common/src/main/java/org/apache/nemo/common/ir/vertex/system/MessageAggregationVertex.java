@@ -20,7 +20,7 @@ package org.apache.nemo.common.ir.vertex.system;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
+import org.apache.nemo.common.ir.vertex.transform.MessageAggregateTransform;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -45,8 +45,8 @@ public class MessageAggregationVertex extends SystemIRVertex {
           }
           return aggregatedDynOptData;
         };
-    final AggregateMetricTransform abt =
-      new AggregateMetricTransform<Pair<Object, Long>, Map<Object, Long>>(new HashMap<>(), dynOptDataAggregator);
+    final MessageAggregateTransform abt =
+      new MessageAggregateTransform<Pair<Object, Long>, Map<Object, Long>>(new HashMap<>(), dynOptDataAggregator);
     return new OperatorVertex(abt);
   }
 }

@@ -20,10 +20,9 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
-import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
-import org.apache.nemo.common.ir.vertex.transform.MetricCollectTransform;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.Annotates;
 import org.slf4j.Logger;
@@ -35,17 +34,13 @@ import java.util.function.BiFunction;
 
 /**
  * Pass to reshape the IR DAG for skew handling.
- *
- * This pass inserts vertices to perform two-step dynamic optimization for skew handling.
- * 1) Task-level statistic collection is done via vertex with {@link MetricCollectTransform}
- * 2) Stage-level statistic aggregation is done via vertex with {@link AggregateMetricTransform}
- * inserted before shuffle edges.
+ * We insert a {@link MessageBarrierVertex for each shuffle edge}
  * */
 @Annotates(MetricCollectionProperty.class)
 @Requires(CommunicationPatternProperty.class)
 public final class SkewReshapingPass extends ReshapingPass {
   private static final Logger LOG = LoggerFactory.getLogger(SkewReshapingPass.class.getName());
-  private static final String ADDITIONAL_OUTPUT_TAG = "DynOptData";
+
   /**
    * Default constructor.
    */
@@ -58,32 +53,31 @@ public final class SkewReshapingPass extends ReshapingPass {
     dag.topologicalDo(v -> {
       // We care about OperatorVertices that have shuffle incoming edges with main output.
       // TODO #210: Data-aware dynamic optimization at run-time
-      if (dag.getIncomingEdgesOf(v).stream().anyMatch(
-        irEdge -> CommunicationPatternProperty.Value.Shuffle
-          .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))
-        && dag.getIncomingEdgesOf(v).stream()
-        .noneMatch(irEdge -> irEdge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())) {
-        // Get the key extractor
-        final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
+      for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
+        if (CommunicationPatternProperty.Value.Shuffle
+          .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+          // Get the key extractor
+          final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
 
-        // Define a custom data collector for skew handling.
-        // Here, the collector gathers key frequency data used in shuffle data repartitioning.
-        final BiFunction<Object, Map<Object, Object>, Map<Object, Object>> dynOptDataCollector =
-          (BiFunction<Object, Map<Object, Object>, Map<Object, Object>> & Serializable)
-            (element, dynOptData) -> {
-              Object key = keyExtractor.extractKey(element);
-              if (dynOptData.containsKey(key)) {
-                dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
-              } else {
-                dynOptData.put(key, 1L);
-              }
-              return dynOptData;
-            };
+          // Define a custom data collector for skew handling.
+          // Here, the collector gathers key frequency data used in shuffle data repartitioning.
+          final BiFunction<Object, Map<Object, Object>, Map<Object, Object>> dynOptDataCollector =
+            (BiFunction<Object, Map<Object, Object>, Map<Object, Object>> & Serializable)
+              (element, dynOptData) -> {
+                Object key = keyExtractor.extractKey(element);
+                if (dynOptData.containsKey(key)) {
+                  dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
+                } else {
+                  dynOptData.put(key, 1L);
+                }
+                return dynOptData;
+              };
 
-        final MessageBarrierVertex mbv = new MessageBarrierVertex(dynOptDataCollector);
+          final MessageBarrierVertex mbv = new MessageBarrierVertex<>(dynOptDataCollector);
 
-        // Insert the vertex
-        dag.insert(mbv, edge);
+          // Insert the vertex
+          dag.insert(mbv, edge);
+        }
       }
     });
   }

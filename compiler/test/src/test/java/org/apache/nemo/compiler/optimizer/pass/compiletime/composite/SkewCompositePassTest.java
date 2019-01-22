@@ -26,8 +26,8 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.MetricCollectTransform;
-import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
+import org.apache.nemo.common.ir.vertex.transform.MessageAggregateTransform;
+import org.apache.nemo.common.ir.vertex.transform.MessageBarrierTransform;
 import org.apache.nemo.compiler.CompilerTestUtil;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
@@ -78,8 +78,8 @@ public class SkewCompositePassTest {
 
   /**
    * Test for {@link SkewCompositePass} with MR workload.
-   * It should have inserted vertex with {@link MetricCollectTransform}
-   * and vertex with {@link AggregateMetricTransform}
+   * It should have inserted vertex with {@link MessageBarrierTransform}
+   * and vertex with {@link MessageAggregateTransform}
    * before each shuffle edge with no additional output tags.
    * @throws Exception exception on the way.
    */
@@ -99,12 +99,12 @@ public class SkewCompositePassTest {
       processedDAG.getVertices().size());
 
     processedDAG.filterVertices(v -> v instanceof OperatorVertex
-      && ((OperatorVertex) v).getTransform() instanceof MetricCollectTransform)
+      && ((OperatorVertex) v).getTransform() instanceof MessageBarrierTransform)
       .forEach(metricV -> {
           final List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());
           reducerV.forEach(rV -> {
             if (rV instanceof OperatorVertex &&
-              !(((OperatorVertex) rV).getTransform() instanceof AggregateMetricTransform)) {
+              !(((OperatorVertex) rV).getTransform() instanceof MessageAggregateTransform)) {
               assertTrue(rV.getPropertyValue(ResourceSkewedDataProperty.class).get());
             }
           });

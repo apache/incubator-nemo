@@ -18,60 +18,57 @@
  */
 package org.apache.nemo.common.ir.vertex.transform;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.function.BiFunction;
 
 /**
  * A {@link Transform} that collects task-level statistics used for dynamic optimization.
- * The collected statistics is sent to vertex with {@link AggregateMetricTransform} as a tagged output
- * when this transform is closed.
- *
  * @param <I> input type.
- * @param <O> output type.
+ * @param <K> output key type.
+ * @param <V> output value type.
  */
-public final class MetricCollectTransform<I, O> extends NoWatermarkEmitTransform<I, O> {
-  private static final Logger LOG = LoggerFactory.getLogger(MetricCollectTransform.class.getName());
-  private OutputCollector<O> outputCollector;
-  private O dynOptData;
-  private final BiFunction<Object, O, O> dynOptDataCollector;
-  private final BiFunction<O, OutputCollector, O> closer;
+public final class MessageBarrierTransform<I, K, V> extends NoWatermarkEmitTransform<I, Pair<K, V>> {
+  private static final Logger LOG = LoggerFactory.getLogger(MessageBarrierTransform.class.getName());
+  private final BiFunction<I, Map<K, V>, Map<K, V>> userFunction;
+
+  private OutputCollector<Pair<K, V>> outputCollector;
+  private Map<K, V> holder;
 
   /**
-   * MetricCollectTransform constructor.
-   * @param dynOptData per-task dynamic optimization data.
-   * @param dynOptDataCollector that collects the data.
-   * @param closer callback function to be invoked when closing the transform.
+   * MessageBarrierTransform constructor.
+   * @param userFunction that analyzes the data.
    */
-  public MetricCollectTransform(final O dynOptData,
-                                final BiFunction<Object, O, O> dynOptDataCollector,
-                                final BiFunction<O, OutputCollector, O> closer) {
-    this.dynOptData = dynOptData;
-    this.dynOptDataCollector = dynOptDataCollector;
-    this.closer = closer;
+  public MessageBarrierTransform(final BiFunction<I, Map<K, V>, Map<K, V>> userFunction) {
+    this.userFunction = userFunction;
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> oc) {
+  public void prepare(final Context context, final OutputCollector<Pair<K, V>> oc) {
     this.outputCollector = oc;
   }
 
   @Override
   public void onData(final I element) {
-    dynOptData = dynOptDataCollector.apply(element, dynOptData);
+    holder = userFunction.apply(element, holder);
   }
 
   @Override
   public void close() {
-    closer.apply(dynOptData, outputCollector);
+    holder.forEach((k, v) -> {
+      final Pair<K, V> pairData = Pair.of(k, v);
+      outputCollector.emit(pairData);
+    });
   }
 
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append(MetricCollectTransform.class);
+    sb.append(MessageBarrierTransform.class);
     sb.append(":");
     sb.append(super.toString());
     return sb.toString();
