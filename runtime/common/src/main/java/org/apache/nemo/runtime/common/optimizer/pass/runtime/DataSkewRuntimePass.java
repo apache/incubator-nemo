@@ -57,7 +57,7 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<Set<StageEdge>, 
    * The reason why we do not divide the output into a fixed number is that the fixed number can be smaller than
    * the destination task parallelism.
    */
-  public static final int HASH_RANGE_MULTIPLIER = 10;
+  public static final int HASH_RANGE_MULTIPLIER = 5;
 
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
   // Skewed keys denote for top n keys in terms of partition size.
@@ -232,6 +232,7 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<Set<StageEdge>, 
             currentAccumulatedSize - prevAccumulatedSize);
       }
     }
+
     return keyRanges;
   }
 }
