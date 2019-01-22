@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
@@ -59,12 +60,14 @@ public final class SkewReshapingPass extends ReshapingPass {
       for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
         if (CommunicationPatternProperty.Value.Shuffle
           .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+          // Shuffle edge has the KeyExtractor, KeyEncoder, and KeyDecoder
+
           // Get the key extractor
           final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
 
           // For collecting the data
-          final BiFunction<Object, Map<Object, Object>, Map<Object, Object>> dynOptDataCollector =
-            (BiFunction<Object, Map<Object, Object>, Map<Object, Object>> & Serializable)
+          final BiFunction<Object, Map<Object, Long>, Map<Object, Long>> dynOptDataCollector =
+            (BiFunction<Object, Map<Object, Long>, Map<Object, Long>> & Serializable)
               (element, dynOptData) -> {
                 Object key = keyExtractor.extractKey(element);
                 if (dynOptData.containsKey(key)) {
@@ -76,28 +79,33 @@ public final class SkewReshapingPass extends ReshapingPass {
               };
 
           // For aggregating the collected data
-          final BiFunction<Object, Map<Object, Long>, Map<Object, Long>> dynOptDataAggregator =
-            (BiFunction<Object, Map<Object, Long>, Map<Object, Long>> & Serializable)
+          final BiFunction<Pair<Object, Long>, Map<Object, Long>, Map<Object, Long>> dynOptDataAggregator =
+            (BiFunction<Pair<Object, Long>, Map<Object, Long>, Map<Object, Long>> & Serializable)
               (element, aggregatedDynOptData) -> {
-                final Object key = ((Pair<Object, Long>) element).left();
-                final Long count = ((Pair<Object, Long>) element).right();
-
-                final Map<Object, Long> aggregatedDynOptDataMap = (Map<Object, Long>) aggregatedDynOptData;
-                if (aggregatedDynOptDataMap.containsKey(key)) {
-                  aggregatedDynOptDataMap.compute(key, (existingKey, accumulatedCount) -> accumulatedCount + count);
+                final Object key = element.left();
+                final Long count = element.right();
+                if (aggregatedDynOptData.containsKey(key)) {
+                  aggregatedDynOptData.compute(key, (existingKey, accumulatedCount) -> accumulatedCount + count);
                 } else {
-                  aggregatedDynOptDataMap.put(key, count);
+                  aggregatedDynOptData.put(key, count);
                 }
                 return aggregatedDynOptData;
               };
 
+          // Coders to use
+          final EncoderProperty encoderProperty = EncoderProperty.of(
+            PairEncoderFactory.of(edge.getPropertyValue(KeyEncoderProperty.class).get(), LongEncoderFactory.of()));
+          final DecoderProperty decoderProperty = DecoderProperty.of(
+            PairDecoderFactory.of(edge.getPropertyValue(KeyDecoderProperty.class).get(), LongDecoderFactory.of()));
+
           // Insert the vertices
           final MessageBarrierVertex mbv = new MessageBarrierVertex<>(dynOptDataCollector);
           final MessageAggregationVertex mav = new MessageAggregationVertex(new HashMap(), dynOptDataAggregator);
-          dag.insert(mbv, mav, edge);
+          dag.insert(mbv, mav, encoderProperty, decoderProperty, edge);
         }
       }
     });
     return dag;
   }
 }
+

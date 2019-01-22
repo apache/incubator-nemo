@@ -23,6 +23,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 
@@ -50,6 +51,7 @@ public final class MessageBarrierTransform<I, K, V> extends NoWatermarkEmitTrans
   @Override
   public void prepare(final Context context, final OutputCollector<Pair<K, V>> oc) {
     this.outputCollector = oc;
+    this.holder = new HashMap<>();
   }
 
   @Override

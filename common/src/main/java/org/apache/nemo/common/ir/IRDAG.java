@@ -20,16 +20,16 @@ package org.apache.nemo.common.ir;
 
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.system.MessageAggregationVertex;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.system.StreamVertex;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -47,6 +47,8 @@ import java.util.function.Predicate;
  * - Reshaping: insert(), delete() on the IRDAG
  */
 public final class IRDAG {
+  private static final Logger LOG = LoggerFactory.getLogger(IRDAG.class.getName());
+
   private DAG<IRVertex, IREdge> dag; // internal DAG, can be updated by reshaping methods.
 
   public IRDAG(final DAG<IRVertex, IREdge> dag) {
@@ -177,6 +179,8 @@ public final class IRDAG {
    */
   public void insert(final MessageBarrierVertex messageBarrierVertex,
                      final MessageAggregationVertex messageAggregationVertex,
+                     final EncoderProperty mbvOutputEncoder,
+                     final DecoderProperty mbvOutputDecoder,
                      final IREdge edgeToGetStatisticsOf) {
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder builder = new DAGBuilder();
@@ -199,14 +203,18 @@ public final class IRDAG {
             CommunicationPatternProperty.Value.OneToOne, edge.getSrc(), messageBarrierVertex);
           clone.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
           clone.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
+          edge.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag -> {
+            clone.setProperty(AdditionalOutputTagProperty.of(tag));
+          });
           builder.connectVertices(clone);
 
           // messageBarrierVertex to the messageAggregationVertex
-          final IREdge edgeToABV = edgeBetweenMessageVertices(edge, messageBarrierVertex, messageAggregationVertex);
+          final IREdge edgeToABV = edgeBetweenMessageVertices(
+            messageBarrierVertex, messageAggregationVertex, mbvOutputEncoder, mbvOutputDecoder);
           builder.connectVertices(edgeToABV);
 
           // Connection vertex
-          // Add an control dependency (no output)
+          // Add a control dependency (no output)
           final IREdge emptyEdge =
             new IREdge(CommunicationPatternProperty.Value.BroadCast, messageAggregationVertex, v);
           builder.connectVertices(emptyEdge);
@@ -226,6 +234,8 @@ public final class IRDAG {
         }
       }
     });
+
+    dag = builder.build(); // update the DAG.
   }
 
   ////////////////////////////////////////////////// "Un-safe" direct reshaping (semantic-preserving is not guaranteed).
@@ -237,15 +247,15 @@ public final class IRDAG {
   ////////////////////////////////////////////////// Private helper methods.
 
   /**
-   * @param edge the original shuffle edge.
-   * @param mcv the vertex with MessageBarrierTransform.
-   * @param abv the vertex with MessageAggregateTransform.
+   * @param mbv the vertex with MessageBarrierTransform.
+   * @param mav the vertex with MessageAggregateTransform.
    * @return the generated egde from {@code mcv} to {@code abv}.
    */
-  private IREdge edgeBetweenMessageVertices(final IREdge edge,
-                                            final OperatorVertex mcv,
-                                            final OperatorVertex abv) {
-    final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mcv, abv);
+  private IREdge edgeBetweenMessageVertices(final MessageBarrierVertex mbv,
+                                            final MessageAggregationVertex mav,
+                                            final EncoderProperty encoder,
+                                            final DecoderProperty decoder) {
+    final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mbv, mav);
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
@@ -257,23 +267,8 @@ public final class IRDAG {
       }
     };
     newEdge.setProperty(KeyExtractorProperty.of(pairKeyExtractor));
-
-    // Dynamic optimization handles statistics on key-value data by default.
-    // We need to get coders for encoding/decoding the keys to send data to
-    // vertex with MessageAggregateTransform.
-    if (edge.getPropertyValue(KeyEncoderProperty.class).isPresent()
-      && edge.getPropertyValue(KeyDecoderProperty.class).isPresent()) {
-      final EncoderFactory keyEncoderFactory = edge.getPropertyValue(KeyEncoderProperty.class).get();
-      final DecoderFactory keyDecoderFactory = edge.getPropertyValue(KeyDecoderProperty.class).get();
-      newEdge.setPropertyPermanently(
-        EncoderProperty.of(PairEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
-      newEdge.setPropertyPermanently(
-        DecoderProperty.of(PairDecoderFactory.of(keyDecoderFactory, LongDecoderFactory.of())));
-    } else {
-      // If not specified, follow encoder/decoder of the given shuffle edge.
-      throw new RuntimeException("Skew optimization request for none key - value format data!");
-    }
-
+    newEdge.setPropertyPermanently(encoder);
+    newEdge.setPropertyPermanently(decoder);
     return newEdge;
   }
 }
