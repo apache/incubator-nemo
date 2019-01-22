@@ -125,7 +125,94 @@ public class IRDAG {
    * @param edgeToGetStatisticsOf
    */
   public void insert(final MessageBarrierVertex messageBarrierVertex, final IREdge edgeToGetStatisticsOf) {
+    dag.getIncomingEdgesOf(v).forEach(edge -> {
+      if (CommunicationPatternProperty.Value.Shuffle
+        .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+        final OperatorVertex abv = generateMetricAggregationVertex();
+        final OperatorVertex mcv = generateMetricCollectVertex(edge);
+        metricCollectVertices.add(mcv);
+        builder.addVertex(v);
+        builder.addVertex(mcv);
+        builder.addVertex(abv);
+
+        // We then insert the vertex with MetricCollectTransform and vertex with AggregateMetricTransform
+        // between the vertex and incoming vertices.
+        final IREdge edgeToMCV = generateEdgeToMCV(edge, mcv);
+        final IREdge edgeToABV = generateEdgeToABV(edge, mcv, abv);
+        final IREdge edgeToOriginalDstV =
+          new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
+        edge.copyExecutionPropertiesTo(edgeToOriginalDstV);
+        edgeToOriginalDstV.setPropertyPermanently(
+          MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
+
+        builder.connectVertices(edgeToMCV);
+        builder.connectVertices(edgeToABV);
+        builder.connectVertices(edgeToOriginalDstV);
+
+        // Add an control dependency (no output)
+        final IREdge emptyEdge =
+          new IREdge(CommunicationPatternProperty.Value.BroadCast, abv, v);
+        builder.connectVertices(emptyEdge);
+      } else {
+        builder.connectVertices(edge);
+      }
+    });
+  } else { // Others are simply added to the builder, unless it comes from an updated vertex
+    builder.addVertex(v);
+    dag.getIncomingEdgesOf(v).forEach(builder::connectVertices);
   }
+}
+
+
+  /**
+   * @param edge the original shuffle edge.
+   * @param mcv the vertex with MetricCollectTransform.
+   * @return the generated edge to {@code mcv}.
+   */
+  private IREdge generateEdgeToMCV(final IREdge edge, final OperatorVertex mcv) {
+    final IREdge newEdge =
+      new IREdge(CommunicationPatternProperty.Value.OneToOne, edge.getSrc(), mcv);
+    newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
+    newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
+    return newEdge;
+  }
+
+  /**
+   * @param edge the original shuffle edge.
+   * @param mcv the vertex with MetricCollectTransform.
+   * @param abv the vertex with AggregateMetricTransform.
+   * @return the generated egde from {@code mcv} to {@code abv}.
+   */
+  private IREdge generateEdgeToABV(final IREdge edge,
+                                   final OperatorVertex mcv,
+                                   final OperatorVertex abv) {
+    final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mcv, abv);
+    newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+    newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
+    newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
+    newEdge.setProperty(KeyExtractorProperty.of(new PairKeyExtractor()));
+    newEdge.setProperty(AdditionalOutputTagProperty.of(ADDITIONAL_OUTPUT_TAG));
+
+    // Dynamic optimization handles statistics on key-value data by default.
+    // We need to get coders for encoding/decoding the keys to send data to
+    // vertex with AggregateMetricTransform.
+    if (edge.getPropertyValue(KeyEncoderProperty.class).isPresent()
+      && edge.getPropertyValue(KeyDecoderProperty.class).isPresent()) {
+      final EncoderFactory keyEncoderFactory = edge.getPropertyValue(KeyEncoderProperty.class).get();
+      final DecoderFactory keyDecoderFactory = edge.getPropertyValue(KeyDecoderProperty.class).get();
+      newEdge.setPropertyPermanently(
+        EncoderProperty.of(PairEncoderFactory.of(keyEncoderFactory, LongEncoderFactory.of())));
+      newEdge.setPropertyPermanently(
+        DecoderProperty.of(PairDecoderFactory.of(keyDecoderFactory, LongDecoderFactory.of())));
+    } else {
+      // If not specified, follow encoder/decoder of the given shuffle edge.
+      throw new RuntimeException("Skew optimization request for none key - value format data!");
+    }
+
+    return newEdge;
+  }
+
+
 
   /**
    * @param systemIRVertexToDelete to delete.

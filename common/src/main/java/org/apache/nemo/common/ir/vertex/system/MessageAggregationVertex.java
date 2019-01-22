@@ -19,4 +19,30 @@
 package org.apache.nemo.common.ir.vertex.system;
 
 public class MessageAggregationVertex {
+  /**
+   * @return the generated vertex.
+   */
+  private OperatorVertex generateMetricAggregationVertex() {
+    // Define a custom data aggregator for skew handling.
+    // Here, the aggregator gathers key frequency data used in shuffle data repartitioning.
+    final BiFunction<Object, Map<Object, Long>, Map<Object, Long>> dynOptDataAggregator =
+      (BiFunction<Object, Map<Object, Long>, Map<Object, Long>> & Serializable)
+        (element, aggregatedDynOptData) -> {
+          final Object key = ((Pair<Object, Long>) element).left();
+          final Long count = ((Pair<Object, Long>) element).right();
+
+          final Map<Object, Long> aggregatedDynOptDataMap = (Map<Object, Long>) aggregatedDynOptData;
+          if (aggregatedDynOptDataMap.containsKey(key)) {
+            aggregatedDynOptDataMap.compute(key, (existingKey, accumulatedCount) -> accumulatedCount + count);
+          } else {
+            aggregatedDynOptDataMap.put(key, count);
+          }
+          return aggregatedDynOptData;
+        };
+    final AggregateMetricTransform abt =
+      new AggregateMetricTransform<Pair<Object, Long>, Map<Object, Long>>(new HashMap<>(), dynOptDataAggregator);
+    return new OperatorVertex(abt);
+  }
+
+
 }

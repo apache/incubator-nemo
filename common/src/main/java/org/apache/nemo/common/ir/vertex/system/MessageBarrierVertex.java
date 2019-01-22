@@ -19,4 +19,41 @@
 package org.apache.nemo.common.ir.vertex.system;
 
 public class MessageBarrierVertex {
+
+  /**
+   * @param edge to collect the metric.
+   * @return the generated vertex.
+   */
+  private OperatorVertex generateMetricCollectVertex(final IREdge edge) {
+    final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
+    // Define a custom data collector for skew handling.
+    // Here, the collector gathers key frequency data used in shuffle data repartitioning.
+    final BiFunction<Object, Map<Object, Object>, Map<Object, Object>> dynOptDataCollector =
+      (BiFunction<Object, Map<Object, Object>, Map<Object, Object>> & Serializable)
+        (element, dynOptData) -> {
+          Object key = keyExtractor.extractKey(element);
+          if (dynOptData.containsKey(key)) {
+            dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
+          } else {
+            dynOptData.put(key, 1L);
+          }
+          return dynOptData;
+        };
+
+    // Define a custom transform closer for skew handling.
+    // Here, we emit key to frequency data map type data when closing transform.
+    final BiFunction<Map<Object, Object>, OutputCollector, Map<Object, Object>> closer =
+      (BiFunction<Map<Object, Object>, OutputCollector, Map<Object, Object>> & Serializable)
+        (dynOptData, outputCollector)-> {
+          dynOptData.forEach((k, v) -> {
+            final Pair<Object, Object> pairData = Pair.of(k, v);
+            outputCollector.emit(ADDITIONAL_OUTPUT_TAG, pairData);
+          });
+          return dynOptData;
+        };
+
+    final MetricCollectTransform mct
+      = new MetricCollectTransform(new HashMap<>(), dynOptDataCollector, closer);
+    return new OperatorVertex(mct);
+  }
 }
