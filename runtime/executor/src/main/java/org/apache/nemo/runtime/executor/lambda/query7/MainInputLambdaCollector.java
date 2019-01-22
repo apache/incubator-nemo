@@ -67,7 +67,6 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final long period = 5000;
 
-  private final LambdaWarmer warmer;
   private final OutputCollector<O> mainOutputCollector;
 
   /**
@@ -91,12 +90,14 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
       .getDecoderFactory()).getValueDecoderFactory());
     this.encodedDecoderFactory = SerializationUtils.serialize(decoderFactory);
 
+    /*
     if (LambdaWarmer.TICKET.getAndIncrement() == 0) {
       this.warmer = new LambdaWarmer();
       warmer.warmup();
     } else {
       this.warmer = null;
     }
+    */
   }
 
   private void checkAndFlush(final String key) {
@@ -154,12 +155,14 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
         final int partition = windowAndPartitionMap.get(fileName);
 
+        /*
         if (warmer != null) {
           if (partition == 1) {
             // warm up
             //warmer.warmup();
           }
         }
+        */
 
 
         info = new Info(storageObjectFactory.newInstance(
