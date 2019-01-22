@@ -185,12 +185,13 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
-    toLambda((O) output);
+    // do nothing
   }
 
   @Override
   public void emit(O output) {
     mainOutputCollector.emit(output);
+    toLambda(output);
   }
 
   @Override
