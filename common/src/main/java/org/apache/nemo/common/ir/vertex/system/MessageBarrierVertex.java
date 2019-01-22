@@ -18,12 +18,16 @@
  */
 package org.apache.nemo.common.ir.vertex.system;
 
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.MessageBarrierTransform;
 
 import java.util.Map;
 import java.util.function.BiFunction;
 
-public class MessageBarrierVertex<I, K, V> extends SystemIRVertex {
+public class MessageBarrierVertex<I, K, V> extends OperatorVertex {
+  /**
+   * @param messageFunction for producing a message.
+   */
   public MessageBarrierVertex(final BiFunction<I, Map<K, V>, Map<K, V>> messageFunction) {
     super(new MessageBarrierTransform<>(messageFunction));
   }

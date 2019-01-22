@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.compiler.backend;
 
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.dag.DAG;
@@ -37,5 +38,5 @@ public interface Backend<Plan> {
    * @return the execution plan generated.
    * @throws Exception Exception on the way.
    */
-  Plan compile(DAG<IRVertex, IREdge> dag) throws Exception;
+  Plan compile(IRDAG dag) throws Exception;
 }

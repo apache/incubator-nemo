@@ -46,7 +46,7 @@ import java.util.function.Predicate;
  * - Annotation: setProperty(), getPropertyValue() on each IRVertex/IREdge
  * - Reshaping: insert(), delete() on the IRDAG
  */
-public class IRDAG {
+public final class IRDAG {
   private DAG<IRVertex, IREdge> dag; // internal DAG, can be updated by reshaping methods.
 
   public IRDAG(final DAG<IRVertex, IREdge> dag) {
@@ -116,8 +116,8 @@ public class IRDAG {
   /**
    * Inserts a new vertex that streams data.
    *
-   * Before: src > edgeToStreamize > dst
-   * After: src > edgeToStreamizeWithNewDestination > streamVertex > oneToOneEdge > dst
+   * Before: src - edgeToStreamize - dst
+   * After: src - edgeToStreamizeWithNewDestination - streamVertex - oneToOneEdge - dst
    * (replaces the "Before" relationships)
    *
    * @param streamVertex to insert.
@@ -132,8 +132,7 @@ public class IRDAG {
 
     // Build the new DAG to reflect the new topology.
     dag.topologicalDo(v -> {
-      // None of the existing vertices are deleted.
-      builder.addVertex(v);
+      builder.addVertex(v); // None of the existing vertices are deleted.
 
       for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
         if (edge.equals(edgeToStreamize)) {
@@ -152,7 +151,7 @@ public class IRDAG {
           oneToOneEdge.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
 
           // Track the new edges.
-          builder.connectVertices(edgeToStreamize);
+          builder.connectVertices(edgeToStreamizeWithNewDestination);
           builder.connectVertices(oneToOneEdge);
         } else {
           // NO MATCH, so simply connect vertices as before.
@@ -167,9 +166,9 @@ public class IRDAG {
   /**
    * Inserts a new vertex that analyzes intermediate data, and triggers a dynamic optimization.
    *
-   * Before: src > edgeToGetStatisticsOf > dst
-   * After: src > oneToOneEdge(a clone of edgeToGetStatisticsOf) > messageBarrierVertex >
-   *        shuffleEdge > messageAggregationVertex > broadcastEdge > dst
+   * Before: src - edgeToGetStatisticsOf - dst
+   * After: src - oneToOneEdge(a clone of edgeToGetStatisticsOf) - messageBarrierVertex -
+   *        shuffleEdge - messageAggregationVertex - broadcastEdge - dst
    * (the "Before" relationships are unmodified)
    *
    * @param messageBarrierVertex to insert.

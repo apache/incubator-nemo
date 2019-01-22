@@ -29,7 +29,7 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 /**
  * This pass assumes that a StreamVertex was previously inserted to receive each shuffle edge.
  *
- * src -> shuffle-edge -> streamvertex -> one-to-one-edge -> dst
+ * src - shuffle-edge - streamvertex - one-to-one-edge - dst
  *
  * (1) shuffle-edge
  * Encode/compress into byte[], and have the receiver read data as the same byte[], rather than decompressing/decoding.
