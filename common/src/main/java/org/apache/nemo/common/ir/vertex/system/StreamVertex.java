@@ -19,7 +19,7 @@
 package org.apache.nemo.common.ir.vertex.system;
 
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.RelayTransform;
+import org.apache.nemo.common.ir.vertex.transform.StreamTransform;
 
 /**
  * IRVertex that transforms input data.
@@ -30,6 +30,6 @@ public final class StreamVertex extends OperatorVertex {
    * Constructor.
    */
   public StreamVertex() {
-    super(new RelayTransform());
+    super(new StreamTransform());
   }
 }
