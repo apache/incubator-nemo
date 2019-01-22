@@ -33,9 +33,7 @@ import java.util.function.BiFunction;
 
 public class MessageBarrierVertex extends SystemIRVertex {
   public MessageBarrierVertex(final BiFunction<Object, Map<Object, Object>, Map<Object, Object>> messageFunction) {
-    super(new MetricCollectTransform(new HashMap<>(), dynOptDataCollector, messageFunction));
-
-
+    super(new MetricCollectTransform(new HashMap<>(), messageFunction, messageFunction));
 
     final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
 
@@ -53,16 +51,8 @@ public class MessageBarrierVertex extends SystemIRVertex {
           return dynOptData;
         };
 
-
-
-
-
-
-    final MetricCollectTransform mct
-      = new MetricCollectTransform(new HashMap<>(), dynOptDataCollector, closer);
+    final MetricCollectTransform mct = new MetricCollectTransform(new HashMap<>(), dynOptDataCollector, closer);
     return new OperatorVertex(mct);
-
-
   }
 
   /**
@@ -88,7 +78,10 @@ public class MessageBarrierVertex extends SystemIRVertex {
     return new OperatorVertex(mct);
   }
 
-  BiFunction getCloser() {
+  public class Closer implements BiFunction {
+    public Closer() {
+    }
+
     // Define a custom transform closer for skew handling.
     // Here, we emit key to frequency data map type data when closing transform.
     final BiFunction<Map<Object, Object>, OutputCollector, Map<Object, Object>> closer =
@@ -101,9 +94,9 @@ public class MessageBarrierVertex extends SystemIRVertex {
           return dynOptData;
         };
 
+    @Override
+    public Object apply(Object o, Object o2) {
+      return closer.apply(o, o2);
+    }
   }
-
-
-
-
 }

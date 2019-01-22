@@ -146,8 +146,11 @@ public class IRDAG {
           builder.addVertex(abv);
 
           // Clone the edgeToGetStatisticsOf
-          final IREdge edgeToMCV = generateEdgeToMCV(edge, messageBarrierVertex);
-          builder.connectVertices(edgeToMCV);
+          final IREdge clone = new IREdge(
+            CommunicationPatternProperty.Value.OneToOne, edge.getSrc(), messageBarrierVertex);
+          clone.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
+          clone.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
+          builder.connectVertices(clone);
 
           // messageBarrierVertex to the messageAggregationVertex
           final IREdge edgeToABV = generateEdgeToABV(edge, messageBarrierVertex, abv);
@@ -193,19 +196,6 @@ public class IRDAG {
   /**
    * @param edge the original shuffle edge.
    * @param mcv the vertex with MetricCollectTransform.
-   * @return the generated edge to {@code mcv}.
-   */
-  private IREdge generateEdgeToMCV(final IREdge edge, final OperatorVertex mcv) {
-    final IREdge newEdge =
-      new IREdge(CommunicationPatternProperty.Value.OneToOne, edge.getSrc(), mcv);
-    newEdge.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
-    newEdge.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
-    return newEdge;
-  }
-
-  /**
-   * @param edge the original shuffle edge.
-   * @param mcv the vertex with MetricCollectTransform.
    * @param abv the vertex with AggregateMetricTransform.
    * @return the generated egde from {@code mcv} to {@code abv}.
    */
@@ -213,6 +203,8 @@ public class IRDAG {
                                    final OperatorVertex mcv,
                                    final OperatorVertex abv) {
     final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mcv, abv);
+
+    
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));

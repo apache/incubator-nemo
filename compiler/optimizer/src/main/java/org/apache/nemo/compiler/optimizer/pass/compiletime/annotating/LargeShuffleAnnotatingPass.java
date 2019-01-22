@@ -19,6 +19,7 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import org.apache.nemo.common.coder.BytesDecoderFactory;
+import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
@@ -38,10 +39,8 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
  * Ignore resource slots, such that all tasks fetch the in-memory input data blocks as soon as they become available.
  *
  * (3) one-to-one-edge
- * Do not re-compress the byte[]
- *
- *
- * PUll and on-disk data transfer
+ * Do not encode/compress the byte[]
+ * Perform a pull-based and on-disk data transfer with the DedicatedKeyPerElementPartitioner.
  */
 @Annotates({CompressionProperty.class, DataFlowProperty.class, CompressionProperty.class,
   DataPersistenceProperty.class, DataStoreProperty.class, DecoderProperty.class, DecompressionProperty.class,
@@ -78,6 +77,7 @@ public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
           // CASE #2: From a stream vertex
 
           // Coder and Compression
+          edge.setPropertyPermanently(EncoderProperty.of(BytesEncoderFactory.of()));
           edge.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.None));
           edge.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.LZ4));
 
