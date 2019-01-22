@@ -39,10 +39,11 @@ public final class LoopUnrollingPass extends ReshapingPass {
   }
 
   @Override
-  public void optimize(final IRDAG inputDAG) {
+  public IRDAG optimize(final IRDAG inputDAG) {
     inputDAG.unSafeDirectReshaping(dag -> {
       return recursivelyUnroll(dag);
     });
+    return inputDAG;
   }
 
   /**

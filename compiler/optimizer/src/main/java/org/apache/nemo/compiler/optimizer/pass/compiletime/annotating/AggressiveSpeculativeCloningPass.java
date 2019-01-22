@@ -35,7 +35,7 @@ public final class AggressiveSpeculativeCloningPass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final IRDAG dag) {
+  public IRDAG optimize(final IRDAG dag) {
     // Speculative execution policy.
     final double fractionToWaitFor = 0.00000001; // Aggressive
     final double medianTimeMultiplier = 1.00000001; // Aggressive
@@ -43,5 +43,6 @@ public final class AggressiveSpeculativeCloningPass extends AnnotatingPass {
     // Apply the policy to ALL vertices
     dag.getVertices().forEach(vertex -> vertex.setProperty(ClonedSchedulingProperty.of(
       new ClonedSchedulingProperty.CloneConf(fractionToWaitFor, medianTimeMultiplier))));
+    return dag;
   }
 }

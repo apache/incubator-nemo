@@ -42,7 +42,7 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final IRDAG dag) {
+  public IRDAG optimize(final IRDAG dag) {
     dag.getVertices()
       .forEach(v -> dag.getOutgoingEdgesOf(v).stream()
         .filter(edge -> edge.getPropertyValue(MetricCollectionProperty.class).isPresent())
@@ -54,5 +54,6 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
           });
         })
       );
+    return dag;
   }
 }

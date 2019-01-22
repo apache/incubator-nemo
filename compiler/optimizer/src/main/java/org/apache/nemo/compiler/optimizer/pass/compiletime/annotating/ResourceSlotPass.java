@@ -35,10 +35,11 @@ public final class ResourceSlotPass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final IRDAG dag) {
+  public IRDAG optimize(final IRDAG dag) {
     // On every vertex, if ResourceSlotProperty is not set, put it as true.
     dag.getVertices().stream()
         .filter(v -> !v.getPropertyValue(ResourceSlotProperty.class).isPresent())
         .forEach(v -> v.setProperty(ResourceSlotProperty.of(true)));
+    return dag;
   }
 }

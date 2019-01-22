@@ -59,7 +59,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final IRDAG dag) {
+  public IRDAG optimize(final IRDAG dag) {
     // Propagate forward source parallelism
     dag.topologicalDo(vertex -> {
       try {
@@ -102,6 +102,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
         throw new RuntimeException(e);
       }
     });
+    return dag;
   }
 
   /**

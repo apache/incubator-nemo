@@ -40,7 +40,7 @@ public final class TransientResourcePriorityPass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final IRDAG dag) {
+  public IRDAG optimize(final IRDAG dag) {
     dag.topologicalDo(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (inEdges.isEmpty()) {
@@ -53,6 +53,7 @@ public final class TransientResourcePriorityPass extends AnnotatingPass {
         }
       }
     });
+    return dag;
   }
 
   /**

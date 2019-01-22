@@ -52,7 +52,7 @@ public final class SkewReshapingPass extends ReshapingPass {
   }
 
   @Override
-  public void optimize(final IRDAG dag) {
+  public IRDAG optimize(final IRDAG dag) {
     dag.topologicalDo(v -> {
       // We care about OperatorVertices that have shuffle incoming edges with main output.
       // TODO #210: Data-aware dynamic optimization at run-time
@@ -98,5 +98,6 @@ public final class SkewReshapingPass extends ReshapingPass {
         }
       }
     });
+    return dag;
   }
 }

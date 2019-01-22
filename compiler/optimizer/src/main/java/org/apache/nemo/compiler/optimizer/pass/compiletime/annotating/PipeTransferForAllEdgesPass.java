@@ -34,11 +34,12 @@ public final class PipeTransferForAllEdgesPass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final IRDAG dag) {
+  public IRDAG optimize(final IRDAG dag) {
     dag.getVertices().forEach(vertex -> {
       dag.getIncomingEdgesOf(vertex).stream()
           .forEach(edge -> edge.setPropertyPermanently(
               DataStoreProperty.of(DataStoreProperty.Value.Pipe)));
     });
+    return dag;
   }
 }

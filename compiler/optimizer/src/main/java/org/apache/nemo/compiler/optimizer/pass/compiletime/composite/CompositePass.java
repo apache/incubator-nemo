@@ -24,6 +24,7 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -58,8 +59,22 @@ public abstract class CompositePass extends CompileTimePass {
   }
 
   @Override
-  public final void optimize(final IRDAG irVertexIREdgeDAG) {
-    getPassList().forEach(pass -> pass.optimize(irVertexIREdgeDAG));
+  public final IRDAG optimize(final IRDAG irVertexIREdgeDAG) {
+    return recursivelyApply(irVertexIREdgeDAG, getPassList().iterator());
+  }
+
+  /**
+   * Recursively apply the give list of passes.
+   * @param dag dag.
+   * @param passIterator pass iterator.
+   * @return dag.
+   */
+  private IRDAG recursivelyApply(final IRDAG dag, final Iterator<CompileTimePass> passIterator) {
+    if (passIterator.hasNext()) {
+      return recursivelyApply(passIterator.next().optimize(dag), passIterator);
+    } else {
+      return dag;
+    }
   }
 
   /**

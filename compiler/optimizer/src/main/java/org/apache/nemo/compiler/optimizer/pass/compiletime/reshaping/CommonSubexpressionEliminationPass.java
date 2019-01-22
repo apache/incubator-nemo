@@ -51,7 +51,7 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
   }
 
   @Override
-  public void optimize(final IRDAG inputDAG) {
+  public IRDAG optimize(final IRDAG inputDAG) {
     // find and collect vertices with equivalent transforms
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
     final Map<Transform, List<OperatorVertex>> operatorVerticesToBeMerged = new HashMap<>();
@@ -129,6 +129,8 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
 
       return builder.build();
     });
+
+    return inputDAG;
   }
 
   /**

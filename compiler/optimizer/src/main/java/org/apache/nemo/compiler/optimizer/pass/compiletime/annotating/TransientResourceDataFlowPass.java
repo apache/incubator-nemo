@@ -42,7 +42,7 @@ public final class TransientResourceDataFlowPass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final IRDAG dag) {
+  public IRDAG optimize(final IRDAG dag) {
     dag.getVertices().forEach(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (!inEdges.isEmpty()) {
@@ -55,5 +55,6 @@ public final class TransientResourceDataFlowPass extends AnnotatingPass {
         });
       }
     });
+    return dag;
   }
 }

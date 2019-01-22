@@ -37,7 +37,7 @@ public final class UpfrontCloningPass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final IRDAG dag) {
+  public IRDAG optimize(final IRDAG dag) {
     dag.getVertices().stream()
         .filter(vertex -> dag.getIncomingEdgesOf(vertex.getId())
           .stream()
@@ -50,5 +50,6 @@ public final class UpfrontCloningPass extends AnnotatingPass {
           )
         .forEach(vertex -> vertex.setProperty(
           ClonedSchedulingProperty.of(new ClonedSchedulingProperty.CloneConf()))); // clone upfront, always
+    return dag;
   }
 }

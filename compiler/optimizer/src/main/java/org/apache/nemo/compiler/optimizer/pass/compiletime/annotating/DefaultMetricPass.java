@@ -42,7 +42,7 @@ public final class DefaultMetricPass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final IRDAG dag) {
+  public IRDAG optimize(final IRDAG dag) {
     dag.topologicalDo(dst ->
       dag.getIncomingEdgesOf(dst).forEach(edge -> {
         if (CommunicationPatternProperty.Value.Shuffle
@@ -55,5 +55,6 @@ public final class DefaultMetricPass extends AnnotatingPass {
           edge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(metric)));
         }
       }));
+    return dag;
   }
 }

@@ -83,7 +83,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
 
 
   @Override
-  public void optimize(final IRDAG dag) {
+  public IRDAG optimize(final IRDAG dag) {
     final Map<IRVertex, ScheduleGroup> irVertexToScheduleGroupMap = new HashMap<>();
     final Set<ScheduleGroup> scheduleGroups = new HashSet<>();
     dag.topologicalDo(irVertex -> {
@@ -222,6 +222,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
         currentScheduleGroup.increment();
       }
     });
+    return dag;
   }
 
   /**

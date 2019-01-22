@@ -36,5 +36,5 @@ public abstract class CompileTimePass extends Pass {
   public abstract Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties();
 
 
-  public abstract void optimize(final IRDAG dag);
+  public abstract IRDAG optimize(final IRDAG dag);
 }

@@ -39,7 +39,7 @@ public final class DuplicateEdgeGroupSizePass extends AnnotatingPass {
   }
 
   @Override
-  public void optimize(final IRDAG dag) {
+  public IRDAG optimize(final IRDAG dag) {
     final HashMap<String, Integer> groupIdToGroupSize = new HashMap<>();
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
         .forEach(e -> {
@@ -63,5 +63,6 @@ public final class DuplicateEdgeGroupSizePass extends AnnotatingPass {
             }
           }
         }));
+    return dag;
   }
 }
