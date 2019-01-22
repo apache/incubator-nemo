@@ -27,6 +27,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.apache.nemo.runtime.executor.lambda.LambdaWarmer;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
@@ -67,6 +68,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private final long period = 5000;
 
   private final LambdaWarmer warmer;
+  private final OutputCollector<O> mainOutputCollector;
 
   /**
    * Constructor of the output collector.
@@ -76,9 +78,11 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     final IRVertex irVertex,
     final List<StageEdge> outgoingEdges,
     final SerializerManager serializerManager,
-    final StorageObjectFactory storageObjectFactory) {
+    final StorageObjectFactory storageObjectFactory,
+    final OutputCollector<O> mainOutputColletor) {
     this.irVertex = irVertex;
     this.storageObjectFactory = storageObjectFactory;
+    this.mainOutputCollector = mainOutputColletor;
 
     this.encoderFactory = ((NemoEventEncoderFactory) serializerManager.getSerializer(outgoingEdges.get(0).getId())
       .getEncoderFactory()).getValueEncoderFactory();
@@ -130,8 +134,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
     */
   }
 
-  @Override
-  public void emit(final O output) {
+  private void toLambda(final O output) {
     //LOG.info("{} emits {}", irVertex.getId(), output);
 
     // buffer data
@@ -179,6 +182,12 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
+    toLambda((O) output);
+  }
+
+  @Override
+  public void emit(O output) {
+    mainOutputCollector.emit(output);
   }
 
   @Override
