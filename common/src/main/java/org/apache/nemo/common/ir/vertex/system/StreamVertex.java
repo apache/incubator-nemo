@@ -18,15 +18,13 @@
  */
 package org.apache.nemo.common.ir.vertex.system;
 
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.RelayTransform;
 
 /**
  * IRVertex that transforms input data.
  * It is to be constructed in the compiler frontend with language-specific data transform logic.
  */
-public final class StreamVertex extends OperatorVertex {
-
+public final class StreamVertex extends SystemIRVertex {
   public StreamVertex() {
     super(new RelayTransform());
   }

@@ -18,11 +18,15 @@
  */
 package org.apache.nemo.common.ir.vertex.system;
 
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.Transform;
 
 /**
  * SystemIRVertex
  *
  */
-public abstract class SystemIRVertex extends IRVertex {
+public abstract class SystemIRVertex extends OperatorVertex {
+  public SystemIRVertex(final Transform transform) {
+    super(transform);
+  }
 }

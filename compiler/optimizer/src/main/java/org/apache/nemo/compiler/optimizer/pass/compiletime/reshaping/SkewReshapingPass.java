@@ -66,78 +66,34 @@ public final class SkewReshapingPass extends ReshapingPass {
 
   @Override
   public void optimize(final IRDAG dag) {
-    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
-
-
-    final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
-
-
-    // Define a custom data collector for skew handling.
-    // Here, the collector gathers key frequency data used in shuffle data repartitioning.
-    final BiFunction<Object, Map<Object, Object>, Map<Object, Object>> dynOptDataCollector =
-      (BiFunction<Object, Map<Object, Object>, Map<Object, Object>> & Serializable)
-        (element, dynOptData) -> {
-          Object key = keyExtractor.extractKey(element);
-          if (dynOptData.containsKey(key)) {
-            dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
-          } else {
-            dynOptData.put(key, 1L);
-          }
-          return dynOptData;
-        };
-
-    final MessageBarrierVertex mbv = new MessageBarrierVertex(dynOptDataCollector);
-
-
-
-
     dag.topologicalDo(v -> {
       // We care about OperatorVertices that have shuffle incoming edges with main output.
       // TODO #210: Data-aware dynamic optimization at run-time
-      if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
-          CommunicationPatternProperty.Value.Shuffle
+      if (dag.getIncomingEdgesOf(v).stream().anyMatch(
+        irEdge -> CommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get()))
-        && dag.getIncomingEdgesOf(v).stream().noneMatch(irEdge ->
-      irEdge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())) {
+        && dag.getIncomingEdgesOf(v).stream()
+        .noneMatch(irEdge -> irEdge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())) {
+        // Get the key extractor
+        final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
 
-        dag.getIncomingEdgesOf(v).forEach(edge -> {
-          if (CommunicationPatternProperty.Value.Shuffle
-                .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-            final OperatorVertex abv = generateMetricAggregationVertex();
-            final OperatorVertex mcv = generateMetricCollectVertex(edge);
-            builder.addVertex(v);
-            builder.addVertex(mcv);
-            builder.addVertex(abv);
+        // Define a custom data collector for skew handling.
+        // Here, the collector gathers key frequency data used in shuffle data repartitioning.
+        final BiFunction<Object, Map<Object, Object>, Map<Object, Object>> dynOptDataCollector =
+          (BiFunction<Object, Map<Object, Object>, Map<Object, Object>> & Serializable)
+            (element, dynOptData) -> {
+              Object key = keyExtractor.extractKey(element);
+              if (dynOptData.containsKey(key)) {
+                dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
+              } else {
+                dynOptData.put(key, 1L);
+              }
+              return dynOptData;
+            };
 
-            // We then insert the vertex with MetricCollectTransform and vertex with AggregateMetricTransform
-            // between the vertex and incoming vertices.
-            final IREdge edgeToMCV = generateEdgeToMCV(edge, mcv);
-            final IREdge edgeToABV = generateEdgeToABV(edge, mcv, abv);
-            final IREdge edgeToOriginalDstV =
-              new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
-            edge.copyExecutionPropertiesTo(edgeToOriginalDstV);
-            edgeToOriginalDstV.setPropertyPermanently(
-              MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
-
-            builder.connectVertices(edgeToMCV);
-            builder.connectVertices(edgeToABV);
-            builder.connectVertices(edgeToOriginalDstV);
-
-            // Add an control dependency (no output)
-            final IREdge emptyEdge =
-              new IREdge(CommunicationPatternProperty.Value.BroadCast, abv, v);
-            builder.connectVertices(emptyEdge);
-          } else {
-            builder.connectVertices(edge);
-          }
-        });
-      } else { // Others are simply added to the builder, unless it comes from an updated vertex
-        builder.addVertex(v);
-        dag.getIncomingEdgesOf(v).forEach(builder::connectVertices);
+        final MessageBarrierVertex mbv = new MessageBarrierVertex(dynOptDataCollector);
+        dag.insert(mbv, edge);
       }
     });
-    final IRDAG newDAG = builder.build();
-    return newDAG;
   }
-
 }

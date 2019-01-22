@@ -27,11 +27,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 
-public class MessageAggregationVertex {
-  /**
-   * @return the generated vertex.
-   */
-  private OperatorVertex generateMetricAggregationVertex() {
+public class MessageAggregationVertex extends SystemIRVertex {
+  public MessageAggregationVertex() {
     // Define a custom data aggregator for skew handling.
     // Here, the aggregator gathers key frequency data used in shuffle data repartitioning.
     final BiFunction<Object, Map<Object, Long>, Map<Object, Long>> dynOptDataAggregator =
@@ -52,6 +49,4 @@ public class MessageAggregationVertex {
       new AggregateMetricTransform<Pair<Object, Long>, Map<Object, Long>>(new HashMap<>(), dynOptDataAggregator);
     return new OperatorVertex(abt);
   }
-
-
 }

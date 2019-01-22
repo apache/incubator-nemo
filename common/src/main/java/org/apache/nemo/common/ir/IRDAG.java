@@ -76,7 +76,7 @@ public class IRDAG {
    * (replaces the "Before" relationships)
    *
    * @param streamVertex to insert.
-   * @param edgeToStreamize for inserting.
+   * @param edgeToStreamize to modify.
    */
   public void insert(final StreamVertex streamVertex, final IREdge edgeToStreamize) {
     // Create a completely new DAG with the vertex inserted.
@@ -90,26 +90,29 @@ public class IRDAG {
       // None of the existing vertices are deleted.
       builder.addVertex(v);
 
-      if (edgeToStreamize.getDst().equals(v)
-        && dag.getIncomingEdgesOf(v).stream().anyMatch(e -> e.equals(edgeToStreamize))) {
-        // Edge to the streamVertex.
-        final IREdge edgeToStreamizeWithNewDestination = new IREdge(
-          edgeToStreamize.getPropertyValue(CommunicationPatternProperty.class).get(),
-          edgeToStreamize.getSrc(),
-          streamVertex);
-        edgeToStreamize.copyExecutionPropertiesTo(edgeToStreamizeWithNewDestination);
+      for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
+        if (edge.equals(edgeToStreamize)) {
+          // MATCH!
 
-        // Edge from the streamVertex.
-        final IREdge oneToOneEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, streamVertex, v);
-        oneToOneEdge.setProperty(EncoderProperty.of(edgeToStreamize.getPropertyValue(EncoderProperty.class).get()));
-        oneToOneEdge.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
+          // Edge to the streamVertex
+          final IREdge edgeToStreamizeWithNewDestination = new IREdge(
+            edgeToStreamize.getPropertyValue(CommunicationPatternProperty.class).get(),
+            edgeToStreamize.getSrc(),
+            streamVertex);
+          edgeToStreamize.copyExecutionPropertiesTo(edgeToStreamizeWithNewDestination);
 
-        // Track the new edges.
-        builder.connectVertices(edgeToStreamize);
-        builder.connectVertices(oneToOneEdge);
-      } else {
-        // Not the destination of the edgeToStreamize, so simply connect vertices as before.
-        dag.getIncomingEdgesOf(v).forEach(builder::connectVertices);
+          // Edge from the streamVertex.
+          final IREdge oneToOneEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, streamVertex, v);
+          oneToOneEdge.setProperty(EncoderProperty.of(edgeToStreamize.getPropertyValue(EncoderProperty.class).get()));
+          oneToOneEdge.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
+
+          // Track the new edges.
+          builder.connectVertices(edgeToStreamize);
+          builder.connectVertices(oneToOneEdge);
+        } else {
+          // NO MATCH, so simply connect vertices as before.
+          builder.connectVertices(edge);
+        }
       }
     });
 
@@ -121,47 +124,53 @@ public class IRDAG {
    * After: src > oneToOneEdge(a clone of edgeToGetStatisticsOf) > messageBarrierVertex
    * (the "Before" relationships are unmodified)
    *
-   * @param messageBarrierVertex
-   * @param edgeToGetStatisticsOf
+   * @param messageBarrierVertex to insert.
+   * @param edgeToGetStatisticsOf to clone and examine.
    */
   public void insert(final MessageBarrierVertex messageBarrierVertex, final IREdge edgeToGetStatisticsOf) {
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder builder = new DAGBuilder();
 
     // Insert the vertex.
-    builder.addVertex(streamVertex);
+    builder.addVertex(messageBarrierVertex);
 
     dag.topologicalDo(v -> {
       // None of the existing vertices are deleted.
       builder.addVertex(v);
 
-      if (edgeToGetStatisticsOf.getDst().equals(v)
-        && dag.getIncomingEdgesOf(v).stream().anyMatch(e -> e.equals(edgeToGetStatisticsOf))) {
-        final OperatorVertex abv = generateMetricAggregationVertex();
-        final OperatorVertex mcv = generateMetricCollectVertex(edge);
-        metricCollectVertices.add(mcv);
-        builder.addVertex(mcv);
-        builder.addVertex(abv);
+      for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
+        if (edge.equals(edgeToGetStatisticsOf)) {
+          // MATCH!
+          final OperatorVertex abv = generateMetricAggregationVertex();
+          builder.addVertex(messageBarrierVertex);
+          builder.addVertex(abv);
 
-        // We then insert the vertex with MetricCollectTransform and vertex with AggregateMetricTransform
-        // between the vertex and incoming vertices.
-        final IREdge edgeToMCV = generateEdgeToMCV(edge, mcv);
-        final IREdge edgeToABV = generateEdgeToABV(edge, mcv, abv);
-        final IREdge edgeToOriginalDstV =
-          new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
-        edge.copyExecutionPropertiesTo(edgeToOriginalDstV);
-        edgeToOriginalDstV.setPropertyPermanently(
-          MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
+          // Clone the edgeToGetStatisticsOf
+          final IREdge edgeToMCV = generateEdgeToMCV(edge, messageBarrierVertex);
+          builder.connectVertices(edgeToMCV);
 
-        builder.connectVertices(edgeToMCV);
-        builder.connectVertices(edgeToABV);
-        builder.connectVertices(edgeToOriginalDstV);
+          // messageBarrierVertex to the messageAggregationVertex
+          final IREdge edgeToABV = generateEdgeToABV(edge, messageBarrierVertex, abv);
+          builder.connectVertices(edgeToABV);
 
-        // Add an control dependency (no output)
-        final IREdge emptyEdge = new IREdge(CommunicationPatternProperty.Value.BroadCast, abv, v);
-        builder.connectVertices(emptyEdge);
-      } else {
-        dag.getIncomingEdgesOf(v).forEach(builder::connectVertices);
+          // Connection vertex
+          // Add an control dependency (no output)
+          final IREdge emptyEdge = new IREdge(CommunicationPatternProperty.Value.BroadCast, abv, v);
+          builder.connectVertices(emptyEdge);
+
+          // The original edge
+          // We then insert the vertex with MetricCollectTransform and vertex with AggregateMetricTransform
+          // between the vertex and incoming vertices.
+          final IREdge edgeToOriginalDstV =
+            new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
+          edge.copyExecutionPropertiesTo(edgeToOriginalDstV);
+          edgeToOriginalDstV.setPropertyPermanently(
+            MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
+          builder.connectVertices(edgeToOriginalDstV);
+        } else {
+          // NO MATCH, so simply connect vertices as before.
+          builder.connectVertices(edge);
+        }
       }
     });
   }
