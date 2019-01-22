@@ -80,24 +80,23 @@ public class SkewCompositePassTest {
   /**
    * Test for {@link SkewCompositePass} with MR workload.
    * It should have inserted vertex with {@link MessageBarrierTransform}
-   * and vertex with {@link MessageAggregateTransform}
-   * before each shuffle edge with no additional output tags.
+   * and vertex with {@link MessageAggregateTransform} for each shuffle edge.
    * @throws Exception exception on the way.
    */
   @Test
   public void testDataSkewPass() throws Exception {
     mrDAG = CompilerTestUtil.compileWordCountDAG();
     final Integer originalVerticesNum = mrDAG.getVertices().size();
-    final Long numOfShuffleEdgesWithOutAdditionalOutputTag =
+
+    final Long numOfShuffleEdges =
       mrDAG.getVertices().stream().filter(irVertex ->
         mrDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
           CommunicationPatternProperty.Value.Shuffle
-            .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get())
-            && !irEdge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent()))
+            .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get())))
       .count();
+
     final IRDAG processedDAG = new SkewCompositePass().optimize(mrDAG);
-    assertEquals(originalVerticesNum + numOfShuffleEdgesWithOutAdditionalOutputTag * 2,
-      processedDAG.getVertices().size());
+    assertEquals(originalVerticesNum + numOfShuffleEdges * 2, processedDAG.getVertices().size());
 
     processedDAG.filterVertices(v -> v instanceof OperatorVertex
       && ((OperatorVertex) v).getTransform() instanceof MessageBarrierTransform)
