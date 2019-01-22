@@ -279,7 +279,7 @@ public final class TaskExecutor {
         // query 7
         if (irVertex.getId().equals("vertex15")) {
           outputCollector = new SideInputLambdaCollector(
-            irVertex, SOFACTORY.sideInputProcessor(serializerManager,
+            internalMainOutputs, irVertex, SOFACTORY.sideInputProcessor(serializerManager,
             outgoingEdges.get(0).getId()));
         } else if (irVertex.getId().equals("vertex6")) {
           outputCollector =

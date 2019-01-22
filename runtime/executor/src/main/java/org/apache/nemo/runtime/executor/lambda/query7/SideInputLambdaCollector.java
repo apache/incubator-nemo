@@ -24,13 +24,16 @@ import org.apache.beam.sdk.util.WindowedValue;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 
+import org.apache.nemo.runtime.executor.datatransfer.NextIntraTaskOperatorInfo;
 import org.apache.nemo.runtime.executor.lambda.SideInputProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -44,21 +47,35 @@ public final class SideInputLambdaCollector<O> implements OutputCollector<O> {
 
   private final SideInputProcessor sideInputProcessor;
   private final ExecutorService executorService = Executors.newCachedThreadPool();
-
+  private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
   /**
    * Constructor of the output collector.
    * @param irVertex the ir vertex that emits the output
    */
   public SideInputLambdaCollector(
+    final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final IRVertex irVertex,
     final SideInputProcessor<O> sideInputProcessor) {
     this.irVertex = irVertex;
     this.sideInputProcessor = sideInputProcessor;
+    this.internalMainOutputs = internalMainOutputs;
+  }
+
+
+  private void emit(final OperatorVertex vertex, final O output) {
+
+    final String vertexId = irVertex.getId();
+    vertex.getTransform().onData(output);
   }
 
   @Override
   public void emit(final O output) {
-        // CreateViewTransform (side input)
+    // emit internal
+    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      emit(internalVertex.getNextOperator(), output);
+    }
+
+    // CreateViewTransform (side input)
     // send to serverless
     final WindowedValue wv = ((WindowedValue) output);
     final BoundedWindow window = (BoundedWindow) wv.getWindows().iterator().next();
