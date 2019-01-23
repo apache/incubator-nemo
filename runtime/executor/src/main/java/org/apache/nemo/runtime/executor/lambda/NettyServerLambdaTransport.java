@@ -69,7 +69,7 @@ public final class NettyServerLambdaTransport {
 
 
     warmer.scheduleAtFixedRate(() -> {
-        channelPool.clear();
+        //channelPool.clear();
 
         nemoEventHandler.getPendingRequest().addAndGet(poolSize);
 
@@ -87,8 +87,8 @@ public final class NettyServerLambdaTransport {
         // take
         for (int i = 0; i < poolSize; i++) {
           try {
-            final Channel channel = nemoEventHandler.getHandshakeQueue().take().left();
-            channelPool.add(nemoEventHandler.getHandshakeQueue().take().left());
+            //channelPool.add(nemoEventHandler.getHandshakeQueue().take().left());
+            nemoEventHandler.getHandshakeQueue().take().left();
           } catch (InterruptedException e) {
             e.printStackTrace();
           }
@@ -96,10 +96,23 @@ public final class NettyServerLambdaTransport {
 
         LOG.info("Warmup end");
 
+        while (nemoEventHandler.getPendingRequest().getAndDecrement() > 0) {
+          try {
+            final Channel channel = nemoEventHandler.getReadyQueue().take().left();
+            channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+
+        nemoEventHandler.getPendingRequest().getAndIncrement();
+
         // send end event
+      /*
         channelPool.forEach(channel -> {
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
         });
+        */
 
     }, 0, warmupPeriod, TimeUnit.SECONDS);
   }
