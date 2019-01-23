@@ -45,8 +45,6 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   private final Map<V, LoopVertex> assignedLoopVertexMap;
   private final Map<V, Integer> loopStackDepthMap;
 
-  private String dagDirectory;
-
   /**
    * Constructor of DAGBuilder: it initializes everything.
    */
@@ -333,10 +331,16 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     return new DAG<>(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
   }
 
+  /**
+   * Generates a user-friendly exception message.
+   * @param reason of the exception.
+   * @param problematicObjects that caused the exception.
+   * @return exception object.
+   */
   private CompileTimeOptimizationException getException(final String reason, final String problematicObjects) {
     final DAG erroredDAG = new DAG<>(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
     erroredDAG.storeJSON("debug", "errored_ir", "Errored IR");
-    return new CompileTimeOptimizationException(
-      reason + " /// Problematic objects are: " + problematicObjects + " /// see the debug directory for the errored_ir");
+    return new CompileTimeOptimizationException(reason + " /// Problematic objects are: "
+      + problematicObjects + " /// see the debug directory for the errored_ir");
   }
 }

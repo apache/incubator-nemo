@@ -24,6 +24,12 @@ import org.apache.nemo.common.ir.vertex.transform.MessageAggregateTransform;
 
 import java.util.function.BiFunction;
 
+/**
+ * Aggregates upstream messages.
+ * @param <K> of the input pair.
+ * @param <V> of the input pair.
+ * @param <O> of the output aggregated message.
+ */
 public class MessageAggregationVertex<K, V, O> extends OperatorVertex {
   /**
    * @param initialState to use.

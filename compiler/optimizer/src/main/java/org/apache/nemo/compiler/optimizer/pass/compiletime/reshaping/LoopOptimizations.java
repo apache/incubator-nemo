@@ -127,7 +127,8 @@ public final class LoopOptimizations {
         loopVertices.forEach(loopVertex -> {
           final IntPredicate terminationCondition = loopVertex.getTerminationCondition();
           final Integer numberOfIterations = loopVertex.getMaxNumberOfIterations();
-          // We want loopVertices that are not dependent on each other or the list that is potentially going to be merged.
+          // We want loopVertices that are not dependent on each other
+          // or the list that is potentially going to be merged.
           final List<LoopVertex> independentLoops = loopVertices.stream().filter(loop ->
             setOfLoopsToBeFused.stream().anyMatch(list -> list.contains(loop))
               ? setOfLoopsToBeFused.stream().filter(list -> list.contains(loop))

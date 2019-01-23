@@ -66,7 +66,8 @@ public final class DefaultScheduleGroupPassTest {
 
     for (final IRVertex irVertex : processedDAG.getTopologicalSort()) {
       final Integer currentScheduleGroup = irVertex.getPropertyValue(ScheduleGroupProperty.class).get();
-      final Integer largestScheduleGroupOfParent = processedDAG.getParents(irVertex.getId()).stream()
+      final Integer largestScheduleGroupOfParent =
+        processedDAG.getCurrentDAGSnapshot().getParents(irVertex.getId()).stream()
           .mapToInt(v -> v.getPropertyValue(ScheduleGroupProperty.class).get())
           .max().orElse(0);
       assertTrue(currentScheduleGroup >= largestScheduleGroupOfParent);

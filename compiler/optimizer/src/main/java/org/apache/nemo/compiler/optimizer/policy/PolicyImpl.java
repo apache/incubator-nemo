@@ -85,7 +85,7 @@ public final class PolicyImpl implements Policy {
             + "Modify it or use a general CompileTimePass");
         }
         // Save the processed JSON DAG.
-        dag.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
+        dag.getCurrentDAGSnapshot().storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
           "DAG after optimization");
       } else {
         LOG.info("Condition unmet for applying {} to the DAG", passToApply.getClass().getSimpleName());

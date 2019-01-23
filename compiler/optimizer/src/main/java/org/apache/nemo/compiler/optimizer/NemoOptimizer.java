@@ -80,7 +80,7 @@ public final class NemoOptimizer implements Optimizer {
   @Override
   public IRDAG optimizeDag(final IRDAG dag) {
     final String irDagId = "ir-" + irDagCount++ + "-";
-    dag.storeJSON(dagDirectory, irDagId, "IR before optimization");
+    dag.getCurrentDAGSnapshot().storeJSON(dagDirectory, irDagId, "IR before optimization");
 
     final IRDAG optimizedDAG;
     final Policy optimizationPolicy;
@@ -90,7 +90,7 @@ public final class NemoOptimizer implements Optimizer {
       // Handle caching first.
       final IRDAG cacheFilteredDag = handleCaching(dag, cacheIdToEdge);
       if (!cacheIdToEdge.isEmpty()) {
-        cacheFilteredDag.storeJSON(dagDirectory, irDagId + "FilterCache",
+        cacheFilteredDag.getCurrentDAGSnapshot().storeJSON(dagDirectory, irDagId + "FilterCache",
           "IR after cache filtering");
       }
 
@@ -102,7 +102,8 @@ public final class NemoOptimizer implements Optimizer {
       }
 
       optimizedDAG = optimizationPolicy.runCompileTimeOptimization(cacheFilteredDag, dagDirectory);
-      optimizedDAG.storeJSON(dagDirectory, irDagId + optimizationPolicy.getClass().getSimpleName(),
+      optimizedDAG.getCurrentDAGSnapshot()
+        .storeJSON(dagDirectory, irDagId + optimizationPolicy.getClass().getSimpleName(),
         "IR optimized for " + optimizationPolicy.getClass().getSimpleName());
     } catch (final Exception e) {
       throw new CompileTimeOptimizationException(e);
@@ -121,7 +122,8 @@ public final class NemoOptimizer implements Optimizer {
     cacheIdToEdge.forEach((cacheId, edge) -> {
       if (!cacheIdToParallelism.containsKey(cacheId)) {
         cacheIdToParallelism.put(
-          cacheId, optimizedDAG.getVertexById(edge.getDst().getId()).getPropertyValue(ParallelismProperty.class)
+          cacheId, optimizedDAG.getCurrentDAGSnapshot()
+            .getVertexById(edge.getDst().getId()).getPropertyValue(ParallelismProperty.class)
             .orElseThrow(() -> new RuntimeException("No parallelism on an IR vertex.")));
       }
     });

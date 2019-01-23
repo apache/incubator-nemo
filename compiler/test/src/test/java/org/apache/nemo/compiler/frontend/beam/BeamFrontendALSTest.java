@@ -47,12 +47,12 @@ public final class BeamFrontendALSTest {
 //    producedDAG.getTopologicalSort().forEach(v -> System.out.println(v.getId()));
     final IRVertex vertexX = producedDAG.getTopologicalSort().get(5);
     assertEquals(1, producedDAG.getIncomingEdgesOf(vertexX).size());
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertexX.getId()).size());
+    assertEquals(1, producedDAG.getCurrentDAGSnapshot().getIncomingEdgesOf(vertexX.getId()).size());
     assertEquals(1, producedDAG.getOutgoingEdgesOf(vertexX).size());
 
     final IRVertex vertexY = producedDAG.getTopologicalSort().get(10);
     assertEquals(1, producedDAG.getIncomingEdgesOf(vertexY).size());
-    assertEquals(1, producedDAG.getIncomingEdgesOf(vertexY.getId()).size());
+    assertEquals(1, producedDAG.getCurrentDAGSnapshot().getIncomingEdgesOf(vertexY.getId()).size());
     assertEquals(1, producedDAG.getOutgoingEdgesOf(vertexY).size());
   }
 }

@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.common.plan;
 
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;

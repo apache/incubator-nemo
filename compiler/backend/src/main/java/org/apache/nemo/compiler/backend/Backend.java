@@ -19,9 +19,6 @@
 package org.apache.nemo.compiler.backend;
 
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.compiler.backend.nemo.NemoBackend;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 

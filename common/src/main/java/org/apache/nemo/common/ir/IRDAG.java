@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 /**
  * An IRDAG object captures a high-level data processing application (e.g., Spark/Beam application).
@@ -53,70 +52,66 @@ public final class IRDAG {
 
   private DAG<IRVertex, IREdge> dag; // internal DAG, can be updated by reshaping methods.
 
+  /**
+   * @param dag underlying DAG.
+   */
   public IRDAG(final DAG<IRVertex, IREdge> dag) {
     this.dag = dag;
     this.metricCollectionId = new AtomicInteger(0);
   }
 
-  ////////////////////////////////////////////////// Read-only traversal methods.
+  ////////////////////////////////////////////////// Methods for querying the DAG topology.
 
+  /**
+   * Visits the current DAG snapshot in a topologically sorted order.
+   * @param function that visits each vertex.
+   */
   public void topologicalDo(final Consumer<IRVertex> function) {
     dag.topologicalDo(function);
   }
 
+  /**
+   * Get vertices of the current DAG snapshot.
+   * @return vertices.
+   */
   public List<IRVertex> getVertices() {
     return dag.getVertices();
   }
 
-  public List<IREdge> getIncomingEdgesOf(final String vertexId) {
-    return dag.getIncomingEdgesOf(vertexId);
-  }
-
+  /**
+   * Get incoming edges in the current DAG snapshot.
+   * @param v to query.
+   * @return incoming edges.
+   */
   public List<IREdge> getIncomingEdgesOf(final IRVertex v) {
     return dag.getIncomingEdgesOf(v);
   }
 
+  /**
+   * Get outgoing edges in the current DAG snapshot.
+   * @param v to query.
+   * @return outgoing edges.
+   */
   public List<IREdge> getOutgoingEdgesOf(final IRVertex v) {
     return dag.getOutgoingEdgesOf(v);
   }
 
-  public List<IREdge> getOutgoingEdgesOf(final String vertexId) {
-    return dag.getOutgoingEdgesOf(vertexId);
-  }
-
-  public void storeJSON(final String directory, final String name, final String description) {
-    dag.storeJSON(directory, name, description);
-  }
-
+  /**
+   * Get vertices in the current DAG snapshot. (sorted)
+   * @return vertices in a topologically sorted order.
+   */
   public List<IRVertex> getTopologicalSort() {
     return dag.getTopologicalSort();
   }
 
-  public List<IRVertex> getDescendants(final String vertexId) {
-    return dag.getDescendants(vertexId);
-  }
-
-  public IRVertex getVertexById(final String id) {
-    return dag.getVertexById(id);
-  }
-
-  public List<IRVertex> filterVertices(final Predicate<IRVertex> condition) {
-    return dag.filterVertices(condition);
-  }
-
-  public List<IRVertex> getParents(final String vertexId) {
-    return dag.getParents(vertexId);
-  }
-
-  public List<IRVertex> getChildren(final String vertexId) {
-    return dag.getChildren(vertexId);
-  }
-
-  public DAG<IRVertex, IREdge> getUnderlyingDAG() {
+  /**
+   * @return the current underlying DAG for direct access.
+   */
+  public DAG<IRVertex, IREdge> getCurrentDAGSnapshot() {
     return dag;
   }
 
-  ////////////////////////////////////////////////// Reshaping methods.
+  ////////////////////////////////////////////////// Methods for reshaping the DAG topology.
 
   /**
    * Inserts a new vertex that streams data.
@@ -178,7 +173,9 @@ public final class IRDAG {
    *
    * @param messageBarrierVertex to insert.
    * @param messageAggregationVertex to insert.
-   * @param edgeToGetStatisticsOf to clone and examine.
+   * @param mbvOutputEncoder to use.
+   * @param mbvOutputDecoder to use.
+   * @param edgeToGetStatisticsOf to examine.
    */
   public void insert(final MessageBarrierVertex messageBarrierVertex,
                      final MessageAggregationVertex messageAggregationVertex,
@@ -243,14 +240,26 @@ public final class IRDAG {
     dag = builder.build(); // update the DAG.
   }
 
-  ////////////////////////////////////////////////// "Un-safe" direct reshaping (semantic-preserving is not guaranteed).
+  ////////////////////////////////////////////////// "Unsafe" direct reshaping (semantic-preserving is not guaranteed).
 
+  /**
+   * "Unsafe" direct reshaping (semantic-preserving is not guaranteed).
+   * @param unsafeReshaping a function that directly reshapes the underlying DAG.
+   */
   public void unSafeDirectReshaping(final Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> unsafeReshaping) {
     this.dag = unsafeReshaping.apply(dag);
   }
 
   ////////////////////////////////////////////////// Private helper methods.
 
+  /**
+   * @param mbv src.
+   * @param mav dst.
+   * @param encoder src-dst encoder.
+   * @param decoder src-dst decoder.
+   * @param currentMetricCollectionId of the edge.
+   * @return the edge.
+   */
   private IREdge edgeBetweenMessageVertices(final MessageBarrierVertex mbv,
                                             final MessageAggregationVertex mav,
                                             final EncoderProperty encoder,

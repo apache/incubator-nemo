@@ -62,10 +62,10 @@ public class LoopFusionPassTest {
     groupedDAG = new LoopExtractionPass().optimize(originalALSDAG);
 
     groupedDAG.topologicalDo(v -> {
-      dagToBeFusedBuilder.addVertex(v, groupedDAG.getUnderlyingDAG());
+      dagToBeFusedBuilder.addVertex(v, groupedDAG.getCurrentDAGSnapshot());
       groupedDAG.getIncomingEdgesOf(v).forEach(dagToBeFusedBuilder::connectVertices);
 
-      dagNotToBeFusedBuilder.addVertex(v, groupedDAG.getUnderlyingDAG());
+      dagNotToBeFusedBuilder.addVertex(v, groupedDAG.getCurrentDAGSnapshot());
       groupedDAG.getIncomingEdgesOf(v).forEach(dagNotToBeFusedBuilder::connectVertices);
     });
     final Optional<LoopVertex> loopInDAG = groupedDAG.getTopologicalSort().stream()

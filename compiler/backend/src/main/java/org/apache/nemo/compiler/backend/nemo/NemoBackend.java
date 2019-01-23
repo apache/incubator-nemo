@@ -21,8 +21,6 @@ package org.apache.nemo.compiler.backend.nemo;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.backend.Backend;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.PhysicalPlanGenerator;

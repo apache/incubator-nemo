@@ -39,7 +39,7 @@ public final class UpfrontCloningPass extends AnnotatingPass {
   @Override
   public IRDAG optimize(final IRDAG dag) {
     dag.getVertices().stream()
-        .filter(vertex -> dag.getIncomingEdgesOf(vertex.getId())
+        .filter(vertex -> dag.getCurrentDAGSnapshot().getIncomingEdgesOf(vertex.getId())
           .stream()
           // TODO #198: Handle Un-cloneable Beam Sink Operators
           // only shuffle receivers (for now... as particular Beam sink operators fail when cloned)

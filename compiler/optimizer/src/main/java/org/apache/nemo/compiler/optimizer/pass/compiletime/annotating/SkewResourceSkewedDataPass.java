@@ -49,7 +49,7 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
         .forEach(skewEdge -> {
           final IRVertex dstV = skewEdge.getDst();
           dstV.setProperty(ResourceSkewedDataProperty.of(true));
-          dag.getDescendants(dstV.getId()).forEach(descendentV -> {
+          dag.getCurrentDAGSnapshot().getDescendants(dstV.getId()).forEach(descendentV -> {
             descendentV.getExecutionProperties().put(ResourceSkewedDataProperty.of(true));
           });
         })
