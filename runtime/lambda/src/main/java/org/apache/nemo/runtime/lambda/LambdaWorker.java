@@ -68,6 +68,7 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
 
   private final ConcurrentMap<Channel, EventHandler<NemoEvent>> map;
 
+  private List<String> serializedVertices;
   private List<OperatorVertex> vertices;
 
   // current states of lambda
@@ -167,6 +168,19 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
 
 		if (status.equals(LambdaStatus.INIT)) {
 		  initialize(input, result);
+    }
+
+    if (serializedVertices == null && input.get("vertices") != null) {
+		  System.out.println("Serialize vertices");
+		  serializedVertices = (List<String>) input.get("vertices");
+      vertices = buildOperatorChain(serializedVertices, classLoader);
+      headVertex = vertices.get(0);
+
+      // connect vertices
+      for (int i = 0; i < vertices.size() - 1; i++) {
+        vertices.get(i).getTransform().prepare(
+          new LambdaRuntimeContext(vertices.get(i)), new ChainOutputHandler(vertices.get(i+1)));
+      }
     }
 
     final OutputCollector outputCollector = new LambdaOutputHandler(result);

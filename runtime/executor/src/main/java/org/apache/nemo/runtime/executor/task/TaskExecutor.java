@@ -184,21 +184,13 @@ public final class TaskExecutor {
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
 
-    /*
-    reverseTopologicallySorted.forEach(irVertex ->{
-      if (irVertex.getId().equals("vertex14")) {
-        final File f = new File(irVertex.getId() + "-serialized.txt");
-        try {
-          final FileWriter writer = new FileWriter(f);
-          writer.write(serializeToString(irVertex));
-          writer.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }
-    });
-    */
+    // query 7
+    final List<String> serializedVertices =
+      reverseTopologicallySorted.stream()
+        .filter(irVertex -> irVertex.getId().equals("vertex14"))
+        .map(irVertex ->  serializeToString(irVertex))
+        .collect(Collectors.toList());
+    SOFACTORY.setSerializedVertices(serializedVertices);
 
     // Build a map for edge as a key and edge index as a value
     // This variable is used for creating NextIntraTaskOperatorInfo
