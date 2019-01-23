@@ -36,7 +36,7 @@ public final class NettyServerLambdaTransport {
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = NettyServerLambdaTransport.class.getName();
   private static final String ADDRESS = "172.31.6.35";
-  private static final String PUBLIC_ADDRESS = "52.199.125.79";
+  private static final String PUBLIC_ADDRESS = "54.250.186.105";
   private static final int PORT = 20332;
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
