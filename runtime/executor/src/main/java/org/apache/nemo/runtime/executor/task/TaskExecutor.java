@@ -190,6 +190,7 @@ public final class TaskExecutor {
         .filter(irVertex -> irVertex.getId().equals("vertex14"))
         .map(irVertex ->  serializeToString(irVertex))
         .collect(Collectors.toList());
+
     SOFACTORY.setSerializedVertices(serializedVertices);
 
     // Build a map for edge as a key and edge index as a value
