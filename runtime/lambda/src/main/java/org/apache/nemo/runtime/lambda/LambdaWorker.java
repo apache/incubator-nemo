@@ -159,9 +159,10 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
       }
     }
 
+    final CountDownLatch waitWarmup = new CountDownLatch(1);
     if (opendChannel == null) {
       opendChannel = channelOpen(input);
-      map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
+      map.put(opendChannel, new LambdaEventHandler(opendChannel, result, waitWarmup));
     }
 
     System.out.println("Open channel: " + opendChannel);
@@ -175,6 +176,14 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
       status = LambdaStatus.READY;
       LOG.info("Create class loader: {}", classLoader);
     }
+
+    // waiting warmup signal
+    try {
+      waitWarmup.await();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
 
     // ready state
     opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.READY, new byte[0], 0));
@@ -222,11 +231,14 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
     private final BlockingQueue<Integer> endBlockingQueue = new LinkedBlockingQueue<>();
     private final Channel opendChannel;
     private final List<String> result;
+    private final CountDownLatch waitWarmup;
 
     public LambdaEventHandler(final Channel opendChannel,
-                              final List<String> result) {
+                              final List<String> result,
+                              final CountDownLatch waitWarmup) {
       this.opendChannel = opendChannel;
       this.result = result;
+      this.waitWarmup = waitWarmup;
     }
 
     @Override
@@ -393,6 +405,7 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
           break;
         case WARMUP_END:
           System.out.println("Warmup end");
+          waitWarmup.countDown();
           endBlockingQueue.add(1);
           break;
       }
