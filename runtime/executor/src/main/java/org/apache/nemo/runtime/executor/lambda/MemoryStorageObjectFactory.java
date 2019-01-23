@@ -159,6 +159,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
     public Object processSideAndMainInput(Object output, String sideInputKey) {
       // Invoke lambdas
 
+
       final long startTime = System.currentTimeMillis();
 
       final ConcurrentLinkedQueue<MemoryStorageObject> queue = prefixAndObjectMap.get(sideInputKey);
@@ -246,7 +247,8 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
       }).collect(Collectors.toList());
       */
 
-      LOG.info("Receive all results: {}", System.currentTimeMillis() - startTime);
+      LOG.info("Latency {} of {}", System.currentTimeMillis() - startTime, sideInputKey);
+      System.out.println("Latency " + (System.currentTimeMillis() - startTime) + " of " + sideInputKey);
       prefixAndObjectMap.remove(sideInputKey);
       prefixAndSizeMap.remove(sideInputKey);
 
