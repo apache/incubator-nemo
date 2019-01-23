@@ -252,6 +252,7 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
         case VERTICES: {
           // load vertices
           final byte[] bytes = nemoEvent.getBytes();
+          System.out.println("Serialized vertices size: " + bytes.length);
           ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
           List<String> serializedV;
           try {
