@@ -123,8 +123,7 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
     return vertices;
   }
 
-
-  private void initialize(final Map<String, Object> input, final List<String> result) {
+  private Channel channelOpen(final Map<String, Object> input) {
     // 1) connect to the VM worker
     final String address = (String) input.get("address");
     final Integer port = (Integer) input.get("port");
@@ -139,26 +138,7 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
       throw new RuntimeException(sb.toString());
     }
     final Channel opendChannel = channelFuture.channel();
-
-
-    // load class loader
-    createClassLoader();
-    map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
-
-    final List<String> serializedVertices = Arrays.asList(
-      SerializedQueries.QUERY7);
-
-    vertices = buildOperatorChain(serializedVertices, classLoader);
-    headVertex = vertices.get(0);
-
-    // connect vertices
-    for (int i = 0; i < vertices.size() - 1; i++) {
-      vertices.get(i).getTransform().prepare(
-        new LambdaRuntimeContext(vertices.get(i)), new ChainOutputHandler(vertices.get(i+1)));
-    }
-
-    status = LambdaStatus.READY;
-    LOG.info("Create class loader: {}", classLoader);
+    return opendChannel;
   }
 
 	@Override
@@ -166,29 +146,7 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
 		System.out.println("Input: " + input);
     final List<String> result = new ArrayList<>();
 
-		if (status.equals(LambdaStatus.INIT)) {
-		  initialize(input, result);
-    }
-
-    if (serializedVertices == null && input.get("vertices") != null) {
-		  System.out.println("Serialize vertices");
-		  serializedVertices = (List<String>) input.get("vertices");
-      vertices = buildOperatorChain(serializedVertices, classLoader);
-      headVertex = vertices.get(0);
-
-      // connect vertices
-      for (int i = 0; i < vertices.size() - 1; i++) {
-        vertices.get(i).getTransform().prepare(
-          new LambdaRuntimeContext(vertices.get(i)), new ChainOutputHandler(vertices.get(i+1)));
-      }
-    }
-
-    final OutputCollector outputCollector = new LambdaOutputHandler(result);
-
-    final OperatorVertex finalVertex = vertices.get(vertices.size()-1);
-      finalVertex.getTransform().prepare(new LambdaRuntimeContext(finalVertex), outputCollector);
-
-    boolean channelOpen = false;
+    // open channel
     Channel opendChannel = null;
     for (final Map.Entry<Channel, EventHandler<NemoEvent>> entry : map.entrySet()) {
       final Channel channel = entry.getKey();
@@ -201,12 +159,22 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
       }
     }
 
-    System.out.println("Open channel: " + opendChannel);
+    if (opendChannel == null) {
+      opendChannel = channelOpen(input);
+      map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
+    }
 
-    // client handshake
+    System.out.println("Open channel: " + opendChannel);
+    // write handshake
+    System.out.println("Write handshake");
     opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.CLIENT_HANDSHAKE, new byte[0], 0));
 
-    System.out.println("Write handshake");
+    // load class loader
+		if (status.equals(LambdaStatus.INIT)) {
+      createClassLoader();
+      status = LambdaStatus.READY;
+      LOG.info("Create class loader: {}", classLoader);
+    }
 
     final LambdaEventHandler handler = (LambdaEventHandler) map.get(opendChannel);
     try {
@@ -281,6 +249,41 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
           break;
         }
         */
+        case VERTICES: {
+          // load vertices
+          final byte[] bytes = nemoEvent.getBytes();
+          ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+          List<String> serializedV;
+          try {
+            ObjectInputStream ois = new ObjectInputStream(bis);
+            serializedV = (List<String>) ois.readObject();
+          } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+
+          if (serializedVertices == null && !serializedVertices.equals(serializedV)) {
+            System.out.println("Serialize vertices");
+            serializedVertices = serializedV;
+            vertices = buildOperatorChain(serializedVertices, classLoader);
+            headVertex = vertices.get(0);
+
+            // connect vertices
+            for (int i = 0; i < vertices.size() - 1; i++) {
+              vertices.get(i).getTransform().prepare(
+                new LambdaRuntimeContext(vertices.get(i)), new ChainOutputHandler(vertices.get(i+1)));
+            }
+          }
+
+          final OutputCollector outputCollector = new LambdaOutputHandler(result);
+
+          final OperatorVertex finalVertex = vertices.get(vertices.size() - 1);
+          finalVertex.getTransform().prepare(new LambdaRuntimeContext(finalVertex), outputCollector);
+          break;
+        }
         case SIDE: { // query 7
           // receive side input
           System.out.println("Receive side");
