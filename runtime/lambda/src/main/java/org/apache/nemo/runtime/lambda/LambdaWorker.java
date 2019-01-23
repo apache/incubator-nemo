@@ -265,7 +265,7 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
             throw new RuntimeException(e);
           }
 
-          if (serializedVertices == null && !serializedVertices.equals(serializedV)) {
+          if (serializedVertices == null || !serializedVertices.equals(serializedV)) {
             System.out.println("Serialize vertices");
             serializedVertices = serializedV;
             vertices = buildOperatorChain(serializedVertices, classLoader);
