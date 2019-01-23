@@ -19,21 +19,12 @@
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.eventhandler.RuntimeEventHandler;
 
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.HashRange;
-import org.apache.nemo.runtime.common.eventhandler.DynamicOptimizationEventHandler;
-import org.apache.nemo.runtime.common.partitioner.DataSkewHashPartitioner;
-import org.apache.nemo.runtime.common.partitioner.Partitioner;
-import org.apache.nemo.runtime.common.plan.PhysicalPlan;
-import org.apache.nemo.runtime.common.plan.Stage;
-import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +37,7 @@ import java.util.stream.Collectors;
  * this RuntimePass identifies a number of keys with big partition sizes(skewed key)
  * and evenly redistributes data via overwriting incoming edges of destination tasks.
  */
-public final class SkewRunTimePass extends RunTimePass<Pair<Set<StageEdge>, Map<Object, Long>>> {
+public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
   private static final Logger LOG = LoggerFactory.getLogger(SkewRunTimePass.class.getName());
   private static final int DEFAULT_NUM_SKEWED_KEYS = 1;
   /*
@@ -83,23 +74,9 @@ public final class SkewRunTimePass extends RunTimePass<Pair<Set<StageEdge>, Map<
 
   @Override
   public IRDAG optimize(final IRDAG irdag,
-                        final Pair<Set<StageEdge>, Map<Object, Long>> metricData) {
-
-
+                        final Message<Map<Object, Long>> metricData) {
     // Validates target edges...
-
-    final Set<StageEdge> targetEdges = metricData.left();
-    // Get number of evaluators of the next stage (number of blocks).
-    final StageEdge firstEdge = targetEdges.stream().findFirst()
-      .orElseThrow(() -> new RuntimeException("Empty target edge set!"));
-    final Integer dstParallelism =  firstEdge
-      .getDst().getPropertyValue(ParallelismProperty.class)
-      .orElseThrow(() -> new RuntimeException("No parallelism on a vertex"));
-    if (!PartitionerProperty.Value.DataSkewHashPartitioner
-      .equals(firstEdge.getPropertyValue(PartitionerProperty.class)
-        .orElseThrow(() -> new RuntimeException("No partitioner property!")))) {
-      throw new RuntimeException("Invalid partitioner is assigned to the target edge!");
-    }
+    final StageEdge stageEdge = irdag.getIncomingEdgesOf(metricData.getProducer());
 
 
     final DataSkewHashPartitioner partitioner = (DataSkewHashPartitioner) Partitioner.getPartitioner(firstEdge);

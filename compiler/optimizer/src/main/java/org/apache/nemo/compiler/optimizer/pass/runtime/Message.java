@@ -18,18 +18,28 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
-import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.pass.Pass;
+import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 
 /**
- * Abstract class for dynamic optimization passes, for dynamically optimizing the IRDAG.
- * @param <T> type of the message used for dynamic optimization.
+ * @param <T> type of the message value.
  */
-public abstract class RunTimePass<T> extends Pass {
-  /**
-   * @param irdag to optimize.
-   * @param message dynamically generated during the execution.
-   * @return optimized DAG.
-   */
-  public abstract IRDAG optimize(final IRDAG irdag, final Message<T> message);
+public class Message<T> {
+  private final T value;
+  private final MessageBarrierVertex producer;
+
+  public Message(final T value, final MessageBarrierVertex producer) {
+    if (value == null || producer == null) {
+      throw new IllegalArgumentException();
+    }
+    this.value = value;
+    this.producer = producer;
+  }
+
+  public T getMessageValue() {
+    return value;
+  }
+
+  public MessageBarrierVertex getProducer() {
+    return producer;
+  }
 }
