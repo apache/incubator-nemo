@@ -191,6 +191,7 @@ public final class TaskExecutor {
         .map(irVertex ->  serializeToString(irVertex))
         .collect(Collectors.toList());
 
+    LOG.info("Serialized vertices: {}, reveresed: {}", serializedVertices, reverseTopologicallySorted);
     SOFACTORY.setSerializedVertices(serializedVertices);
 
     // Build a map for edge as a key and edge index as a value
