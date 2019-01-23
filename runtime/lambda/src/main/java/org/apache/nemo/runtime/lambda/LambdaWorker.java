@@ -393,7 +393,6 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
           break;
         case WARMUP_END:
           System.out.println("Warmup end");
-          waitWarmup.countDown();
           endBlockingQueue.add(1);
           break;
       }
