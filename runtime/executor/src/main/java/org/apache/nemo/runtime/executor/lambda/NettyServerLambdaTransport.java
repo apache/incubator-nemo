@@ -52,7 +52,7 @@ public final class NettyServerLambdaTransport {
 
   private final ScheduledExecutorService warmer = Executors.newSingleThreadScheduledExecutor();
 
-  private final int poolSize = 200;
+  private final int poolSize = 5;
   private final int warmupPeriod = 90; // sec
 
   private final AtomicBoolean initialized = new AtomicBoolean(false);
@@ -60,7 +60,9 @@ public final class NettyServerLambdaTransport {
   private final List<Channel> channelPool;
 
   private NettyServerLambdaTransport() {
+    LOG.info("Netty server lambda transport created");
     lazyInit();
+    LOG.info("Netty server lambda transport created end");
     initialized.set(true);
     this.channelPool = new ArrayList<>(poolSize);
 
