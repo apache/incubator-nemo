@@ -160,13 +160,18 @@ public final class NettyServerLambdaTransport {
     }
     */
 
+    System.out.println("Serialized vertices: " + serializedVertices.size());
+
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutputStream oos = null;
     try {
       oos = new ObjectOutputStream(bos);
       oos.writeObject(serializedVertices);
+      oos.close();
+      bos.close();
     } catch (IOException e) {
       e.printStackTrace();
+      throw new RuntimeException(e);
     }
 
     byte[] serializedVerticesBytes = bos.toByteArray();
