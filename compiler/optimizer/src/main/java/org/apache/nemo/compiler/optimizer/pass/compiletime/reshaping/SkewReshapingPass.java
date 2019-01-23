@@ -26,6 +26,9 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.system.MessageAggregationVertex;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.Annotates;
 import org.slf4j.Logger;
@@ -55,7 +58,7 @@ public final class SkewReshapingPass extends ReshapingPass {
   @Override
   public IRDAG optimize(final IRDAG dag) {
     dag.topologicalDo(v -> {
-      // We care about OperatorVertices that have shuffle incoming edges with main output.
+      // We care about OperatorVertices that have shuffle incoming edges
       // TODO #210: Data-aware dynamic optimization at run-time
       for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
         if (CommunicationPatternProperty.Value.Shuffle

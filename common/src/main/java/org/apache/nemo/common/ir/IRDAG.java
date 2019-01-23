@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -48,11 +49,13 @@ import java.util.function.Predicate;
  */
 public final class IRDAG {
   private static final Logger LOG = LoggerFactory.getLogger(IRDAG.class.getName());
+  private final AtomicInteger metricCollectionId;
 
   private DAG<IRVertex, IREdge> dag; // internal DAG, can be updated by reshaping methods.
 
   public IRDAG(final DAG<IRVertex, IREdge> dag) {
     this.dag = dag;
+    this.metricCollectionId = new AtomicInteger(0);
   }
 
   ////////////////////////////////////////////////// Read-only traversal methods.
@@ -188,6 +191,9 @@ public final class IRDAG {
     // Insert the vertex.
     builder.addVertex(messageBarrierVertex);
 
+    // Current metric collection id.
+    final int currentMetricCollectionId = metricCollectionId.incrementAndGet();
+
     dag.topologicalDo(v -> {
       // None of the existing vertices are deleted.
       builder.addVertex(v);
@@ -209,8 +215,8 @@ public final class IRDAG {
           builder.connectVertices(clone);
 
           // messageBarrierVertex to the messageAggregationVertex
-          final IREdge edgeToABV = edgeBetweenMessageVertices(
-            messageBarrierVertex, messageAggregationVertex, mbvOutputEncoder, mbvOutputDecoder);
+          final IREdge edgeToABV = edgeBetweenMessageVertices(messageBarrierVertex,
+            messageAggregationVertex, mbvOutputEncoder, mbvOutputDecoder, currentMetricCollectionId);
           builder.connectVertices(edgeToABV);
 
           // Connection vertex
@@ -225,8 +231,7 @@ public final class IRDAG {
           final IREdge edgeToOriginalDst =
             new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
           edge.copyExecutionPropertiesTo(edgeToOriginalDst);
-          edgeToOriginalDst.setPropertyPermanently(
-            MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
+          edgeToOriginalDst.setPropertyPermanently(MetricCollectionProperty.of(currentMetricCollectionId));
           builder.connectVertices(edgeToOriginalDst);
         } else {
           // NO MATCH, so simply connect vertices as before.
@@ -246,19 +251,16 @@ public final class IRDAG {
 
   ////////////////////////////////////////////////// Private helper methods.
 
-  /**
-   * @param mbv the vertex with MessageBarrierTransform.
-   * @param mav the vertex with MessageAggregateTransform.
-   * @return the generated egde from {@code mcv} to {@code abv}.
-   */
   private IREdge edgeBetweenMessageVertices(final MessageBarrierVertex mbv,
                                             final MessageAggregationVertex mav,
                                             final EncoderProperty encoder,
-                                            final DecoderProperty decoder) {
+                                            final DecoderProperty decoder,
+                                            final int currentMetricCollectionId) {
     final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mbv, mav);
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
+    newEdge.setPropertyPermanently(MetricCollectionProperty.of(currentMetricCollectionId));
     final KeyExtractor pairKeyExtractor = (element) -> {
       if (element instanceof Pair) {
         return ((Pair) element).left();
