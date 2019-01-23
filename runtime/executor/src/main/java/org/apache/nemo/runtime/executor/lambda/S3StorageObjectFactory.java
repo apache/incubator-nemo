@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class S3StorageObjectFactory implements StorageObjectFactory {
@@ -23,6 +24,11 @@ public final class S3StorageObjectFactory implements StorageObjectFactory {
   private S3StorageObjectFactory() {
     this.amazonS3 = AmazonS3ClientBuilder.standard()
       .withClientConfiguration(new ClientConfiguration().withMaxConnections(150)).build();
+  }
+
+  @Override
+  public void setSerializedVertices(List serializedVertices) {
+    throw new RuntimeException("Not suppported");
   }
 
   @Override

@@ -30,6 +30,8 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   private NettyServerLambdaTransport lambdaTransport;
   private boolean initialized = false;
 
+  private List<String> serializedVertices;
+
   private MemoryStorageObjectFactory() {
 
   }
@@ -41,6 +43,11 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
       this.lambdaTransport = NettyServerLambdaTransport.INSTANCE;
       initialized = true;
     }
+  }
+
+  @Override
+  public void setSerializedVertices(List sv) {
+    serializedVertices = sv;
   }
 
   @Override
@@ -169,7 +176,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
       final List<Future<Channel>> futures = new ArrayList<>(list.size());
       // 0. Trigger lambdas
       for (int i = 0; i < list.size(); i++) {
-        futures.add(lambdaTransport.createLambdaChannel());
+        futures.add(lambdaTransport.createLambdaChannel(serializedVertices));
       }
 
       final DirectByteArrayOutputStream bos = new DirectByteArrayOutputStream();

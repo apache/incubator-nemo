@@ -121,7 +121,8 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
         for (int i = 0; i < numLambdas; i++) {
           executorService.submit(() -> {
             try {
-              final Channel channel = lambdaTransport.createLambdaChannel().get();
+              // TODO: fix!!!
+              final Channel channel = lambdaTransport.createLambdaChannel(new LinkedList<>()).get();
               lambdaTransport.setChannelHandler(channel, channelHandler);
               channel.writeAndFlush(new NemoEvent(NemoEvent.Type.GBK_START,
                 serializedDecoderFactory, serializedDecoderFactory.length));

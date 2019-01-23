@@ -141,17 +141,28 @@ public final class NettyServerLambdaTransport {
     channelEventHandlerMap.put(channel, eventHandler);
   }
 
-  public Future<Channel> createLambdaChannel() {
+  public Future<Channel> createLambdaChannel(final List<String> serializedVertices) {
     if (initialized.compareAndSet(false, true)) {
       lazyInit();
+    }
+
+    final StringBuilder sb = new StringBuilder("[");
+    for (final String serializedVertex : serializedVertices) {
+      sb.append("\"");
+      sb.append(serializedVertex);
+      sb.append("\"");
+      if (serializedVertices.indexOf(serializedVertex) + 1 < serializedVertices.size()) {
+        sb.append(",");
+      }
+      sb.append("]");
     }
 
     executorService.submit(() -> {
       // Trigger lambdas
       final InvokeRequest request = new InvokeRequest()
         .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
-        .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-          PUBLIC_ADDRESS, PORT));
+        .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"vertices\": %s}",
+          PUBLIC_ADDRESS, PORT, sb.toString()));
       return awsLambda.invokeAsync(request);
     });
 
