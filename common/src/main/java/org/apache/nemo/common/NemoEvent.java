@@ -8,6 +8,7 @@ public final class NemoEvent implements Serializable {
 
   public enum Type {
     CLIENT_HANDSHAKE,
+    READY,
     VERTICES,
     SIDE,
     MAIN,

@@ -176,6 +176,9 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
       LOG.info("Create class loader: {}", classLoader);
     }
 
+    // ready state
+    opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.READY, new byte[0], 0));
+
     final LambdaEventHandler handler = (LambdaEventHandler) map.get(opendChannel);
     try {
       // wait until end
