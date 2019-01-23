@@ -71,6 +71,8 @@ public final class NettyServerLambdaTransport {
     warmer.scheduleAtFixedRate(() -> {
         channelPool.clear();
 
+        nemoEventHandler.getPendingRequest().addAndGet(poolSize);
+
         for (int i = 0; i < poolSize; i++) {
           executorService.submit(() -> {
             // Trigger lambdas
@@ -179,11 +181,17 @@ public final class NettyServerLambdaTransport {
 
     executorService.submit(() -> {
       // Trigger lambdas
-      final InvokeRequest request = new InvokeRequest()
-        .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
-        .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-          PUBLIC_ADDRESS, PORT));
-      return awsLambda.invokeAsync(request);
+      if (nemoEventHandler.getPendingRequest().getAndDecrement() > 0) {
+        return null;
+      } else {
+        // add 2 for the decrement and for the new request
+        nemoEventHandler.getPendingRequest().addAndGet(2);
+        final InvokeRequest request = new InvokeRequest()
+          .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
+          .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
+            PUBLIC_ADDRESS, PORT));
+        return awsLambda.invokeAsync(request);
+      }
     });
 
     return new Future<Channel>() {
@@ -205,7 +213,7 @@ public final class NettyServerLambdaTransport {
       @Override
       public Channel get() throws InterruptedException, ExecutionException {
         try {
-          final Channel channel = nemoEventHandler.getHandshakeQueue().take().left();
+          final Channel channel = nemoEventHandler.getReadyQueue().take().left();
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.VERTICES,
             serializedVerticesBytes, serializedVerticesBytes.length));
           return channel;
