@@ -191,8 +191,9 @@ public final class TaskExecutor {
         .map(irVertex ->  serializeToString(irVertex))
         .collect(Collectors.toList());
 
-    LOG.info("Serialized vertices: {}, reveresed: {}", serializedVertices, reverseTopologicallySorted);
-    SOFACTORY.setSerializedVertices(serializedVertices);
+    if (serializedVertices.size() > 0) {
+      SOFACTORY.setSerializedVertices(serializedVertices);
+    }
 
     // Build a map for edge as a key and edge index as a value
     // This variable is used for creating NextIntraTaskOperatorInfo
