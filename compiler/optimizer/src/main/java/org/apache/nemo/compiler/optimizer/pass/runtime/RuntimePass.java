@@ -16,14 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.optimizer.pass.runtime;
+package org.apache.nemo.compiler.optimizer.pass.runtime;
 
 import org.apache.nemo.common.eventhandler.RuntimeEventHandler;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.pass.Pass;
-import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 
 import java.util.Set;
-import java.util.function.BiFunction;
 
 /**
  * Abstract class for dynamic optimization passes, for dynamically optimizing a physical plan.
@@ -31,8 +30,10 @@ import java.util.function.BiFunction;
  * after dynamic optimization.
  * @param <T> type of the metric data used for dynamic optimization.
  */
-public abstract class RuntimePass<T> extends Pass
-    implements BiFunction<PhysicalPlan, T, PhysicalPlan> {
+public abstract class RuntimePass<T> extends Pass {
+  public abstract IRDAG optimize(IRDAG irdag, T message);
+
+
   /**
    * @return the set of event handlers used with the runtime pass.
    */

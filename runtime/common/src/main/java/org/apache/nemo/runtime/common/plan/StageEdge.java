@@ -51,11 +51,6 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   private final IRVertex dstVertex;
 
   /**
-   * The list between the task idx and key range to read.
-   */
-  private Map<Integer, KeyRange> taskIdxToKeyRange;
-
-  /**
    * Value for {@link CommunicationPatternProperty}.
    */
   private final CommunicationPatternProperty.Value dataCommunicationPatternValue;

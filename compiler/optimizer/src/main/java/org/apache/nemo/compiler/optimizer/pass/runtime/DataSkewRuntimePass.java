@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.optimizer.pass.runtime;
+package org.apache.nemo.compiler.optimizer.pass.runtime;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.eventhandler.RuntimeEventHandler;
 
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.KeyRange;
@@ -86,8 +87,11 @@ public final class DataSkewRuntimePass extends RuntimePass<Pair<Set<StageEdge>, 
   }
 
   @Override
-  public PhysicalPlan apply(final PhysicalPlan originalPlan,
-                            final Pair<Set<StageEdge>, Map<Object, Long>> metricData) {
+  public IRDAG optimize(final IRDAG irdag,
+                        final Pair<Set<StageEdge>, Map<Object, Long>> metricData) {
+
+
+
     final Set<StageEdge> targetEdges = metricData.left();
     // Get number of evaluators of the next stage (number of blocks).
     final StageEdge firstEdge = targetEdges.stream().findFirst()
