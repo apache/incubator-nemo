@@ -16,7 +16,7 @@ public final class WindowAccessMap {
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       MAP.forEach((window, accessTime) -> {
-        System.out.println(window + ", " + "final access time: " + accessTime);
+        //System.out.println(window + ", " + "final access time: " + accessTime);
       });
     }, 5, 5, TimeUnit.SECONDS);
   }
