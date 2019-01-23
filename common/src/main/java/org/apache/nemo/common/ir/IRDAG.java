@@ -105,7 +105,8 @@ public final class IRDAG {
   }
 
   /**
-   * @return the current underlying DAG for direct access.
+   * Get the current underlying DAG for direct access.
+   * @return underlying DAG.
    */
   public DAG<IRVertex, IREdge> getCurrentDAGSnapshot() {
     return dag;
