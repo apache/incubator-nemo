@@ -22,7 +22,10 @@ import org.apache.nemo.runtime.executor.datatransfer.AWSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -144,7 +147,8 @@ public final class NettyServerLambdaTransport {
       lazyInit();
     }
 
-    final StringBuilder sb = new StringBuilder("[");
+    /*
+    final StringBuilder sb = new StringBuilder("");
     for (final String serializedVertex : serializedVertices) {
       sb.append("\"");
       sb.append(serializedVertex);
@@ -154,13 +158,24 @@ public final class NettyServerLambdaTransport {
       }
       sb.append("]");
     }
+    */
+
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    ObjectOutputStream oos = null;
+    try {
+      oos = new ObjectOutputStream(bos);
+      oos.writeObject(serializedVertices);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    byte[] serializedVerticesBytes = bos.toByteArray();
 
     executorService.submit(() -> {
       // Trigger lambdas
       final InvokeRequest request = new InvokeRequest()
         .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
-        .withPayload(String.format("{\"address\":\"%s\", \"port\": %d, \"vertices\": %s}",
-          PUBLIC_ADDRESS, PORT, sb.toString()));
+        .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
+          PUBLIC_ADDRESS, PORT));
       return awsLambda.invokeAsync(request);
     });
 
@@ -183,7 +198,10 @@ public final class NettyServerLambdaTransport {
       @Override
       public Channel get() throws InterruptedException, ExecutionException {
         try {
-          return nemoEventHandler.getHandshakeQueue().take().left();
+          final Channel channel = nemoEventHandler.getHandshakeQueue().take().left();
+          channel.writeAndFlush(new NemoEvent(NemoEvent.Type.VERTICES,
+            serializedVerticesBytes, serializedVerticesBytes.length));
+          return channel;
         } catch (InterruptedException e) {
           e.printStackTrace();
           throw new RuntimeException(e);
