@@ -89,6 +89,7 @@ public final class NettyServerLambdaTransport {
         // take
         for (int i = 0; i < poolSize; i++) {
           try {
+            final Channel channel = nemoEventHandler.getHandshakeQueue().take().left();
             channelPool.add(nemoEventHandler.getHandshakeQueue().take().left());
           } catch (InterruptedException e) {
             e.printStackTrace();
