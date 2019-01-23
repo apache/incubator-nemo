@@ -47,6 +47,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
 
   @Override
   public void setSerializedVertices(List sv) {
+    LOG.info("Serialized vertices: {}, {}", serializedVertices.size(), serializedVertices);
     serializedVertices = sv;
   }
 
