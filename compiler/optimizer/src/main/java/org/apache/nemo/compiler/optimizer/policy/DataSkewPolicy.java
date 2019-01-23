@@ -23,7 +23,7 @@ import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.SkewCompositePass;
-import org.apache.nemo.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
+import org.apache.nemo.compiler.optimizer.pass.runtime.SkewRunTimePass;
 import org.apache.reef.tang.Injector;
 
 /**
@@ -32,7 +32,7 @@ import org.apache.reef.tang.Injector;
 public final class DataSkewPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
       new PolicyBuilder()
-        .registerRuntimePass(new DataSkewRuntimePass(), new SkewCompositePass())
+        .registerRuntimePass(new SkewRunTimePass(), new SkewCompositePass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
         .registerCompileTimePass(new DefaultCompositePass());
 

@@ -47,7 +47,6 @@ public final class PartitionerProperty extends EdgeExecutionProperty<Partitioner
    * Possible values of Partitioner ExecutionProperty.
    */
   public enum Value {
-    DataSkewHashPartitioner,
     HashPartitioner,
     IntactPartitioner,
     DedicatedKeyPerElementPartitioner

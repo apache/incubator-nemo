@@ -24,24 +24,21 @@ import java.util.Arrays;
  * Descriptor for hash range.
  */
 public final class HashRange implements KeyRange<Integer> {
-  private static final HashRange ALL = new HashRange(0, Integer.MAX_VALUE, false);
+  private static final HashRange ALL = new HashRange(0, Integer.MAX_VALUE);
   private final int rangeBeginInclusive;
   private final int rangeEndExclusive;
-  private boolean isSkewed;
 
   /**
    * Private constructor.
    * @param rangeBeginInclusive point at which the hash range starts (inclusive).
    * @param rangeEndExclusive point at which the hash range ends (exclusive).
-   * @param isSkewed whether or not the range is skewed
    */
-  private HashRange(final int rangeBeginInclusive, final int rangeEndExclusive, final boolean isSkewed) {
+  private HashRange(final int rangeBeginInclusive, final int rangeEndExclusive) {
     if (rangeBeginInclusive < 0 || rangeEndExclusive < 0) {
       throw new RuntimeException("Each boundary value of the range have to be non-negative.");
     }
     this.rangeBeginInclusive = rangeBeginInclusive;
     this.rangeEndExclusive = rangeEndExclusive;
-    this.isSkewed = isSkewed;
   }
 
   /**
@@ -54,11 +51,10 @@ public final class HashRange implements KeyRange<Integer> {
   /**
    * @param rangeStartInclusive the start of the range (inclusive)
    * @param rangeEndExclusive   the end of the range (exclusive)
-   * @param isSkewed  whether or not the range is skewed
    * @return A hash range descriptor representing [{@code rangeBeginInclusive}, {@code rangeEndExclusive})
    */
-  public static HashRange of(final int rangeStartInclusive, final int rangeEndExclusive, final boolean isSkewed) {
-    return new HashRange(rangeStartInclusive, rangeEndExclusive, isSkewed);
+  public static HashRange of(final int rangeStartInclusive, final int rangeEndExclusive) {
+    return new HashRange(rangeStartInclusive, rangeEndExclusive);
   }
 
   /**
@@ -113,12 +109,8 @@ public final class HashRange implements KeyRange<Integer> {
       return false;
     }
     final HashRange hashRange = (HashRange) o;
-    if (rangeBeginInclusive != hashRange.rangeBeginInclusive
-        || rangeEndExclusive != hashRange.rangeEndExclusive
-        || isSkewed != hashRange.isSkewed) {
-      return false;
-    }
-    return true;
+    return rangeBeginInclusive == hashRange.rangeBeginInclusive
+      && rangeEndExclusive == hashRange.rangeEndExclusive;
   }
 
   /**
@@ -129,14 +121,6 @@ public final class HashRange implements KeyRange<Integer> {
     return Arrays.hashCode(new Object[] {
         rangeBeginInclusive,
         rangeEndExclusive,
-        isSkewed,
     });
-  }
-
-  /**
-   * @return whether or not the range is skewed.
-   */
-  public boolean isSkewed() {
-    return isSkewed;
   }
 }

@@ -46,8 +46,8 @@ import java.util.stream.Collectors;
  * this RuntimePass identifies a number of keys with big partition sizes(skewed key)
  * and evenly redistributes data via overwriting incoming edges of destination tasks.
  */
-public final class DataSkewRuntimePass extends RunTimePass<Pair<Set<StageEdge>, Map<Object, Long>>> {
-  private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
+public final class SkewRunTimePass extends RunTimePass<Pair<Set<StageEdge>, Map<Object, Long>>> {
+  private static final Logger LOG = LoggerFactory.getLogger(SkewRunTimePass.class.getName());
   private static final int DEFAULT_NUM_SKEWED_KEYS = 1;
   /*
    * Hash range multiplier.
@@ -67,7 +67,7 @@ public final class DataSkewRuntimePass extends RunTimePass<Pair<Set<StageEdge>, 
   /**
    * Constructor without expected number of skewed keys.
    */
-  public DataSkewRuntimePass() {
+  public SkewRunTimePass() {
     this(DEFAULT_NUM_SKEWED_KEYS);
   }
 
@@ -76,14 +76,9 @@ public final class DataSkewRuntimePass extends RunTimePass<Pair<Set<StageEdge>, 
    *
    * @param numOfSkewedKeys the expected number of skewed keys.
    */
-  public DataSkewRuntimePass(final int numOfSkewedKeys) {
+  public SkewRunTimePass(final int numOfSkewedKeys) {
     this.eventHandlers = Collections.singleton(DynamicOptimizationEventHandler.class);
     this.numSkewedKeys = numOfSkewedKeys;
-  }
-
-  @Override
-  public Set<Class<? extends RuntimeEventHandler>> getEventHandlerClasses() {
-    return this.eventHandlers;
   }
 
   @Override
@@ -91,6 +86,7 @@ public final class DataSkewRuntimePass extends RunTimePass<Pair<Set<StageEdge>, 
                         final Pair<Set<StageEdge>, Map<Object, Long>> metricData) {
 
 
+    // Validates target edges...
 
     final Set<StageEdge> targetEdges = metricData.left();
     // Get number of evaluators of the next stage (number of blocks).
@@ -104,6 +100,8 @@ public final class DataSkewRuntimePass extends RunTimePass<Pair<Set<StageEdge>, 
         .orElseThrow(() -> new RuntimeException("No partitioner property!")))) {
       throw new RuntimeException("Invalid partitioner is assigned to the target edge!");
     }
+
+
     final DataSkewHashPartitioner partitioner = (DataSkewHashPartitioner) Partitioner.getPartitioner(firstEdge);
 
     // Calculate keyRanges.
