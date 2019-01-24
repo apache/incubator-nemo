@@ -7,6 +7,7 @@ import java.io.Serializable;
 public final class NemoEvent implements Serializable {
 
   public enum Type {
+    VM_RUN,
     CLIENT_HANDSHAKE,
     READY,
     VERTICES,

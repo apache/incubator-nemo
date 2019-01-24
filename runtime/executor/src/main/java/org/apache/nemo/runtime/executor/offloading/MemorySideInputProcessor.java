@@ -126,6 +126,7 @@ public final class MemorySideInputProcessor implements SideInputProcessor {
         results.add(lambdaTransport.takeResult());
       }
 
+      lambdaTransport.destroy();
 
       /*
       // wait results

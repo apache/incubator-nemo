@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.offloading.lambda.query7;
+package org.apache.nemo.runtime.executor.offloading;
 
 
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
@@ -28,7 +28,6 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import org.apache.nemo.runtime.executor.datatransfer.NextIntraTaskOperatorInfo;
-import org.apache.nemo.runtime.executor.offloading.SideInputProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

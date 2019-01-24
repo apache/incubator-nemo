@@ -5,5 +5,7 @@ public interface OffloadingRequester {
 
   void createChannelRequest();
 
+  void destroy();
+
   void close();
 }
