@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -58,14 +59,32 @@ public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
 
   private final AtomicInteger metricCollectionId;
 
-  private DAG<IRVertex, IREdge> dag; // internal DAG, can be updated by reshaping methods.
+  private DAG<IRVertex, IREdge> lastSnapshotDAG; // the DAG that was saved most recently.
+  private DAG<IRVertex, IREdge> updatingDAG; // the DAG that is being updated.
 
   /**
-   * @param dag underlying DAG.
+   * @param originalUserApplicationDAG the initial DAG.
    */
-  public IRDAG(final DAG<IRVertex, IREdge> dag) {
-    this.dag = dag;
+  public IRDAG(final DAG<IRVertex, IREdge> originalUserApplicationDAG) {
+    this.updatingDAG = originalUserApplicationDAG;
+    this.lastSnapshotDAG = originalUserApplicationDAG;
     this.metricCollectionId = new AtomicInteger(0);
+  }
+
+  //////////////////////////////////////////////////
+
+  /**
+   * Used internally by Nemo to advance the DAG snapshot after applying each pass.
+   * @param checker that compares the lastSnapshotDAG and the updatingDAG
+   *                to determine if the snapshot can be set the current updatingDAG.
+   * @return true if the checker passes, false otherwise.
+   */
+  public boolean advanceDAGSnapshot(final BiFunction<IRDAG, IRDAG, Boolean> checker) {
+    final boolean canAdvance = checker.apply(new IRDAG(lastSnapshotDAG), new IRDAG(updatingDAG));
+    if (canAdvance) {
+      lastSnapshotDAG = updatingDAG;
+    }
+    return canAdvance;
   }
 
   ////////////////////////////////////////////////// Methods for reshaping the DAG topology.
@@ -88,10 +107,10 @@ public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
     builder.addVertex(streamVertex);
 
     // Build the new DAG to reflect the new topology.
-    dag.topologicalDo(v -> {
+    updatingDAG.topologicalDo(v -> {
       builder.addVertex(v); // None of the existing vertices are deleted.
 
-      for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
+      for (final IREdge edge : updatingDAG.getIncomingEdgesOf(v)) {
         if (edge.equals(edgeToStreamize)) {
           // MATCH!
 
@@ -117,7 +136,7 @@ public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
       }
     });
 
-    dag = builder.build(); // update the DAG.
+    updatingDAG = builder.build(); // update the DAG.
   }
 
   /**
@@ -153,7 +172,7 @@ public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
     final int currentMetricCollectionId = metricCollectionId.incrementAndGet();
 
     // First, add all the vertices.
-    dag.topologicalDo(v -> builder.addVertex(v));
+    updatingDAG.topologicalDo(v -> builder.addVertex(v));
 
     // Add a control dependency (no output) from the messageAggregatorVertex to the destination.
     builder.addVertex(messageAggregatorVertex);
@@ -161,8 +180,8 @@ public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
     builder.connectVertices(noDataEdge);
 
     // Add the edges and the messageBarrierVertex.
-    dag.topologicalDo(v -> {
-      for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
+    updatingDAG.topologicalDo(v -> {
+      for (final IREdge edge : updatingDAG.getIncomingEdgesOf(v)) {
         if (edgesToGetStatisticsOf.contains(edge)) {
           // MATCH!
           final MessageBarrierVertex mbv = new MessageBarrierVertex<>(messageBarrierVertex.getMessageFunction());
@@ -197,7 +216,7 @@ public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
       }
     });
 
-    dag = builder.build(); // update the DAG.
+    updatingDAG = builder.build(); // update the DAG.
   }
 
   /**
@@ -206,7 +225,7 @@ public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
    * @param unsafeReshapingFunction to use.
    */
   public void reshapeUnsafely(final Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> unsafeReshapingFunction) {
-    dag = unsafeReshapingFunction.apply(dag);
+    updatingDAG = unsafeReshapingFunction.apply(updatingDAG);
   }
 
   ////////////////////////////////////////////////// Private helper methods.
@@ -246,12 +265,12 @@ public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
 
   @Override
   public void topologicalDo(final Consumer<IRVertex> function) {
-    dag.topologicalDo(function);
+    updatingDAG.topologicalDo(function);
   }
 
   @Override
   public void dfsTraverse(final Consumer<IRVertex> function, final TraversalOrder traversalOrder) {
-    dag.dfsTraverse(function, traversalOrder);
+    updatingDAG.dfsTraverse(function, traversalOrder);
   }
 
   @Override
@@ -259,107 +278,107 @@ public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
                     final Consumer<IRVertex> vertexConsumer,
                     final TraversalOrder traversalOrder,
                     final Set<IRVertex> visited) {
-    dag.dfsDo(vertex, vertexConsumer, traversalOrder, visited);
+    updatingDAG.dfsDo(vertex, vertexConsumer, traversalOrder, visited);
   }
 
   @Override
   public Boolean pathExistsBetween(final IRVertex v1, final IRVertex v2) {
-    return dag.pathExistsBetween(v1, v2);
+    return updatingDAG.pathExistsBetween(v1, v2);
   }
 
   @Override
   public Boolean isCompositeVertex(final IRVertex irVertex) {
-    return dag.isCompositeVertex(irVertex);
+    return updatingDAG.isCompositeVertex(irVertex);
   }
 
   @Override
   public Integer getLoopStackDepthOf(final IRVertex irVertex) {
-    return dag.getLoopStackDepthOf(irVertex);
+    return updatingDAG.getLoopStackDepthOf(irVertex);
   }
 
   @Override
   public LoopVertex getAssignedLoopVertexOf(final IRVertex irVertex) {
-    return dag.getAssignedLoopVertexOf(irVertex);
+    return updatingDAG.getAssignedLoopVertexOf(irVertex);
   }
 
   @Override
   public ObjectNode asJsonNode() {
-    return dag.asJsonNode();
+    return updatingDAG.asJsonNode();
   }
 
   @Override
   public void storeJSON(final String directory, final String name, final String description) {
-    dag.storeJSON(directory, name, description);
+    updatingDAG.storeJSON(directory, name, description);
   }
 
   @Override
   public IRVertex getVertexById(final String id) {
-    return dag.getVertexById(id);
+    return updatingDAG.getVertexById(id);
   }
 
   @Override
   public List<IRVertex> getVertices() {
-    return dag.getVertices();
+    return updatingDAG.getVertices();
   }
 
   @Override
   public List<IRVertex> getRootVertices() {
-    return dag.getRootVertices();
+    return updatingDAG.getRootVertices();
   }
 
   @Override
   public List<IREdge> getIncomingEdgesOf(final IRVertex v) {
-    return dag.getIncomingEdgesOf(v);
+    return updatingDAG.getIncomingEdgesOf(v);
   }
 
   @Override
   public List<IREdge> getIncomingEdgesOf(final String vertexId) {
-    return dag.getIncomingEdgesOf(vertexId);
+    return updatingDAG.getIncomingEdgesOf(vertexId);
   }
 
   @Override
   public List<IREdge> getOutgoingEdgesOf(final IRVertex v) {
-    return dag.getOutgoingEdgesOf(v);
+    return updatingDAG.getOutgoingEdgesOf(v);
   }
 
   @Override
   public List<IREdge> getOutgoingEdgesOf(final String vertexId) {
-    return dag.getOutgoingEdgesOf(vertexId);
+    return updatingDAG.getOutgoingEdgesOf(vertexId);
   }
 
   @Override
   public List<IRVertex> getParents(final String vertexId) {
-    return dag.getParents(vertexId);
+    return updatingDAG.getParents(vertexId);
   }
 
   @Override
   public List<IRVertex> getChildren(final String vertexId) {
-    return dag.getChildren(vertexId);
+    return updatingDAG.getChildren(vertexId);
   }
 
   @Override
   public IREdge getEdgeBetween(final String srcVertexId,
                                final String dstVertexId) throws IllegalEdgeOperationException {
-    return dag.getEdgeBetween(srcVertexId, dstVertexId);
+    return updatingDAG.getEdgeBetween(srcVertexId, dstVertexId);
   }
 
   @Override
   public List<IRVertex> getTopologicalSort() {
-    return dag.getTopologicalSort();
+    return updatingDAG.getTopologicalSort();
   }
 
   @Override
   public List<IRVertex> getAncestors(final String vertexId) {
-    return dag.getAncestors(vertexId);
+    return updatingDAG.getAncestors(vertexId);
   }
 
   @Override
   public List<IRVertex> getDescendants(final String vertexId) {
-    return dag.getDescendants(vertexId);
+    return updatingDAG.getDescendants(vertexId);
   }
 
   @Override
   public List<IRVertex> filterVertices(final Predicate<IRVertex> condition) {
-    return dag.filterVertices(condition);
+    return updatingDAG.filterVertices(condition);
   }
 }

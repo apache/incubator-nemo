@@ -72,26 +72,34 @@ public final class PolicyImpl implements Policy {
                                final String dagDirectory) {
     if (passes.hasNext()) {
       final CompileTimePass passToApply = passes.next();
+      final IRDAG processedDAG;
 
       if (passToApply.getCondition().test(dag)) {
         LOG.info("Apply {} to the DAG", passToApply.getClass().getSimpleName());
         // Apply the pass to the DAG.
-        passToApply.apply(dag);
-        // Ensure AnnotatingPass and ReshapingPass functions as intended.
-        if ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(dag, dag))
-          || (passToApply instanceof ReshapingPass && !checkReshapingPass(dag, dag))) {
+        processedDAG = passToApply.apply(dag);
+
+        final boolean advanced = processedDAG.advanceDAGSnapshot((beforePass, afterPass) -> {
+          // Ensure AnnotatingPass and ReshapingPass functions as intended.
+          return ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(beforePass, afterPass))
+            || (passToApply instanceof ReshapingPass && !checkReshapingPass(beforePass, afterPass)));
+        });
+
+        if (!advanced) {
           throw new CompileTimeOptimizationException(passToApply.getClass().getSimpleName()
             + " is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
             + "Modify it or use a general CompileTimePass");
         }
+
         // Save the processed JSON DAG.
-        dag.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
+        processedDAG.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
           "DAG after optimization");
       } else {
         LOG.info("Condition unmet for applying {} to the DAG", passToApply.getClass().getSimpleName());
+        processedDAG = dag;
       }
       // recursively apply the following passes.
-      return process(dag, passes, dagDirectory);
+      return process(processedDAG, passes, dagDirectory);
     } else {
       return dag;
     }
