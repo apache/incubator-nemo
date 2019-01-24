@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.lambda;
+package org.apache.nemo.runtime.executor.offloading;
 
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.SerializerManager;

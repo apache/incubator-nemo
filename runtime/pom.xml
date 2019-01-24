@@ -37,6 +37,7 @@ under the License.
     <module>master</module>
     <module>test</module>
     <module>lambda</module>
+    <module>vm</module>
   </modules>
 
 </project>

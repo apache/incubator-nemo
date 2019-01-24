@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.lambda;
+package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.channel.Channel;
 import org.apache.nemo.common.EventHandler;

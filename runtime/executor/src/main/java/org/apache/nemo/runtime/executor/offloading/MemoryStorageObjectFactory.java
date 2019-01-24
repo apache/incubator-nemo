@@ -1,10 +1,7 @@
-package org.apache.nemo.runtime.executor.lambda.query7;
+package org.apache.nemo.runtime.executor.offloading;
 
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
-import org.apache.nemo.runtime.executor.lambda.NettyServerLambdaTransport;
-import org.apache.nemo.runtime.executor.lambda.SideInputProcessor;
-import org.apache.nemo.runtime.executor.lambda.StorageObjectFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +17,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   private ConcurrentMap<String, ConcurrentLinkedQueue<MemoryStorageObject>> prefixAndObjectMap;
   private ConcurrentMap<String, AtomicInteger> prefixAndSizeMap;
 
-  private NettyServerLambdaTransport lambdaTransport;
+  private NettyServerTransport lambdaTransport;
   private boolean initialized = false;
 
   private List<String> serializedVertices;
@@ -33,7 +30,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
     if (!initialized) {
       this.prefixAndObjectMap = new ConcurrentHashMap<>();
       this.prefixAndSizeMap = new ConcurrentHashMap<>();
-      this.lambdaTransport = NettyServerLambdaTransport.INSTANCE;
+      this.lambdaTransport = NettyServerTransport.INSTANCE;
       initialized = true;
     }
   }
@@ -63,10 +60,8 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   public SideInputProcessor sideInputProcessor(SerializerManager serializerManager,
                                                String edgeId) {
     lazyInit();
-    return new LambdaSideInputProcessor(serializerManager, edgeId,
+    return new MemorySideInputProcessor(serializerManager, edgeId,
       prefixAndObjectMap, prefixAndSizeMap, lambdaTransport, serializedVertices);
-    //return new VMSideInputProcessor(serializerManager, edgeId,
-    //  prefixAndObjectMap, prefixAndSizeMap, lambdaTransport, serializedVertices);
   }
 }
 

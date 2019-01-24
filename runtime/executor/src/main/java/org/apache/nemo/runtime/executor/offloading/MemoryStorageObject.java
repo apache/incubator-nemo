@@ -1,8 +1,8 @@
-package org.apache.nemo.runtime.executor.lambda.query7;
+package org.apache.nemo.runtime.executor.offloading;
 
 import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.runtime.executor.lambda.StorageObjectFactory;
+import org.apache.nemo.runtime.executor.offloading.StorageObjectFactory;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,7 +15,7 @@ public final class MemoryStorageObject implements StorageObjectFactory.StorageOb
     private boolean finished = false;
     private final int partition;
     private final String prefix;
-    int cnt = 0;
+    public int cnt = 0;
     public MemoryStorageObject(final String prefix, final int partition,
                                final byte[] encodedDecoderFactory,
                                final EncoderFactory encoderFactory) {
