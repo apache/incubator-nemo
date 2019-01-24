@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.lambda.query7;
+package org.apache.nemo.runtime.executor.offloading.lambda.query7;
 
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.lambda.AWSLambda;
@@ -33,7 +33,7 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.AWSUtils;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
-import org.apache.nemo.runtime.executor.lambda.SideInputProcessor;
+import org.apache.nemo.runtime.executor.offloading.SideInputProcessor;
 import org.apache.nemo.common.lambda.LambdaDecoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

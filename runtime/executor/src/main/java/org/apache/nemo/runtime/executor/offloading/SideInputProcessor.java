@@ -16,9 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.lambda;
-
-import org.apache.nemo.common.coder.EncoderFactory;
+package org.apache.nemo.runtime.executor.offloading;
 
 public interface SideInputProcessor<O> {
   Object processSideAndMainInput(O output,

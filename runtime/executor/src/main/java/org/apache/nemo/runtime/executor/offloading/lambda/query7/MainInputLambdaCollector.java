@@ -17,7 +17,7 @@ t
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.lambda.query7;
+package org.apache.nemo.runtime.executor.offloading.lambda.query7;
 
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.commons.lang.SerializationUtils;
@@ -31,7 +31,7 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.NextIntraTaskOperatorInfo;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
-import org.apache.nemo.runtime.executor.lambda.StorageObjectFactory;
+import org.apache.nemo.runtime.executor.offloading.StorageObjectFactory;
 import org.apache.nemo.common.lambda.LambdaDecoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,8 +94,8 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
 
     /*
-    if (LambdaWarmer.TICKET.getAndIncrement() == 0) {
-      this.warmer = new LambdaWarmer();
+    if (LambdaOffloadingRequester.TICKET.getAndIncrement() == 0) {
+      this.warmer = new LambdaOffloadingRequester();
       warmer.warmup();
     } else {
       this.warmer = null;

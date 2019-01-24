@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.lambda.query8;
+package org.apache.nemo.runtime.executor.offloading.lambda.query8;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
@@ -21,7 +21,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.datatransfer.NextIntraTaskOperatorInfo;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
-import org.apache.nemo.runtime.executor.lambda.NettyServerLambdaTransport;
+import org.apache.nemo.runtime.executor.offloading.NettyServerTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,12 +55,12 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
 
   private final byte[] serializedDecoderFactory;
   private long startTime;
-  private final NettyServerLambdaTransport lambdaTransport;
+  private final NettyServerTransport lambdaTransport;
   private GBKChannelHandler channelHandler;
 
   private boolean toLambda = false;
 
-  //private final LambdaWarmer warmer;
+  //private final LambdaOffloadingRequester warmer;
 
   public GBKLambdaEmitter(final IRVertex irVertex,
                           final List<NextIntraTaskOperatorInfo> internalMainOutputs,
@@ -77,8 +77,8 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
     this.encoderFactory = internalEdges.get(0).getPropertyValue(EncoderProperty.class).get();
     this.decoderFactory = internalEdges.get(0).getPropertyValue(DecoderProperty.class).get();
     this.serializedDecoderFactory = SerializationUtils.serialize(decoderFactory);
-    this.lambdaTransport = NettyServerLambdaTransport.INSTANCE;
-    //this.warmer = new LambdaWarmer();
+    this.lambdaTransport = NettyServerTransport.INSTANCE;
+    //this.warmer = new LambdaOffloadingRequester();
     //warmer.warmup();
   }
 
@@ -122,7 +122,7 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
           executorService.submit(() -> {
             try {
               // TODO: fix!!!
-              final Channel channel = lambdaTransport.createLambdaChannel(new LinkedList<>()).get();
+              final Channel channel = lambdaTransport.createOffloadingChannel(new LinkedList<>()).get();
               lambdaTransport.setChannelHandler(channel, channelHandler);
               channel.writeAndFlush(new NemoEvent(NemoEvent.Type.GBK_START,
                 serializedDecoderFactory, serializedDecoderFactory.length));

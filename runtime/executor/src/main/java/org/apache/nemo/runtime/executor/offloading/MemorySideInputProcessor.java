@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.lambda.query7;
+package org.apache.nemo.runtime.executor.offloading;
 
 import io.netty.channel.Channel;
 import org.apache.commons.lang.SerializationUtils;
@@ -9,8 +9,6 @@ import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
-import org.apache.nemo.runtime.executor.lambda.NettyServerLambdaTransport;
-import org.apache.nemo.runtime.executor.lambda.SideInputProcessor;
 import org.apache.nemo.common.lambda.LambdaDecoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,39 +19,42 @@ import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class VMSideInputProcessor implements SideInputProcessor {
-  private static final Logger LOG = LoggerFactory.getLogger(VMSideInputProcessor.class.getName());
+public final class MemorySideInputProcessor implements SideInputProcessor {
+  private static final Logger LOG = LoggerFactory.getLogger(MemorySideInputProcessor.class.getName());
 
-    private final ExecutorService executorService = Executors.newCachedThreadPool();
-    private final EncoderFactory encoderFactory;
-    private EncoderFactory.Encoder encoder = null;
-    private final DecoderFactory decoderFactory;
-    private final byte[] sideInputDecodedFactory;
-    private final ConcurrentMap<String, ConcurrentLinkedQueue<MemoryStorageObject>> prefixAndObjectMap;
-    private final ConcurrentMap<String, AtomicInteger> prefixAndSizeMap;
-    private final NettyServerLambdaTransport lambdaTransport;
-    private final List<String> serializedVertices;
+  private final ExecutorService executorService = Executors.newCachedThreadPool();
+  private final EncoderFactory encoderFactory;
+  private EncoderFactory.Encoder encoder = null;
+  private final DecoderFactory decoderFactory;
+  private final byte[] sideInputDecodedFactory;
+  private final ConcurrentMap<String, ConcurrentLinkedQueue<MemoryStorageObject>> prefixAndObjectMap;
+  private final ConcurrentMap<String, AtomicInteger> prefixAndSizeMap;
+  private final NettyServerTransport lambdaTransport;
+  private final List<String> serializedVertices;
 
-    VMSideInputProcessor(final SerializerManager serializerManager,
-                         final String edgeId,
-                         final ConcurrentMap<String, ConcurrentLinkedQueue<MemoryStorageObject>> prefixAndObjectMap,
-                         final ConcurrentMap<String, AtomicInteger> prefixAndSizeMap,
-                         final NettyServerLambdaTransport lambdaTransport,
-                         final List<String> serializedVertices) {
-      this.encoderFactory = ((NemoEventEncoderFactory) serializerManager.getSerializer(edgeId)
-        .getEncoderFactory()).getValueEncoderFactory();
-      this.decoderFactory = new LambdaDecoderFactory(
-        ((NemoEventDecoderFactory) serializerManager.getSerializer(edgeId)
-          .getDecoderFactory()).getValueDecoderFactory());
-      this.sideInputDecodedFactory = SerializationUtils.serialize(decoderFactory);
-      this.prefixAndObjectMap = prefixAndObjectMap;
-      this.prefixAndSizeMap = prefixAndSizeMap;
-      this.lambdaTransport = lambdaTransport;
-      this.serializedVertices = serializedVertices;
-    }
+  public MemorySideInputProcessor(final SerializerManager serializerManager,
+                                  final String edgeId,
+                                  final ConcurrentMap<String, ConcurrentLinkedQueue<MemoryStorageObject>> prefixAndObjectMap,
+                                  final ConcurrentMap<String, AtomicInteger> prefixAndSizeMap,
+                                  final NettyServerTransport lambdaTransport,
+                                  final List<String> serializedVertices) {
+    this.encoderFactory = ((NemoEventEncoderFactory) serializerManager.getSerializer(edgeId)
+      .getEncoderFactory()).getValueEncoderFactory();
+    this.decoderFactory = new LambdaDecoderFactory(
+      ((NemoEventDecoderFactory) serializerManager.getSerializer(edgeId)
+        .getDecoderFactory()).getValueDecoderFactory());
+    this.sideInputDecodedFactory = SerializationUtils.serialize(decoderFactory);
+    this.prefixAndObjectMap = prefixAndObjectMap;
+    this.prefixAndSizeMap = prefixAndSizeMap;
+    this.lambdaTransport = lambdaTransport;
+    this.serializedVertices = serializedVertices;
+  }
 
-    @Override
+  @Override
     public Object processSideAndMainInput(Object output, String sideInputKey) {
+      // Invoke lambdas
+
+
       final long startTime = System.currentTimeMillis();
 
       final ConcurrentLinkedQueue<MemoryStorageObject> queue = prefixAndObjectMap.get(sideInputKey);
@@ -67,12 +68,11 @@ public final class VMSideInputProcessor implements SideInputProcessor {
       }
 
       LOG.info("MemoryStorageObject size: {}", list.size());
-      // Invoke VM
 
       final List<Future<Channel>> futures = new ArrayList<>(list.size());
       // 0. Trigger lambdas
       for (int i = 0; i < list.size(); i++) {
-        futures.add(lambdaTransport.createLambdaChannel(serializedVertices));
+        futures.add(lambdaTransport.createOffloadingChannel(serializedVertices));
       }
 
       final DirectByteArrayOutputStream bos = new DirectByteArrayOutputStream();
