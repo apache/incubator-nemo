@@ -16,30 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.common.ir.vertex.executionproperty;
 
-import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
-import org.apache.nemo.runtime.executor.data.DataUtil;
-
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * Represents the input data transfer to a task.
+ * Parallelism ExecutionProperty.
  */
-public interface InputReader {
+public final class MinParallelismProperty extends VertexExecutionProperty<Integer> {
   /**
-   * Reads input data depending on the communication pattern of the srcVertex.
+   * Constructor.
    *
-   * @return the read data.
+   * @param value value of the execution property.
    */
-  List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read();
+  private MinParallelismProperty(final Integer value) {
+    super(value);
+  }
 
-  IRVertex getSrcIrVertex();
-
-  static int getSourceParallelism(final InputReader inputReader) {
-    return inputReader.getSrcIrVertex().getPropertyValue(MinParallelismProperty.class)
-      .orElseThrow(() -> new IllegalStateException(inputReader.getSrcIrVertex().getId()));
+  /**
+   * Static method exposing the constructor.
+   *
+   * @param value value of the new execution property.
+   * @return the newly created execution property.
+   */
+  public static MinParallelismProperty of(final Integer value) {
+    return new MinParallelismProperty(value);
   }
 }

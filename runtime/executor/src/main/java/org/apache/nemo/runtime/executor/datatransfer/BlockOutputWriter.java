@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
@@ -142,7 +142,7 @@ public final class BlockOutputWriter implements OutputWriter {
     final int readForABlock = CommunicationPatternProperty.Value.OneToOne.equals(
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).orElseThrow(
         () -> new RuntimeException("No communication pattern on this edge.")))
-      ? 1 : dstIrVertex.getPropertyValue(ParallelismProperty.class).orElseThrow(
+      ? 1 : dstIrVertex.getPropertyValue(MinParallelismProperty.class).orElseThrow(
       () -> new RuntimeException("No parallelism property on the destination vertex."));
     return readForABlock * duplicatedDataMultiplier;
   }

@@ -24,7 +24,7 @@ import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -47,7 +47,7 @@ public final class DefaultMetricPass extends AnnotatingPass {
       dag.getIncomingEdgesOf(dst).forEach(edge -> {
         if (CommunicationPatternProperty.Value.Shuffle
             .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-          final int parallelism = dst.getPropertyValue(ParallelismProperty.class).get();
+          final int parallelism = dst.getPropertyValue(MinParallelismProperty.class).get();
           final Map<Integer, KeyRange> metric = new HashMap<>();
           for (int i = 0; i < parallelism; i++) {
             metric.put(i, HashRange.of(i, i + 1, false));

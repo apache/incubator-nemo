@@ -22,7 +22,7 @@ import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.exception.UnsupportedPartitionerException;
 import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 
@@ -56,7 +56,7 @@ public interface Partitioner<K extends Serializable> {
     final PartitionerProperty.Value partitionerPropertyValue =
       (PartitionerProperty.Value) runtimeEdge.getPropertyValueOrRuntimeException(PartitionerProperty.class);
     final int dstParallelism =
-      stageEdge.getDstIRVertex().getPropertyValue(ParallelismProperty.class)
+      stageEdge.getDstIRVertex().getPropertyValue(MinParallelismProperty.class)
         .orElseThrow(() -> new RuntimeException("No parallelism in edge " + runtimeEdge.getId()));
 
     final Partitioner partitioner;

@@ -29,7 +29,7 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.conf.JobConf;
@@ -66,11 +66,11 @@ public final class DAGConverterTest {
   public void testSimplePlan() throws Exception {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
-    v1.setProperty(ParallelismProperty.of(3));
+    v1.setProperty(MinParallelismProperty.of(3));
     irDAGBuilder.addVertex(v1);
 
     final IRVertex v2 = new OperatorVertex(mock(Transform.class));
-    v2.setProperty(ParallelismProperty.of(2));
+    v2.setProperty(MinParallelismProperty.of(2));
     irDAGBuilder.addVertex(v2);
 
     final IREdge e = new IREdge(CommunicationPatternProperty.Value.Shuffle, v1, v2);
@@ -112,33 +112,33 @@ public final class DAGConverterTest {
     final SourceVertex s = new EmptyComponents.EmptySourceVertex("Source");
 
     final IRVertex v1 = s;
-    v1.setProperty(ParallelismProperty.of(3));
+    v1.setProperty(MinParallelismProperty.of(3));
     v1.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     final Transform t = mock(Transform.class);
     final Transform dt = mock(Transform.class);
     final IRVertex v2 = new OperatorVertex(t);
-    v2.setProperty(ParallelismProperty.of(3));
+    v2.setProperty(MinParallelismProperty.of(3));
     v2.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     final IRVertex v3 = new OperatorVertex(t);
-    v3.setProperty(ParallelismProperty.of(3));
+    v3.setProperty(MinParallelismProperty.of(3));
     v3.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     final IRVertex v4 = new OperatorVertex(t);
-    v4.setProperty(ParallelismProperty.of(2));
+    v4.setProperty(MinParallelismProperty.of(2));
     v4.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     final IRVertex v5 = new OperatorVertex(dt);
-    v5.setProperty(ParallelismProperty.of(2));
+    v5.setProperty(MinParallelismProperty.of(2));
     v5.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     final IRVertex v6 = new OperatorVertex(dt);
-    v6.setProperty(ParallelismProperty.of(2));
+    v6.setProperty(MinParallelismProperty.of(2));
     v6.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.RESERVED));
 
     final IRVertex v8 = new OperatorVertex(dt);
-    v8.setProperty(ParallelismProperty.of(2));
+    v8.setProperty(MinParallelismProperty.of(2));
     v8.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
 
     irDAGBuilder.addVertex(v1);

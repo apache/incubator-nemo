@@ -23,7 +23,7 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.List;
@@ -31,7 +31,7 @@ import java.util.List;
 /**
  * Optimization pass for tagging parallelism execution property.
  */
-@Annotates(ParallelismProperty.class)
+@Annotates(MinParallelismProperty.class)
 @Requires(CommunicationPatternProperty.class)
 public final class DefaultParallelismPass extends AnnotatingPass {
   private final int desiredSourceParallelism;
@@ -69,10 +69,10 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           // After that, we set the parallelism as the number of split readers.
           // (It can be more/less than the desired value.)
           final SourceVertex sourceVertex = (SourceVertex) vertex;
-          final Integer originalParallelism = vertex.getPropertyValue(ParallelismProperty.class).get();
+          final Integer originalParallelism = vertex.getPropertyValue(MinParallelismProperty.class).get();
           // We manipulate them if it is set as default value of 1.
           if (originalParallelism.equals(1)) {
-            vertex.setProperty(ParallelismProperty.of(
+            vertex.setProperty(MinParallelismProperty.of(
                 sourceVertex.getReadables(desiredSourceParallelism).size()));
           }
         } else if (!inEdges.isEmpty()) {
@@ -81,20 +81,20 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           final Integer o2oParallelism = inEdges.stream()
              .filter(edge -> CommunicationPatternProperty.Value.OneToOne
                   .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
-              .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
+              .mapToInt(edge -> edge.getSrc().getPropertyValue(MinParallelismProperty.class).get())
               .max().orElse(1);
           final Integer shuffleParallelism = inEdges.stream()
               .filter(edge -> CommunicationPatternProperty.Value.Shuffle
                   .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get()))
-              .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
+              .mapToInt(edge -> edge.getSrc().getPropertyValue(MinParallelismProperty.class).get())
               .map(i -> i / shuffleDecreaseFactor)
               .max().orElse(1);
           // We set the greater value as the parallelism.
           final Integer parallelism = o2oParallelism > shuffleParallelism ? o2oParallelism : shuffleParallelism;
-          vertex.setProperty(ParallelismProperty.of(parallelism));
+          vertex.setProperty(MinParallelismProperty.of(parallelism));
           // synchronize one-to-one edges parallelism
           recursivelySynchronizeO2OParallelism(dag, vertex, parallelism);
-        } else if (!vertex.getPropertyValue(ParallelismProperty.class).isPresent()) {
+        } else if (!vertex.getPropertyValue(MinParallelismProperty.class).isPresent()) {
           throw new RuntimeException("There is a non-source vertex that doesn't have any inEdges "
               + "(excluding SideInput edges)");
         } // No problem otherwise.
@@ -122,11 +122,11 @@ public final class DefaultParallelismPass extends AnnotatingPass {
         .mapToInt(inVertex -> recursivelySynchronizeO2OParallelism(dag, inVertex, parallelism))
         .max().orElse(1);
     final Integer maxParallelism = ancestorParallelism > parallelism ? ancestorParallelism : parallelism;
-    final Integer myParallelism = vertex.getPropertyValue(ParallelismProperty.class).get();
+    final Integer myParallelism = vertex.getPropertyValue(MinParallelismProperty.class).get();
 
     // update the vertex with the max value.
     if (maxParallelism > myParallelism) {
-      vertex.setProperty(ParallelismProperty.of(maxParallelism));
+      vertex.setProperty(MinParallelismProperty.of(maxParallelism));
       return maxParallelism;
     }
     return myParallelism;

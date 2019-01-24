@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.executor.data;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -188,7 +188,7 @@ public final class PipeManagerWorker {
   }
 
   private int getNumOfPipeToWait(final RuntimeEdge runtimeEdge) {
-    final int dstParallelism = ((StageEdge) runtimeEdge).getDstIRVertex().getPropertyValue(ParallelismProperty.class)
+    final int dstParallelism = ((StageEdge) runtimeEdge).getDstIRVertex().getPropertyValue(MinParallelismProperty.class)
       .orElseThrow(() -> new IllegalStateException());
     final CommunicationPatternProperty.Value commPattern = ((StageEdge) runtimeEdge)
       .getPropertyValue(CommunicationPatternProperty.class)

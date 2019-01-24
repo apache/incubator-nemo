@@ -18,13 +18,13 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
-import com.google.common.annotations.VisibleForTesting;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.eventhandler.RuntimeEventHandler;
-
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.NumOfPartitionProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
+import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,55 +39,32 @@ import java.util.stream.Collectors;
  */
 public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
   private static final Logger LOG = LoggerFactory.getLogger(SkewRunTimePass.class.getName());
-  private static final int DEFAULT_NUM_SKEWED_KEYS = 1;
-  /*
-   * Hash range multiplier.
-   * If we need to split or recombine an output data from a task after it is stored,
-   * we multiply the hash range with this factor in advance
-   * to prevent the extra deserialize - rehash - serialize process.
-   * In these cases, the hash range will be (hash range multiplier X destination task parallelism).
-   * The reason why we do not divide the output into a fixed number is that the fixed number can be smaller than
-   * the destination task parallelism.
-   */
-  public static final int HASH_RANGE_MULTIPLIER = 5;
-
-  private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
-  // Skewed keys denote for top n keys in terms of partition size.
-  private final int numSkewedKeys;
-
-  /**
-   * Constructor without expected number of skewed keys.
-   */
-  public SkewRunTimePass() {
-    this(DEFAULT_NUM_SKEWED_KEYS);
-  }
-
-  /**
-   * Constructor with expected number of skewed keys.
-   *
-   * @param numOfSkewedKeys the expected number of skewed keys.
-   */
-  public SkewRunTimePass(final int numOfSkewedKeys) {
-    this.eventHandlers = Collections.singleton(DynamicOptimizationEventHandler.class);
-    this.numSkewedKeys = numOfSkewedKeys;
-  }
 
   @Override
   public IRDAG optimize(final IRDAG irdag,
-                        final Message<Map<Object, Long>> metricData) {
+                        final Message<Map<Object, Long>> message) {
     // Validates target edges...
-    final StageEdge stageEdge = irdag.getIncomingEdgesOf(metricData.getProducer());
-
-
+    final MessageBarrierVertex messageProducer = message.getProducer();
+    final StageEdge stageEdge = irdag.getIncomingEdgesOf(message.getProducer());
     final DataSkewHashPartitioner partitioner = (DataSkewHashPartitioner) Partitioner.getPartitioner(firstEdge);
 
+    final int numOfPartitions = new IREdge().getPropertyValue(NumOfPartitionProperty.class).get();
+
     // Calculate keyRanges.
-    final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), dstParallelism, partitioner);
+    final Map<Object, Long> messageValue = message.getMessageValue();
+    final List<KeyRange> keyRanges = calculateKeyRanges(message.right(), dstParallelism, partitioner);
     final Map<Integer, KeyRange> taskIdxToKeyRange = new HashMap<>();
     for (int i = 0; i < dstParallelism; i++) {
       taskIdxToKeyRange.put(i, keyRanges.get(i));
     }
 
+    // Set the partitionSet property and return IRDAG.
+    final PartitionSetProperty partitionSetProperty = PartitionSetProperty.of();
+    new IREdge().setPropertyPermanently(partitionSetProperty);
+    return irdag;
+
+
+    /*
     // Overwrite the previously assigned key range in the physical DAG with the new range.
     final DAG<Stage, StageEdge> stageDAG = originalPlan.getStageDAG();
     for (final Stage stage : stageDAG.getVertices()) {
@@ -99,9 +76,10 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
     }
 
     return new PhysicalPlan(originalPlan.getPlanId(), stageDAG);
+    */
   }
 
-  public List<Long> identifySkewedKeys(final List<Long> partitionSizeList) {
+  private List<Long> identifySkewedKeys(final List<Long> partitionSizeList) {
     // Identify skewed keys.
     List<Long> sortedMetricData = partitionSizeList.stream()
         .sorted(Comparator.reverseOrder())
@@ -111,7 +89,6 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
       skewedSizes.add(sortedMetricData.get(i));
       LOG.info("Skewed size: {}", sortedMetricData.get(i));
     }
-
     return skewedSizes;
   }
 
@@ -123,7 +100,6 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
         return true;
       }
     }
-
     return false;
   }
 
@@ -139,8 +115,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
    * @param partitioner    the partitioner.
    * @return the list of key ranges calculated.
    */
-  @VisibleForTesting
-  public List<KeyRange> calculateKeyRanges(final Map<Object, Long> keyToCountMap,
+  private List<KeyRange> calculateKeyRanges(final Map<Object, Long> keyToCountMap,
                                            final Integer dstParallelism,
                                            final Partitioner<Integer> partitioner) {
     final Map<Integer, Long> partitionKeyToPartitionCount = new HashMap<>();

@@ -23,7 +23,7 @@ import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.InMemorySourceVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 import org.apache.nemo.compiler.frontend.spark.core.SparkFrontendUtils;
 import org.apache.nemo.compiler.frontend.spark.source.SparkDatasetBoundedSourceVertex;
 import org.apache.nemo.compiler.frontend.spark.source.SparkTextFileBoundedSourceVertex;
@@ -66,7 +66,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     final IRVertex initializedSourceVertex = new InMemorySourceVertex<>(initialData);
-    initializedSourceVertex.setProperty(ParallelismProperty.of(parallelism));
+    initializedSourceVertex.setProperty(MinParallelismProperty.of(parallelism));
     builder.addVertex(initializedSourceVertex);
 
     final RDD<T> nemoRdd = new RDD<>(sparkContext, builder.buildWithoutSourceSinkCheck(),
@@ -91,7 +91,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     final org.apache.spark.rdd.RDD<String> textRdd = sparkContext.textFile(inputPath, minPartitions);
     final int numPartitions = textRdd.getNumPartitions();
     final IRVertex textSourceVertex = new SparkTextFileBoundedSourceVertex(sparkContext, inputPath, numPartitions);
-    textSourceVertex.setProperty(ParallelismProperty.of(numPartitions));
+    textSourceVertex.setProperty(MinParallelismProperty.of(numPartitions));
     builder.addVertex(textSourceVertex);
 
     return new JavaRDD<>(textRdd, sparkContext, builder.buildWithoutSourceSinkCheck(), textSourceVertex);
@@ -111,7 +111,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
     final IRVertex sparkBoundedSourceVertex = new SparkDatasetBoundedSourceVertex<>(sparkSession, dataset);
     final org.apache.spark.rdd.RDD<T> sparkRDD = dataset.sparkRDD();
-    sparkBoundedSourceVertex.setProperty(ParallelismProperty.of(sparkRDD.getNumPartitions()));
+    sparkBoundedSourceVertex.setProperty(MinParallelismProperty.of(sparkRDD.getNumPartitions()));
     builder.addVertex(sparkBoundedSourceVertex);
 
     return new JavaRDD<>(

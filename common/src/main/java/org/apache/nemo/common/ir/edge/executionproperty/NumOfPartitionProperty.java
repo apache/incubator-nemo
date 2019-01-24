@@ -16,20 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.vertex.executionproperty;
+package org.apache.nemo.common.ir.edge.executionproperty;
 
-import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
- * Parallelism ExecutionProperty.
+ * Number of partitions.
  */
-public final class ParallelismProperty extends VertexExecutionProperty<Integer> {
+public final class NumOfPartitionProperty extends EdgeExecutionProperty<Integer> {
   /**
    * Constructor.
    *
    * @param value value of the execution property.
    */
-  private ParallelismProperty(final Integer value) {
+  private NumOfPartitionProperty(final int value) {
     super(value);
   }
 
@@ -39,7 +39,7 @@ public final class ParallelismProperty extends VertexExecutionProperty<Integer> 
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static ParallelismProperty of(final Integer value) {
-    return new ParallelismProperty(value);
+  public static NumOfPartitionProperty of(final int value) {
+    return new NumOfPartitionProperty(value);
   }
 }

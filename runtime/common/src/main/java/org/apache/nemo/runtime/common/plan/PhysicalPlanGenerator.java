@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProper
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.*;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.dag.DAG;
@@ -152,7 +152,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
       final String stageIdentifier = RuntimeIdManager.generateStageId(stageId);
       final ExecutionPropertyMap<VertexExecutionProperty> stageProperties = new ExecutionPropertyMap<>(stageIdentifier);
       stagePartitioner.getStageProperties(stageVertices.iterator().next()).forEach(stageProperties::put);
-      final int stageParallelism = stageProperties.get(ParallelismProperty.class)
+      final int stageParallelism = stageProperties.get(MinParallelismProperty.class)
           .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
 
       final DAGBuilder<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAGBuilder = new DAGBuilder<>();
@@ -238,7 +238,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
    * @param stage to check for
    */
   private void integrityCheck(final Stage stage) {
-    stage.getPropertyValue(ParallelismProperty.class)
+    stage.getPropertyValue(MinParallelismProperty.class)
         .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
     stage.getPropertyValue(ScheduleGroupProperty.class)
         .orElseThrow(() -> new RuntimeException("ScheduleGroup property must be set for Stage"));

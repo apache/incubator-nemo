@@ -25,7 +25,7 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
 import org.junit.Rule;
@@ -57,7 +57,7 @@ public class ExecutionPropertyMapTest {
   @Test
   public void testDefaultValues() {
     assertEquals(comPattern, edgeMap.get(CommunicationPatternProperty.class).get());
-    assertEquals(1, vertexMap.get(ParallelismProperty.class).get().longValue());
+    assertEquals(1, vertexMap.get(MinParallelismProperty.class).get().longValue());
     assertEquals(edge.getId(), edgeMap.getId());
     assertEquals(source.getId(), vertexMap.getId());
   }
@@ -76,8 +76,8 @@ public class ExecutionPropertyMapTest {
     edgeMap.remove(DataFlowProperty.class);
     assertFalse(edgeMap.get(DataFlowProperty.class).isPresent());
 
-    vertexMap.put(ParallelismProperty.of(100));
-    assertEquals(100, vertexMap.get(ParallelismProperty.class).get().longValue());
+    vertexMap.put(MinParallelismProperty.of(100));
+    assertEquals(100, vertexMap.get(MinParallelismProperty.class).get().longValue());
   }
 
   @Test
@@ -86,16 +86,16 @@ public class ExecutionPropertyMapTest {
     final ExecutionPropertyMap<ExecutionProperty> map1 = new ExecutionPropertyMap<>("map1");
     assertTrue(map0.equals(map1));
     assertTrue(map1.equals(map0));
-    map0.put(ParallelismProperty.of(1));
+    map0.put(MinParallelismProperty.of(1));
     assertFalse(map0.equals(map1));
     assertFalse(map1.equals(map0));
-    map1.put(ParallelismProperty.of(1));
+    map1.put(MinParallelismProperty.of(1));
     assertTrue(map0.equals(map1));
     assertTrue(map1.equals(map0));
-    map1.put(ParallelismProperty.of(2));
+    map1.put(MinParallelismProperty.of(2));
     assertFalse(map0.equals(map1));
     assertFalse(map1.equals(map0));
-    map0.put(ParallelismProperty.of(2));
+    map0.put(MinParallelismProperty.of(2));
     assertTrue(map0.equals(map1));
     assertTrue(map1.equals(map0));
     map0.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
@@ -116,12 +116,12 @@ public class ExecutionPropertyMapTest {
   public void testFinalizedProperty() {
     // this should work without a problem..
     final ExecutionPropertyMap<ExecutionProperty> map = new ExecutionPropertyMap<>("map");
-    map.put(ParallelismProperty.of(1), false);
-    assertEquals(ParallelismProperty.of(1), map.put(ParallelismProperty.of(2)));
-    assertEquals(ParallelismProperty.of(2), map.put(ParallelismProperty.of(3), true));
+    map.put(MinParallelismProperty.of(1), false);
+    assertEquals(MinParallelismProperty.of(1), map.put(MinParallelismProperty.of(2)));
+    assertEquals(MinParallelismProperty.of(2), map.put(MinParallelismProperty.of(3), true));
 
     // test exception
     expectedException.expect(CompileTimeOptimizationException.class);
-    map.put(ParallelismProperty.of(4));
+    map.put(MinParallelismProperty.of(4));
   }
 }

@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.conf.JobConf;
@@ -316,7 +316,7 @@ public final class DataTransferTest {
     dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
     if (dummyIREdge.getPropertyValue(CommunicationPatternProperty.class).get()
         .equals(CommunicationPatternProperty.Value.Shuffle)) {
-      final int parallelism = dstVertex.getPropertyValue(ParallelismProperty.class).get();
+      final int parallelism = dstVertex.getPropertyValue(MinParallelismProperty.class).get();
       final Map<Integer, KeyRange> metric = new HashMap<>();
       for (int i = 0; i < parallelism; i++) {
         metric.put(i, HashRange.of(i, i + 1, false));
@@ -403,7 +403,7 @@ public final class DataTransferTest {
     duplicateDataProperty.get().setGroupSize(2);
     if (dummyIREdge.getPropertyValue(CommunicationPatternProperty.class).get()
         .equals(CommunicationPatternProperty.Value.Shuffle)) {
-      final int parallelism = dstVertex.getPropertyValue(ParallelismProperty.class).get();
+      final int parallelism = dstVertex.getPropertyValue(MinParallelismProperty.class).get();
       final Map<Integer, KeyRange> metric = new HashMap<>();
       for (int i = 0; i < parallelism; i++) {
         metric.put(i, HashRange.of(i, i + 1, false));
@@ -498,11 +498,11 @@ public final class DataTransferTest {
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
-    srcVertex.setProperty(ParallelismProperty.of(PARALLELISM_TEN));
+    srcVertex.setProperty(MinParallelismProperty.of(PARALLELISM_TEN));
 
     // Dst setup
     final SourceVertex dstVertex = new EmptyComponents.EmptySourceVertex("Destination");
-    dstVertex.setProperty(ParallelismProperty.of(PARALLELISM_TEN));
+    dstVertex.setProperty(MinParallelismProperty.of(PARALLELISM_TEN));
 
     return Pair.of(srcVertex, dstVertex);
   }
@@ -518,11 +518,11 @@ public final class DataTransferTest {
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
-    srcVertex.setProperty(ParallelismProperty.of(PARALLELISM_TEN));
+    srcVertex.setProperty(MinParallelismProperty.of(PARALLELISM_TEN));
 
     // Dst setup
     final SourceVertex dstVertex = new EmptyComponents.EmptySourceVertex("Destination");
-    dstVertex.setProperty(ParallelismProperty.of(PARALLELISM_TEN));
+    dstVertex.setProperty(MinParallelismProperty.of(PARALLELISM_TEN));
 
     return Pair.of(srcVertex, dstVertex);
   }
@@ -531,7 +531,7 @@ public final class DataTransferTest {
     final DAG<IRVertex, RuntimeEdge<IRVertex>> emptyDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>().build();
 
     final ExecutionPropertyMap<VertexExecutionProperty> stageExecutionProperty = new ExecutionPropertyMap<>(stageId);
-    stageExecutionProperty.put(ParallelismProperty.of(PARALLELISM_TEN));
+    stageExecutionProperty.put(MinParallelismProperty.of(PARALLELISM_TEN));
     stageExecutionProperty.put(ScheduleGroupProperty.of(0));
     return new Stage(stageId, emptyDag, stageExecutionProperty, Collections.emptyList());
   }

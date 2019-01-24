@@ -29,7 +29,7 @@ import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSiteProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.slf4j.Logger;
@@ -55,7 +55,7 @@ import java.util.*;
  * TaskGroups immediately as scheduler attempts to schedule a TaskGroup.
  */
 @Annotates(ResourceSiteProperty.class)
-@Requires(ParallelismProperty.class)
+@Requires(MinParallelismProperty.class)
 public final class ResourceSitePass extends AnnotatingPass {
 
   // Index of the objective parameter, in the coefficient vector
@@ -114,7 +114,7 @@ public final class ResourceSitePass extends AnnotatingPass {
       final BandwidthSpecification bandwidthSpecification) {
     dag.topologicalDo(irVertex -> {
       final Collection<IREdge> inEdges = dag.getIncomingEdgesOf(irVertex);
-      final int parallelism = irVertex.getPropertyValue(ParallelismProperty.class)
+      final int parallelism = irVertex.getPropertyValue(MinParallelismProperty.class)
           .orElseThrow(() -> new RuntimeException("Parallelism property required"));
       if (inEdges.size() == 0) {
         // This vertex is root vertex.
@@ -130,7 +130,7 @@ public final class ResourceSitePass extends AnnotatingPass {
         for (final IREdge edgeToIRVertex : dag.getIncomingEdgesOf(irVertex)) {
           final IRVertex parentVertex = edgeToIRVertex.getSrc();
           final Map<String, Integer> parentShares = parentVertex.getPropertyValue(ResourceSiteProperty.class).get();
-          final int parentParallelism = parentVertex.getPropertyValue(ParallelismProperty.class)
+          final int parentParallelism = parentVertex.getPropertyValue(MinParallelismProperty.class)
               .orElseThrow(() -> new RuntimeException("Parallelism property required"));
           final Map<String, Integer> shares = parentShares.isEmpty() ? getEvenShares(bandwidthSpecification.getNodes(),
               parentParallelism) : parentShares;

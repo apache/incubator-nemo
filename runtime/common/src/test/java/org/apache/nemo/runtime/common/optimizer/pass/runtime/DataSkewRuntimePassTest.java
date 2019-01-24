@@ -21,7 +21,6 @@ package org.apache.nemo.runtime.common.optimizer.pass.runtime;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.KeyRange;
-import org.apache.nemo.runtime.common.partitioner.DataSkewHashPartitioner;
 import org.apache.nemo.runtime.common.partitioner.Partitioner;
 import org.junit.Before;
 import org.junit.Test;
