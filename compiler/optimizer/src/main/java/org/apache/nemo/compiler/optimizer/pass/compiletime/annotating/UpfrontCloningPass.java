@@ -37,7 +37,7 @@ public final class UpfrontCloningPass extends AnnotatingPass {
   }
 
   @Override
-  public IRDAG optimize(final IRDAG dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.getVertices().stream()
         .filter(vertex -> dag.getCurrentDAGSnapshot().getIncomingEdgesOf(vertex.getId())
           .stream()

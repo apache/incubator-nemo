@@ -40,7 +40,7 @@ public final class DecompressionPass extends AnnotatingPass {
   }
 
   @Override
-  public IRDAG optimize(final IRDAG dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex).stream()
         // Find edges which have a compression property but not decompression property.
         .filter(edge -> edge.getPropertyValue(CompressionProperty.class).isPresent()

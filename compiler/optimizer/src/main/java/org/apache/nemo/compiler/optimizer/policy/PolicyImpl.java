@@ -76,7 +76,7 @@ public final class PolicyImpl implements Policy {
       if (passToApply.getCondition().test(dag)) {
         LOG.info("Apply {} to the DAG", passToApply.getClass().getSimpleName());
         // Apply the pass to the DAG.
-        passToApply.optimize(dag);
+        passToApply.apply(dag);
         // Ensure AnnotatingPass and ReshapingPass functions as intended.
         if ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(dag, dag))
           || (passToApply instanceof ReshapingPass && !checkReshapingPass(dag, dag))) {

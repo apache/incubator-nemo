@@ -32,8 +32,8 @@ import java.util.function.BiFunction;
  * @param <V> input value type.
  * @param <O> output type.
  */
-public final class MessageAggregateTransform<K, V, O> extends NoWatermarkEmitTransform<Pair<K, V>, O> {
-  private static final Logger LOG = LoggerFactory.getLogger(MessageAggregateTransform.class.getName());
+public final class MessageAggregatorTransform<K, V, O> extends NoWatermarkEmitTransform<Pair<K, V>, O> {
+  private static final Logger LOG = LoggerFactory.getLogger(MessageAggregatorTransform.class.getName());
   private OutputCollector<O> outputCollector;
   private O aggregatedDynOptData;
   private final BiFunction<Pair<K, V>, O, O> dynOptDataAggregator;
@@ -43,8 +43,8 @@ public final class MessageAggregateTransform<K, V, O> extends NoWatermarkEmitTra
    * @param aggregatedDynOptData per-stage aggregated dynamic optimization data.
    * @param dynOptDataAggregator aggregator to use.
    */
-  public MessageAggregateTransform(final O aggregatedDynOptData,
-                                   final BiFunction<Pair<K, V>, O, O> dynOptDataAggregator) {
+  public MessageAggregatorTransform(final O aggregatedDynOptData,
+                                    final BiFunction<Pair<K, V>, O, O> dynOptDataAggregator) {
     this.aggregatedDynOptData = aggregatedDynOptData;
     this.dynOptDataAggregator = dynOptDataAggregator;
   }
@@ -67,7 +67,7 @@ public final class MessageAggregateTransform<K, V, O> extends NoWatermarkEmitTra
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append(MessageAggregateTransform.class);
+    sb.append(MessageAggregatorTransform.class);
     sb.append(":");
     sb.append(super.toString());
     return sb.toString();

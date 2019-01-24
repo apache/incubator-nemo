@@ -40,7 +40,7 @@ public final class DisaggregationEdgeDataStorePass extends AnnotatingPass {
   }
 
   @Override
-  public IRDAG optimize(final IRDAG dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.getVertices().forEach(vertex -> { // Initialize the DataStore of the DAG with GlusterFileStore.
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       inEdges.forEach(edge ->

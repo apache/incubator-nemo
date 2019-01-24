@@ -52,7 +52,7 @@ public class TransientResourceCompositePassTest {
 
   @Test
   public void testTransientResourcePass() throws Exception {
-    final IRDAG processedDAG = new TransientResourceCompositePass().optimize(compiledDAG);
+    final IRDAG processedDAG = new TransientResourceCompositePass().apply(compiledDAG);
 
     final IRVertex vertexX = processedDAG.getTopologicalSort().get(0);
     assertEquals(ResourcePriorityProperty.TRANSIENT, vertexX.getPropertyValue(ResourcePriorityProperty.class).get());

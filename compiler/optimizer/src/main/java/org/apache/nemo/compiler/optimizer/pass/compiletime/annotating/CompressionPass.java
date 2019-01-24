@@ -46,7 +46,7 @@ public final class CompressionPass extends AnnotatingPass {
   }
 
   @Override
-  public IRDAG optimize(final IRDAG dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex).stream()
         .filter(edge -> !edge.getPropertyValue(CompressionProperty.class).isPresent())
         .forEach(edge -> edge.setProperty(CompressionProperty.of(compression))));

@@ -35,7 +35,7 @@ public final class ResourceLocalityPass extends AnnotatingPass {
   }
 
   @Override
-  public IRDAG optimize(final IRDAG dag) {
+  public IRDAG apply(final IRDAG dag) {
     // On every vertex, if ResourceLocalityProperty is not set, put it as true.
     dag.getVertices().stream()
         .filter(v -> !v.getPropertyValue(ResourceLocalityProperty.class).isPresent())

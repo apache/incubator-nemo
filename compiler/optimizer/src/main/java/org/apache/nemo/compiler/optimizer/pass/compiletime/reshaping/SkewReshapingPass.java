@@ -24,7 +24,7 @@ import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.system.MessageAggregationVertex;
+import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
@@ -39,7 +39,6 @@ import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Pass to reshape the IR DAG for skew handling.
@@ -60,7 +59,7 @@ public final class SkewReshapingPass extends ReshapingPass {
   }
 
   @Override
-  public IRDAG optimize(final IRDAG dag) {
+  public IRDAG apply(final IRDAG dag) {
     // TODO #210: Data-aware dynamic optimization at run-time
     dag.topologicalDo(v -> {
 
@@ -115,7 +114,7 @@ public final class SkewReshapingPass extends ReshapingPass {
 
         // Insert the vertices
         final MessageBarrierVertex mbv = new MessageBarrierVertex<>(dynOptDataCollector);
-        final MessageAggregationVertex mav = new MessageAggregationVertex(new HashMap(), dynOptDataAggregator);
+        final MessageAggregatorVertex mav = new MessageAggregatorVertex(new HashMap(), dynOptDataAggregator);
         dag.insert(mbv, mav, encoderProperty, decoderProperty, shuffleEdgeGroup);
       }
     });

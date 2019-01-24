@@ -56,7 +56,7 @@ public class LoopInvariantCodeMotionPassTest {
   @Before
   public void setUp() throws Exception {
     originalALSDAG = CompilerTestUtil.compileALSDAG();
-    groupedDAG = new LoopExtractionPass().optimize(originalALSDAG);
+    groupedDAG = new LoopExtractionPass().apply(originalALSDAG);
 
     final Optional<LoopVertex> alsLoopOpt = groupedDAG.getTopologicalSort().stream()
         .filter(irVertex -> irVertex instanceof LoopVertex).map(irVertex -> (LoopVertex) irVertex).findFirst();
@@ -111,11 +111,11 @@ public class LoopInvariantCodeMotionPassTest {
     final long numberOfGroupedVertices = groupedDAG.getVertices().size();
 
     final IRDAG processedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
-        .optimize(dagToBeRefactored);
+        .apply(dagToBeRefactored);
     assertEquals(numberOfGroupedVertices, processedDAG.getVertices().size());
 
     final IRDAG notProcessedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
-        .optimize(groupedDAG);
+        .apply(groupedDAG);
     assertEquals(numberOfGroupedVertices, notProcessedDAG.getVertices().size());
   }
 

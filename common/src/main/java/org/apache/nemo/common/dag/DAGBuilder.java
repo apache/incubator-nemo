@@ -24,7 +24,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
-import org.apache.nemo.common.ir.vertex.system.MessageAggregationVertex;
+import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
 
 import java.io.Serializable;
 import java.util.*;
@@ -262,7 +262,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
         .filter(e -> e.getPropertyValue(MetricCollectionProperty.class).isPresent())
         .filter(e -> !(e.getDst() instanceof OperatorVertex
-          && e.getDst() instanceof MessageAggregationVertex))
+          && e.getDst() instanceof MessageAggregatorVertex))
         .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
         .forEach(e -> {
           throw new CompileTimeOptimizationException("DAG execution property check: "

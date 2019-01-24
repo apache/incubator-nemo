@@ -25,13 +25,12 @@ import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.system.MessageAggregationVertex;
+import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.system.StreamVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -174,17 +173,17 @@ public final class IRDAG {
    *
    * Before: src - edge - dst
    * After: src - oneToOneEdge(a clone of edge) - messageBarrierVertex -
-   *        shuffleEdge - messageAggregationVertex - broadcastEdge - dst
+   *        shuffleEdge - messageAggregatorVertex - broadcastEdge - dst
    * (the "Before" relationships are unmodified)
    *
    * @param messageBarrierVertex to insert.
-   * @param messageAggregationVertex to insert.
+   * @param messageAggregatorVertex to insert.
    * @param mbvOutputEncoder to use.
    * @param mbvOutputDecoder to use.
    * @param edgesToGetStatisticsOf to examine.
    */
   public void insert(final MessageBarrierVertex messageBarrierVertex,
-                     final MessageAggregationVertex messageAggregationVertex,
+                     final MessageAggregatorVertex messageAggregatorVertex,
                      final EncoderProperty mbvOutputEncoder,
                      final DecoderProperty mbvOutputDecoder,
                      final Set<IREdge> edgesToGetStatisticsOf) {
@@ -202,9 +201,9 @@ public final class IRDAG {
     // First, add all the vertices.
     dag.topologicalDo(v -> builder.addVertex(v));
 
-    // Add a control dependency (no output) from the messageAggregationVertex to the destination.
-    builder.addVertex(messageAggregationVertex);
-    final IREdge noDataEdge = new IREdge(CommunicationPatternProperty.Value.BroadCast, messageAggregationVertex, dst);
+    // Add a control dependency (no output) from the messageAggregatorVertex to the destination.
+    builder.addVertex(messageAggregatorVertex);
+    final IREdge noDataEdge = new IREdge(CommunicationPatternProperty.Value.BroadCast, messageAggregatorVertex, dst);
     builder.connectVertices(noDataEdge);
 
     // Add the edges and the messageBarrierVertex.
@@ -224,13 +223,13 @@ public final class IRDAG {
           });
           builder.connectVertices(clone);
 
-          // messageBarrierVertex to the messageAggregationVertex
+          // messageBarrierVertex to the messageAggregatorVertex
           final IREdge edgeToABV = edgeBetweenMessageVertices(mbv,
-            messageAggregationVertex, mbvOutputEncoder, mbvOutputDecoder, currentMetricCollectionId);
+            messageAggregatorVertex, mbvOutputEncoder, mbvOutputDecoder, currentMetricCollectionId);
           builder.connectVertices(edgeToABV);
 
           // The original edge
-          // We then insert the vertex with MessageBarrierTransform and vertex with MessageAggregateTransform
+          // We then insert the vertex with MessageBarrierTransform and vertex with MessageAggregatorTransform
           // between the vertex and incoming vertices.
           final IREdge edgeToOriginalDst =
             new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
@@ -268,7 +267,7 @@ public final class IRDAG {
    * @return the edge.
    */
   private IREdge edgeBetweenMessageVertices(final MessageBarrierVertex mbv,
-                                            final MessageAggregationVertex mav,
+                                            final MessageAggregatorVertex mav,
                                             final EncoderProperty encoder,
                                             final DecoderProperty decoder,
                                             final int currentMetricCollectionId) {

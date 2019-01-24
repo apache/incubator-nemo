@@ -55,7 +55,7 @@ public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
   }
 
   @Override
-  public IRDAG optimize(final IRDAG dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(irVertex ->
       dag.getIncomingEdgesOf(irVertex).forEach(edge -> {
         if (edge.getDst().getClass().equals(StreamVertex.class)) {

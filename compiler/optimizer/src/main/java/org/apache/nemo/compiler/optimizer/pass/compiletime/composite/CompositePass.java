@@ -59,7 +59,7 @@ public abstract class CompositePass extends CompileTimePass {
   }
 
   @Override
-  public final IRDAG optimize(final IRDAG irVertexIREdgeDAG) {
+  public final IRDAG apply(final IRDAG irVertexIREdgeDAG) {
     return recursivelyApply(irVertexIREdgeDAG, getPassList().iterator());
   }
 
@@ -71,7 +71,7 @@ public abstract class CompositePass extends CompileTimePass {
    */
   private IRDAG recursivelyApply(final IRDAG dag, final Iterator<CompileTimePass> passIterator) {
     if (passIterator.hasNext()) {
-      return recursivelyApply(passIterator.next().optimize(dag), passIterator);
+      return recursivelyApply(passIterator.next().apply(dag), passIterator);
     } else {
       return dag;
     }

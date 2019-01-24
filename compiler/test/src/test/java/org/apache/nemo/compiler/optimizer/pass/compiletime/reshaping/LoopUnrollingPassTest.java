@@ -53,7 +53,7 @@ public class LoopUnrollingPassTest {
   @Test
   public void testLoopUnrollingPass() throws Exception {
     final IRDAG processedDAG =
-        new LoopUnrollingPass().optimize(new LoopExtractionPass().optimize(compiledDAG));
+        new LoopUnrollingPass().apply(new LoopExtractionPass().apply(compiledDAG));
 
     assertEquals(compiledDAG.getTopologicalSort().size(), processedDAG.getTopologicalSort().size());
     // zip vertices

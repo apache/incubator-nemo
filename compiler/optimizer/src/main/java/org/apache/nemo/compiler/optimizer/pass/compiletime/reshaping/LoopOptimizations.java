@@ -113,7 +113,7 @@ public final class LoopOptimizations {
     }
 
     @Override
-    public IRDAG optimize(final IRDAG inputDAG) {
+    public IRDAG apply(final IRDAG inputDAG) {
       inputDAG.unSafeDirectReshaping(dag -> {
         final List<LoopVertex> loopVertices = new ArrayList<>();
         final Map<LoopVertex, List<IREdge>> inEdges = new HashMap<>();
@@ -246,7 +246,7 @@ public final class LoopOptimizations {
     }
 
     @Override
-    public IRDAG optimize(final IRDAG inputDAG) {
+    public IRDAG apply(final IRDAG inputDAG) {
       inputDAG.unSafeDirectReshaping(dag -> {
         return recursivelyOptimize(dag);
       });
