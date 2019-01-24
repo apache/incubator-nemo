@@ -35,18 +35,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Pass to reshape the IR DAG for skew handling.
- * We insert a {@link MessageBarrierVertex for each shuffle edge}
+ * We insert a {@link MessageBarrierVertex} for each shuffle edge,
+ * and aggregate messages for multiple same-destination shuffle edges.
  * */
 @Annotates(MetricCollectionProperty.class)
 @Requires(CommunicationPatternProperty.class)
 public final class SkewReshapingPass extends ReshapingPass {
   private static final Logger LOG = LoggerFactory.getLogger(SkewReshapingPass.class.getName());
+  private static final String MAIN_OUTPUT_TAG = "MAIN_OUTPUT_TAG";
 
   /**
    * Default constructor.
@@ -57,55 +61,62 @@ public final class SkewReshapingPass extends ReshapingPass {
 
   @Override
   public IRDAG optimize(final IRDAG dag) {
+    // TODO #210: Data-aware dynamic optimization at run-time
     dag.topologicalDo(v -> {
-      // We care about OperatorVertices that have shuffle incoming edges
-      // TODO #210: Data-aware dynamic optimization at run-time
-      for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
-        if (CommunicationPatternProperty.Value.Shuffle
-          .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-          // Shuffle edge has the KeyExtractor, KeyEncoder, and KeyDecoder
 
-          // Get the key extractor
-          final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
+      // Incoming shuffle edges grouped by the AdditionalOutputTagProperty.
+      final Function<IREdge, String> groupingFunction = irEdge -> {
+        irEdge.getPropertyValue(AdditionalOutputTagProperty.class).orElse(MAIN_OUTPUT_TAG);
+      };
+      final Map<String, Set<IREdge>> shuffleEdgesGroupedByTag = dag.getIncomingEdgesOf(v).stream()
+        .filter(e -> CommunicationPatternProperty.Value.Shuffle
+          .equals(e.getPropertyValue(CommunicationPatternProperty.class).get()))
+        .collect(Collectors.groupingBy(groupingFunction, Collectors.toSet()));
 
-          // For collecting the data
-          final BiFunction<Object, Map<Object, Long>, Map<Object, Long>> dynOptDataCollector =
-            (BiFunction<Object, Map<Object, Long>, Map<Object, Long>> & Serializable)
-              (element, dynOptData) -> {
-                Object key = keyExtractor.extractKey(element);
-                if (dynOptData.containsKey(key)) {
-                  dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
-                } else {
-                  dynOptData.put(key, 1L);
-                }
-                return dynOptData;
-              };
+      // For each shuffle edge group...
+      for (final Set<IREdge> shuffleEdgeGroup : shuffleEdgesGroupedByTag.values()) {
+        final IREdge representativeEdge = shuffleEdgeGroup.iterator().next();
 
-          // For aggregating the collected data
-          final BiFunction<Pair<Object, Long>, Map<Object, Long>, Map<Object, Long>> dynOptDataAggregator =
-            (BiFunction<Pair<Object, Long>, Map<Object, Long>, Map<Object, Long>> & Serializable)
-              (element, aggregatedDynOptData) -> {
-                final Object key = element.left();
-                final Long count = element.right();
-                if (aggregatedDynOptData.containsKey(key)) {
-                  aggregatedDynOptData.compute(key, (existingKey, accumulatedCount) -> accumulatedCount + count);
-                } else {
-                  aggregatedDynOptData.put(key, count);
-                }
-                return aggregatedDynOptData;
-              };
+        // Get the key extractor
+        final KeyExtractor keyExtractor = representativeEdge.getPropertyValue(KeyExtractorProperty.class).get();
 
-          // Coders to use
-          final EncoderProperty encoderProperty = EncoderProperty.of(
-            PairEncoderFactory.of(edge.getPropertyValue(KeyEncoderProperty.class).get(), LongEncoderFactory.of()));
-          final DecoderProperty decoderProperty = DecoderProperty.of(
-            PairDecoderFactory.of(edge.getPropertyValue(KeyDecoderProperty.class).get(), LongDecoderFactory.of()));
+        // For collecting the data
+        final BiFunction<Object, Map<Object, Long>, Map<Object, Long>> dynOptDataCollector =
+          (BiFunction<Object, Map<Object, Long>, Map<Object, Long>> & Serializable)
+            (element, dynOptData) -> {
+              Object key = keyExtractor.extractKey(element);
+              if (dynOptData.containsKey(key)) {
+                dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
+              } else {
+                dynOptData.put(key, 1L);
+              }
+              return dynOptData;
+            };
 
-          // Insert the vertices
-          final MessageBarrierVertex mbv = new MessageBarrierVertex<>(dynOptDataCollector);
-          final MessageAggregationVertex mav = new MessageAggregationVertex(new HashMap(), dynOptDataAggregator);
-          dag.insert(mbv, mav, encoderProperty, decoderProperty, edge);
-        }
+        // For aggregating the collected data
+        final BiFunction<Pair<Object, Long>, Map<Object, Long>, Map<Object, Long>> dynOptDataAggregator =
+          (BiFunction<Pair<Object, Long>, Map<Object, Long>, Map<Object, Long>> & Serializable)
+            (element, aggregatedDynOptData) -> {
+              final Object key = element.left();
+              final Long count = element.right();
+              if (aggregatedDynOptData.containsKey(key)) {
+                aggregatedDynOptData.compute(key, (existingKey, accumulatedCount) -> accumulatedCount + count);
+              } else {
+                aggregatedDynOptData.put(key, count);
+              }
+              return aggregatedDynOptData;
+            };
+
+        // Coders to use
+        final EncoderProperty encoderProperty = EncoderProperty.of(PairEncoderFactory.
+          of(representativeEdge.getPropertyValue(KeyEncoderProperty.class).get(), LongEncoderFactory.of()));
+        final DecoderProperty decoderProperty = DecoderProperty.of(PairDecoderFactory
+          .of(representativeEdge.getPropertyValue(KeyDecoderProperty.class).get(), LongDecoderFactory.of()));
+
+        // Insert the vertices
+        final MessageBarrierVertex mbv = new MessageBarrierVertex<>(dynOptDataCollector);
+        final MessageAggregationVertex mav = new MessageAggregationVertex(new HashMap(), dynOptDataAggregator);
+        dag.insert(mbv, mav, encoderProperty, decoderProperty, shuffleEdgeGroup);
       }
     });
     return dag;
