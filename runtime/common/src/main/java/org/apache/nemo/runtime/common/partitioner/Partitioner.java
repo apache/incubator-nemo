@@ -51,7 +51,7 @@ public interface Partitioner<K extends Serializable> {
    * @param runtimeEdge the runtime edge.
    * @return the partitioner for the edge.
    */
-  static Partitioner getPartitioner(final RuntimeEdge runtimeEdge) {
+  static Partitioner getPartitioner(final PartitionerProperty.Value partitionerProperty) {
     final StageEdge stageEdge = (StageEdge) runtimeEdge;
     final PartitionerProperty.Value partitionerPropertyValue =
       (PartitionerProperty.Value) runtimeEdge.getPropertyValueOrRuntimeException(PartitionerProperty.class);

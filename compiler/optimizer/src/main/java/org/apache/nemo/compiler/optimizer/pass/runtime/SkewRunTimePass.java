@@ -24,6 +24,7 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.NumOfPartitionProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,17 +43,23 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
   @Override
   public IRDAG optimize(final IRDAG irdag,
                         final Message<Map<Object, Long>> message) {
-    // Validates target edges...
-    final IREdge targetEdge = message.getExaminedEdge();
-    final int numOfPartitions = targetEdge.getPropertyValue(NumOfPartitionProperty.class).get();
-    final PartitionerProperty partitioner = targetEdge.getPropertyValue(PartitionerProperty.class).get();
+    // The message was produced to examine this edge.
+    final IREdge edge = message.getExaminedEdge();
 
-    // Calculate keyRanges.
+    // Use the following execution properties.
+    final PartitionerProperty partitioner = edge.getPropertyValue(PartitionerProperty.class).get();
+    final int numOfPartitions = edge.getPropertyValue(NumOfPartitionProperty.class).get();
+    final int dstParallelism = edge.getDst().getPropertyValue(MinParallelismProperty.class).get();
+
+    // Compute the optimal partition distribution, using the message value.
     final Map<Object, Long> messageValue = message.getMessageValue();
-    final PartitionSetProperty evenPartitionSet = calculateKeyRanges(messageValue, numOfPartitions, partitioner);
+    final PartitionSetProperty evenPartitionSet =
+      computeOptimalPartitionDistribution(messageValue, numOfPartitions, dstParallelism, partitioner);
 
-    // Set the partitionSet property and return IRDAG.
-    targetEdge.setPropertyPermanently(evenPartitionSet);
+    // Set the partitionSet property
+    edge.setPropertyPermanently(evenPartitionSet);
+
+    // Return the IRDAG.
     return irdag;
   }
 
@@ -68,10 +75,10 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
    * @param partitioner    the partitioner.
    * @return the list of key ranges calculated.
    */
-  private PartitionSetProperty calculateKeyRanges(final Map<Object, Long> keyToCountMap,
-                                                  final Integer numOfPartitions,
-                                                  final Integer dstParallelism,
-                                                  final Partitioner<Integer> partitioner) {
+  private PartitionSetProperty computeOptimalPartitionDistribution(final Map<Object, Long> keyToCountMap,
+                                                                   final Integer numOfPartitions,
+                                                                   final Integer dstParallelism,
+                                                                   final Partitioner<Integer> partitioner) {
     final Map<Integer, Long> partitionKeyToPartitionCount = new HashMap<>();
     int lastKey = numOfPartitions - 1;
     // Aggregate the counts per each "partition key" assigned by Partitioner.
@@ -88,9 +95,6 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
       partitionSizeList.add(countsForKey);
     }
 
-    // Identify skewed sizes, which is top numSkewedKeys number of keys.
-    final List<Long> skewedSizes = identifySkewedKeys(partitionSizeList);
-
     // Calculate the ideal size for each destination task.
     final Long totalSize = partitionSizeList.stream().mapToLong(n -> n).sum(); // get total size
     final Long idealSizePerTask = totalSize / dstParallelism; // and derive the ideal size per task
@@ -99,6 +103,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
     int finishingKey = 1;
     Long currentAccumulatedSize = partitionSizeList.get(startingKey);
     Long prevAccumulatedSize = 0L;
+    final ArrayList<KeyRange> keyRanges = new ArrayList<>();
     for (int i = 1; i <= dstParallelism; i++) {
       if (i != dstParallelism) {
         // Ideal accumulated partition size for this task.
@@ -138,8 +143,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
           currentAccumulatedSize - prevAccumulatedSize);
       }
     }
-
-    return keyRanges;
+    return PartitionSetProperty.of(keyRanges);
   }
 
   private List<Long> identifySkewedKeys(final List<Long> partitionSizeList) {
