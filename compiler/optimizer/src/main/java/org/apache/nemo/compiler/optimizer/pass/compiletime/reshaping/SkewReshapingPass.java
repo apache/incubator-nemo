@@ -66,7 +66,7 @@ public final class SkewReshapingPass extends ReshapingPass {
 
       // Incoming shuffle edges grouped by the AdditionalOutputTagProperty.
       final Function<IREdge, String> groupingFunction = irEdge -> {
-        irEdge.getPropertyValue(AdditionalOutputTagProperty.class).orElse(MAIN_OUTPUT_TAG);
+        return irEdge.getPropertyValue(AdditionalOutputTagProperty.class).orElse(MAIN_OUTPUT_TAG);
       };
       final Map<String, Set<IREdge>> shuffleEdgesGroupedByTag = dag.getIncomingEdgesOf(v).stream()
         .filter(e -> CommunicationPatternProperty.Value.Shuffle
