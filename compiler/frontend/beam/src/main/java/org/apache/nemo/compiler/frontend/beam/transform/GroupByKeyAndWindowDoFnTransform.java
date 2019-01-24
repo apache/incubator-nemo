@@ -187,8 +187,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final int triggeredKeys = triggerTimers(processingTime, synchronizedTime);
     final long triggerTime = System.currentTimeMillis();
 
-    LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {}", getContext().getIRVertex().getId(),
-      (e-st), (triggerTime - st), triggeredKeys > 0, triggeredKeys);
+//    LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {}", getContext().getIRVertex().getId(),
+//      (e-st), (triggerTime - st), triggeredKeys > 0, triggeredKeys);
   }
 
   /**
@@ -239,9 +239,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     checkAndFinishBundle();
 
     final long et = System.currentTimeMillis();
-    LOG.info("{}/{} latency {}, watermark: {}, emitOutputWatermarkTime: {}",
-      getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st),
-      new Instant(watermark.getTimestamp()), (et - et1));
+//    LOG.info("{}/{} latency {}, watermark: {}, emitOutputWatermarkTime: {}",
+//      getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st),
+//      new Instant(watermark.getTimestamp()), (et - et1));
   }
 
   /**
@@ -271,8 +271,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final long st = System.currentTimeMillis();
     final List<Pair<K, TimerInternals.TimerData>> timers = getEligibleTimers();
 
-    LOG.info("{}/{} GetEligibleTimer time: {}", getContext().getIRVertex().getId(),
-      Thread.currentThread().getId(), (System.currentTimeMillis() - st));
+//    LOG.info("{}/{} GetEligibleTimer time: {}", getContext().getIRVertex().getId(),
+//      Thread.currentThread().getId(), (System.currentTimeMillis() - st));
 
     // TODO: send start event
     if (!timers.isEmpty()) {
