@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.lambda;
+package org.apache.nemo.common.lambda;
 
 public enum LambdaStatus {
   INIT,

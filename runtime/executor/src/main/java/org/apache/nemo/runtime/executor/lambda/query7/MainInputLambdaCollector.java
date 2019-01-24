@@ -29,12 +29,10 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.NextIntraTaskOperatorInfo;
-import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
-import org.apache.nemo.runtime.executor.lambda.LambdaWarmer;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
 import org.apache.nemo.runtime.executor.lambda.StorageObjectFactory;
-import org.apache.nemo.runtime.lambda.LambdaDecoderFactory;
+import org.apache.nemo.common.lambda.LambdaDecoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

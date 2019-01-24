@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.lambda;
+package org.apache.nemo.common.lambda;
 
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;

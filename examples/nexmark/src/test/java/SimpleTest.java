@@ -1,5 +1,4 @@
-import org.apache.commons.lang.SerializationUtils;
-import org.apache.nemo.runtime.lambda.SerializeUtils;
+import org.apache.nemo.common.lambda.SerializeUtils;
 import org.junit.Test;
 
 public class SimpleTest {

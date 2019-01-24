@@ -54,7 +54,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.nemo.runtime.executor.datatransfer.DynOptDataOutputCollector;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
-import org.apache.nemo.runtime.executor.lambda.MemoryStorageObjectFactory;
+import org.apache.nemo.runtime.executor.lambda.query7.MemoryStorageObjectFactory;
 import org.apache.nemo.runtime.executor.lambda.StorageObjectFactory;
 import org.apache.nemo.runtime.executor.lambda.query7.MainInputLambdaCollector;
 import org.apache.nemo.runtime.executor.lambda.query7.SideInputLambdaCollector;

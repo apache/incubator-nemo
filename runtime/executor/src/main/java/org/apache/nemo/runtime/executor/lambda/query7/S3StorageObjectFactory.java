@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.lambda;
+package org.apache.nemo.runtime.executor.lambda.query7;
 
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.s3.AmazonS3;
@@ -7,6 +7,8 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.lambda.SideInputProcessor;
+import org.apache.nemo.runtime.executor.lambda.StorageObjectFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

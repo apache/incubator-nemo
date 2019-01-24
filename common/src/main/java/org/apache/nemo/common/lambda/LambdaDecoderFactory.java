@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.lambda;
+package org.apache.nemo.common.lambda;
 
 import org.apache.nemo.common.coder.DecoderFactory;
 
