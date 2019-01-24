@@ -61,6 +61,7 @@ public final class NettyServerTransport {
     this.channelPool = new ArrayList<>(poolSize);
     this.offloadingRequester = new LambdaOffloadingRequester(
       nemoEventHandler, poolSize, PUBLIC_ADDRESS, PORT);
+    offloadingRequester.start();
   }
 
   private void lazyInit() {
