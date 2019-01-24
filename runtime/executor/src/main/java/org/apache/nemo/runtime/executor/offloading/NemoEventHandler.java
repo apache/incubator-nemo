@@ -4,6 +4,9 @@ import io.netty.channel.Channel;
 import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.runtime.executor.offloading.vm.VMOffloadingRequester;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -11,7 +14,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class NemoEventHandler implements EventHandler<Pair<Channel,NemoEvent>> {
-
+  private static final Logger LOG = LoggerFactory.getLogger(NemoEventHandler.class.getName());
     private final BlockingQueue<Pair<Channel,NemoEvent>> handshakeQueue;
     private final BlockingQueue<Pair<Channel, NemoEvent>> readyQueue;
     private final BlockingQueue<Pair<Channel,NemoEvent>> resultQueue;
@@ -58,6 +61,7 @@ public final class NemoEventHandler implements EventHandler<Pair<Channel,NemoEve
           readyQueue.add(nemoEvent);
           break;
         case RESULT:
+          LOG.info("Result from {}", nemoEvent.left());
           channelEventHandlerMap.get(nemoEvent.left()).onNext(nemoEvent.right());
           resultQueue.add(nemoEvent);
           break;

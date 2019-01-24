@@ -150,6 +150,7 @@ public final class OffloadingHandler {
       // wait until end
       System.out.println("Wait end flag");
       final Integer endFlag = handler.endBlockingQueue.take();
+      System.out.println("END of invocation");
     } catch (InterruptedException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -160,6 +161,7 @@ public final class OffloadingHandler {
       final ChannelFuture future =
         opendChannel.writeAndFlush(
           new NemoEvent(NemoEvent.Type.RESULT, bytes, bytes.length));
+      System.out.println("Write result");
       try {
         future.get();
       } catch (InterruptedException e) {
