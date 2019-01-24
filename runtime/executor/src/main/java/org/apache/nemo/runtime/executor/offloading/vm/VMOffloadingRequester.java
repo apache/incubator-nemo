@@ -56,7 +56,7 @@ public final class VMOffloadingRequester implements OffloadingRequester {
   private Channel acceptor;
   private Map<Channel, EventHandler> channelEventHandlerMap;
 
-  private final List<String> vmAddresses = Arrays.asList("172.31.6.35");
+  private final List<String> vmAddresses = Arrays.asList("172.31.45.92");
   private final List<String> instanceIds = Arrays.asList("i-0fda693c53136219e");
 
   private final String serverAddress;
