@@ -23,7 +23,7 @@ import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import org.apache.nemo.compiler.optimizer.pass.runtime.RuntimePass;
+import org.apache.nemo.compiler.optimizer.pass.runtime.RunTimePass;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -72,11 +72,11 @@ public final class PolicyImplTest {
   @Test
   public void testTransientAndLargeShuffleCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
-    final List<RuntimePass<?>> runtimePasses = new ArrayList<>();
+    final List<RunTimePass<?>> runtimePasses = new ArrayList<>();
     compileTimePasses.addAll(TransientResourcePolicy.BUILDER.getCompileTimePasses());
-    runtimePasses.addAll(TransientResourcePolicy.BUILDER.getRuntimePasses());
+    runtimePasses.addAll(TransientResourcePolicy.BUILDER.getRunTimePasses());
     compileTimePasses.addAll(LargeShufflePolicy.BUILDER.getCompileTimePasses());
-    runtimePasses.addAll(LargeShufflePolicy.BUILDER.getRuntimePasses());
+    runtimePasses.addAll(LargeShufflePolicy.BUILDER.getRunTimePasses());
 
     final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runtimePasses);
 
@@ -87,11 +87,11 @@ public final class PolicyImplTest {
   @Test
   public void testTransientAndDisaggregationCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
-    final List<RuntimePass<?>> runtimePasses = new ArrayList<>();
+    final List<RunTimePass<?>> runtimePasses = new ArrayList<>();
     compileTimePasses.addAll(TransientResourcePolicy.BUILDER.getCompileTimePasses());
-    runtimePasses.addAll(TransientResourcePolicy.BUILDER.getRuntimePasses());
+    runtimePasses.addAll(TransientResourcePolicy.BUILDER.getRunTimePasses());
     compileTimePasses.addAll(DisaggregationPolicy.BUILDER.getCompileTimePasses());
-    runtimePasses.addAll(DisaggregationPolicy.BUILDER.getRuntimePasses());
+    runtimePasses.addAll(DisaggregationPolicy.BUILDER.getRunTimePasses());
 
     final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runtimePasses);
 
@@ -104,11 +104,11 @@ public final class PolicyImplTest {
   @Test
   public void testDataSkewAndLargeShuffleCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
-    final List<RuntimePass<?>> runtimePasses = new ArrayList<>();
+    final List<RunTimePass<?>> runtimePasses = new ArrayList<>();
     compileTimePasses.addAll(DataSkewPolicy.BUILDER.getCompileTimePasses());
-    runtimePasses.addAll(DataSkewPolicy.BUILDER.getRuntimePasses());
+    runtimePasses.addAll(DataSkewPolicy.BUILDER.getRunTimePasses());
     compileTimePasses.addAll(LargeShufflePolicy.BUILDER.getCompileTimePasses());
-    runtimePasses.addAll(LargeShufflePolicy.BUILDER.getRuntimePasses());
+    runtimePasses.addAll(LargeShufflePolicy.BUILDER.getRunTimePasses());
 
     final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runtimePasses);
 

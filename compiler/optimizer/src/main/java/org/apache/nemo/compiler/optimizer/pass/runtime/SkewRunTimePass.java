@@ -19,11 +19,11 @@
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.NumOfPartitionProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 /**
  * Dynamic optimization pass for handling data skew.
  * Using a map of key to partition size as a metric used for dynamic optimization,
- * this RuntimePass identifies a number of keys with big partition sizes(skewed key)
+ * this RunTimePass identifies a number of keys with big partition sizes(skewed key)
  * and evenly redistributes data via overwriting incoming edges of destination tasks.
  */
 public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
@@ -45,24 +45,16 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
                         final Message<Map<Object, Long>> message) {
     // Validates target edges...
     final MessageBarrierVertex messageProducer = message.getProducer();
-    final StageEdge stageEdge = irdag.getIncomingEdgesOf(message.getProducer());
-    final DataSkewHashPartitioner partitioner = (DataSkewHashPartitioner) Partitioner.getPartitioner(firstEdge);
-
     final int numOfPartitions = new IREdge().getPropertyValue(NumOfPartitionProperty.class).get();
+    final PartitionerProperty partitioner = new IREdge().getPropertyValue(PartitionerProperty.class).get();
 
     // Calculate keyRanges.
     final Map<Object, Long> messageValue = message.getMessageValue();
-    final List<KeyRange> keyRanges = calculateKeyRanges(message.right(), dstParallelism, partitioner);
-    final Map<Integer, KeyRange> taskIdxToKeyRange = new HashMap<>();
-    for (int i = 0; i < dstParallelism; i++) {
-      taskIdxToKeyRange.put(i, keyRanges.get(i));
-    }
+    final PartitionSetProperty evenPartitionSet = calculateKeyRanges(messageValue, numOfPartitions, partitioner);
 
     // Set the partitionSet property and return IRDAG.
-    final PartitionSetProperty partitionSetProperty = PartitionSetProperty.of();
-    new IREdge().setPropertyPermanently(partitionSetProperty);
+    new IREdge().setPropertyPermanently(evenPartitionSet);
     return irdag;
-
 
     /*
     // Overwrite the previously assigned key range in the physical DAG with the new range.
@@ -79,30 +71,6 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
     */
   }
 
-  private List<Long> identifySkewedKeys(final List<Long> partitionSizeList) {
-    // Identify skewed keys.
-    List<Long> sortedMetricData = partitionSizeList.stream()
-        .sorted(Comparator.reverseOrder())
-        .collect(Collectors.toList());
-    List<Long> skewedSizes = new ArrayList<>();
-    for (int i = 0; i < numSkewedKeys; i++) {
-      skewedSizes.add(sortedMetricData.get(i));
-      LOG.info("Skewed size: {}", sortedMetricData.get(i));
-    }
-    return skewedSizes;
-  }
-
-  private boolean containsSkewedSize(final List<Long> partitionSizeList,
-                                     final List<Long> skewedKeys,
-                                     final int startingKey, final int finishingKey) {
-    for (int i = startingKey; i < finishingKey; i++) {
-      if (skewedKeys.contains(partitionSizeList.get(i))) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   /**
    * Evenly distribute the skewed data to the destination tasks.
    * Partition denotes for a keyed portion of a Task output.
@@ -115,11 +83,12 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
    * @param partitioner    the partitioner.
    * @return the list of key ranges calculated.
    */
-  private List<KeyRange> calculateKeyRanges(final Map<Object, Long> keyToCountMap,
-                                           final Integer dstParallelism,
-                                           final Partitioner<Integer> partitioner) {
+  private PartitionSetProperty calculateKeyRanges(final Map<Object, Long> keyToCountMap,
+                                                  final Integer numOfPartitions,
+                                                  final Integer dstParallelism,
+                                                  final Partitioner<Integer> partitioner) {
     final Map<Integer, Long> partitionKeyToPartitionCount = new HashMap<>();
-    int lastKey = dstParallelism * HASH_RANGE_MULTIPLIER - 1;
+    int lastKey = numOfPartitions - 1;
     // Aggregate the counts per each "partition key" assigned by Partitioner.
 
     for (final Map.Entry<Object, Long> entry : keyToCountMap.entrySet()) {
@@ -141,7 +110,6 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
     final Long totalSize = partitionSizeList.stream().mapToLong(n -> n).sum(); // get total size
     final Long idealSizePerTask = totalSize / dstParallelism; // and derive the ideal size per task
 
-    final List<KeyRange> keyRanges = new ArrayList<>(dstParallelism);
     int startingKey = 0;
     int finishingKey = 1;
     Long currentAccumulatedSize = partitionSizeList.get(startingKey);
@@ -157,7 +125,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
         }
 
         final Long oneStepBack =
-            currentAccumulatedSize - partitionSizeList.get(finishingKey - 1);
+          currentAccumulatedSize - partitionSizeList.get(finishingKey - 1);
         final Long diffFromIdeal = currentAccumulatedSize - idealAccumulatedSize;
         final Long diffFromIdealOneStepBack = idealAccumulatedSize - oneStepBack;
         // Go one step back if we came too far.
@@ -169,24 +137,47 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
         boolean isSkewedKey = containsSkewedSize(partitionSizeList, skewedSizes, startingKey, finishingKey);
         keyRanges.add(i - 1, HashRange.of(startingKey, finishingKey, isSkewedKey));
         LOG.debug("KeyRange {}~{}, Size {}", startingKey, finishingKey - 1,
-            currentAccumulatedSize - prevAccumulatedSize);
+          currentAccumulatedSize - prevAccumulatedSize);
 
         prevAccumulatedSize = currentAccumulatedSize;
         startingKey = finishingKey;
       } else { // last one: we put the range of the rest.
         boolean isSkewedKey = containsSkewedSize(partitionSizeList, skewedSizes, startingKey, lastKey + 1);
-        keyRanges.add(i - 1,
-            HashRange.of(startingKey, lastKey + 1, isSkewedKey));
+        keyRanges.add(i - 1, HashRange.of(startingKey, lastKey + 1, isSkewedKey));
 
         while (finishingKey <= lastKey) {
           currentAccumulatedSize += partitionSizeList.get(finishingKey);
           finishingKey++;
         }
         LOG.debug("KeyRange {}~{}, Size {}", startingKey, lastKey + 1,
-            currentAccumulatedSize - prevAccumulatedSize);
+          currentAccumulatedSize - prevAccumulatedSize);
       }
     }
 
     return keyRanges;
+  }
+
+  private List<Long> identifySkewedKeys(final List<Long> partitionSizeList) {
+    // Identify skewed keys.
+    List<Long> sortedMetricData = partitionSizeList.stream()
+      .sorted(Comparator.reverseOrder())
+      .collect(Collectors.toList());
+    List<Long> skewedSizes = new ArrayList<>();
+    for (int i = 0; i < numSkewedKeys; i++) {
+      skewedSizes.add(sortedMetricData.get(i));
+      LOG.info("Skewed size: {}", sortedMetricData.get(i));
+    }
+    return skewedSizes;
+  }
+
+  private boolean containsSkewedSize(final List<Long> partitionSizeList,
+                                     final List<Long> skewedKeys,
+                                     final int startingKey, final int finishingKey) {
+    for (int i = startingKey; i < finishingKey; i++) {
+      if (skewedKeys.contains(partitionSizeList.get(i))) {
+        return true;
+      }
+    }
+    return false;
   }
 }

@@ -30,19 +30,19 @@ public final class PolicyBuilderTest {
   @Test
   public void testDisaggregationPolicy() {
     assertEquals(18, DisaggregationPolicy.BUILDER.getCompileTimePasses().size());
-    assertEquals(0, DisaggregationPolicy.BUILDER.getRuntimePasses().size());
+    assertEquals(0, DisaggregationPolicy.BUILDER.getRunTimePasses().size());
   }
 
   @Test
   public void testTransientResourcePolicy() {
     assertEquals(20, TransientResourcePolicy.BUILDER.getCompileTimePasses().size());
-    assertEquals(0, TransientResourcePolicy.BUILDER.getRuntimePasses().size());
+    assertEquals(0, TransientResourcePolicy.BUILDER.getRunTimePasses().size());
   }
 
   @Test
   public void testDataSkewPolicy() {
     assertEquals(20, DataSkewPolicy.BUILDER.getCompileTimePasses().size());
-    assertEquals(1, DataSkewPolicy.BUILDER.getRuntimePasses().size());
+    assertEquals(1, DataSkewPolicy.BUILDER.getRunTimePasses().size());
   }
 
   @Test

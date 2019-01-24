@@ -69,11 +69,6 @@ public interface Partitioner<K extends Serializable> {
           (KeyExtractor) runtimeEdge.getPropertyValueOrRuntimeException(KeyExtractorProperty.class);
         partitioner = new HashPartitioner(dstParallelism, hashKeyExtractor);
         break;
-      case DataSkewHashPartitioner:
-        final KeyExtractor dataSkewKeyExtractor =
-          (KeyExtractor) runtimeEdge.getPropertyValueOrRuntimeException(KeyExtractorProperty.class);
-        partitioner = new DataSkewHashPartitioner(dstParallelism, dataSkewKeyExtractor);
-        break;
       case DedicatedKeyPerElementPartitioner:
         partitioner = new DedicatedKeyPerElementPartitioner();
         break;

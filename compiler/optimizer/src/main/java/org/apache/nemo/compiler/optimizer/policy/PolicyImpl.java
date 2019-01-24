@@ -27,7 +27,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.ReshapingPass;
-import org.apache.nemo.compiler.optimizer.pass.runtime.RuntimePass;
+import org.apache.nemo.compiler.optimizer.pass.runtime.RunTimePass;
 import org.apache.reef.tang.Injector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +40,7 @@ import java.util.List;
  */
 public final class PolicyImpl implements Policy {
   private final List<CompileTimePass> compileTimePasses;
-  private final List<RuntimePass<?>> runtimePasses;
+  private final List<RunTimePass<?>> runtimePasses;
   private static final Logger LOG = LoggerFactory.getLogger(PolicyImpl.class.getName());
 
   /**
@@ -48,7 +48,7 @@ public final class PolicyImpl implements Policy {
    * @param compileTimePasses compile time passes of the policy.
    * @param runtimePasses run time passes of the policy.
    */
-  public PolicyImpl(final List<CompileTimePass> compileTimePasses, final List<RuntimePass<?>> runtimePasses) {
+  public PolicyImpl(final List<CompileTimePass> compileTimePasses, final List<RunTimePass<?>> runtimePasses) {
     this.compileTimePasses = compileTimePasses;
     this.runtimePasses = runtimePasses;
   }

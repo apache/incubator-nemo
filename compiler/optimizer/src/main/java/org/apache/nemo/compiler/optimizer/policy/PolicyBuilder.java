@@ -31,7 +31,8 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.CompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.ReshapingPass;
-import org.apache.nemo.compiler.optimizer.pass.runtime.RuntimePass;
+import org.apache.nemo.compiler.optimizer.pass.runtime.RunTimePass;
+import org.apache.nemo.compiler.optimizer.pass.runtime.RunTimePass;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -44,7 +45,7 @@ import java.util.function.Predicate;
  */
 public final class PolicyBuilder {
   private final List<CompileTimePass> compileTimePasses;
-  private final List<RuntimePass<?>> runtimePasses;
+  private final List<RunTimePass<?>> runtimePasses;
   private final Set<Class<? extends ExecutionProperty>> annotatedExecutionProperties;
 
   /**
@@ -115,7 +116,7 @@ public final class PolicyBuilder {
    * @param runtimePassRegisterer the compile time pass that triggers the runtime pass.
    * @return the PolicyBuilder which registers the runtimePass and the runtimePassRegisterer.
    */
-  public PolicyBuilder registerRuntimePass(final RuntimePass<?> runtimePass,
+  public PolicyBuilder registerRunTimePass(final RunTimePass<?> runtimePass,
                                            final CompileTimePass runtimePassRegisterer) {
     registerCompileTimePass(runtimePassRegisterer);
     this.runtimePasses.add(runtimePass);
@@ -129,11 +130,11 @@ public final class PolicyBuilder {
    * @param condition condition under which to run the pass.
    * @return the PolicyBuilder which registers the runtimePass and the runtimePassRegisterer.
    */
-  public PolicyBuilder registerRuntimePass(final RuntimePass<?> runtimePass,
+  public PolicyBuilder registerRunTimePass(final RunTimePass<?> runtimePass,
                                            final CompileTimePass runtimePassRegisterer,
                                            final Predicate<IRDAG> condition) {
     runtimePass.addCondition(condition);
-    return this.registerRuntimePass(runtimePass, runtimePassRegisterer);
+    return this.registerRunTimePass(runtimePass, runtimePassRegisterer);
   }
 
   /**
@@ -148,7 +149,7 @@ public final class PolicyBuilder {
    * Getter for run time passes.
    * @return the list of run time passes.
    */
-  public List<RuntimePass<?>> getRuntimePasses() {
+  public List<RunTimePass<?>> getRunTimePasses() {
     return runtimePasses;
   }
 

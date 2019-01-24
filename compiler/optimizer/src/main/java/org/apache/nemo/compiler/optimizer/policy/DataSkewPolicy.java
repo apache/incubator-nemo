@@ -32,7 +32,7 @@ import org.apache.reef.tang.Injector;
 public final class DataSkewPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
       new PolicyBuilder()
-        .registerRuntimePass(new SkewRunTimePass(), new SkewCompositePass())
+        .registerRunTimePass(new SkewRunTimePass(), new SkewCompositePass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
         .registerCompileTimePass(new DefaultCompositePass());
 

@@ -20,16 +20,18 @@ package org.apache.nemo.common.ir.edge.executionproperty;
 
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
+import java.util.HashSet;
+
 /**
  * Number of partitions.
  */
-public final class PartitionSetProperty extends EdgeExecutionProperty<Integer> {
+public final class PartitionSetProperty extends EdgeExecutionProperty<HashSet<HashSet<Integer>>> {
   /**
    * Constructor.
    *
    * @param value value of the execution property.
    */
-  private PartitionSetProperty(final int value) {
+  private PartitionSetProperty(final HashSet<HashSet<Integer>> value) {
     super(value);
   }
 
@@ -39,7 +41,7 @@ public final class PartitionSetProperty extends EdgeExecutionProperty<Integer> {
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static PartitionSetProperty of(final int value) {
+  public static PartitionSetProperty of(final HashSet<HashSet<Integer>> value) {
     return new PartitionSetProperty(value);
   }
 }
