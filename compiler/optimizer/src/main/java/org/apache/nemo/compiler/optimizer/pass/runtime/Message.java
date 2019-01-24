@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
+import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 
 /**
@@ -26,20 +27,22 @@ import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 public class Message<T> {
   private final T value;
   private final MessageBarrierVertex producer;
+  private final IREdge edgeToExamine;
 
-  public Message(final T value, final MessageBarrierVertex producer) {
-    if (value == null || producer == null) {
+  public Message(final T value, final MessageBarrierVertex producer, final IREdge edgeToExamine) {
+    if (value == null || producer == null || edgeToExamine == null) {
       throw new IllegalArgumentException();
     }
     this.value = value;
     this.producer = producer;
+    this.edgeToExamine = edgeToExamine;
   }
 
   public T getMessageValue() {
     return value;
   }
 
-  public MessageBarrierVertex getProducer() {
-    return producer;
+  public IREdge getExaminedEdge() {
+    return edgeToExamine;
   }
 }

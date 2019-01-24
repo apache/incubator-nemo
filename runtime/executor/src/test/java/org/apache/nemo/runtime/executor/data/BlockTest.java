@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
-import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.runtime.executor.data.block.Block;
@@ -113,7 +113,7 @@ public final class BlockTest {
     block.commit();
 
     int count = 0;
-    final Iterable<NonSerializedPartition<Integer>> partitions = block.readPartitions(HashRange.all());
+    final Iterable<NonSerializedPartition<Integer>> partitions = block.readPartitions(KeyRange.all());
     for (final NonSerializedPartition<Integer> readPartition : partitions) {
       count++;
       final List<Integer> expectedData = testData.get(readPartition.getKey());

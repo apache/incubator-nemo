@@ -24,7 +24,6 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import org.apache.nemo.common.ir.executionproperty.AssociatedProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.common.plan.Task;
@@ -55,7 +54,7 @@ public final class SkewnessAwareSchedulingConstraint implements SchedulingConstr
         final Map<Integer, KeyRange> taskIdxToKeyRange =
             inEdge.getPropertyValue(DataSkewMetricProperty.class).get().getMetric();
         final KeyRange hashRange = taskIdxToKeyRange.get(taskIdx);
-        if (((HashRange) hashRange).isSkewed()) {
+        if (((KeyRange) hashRange).isSkewed()) {
           return true;
         }
       }

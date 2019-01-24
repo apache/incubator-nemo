@@ -19,7 +19,6 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import org.apache.nemo.common.DataSkewMetricFactory;
-import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -50,7 +49,7 @@ public final class DefaultMetricPass extends AnnotatingPass {
           final int parallelism = dst.getPropertyValue(MinParallelismProperty.class).get();
           final Map<Integer, KeyRange> metric = new HashMap<>();
           for (int i = 0; i < parallelism; i++) {
-            metric.put(i, HashRange.of(i, i + 1, false));
+            metric.put(i, KeyRange.of(i, i + 1, false));
           }
           edge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(metric)));
         }

@@ -24,13 +24,11 @@ import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.common.state.BlockState;
-import org.apache.nemo.runtime.executor.TestUtil;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
@@ -56,7 +54,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -188,9 +185,9 @@ public final class BlockStoreTest {
 
     // Generates the range of hash value to read for each read task.
     final int smallDataRangeEnd = 1 + NUM_READ_HASH_TASKS - NUM_WRITE_HASH_TASKS;
-    readKeyRangeList.add(HashRange.of(0, smallDataRangeEnd, false));
+    readKeyRangeList.add(KeyRange.of(0, smallDataRangeEnd, false));
     IntStream.range(0, NUM_READ_HASH_TASKS - 1).forEach(readTaskIdx -> {
-      readKeyRangeList.add(HashRange.of(smallDataRangeEnd + readTaskIdx,
+      readKeyRangeList.add(KeyRange.of(smallDataRangeEnd + readTaskIdx,
           smallDataRangeEnd + readTaskIdx + 1,
           false));
     });
@@ -347,7 +344,7 @@ public final class BlockStoreTest {
             try {
               for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_VERTICES; writeTaskIdx++) {
                 readResultCheck(blockIdList.get(writeTaskIdx),
-                    HashRange.of(readTaskIdx, readTaskIdx + 1, false),
+                    KeyRange.of(readTaskIdx, readTaskIdx + 1, false),
                     readerSideStore, partitionsPerBlock.get(writeTaskIdx).get(readTaskIdx).getData());
               }
               return true;
@@ -438,7 +435,7 @@ public final class BlockStoreTest {
           @Override
           public Boolean call() {
             try {
-              readResultCheck(concBlockId, HashRange.all(), readerSideStore, concBlockPartition.getData());
+              readResultCheck(concBlockId, KeyRange.all(), readerSideStore, concBlockPartition.getData());
               return true;
             } catch (final Exception e) {
               e.printStackTrace();

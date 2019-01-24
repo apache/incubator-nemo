@@ -21,7 +21,6 @@ package org.apache.nemo.runtime.common.plan;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
@@ -83,7 +82,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     // Initialize the key range of each dst task.
     this.taskIdxToKeyRange = new HashMap<>();
     for (int taskIdx = 0; taskIdx < dstStage.getParallelism(); taskIdx++) {
-      taskIdxToKeyRange.put(taskIdx, HashRange.of(taskIdx, taskIdx + 1, false));
+      taskIdxToKeyRange.put(taskIdx, KeyRange.of(taskIdx, taskIdx + 1, false));
     }
     this.dataCommunicationPatternValue = edgeProperties.get(CommunicationPatternProperty.class)
       .orElseThrow(() -> new RuntimeException(String.format(

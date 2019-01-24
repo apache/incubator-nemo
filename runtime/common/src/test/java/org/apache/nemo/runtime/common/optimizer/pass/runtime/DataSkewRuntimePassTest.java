@@ -18,9 +18,8 @@
  */
 package org.apache.nemo.runtime.common.optimizer.pass.runtime;
 
-import org.apache.nemo.common.HashRange;
-import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.runtime.common.partitioner.Partitioner;
 import org.junit.Before;
 import org.junit.Test;
@@ -63,8 +62,8 @@ public class DataSkewRuntimePassTest {
     assertEquals(10, keyRanges.get(1).rangeEndExclusive());
 
     // Test whether it caught the provided skewness.
-    assertEquals(true, ((HashRange)keyRanges.get(0)).isSkewed());
-    assertEquals(false, ((HashRange)keyRanges.get(1)).isSkewed());
+    assertEquals(true, ((KeyRange)keyRanges.get(0)).isSkewed());
+    assertEquals(false, ((KeyRange)keyRanges.get(1)).isSkewed());
   }
 
   /**

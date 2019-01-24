@@ -25,7 +25,6 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.nemo.runtime.common.plan.StageEdge;
@@ -46,7 +45,7 @@ import static org.mockito.Mockito.when;
  * Test cases for {@link SkewnessAwareSchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ExecutorRepresenter.class, Task.class, Stage.class, HashRange.class,
+@PrepareForTest({ExecutorRepresenter.class, Task.class, Stage.class, KeyRange.class,
 IRVertex.class, IREdge.class})
 public final class SkewnessAwareSchedulingConstraintTest {
   private final static int FIRST_ATTEMPT = 0;
@@ -56,13 +55,13 @@ public final class SkewnessAwareSchedulingConstraintTest {
     final Map<Integer, KeyRange> taskIdxToKeyRange = new HashMap<>();
 
     for (int taskIdx = 0; taskIdx < numTotalHashRange; taskIdx++) {
-      final HashRange hashRange = mock(HashRange.class);
+      final KeyRange keyRange = mock(KeyRange.class);
       if (taskIdx < numSkewedHashRange) {
-        when(hashRange.isSkewed()).thenReturn(true);
+        when(keyRange.isSkewed()).thenReturn(true);
       } else {
-        when(hashRange.isSkewed()).thenReturn(false);
+        when(keyRange.isSkewed()).thenReturn(false);
       }
-      taskIdxToKeyRange.put(taskIdx, hashRange);
+      taskIdxToKeyRange.put(taskIdx, keyRange);
     }
 
     final IRVertex srcMockVertex = mock(IRVertex.class);

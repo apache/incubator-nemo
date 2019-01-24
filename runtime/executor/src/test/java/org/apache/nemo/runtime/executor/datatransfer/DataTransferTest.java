@@ -319,7 +319,7 @@ public final class DataTransferTest {
       final int parallelism = dstVertex.getPropertyValue(MinParallelismProperty.class).get();
       final Map<Integer, KeyRange> metric = new HashMap<>();
       for (int i = 0; i < parallelism; i++) {
-        metric.put(i, HashRange.of(i, i + 1, false));
+        metric.put(i, KeyRange.of(i, i + 1, false));
       }
       dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(metric)));
     }
@@ -406,7 +406,7 @@ public final class DataTransferTest {
       final int parallelism = dstVertex.getPropertyValue(MinParallelismProperty.class).get();
       final Map<Integer, KeyRange> metric = new HashMap<>();
       for (int i = 0; i < parallelism; i++) {
-        metric.put(i, HashRange.of(i, i + 1, false));
+        metric.put(i, KeyRange.of(i, i + 1, false));
       }
       dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(metric)));
     }

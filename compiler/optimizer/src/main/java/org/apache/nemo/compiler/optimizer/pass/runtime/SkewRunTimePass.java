@@ -19,12 +19,11 @@
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.NumOfPartitionProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
-import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,31 +43,17 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
   public IRDAG optimize(final IRDAG irdag,
                         final Message<Map<Object, Long>> message) {
     // Validates target edges...
-    final MessageBarrierVertex messageProducer = message.getProducer();
-    final int numOfPartitions = new IREdge().getPropertyValue(NumOfPartitionProperty.class).get();
-    final PartitionerProperty partitioner = new IREdge().getPropertyValue(PartitionerProperty.class).get();
+    final IREdge targetEdge = message.getExaminedEdge();
+    final int numOfPartitions = targetEdge.getPropertyValue(NumOfPartitionProperty.class).get();
+    final PartitionerProperty partitioner = targetEdge.getPropertyValue(PartitionerProperty.class).get();
 
     // Calculate keyRanges.
     final Map<Object, Long> messageValue = message.getMessageValue();
     final PartitionSetProperty evenPartitionSet = calculateKeyRanges(messageValue, numOfPartitions, partitioner);
 
     // Set the partitionSet property and return IRDAG.
-    new IREdge().setPropertyPermanently(evenPartitionSet);
+    targetEdge.setPropertyPermanently(evenPartitionSet);
     return irdag;
-
-    /*
-    // Overwrite the previously assigned key range in the physical DAG with the new range.
-    final DAG<Stage, StageEdge> stageDAG = originalPlan.getStageDAG();
-    for (final Stage stage : stageDAG.getVertices()) {
-      for (final StageEdge edge : stageDAG.getOutgoingEdgesOf(stage)) {
-        if (targetEdges.contains(edge)) {
-          edge.setTaskIdxToKeyRange(taskIdxToKeyRange);
-        }
-      }
-    }
-
-    return new PhysicalPlan(originalPlan.getPlanId(), stageDAG);
-    */
   }
 
   /**
@@ -135,7 +120,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
         }
 
         boolean isSkewedKey = containsSkewedSize(partitionSizeList, skewedSizes, startingKey, finishingKey);
-        keyRanges.add(i - 1, HashRange.of(startingKey, finishingKey, isSkewedKey));
+        keyRanges.add(i - 1, KeyRange.of(startingKey, finishingKey));
         LOG.debug("KeyRange {}~{}, Size {}", startingKey, finishingKey - 1,
           currentAccumulatedSize - prevAccumulatedSize);
 
@@ -143,7 +128,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
         startingKey = finishingKey;
       } else { // last one: we put the range of the rest.
         boolean isSkewedKey = containsSkewedSize(partitionSizeList, skewedSizes, startingKey, lastKey + 1);
-        keyRanges.add(i - 1, HashRange.of(startingKey, lastKey + 1, isSkewedKey));
+        keyRanges.add(i - 1, KeyRange.of(startingKey, lastKey + 1));
 
         while (finishingKey <= lastKey) {
           currentAccumulatedSize += partitionSizeList.get(finishingKey);
