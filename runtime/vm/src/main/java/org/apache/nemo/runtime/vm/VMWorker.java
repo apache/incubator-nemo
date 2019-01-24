@@ -122,7 +122,6 @@ public class VMWorker {
     @Override
     public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
       LOG.info("Channel read from {}, {}", ctx.channel(), msg);
-
       requestQueue.add((NemoEvent)msg);
     }
 
