@@ -222,7 +222,7 @@ public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
   /**
    * Reshape unsafely, without guarantees on preserving application semantics.
    * TODO #330: Refactor Unsafe Reshaping Passes
-   * @param unsafeReshapingFunction to use.
+   * @param unsafeReshapingFunction takes as input the underlying DAG, and outputs a reshaped DAG.
    */
   public void reshapeUnsafely(final Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> unsafeReshapingFunction) {
     updatingDAG = unsafeReshapingFunction.apply(updatingDAG);
