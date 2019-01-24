@@ -20,7 +20,6 @@ package org.apache.nemo.common.dag;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.exception.IllegalEdgeOperationException;
-import org.apache.nemo.common.exception.IllegalVertexOperationException;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 
 import java.io.Serializable;
@@ -40,7 +39,6 @@ public interface DAGQueryInterface<V extends Vertex, E extends Edge<V>> extends 
    * Retrieves the vertex given its ID.
    * @param id of the vertex to retrieve
    * @return the vertex
-   * @throws IllegalVertexOperationException when the requested vertex does not exist.
    */
   V getVertexById(final String id);
 

@@ -21,7 +21,6 @@ package org.apache.nemo.common.test;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.OutputCollector;

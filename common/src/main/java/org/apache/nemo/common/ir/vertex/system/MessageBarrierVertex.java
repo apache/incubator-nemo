@@ -30,8 +30,8 @@ import java.util.function.BiFunction;
  * @param <K> of the output pair.
  * @param <V> of the output pair.
  */
-public class MessageBarrierVertex<I, K, V> extends OperatorVertex {
-  final BiFunction<I, Map<K, V>, Map<K, V>> messageFunction;
+public final class MessageBarrierVertex<I, K, V> extends OperatorVertex {
+  private final BiFunction<I, Map<K, V>, Map<K, V>> messageFunction;
 
   /**
    * @param messageFunction for producing a message.
