@@ -33,7 +33,7 @@ public final class NettyServerTransport {
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = NettyServerTransport.class.getName();
   private static final String ADDRESS = "172.31.6.35";
-  private static final String PUBLIC_ADDRESS = "52.196.246.109";
+  private static final String PUBLIC_ADDRESS = "54.250.247.241";
   private static final int PORT = 20332;
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
