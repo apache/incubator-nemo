@@ -41,8 +41,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
   private static final Logger LOG = LoggerFactory.getLogger(SkewRunTimePass.class.getName());
 
   @Override
-  public IRDAG optimize(final IRDAG irdag,
-                        final Message<Map<Object, Long>> message) {
+  public IRDAG apply(final IRDAG irdag, final Message<Map<Object, Long>> message) {
     // The message was produced to examine this edge.
     final IREdge edge = message.getExaminedEdge();
 

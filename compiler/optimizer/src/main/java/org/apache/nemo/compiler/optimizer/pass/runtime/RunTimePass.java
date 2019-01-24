@@ -21,15 +21,11 @@ package org.apache.nemo.compiler.optimizer.pass.runtime;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.pass.Pass;
 
+import java.util.function.BiFunction;
+
 /**
  * Abstract class for dynamic optimization passes, for dynamically optimizing the IRDAG.
  * @param <T> type of the message used for dynamic optimization.
  */
-public abstract class RunTimePass<T> extends Pass {
-  /**
-   * @param irdag to optimize.
-   * @param message dynamically generated during the execution.
-   * @return optimized DAG.
-   */
-  public abstract IRDAG optimize(final IRDAG irdag, final Message<T> message);
+public abstract class RunTimePass<T> extends Pass implements BiFunction<IRDAG, Message<T>, IRDAG> {
 }
