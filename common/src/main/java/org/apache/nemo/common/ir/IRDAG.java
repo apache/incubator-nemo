@@ -18,13 +18,17 @@
  */
 package org.apache.nemo.common.ir;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.dag.DAGQueryInterface;
+import org.apache.nemo.common.exception.IllegalEdgeOperationException;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.system.StreamVertex;
@@ -36,6 +40,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -48,8 +53,9 @@ import java.util.stream.Collectors;
  * - Annotation: setProperty(), getPropertyValue() on each IRVertex/IREdge
  * - Reshaping: insert(), delete() on the IRDAG
  */
-public final class IRDAG {
+public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
   private static final Logger LOG = LoggerFactory.getLogger(IRDAG.class.getName());
+
   private final AtomicInteger metricCollectionId;
 
   private DAG<IRVertex, IREdge> dag; // internal DAG, can be updated by reshaping methods.
@@ -60,58 +66,6 @@ public final class IRDAG {
   public IRDAG(final DAG<IRVertex, IREdge> dag) {
     this.dag = dag;
     this.metricCollectionId = new AtomicInteger(0);
-  }
-
-  ////////////////////////////////////////////////// Methods for querying the DAG topology.
-
-  /**
-   * Visits the current DAG snapshot in a topologically sorted order.
-   * @param function that visits each vertex.
-   */
-  public void topologicalDo(final Consumer<IRVertex> function) {
-    dag.topologicalDo(function);
-  }
-
-  /**
-   * Get vertices of the current DAG snapshot.
-   * @return vertices.
-   */
-  public List<IRVertex> getVertices() {
-    return dag.getVertices();
-  }
-
-  /**
-   * Get incoming edges in the current DAG snapshot.
-   * @param v to query.
-   * @return incoming edges.
-   */
-  public List<IREdge> getIncomingEdgesOf(final IRVertex v) {
-    return dag.getIncomingEdgesOf(v);
-  }
-
-  /**
-   * Get outgoing edges in the current DAG snapshot.
-   * @param v to query.
-   * @return outgoing edges.
-   */
-  public List<IREdge> getOutgoingEdgesOf(final IRVertex v) {
-    return dag.getOutgoingEdgesOf(v);
-  }
-
-  /**
-   * Get vertices in the current DAG snapshot. (sorted)
-   * @return vertices in a topologically sorted order.
-   */
-  public List<IRVertex> getTopologicalSort() {
-    return dag.getTopologicalSort();
-  }
-
-  /**
-   * Get the current underlying DAG for direct access.
-   * @return underlying DAG.
-   */
-  public DAG<IRVertex, IREdge> getCurrentDAGSnapshot() {
-    return dag;
   }
 
   ////////////////////////////////////////////////// Methods for reshaping the DAG topology.
@@ -246,14 +200,13 @@ public final class IRDAG {
     dag = builder.build(); // update the DAG.
   }
 
-  ////////////////////////////////////////////////// "Unsafe" direct reshaping (semantic-preserving is not guaranteed).
-
   /**
-   * "Unsafe" direct reshaping (semantic-preserving is not guaranteed).
-   * @param unsafeReshaping a function that directly reshapes the underlying DAG.
+   * Reshape unsafely, without guarantees on preserving application semantics.
+   * TODO #330: Refactor Unsafe Reshaping Passes
+   * @param unsafeReshapingFunction to use.
    */
-  public void unSafeDirectReshaping(final Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> unsafeReshaping) {
-    this.dag = unsafeReshaping.apply(dag);
+  public void reshapeUnsafely(final Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> unsafeReshapingFunction) {
+    dag = unsafeReshapingFunction.apply(dag);
   }
 
   ////////////////////////////////////////////////// Private helper methods.
@@ -287,5 +240,126 @@ public final class IRDAG {
     newEdge.setPropertyPermanently(encoder);
     newEdge.setPropertyPermanently(decoder);
     return newEdge;
+  }
+
+  ////////////////////////////////////////////////// DAGQueryInterface methods - forward calls to the underlying DAG.
+
+  @Override
+  public void topologicalDo(final Consumer<IRVertex> function) {
+    dag.topologicalDo(function);
+  }
+
+  @Override
+  public void dfsTraverse(final Consumer<IRVertex> function, final TraversalOrder traversalOrder) {
+    dag.dfsTraverse(function, traversalOrder);
+  }
+
+  @Override
+  public void dfsDo(final IRVertex vertex,
+                    final Consumer<IRVertex> vertexConsumer,
+                    final TraversalOrder traversalOrder,
+                    final Set<IRVertex> visited) {
+    dag.dfsDo(vertex, vertexConsumer, traversalOrder, visited);
+  }
+
+  @Override
+  public Boolean pathExistsBetween(final IRVertex v1, final IRVertex v2) {
+    return dag.pathExistsBetween(v1, v2);
+  }
+
+  @Override
+  public Boolean isCompositeVertex(final IRVertex irVertex) {
+    return dag.isCompositeVertex(irVertex);
+  }
+
+  @Override
+  public Integer getLoopStackDepthOf(final IRVertex irVertex) {
+    return dag.getLoopStackDepthOf(irVertex);
+  }
+
+  @Override
+  public LoopVertex getAssignedLoopVertexOf(final IRVertex irVertex) {
+    return dag.getAssignedLoopVertexOf(irVertex);
+  }
+
+  @Override
+  public ObjectNode asJsonNode() {
+    return dag.asJsonNode();
+  }
+
+  @Override
+  public void storeJSON(final String directory, final String name, final String description) {
+    dag.storeJSON(directory, name, description);
+  }
+
+  @Override
+  public IRVertex getVertexById(final String id) {
+    return dag.getVertexById(id);
+  }
+
+  @Override
+  public List<IRVertex> getVertices() {
+    return dag.getVertices();
+  }
+
+  @Override
+  public List<IRVertex> getRootVertices() {
+    return dag.getRootVertices();
+  }
+
+  @Override
+  public List<IREdge> getIncomingEdgesOf(final IRVertex v) {
+    return dag.getIncomingEdgesOf(v);
+  }
+
+  @Override
+  public List<IREdge> getIncomingEdgesOf(final String vertexId) {
+    return dag.getIncomingEdgesOf(vertexId);
+  }
+
+  @Override
+  public List<IREdge> getOutgoingEdgesOf(final IRVertex v) {
+    return dag.getOutgoingEdgesOf(v);
+  }
+
+  @Override
+  public List<IREdge> getOutgoingEdgesOf(final String vertexId) {
+    return dag.getOutgoingEdgesOf(vertexId);
+  }
+
+  @Override
+  public List<IRVertex> getParents(final String vertexId) {
+    return dag.getParents(vertexId);
+  }
+
+  @Override
+  public List<IRVertex> getChildren(final String vertexId) {
+    return dag.getChildren(vertexId);
+  }
+
+  @Override
+  public IREdge getEdgeBetween(final String srcVertexId,
+                               final String dstVertexId) throws IllegalEdgeOperationException {
+    return dag.getEdgeBetween(srcVertexId, dstVertexId);
+  }
+
+  @Override
+  public List<IRVertex> getTopologicalSort() {
+    return dag.getTopologicalSort();
+  }
+
+  @Override
+  public List<IRVertex> getAncestors(final String vertexId) {
+    return dag.getAncestors(vertexId);
+  }
+
+  @Override
+  public List<IRVertex> getDescendants(final String vertexId) {
+    return dag.getDescendants(vertexId);
+  }
+
+  @Override
+  public List<IRVertex> filterVertices(final Predicate<IRVertex> condition) {
+    return dag.filterVertices(condition);
   }
 }

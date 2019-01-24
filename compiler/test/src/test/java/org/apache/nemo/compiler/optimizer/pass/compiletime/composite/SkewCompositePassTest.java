@@ -95,10 +95,10 @@ public class SkewCompositePassTest {
     final IRDAG processedDAG = new SkewCompositePass().apply(mrDAG);
     assertEquals(originalVerticesNum + numOfShuffleEdges * 2, processedDAG.getVertices().size());
 
-    processedDAG.getCurrentDAGSnapshot().filterVertices(v -> v instanceof OperatorVertex
+    processedDAG.filterVertices(v -> v instanceof OperatorVertex
       && ((OperatorVertex) v).getTransform() instanceof MessageBarrierTransform)
       .forEach(metricV -> {
-          final List<IRVertex> reducerV = processedDAG.getCurrentDAGSnapshot().getChildren(metricV.getId());
+          final List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());
           reducerV.forEach(rV -> {
             if (rV instanceof OperatorVertex &&
               !(((OperatorVertex) rV).getTransform() instanceof MessageAggregatorTransform)) {

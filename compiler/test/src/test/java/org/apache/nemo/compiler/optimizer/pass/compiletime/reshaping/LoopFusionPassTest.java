@@ -61,13 +61,17 @@ public class LoopFusionPassTest {
     originalALSDAG = CompilerTestUtil.compileALSDAG();
     groupedDAG = new LoopExtractionPass().apply(originalALSDAG);
 
-    groupedDAG.topologicalDo(v -> {
-      dagToBeFusedBuilder.addVertex(v, groupedDAG.getCurrentDAGSnapshot());
-      groupedDAG.getIncomingEdgesOf(v).forEach(dagToBeFusedBuilder::connectVertices);
+    new LoopExtractionPass().apply(CompilerTestUtil.compileALSDAG()).reshapeUnsafely(unsafeDAG -> {
+      unsafeDAG.topologicalDo(v -> {
+        dagToBeFusedBuilder.addVertex(v, unsafeDAG);
+        unsafeDAG.getIncomingEdgesOf(v).forEach(dagToBeFusedBuilder::connectVertices);
 
-      dagNotToBeFusedBuilder.addVertex(v, groupedDAG.getCurrentDAGSnapshot());
-      groupedDAG.getIncomingEdgesOf(v).forEach(dagNotToBeFusedBuilder::connectVertices);
+        dagNotToBeFusedBuilder.addVertex(v, unsafeDAG);
+        unsafeDAG.getIncomingEdgesOf(v).forEach(dagNotToBeFusedBuilder::connectVertices);
+      });
+      return unsafeDAG;
     });
+
     final Optional<LoopVertex> loopInDAG = groupedDAG.getTopologicalSort().stream()
         .filter(irVertex -> irVertex instanceof LoopVertex).map(irVertex -> (LoopVertex) irVertex).findFirst();
     assertTrue(loopInDAG.isPresent());

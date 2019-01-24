@@ -51,7 +51,7 @@ public final class LoopExtractionPass extends ReshapingPass {
 
   @Override
   public IRDAG apply(final IRDAG inputDAG) {
-    inputDAG.unSafeDirectReshaping(dag -> {
+    inputDAG.reshapeUnsafely(dag -> {
       final Integer maxStackDepth = this.findMaxLoopVertexStackDepth(dag);
       return groupLoops(dag, maxStackDepth);
     });

@@ -58,7 +58,7 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
     final Map<OperatorVertex, Set<IREdge>> inEdges = new HashMap<>();
     final Map<OperatorVertex, Set<IREdge>> outEdges = new HashMap<>();
 
-    inputDAG.unSafeDirectReshaping(dag -> {
+    inputDAG.reshapeUnsafely(dag -> {
       dag.topologicalDo(irVertex -> {
         if (irVertex instanceof OperatorVertex) {
           final OperatorVertex operatorVertex = (OperatorVertex) irVertex;
