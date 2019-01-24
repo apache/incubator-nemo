@@ -62,6 +62,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
 
   public SideInputProcessor sideInputProcessor(SerializerManager serializerManager,
                                                String edgeId) {
+    lazyInit();
     return new LambdaSideInputProcessor(serializerManager, edgeId,
       prefixAndObjectMap, prefixAndSizeMap, lambdaTransport, serializedVertices);
     //return new VMSideInputProcessor(serializerManager, edgeId,
