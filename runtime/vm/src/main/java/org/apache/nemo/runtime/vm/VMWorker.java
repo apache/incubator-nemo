@@ -30,7 +30,7 @@ public class VMWorker {
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = VMWorker.class.getName();
 
-  private static final String ADDRESS = "172.31.6.35";
+  private static final String ADDRESS = "172.31.45.92";
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
   private EventLoopGroup serverBossGroup;
