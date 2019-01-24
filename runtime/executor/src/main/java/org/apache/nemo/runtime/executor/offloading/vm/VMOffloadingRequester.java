@@ -141,6 +141,7 @@ public final class VMOffloadingRequester implements OffloadingRequester {
           synchronized (readyVMs) {
             readyVMs.add(openChannel);
           }
+          LOG.info("Add channel: {}", openChannel);
         }
       }
 
@@ -153,13 +154,13 @@ public final class VMOffloadingRequester implements OffloadingRequester {
             final int idx = (channelIndex + 1) % readyVMs.size();
             requestChannel = readyVMs.get(idx);
             break;
-          } else {
-            try {
-              Thread.sleep(1000);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
           }
+        }
+
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
         }
       }
 
