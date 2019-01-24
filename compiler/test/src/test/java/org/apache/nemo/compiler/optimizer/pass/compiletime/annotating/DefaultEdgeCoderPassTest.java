@@ -64,8 +64,8 @@ public class DefaultEdgeCoderPassTest {
     final IREdge irEdge = compiledDAG.getOutgoingEdgesOf(compiledDAG.getTopologicalSort().get(0)).get(0);
     final EncoderFactory compiledEncoderFactory = irEdge.getPropertyValue(EncoderProperty.class).get();
     final DecoderFactory compiledDecoderFactory = irEdge.getPropertyValue(DecoderProperty.class).get();
-    IRDAG processedDAG = new DefaultEdgeEncoderPass().optimize(compiledDAG);
-    processedDAG = new DefaultEdgeDecoderPass().optimize(processedDAG);
+    IRDAG processedDAG = new DefaultEdgeEncoderPass().apply(compiledDAG);
+    processedDAG = new DefaultEdgeDecoderPass().apply(processedDAG);
 
     // Get the first coder from the processed DAG
     final IREdge processedIREdge = processedDAG.getOutgoingEdgesOf(processedDAG.getTopologicalSort().get(0)).get(0);
@@ -81,8 +81,8 @@ public class DefaultEdgeCoderPassTest {
     final IREdge irEdge = compiledDAG.getOutgoingEdgesOf(compiledDAG.getTopologicalSort().get(0)).get(0);
     irEdge.getExecutionProperties().remove(EncoderProperty.class);
     irEdge.getExecutionProperties().remove(DecoderProperty.class);
-    IRDAG processedDAG = new DefaultEdgeEncoderPass().optimize(compiledDAG);
-    processedDAG = new DefaultEdgeDecoderPass().optimize(processedDAG);
+    IRDAG processedDAG = new DefaultEdgeEncoderPass().apply(compiledDAG);
+    processedDAG = new DefaultEdgeDecoderPass().apply(processedDAG);
 
     // Check whether the pass set the empty coder to our default encoder & decoder.
     final IREdge processedIREdge = processedDAG.getOutgoingEdgesOf(processedDAG.getTopologicalSort().get(0)).get(0);

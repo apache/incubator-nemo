@@ -44,7 +44,7 @@ public class LoopInvariantCodeMotionALSInefficientTest {
   @Before
   public void setUp() throws Exception {
     inefficientALSDAG = CompilerTestUtil.compileALSInefficientDAG();
-    groupedDAG = new LoopExtractionPass().optimize(inefficientALSDAG);
+    groupedDAG = new LoopExtractionPass().apply(inefficientALSDAG);
   }
 
   @Test
@@ -52,7 +52,7 @@ public class LoopInvariantCodeMotionALSInefficientTest {
     final long expectedNumOfVertices = groupedDAG.getVertices().size() + 3;
 
     final IRDAG processedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
-        .optimize(groupedDAG);
+        .apply(groupedDAG);
     assertEquals(expectedNumOfVertices, processedDAG.getVertices().size());
   }
 

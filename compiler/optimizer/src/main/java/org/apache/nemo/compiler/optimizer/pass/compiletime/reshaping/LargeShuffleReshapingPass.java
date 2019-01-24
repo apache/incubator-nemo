@@ -38,7 +38,7 @@ public final class LargeShuffleReshapingPass extends ReshapingPass {
 
 
   @Override
-  public IRDAG optimize(final IRDAG dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(vertex -> {
       dag.getIncomingEdgesOf(vertex).forEach(edge -> {
         if (CommunicationPatternProperty.Value.Shuffle

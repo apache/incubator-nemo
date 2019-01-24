@@ -78,10 +78,10 @@ public class CommonSubexpressionEliminationPassTest {
     final long originalVerticesNum = dagNotToOptimize.getVertices().size();
     final long optimizedVerticesNum = dagToOptimize.getVertices().size();
 
-    final IRDAG processedDAG = new CommonSubexpressionEliminationPass().optimize(dagToOptimize);
+    final IRDAG processedDAG = new CommonSubexpressionEliminationPass().apply(dagToOptimize);
     assertEquals(optimizedVerticesNum - 1, processedDAG.getVertices().size());
 
-    final IRDAG notProcessedDAG = new CommonSubexpressionEliminationPass().optimize(dagNotToOptimize);
+    final IRDAG notProcessedDAG = new CommonSubexpressionEliminationPass().apply(dagNotToOptimize);
     assertEquals(originalVerticesNum, notProcessedDAG.getVertices().size());
   }
 }

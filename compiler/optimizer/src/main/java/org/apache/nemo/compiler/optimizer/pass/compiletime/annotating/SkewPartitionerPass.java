@@ -37,7 +37,7 @@ public final class SkewPartitionerPass extends AnnotatingPass {
   }
 
   @Override
-  public IRDAG optimize(final IRDAG dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.getVertices()
       .forEach(v -> dag.getOutgoingEdgesOf(v).stream()
         .filter(edge -> edge.getPropertyValue(MetricCollectionProperty.class).isPresent())

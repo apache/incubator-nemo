@@ -50,7 +50,7 @@ public class LargeShuffleCompositePassTest {
 
   @Test
   public void testLargeShuffle() {
-    final IRDAG processedDAG = new LargeShuffleCompositePass().optimize(compiledDAG);
+    final IRDAG processedDAG = new LargeShuffleCompositePass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
       if (processedDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->

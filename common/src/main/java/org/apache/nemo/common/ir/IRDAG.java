@@ -18,23 +18,31 @@
  */
 package org.apache.nemo.common.ir;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.dag.DAGQueryInterface;
+import org.apache.nemo.common.exception.IllegalEdgeOperationException;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.system.MessageAggregationVertex;
+import org.apache.nemo.common.ir.vertex.LoopVertex;
+import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.system.StreamVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * An IRDAG object captures a high-level data processing application (e.g., Spark/Beam application).
@@ -46,70 +54,37 @@ import java.util.function.Function;
  * - Annotation: setProperty(), getPropertyValue() on each IRVertex/IREdge
  * - Reshaping: insert(), delete() on the IRDAG
  */
-public final class IRDAG {
+public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
   private static final Logger LOG = LoggerFactory.getLogger(IRDAG.class.getName());
+
   private final AtomicInteger metricCollectionId;
 
-  private DAG<IRVertex, IREdge> dag; // internal DAG, can be updated by reshaping methods.
+  private DAG<IRVertex, IREdge> lastSnapshotDAG; // the DAG that was saved most recently.
+  private DAG<IRVertex, IREdge> updatingDAG; // the DAG that is being updated.
 
   /**
-   * @param dag underlying DAG.
+   * @param originalUserApplicationDAG the initial DAG.
    */
-  public IRDAG(final DAG<IRVertex, IREdge> dag) {
-    this.dag = dag;
+  public IRDAG(final DAG<IRVertex, IREdge> originalUserApplicationDAG) {
+    this.updatingDAG = originalUserApplicationDAG;
+    this.lastSnapshotDAG = originalUserApplicationDAG;
     this.metricCollectionId = new AtomicInteger(0);
   }
 
-  ////////////////////////////////////////////////// Methods for querying the DAG topology.
+  //////////////////////////////////////////////////
 
   /**
-   * Visits the current DAG snapshot in a topologically sorted order.
-   * @param function that visits each vertex.
+   * Used internally by Nemo to advance the DAG snapshot after applying each pass.
+   * @param checker that compares the lastSnapshotDAG and the updatingDAG
+   *                to determine if the snapshot can be set the current updatingDAG.
+   * @return true if the checker passes, false otherwise.
    */
-  public void topologicalDo(final Consumer<IRVertex> function) {
-    dag.topologicalDo(function);
-  }
-
-  /**
-   * Get vertices of the current DAG snapshot.
-   * @return vertices.
-   */
-  public List<IRVertex> getVertices() {
-    return dag.getVertices();
-  }
-
-  /**
-   * Get incoming edges in the current DAG snapshot.
-   * @param v to query.
-   * @return incoming edges.
-   */
-  public List<IREdge> getIncomingEdgesOf(final IRVertex v) {
-    return dag.getIncomingEdgesOf(v);
-  }
-
-  /**
-   * Get outgoing edges in the current DAG snapshot.
-   * @param v to query.
-   * @return outgoing edges.
-   */
-  public List<IREdge> getOutgoingEdgesOf(final IRVertex v) {
-    return dag.getOutgoingEdgesOf(v);
-  }
-
-  /**
-   * Get vertices in the current DAG snapshot. (sorted)
-   * @return vertices in a topologically sorted order.
-   */
-  public List<IRVertex> getTopologicalSort() {
-    return dag.getTopologicalSort();
-  }
-
-  /**
-   * Get the current underlying DAG for direct access.
-   * @return underlying DAG.
-   */
-  public DAG<IRVertex, IREdge> getCurrentDAGSnapshot() {
-    return dag;
+  public boolean advanceDAGSnapshot(final BiFunction<IRDAG, IRDAG, Boolean> checker) {
+    final boolean canAdvance = checker.apply(new IRDAG(lastSnapshotDAG), new IRDAG(updatingDAG));
+    if (canAdvance) {
+      lastSnapshotDAG = updatingDAG;
+    }
+    return canAdvance;
   }
 
   ////////////////////////////////////////////////// Methods for reshaping the DAG topology.
@@ -132,10 +107,10 @@ public final class IRDAG {
     builder.addVertex(streamVertex);
 
     // Build the new DAG to reflect the new topology.
-    dag.topologicalDo(v -> {
+    updatingDAG.topologicalDo(v -> {
       builder.addVertex(v); // None of the existing vertices are deleted.
 
-      for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
+      for (final IREdge edge : updatingDAG.getIncomingEdgesOf(v)) {
         if (edge.equals(edgeToStreamize)) {
           // MATCH!
 
@@ -161,50 +136,59 @@ public final class IRDAG {
       }
     });
 
-    dag = builder.build(); // update the DAG.
+    updatingDAG = builder.build(); // update the DAG.
   }
 
   /**
    * Inserts a new vertex that analyzes intermediate data, and triggers a dynamic optimization.
    *
-   * Before: src - edgeToGetStatisticsOf - dst
-   * After: src - oneToOneEdge(a clone of edgeToGetStatisticsOf) - messageBarrierVertex -
-   *        shuffleEdge - messageAggregationVertex - broadcastEdge - dst
+   * For each edge in edgesToGetStatisticsOf...
+   *
+   * Before: src - edge - dst
+   * After: src - oneToOneEdge(a clone of edge) - messageBarrierVertex -
+   *        shuffleEdge - messageAggregatorVertex - broadcastEdge - dst
    * (the "Before" relationships are unmodified)
    *
    * @param messageBarrierVertex to insert.
-   * @param messageAggregationVertex to insert.
+   * @param messageAggregatorVertex to insert.
    * @param mbvOutputEncoder to use.
    * @param mbvOutputDecoder to use.
-   * @param edgeToGetStatisticsOf to examine.
+   * @param edgesToGetStatisticsOf to examine.
    */
   public void insert(final MessageBarrierVertex messageBarrierVertex,
-                     final MessageAggregationVertex messageAggregationVertex,
+                     final MessageAggregatorVertex messageAggregatorVertex,
                      final EncoderProperty mbvOutputEncoder,
                      final DecoderProperty mbvOutputDecoder,
-                     final IREdge edgeToGetStatisticsOf) {
+                     final Set<IREdge> edgesToGetStatisticsOf) {
+    if (edgesToGetStatisticsOf.stream().map(edge -> edge.getDst().getId()).collect(Collectors.toSet()).size() != 1) {
+      throw new IllegalArgumentException("Not destined to the same vertex: " + edgesToGetStatisticsOf.toString());
+    }
+    final IRVertex dst = edgesToGetStatisticsOf.iterator().next().getDst();
+
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder builder = new DAGBuilder();
-
-    // Insert the vertex.
-    builder.addVertex(messageBarrierVertex);
 
     // Current metric collection id.
     final int currentMetricCollectionId = metricCollectionId.incrementAndGet();
 
-    dag.topologicalDo(v -> {
-      // None of the existing vertices are deleted.
-      builder.addVertex(v);
+    // First, add all the vertices.
+    updatingDAG.topologicalDo(v -> builder.addVertex(v));
 
-      for (final IREdge edge : dag.getIncomingEdgesOf(v)) {
-        if (edge.equals(edgeToGetStatisticsOf)) {
+    // Add a control dependency (no output) from the messageAggregatorVertex to the destination.
+    builder.addVertex(messageAggregatorVertex);
+    final IREdge noDataEdge = new IREdge(CommunicationPatternProperty.Value.BroadCast, messageAggregatorVertex, dst);
+    builder.connectVertices(noDataEdge);
+
+    // Add the edges and the messageBarrierVertex.
+    updatingDAG.topologicalDo(v -> {
+      for (final IREdge edge : updatingDAG.getIncomingEdgesOf(v)) {
+        if (edgesToGetStatisticsOf.contains(edge)) {
           // MATCH!
-          builder.addVertex(messageBarrierVertex);
-          builder.addVertex(messageAggregationVertex);
+          final MessageBarrierVertex mbv = new MessageBarrierVertex<>(messageBarrierVertex.getMessageFunction());
+          builder.addVertex(mbv);
 
           // Clone the edgeToGetStatisticsOf
-          final IREdge clone = new IREdge(
-            CommunicationPatternProperty.Value.OneToOne, edge.getSrc(), messageBarrierVertex);
+          final IREdge clone = new IREdge(CommunicationPatternProperty.Value.OneToOne, edge.getSrc(), mbv);
           clone.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
           clone.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
           edge.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag -> {
@@ -212,19 +196,13 @@ public final class IRDAG {
           });
           builder.connectVertices(clone);
 
-          // messageBarrierVertex to the messageAggregationVertex
-          final IREdge edgeToABV = edgeBetweenMessageVertices(messageBarrierVertex,
-            messageAggregationVertex, mbvOutputEncoder, mbvOutputDecoder, currentMetricCollectionId);
+          // messageBarrierVertex to the messageAggregatorVertex
+          final IREdge edgeToABV = edgeBetweenMessageVertices(mbv,
+            messageAggregatorVertex, mbvOutputEncoder, mbvOutputDecoder, currentMetricCollectionId);
           builder.connectVertices(edgeToABV);
 
-          // Connection vertex
-          // Add a control dependency (no output)
-          final IREdge emptyEdge =
-            new IREdge(CommunicationPatternProperty.Value.BroadCast, messageAggregationVertex, v);
-          builder.connectVertices(emptyEdge);
-
           // The original edge
-          // We then insert the vertex with MessageBarrierTransform and vertex with MessageAggregateTransform
+          // We then insert the vertex with MessageBarrierTransform and vertex with MessageAggregatorTransform
           // between the vertex and incoming vertices.
           final IREdge edgeToOriginalDst =
             new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
@@ -238,17 +216,16 @@ public final class IRDAG {
       }
     });
 
-    dag = builder.build(); // update the DAG.
+    updatingDAG = builder.build(); // update the DAG.
   }
 
-  ////////////////////////////////////////////////// "Unsafe" direct reshaping (semantic-preserving is not guaranteed).
-
   /**
-   * "Unsafe" direct reshaping (semantic-preserving is not guaranteed).
-   * @param unsafeReshaping a function that directly reshapes the underlying DAG.
+   * Reshape unsafely, without guarantees on preserving application semantics.
+   * TODO #330: Refactor Unsafe Reshaping Passes
+   * @param unsafeReshapingFunction takes as input the underlying DAG, and outputs a reshaped DAG.
    */
-  public void unSafeDirectReshaping(final Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> unsafeReshaping) {
-    this.dag = unsafeReshaping.apply(dag);
+  public void reshapeUnsafely(final Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> unsafeReshapingFunction) {
+    updatingDAG = unsafeReshapingFunction.apply(updatingDAG);
   }
 
   ////////////////////////////////////////////////// Private helper methods.
@@ -262,7 +239,7 @@ public final class IRDAG {
    * @return the edge.
    */
   private IREdge edgeBetweenMessageVertices(final MessageBarrierVertex mbv,
-                                            final MessageAggregationVertex mav,
+                                            final MessageAggregatorVertex mav,
                                             final EncoderProperty encoder,
                                             final DecoderProperty decoder,
                                             final int currentMetricCollectionId) {
@@ -282,5 +259,126 @@ public final class IRDAG {
     newEdge.setPropertyPermanently(encoder);
     newEdge.setPropertyPermanently(decoder);
     return newEdge;
+  }
+
+  ////////////////////////////////////////////////// DAGQueryInterface methods - forward calls to the underlying DAG.
+
+  @Override
+  public void topologicalDo(final Consumer<IRVertex> function) {
+    updatingDAG.topologicalDo(function);
+  }
+
+  @Override
+  public void dfsTraverse(final Consumer<IRVertex> function, final TraversalOrder traversalOrder) {
+    updatingDAG.dfsTraverse(function, traversalOrder);
+  }
+
+  @Override
+  public void dfsDo(final IRVertex vertex,
+                    final Consumer<IRVertex> vertexConsumer,
+                    final TraversalOrder traversalOrder,
+                    final Set<IRVertex> visited) {
+    updatingDAG.dfsDo(vertex, vertexConsumer, traversalOrder, visited);
+  }
+
+  @Override
+  public Boolean pathExistsBetween(final IRVertex v1, final IRVertex v2) {
+    return updatingDAG.pathExistsBetween(v1, v2);
+  }
+
+  @Override
+  public Boolean isCompositeVertex(final IRVertex irVertex) {
+    return updatingDAG.isCompositeVertex(irVertex);
+  }
+
+  @Override
+  public Integer getLoopStackDepthOf(final IRVertex irVertex) {
+    return updatingDAG.getLoopStackDepthOf(irVertex);
+  }
+
+  @Override
+  public LoopVertex getAssignedLoopVertexOf(final IRVertex irVertex) {
+    return updatingDAG.getAssignedLoopVertexOf(irVertex);
+  }
+
+  @Override
+  public ObjectNode asJsonNode() {
+    return updatingDAG.asJsonNode();
+  }
+
+  @Override
+  public void storeJSON(final String directory, final String name, final String description) {
+    updatingDAG.storeJSON(directory, name, description);
+  }
+
+  @Override
+  public IRVertex getVertexById(final String id) {
+    return updatingDAG.getVertexById(id);
+  }
+
+  @Override
+  public List<IRVertex> getVertices() {
+    return updatingDAG.getVertices();
+  }
+
+  @Override
+  public List<IRVertex> getRootVertices() {
+    return updatingDAG.getRootVertices();
+  }
+
+  @Override
+  public List<IREdge> getIncomingEdgesOf(final IRVertex v) {
+    return updatingDAG.getIncomingEdgesOf(v);
+  }
+
+  @Override
+  public List<IREdge> getIncomingEdgesOf(final String vertexId) {
+    return updatingDAG.getIncomingEdgesOf(vertexId);
+  }
+
+  @Override
+  public List<IREdge> getOutgoingEdgesOf(final IRVertex v) {
+    return updatingDAG.getOutgoingEdgesOf(v);
+  }
+
+  @Override
+  public List<IREdge> getOutgoingEdgesOf(final String vertexId) {
+    return updatingDAG.getOutgoingEdgesOf(vertexId);
+  }
+
+  @Override
+  public List<IRVertex> getParents(final String vertexId) {
+    return updatingDAG.getParents(vertexId);
+  }
+
+  @Override
+  public List<IRVertex> getChildren(final String vertexId) {
+    return updatingDAG.getChildren(vertexId);
+  }
+
+  @Override
+  public IREdge getEdgeBetween(final String srcVertexId,
+                               final String dstVertexId) throws IllegalEdgeOperationException {
+    return updatingDAG.getEdgeBetween(srcVertexId, dstVertexId);
+  }
+
+  @Override
+  public List<IRVertex> getTopologicalSort() {
+    return updatingDAG.getTopologicalSort();
+  }
+
+  @Override
+  public List<IRVertex> getAncestors(final String vertexId) {
+    return updatingDAG.getAncestors(vertexId);
+  }
+
+  @Override
+  public List<IRVertex> getDescendants(final String vertexId) {
+    return updatingDAG.getDescendants(vertexId);
+  }
+
+  @Override
+  public List<IRVertex> filterVertices(final Predicate<IRVertex> condition) {
+    return updatingDAG.filterVertices(condition);
   }
 }

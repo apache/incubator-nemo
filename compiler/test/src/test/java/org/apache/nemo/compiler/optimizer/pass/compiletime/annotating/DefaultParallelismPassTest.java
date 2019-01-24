@@ -53,7 +53,7 @@ public class DefaultParallelismPassTest {
 
   @Test
   public void testParallelismOne() {
-    final IRDAG processedDAG = new DefaultParallelismPass().optimize(compiledDAG);
+    final IRDAG processedDAG = new DefaultParallelismPass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex ->
         assertEquals(1, irVertex.getPropertyValue(MinParallelismProperty.class).get().longValue()));
@@ -62,7 +62,7 @@ public class DefaultParallelismPassTest {
   @Test
   public void testParallelismTen() {
     final int desiredSourceParallelism = 10;
-    final IRDAG processedDAG = new DefaultParallelismPass(desiredSourceParallelism, 2).optimize(compiledDAG);
+    final IRDAG processedDAG = new DefaultParallelismPass(desiredSourceParallelism, 2).apply(compiledDAG);
 
     processedDAG.getTopologicalSort().stream()
         .filter(irVertex -> irVertex instanceof SourceVertex)

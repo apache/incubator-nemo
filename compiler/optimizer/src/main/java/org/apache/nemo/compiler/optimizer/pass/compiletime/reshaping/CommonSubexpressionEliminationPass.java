@@ -51,14 +51,14 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
   }
 
   @Override
-  public IRDAG optimize(final IRDAG inputDAG) {
+  public IRDAG apply(final IRDAG inputDAG) {
     // find and collect vertices with equivalent transforms
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
     final Map<Transform, List<OperatorVertex>> operatorVerticesToBeMerged = new HashMap<>();
     final Map<OperatorVertex, Set<IREdge>> inEdges = new HashMap<>();
     final Map<OperatorVertex, Set<IREdge>> outEdges = new HashMap<>();
 
-    inputDAG.unSafeDirectReshaping(dag -> {
+    inputDAG.reshapeUnsafely(dag -> {
       dag.topologicalDo(irVertex -> {
         if (irVertex instanceof OperatorVertex) {
           final OperatorVertex operatorVertex = (OperatorVertex) irVertex;

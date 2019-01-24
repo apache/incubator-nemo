@@ -47,7 +47,7 @@ public class LoopExtractionPassTest {
 
   @Test
   public void testLoopGrouping() {
-    final IRDAG processedDAG = new LoopExtractionPass().optimize(compiledDAG);
+    final IRDAG processedDAG = new LoopExtractionPass().apply(compiledDAG);
 
     assertEquals(9, processedDAG.getTopologicalSort().size());
   }

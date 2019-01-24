@@ -35,7 +35,7 @@ public final class AggressiveSpeculativeCloningPass extends AnnotatingPass {
   }
 
   @Override
-  public IRDAG optimize(final IRDAG dag) {
+  public IRDAG apply(final IRDAG dag) {
     // Speculative execution policy.
     final double fractionToWaitFor = 0.00000001; // Aggressive
     final double medianTimeMultiplier = 1.00000001; // Aggressive

@@ -19,15 +19,12 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 
 import org.apache.nemo.client.JobLauncher;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.MessageAggregateTransform;
+import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.MessageBarrierTransform;
 import org.apache.nemo.compiler.CompilerTestUtil;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
@@ -80,7 +77,7 @@ public class SkewCompositePassTest {
   /**
    * Test for {@link SkewCompositePass} with MR workload.
    * It should have inserted vertex with {@link MessageBarrierTransform}
-   * and vertex with {@link MessageAggregateTransform} for each shuffle edge.
+   * and vertex with {@link MessageAggregatorTransform} for each shuffle edge.
    * @throws Exception exception on the way.
    */
   @Test
@@ -95,16 +92,16 @@ public class SkewCompositePassTest {
             .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get())))
       .count();
 
-    final IRDAG processedDAG = new SkewCompositePass().optimize(mrDAG);
+    final IRDAG processedDAG = new SkewCompositePass().apply(mrDAG);
     assertEquals(originalVerticesNum + numOfShuffleEdges * 2, processedDAG.getVertices().size());
 
-    processedDAG.getCurrentDAGSnapshot().filterVertices(v -> v instanceof OperatorVertex
+    processedDAG.filterVertices(v -> v instanceof OperatorVertex
       && ((OperatorVertex) v).getTransform() instanceof MessageBarrierTransform)
       .forEach(metricV -> {
-          final List<IRVertex> reducerV = processedDAG.getCurrentDAGSnapshot().getChildren(metricV.getId());
+          final List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());
           reducerV.forEach(rV -> {
             if (rV instanceof OperatorVertex &&
-              !(((OperatorVertex) rV).getTransform() instanceof MessageAggregateTransform)) {
+              !(((OperatorVertex) rV).getTransform() instanceof MessageAggregatorTransform)) {
               assertTrue(rV.getPropertyValue(ResourceSkewedDataProperty.class).get());
             }
           });

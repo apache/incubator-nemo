@@ -49,9 +49,9 @@ public class DisaggregationPassTest {
   @Test
   public void testDisaggregation() throws Exception {
     final IRDAG processedDAG =
-        new DisaggregationEdgeDataStorePass().optimize(
-            new DefaultDataStorePass().optimize(
-                  new DefaultParallelismPass().optimize(compiledDAG)));
+        new DisaggregationEdgeDataStorePass().apply(
+            new DefaultDataStorePass().apply(
+                  new DefaultParallelismPass().apply(compiledDAG)));
 
     processedDAG.getTopologicalSort().forEach(irVertex ->
       processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger ->

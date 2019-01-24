@@ -59,7 +59,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
   }
 
   @Override
-  public IRDAG optimize(final IRDAG dag) {
+  public IRDAG apply(final IRDAG dag) {
     // Propagate forward source parallelism
     dag.topologicalDo(vertex -> {
       try {

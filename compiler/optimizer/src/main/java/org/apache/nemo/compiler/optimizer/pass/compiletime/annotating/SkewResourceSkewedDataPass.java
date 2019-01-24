@@ -42,14 +42,14 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   }
 
   @Override
-  public IRDAG optimize(final IRDAG dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.getVertices()
       .forEach(v -> dag.getOutgoingEdgesOf(v).stream()
         .filter(edge -> edge.getPropertyValue(MetricCollectionProperty.class).isPresent())
         .forEach(skewEdge -> {
           final IRVertex dstV = skewEdge.getDst();
           dstV.setProperty(ResourceSkewedDataProperty.of(true));
-          dag.getCurrentDAGSnapshot().getDescendants(dstV.getId()).forEach(descendentV -> {
+          dag.getDescendants(dstV.getId()).forEach(descendentV -> {
             descendentV.getExecutionProperties().put(ResourceSkewedDataProperty.of(true));
           });
         })

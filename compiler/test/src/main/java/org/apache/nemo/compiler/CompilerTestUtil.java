@@ -22,7 +22,6 @@ import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.client.JobLauncher;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -84,12 +83,12 @@ public final class CompilerTestUtil {
     final Class userMainClass = Class.forName(userMainClassName);
     final Method userMainMethod = userMainClass.getMethod("main", String[].class);
 
-    final ArgumentCaptor<DAG> captor = ArgumentCaptor.forClass(DAG.class);
+    final ArgumentCaptor<IRDAG> captor = ArgumentCaptor.forClass(IRDAG.class);
     final ArgumentCaptor<String> stringArg = ArgumentCaptor.forClass(String.class);
     PowerMockito.mockStatic(JobLauncher.class);
     PowerMockito.doNothing().when(JobLauncher.class, "launchDAG", captor.capture(), stringArg.capture());
     userMainMethod.invoke(null, (Object) userMainMethodArgs);
-    return new IRDAG(captor.getValue());
+    return captor.getValue();
   }
 
   public static IRDAG compileWordCountDAG() throws Exception {

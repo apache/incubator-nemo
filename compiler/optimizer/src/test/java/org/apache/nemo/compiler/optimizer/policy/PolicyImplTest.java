@@ -38,8 +38,8 @@ public final class PolicyImplTest {
 
   @Before
   public void setUp() {
-    this.dag = new IRDAG(EmptyComponents.buildEmptyDAG());
-    this.dagForSkew = new IRDAG(EmptyComponents.buildEmptyDAGForSkew());
+    this.dag = EmptyComponents.buildEmptyDAG();
+    this.dagForSkew = EmptyComponents.buildEmptyDAGForSkew();
   }
 
   @Rule
