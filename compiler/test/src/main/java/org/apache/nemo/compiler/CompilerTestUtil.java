@@ -84,12 +84,12 @@ public final class CompilerTestUtil {
     final Class userMainClass = Class.forName(userMainClassName);
     final Method userMainMethod = userMainClass.getMethod("main", String[].class);
 
-    final ArgumentCaptor<DAG> captor = ArgumentCaptor.forClass(DAG.class);
+    final ArgumentCaptor<IRDAG> captor = ArgumentCaptor.forClass(IRDAG.class);
     final ArgumentCaptor<String> stringArg = ArgumentCaptor.forClass(String.class);
     PowerMockito.mockStatic(JobLauncher.class);
     PowerMockito.doNothing().when(JobLauncher.class, "launchDAG", captor.capture(), stringArg.capture());
     userMainMethod.invoke(null, (Object) userMainMethodArgs);
-    return new IRDAG(captor.getValue());
+    return captor.getValue();
   }
 
   public static IRDAG compileWordCountDAG() throws Exception {
