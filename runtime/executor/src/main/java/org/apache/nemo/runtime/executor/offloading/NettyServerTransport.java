@@ -14,6 +14,7 @@ import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.NettyChannelInitializer;
 import org.apache.nemo.runtime.executor.offloading.lambda.LambdaOffloadingRequester;
+import org.apache.nemo.runtime.executor.offloading.vm.VMOffloadingRequester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +60,9 @@ public final class NettyServerTransport {
     LOG.info("Netty server lambda transport created end");
     initialized.set(true);
     this.channelPool = new ArrayList<>(poolSize);
-    this.offloadingRequester = new LambdaOffloadingRequester(
+    //this.offloadingRequester = new LambdaOffloadingRequester(
+    //  nemoEventHandler, poolSize, PUBLIC_ADDRESS, PORT);
+    this.offloadingRequester = new VMOffloadingRequester(
       nemoEventHandler, poolSize, PUBLIC_ADDRESS, PORT);
     offloadingRequester.start();
   }
@@ -98,6 +101,10 @@ public final class NettyServerTransport {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+  }
+
+  public void destroy(){
+    offloadingRequester.destroy();
   }
 
   public void setChannelHandler(final Channel channel, final EventHandler eventHandler) {

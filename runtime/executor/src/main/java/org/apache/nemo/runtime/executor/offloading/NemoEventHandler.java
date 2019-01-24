@@ -19,7 +19,7 @@ public final class NemoEventHandler implements EventHandler<Pair<Channel,NemoEve
     private final Map<Channel, EventHandler> channelEventHandlerMap;
     private final AtomicInteger pendingRequest = new AtomicInteger();
 
-    NemoEventHandler(final Map<Channel, EventHandler> channelEventHandlerMap) {
+    public NemoEventHandler(final Map<Channel, EventHandler> channelEventHandlerMap) {
       this.handshakeQueue = new LinkedBlockingQueue<>();
       this.readyQueue = new LinkedBlockingQueue<>();
       this.resultQueue = new LinkedBlockingQueue<>();

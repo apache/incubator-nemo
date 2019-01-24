@@ -96,6 +96,11 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
   }
 
   @Override
+  public void destroy() {
+
+  }
+
+  @Override
   public void close() {
 
   }
