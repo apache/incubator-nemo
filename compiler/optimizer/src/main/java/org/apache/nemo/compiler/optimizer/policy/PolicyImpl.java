@@ -81,7 +81,7 @@ public final class PolicyImpl implements Policy {
 
         final boolean advanced = processedDAG.advanceDAGSnapshot((beforePass, afterPass) -> {
           // Ensure AnnotatingPass and ReshapingPass functions as intended.
-          return ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(beforePass, afterPass))
+          return !((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(beforePass, afterPass))
             || (passToApply instanceof ReshapingPass && !checkReshapingPass(beforePass, afterPass)));
         });
 
