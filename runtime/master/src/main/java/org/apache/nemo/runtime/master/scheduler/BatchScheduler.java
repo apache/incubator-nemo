@@ -606,16 +606,4 @@ public final class BatchScheduler implements Scheduler {
       })
       .collect(Collectors.toSet());
   }
-
-  /**
-   * Update the data for dynamic optimization.
-   *
-   * @param dynOptData the data to update.
-   */
-  public void updateDynOptData(final Object dynOptData) {
-    final RunTimePassMessageHandler runTimePassMessageHandler = runTimePassMessageHandlers.stream()
-
-      .findFirst().orElseThrow(() -> new RuntimeException("SkewRunTimePassMessageHandler is not registered!"));
-    runTimePassMessageHandler.updateDynOptData(dynOptData);
-  }
 }

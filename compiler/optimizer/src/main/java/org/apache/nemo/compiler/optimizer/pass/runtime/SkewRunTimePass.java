@@ -18,12 +18,14 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.runtime.common.partitioner.HashPartitioner;
 import org.apache.nemo.runtime.common.partitioner.Partitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,13 +48,14 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
     final IREdge edge = message.getExaminedEdge();
 
     // Use the following execution properties.
-    final PartitionerProperty partitioner = edge.getPropertyValue(PartitionerProperty.class).get();
+    final Pair<PartitionerProperty.PartitionerType, Integer> partitionerProperty =
+      edge.getPropertyValue(PartitionerProperty.class).get();
     final int dstParallelism = edge.getDst().getPropertyValue(MinParallelismProperty.class).get();
 
     // Compute the optimal partition distribution, using the message value.
     final Map<Object, Long> messageValue = message.getMessageValue();
-    final PartitionSetProperty evenPartitionSet =
-      computeOptimalPartitionDistribution(messageValue, numOfPartitions, dstParallelism, partitioner);
+    final PartitionSetProperty evenPartitionSet = computeOptimalPartitionDistribution(
+      messageValue, Partitioner.getPartitioner(partitionerProperty.left()), partitionerProperty.right(), dstParallelism);
 
     // Set the partitionSet property
     edge.setPropertyPermanently(evenPartitionSet);
@@ -68,15 +71,16 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
    * redistribute the key range of partitions with approximate size of (total size of partitions / the number of tasks).
    * Assumption: the returned key of the partitioner is always 0 or positive integer.
    *
-   * @param keyToCountMap  a map of actual key to count.
-   * @param dstParallelism the number of tasks that receive this data as input.
-   * @param partitioner    the partitioner.
-   * @return the list of key ranges calculated.
+   * @param keyToCountMap statistics.
+   * @param partitioner used.
+   * @param numOfPartitions created.
+   * @param dstParallelism of the destination vertex.
+   * @return an optimal PartitionSetProperty.
    */
   private PartitionSetProperty computeOptimalPartitionDistribution(final Map<Object, Long> keyToCountMap,
-                                                                   final Integer numOfPartitions,
-                                                                   final Integer dstParallelism,
-                                                                   final Partitioner<Integer> partitioner) {
+                                                                   final HashPartitioner partitioner,
+                                                                   final int numOfPartitions,
+                                                                   final int dstParallelism) {
     final Map<Integer, Long> partitionKeyToPartitionCount = new HashMap<>();
     int lastKey = numOfPartitions - 1;
     // Aggregate the counts per each "partition key" assigned by Partitioner.

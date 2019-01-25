@@ -42,6 +42,7 @@ public final class SkewPartitionerPass extends AnnotatingPass {
       .forEach(v -> dag.getOutgoingEdgesOf(v).stream()
         .filter(edge -> edge.getPropertyValue(MetricCollectionProperty.class).isPresent())
         .forEach(skewEdge -> skewEdge
+          // TODO: number of partitions... (with multiplier)
           .setPropertyPermanently(PartitionerProperty.of(PartitionerProperty.Value.DataSkewHashPartitioner))
         )
       );
