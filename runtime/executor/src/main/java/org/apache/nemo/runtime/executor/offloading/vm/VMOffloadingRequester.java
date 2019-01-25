@@ -198,6 +198,9 @@ public final class VMOffloadingRequester implements OffloadingRequester {
 
   @Override
   public void destroy() {
+    synchronized (readyVMs) {
+      readyVMs.clear();
+    }
     LOG.info("Stopping instances {}", instanceIds);
     final StopInstancesRequest request = new StopInstancesRequest()
       .withInstanceIds(instanceIds);
