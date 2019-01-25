@@ -138,7 +138,7 @@ public final class NettyServerTransport {
     }
 
     byte[] serializedVerticesBytes = bos.toByteArray();
-    //System.out.println("Serialized vertices size: " + serializedVerticesBytes.length);
+    System.out.println("Serialized vertices size: " + serializedVerticesBytes.length);
 
     executorService.execute(() -> {
       // Trigger lambdas
