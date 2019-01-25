@@ -68,8 +68,7 @@ public final class VMOffloadingRequester implements OffloadingRequester {
 
   private final ConcurrentMap<Channel, EventHandler<NemoEvent>> map;
 
-  private final AtomicBoolean started = new AtomicBoolean(false);
-  private final AtomicBoolean ready = new AtomicBoolean(false);
+  private final AtomicBoolean stopped = new AtomicBoolean(true);
 
   int channelIndex = 0;
 
@@ -110,15 +109,15 @@ public final class VMOffloadingRequester implements OffloadingRequester {
   public void createChannelRequest() {
 
     executorService.execute(() -> {
-      if (started.compareAndSet(false, true)) {
+      if (stopped.compareAndSet(true, false)) {
+        // 1 start instance
         final StartInstancesRequest request = new StartInstancesRequest()
           .withInstanceIds(instanceIds);
         LOG.info("Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
         ec2.startInstances(request);
         LOG.info("End of Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
-      }
 
-      if (ready.compareAndSet(false, true)) {
+        // 2 connect to the instance
         for (final String address : vmAddresses) {
           ChannelFuture channelFuture;
           while (true) {
@@ -174,6 +173,7 @@ public final class VMOffloadingRequester implements OffloadingRequester {
     final StopInstancesRequest request = new StopInstancesRequest()
       .withInstanceIds(instanceIds);
     ec2.stopInstances(request);
+    stopped.set(true);
   }
 
   private void startAndStop() {
