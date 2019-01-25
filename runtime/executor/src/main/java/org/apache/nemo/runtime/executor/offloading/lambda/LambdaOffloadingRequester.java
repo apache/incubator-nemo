@@ -73,10 +73,21 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
 
       LOG.info("Warmup end");
 
+      int cnt = 0;
       while (nemoEventHandler.getPendingRequest().getAndDecrement() > 0) {
+        cnt += 1;
         try {
           final Channel channel = nemoEventHandler.getReadyQueue().take().left();
           channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      // Remove remaining handshake messages
+      for (int i = cnt; i < POOL_SIZE; i++) {
+        try {
+          nemoEventHandler.getHandshakeQueue().take().left();
         } catch (InterruptedException e) {
           e.printStackTrace();
         }

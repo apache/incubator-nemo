@@ -109,9 +109,6 @@ public final class NettyServerTransport {
   }
 
   public Future<Channel> createOffloadingChannel(final List<String> serializedVertices) {
-    if (initialized.compareAndSet(false, true)) {
-      lazyInit();
-    }
 
     /*
     final StringBuilder sb = new StringBuilder("");
@@ -147,7 +144,8 @@ public final class NettyServerTransport {
       // Trigger lambdas
       if (nemoEventHandler.getPendingRequest().getAndDecrement() <= 0) {
         // add 2 for the decrement and for the new channel request
-        nemoEventHandler.getPendingRequest().addAndGet(1); offloadingRequester.createChannelRequest();
+        nemoEventHandler.getPendingRequest().addAndGet(1);
+        offloadingRequester.createChannelRequest();
       }
     });
 
