@@ -129,7 +129,7 @@ public final class NettyServerTransport {
     }
     */
 
-    System.out.println("Serialized vertices: " + serializedVertices.size());
+    //System.out.println("Serialized vertices: " + serializedVertices.size());
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutputStream oos = null;
@@ -144,14 +144,13 @@ public final class NettyServerTransport {
     }
 
     byte[] serializedVerticesBytes = bos.toByteArray();
-    System.out.println("Serialized vertices size: " + serializedVerticesBytes.length);
+    //System.out.println("Serialized vertices size: " + serializedVerticesBytes.length);
 
     executorService.execute(() -> {
       // Trigger lambdas
       if (nemoEventHandler.getPendingRequest().getAndDecrement() <= 0) {
         // add 2 for the decrement and for the new channel request
-        nemoEventHandler.getPendingRequest().addAndGet(1);
-        offloadingRequester.createChannelRequest();
+        nemoEventHandler.getPendingRequest().addAndGet(1); offloadingRequester.createChannelRequest();
       }
     });
 

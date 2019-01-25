@@ -503,7 +503,7 @@ public final class TaskExecutor {
       while (availableIterator.hasNext()) {
 
         if (System.currentTimeMillis() - prevLogTime >= pd) {
-          LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
+          //LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
           prevLogTime = System.currentTimeMillis();
         }
 
@@ -545,7 +545,7 @@ public final class TaskExecutor {
         while (pendingIterator.hasNext()) {
 
           if (System.currentTimeMillis() - prevLogTime >= pd) {
-            LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
+            //LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
             prevLogTime = System.currentTimeMillis();
           }
 
@@ -579,7 +579,7 @@ public final class TaskExecutor {
       }
 
       if (System.currentTimeMillis() - prevLogTime >= pd) {
-        LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
+        //LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
         prevLogTime = System.currentTimeMillis();
       }
       // If there are no available fetchers,

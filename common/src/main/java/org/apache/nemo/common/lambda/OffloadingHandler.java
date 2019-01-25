@@ -227,7 +227,7 @@ public final class OffloadingHandler {
         case VERTICES: {
           // load vertices
           final byte[] bytes = nemoEvent.getBytes();
-          System.out.println("Serialized vertices size: " + bytes.length);
+          //System.out.println("Serialized vertices size: " + bytes.length);
           ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
           List<String> serializedV;
           try {
@@ -242,7 +242,7 @@ public final class OffloadingHandler {
           }
 
           if (serializedVertices == null || !serializedVertices.equals(serializedV)) {
-            System.out.println("Serialize vertices");
+            //System.out.println("Serialize vertices");
             serializedVertices = serializedV;
             vertices = buildOperatorChain(serializedVertices, classLoader);
             headVertex = vertices.get(0);
