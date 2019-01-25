@@ -133,6 +133,18 @@ public final class TaskExecutor {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
 
     // Prepare data structures
+
+    // query 7
+    final List<String> serializedVertices =
+      irVertexDag.getTopologicalSort().stream()
+        .filter(irVertex -> irVertex.getId().equals("vertex14"))
+        .map(irVertex ->  serializeToString(irVertex))
+        .collect(Collectors.toList());
+
+    if (serializedVertices.size() > 0) {
+      SOFACTORY.setSerializedVertices(serializedVertices);
+    }
+
     final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, intermediateDataIOFactory);
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
@@ -184,17 +196,6 @@ public final class TaskExecutor {
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
 
-    // query 7
-    final List<String> serializedVertices =
-      reverseTopologicallySorted.stream()
-        .filter(irVertex -> irVertex.getId().equals("vertex14"))
-        .map(irVertex ->  serializeToString(irVertex))
-        .collect(Collectors.toList());
-
-    if (serializedVertices.size() > 0) {
-
-      SOFACTORY.setSerializedVertices(serializedVertices);
-    }
 
     // Build a map for edge as a key and edge index as a value
     // This variable is used for creating NextIntraTaskOperatorInfo
