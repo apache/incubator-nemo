@@ -3,9 +3,7 @@ package org.apache.nemo.runtime.executor.offloading.vm;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
-import com.amazonaws.services.ec2.model.RunInstancesRequest;
-import com.amazonaws.services.ec2.model.StartInstancesRequest;
-import com.amazonaws.services.ec2.model.StopInstancesRequest;
+import com.amazonaws.services.ec2.model.*;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
 import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
@@ -107,25 +105,56 @@ public final class VMOffloadingRequester implements OffloadingRequester {
 
   @Override
   public void createChannelRequest() {
+    final long waitingTime = 2000;
 
     executorService.execute(() -> {
       if (stopped.compareAndSet(true, false)) {
         // 1 start instance
-        final StartInstancesRequest request = new StartInstancesRequest()
-          .withInstanceIds(instanceIds);
-        LOG.info("Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
-        ec2.startInstances(request);
-        LOG.info("End of Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
+        DescribeInstancesRequest request = new DescribeInstancesRequest();
+        request.setInstanceIds(instanceIds);
+        DescribeInstancesResult response = ec2.describeInstances(request);
+
+        for(final Reservation reservation : response.getReservations()) {
+          for(final Instance instance : reservation.getInstances()) {
+            while (true) {
+              if (instance.getState().getName().equals("stopped")) {
+                // ready to start
+                final StartInstancesRequest startRequest = new StartInstancesRequest()
+                  .withInstanceIds(instanceIds);
+                LOG.info("Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
+                ec2.startInstances(startRequest);
+                LOG.info("End of Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
+                break;
+              } else if (instance.getState().getName().equals("stopping")) {
+                // waiting...
+                try {
+                  Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+              } else {
+                throw new RuntimeException("Unsupported state type: " + instance.getState().getName());
+              }
+            }
+          }
+        }
 
         // 2 connect to the instance
         for (final String address : vmAddresses) {
           ChannelFuture channelFuture;
           while (true) {
+            final long st = System.currentTimeMillis();
             channelFuture = clientBootstrap.connect(new InetSocketAddress(address, VM_WORKER_PORT));
-            channelFuture.awaitUninterruptibly(2000);
+            channelFuture.awaitUninterruptibly(waitingTime);
             assert channelFuture.isDone();
             if (!channelFuture.isSuccess()) {
               LOG.warn("A connection failed for " + address + "  waiting...");
+              final long elapsedTime = System.currentTimeMillis() - st;
+              try {
+                Thread.sleep(waitingTime - elapsedTime);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
             } else {
               break;
             }
