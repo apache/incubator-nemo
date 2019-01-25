@@ -151,7 +151,7 @@ public final class VMOffloadingRequester implements OffloadingRequester {
               LOG.warn("A connection failed for " + address + "  waiting...");
               final long elapsedTime = System.currentTimeMillis() - st;
               try {
-                Thread.sleep(waitingTime - elapsedTime);
+                Thread.sleep(Math.max(1, waitingTime - elapsedTime));
               } catch (InterruptedException e) {
                 e.printStackTrace();
               }
