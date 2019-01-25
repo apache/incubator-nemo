@@ -62,11 +62,11 @@ public final class NemoEventHandler implements EventHandler<Pair<Channel,NemoEve
           break;
         case RESULT:
           LOG.info("Result from {}", nemoEvent.left());
-          channelEventHandlerMap.get(nemoEvent.left()).onNext(nemoEvent.right());
+          //channelEventHandlerMap.get(nemoEvent.left()).onNext(nemoEvent.right());
           resultQueue.add(nemoEvent);
           break;
         case END:
-          channelEventHandlerMap.get(nemoEvent.left()).onNext(nemoEvent.right());
+          //channelEventHandlerMap.get(nemoEvent.left()).onNext(nemoEvent.right());
           endQueue.add(nemoEvent);
           break;
         default:
