@@ -48,7 +48,8 @@ public final class NettyServerTransport {
 
   public static final NettyServerTransport INSTANCE = new NettyServerTransport();
 
-  private final int poolSize = 200;
+  //private final int poolSize = 200;
+  private final int poolSize = 5;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   private final List<Channel> channelPool;
@@ -57,6 +58,7 @@ public final class NettyServerTransport {
 
   private NettyServerTransport() {
     lazyInit();
+    LOG.info("Netty server lambda transport created end");
     initialized.set(true);
     this.channelPool = new ArrayList<>(poolSize);
     //this.offloadingRequester = new LambdaOffloadingRequester(
