@@ -30,7 +30,7 @@ public class VMWorker {
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = VMWorker.class.getName();
 
-  private static final String ADDRESS = "172.31.39.58";
+  private static final String ADDRESS = "172.31.37.143";
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
   private EventLoopGroup serverBossGroup;
@@ -38,17 +38,17 @@ public class VMWorker {
   private Channel acceptor;
   private Map<Channel, EventHandler> channelEventHandlerMap;
 
-  private final ExecutorService executorService = Executors.newCachedThreadPool();
-  private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
+    private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
   private VMWorker() {
-    serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
-      new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
-    serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
-      new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
+      serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
+        new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
+      serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
+        new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
 
-    final OffloadingHandler handler = new OffloadingHandler(() -> {
-      return this.getClass().getClassLoader();
-    });
+      final OffloadingHandler handler = new OffloadingHandler(() -> {
+        return this.getClass().getClassLoader();
+      });
 
     final BlockingQueue<NemoEvent> requestQueue = new LinkedBlockingQueue<>();
     singleThread.execute(() -> {

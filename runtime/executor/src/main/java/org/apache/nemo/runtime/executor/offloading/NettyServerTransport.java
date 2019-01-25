@@ -34,7 +34,7 @@ public final class NettyServerTransport {
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = NettyServerTransport.class.getName();
   private static final String ADDRESS = "172.31.6.35";
-  private static final String PUBLIC_ADDRESS = "54.250.247.241";
+  private static final String PUBLIC_ADDRESS = "13.231.166.176";
   private static final int PORT = 20332;
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
@@ -48,7 +48,8 @@ public final class NettyServerTransport {
 
   public static final NettyServerTransport INSTANCE = new NettyServerTransport();
 
-  private final int poolSize = 200;
+  //private final int poolSize = 200;
+  private final int poolSize = 5;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   private final List<Channel> channelPool;
