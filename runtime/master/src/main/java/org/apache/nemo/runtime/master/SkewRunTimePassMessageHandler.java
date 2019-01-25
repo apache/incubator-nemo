@@ -27,10 +27,10 @@ import java.util.Map;
 /**
  * Handler for aggregating data used in data skew dynamic optimization.
  */
-public class DataSkewDynOptDataHandler implements DynOptDataHandler {
+public class SkewRunTimePassMessageHandler implements RunTimePassMessageHandler {
   private final Map<Object, Long> aggregatedDynOptData;
 
-  public DataSkewDynOptDataHandler() {
+  public SkewRunTimePassMessageHandler() {
     this.aggregatedDynOptData = new HashMap<>();
   }
 

@@ -26,19 +26,15 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
+import org.apache.nemo.compiler.optimizer.NemoOptimizer;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.common.state.BlockState;
 import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.nemo.runtime.master.PlanAppender;
-import org.apache.nemo.runtime.master.DataSkewDynOptDataHandler;
-import org.apache.nemo.runtime.master.DynOptDataHandler;
-import org.apache.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
+import org.apache.nemo.runtime.master.*;
+import org.apache.nemo.runtime.master.RunTimePassMessageHandler;
 import org.apache.nemo.common.exception.*;
 import org.apache.nemo.runtime.common.state.StageState;
-import org.apache.nemo.runtime.master.BlockManagerMaster;
-import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -65,6 +61,11 @@ public final class BatchScheduler implements Scheduler {
   private static final Logger LOG = LoggerFactory.getLogger(BatchScheduler.class.getName());
 
   /**
+   * Run-time optimizations.
+   */
+  final NemoOptimizer nemoOptimizer;
+
+  /**
    * Components related to scheduling the given plan.
    */
   private final TaskDispatcher taskDispatcher;
@@ -82,29 +83,22 @@ public final class BatchScheduler implements Scheduler {
    * The below variables depend on the submitted plan to execute.
    */
   private List<List<Stage>> sortedScheduleGroups;
-  private List<DynOptDataHandler> dynOptDataHandlers;
 
   @Inject
-  private BatchScheduler(final TaskDispatcher taskDispatcher,
+  private BatchScheduler(final NemoOptimizer nemoOptimizer,
+                         final TaskDispatcher taskDispatcher,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final BlockManagerMaster blockManagerMaster,
                          final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
-                         final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
                          final ExecutorRegistry executorRegistry,
                          final PlanStateManager planStateManager) {
+    this.nemoOptimizer = nemoOptimizer;
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.blockManagerMaster = blockManagerMaster;
     this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
-    updatePhysicalPlanEventHandler.setScheduler(this);
-    if (pubSubEventHandlerWrapper.getPubSubEventHandler() != null) {
-      pubSubEventHandlerWrapper.getPubSubEventHandler()
-        .subscribe(updatePhysicalPlanEventHandler.getEventClass(), updatePhysicalPlanEventHandler);
-    }
     this.executorRegistry = executorRegistry;
     this.planStateManager = planStateManager;
-    this.dynOptDataHandlers = new ArrayList<>();
-    dynOptDataHandlers.add(new DataSkewDynOptDataHandler());
   }
 
   /**
@@ -494,11 +488,11 @@ public final class BatchScheduler implements Scheduler {
     }
 
     if (stageComplete) {
-      final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
-        .filter(dataHandler -> dataHandler instanceof DataSkewDynOptDataHandler)
-        .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
+      final RunTimePassMessageHandler runTimePassMessageHandler = runTimePassMessageHandlers.stream()
+        .filter(dataHandler -> dataHandler instanceof SkewRunTimePassMessageHandler)
+        .findFirst().orElseThrow(() -> new RuntimeException("SkewRunTimePassMessageHandler is not registered!"));
       pubSubEventHandlerWrapper.getPubSubEventHandler()
-        .onNext(new DynamicOptimizationEvent(planStateManager.getPhysicalPlan(), dynOptDataHandler.getDynOptData(),
+        .onNext(new DynamicOptimizationEvent(planStateManager.getPhysicalPlan(), runTimePassMessageHandler.getDynOptData(),
           taskId, executorId, targetEdges));
     }
   }
@@ -619,9 +613,9 @@ public final class BatchScheduler implements Scheduler {
    * @param dynOptData the data to update.
    */
   public void updateDynOptData(final Object dynOptData) {
-    final DynOptDataHandler dynOptDataHandler = dynOptDataHandlers.stream()
+    final RunTimePassMessageHandler runTimePassMessageHandler = runTimePassMessageHandlers.stream()
 
-      .findFirst().orElseThrow(() -> new RuntimeException("DataSkewDynOptDataHandler is not registered!"));
-    dynOptDataHandler.updateDynOptData(dynOptData);
+      .findFirst().orElseThrow(() -> new RuntimeException("SkewRunTimePassMessageHandler is not registered!"));
+    runTimePassMessageHandler.updateDynOptData(dynOptData);
   }
 }

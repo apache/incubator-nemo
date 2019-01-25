@@ -35,6 +35,7 @@ import org.apache.nemo.common.ir.vertex.system.StreamVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -54,6 +55,7 @@ import java.util.stream.Collectors;
  * - Annotation: setProperty(), getPropertyValue() on each IRVertex/IREdge
  * - Reshaping: insert(), delete() on the IRDAG
  */
+@NotThreadSafe
 public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
   private static final Logger LOG = LoggerFactory.getLogger(IRDAG.class.getName());
 

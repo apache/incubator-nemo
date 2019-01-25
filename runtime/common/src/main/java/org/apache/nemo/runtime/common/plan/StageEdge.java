@@ -24,13 +24,13 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Edge of a stage that connects an IRVertex of the source stage to an IRVertex of the destination stage.
@@ -49,15 +49,11 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    */
   private final IRVertex dstVertex;
 
-  /**
-   * Value for {@link CommunicationPatternProperty}.
-   */
+  // Key IRVertex properties
   private final CommunicationPatternProperty.Value dataCommunicationPatternValue;
-
-  /**
-   * Value for {@link DataFlowProperty}.
-   */
   private final DataFlowProperty.Value dataFlowModelValue;
+  private final PartitionSetProperty partitionSet;
+
 
   /**
    * Constructor.
@@ -79,17 +75,19 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     super(runtimeEdgeId, edgeProperties, srcStage, dstStage);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
-    // Initialize the key range of each dst task.
-    this.taskIdxToKeyRange = new HashMap<>();
-    for (int taskIdx = 0; taskIdx < dstStage.getParallelism(); taskIdx++) {
-      taskIdxToKeyRange.put(taskIdx, KeyRange.of(taskIdx, taskIdx + 1, false));
-    }
+
     this.dataCommunicationPatternValue = edgeProperties.get(CommunicationPatternProperty.class)
       .orElseThrow(() -> new RuntimeException(String.format(
         "CommunicationPatternProperty not set for %s", runtimeEdgeId)));
     this.dataFlowModelValue = edgeProperties.get(DataFlowProperty.class)
       .orElseThrow(() -> new RuntimeException(String.format(
         "DataFlowProperty not set for %s", runtimeEdgeId)));
+    // if not exists...
+    this.taskIdxToKeyRange = new HashMap<>();
+    for (int taskIdx = 0; taskIdx < dstStage.getParallelism(); taskIdx++) {
+      taskIdxToKeyRange.put(taskIdx, KeyRange.of(taskIdx, taskIdx + 1, false));
+    }
+    this.partitionSet = edgeProperties.get(PartitionSetProperty).orElse()
   }
 
   /**
@@ -119,22 +117,6 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   @Override
   public String toString() {
     return getPropertiesAsJsonNode().toString();
-  }
-
-  /**
-   * @return the list between the task idx and key range to read.
-   */
-  public Map<Integer, KeyRange> getTaskIdxToKeyRange() {
-    return taskIdxToKeyRange;
-  }
-
-  /**
-   * Sets the task idx to key range list.
-   *
-   * @param taskIdxToKeyRange the list to set.
-   */
-  public void setTaskIdxToKeyRange(final Map<Integer, KeyRange> taskIdxToKeyRange) {
-    this.taskIdxToKeyRange = taskIdxToKeyRange;
   }
 
   /**
@@ -179,5 +161,12 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    */
   public DataFlowProperty.Value getDataFlowModel() {
     return dataFlowModelValue;
+  }
+
+  /**
+   * @return {@link org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty} value.
+   */
+  public PartitionSetProperty getPartitionSet() {
+    return partitionSet;
   }
 }

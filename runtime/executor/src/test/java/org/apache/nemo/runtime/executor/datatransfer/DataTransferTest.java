@@ -309,7 +309,7 @@ public final class DataTransferTest {
     final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex);
     dummyIREdge.setProperty(KeyExtractorProperty.of(element -> element));
     dummyIREdge.setProperty(CommunicationPatternProperty.of(commPattern));
-    dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+    dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.PartitionerType.Hash));
     dummyIREdge.setProperty(DataStoreProperty.of(store));
     dummyIREdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     dummyIREdge.setProperty(EncoderProperty.of(ENCODER_FACTORY));

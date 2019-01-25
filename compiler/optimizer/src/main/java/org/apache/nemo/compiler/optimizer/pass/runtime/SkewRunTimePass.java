@@ -21,10 +21,10 @@ package org.apache.nemo.compiler.optimizer.pass.runtime;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.NumOfPartitionProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.runtime.common.partitioner.Partitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +47,6 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
 
     // Use the following execution properties.
     final PartitionerProperty partitioner = edge.getPropertyValue(PartitionerProperty.class).get();
-    final int numOfPartitions = edge.getPropertyValue(NumOfPartitionProperty.class).get();
     final int dstParallelism = edge.getDst().getPropertyValue(MinParallelismProperty.class).get();
 
     // Compute the optimal partition distribution, using the message value.

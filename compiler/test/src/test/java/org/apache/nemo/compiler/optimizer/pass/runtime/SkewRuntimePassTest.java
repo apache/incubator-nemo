@@ -16,10 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.optimizer.pass.runtime;
+package org.apache.nemo.compiler.optimizer.pass.runtime;
 
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.KeyExtractor;
+import org.apache.nemo.runtime.common.partitioner.HashPartitioner;
 import org.apache.nemo.runtime.common.partitioner.Partitioner;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,9 +30,9 @@ import java.util.*;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Test {@link DataSkewRuntimePass}.
+ * Test {@link SkewRunTimePass}.
  */
-public class DataSkewRuntimePassTest {
+public class SkewRuntimePassTest {
   private final Map<Object, Long> testMetricData = new HashMap<>();
 
   @Before
@@ -50,10 +51,10 @@ public class DataSkewRuntimePassTest {
   public void testDataSkewDynamicOptimizationPass() {
     final Integer taskNum = 2;
     final KeyExtractor asIsExtractor = new AsIsKeyExtractor();
-    final Partitioner partitioner = new DataSkewHashPartitioner(taskNum, asIsExtractor);
+    final Partitioner partitioner = new HashPartitioner(taskNum, asIsExtractor);
 
     final List<KeyRange> keyRanges =
-        new DataSkewRuntimePass(1).calculateKeyRanges(testMetricData, taskNum, partitioner);
+        new SkewRunTimePass(1).calculateKeyRanges(testMetricData, taskNum, partitioner);
 
     // Test whether it correctly redistributed hash ranges.
     assertEquals(0, keyRanges.get(0).rangeBeginInclusive());

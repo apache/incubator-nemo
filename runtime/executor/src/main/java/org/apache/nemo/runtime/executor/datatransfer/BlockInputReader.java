@@ -69,8 +69,6 @@ public final class BlockInputReader implements InputReader {
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)) {
       return readBroadcast();
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)) {
-      // If the dynamic optimization which detects data skew is enabled, read the data in the assigned range.
-      // TODO #492: Modularize the data communication pattern.
       return readDataInRange();
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));

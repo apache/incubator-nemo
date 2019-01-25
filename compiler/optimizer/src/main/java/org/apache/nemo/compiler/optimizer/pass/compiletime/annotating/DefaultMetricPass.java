@@ -22,7 +22,6 @@ import org.apache.nemo.common.DataSkewMetricFactory;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 
 import java.util.HashMap;

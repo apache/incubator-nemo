@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import org.apache.nemo.common.ir.executionproperty.AssociatedProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;

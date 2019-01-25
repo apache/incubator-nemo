@@ -16,30 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.edge.executionproperty;
-
-import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+package org.apache.nemo.runtime.master;
 
 /**
- * Number of partitions.
+ * Handler for aggregating data used in dynamic optimization.
  */
-public final class NumOfPartitionProperty extends EdgeExecutionProperty<Integer> {
+public interface RunTimePassMessageHandler {
   /**
-   * Constructor.
-   *
-   * @param value value of the execution property.
+   * Updates data for dynamic optimization sent from Tasks.
+   * @param dynOptData data used for dynamic optimization.
    */
-  private NumOfPartitionProperty(final int value) {
-    super(value);
-  }
+  void updateDynOptData(Object dynOptData);
 
   /**
-   * Static method exposing the constructor.
-   *
-   * @param value value of the new execution property.
-   * @return the newly created execution property.
+   * Returns aggregated data for dynamic optimization.
+   * @return aggregated data used for dynamic optimization.
    */
-  public static NumOfPartitionProperty of(final int value) {
-    return new NumOfPartitionProperty(value);
-  }
+  Object getDynOptData();
 }
