@@ -110,7 +110,6 @@ public final class VMOffloadingRequester implements OffloadingRequester {
   public void createChannelRequest() {
 
     executorService.execute(() -> {
-      /*
       if (started.compareAndSet(false, true)) {
         final StartInstancesRequest request = new StartInstancesRequest()
           .withInstanceIds(instanceIds);
@@ -118,7 +117,6 @@ public final class VMOffloadingRequester implements OffloadingRequester {
         ec2.startInstances(request);
         LOG.info("End of Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
       }
-      */
 
       if (ready.compareAndSet(false, true)) {
         for (final String address : vmAddresses) {
@@ -172,11 +170,10 @@ public final class VMOffloadingRequester implements OffloadingRequester {
 
   @Override
   public void destroy() {
-    /*
+    LOG.info("Stopping instances {}", instanceIds);
     final StopInstancesRequest request = new StopInstancesRequest()
       .withInstanceIds(instanceIds);
     ec2.stopInstances(request);
-    */
   }
 
   private void startAndStop() {
