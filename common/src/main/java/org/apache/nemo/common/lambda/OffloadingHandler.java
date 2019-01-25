@@ -156,19 +156,23 @@ public final class OffloadingHandler {
       throw new RuntimeException(e);
     }
 
+    byte[] bytes;
     if (result.size() > 0) {
-      final byte[] bytes = result.toString().getBytes();
-      final ChannelFuture future =
-        opendChannel.writeAndFlush(
-          new NemoEvent(NemoEvent.Type.RESULT, bytes, bytes.length));
-      System.out.println("Write result");
-      try {
-        future.get();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      } catch (ExecutionException e) {
-        e.printStackTrace();
-      }
+      bytes = result.toString().getBytes();
+    } else {
+      bytes = new byte[0];
+    }
+
+    final ChannelFuture future =
+      opendChannel.writeAndFlush(
+        new NemoEvent(NemoEvent.Type.RESULT, bytes, bytes.length));
+    System.out.println("Write result");
+    try {
+      future.get();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    } catch (ExecutionException e) {
+      e.printStackTrace();
     }
 
     //final Decoder object  = (T)ois.readObject();
