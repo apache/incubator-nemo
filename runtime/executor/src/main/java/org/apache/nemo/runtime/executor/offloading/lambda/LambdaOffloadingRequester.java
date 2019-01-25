@@ -45,6 +45,32 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
 
   @Override
   public void start() {
+
+    for (int i = 0; i < POOL_SIZE; i++) {
+      executorService.submit(() -> {
+        // Trigger lambdas
+        final InvokeRequest request = new InvokeRequest()
+          .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
+          .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
+            serverAddress, serverPort));
+        return awsLambda.invokeAsync(request);
+      });
+    }
+
+    // take
+    for (int i = 0; i < POOL_SIZE; i++) {
+      try {
+        //channelPool.add(nemoEventHandler.getHandshakeQueue().take().left());
+        nemoEventHandler.getHandshakeQueue().take().left();
+        final Channel channel = nemoEventHandler.getReadyQueue().take().left();
+        channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+
+    /*
     this.warmer.scheduleAtFixedRate(() -> {
       //channelPool.clear();
 
@@ -97,6 +123,7 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
       nemoEventHandler.getPendingRequest().getAndIncrement();
 
     }, 0, LAMBDA_WARMUP, TimeUnit.SECONDS);
+    */
   }
 
   @Override
