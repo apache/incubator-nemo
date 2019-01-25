@@ -77,7 +77,6 @@ public final class VMOffloadingRequester implements OffloadingRequester {
   private Bootstrap clientBootstrap;
 
   public VMOffloadingRequester(final NemoEventHandler nemoEventHandler,
-                               final int poolSize,
                                final String serverAddress,
                                final int port) {
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(

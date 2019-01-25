@@ -34,7 +34,7 @@ public final class NettyServerTransport {
   private static final int SERVER_WORKER_NUM_THREADS = 10;
   private static final String CLASS_NAME = NettyServerTransport.class.getName();
   private static final String ADDRESS = "172.31.6.35";
-  private static final String PUBLIC_ADDRESS = "13.231.166.176";
+  private static final String PUBLIC_ADDRESS = "52.193.172.156";
   private static final int PORT = 20332;
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
@@ -49,10 +49,7 @@ public final class NettyServerTransport {
   public static final NettyServerTransport INSTANCE = new NettyServerTransport();
 
   //private final int poolSize = 200;
-  private final int poolSize = 5;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
-
-  private final List<Channel> channelPool;
 
   private final OffloadingRequester offloadingRequester;
 
@@ -60,11 +57,10 @@ public final class NettyServerTransport {
     lazyInit();
     LOG.info("Netty server lambda transport created end");
     initialized.set(true);
-    this.channelPool = new ArrayList<>(poolSize);
-    //this.offloadingRequester = new LambdaOffloadingRequester(
-    //  nemoEventHandler, poolSize, PUBLIC_ADDRESS, PORT);
-    this.offloadingRequester = new VMOffloadingRequester(
-      nemoEventHandler, poolSize, PUBLIC_ADDRESS, PORT);
+    this.offloadingRequester = new LambdaOffloadingRequester(
+      nemoEventHandler, PUBLIC_ADDRESS, PORT);
+    //this.offloadingRequester = new VMOffloadingRequester(
+    //  nemoEventHandler, PUBLIC_ADDRESS, PORT);
     offloadingRequester.start();
   }
 

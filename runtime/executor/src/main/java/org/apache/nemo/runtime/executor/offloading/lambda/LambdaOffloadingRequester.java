@@ -22,19 +22,18 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
 
   private final ScheduledExecutorService warmer = Executors.newSingleThreadScheduledExecutor();
   private final int warmupPeriod = 90; // sec
+  private final int poolSize = 140;
+
   private final AWSLambdaAsync awsLambda;
   private final NemoEventHandler nemoEventHandler;
 
   private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final String serverAddress;
   private final int serverPort;
-  private final int poolSize;
 
   public LambdaOffloadingRequester(final NemoEventHandler nemoEventHandler,
-                                   final int poolSize,
                                    final String serverAddress,
                                    final int port) {
-    this.poolSize = poolSize;
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
       new ClientConfiguration().withMaxConnections(500)).build();
     this.nemoEventHandler =nemoEventHandler;
@@ -81,6 +80,7 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
         }
       }
 
+      LOG.info("Send Warmup end");
       nemoEventHandler.getPendingRequest().getAndIncrement();
 
     }, 0, warmupPeriod, TimeUnit.SECONDS);
