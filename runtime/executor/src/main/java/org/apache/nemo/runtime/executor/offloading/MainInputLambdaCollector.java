@@ -40,6 +40,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
+import static org.apache.nemo.common.lambda.Constants.MAIN_INPUT_PARTITION_SIZE;
+
 /**
  * OutputCollector implementation.
  * This emits four types of outputs
@@ -64,7 +66,6 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
   private final StorageObjectFactory storageObjectFactory;
 
   private final ExecutorService executorService = Executors.newCachedThreadPool();
-  private final long period = 10000;
 
   private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
@@ -110,7 +111,7 @@ public final class MainInputLambdaCollector<O> implements OutputCollector<O> {
 
     //if (info.cnt >= 10000 || info.accessTime - prevAccessTime >= 2000) {
     final long currtime = System.currentTimeMillis();
-    if (System.currentTimeMillis() - info.triggerTime >= period) {
+    if (System.currentTimeMillis() - info.triggerTime >= MAIN_INPUT_PARTITION_SIZE) {
       info.triggerTime = currtime;
       LOG.info("Trigger");
 

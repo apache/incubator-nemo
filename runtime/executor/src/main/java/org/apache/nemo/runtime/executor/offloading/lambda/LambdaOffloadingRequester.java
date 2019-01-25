@@ -17,12 +17,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.nemo.common.lambda.Constants.LAMBDA_WARMUP;
+import static org.apache.nemo.common.lambda.Constants.POOL_SIZE;
+
 public final class LambdaOffloadingRequester implements OffloadingRequester {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaOffloadingRequester.class.getName());
 
   private final ScheduledExecutorService warmer = Executors.newSingleThreadScheduledExecutor();
-  private final int warmupPeriod = 90; // sec
-  private final int poolSize = 140;
+
 
   private final AWSLambdaAsync awsLambda;
   private final NemoEventHandler nemoEventHandler;
@@ -46,9 +48,9 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
     this.warmer.scheduleAtFixedRate(() -> {
       //channelPool.clear();
 
-      nemoEventHandler.getPendingRequest().addAndGet(poolSize);
+      nemoEventHandler.getPendingRequest().addAndGet(LAMBDA_WARMUP);
 
-      for (int i = 0; i < poolSize; i++) {
+      for (int i = 0; i < POOL_SIZE; i++) {
         executorService.submit(() -> {
           // Trigger lambdas
           final InvokeRequest request = new InvokeRequest()
@@ -60,7 +62,7 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
       }
 
       // take
-      for (int i = 0; i < poolSize; i++) {
+      for (int i = 0; i < POOL_SIZE; i++) {
         try {
           //channelPool.add(nemoEventHandler.getHandshakeQueue().take().left());
           nemoEventHandler.getHandshakeQueue().take().left();
@@ -83,7 +85,7 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
       LOG.info("Send Warmup end");
       nemoEventHandler.getPendingRequest().getAndIncrement();
 
-    }, 0, warmupPeriod, TimeUnit.SECONDS);
+    }, 0, LAMBDA_WARMUP, TimeUnit.SECONDS);
   }
 
   @Override
