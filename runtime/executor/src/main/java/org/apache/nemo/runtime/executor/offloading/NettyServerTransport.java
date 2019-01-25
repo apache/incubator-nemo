@@ -149,7 +149,7 @@ public final class NettyServerTransport {
       // Trigger lambdas
       if (nemoEventHandler.getPendingRequest().getAndDecrement() <= 0) {
         // add 2 for the decrement and for the new channel request
-        nemoEventHandler.getPendingRequest().addAndGet(2);
+        nemoEventHandler.getPendingRequest().addAndGet(1);
         offloadingRequester.createChannelRequest();
       }
     });
