@@ -18,10 +18,12 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
+import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
@@ -51,11 +53,13 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
     final Pair<PartitionerProperty.PartitionerType, Integer> partitionerProperty =
       edge.getPropertyValue(PartitionerProperty.class).get();
     final int dstParallelism = edge.getDst().getPropertyValue(MinParallelismProperty.class).get();
+    final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
 
     // Compute the optimal partition distribution, using the message value.
     final Map<Object, Long> messageValue = message.getMessageValue();
     final PartitionSetProperty evenPartitionSet = computeOptimalPartitionDistribution(
-      messageValue, Partitioner.getPartitioner(partitionerProperty.left()), partitionerProperty.right(), dstParallelism);
+      messageValue, (HashPartitioner) Partitioner.getPartitioner(edge.getExecutionProperties().get(PartitionerProperty.class).get(), keyExtractor),
+      partitionerProperty.right(), dstParallelism);
 
     // Set the partitionSet property
     edge.setPropertyPermanently(evenPartitionSet);

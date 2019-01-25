@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
  * We insert a {@link MessageBarrierVertex} for each shuffle edge,
  * and aggregate messages for multiple same-destination shuffle edges.
  * */
-@Annotates(MetricCollectionProperty.class)
+@Annotates({MetricCollectionProperty.class, PartitionerProperty.class})
 @Requires(CommunicationPatternProperty.class)
 public final class SkewReshapingPass extends ReshapingPass {
   private static final Logger LOG = LoggerFactory.getLogger(SkewReshapingPass.class.getName());
