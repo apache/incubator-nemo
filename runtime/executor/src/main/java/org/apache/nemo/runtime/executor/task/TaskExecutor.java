@@ -192,6 +192,7 @@ public final class TaskExecutor {
         .collect(Collectors.toList());
 
     if (serializedVertices.size() > 0) {
+
       SOFACTORY.setSerializedVertices(serializedVertices);
     }
 

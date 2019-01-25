@@ -37,6 +37,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
 
   @Override
   public synchronized void setSerializedVertices(List sv) {
+    LOG.info("Set serialized vertices: {} at {}", serializedVertices, this.hashCode());
     serializedVertices = sv;
   }
 
@@ -60,6 +61,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   public SideInputProcessor sideInputProcessor(SerializerManager serializerManager,
                                                String edgeId) {
     lazyInit();
+    LOG.info("Get side input processor: {} at {}", serializedVertices, this.hashCode());
     return new MemorySideInputProcessor(serializerManager, edgeId,
       prefixAndObjectMap, prefixAndSizeMap, lambdaTransport, serializedVertices);
   }
