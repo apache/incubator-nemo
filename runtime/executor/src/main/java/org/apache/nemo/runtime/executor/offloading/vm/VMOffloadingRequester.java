@@ -56,8 +56,8 @@ public final class VMOffloadingRequester implements OffloadingRequester {
   private Channel acceptor;
   private Map<Channel, EventHandler> channelEventHandlerMap;
 
-  private final List<String> vmAddresses = Arrays.asList("172.31.45.92");
-  private final List<String> instanceIds = Arrays.asList("i-0fda693c53136219e");
+  private final List<String> vmAddresses = Arrays.asList("172.31.37.143");
+  private final List<String> instanceIds = Arrays.asList("i-0148d7ea6eae4cc80");
 
   private final String serverAddress;
   private final int serverPort;
@@ -125,12 +125,10 @@ public final class VMOffloadingRequester implements OffloadingRequester {
           ChannelFuture channelFuture;
           while (true) {
             channelFuture = clientBootstrap.connect(new InetSocketAddress(address, VM_WORKER_PORT));
-            channelFuture.awaitUninterruptibly();
+            channelFuture.awaitUninterruptibly(2000);
             assert channelFuture.isDone();
             if (!channelFuture.isSuccess()) {
-              final StringBuilder sb = new StringBuilder("A connection failed for " + address + " ");
-              sb.append(channelFuture.cause());
-              throw new RuntimeException(sb.toString());
+              LOG.warn("A connection failed for " + address + "  waiting...");
             } else {
               break;
             }

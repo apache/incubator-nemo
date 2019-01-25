@@ -38,17 +38,17 @@ public class VMWorker {
   private Channel acceptor;
   private Map<Channel, EventHandler> channelEventHandlerMap;
 
-  private final ExecutorService executorService = Executors.newCachedThreadPool();
-  private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
+    private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
   private VMWorker() {
-    serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
-      new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
-    serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
-      new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
+      serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
+        new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
+      serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
+        new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
 
-    final OffloadingHandler handler = new OffloadingHandler(() -> {
-      return this.getClass().getClassLoader();
-    });
+      final OffloadingHandler handler = new OffloadingHandler(() -> {
+        return this.getClass().getClassLoader();
+      });
 
     final BlockingQueue<NemoEvent> requestQueue = new LinkedBlockingQueue<>();
     singleThread.execute(() -> {
