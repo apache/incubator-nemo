@@ -90,17 +90,17 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       final PCollectionView view = getSideInputs().get(sideInputElement.getValue().getSideInputIndex());
       getSideInputReader().addSideInputElement(view, data);
 
-      LOG.info("{}, Add side input at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
+      //LOG.info("{}, Add side input at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
 
 
       int cnt = handlePushBacks();
       LOG.info("{}, Handle pushback cnt: {} at {}: {}", System.currentTimeMillis() - st,
         cnt, this.hashCode(), data);
-      System.out.println("{}, Handle pushback cnt: " + cnt + " data : " + data);
+      //System.out.println("{}, Handle pushback cnt: " + cnt + " data : " + data);
 
       // See if we can emit a new watermark, as we may have processed some pushed-back elements
       onWatermark(new Watermark(curInputWatermark));
-      LOG.info("{}, On watermark at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
+      //LOG.info("{}, On watermark at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
     } else {
       // This element is the Main Input
       checkAndInvokeBundle();
