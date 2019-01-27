@@ -83,6 +83,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       // This element is a Side Input
       final long st = System.currentTimeMillis();
       LOG.info("Receive Side input at {}: {}", this.hashCode(), data);
+      System.out.println("Side input start time: " + System.currentTimeMillis() + " " + data);
       //System.out.println("Receive Side input at " + data);
       // TODO #287: Consider Explicit Multi-Input IR Transform
       final WindowedValue<SideInputElement> sideInputElement = (WindowedValue<SideInputElement>) data;
