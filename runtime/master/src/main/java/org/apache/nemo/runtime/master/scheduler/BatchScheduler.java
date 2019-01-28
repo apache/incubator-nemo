@@ -26,7 +26,6 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
-import org.apache.nemo.compiler.optimizer.NemoOptimizer;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.common.state.BlockState;
@@ -63,7 +62,7 @@ public final class BatchScheduler implements Scheduler {
   /**
    * Run-time optimizations.
    */
-  final NemoOptimizer nemoOptimizer;
+  private final PlanRewriter planRewriter;
   private final PubSubEventHandlerWrapper pubSubEventHandlerWrapper;
 
   /**
@@ -85,14 +84,14 @@ public final class BatchScheduler implements Scheduler {
   private List<List<Stage>> sortedScheduleGroups;
 
   @Inject
-  private BatchScheduler(final NemoOptimizer nemoOptimizer,
+  private BatchScheduler(final PlanRewriter planRewriter,
                          final TaskDispatcher taskDispatcher,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final BlockManagerMaster blockManagerMaster,
                          final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                          final ExecutorRegistry executorRegistry,
                          final PlanStateManager planStateManager) {
-    this.nemoOptimizer = nemoOptimizer;
+    this.planRewriter = planRewriter;
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.blockManagerMaster = blockManagerMaster;
