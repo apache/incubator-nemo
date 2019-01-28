@@ -34,5 +34,5 @@ public interface Optimizer {
    * @param dag the input DAG to optimize.
    * @return optimized DAG, reshaped or tagged with execution properties.
    */
-  IRDAG optimizeDag(IRDAG dag);
+  IRDAG optimizeAtCompileTime(IRDAG dag);
 }

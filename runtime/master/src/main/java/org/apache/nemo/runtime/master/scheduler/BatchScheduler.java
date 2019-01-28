@@ -488,6 +488,9 @@ public final class BatchScheduler implements Scheduler {
     }
 
     if (stageComplete) {
+      nemoOptimizer.optimizeAtRunTime()
+
+
       final RunTimePassMessageHandler runTimePassMessageHandler = runTimePassMessageHandlers.stream()
         .filter(dataHandler -> dataHandler instanceof SkewRunTimePassMessageHandler)
         .findFirst().orElseThrow(() -> new RuntimeException("SkewRunTimePassMessageHandler is not registered!"));

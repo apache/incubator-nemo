@@ -21,10 +21,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
+import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
@@ -124,15 +121,13 @@ public final class BlockInputReader implements InputReader {
    */
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
     assert (runtimeEdge instanceof StageEdge);
-    final Optional<DataStoreProperty.Value> dataStoreProperty
-      = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
-    final KeyRange hashRangeToRead = ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
+    final Optional<DataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(DataStoreProperty.class);
+    final List<KeyRange> keyRangeList = ((StageEdge) runtimeEdge).getKeyRanges();
+    final KeyRange hashRangeToRead = keyRangeList.get(dstTaskIndex);
     if (hashRangeToRead == null) {
       throw new BlockFetchException(
         new Throwable("The hash range to read is not assigned to " + dstTaskIndex + "'th task"));
     }
-
     final int numSrcTasks = InputReader.getSourceParallelism(this);
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {

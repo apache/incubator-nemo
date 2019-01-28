@@ -78,7 +78,7 @@ public final class NemoOptimizer implements Optimizer {
    * @return optimized DAG, reshaped or tagged with execution properties.
    */
   @Override
-  public IRDAG optimizeDag(final IRDAG dag) {
+  public IRDAG optimizeAtCompileTime(final IRDAG dag) {
     final String irDagId = "ir-" + irDagCount++ + "-";
     dag.storeJSON(dagDirectory, irDagId, "IR before optimization");
 

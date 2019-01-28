@@ -70,7 +70,7 @@ public final class UserApplicationRunner {
       LOG.info("##### Nemo Compiler Start #####");
 
       final IRDAG dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
-      final IRDAG optimizedDAG = optimizer.optimizeDag(dag);
+      final IRDAG optimizedDAG = optimizer.optimizeAtCompileTime(dag);
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
 
       LOG.info("##### Nemo Compiler Finish #####");
