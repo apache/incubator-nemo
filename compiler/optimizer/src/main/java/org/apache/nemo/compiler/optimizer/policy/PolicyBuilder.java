@@ -32,7 +32,6 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.Annotating
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.CompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.ReshapingPass;
 import org.apache.nemo.compiler.optimizer.pass.runtime.RunTimePass;
-import org.apache.nemo.compiler.optimizer.pass.runtime.RunTimePass;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -45,7 +44,7 @@ import java.util.function.Predicate;
  */
 public final class PolicyBuilder {
   private final List<CompileTimePass> compileTimePasses;
-  private final List<RunTimePass<?>> runtimePasses;
+  private final Set<RunTimePass<?>> runtimePasses;
   private final Set<Class<? extends ExecutionProperty>> annotatedExecutionProperties;
 
   /**
@@ -53,7 +52,7 @@ public final class PolicyBuilder {
    */
   public PolicyBuilder() {
     this.compileTimePasses = new ArrayList<>();
-    this.runtimePasses = new ArrayList<>();
+    this.runtimePasses = new HashSet<>();
     this.annotatedExecutionProperties = new HashSet<>();
     // DataCommunicationPattern is already set when creating the IREdge itself.
     annotatedExecutionProperties.add(CommunicationPatternProperty.class);
@@ -149,7 +148,7 @@ public final class PolicyBuilder {
    * Getter for run time passes.
    * @return the list of run time passes.
    */
-  public List<RunTimePass<?>> getRunTimePasses() {
+  public Set<RunTimePass<?>> getRunTimePasses() {
     return runtimePasses;
   }
 

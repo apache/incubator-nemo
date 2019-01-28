@@ -64,6 +64,7 @@ public final class BatchScheduler implements Scheduler {
    * Run-time optimizations.
    */
   final NemoOptimizer nemoOptimizer;
+  private final PubSubEventHandlerWrapper pubSubEventHandlerWrapper;
 
   /**
    * Components related to scheduling the given plan.
@@ -77,7 +78,6 @@ public final class BatchScheduler implements Scheduler {
    * Other necessary components of this {@link org.apache.nemo.runtime.master.RuntimeMaster}.
    */
   private final BlockManagerMaster blockManagerMaster;
-  private final PubSubEventHandlerWrapper pubSubEventHandlerWrapper;
 
   /**
    * The below variables depend on the submitted plan to execute.

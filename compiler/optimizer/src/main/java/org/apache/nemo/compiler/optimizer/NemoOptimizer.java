@@ -111,7 +111,7 @@ public final class NemoOptimizer implements Optimizer {
 
     // Register run-time optimization.
     try {
-      optimizationPolicy.registerRunTimeOptimizations(injector, pubSubWrapper);
+      optimizationPolicy.runRunTimeOptimizations(injector, pubSubWrapper);
     } catch (final Exception e) {
       throw new DynamicOptimizationException(e);
     }

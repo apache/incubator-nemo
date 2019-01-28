@@ -18,15 +18,11 @@
  */
 package org.apache.nemo.examples.beam.policy;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.compiler.optimizer.policy.LargeShufflePolicy;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
 import org.apache.nemo.compiler.optimizer.policy.PolicyImpl;
-import org.apache.reef.tang.Injector;
 
 /**
  * A large shuffle policy with fixed parallelism 5 for tests.
@@ -37,7 +33,7 @@ public final class LargeShufflePolicyParallelismFive implements Policy {
   public LargeShufflePolicyParallelismFive() {
     this.policy = new PolicyImpl(
         PolicyTestUtil.overwriteParallelism(5, LargeShufflePolicy.BUILDER.getCompileTimePasses()),
-        LargeShufflePolicy.BUILDER.getRuntimePasses());
+        LargeShufflePolicy.BUILDER.getRunTimePasses());
   }
 
   @Override
@@ -46,7 +42,7 @@ public final class LargeShufflePolicyParallelismFive implements Policy {
   }
 
   @Override
-  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
-    this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
+  public IRDAG runRunTimeOptimizations(final IRDAG dag, final Message<?> message) {
+    return this.policy.runRunTimeOptimizations(dag, message);
   }
 }
