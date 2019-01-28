@@ -26,8 +26,8 @@ import org.apache.nemo.common.KeyExtractor;
  * The data will be hashed by their key, and applied "modulo" operation by the number of partitions.
  */
 public final class HashPartitioner implements Partitioner<Integer> {
+  private final int numOfPartitions;
   private final KeyExtractor keyExtractor;
-  private final int dstParallelism;
 
   /**
    * Constructor.
@@ -38,11 +38,11 @@ public final class HashPartitioner implements Partitioner<Integer> {
   public HashPartitioner(final int numOfPartitions,
                          final KeyExtractor keyExtractor) {
     this.keyExtractor = keyExtractor;
-    this.dstParallelism = numOfPartitions;
+    this.numOfPartitions = numOfPartitions;
   }
 
   @Override
   public Integer partition(final Object element) {
-    return Math.abs(keyExtractor.extractKey(element).hashCode() % dstParallelism);
+    return Math.abs(keyExtractor.extractKey(element).hashCode() % numOfPartitions);
   }
 }

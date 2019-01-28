@@ -18,12 +18,10 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
-import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
@@ -33,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Dynamic optimization pass for handling data skew.
@@ -53,13 +50,15 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
     final Pair<PartitionerProperty.PartitionerType, Integer> partitionerProperty =
       edge.getPropertyValue(PartitionerProperty.class).get();
     final int dstParallelism = edge.getDst().getPropertyValue(MinParallelismProperty.class).get();
-    final KeyExtractor keyExtractor = edge.getPropertyValue(KeyExtractorProperty.class).get();
 
     // Compute the optimal partition distribution, using the message value.
     final Map<Object, Long> messageValue = message.getMessageValue();
     final PartitionSetProperty evenPartitionSet = computeOptimalPartitionDistribution(
-      messageValue, (HashPartitioner) Partitioner.getPartitioner(edge.getExecutionProperties().get(PartitionerProperty.class).get(), keyExtractor),
-      partitionerProperty.right(), dstParallelism);
+      messageValue,
+      (HashPartitioner) Partitioner
+        .getPartitioner(edge.getExecutionProperties(), edge.getDst().getExecutionProperties()),
+      partitionerProperty.right(),
+      dstParallelism);
 
     // Set the partitionSet property
     edge.setPropertyPermanently(evenPartitionSet);
@@ -130,7 +129,6 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
           currentAccumulatedSize -= partitionSizeList.get(finishingKey);
         }
 
-        boolean isSkewedKey = containsSkewedSize(partitionSizeList, skewedSizes, startingKey, finishingKey);
         keyRanges.add(i - 1, KeyRange.of(startingKey, finishingKey));
         LOG.debug("KeyRange {}~{}, Size {}", startingKey, finishingKey - 1,
           currentAccumulatedSize - prevAccumulatedSize);
@@ -138,7 +136,6 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
         prevAccumulatedSize = currentAccumulatedSize;
         startingKey = finishingKey;
       } else { // last one: we put the range of the rest.
-        boolean isSkewedKey = containsSkewedSize(partitionSizeList, skewedSizes, startingKey, lastKey + 1);
         keyRanges.add(i - 1, KeyRange.of(startingKey, lastKey + 1));
 
         while (finishingKey <= lastKey) {
@@ -150,29 +147,5 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
       }
     }
     return PartitionSetProperty.of(keyRanges);
-  }
-
-  private List<Long> identifySkewedKeys(final List<Long> partitionSizeList) {
-    // Identify skewed keys.
-    List<Long> sortedMetricData = partitionSizeList.stream()
-      .sorted(Comparator.reverseOrder())
-      .collect(Collectors.toList());
-    List<Long> skewedSizes = new ArrayList<>();
-    for (int i = 0; i < numSkewedKeys; i++) {
-      skewedSizes.add(sortedMetricData.get(i));
-      LOG.info("Skewed size: {}", sortedMetricData.get(i));
-    }
-    return skewedSizes;
-  }
-
-  private boolean containsSkewedSize(final List<Long> partitionSizeList,
-                                     final List<Long> skewedKeys,
-                                     final int startingKey, final int finishingKey) {
-    for (int i = startingKey; i < finishingKey; i++) {
-      if (skewedKeys.contains(partitionSizeList.get(i))) {
-        return true;
-      }
-    }
-    return false;
   }
 }

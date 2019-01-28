@@ -74,20 +74,19 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     map.put(DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
     switch (commPattern) {
       case Shuffle:
-        map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+        map.put(PartitionerProperty.of(PartitionerProperty.PartitionerType.Hash));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
         break;
       case BroadCast:
-        map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
+        map.put(PartitionerProperty.of(PartitionerProperty.PartitionerType.Intact));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
         break;
       case OneToOne:
-        map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
+        map.put(PartitionerProperty.of(PartitionerProperty.PartitionerType.Intact));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
         break;
       default:
-        map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+        throw new IllegalStateException(commPattern.toString());
     }
     return map;
   }

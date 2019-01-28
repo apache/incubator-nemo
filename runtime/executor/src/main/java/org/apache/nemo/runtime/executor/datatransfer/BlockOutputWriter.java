@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
@@ -63,11 +64,11 @@ public final class BlockOutputWriter implements OutputWriter {
                     final IRVertex dstIrVertex,
                     final RuntimeEdge<?> runtimeEdge,
                     final BlockManagerWorker blockManagerWorker) {
+    final StageEdge stageEdge = (StageEdge) runtimeEdge;
     this.runtimeEdge = runtimeEdge;
     this.dstIrVertex = dstIrVertex;
-    final PartitionerProperty.Value partitionerPropertyValue =
-      runtimeEdge.getPropertyValueOrRuntimeException(PartitionerProperty.class);
-    this.partitioner = Partitioner.getPartitioner(partitionerPropertyValue);
+    this.partitioner = Partitioner
+      .getPartitioner(stageEdge.getExecutionProperties(), stageEdge.getDstIRVertex().getExecutionProperties());
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class)
       .orElseThrow(() -> new RuntimeException("No data store property on the edge"));

@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
  */
 public final class PartitionerProperty
   extends EdgeExecutionProperty<Pair<PartitionerProperty.PartitionerType, Integer>> {
-  private static final int AUTO_NUMBER_OF_PARTITIONS = 0;
+  public static final int AUTO_NUMBER_OF_PARTITIONS = 0;
 
   /**
    * Constructor.

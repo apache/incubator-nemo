@@ -20,7 +20,12 @@ package org.apache.nemo.runtime.common.partitioner;
 
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.exception.UnsupportedPartitionerException;
+import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
+import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
 
 import java.io.Serializable;
 
@@ -41,25 +46,35 @@ public interface Partitioner<K extends Serializable> {
    */
   K partition(Object element);
 
-  static Partitioner getPartitioner(final PartitionerProperty partitionerProperty,
-                                    final KeyExtractor keyExtractor) {
-    final PartitionerProperty.PartitionerType type = partitionerProperty.getValue().left();
-    final int numOfPartitions = partitionerProperty.getValue().right();
-
+  /**
+   * @param edgeProperties edge properties.
+   * @param dstProperties vertex properties.
+   * @return the partitioner.
+   */
+  static Partitioner getPartitioner(final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
+                                    final ExecutionPropertyMap<VertexExecutionProperty> dstProperties) {
+    final PartitionerProperty.PartitionerType partitionerType =
+      edgeProperties.get(PartitionerProperty.class).get().left();
     final Partitioner partitioner;
-    switch (type) {
+    switch (partitionerType) {
       case Intact:
         partitioner = new IntactPartitioner();
-        break;
-      case Hash:
-        partitioner = new HashPartitioner(numOfPartitions, keyExtractor);
         break;
       case DedicatedKeyPerElement:
         partitioner = new DedicatedKeyPerElementPartitioner();
         break;
+      case Hash:
+        final int numOfPartitions = edgeProperties.get(PartitionerProperty.class).get().right();
+        // If AUTO, use the number of destination parallelism to minimize the number of partitions
+        final int actualNumOfPartitions = numOfPartitions == PartitionerProperty.AUTO_NUMBER_OF_PARTITIONS
+          ? numOfPartitions
+          : dstProperties.get(MinParallelismProperty.class).get();
+        final KeyExtractor keyExtractor = edgeProperties.get(KeyExtractorProperty.class).get();
+        partitioner = new HashPartitioner(actualNumOfPartitions, keyExtractor);
+        break;
       default:
         throw new UnsupportedPartitionerException(
-          new Throwable("Partitioner " + type + " is not supported."));
+          new Throwable("Partitioner " + partitionerType.toString() + " is not supported."));
     }
     return partitioner;
   }
