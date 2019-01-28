@@ -58,7 +58,7 @@ enum MessageType {
     TaskStateChanged = 0;
     ScheduleTask = 1;
     BlockStateChanged = 2;
-    DataSizeMetric = 3;
+    RunTimePassMessage = 3;
     RequestBlockLocation = 4;
     BlockLocationInfo = 5;
     ExecutorFailed = 6;
@@ -80,7 +80,7 @@ message Message {
     optional TaskStateChangedMsg taskStateChangedMsg = 4;
     optional ScheduleTaskMsg scheduleTaskMsg = 5;
     optional BlockStateChangedMsg blockStateChangedMsg = 6;
-    optional DataSizeMetricMsg dataSizeMetricMsg = 7;
+    optional RunTimePassMessageMsg runTimePassMessageMsg = 7;
     optional RequestBlockLocationMsg requestBlockLocationMsg = 8;
     optional BlockLocationInfoMsg blockLocationInfoMsg = 9;
     optional ExecutorFailedMsg executorFailedMsg = 10;
@@ -129,13 +129,13 @@ message BlockStateChangedMsg {
     required string location = 4; // The location of the block (e.g., executor id or remote store).
 }
 
-message DataSizeMetricMsg {
-    repeated PartitionSizeEntry partitionSize = 1;
+message RunTimePassMessageMsg {
+    repeated Entry entry = 1;
 }
 
-message PartitionSizeEntry {
+message Entry {
     required string key = 1;
-    required int64 size = 2;
+    required int64 value = 2;
 }
 
 message RequestBlockLocationMsg {
