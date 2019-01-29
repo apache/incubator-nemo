@@ -39,17 +39,17 @@ import java.util.Set;
  */
 public final class PolicyImpl implements Policy {
   private final List<CompileTimePass> compileTimePasses;
-  private final Set<RunTimePass<?>> runtimePasses;
+  private final Set<RunTimePass<?>> runTimePasses;
   private static final Logger LOG = LoggerFactory.getLogger(PolicyImpl.class.getName());
 
   /**
    * Constructor.
    * @param compileTimePasses compile time passes of the policy.
-   * @param runtimePasses run time passes of the policy.
+   * @param runTimePasses run time passes of the policy.
    */
-  public PolicyImpl(final List<CompileTimePass> compileTimePasses, final Set<RunTimePass<?>> runtimePasses) {
+  public PolicyImpl(final List<CompileTimePass> compileTimePasses, final Set<RunTimePass<?>> runTimePasses) {
     this.compileTimePasses = compileTimePasses;
-    this.runtimePasses = runtimePasses;
+    this.runTimePasses = runTimePasses;
   }
 
   @Override

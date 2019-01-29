@@ -74,13 +74,13 @@ public final class PolicyImplTest {
   @Test
   public void testTransientAndLargeShuffleCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
-    final Set<RunTimePass<?>> runtimePasses = new HashSet<>();
+    final Set<RunTimePass<?>> runTimePasses = new HashSet<>();
     compileTimePasses.addAll(TransientResourcePolicy.BUILDER.getCompileTimePasses());
-    runtimePasses.addAll(TransientResourcePolicy.BUILDER.getRunTimePasses());
+    runTimePasses.addAll(TransientResourcePolicy.BUILDER.getRunTimePasses());
     compileTimePasses.addAll(LargeShufflePolicy.BUILDER.getCompileTimePasses());
-    runtimePasses.addAll(LargeShufflePolicy.BUILDER.getRunTimePasses());
+    runTimePasses.addAll(LargeShufflePolicy.BUILDER.getRunTimePasses());
 
-    final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runtimePasses);
+    final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runTimePasses);
 
     // This should NOT throw an exception and work well together.
     combinedPolicy.runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
@@ -89,13 +89,13 @@ public final class PolicyImplTest {
   @Test
   public void testTransientAndDisaggregationCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
-    final Set<RunTimePass<?>> runtimePasses = new HashSet<>();
+    final Set<RunTimePass<?>> runTimePasses = new HashSet<>();
     compileTimePasses.addAll(TransientResourcePolicy.BUILDER.getCompileTimePasses());
-    runtimePasses.addAll(TransientResourcePolicy.BUILDER.getRunTimePasses());
+    runTimePasses.addAll(TransientResourcePolicy.BUILDER.getRunTimePasses());
     compileTimePasses.addAll(DisaggregationPolicy.BUILDER.getCompileTimePasses());
-    runtimePasses.addAll(DisaggregationPolicy.BUILDER.getRunTimePasses());
+    runTimePasses.addAll(DisaggregationPolicy.BUILDER.getRunTimePasses());
 
-    final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runtimePasses);
+    final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runTimePasses);
 
     // This should throw an exception.
     // Not all data store should be transferred from and to the GFS.
@@ -106,13 +106,13 @@ public final class PolicyImplTest {
   @Test
   public void testDataSkewAndLargeShuffleCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
-    final Set<RunTimePass<?>> runtimePasses = new HashSet<>();
+    final Set<RunTimePass<?>> runTimePasses = new HashSet<>();
     compileTimePasses.addAll(DataSkewPolicy.BUILDER.getCompileTimePasses());
-    runtimePasses.addAll(DataSkewPolicy.BUILDER.getRunTimePasses());
+    runTimePasses.addAll(DataSkewPolicy.BUILDER.getRunTimePasses());
     compileTimePasses.addAll(LargeShufflePolicy.BUILDER.getCompileTimePasses());
-    runtimePasses.addAll(LargeShufflePolicy.BUILDER.getRunTimePasses());
+    runTimePasses.addAll(LargeShufflePolicy.BUILDER.getRunTimePasses());
 
-    final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runtimePasses);
+    final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runTimePasses);
 
     // This should throw an exception.
     // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection).

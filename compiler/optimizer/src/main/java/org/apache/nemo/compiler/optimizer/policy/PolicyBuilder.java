@@ -44,7 +44,7 @@ import java.util.function.Predicate;
  */
 public final class PolicyBuilder {
   private final List<CompileTimePass> compileTimePasses;
-  private final Set<RunTimePass<?>> runtimePasses;
+  private final Set<RunTimePass<?>> runTimePasses;
   private final Set<Class<? extends ExecutionProperty>> annotatedExecutionProperties;
 
   /**
@@ -52,7 +52,7 @@ public final class PolicyBuilder {
    */
   public PolicyBuilder() {
     this.compileTimePasses = new ArrayList<>();
-    this.runtimePasses = new HashSet<>();
+    this.runTimePasses = new HashSet<>();
     this.annotatedExecutionProperties = new HashSet<>();
     // DataCommunicationPattern is already set when creating the IREdge itself.
     annotatedExecutionProperties.add(CommunicationPatternProperty.class);
@@ -111,29 +111,29 @@ public final class PolicyBuilder {
 
   /**
    * Register a run time pass.
-   * @param runtimePass the runtime pass to register.
-   * @param runtimePassRegisterer the compile time pass that triggers the runtime pass.
-   * @return the PolicyBuilder which registers the runtimePass and the runtimePassRegisterer.
+   * @param runTimePass the runtime pass to register.
+   * @param runTimePassRegisterer the compile time pass that triggers the runtime pass.
+   * @return the PolicyBuilder which registers the runTimePass and the runTimePassRegisterer.
    */
-  public PolicyBuilder registerRunTimePass(final RunTimePass<?> runtimePass,
-                                           final CompileTimePass runtimePassRegisterer) {
-    registerCompileTimePass(runtimePassRegisterer);
-    this.runtimePasses.add(runtimePass);
+  public PolicyBuilder registerRunTimePass(final RunTimePass<?> runTimePass,
+                                           final CompileTimePass runTimePassRegisterer) {
+    registerCompileTimePass(runTimePassRegisterer);
+    this.runTimePasses.add(runTimePass);
     return this;
   }
 
   /**
    * Register a run time pass.
-   * @param runtimePass the runtime pass to register.
-   * @param runtimePassRegisterer the compile time pass that triggers the runtime pass.
+   * @param runTimePass the runtime pass to register.
+   * @param runTimePassRegisterer the compile time pass that triggers the runtime pass.
    * @param condition condition under which to run the pass.
-   * @return the PolicyBuilder which registers the runtimePass and the runtimePassRegisterer.
+   * @return the PolicyBuilder which registers the runTimePass and the runTimePassRegisterer.
    */
-  public PolicyBuilder registerRunTimePass(final RunTimePass<?> runtimePass,
-                                           final CompileTimePass runtimePassRegisterer,
+  public PolicyBuilder registerRunTimePass(final RunTimePass<?> runTimePass,
+                                           final CompileTimePass runTimePassRegisterer,
                                            final Predicate<IRDAG> condition) {
-    runtimePass.addCondition(condition);
-    return this.registerRunTimePass(runtimePass, runtimePassRegisterer);
+    runTimePass.addCondition(condition);
+    return this.registerRunTimePass(runTimePass, runTimePassRegisterer);
   }
 
   /**
@@ -149,14 +149,14 @@ public final class PolicyBuilder {
    * @return the list of run time passes.
    */
   public Set<RunTimePass<?>> getRunTimePasses() {
-    return runtimePasses;
+    return runTimePasses;
   }
 
   /**
-   * Build a policy using compileTimePasses and runtimePasses in this object.
+   * Build a policy using compileTimePasses and runTimePasses in this object.
    * @return the built Policy.
    */
   public Policy build() {
-    return new PolicyImpl(compileTimePasses, runtimePasses);
+    return new PolicyImpl(compileTimePasses, runTimePasses);
   }
 }
