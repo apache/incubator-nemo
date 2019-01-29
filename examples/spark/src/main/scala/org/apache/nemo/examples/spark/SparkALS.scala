@@ -125,7 +125,7 @@ object SparkALS {
     var ms = Array.fill(M)(randomVector(F))
     var us = Array.fill(U)(randomVector(F))
 
-    // Iteratively accumulate movies then users
+    // Iteratively update movies then users
     val Rc = sc.broadcast(R)
     var msb = sc.broadcast(ms)
     var usb = sc.broadcast(us)

@@ -105,7 +105,7 @@ public final class JavaUserDefinedUntypedAggregation {
     /**
      * Initializes the given aggregation buffer.
      * The buffer itself is a `Row` that in addition to standard methods like retrieving a value at an
-     * index (e.g., get(), getBoolean()), provides the opportunity to accumulate its values.
+     * index (e.g., get(), getBoolean()), provides the opportunity to update its values.
      * Note that arrays and maps inside the buffer are still immutable.
      *
      * @param buffer buffer to initialize.
@@ -118,8 +118,8 @@ public final class JavaUserDefinedUntypedAggregation {
     /**
      * Updates the given aggregation buffer `buffer` with new input data from `input`.
      *
-     * @param buffer buffer to accumulate.
-     * @param input input to accumulate with.
+     * @param buffer buffer to update.
+     * @param input input to update with.
      */
     public void update(final MutableAggregationBuffer buffer, final Row input) {
       if (!input.isNullAt(0)) {

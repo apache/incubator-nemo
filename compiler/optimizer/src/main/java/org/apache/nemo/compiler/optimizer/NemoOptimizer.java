@@ -125,14 +125,14 @@ public final class NemoOptimizer implements Optimizer {
 
   /**
    * Handle data caching.
-   * At first, it search the edges having cache ID from the given dag and accumulate them to the given map.
+   * At first, it search the edges having cache ID from the given dag and update them to the given map.
    * Then, if some edge of a submitted dag is annotated as "cached" and the data was produced already,
    * the part of the submitted dag which produces the cached data will be cropped and the last vertex
    * before the cached edge will be replaced with a cached data source vertex.
    * This cached edge will be detected and appended to the original dag in scheduler.
    *
    * @param dag           the dag to handle.
-   * @param cacheIdToEdge the map from cache ID to edge to accumulate.
+   * @param cacheIdToEdge the map from cache ID to edge to update.
    * @return the cropped dag regarding to caching.
    */
   private IRDAG handleCaching(final IRDAG dag, final Map<UUID, IREdge> cacheIdToEdge) {

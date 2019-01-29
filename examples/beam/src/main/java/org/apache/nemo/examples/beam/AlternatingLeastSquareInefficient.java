@@ -153,7 +153,7 @@ public final class AlternatingLeastSquareInefficient {
           }
         }));
 
-    // Iterations to accumulate Item Matrix.
+    // Iterations to update Item Matrix.
     for (Integer i = 0; i < numItr; i++) {
       // NOTE: a single composite transform for the iteration.
       itemMatrix = itemMatrix.apply(new UpdateUserAndItemMatrix(numFeatures, lambda, rawData, parsedItemData));

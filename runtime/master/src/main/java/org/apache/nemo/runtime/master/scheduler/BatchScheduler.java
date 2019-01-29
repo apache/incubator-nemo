@@ -99,7 +99,7 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public void updatePlan(final PhysicalPlan newPhysicalPlan) {
-    // accumulate the physical plan in the scheduler.
+    // update the physical plan in the scheduler.
     // NOTE: what's already been executed is not modified in the new physical plan.
     // TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
     updatePlan(newPhysicalPlan, planStateManager.getMaxScheduleAttempt());
@@ -108,7 +108,7 @@ public final class BatchScheduler implements Scheduler {
   /**
    * Update the physical plan in the scheduler.
    *
-   * @param newPhysicalPlan    the new physical plan to accumulate.
+   * @param newPhysicalPlan    the new physical plan to update.
    * @param maxScheduleAttempt the maximum number of task scheduling attempt.
    */
   private void updatePlan(final PhysicalPlan newPhysicalPlan,

@@ -21,10 +21,9 @@ package org.apache.nemo.common.ir.vertex.executionproperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 import java.util.HashSet;
-import java.util.Set;
 
 /**
- * Indices of tasks that must not be concurrently run on the same executor.
+ * Indices of tasks that must not concurrently run on the same executor.
  */
 public final class ResourceAntiAffinityProperty extends VertexExecutionProperty<HashSet<Integer>> {
   /**
@@ -32,7 +31,7 @@ public final class ResourceAntiAffinityProperty extends VertexExecutionProperty<
    *
    * @param value value of the ExecutionProperty
    */
-  private ResourceAntiAffinityProperty(final Set<Integer> value) {
+  private ResourceAntiAffinityProperty(final HashSet<Integer> value) {
     super(value);
   }
 
@@ -42,7 +41,7 @@ public final class ResourceAntiAffinityProperty extends VertexExecutionProperty<
    * @param value value of the new execution property
    * @return the execution property
    */
-  public static ResourceAntiAffinityProperty of(final Set<Integer> value) {
+  public static ResourceAntiAffinityProperty of(final HashSet<Integer> value) {
     return new ResourceAntiAffinityProperty(value);
   }
 }

@@ -400,7 +400,7 @@ public final class AlternatingLeastSquare {
     PCollection<KV<Integer, float[]>> itemMatrix =
         parsedItemData.apply(ParDo.of(new CreateInitialMatrix(numFeatures, checkOutput)));
 
-    // Iterations to accumulate Item Matrix.
+    // Iterations to update Item Matrix.
     for (int i = 0; i < numItr; i++) {
       // NOTE: a single composite transform for the iteration.
       itemMatrix = itemMatrix.apply(new UpdateUserAndItemMatrix(numFeatures, lambda, parsedUserData, parsedItemData));
