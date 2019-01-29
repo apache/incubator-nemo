@@ -20,6 +20,9 @@ package org.apache.nemo.compiler.optimizer.pass.runtime;
 
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.KeyExtractor;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityProperty;
 import org.apache.nemo.common.partitioner.HashPartitioner;
 import org.apache.nemo.common.partitioner.Partitioner;
 import org.junit.Before;
@@ -51,10 +54,12 @@ public class SkewRuntimePassTest {
   public void testDataSkewDynamicOptimizationPass() {
     final Integer taskNum = 2;
     final KeyExtractor asIsExtractor = new AsIsKeyExtractor();
-    final Partitioner partitioner = new HashPartitioner(taskNum, asIsExtractor);
+    final HashPartitioner partitioner = new HashPartitioner(taskNum, asIsExtractor);
 
-    final List<KeyRange> keyRanges =
-        new SkewRunTimePass(1).calculateKeyRanges(testMetricData, taskNum, partitioner);
+    final Pair<PartitionSetProperty, ResourceAntiAffinityProperty> resultPair =
+      new SkewRunTimePass(1).analyzeMessage(testMetricData, partitioner, taskNum, taskNum);
+    final List<KeyRange> keyRanges = resultPair.left().getValue();
+    final HashSet<Integer> antiAfiinityGroup = resultPair.right().getValue();
 
     // Test whether it correctly redistributed hash ranges.
     assertEquals(0, keyRanges.get(0).rangeBeginInclusive());
@@ -63,8 +68,8 @@ public class SkewRuntimePassTest {
     assertEquals(10, keyRanges.get(1).rangeEndExclusive());
 
     // Test whether it caught the provided skewness.
-    assertEquals(true, ((KeyRange)keyRanges.get(0)).isSkewed());
-    assertEquals(false, ((KeyRange)keyRanges.get(1)).isSkewed());
+    assertEquals(true, antiAfiinityGroup.contains(0));
+    assertEquals(false, antiAfiinityGroup.contains(1));
   }
 
   /**

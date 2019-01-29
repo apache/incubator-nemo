@@ -55,8 +55,6 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
     this.numSkewedTasks = numOfSkewedKeys;
   }
 
-
-
   @Override
   public IRDAG apply(final IRDAG irdag, final Message<Map<Object, Long>> message) {
     // The message was produced to examine this edge.
@@ -99,10 +97,10 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
    * @param dstParallelism of the destination vertex.
    * @return an optimal PartitionSetProperty and a ResourceAntiAffinityProperty.
    */
-  private Pair<PartitionSetProperty, ResourceAntiAffinityProperty> analyzeMessage(final Map<Object, Long> keyToCountMap,
-                                                                                  final HashPartitioner partitioner,
-                                                                                  final int numOfPartitions,
-                                                                                  final int dstParallelism) {
+  Pair<PartitionSetProperty, ResourceAntiAffinityProperty> analyzeMessage(final Map<Object, Long> keyToCountMap,
+                                                                          final HashPartitioner partitioner,
+                                                                          final int numOfPartitions,
+                                                                          final int dstParallelism) {
 
     final Map<Integer, Long> partitionKeyToPartitionCount = new HashMap<>();
     int lastKey = numOfPartitions - 1;
