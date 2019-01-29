@@ -20,7 +20,6 @@ package org.apache.nemo.compiler.optimizer;
 
 import net.jcip.annotations.NotThreadSafe;
 import org.apache.nemo.common.dag.DAGBuilder;
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.exception.DynamicOptimizationException;
 import org.apache.nemo.common.ir.IRDAG;
@@ -34,7 +33,6 @@ import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
 import org.apache.nemo.conf.JobConf;
-import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -50,26 +48,18 @@ public final class NemoOptimizer implements Optimizer {
 
   private final String dagDirectory;
   private final String optimizationPolicyCanonicalName;
-  private final Injector injector;
-  private final PubSubEventHandlerWrapper pubSubWrapper;
   private final Map<UUID, Integer> cacheIdToParallelism = new HashMap<>();
   private int irDagCount = 0;
 
   /**
    * @param dagDirectory to store JSON representation of intermediate DAGs.
    * @param optimizationPolicy the name of the optimization policy.
-   * @param pubSubEventHandlerWrapper pub/sub event handler.
-   * @param injector reef injector.
    */
   @Inject
   private NemoOptimizer(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
-                        @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
-                        final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
-                        final Injector injector) {
+                        @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy) {
     this.dagDirectory = dagDirectory;
     this.optimizationPolicyCanonicalName = optimizationPolicy;
-    this.injector = injector;
-    this.pubSubWrapper = pubSubEventHandlerWrapper;
   }
 
   @Override

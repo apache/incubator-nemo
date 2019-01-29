@@ -41,12 +41,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Test cases for {@link SkewnessAwareSchedulingConstraint}.
+ * Test cases for {@link AntiAffinitySchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, Task.class, Stage.class, KeyRange.class,
 IRVertex.class, IREdge.class})
-public final class SkewnessAwareSchedulingConstraintTest {
+public final class AntiAffinitySchedulingConstraintTest {
   private final static int FIRST_ATTEMPT = 0;
 
   private static StageEdge mockStageEdge(final int numSkewedHashRange,
@@ -93,12 +93,12 @@ public final class SkewnessAwareSchedulingConstraintTest {
   }
 
   /**
-   * {@link SkewnessAwareSchedulingConstraint} should schedule Tasks assigned with skewed partitions
+   * {@link AntiAffinitySchedulingConstraint} should schedule Tasks assigned with skewed partitions
    * to different executors.
    */
   @Test
   public void testScheduleSkewedTasks() {
-    final SchedulingConstraint schedulingConstraint = new SkewnessAwareSchedulingConstraint();
+    final SchedulingConstraint schedulingConstraint = new AntiAffinitySchedulingConstraint();
     // Create a StageEdge where two out of three are skewed hash ranges.
     final StageEdge inEdge = mockStageEdge(2, 3);
     final Task task0 = mockTask(0, Arrays.asList(inEdge));  // skewed task

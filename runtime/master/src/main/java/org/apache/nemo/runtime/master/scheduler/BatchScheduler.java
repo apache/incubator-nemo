@@ -128,13 +128,7 @@ public final class BatchScheduler implements Scheduler {
    */
   public void onRunTimePassMessage(final String taskId, final Object data) {
     final Set<StageEdge> targetEdges = getEdgesToOptimize(taskId);
-    if (targetEdges.isEmpty()) {
-      throw new RuntimeException("No edges specified for data skew optimization");
-    }
-    final StageEdge representative = targetEdges.iterator().next();
-
-    final int messageId = representative.getExecutionProperties().get(MessageIdProperty.class).get();
-    planRewriter.accumulate(messageId, data);
+    planRewriter.accumulate(getMessageId(targetEdges), data);
   }
 
   /**
@@ -161,9 +155,19 @@ public final class BatchScheduler implements Scheduler {
     }
 
     if (stageComplete) {
-      final Optional<PhysicalPlan> updatedPlan = planRewriter.rewrite(planStateManager.getPhysicalPlan(), );
-      updatedPlan.ifPresent(this::updatePlan);
+      final PhysicalPlan updatedPlan = planRewriter.rewrite(getMessageId(targetEdges));
+      updatePlan(updatedPlan);
     }
+  }
+
+  private int getMessageId(final Set<StageEdge> stageEdges) {
+    final Set<Integer> messageIds = stageEdges.stream()
+      .map(edge -> edge.getExecutionProperties().get(MessageIdProperty.class).get())
+      .collect(Collectors.toSet());
+    if (messageIds.size() != 1) {
+      throw new IllegalArgumentException(stageEdges.toString());
+    }
+    return messageIds.iterator().next();
   }
 
   ////////////////////////////////////////////////////////////////////// Methods for scheduling.

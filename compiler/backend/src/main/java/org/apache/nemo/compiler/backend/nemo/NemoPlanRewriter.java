@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.backend.nemo;
 
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
 import org.apache.nemo.compiler.optimizer.NemoOptimizer;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -28,6 +29,7 @@ import org.apache.nemo.runtime.common.plan.PlanRewriter;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Rewrites the physical plan during execution, to enforce the optimizations of Nemo RunTimePasses.
@@ -46,7 +48,7 @@ import java.util.*;
 public class NemoPlanRewriter implements PlanRewriter {
   private final NemoOptimizer nemoOptimizer;
   private final NemoBackend nemoBackend;
-  private final Map<String, Map<Object, Long>> messageIdToAggregatedData;
+  private final Map<Integer, Map<Object, Long>> messageIdToAggregatedData;
 
   private IRDAG currentIRDAG;
 
@@ -63,27 +65,40 @@ public class NemoPlanRewriter implements PlanRewriter {
   }
 
   @Override
-  public PhysicalPlan rewrite(final String messageId) {
+  public PhysicalPlan rewrite(final int messageId) {
     if (currentIRDAG == null) {
       throw new IllegalStateException();
     }
-
     final Map<Object, Long> aggregatedData = messageIdToAggregatedData.remove(messageId); // remove for GC
     if (aggregatedData == null) {
       throw new IllegalStateException();
     }
 
-    final Set<IREdge> examiningEdges = currentIRDAG.topologicalDo(); // find edges using the messageId (exec props)
+    // Find IREdges using the messageId
+    final Set<IREdge> examiningEdges = currentIRDAG
+      .getVertices()
+      .stream()
+      .flatMap(v -> currentIRDAG.getIncomingEdgesOf(v).stream())
+      .filter(e -> e.getPropertyValue(MessageIdProperty.class).isPresent()
+        && e.getPropertyValue(MessageIdProperty.class).get() == messageId)
+      .collect(Collectors.toSet());
+    if (examiningEdges.isEmpty()) {
+      throw new IllegalArgumentException(String.valueOf(messageId));
+    }
+
+    // Optimize using the Message.
     final Message message = new Message(messageId, examiningEdges, aggregatedData);
     final IRDAG newIRDAG = nemoOptimizer.optimizeAtRunTime(currentIRDAG, message);
-    return nemoBackend.compile(newIRDAG); // must be compatible with the existing plan
+
+    // Re-compile the IRDAG into a physical plan, and return.
+    return nemoBackend.compile(newIRDAG);
   }
 
   @Override
-  public void accumulate(final String messageId, final Object data) {
+  public void accumulate(final int messageId, final Object data) {
     messageIdToAggregatedData.putIfAbsent(messageId, new HashMap<>());
     final Map<Object, Long> aggregatedData = messageIdToAggregatedData.get(messageId);
-    final List<ControlMessage.Entry> messageEntries = (List<ControlMessage.Entry>) data;
+    final List<ControlMessage.RunTimePassMessageEntry> messageEntries = (List<ControlMessage.RunTimePassMessageEntry>) data;
     messageEntries.forEach(entry -> {
       final Object key = entry.getKey();
       final long partitionSize = entry.getValue();

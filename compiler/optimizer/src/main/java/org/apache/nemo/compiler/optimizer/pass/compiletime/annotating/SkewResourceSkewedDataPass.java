@@ -21,17 +21,17 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
  * Pass to annotate the IR DAG for skew handling.
  *
- * It marks children and descendents of vertex with {@link ResourceSkewedDataProperty},
+ * It marks children and descendents of vertex with {@link ResourceAntiAffinityProperty},
  * which collects task-level statistics used for dynamic optimization,
- * with {@link ResourceSkewedDataProperty} to perform skewness-aware scheduling.
+ * with {@link ResourceAntiAffinityProperty} to perform skewness-aware scheduling.
  */
-@Annotates(ResourceSkewedDataProperty.class)
+@Annotates(ResourceAntiAffinityProperty.class)
 @Requires(MessageIdProperty.class)
 public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   /**
@@ -48,9 +48,9 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
         .filter(edge -> edge.getPropertyValue(MessageIdProperty.class).isPresent())
         .forEach(skewEdge -> {
           final IRVertex dstV = skewEdge.getDst();
-          dstV.setProperty(ResourceSkewedDataProperty.of(true));
+          dstV.setProperty(ResourceAntiAffinityProperty.of(true));
           dag.getDescendants(dstV.getId()).forEach(descendentV -> {
-            descendentV.getExecutionProperties().put(ResourceSkewedDataProperty.of(true));
+            descendentV.getExecutionProperties().put(ResourceAntiAffinityProperty.of(true));
           });
         })
       );

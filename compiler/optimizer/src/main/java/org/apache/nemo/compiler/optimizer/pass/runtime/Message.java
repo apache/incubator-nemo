@@ -26,12 +26,12 @@ import java.util.Set;
  * @param <T> type of the message value.
  */
 public class Message<T> {
-  private final String messageId;
+  private final int messageId;
   private final T value;
   private final Set<IREdge> edgesToExamine;
 
-  public Message(final String messageId, final Set<IREdge> edgesToExamine, final T value) {
-    if (messageId == null || edgesToExamine == null || edgesToExamine.isEmpty() || value == null) {
+  public Message(final int messageId, final Set<IREdge> edgesToExamine, final T value) {
+    if (edgesToExamine == null || edgesToExamine.isEmpty() || value == null) {
       throw new IllegalArgumentException();
     }
     this.messageId = messageId;
@@ -39,7 +39,7 @@ public class Message<T> {
     this.edgesToExamine = edgesToExamine;
   }
 
-  public String getMessageId() {
+  public int getMessageId() {
     return messageId;
   }
 

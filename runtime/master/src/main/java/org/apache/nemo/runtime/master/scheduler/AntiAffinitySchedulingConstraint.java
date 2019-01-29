@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.master.scheduler;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.AssociatedProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.common.plan.StageEdge;
@@ -38,14 +38,14 @@ import java.util.Map;
  */
 @ThreadSafe
 @DriverSide
-@AssociatedProperty(ResourceSkewedDataProperty.class)
-public final class SkewnessAwareSchedulingConstraint implements SchedulingConstraint {
+@AssociatedProperty(ResourceAntiAffinityProperty.class)
+public final class AntiAffinitySchedulingConstraint implements SchedulingConstraint {
   @VisibleForTesting
   @Inject
-  public SkewnessAwareSchedulingConstraint() {
+  public AntiAffinitySchedulingConstraint() {
   }
 
-  public boolean hasSkewedData(final Task task) {
+  public boolean isInAntiAffinityGroup(final Task task) {
     final int taskIdx = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
     for (StageEdge inEdge : task.getTaskIncomingEdges()) {
       if (CommunicationPatternProperty.Value.Shuffle
@@ -65,7 +65,7 @@ public final class SkewnessAwareSchedulingConstraint implements SchedulingConstr
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
     // Check if this executor had already received heavy tasks
     for (Task runningTask : executor.getRunningTasks()) {
-      if (hasSkewedData(runningTask) && hasSkewedData(task)) {
+      if (isInAntiAffinityGroup(runningTask) && isInAntiAffinityGroup(task)) {
         return false;
       }
     }

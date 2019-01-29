@@ -24,10 +24,10 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityProperty;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.MessageBarrierTransform;
 import org.apache.nemo.compiler.CompilerTestUtil;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import org.junit.Before;
 import org.junit.Test;
@@ -102,7 +102,7 @@ public class SkewCompositePassTest {
           reducerV.forEach(rV -> {
             if (rV instanceof OperatorVertex &&
               !(((OperatorVertex) rV).getTransform() instanceof MessageAggregatorTransform)) {
-              assertTrue(rV.getPropertyValue(ResourceSkewedDataProperty.class).get());
+              assertTrue(rV.getPropertyValue(ResourceAntiAffinityProperty.class).get());
             }
           });
       });
