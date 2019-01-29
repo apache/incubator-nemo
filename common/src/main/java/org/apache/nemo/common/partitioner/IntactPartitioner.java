@@ -16,29 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.partitioner;
+package org.apache.nemo.common.partitioner;
 
 /**
- * An implementation of {@link Partitioner} which assigns a dedicated key per an output data from a task.
- * WARNING: Because this partitioner assigns a dedicated key per element, it should be used under specific circumstances
- * that the number of output element is not that many. For example, every output element of
- * StreamTransform inserted by large shuffle optimization is always
- * a partition. In this case, assigning a key for each element can be useful.
+ * An implementation of {@link Partitioner} which makes an output data
+ * from a source task to a single partition.
  */
-@DedicatedKeyPerElement
-public final class DedicatedKeyPerElementPartitioner implements Partitioner<Integer> {
-  private int key;
-
-  /**
-   * Constructor.
-   */
-  public DedicatedKeyPerElementPartitioner() {
-    // TODO #288: DedicatedKeyPerElement should not always return 0
-    key = 0;
-  }
+public final class IntactPartitioner implements Partitioner<Integer> {
 
   @Override
   public Integer partition(final Object element) {
-    return key++;
+    return 0;
   }
 }

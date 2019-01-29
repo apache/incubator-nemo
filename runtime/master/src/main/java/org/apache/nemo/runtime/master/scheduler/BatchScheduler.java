@@ -22,7 +22,7 @@ import com.google.common.collect.Sets;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -95,7 +95,78 @@ public final class BatchScheduler implements Scheduler {
     this.planStateManager = planStateManager;
   }
 
-  ////////////////////////////////////////////////////////////////////// Key methods for plan rewriting.
+  ////////////////////////////////////////////////////////////////////// Methods for plan rewriting.
+
+  @Override
+  public void updatePlan(final PhysicalPlan newPhysicalPlan) {
+    // accumulate the physical plan in the scheduler.
+    // NOTE: what's already been executed is not modified in the new physical plan.
+    // TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
+    updatePlan(newPhysicalPlan, planStateManager.getMaxScheduleAttempt());
+  }
+
+  /**
+   * Update the physical plan in the scheduler.
+   *
+   * @param newPhysicalPlan    the new physical plan to accumulate.
+   * @param maxScheduleAttempt the maximum number of task scheduling attempt.
+   */
+  private void updatePlan(final PhysicalPlan newPhysicalPlan,
+                          final int maxScheduleAttempt) {
+    planStateManager.updatePlan(newPhysicalPlan, maxScheduleAttempt);
+    this.sortedScheduleGroups = newPhysicalPlan.getStageDAG().getVertices().stream()
+      .collect(Collectors.groupingBy(Stage::getScheduleGroup))
+      .entrySet().stream()
+      .sorted(Map.Entry.comparingByKey())
+      .map(Map.Entry::getValue)
+      .collect(Collectors.toList());
+  }
+
+  /**
+   * @param taskId that generated the message.
+   * @param data of the message.
+   */
+  public void onRunTimePassMessage(final String taskId, final Object data) {
+    final Set<StageEdge> targetEdges = getEdgesToOptimize(taskId);
+    if (targetEdges.isEmpty()) {
+      throw new RuntimeException("No edges specified for data skew optimization");
+    }
+    final StageEdge representative = targetEdges.iterator().next();
+
+    final int messageId = representative.getExecutionProperties().get(MessageIdProperty.class).get();
+    planRewriter.accumulate(messageId, data);
+  }
+
+  /**
+   * Action for after task execution is put on hold.
+   *
+   * @param executorId       the ID of the executor.
+   * @param taskId           the ID of the task.
+   */
+  private void onTaskExecutionOnHold(final String executorId,
+                                     final String taskId) {
+    LOG.info("{} put on hold in {}", new Object[]{taskId, executorId});
+    executorRegistry.updateExecutor(executorId, (executor, state) -> {
+      executor.onTaskExecutionComplete(taskId);
+      return Pair.of(executor, state);
+    });
+    final String stageIdForTaskUponCompletion = RuntimeIdManager.getStageIdFromTaskId(taskId);
+
+    final boolean stageComplete =
+      planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
+
+    final Set<StageEdge> targetEdges = getEdgesToOptimize(taskId);
+    if (targetEdges.isEmpty()) {
+      throw new RuntimeException("No edges specified for data skew optimization");
+    }
+
+    if (stageComplete) {
+      final Optional<PhysicalPlan> updatedPlan = planRewriter.rewrite(planStateManager.getPhysicalPlan(), );
+      updatedPlan.ifPresent(this::updatePlan);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////// Methods for scheduling.
 
   /**
    * Schedules a given plan.
@@ -124,31 +195,6 @@ public final class BatchScheduler implements Scheduler {
     }
 
     doSchedule();
-  }
-
-  @Override
-  public void updatePlan(final PhysicalPlan newPhysicalPlan) {
-    // accumulate the physical plan in the scheduler.
-    // NOTE: what's already been executed is not modified in the new physical plan.
-    // TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
-    updatePlan(newPhysicalPlan, planStateManager.getMaxScheduleAttempt());
-  }
-
-  /**
-   * Update the physical plan in the scheduler.
-   *
-   * @param newPhysicalPlan    the new physical plan to accumulate.
-   * @param maxScheduleAttempt the maximum number of task scheduling attempt.
-   */
-  private void updatePlan(final PhysicalPlan newPhysicalPlan,
-                          final int maxScheduleAttempt) {
-    planStateManager.updatePlan(newPhysicalPlan, maxScheduleAttempt);
-    this.sortedScheduleGroups = newPhysicalPlan.getStageDAG().getVertices().stream()
-      .collect(Collectors.groupingBy(Stage::getScheduleGroup))
-      .entrySet().stream()
-      .sorted(Map.Entry.comparingByKey())
-      .map(Map.Entry::getValue)
-      .collect(Collectors.toList());
   }
 
   /**
@@ -310,11 +356,7 @@ public final class BatchScheduler implements Scheduler {
     this.executorRegistry.terminate();
   }
 
-  public void onRunTimePassMessage(final String stageId, final Object data) {
-    planRewriter.accumulate(stageId, data);
-  }
-
-  ////////////////////////////////////////////////////////////////////// Key methods for scheduling
+  ////////////////////////////////////////////////////////////////////// Task launch methods.
 
   /**
    * The main entry point for task scheduling.
@@ -418,13 +460,13 @@ public final class BatchScheduler implements Scheduler {
 
   /**
    * Get the target edges of dynamic optimization.
-   * The edges are annotated with {@link MetricCollectionProperty}, which are outgoing edges of
+   * The edges are annotated with {@link MessageIdProperty}, which are outgoing edges of
    * parents of the stage put on hold.
    *
    * See {@link org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.SkewReshapingPass}
    * for setting the target edges of dynamic optimization.
    *
-   * @param taskId the task ID that sent stage-level aggregated metric for dynamic optimization.
+   * @param taskId the task ID that sent stage-level aggregated message for dynamic optimization.
    * @return the edges to optimize.
    */
   private Set<StageEdge> getEdgesToOptimize(final String taskId) {
@@ -442,18 +484,18 @@ public final class BatchScheduler implements Scheduler {
     if (edgesToStagePutOnHold.isEmpty()) {
       throw new RuntimeException("No edges toward specified put on hold stage");
     }
-    final int metricCollectionId = edgesToStagePutOnHold.get(0).getPropertyValue(MetricCollectionProperty.class)
-      .orElseThrow(() -> new RuntimeException("No metric collection property value for this put on hold stage"));
+    final int messageId = edgesToStagePutOnHold.get(0).getPropertyValue(MessageIdProperty.class)
+      .orElseThrow(() -> new RuntimeException("No message id for this put on hold stage"));
 
     final Set<StageEdge> targetEdges = new HashSet<>();
 
-    // Get edges with identical MetricCollectionProperty (except the put on hold stage)
+    // Get edges with identical MessageIdProperty (except the put on hold stage)
     for (final Stage stage : stageDag.getVertices()) {
       final Set<StageEdge> targetEdgesFound = stageDag.getOutgoingEdgesOf(stage).stream()
         .filter(candidateEdge -> {
           final Optional<Integer> candidateMCId =
-            candidateEdge.getPropertyValue(MetricCollectionProperty.class);
-          return candidateMCId.isPresent() && candidateMCId.get().equals(metricCollectionId)
+            candidateEdge.getPropertyValue(MessageIdProperty.class);
+          return candidateMCId.isPresent() && candidateMCId.get().equals(messageId)
             && !edgesToStagePutOnHold.contains(candidateEdge);
         })
         .collect(Collectors.toSet());
@@ -463,35 +505,6 @@ public final class BatchScheduler implements Scheduler {
     LOG.info("Target edges to optimize: {}",
       targetEdges.stream().map(edge -> edge.getId()).collect(Collectors.toSet()));
     return targetEdges;
-  }
-
-  /**
-   * Action for after task execution is put on hold.
-   *
-   * @param executorId       the ID of the executor.
-   * @param taskId           the ID of the task.
-   */
-  private void onTaskExecutionOnHold(final String executorId,
-                                     final String taskId) {
-    LOG.info("{} put on hold in {}", new Object[]{taskId, executorId});
-    executorRegistry.updateExecutor(executorId, (executor, state) -> {
-      executor.onTaskExecutionComplete(taskId);
-      return Pair.of(executor, state);
-    });
-    final String stageIdForTaskUponCompletion = RuntimeIdManager.getStageIdFromTaskId(taskId);
-
-    final boolean stageComplete =
-      planStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
-
-    final Set<StageEdge> targetEdges = getEdgesToOptimize(taskId);
-    if (targetEdges.isEmpty()) {
-      throw new RuntimeException("No edges specified for data skew optimization");
-    }
-
-    if (stageComplete) {
-      final Optional<PhysicalPlan> updatedPlan = planRewriter.rewrite(planStateManager.getPhysicalPlan(), );
-      updatedPlan.ifPresent(this::updatePlan);
-    }
   }
 
   /**

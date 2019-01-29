@@ -20,8 +20,8 @@ package org.apache.nemo.compiler.optimizer.pass.runtime;
 
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.KeyExtractor;
-import org.apache.nemo.runtime.common.partitioner.HashPartitioner;
-import org.apache.nemo.runtime.common.partitioner.Partitioner;
+import org.apache.nemo.common.partitioner.HashPartitioner;
+import org.apache.nemo.common.partitioner.Partitioner;
 import org.junit.Before;
 import org.junit.Test;
 

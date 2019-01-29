@@ -19,7 +19,7 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
@@ -32,7 +32,7 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
  * with {@link ResourceSkewedDataProperty} to perform skewness-aware scheduling.
  */
 @Annotates(ResourceSkewedDataProperty.class)
-@Requires(MetricCollectionProperty.class)
+@Requires(MessageIdProperty.class)
 public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   /**
    * Default constructor.
@@ -45,7 +45,7 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   public IRDAG apply(final IRDAG dag) {
     dag.getVertices()
       .forEach(v -> dag.getOutgoingEdgesOf(v).stream()
-        .filter(edge -> edge.getPropertyValue(MetricCollectionProperty.class).isPresent())
+        .filter(edge -> edge.getPropertyValue(MessageIdProperty.class).isPresent())
         .forEach(skewEdge -> {
           final IRVertex dstV = skewEdge.getDst();
           dstV.setProperty(ResourceSkewedDataProperty.of(true));

@@ -21,12 +21,14 @@ package org.apache.nemo.client;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.compiler.backend.nemo.NemoPlanRewriter;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.driver.NemoDriver;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -320,6 +322,7 @@ public final class JobLauncher {
     final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
     final Class schedulerImpl = ((Class<Scheduler>) Class.forName(classImplName));
     jcb.bindImplementation(Scheduler.class, schedulerImpl);
+    jcb.bindImplementation(PlanRewriter.class, NemoPlanRewriter.class);
     return jcb.build();
   }
 

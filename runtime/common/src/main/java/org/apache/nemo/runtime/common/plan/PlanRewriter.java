@@ -23,14 +23,14 @@ package org.apache.nemo.runtime.common.plan;
  */
 public interface PlanRewriter {
   /**
-   * @param stageId
-   * @return
+   * @param messageId of the rewrite.
+   * @return physical plan.
    */
-  PhysicalPlan rewrite(final String stageId);
+  PhysicalPlan rewrite(final int messageId);
 
   /**
-   * @param stageId
-   * @param data
+   * @param messageId of the rewrite.
+   * @param data to accumulate.
    */
-  void accumulate(final String stageId, final Object data);
+  void accumulate(final int messageId, final Object data);
 }

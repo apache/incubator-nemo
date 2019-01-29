@@ -209,7 +209,7 @@ public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
           final IREdge edgeToOriginalDst =
             new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
           edge.copyExecutionPropertiesTo(edgeToOriginalDst);
-          edgeToOriginalDst.setPropertyPermanently(MetricCollectionProperty.of(currentMetricCollectionId));
+          edgeToOriginalDst.setPropertyPermanently(MessageIdProperty.of(currentMetricCollectionId));
           builder.connectVertices(edgeToOriginalDst);
         } else {
           // NO MATCH, so simply connect vertices as before.
@@ -249,7 +249,7 @@ public final class IRDAG implements DAGQueryInterface<IRVertex, IREdge> {
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
-    newEdge.setPropertyPermanently(MetricCollectionProperty.of(currentMetricCollectionId));
+    newEdge.setPropertyPermanently(MessageIdProperty.of(currentMetricCollectionId));
     final KeyExtractor pairKeyExtractor = (element) -> {
       if (element instanceof Pair) {
         return ((Pair) element).left();

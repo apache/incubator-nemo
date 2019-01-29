@@ -19,7 +19,6 @@
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 
 import java.util.Set;
 
@@ -27,22 +26,28 @@ import java.util.Set;
  * @param <T> type of the message value.
  */
 public class Message<T> {
+  private final String messageId;
   private final T value;
   private final Set<IREdge> edgesToExamine;
 
   public Message(final String messageId, final Set<IREdge> edgesToExamine, final T value) {
-    if (value == null || edgesToExamine == null) {
+    if (messageId == null || edgesToExamine == null || edgesToExamine.isEmpty() || value == null) {
       throw new IllegalArgumentException();
     }
+    this.messageId = messageId;
     this.value = value;
     this.edgesToExamine = edgesToExamine;
+  }
+
+  public String getMessageId() {
+    return messageId;
   }
 
   public T getMessageValue() {
     return value;
   }
 
-  public IREdge getExaminedEdge() {
+  public Set<IREdge> getExaminedEdges() {
     return edgesToExamine;
   }
 }

@@ -16,28 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.edge.executionproperty;
-
-import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+package org.apache.nemo.common.partitioner;
 
 /**
- * MetricCollection ExecutionProperty that indicates the edge of which data metric will be collected.
+ * An implementation of {@link Partitioner} which assigns a dedicated key per an output data from a task.
+ * WARNING: Because this partitioner assigns a dedicated key per element, it should be used under specific circumstances
+ * that the number of output element is not that many. For example, every output element of
+ * StreamTransform inserted by large shuffle optimization is always
+ * a partition. In this case, assigning a key for each element can be useful.
  */
-public final class MetricCollectionProperty extends EdgeExecutionProperty<Integer> {
-  /**
-   * Constructor.
-   * @param value value of the execution property.
-   */
-  private MetricCollectionProperty(final Integer value) {
-    super(value);
-  }
+@DedicatedKeyPerElement
+public final class DedicatedKeyPerElementPartitioner implements Partitioner<Integer> {
+  private int key;
 
   /**
-   * Static method exposing the constructor.
-   * @param value value of the new execution property.
-   * @return the newly created execution property.
+   * Constructor.
    */
-  public static MetricCollectionProperty of(final Integer value) {
-    return new MetricCollectionProperty(value);
+  public DedicatedKeyPerElementPartitioner() {
+    // TODO #288: DedicatedKeyPerElement should not always return 0
+    key = 0;
+  }
+
+  @Override
+  public Integer partition(final Object element) {
+    return key++;
   }
 }

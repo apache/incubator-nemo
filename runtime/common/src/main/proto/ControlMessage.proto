@@ -130,7 +130,7 @@ message BlockStateChangedMsg {
 }
 
 message RunTimePassMessageMsg {
-    required string runtimeEdgeId = 1;
+    required string taskId = 1;
     repeated RunTimePassMessageEntry entry = 2;
 }
 

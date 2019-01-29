@@ -42,13 +42,16 @@ public final class RunTimeMessageOutputCollector<O> implements OutputCollector<O
   private static final Logger LOG = LoggerFactory.getLogger(RunTimeMessageOutputCollector.class.getName());
   private static final String NULL_KEY = "NULL";
 
+  private final String taskId;
   private final IRVertex irVertex;
   private final PersistentConnectionToMasterMap connectionToMasterMap;
   private final TaskExecutor taskExecutor;
 
-  public RunTimeMessageOutputCollector(final IRVertex irVertex,
+  public RunTimeMessageOutputCollector(final String taskId,
+                                       final IRVertex irVertex,
                                        final PersistentConnectionToMasterMap connectionToMasterMap,
                                        final TaskExecutor taskExecutor) {
+    this.taskId = taskId;
     this.irVertex = irVertex;
     this.connectionToMasterMap = connectionToMasterMap;
     this.taskExecutor = taskExecutor;
@@ -57,10 +60,10 @@ public final class RunTimeMessageOutputCollector<O> implements OutputCollector<O
   @Override
   public void emit(final O output) {
     final Map<Object, Long> aggregatedMessage = (Map<Object, Long>) output;
-    final List<ControlMessage.Entry> entries = new ArrayList<>();
+    final List<ControlMessage.RunTimePassMessageEntry> entries = new ArrayList<>();
     aggregatedMessage.forEach((key, size) ->
       entries.add(
-        ControlMessage.Entry.newBuilder()
+        ControlMessage.RunTimePassMessageEntry.newBuilder()
           // TODO #325: Add (de)serialization for non-string key types in data metric collection
           .setKey(key == null ? NULL_KEY : String.valueOf(key))
           .setValue(size)
@@ -72,7 +75,8 @@ public final class RunTimeMessageOutputCollector<O> implements OutputCollector<O
         .setId(RuntimeIdManager.generateMessageId())
         .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
         .setType(ControlMessage.MessageType.RunTimePassMessage)
-        .setDataSizeMetricMsg(ControlMessage.RunTimePassMessageMsg.newBuilder()
+        .setRunTimePassMessageMsg(ControlMessage.RunTimePassMessageMsg.newBuilder()
+          .setTaskId(taskId)
           .addAllEntry(entries)
         )
         .build());

@@ -30,7 +30,9 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class PolicyImplTest {
   private IRDAG dag;
@@ -72,7 +74,7 @@ public final class PolicyImplTest {
   @Test
   public void testTransientAndLargeShuffleCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
-    final List<RunTimePass<?>> runtimePasses = new ArrayList<>();
+    final Set<RunTimePass<?>> runtimePasses = new HashSet<>();
     compileTimePasses.addAll(TransientResourcePolicy.BUILDER.getCompileTimePasses());
     runtimePasses.addAll(TransientResourcePolicy.BUILDER.getRunTimePasses());
     compileTimePasses.addAll(LargeShufflePolicy.BUILDER.getCompileTimePasses());
@@ -87,7 +89,7 @@ public final class PolicyImplTest {
   @Test
   public void testTransientAndDisaggregationCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
-    final List<RunTimePass<?>> runtimePasses = new ArrayList<>();
+    final Set<RunTimePass<?>> runtimePasses = new HashSet<>();
     compileTimePasses.addAll(TransientResourcePolicy.BUILDER.getCompileTimePasses());
     runtimePasses.addAll(TransientResourcePolicy.BUILDER.getRunTimePasses());
     compileTimePasses.addAll(DisaggregationPolicy.BUILDER.getCompileTimePasses());
@@ -104,7 +106,7 @@ public final class PolicyImplTest {
   @Test
   public void testDataSkewAndLargeShuffleCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
-    final List<RunTimePass<?>> runtimePasses = new ArrayList<>();
+    final Set<RunTimePass<?>> runtimePasses = new HashSet<>();
     compileTimePasses.addAll(DataSkewPolicy.BUILDER.getCompileTimePasses());
     runtimePasses.addAll(DataSkewPolicy.BUILDER.getRunTimePasses());
     compileTimePasses.addAll(LargeShufflePolicy.BUILDER.getCompileTimePasses());

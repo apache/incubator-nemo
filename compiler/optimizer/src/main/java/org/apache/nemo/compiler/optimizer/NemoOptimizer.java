@@ -124,12 +124,10 @@ public final class NemoOptimizer implements Optimizer {
   public IRDAG optimizeAtRunTime(final IRDAG dag, final Message message) {
     try {
       final Policy optimizationPolicy = (Policy) Class.forName(optimizationPolicyCanonicalName).newInstance();
-
       if (optimizationPolicy == null) {
         throw new CompileTimeOptimizationException("A policy name should be specified.");
       }
-
-      return optimizationPolicy.runRunTimeOptimizations(injector, pubSubWrapper);
+      return optimizationPolicy.runRunTimeOptimizations(dag, message);
     } catch (final Exception e) {
       throw new DynamicOptimizationException(e);
     }

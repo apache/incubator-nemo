@@ -25,8 +25,8 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
-import org.apache.nemo.runtime.common.partitioner.HashPartitioner;
-import org.apache.nemo.runtime.common.partitioner.Partitioner;
+import org.apache.nemo.common.partitioner.HashPartitioner;
+import org.apache.nemo.common.partitioner.Partitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,24 +44,26 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
   @Override
   public IRDAG apply(final IRDAG irdag, final Message<Map<Object, Long>> message) {
     // The message was produced to examine this edge.
-    final IREdge edge = message.getExaminedEdge();
+    final Set<IREdge> edges = message.getExaminedEdges();
+
+    final IREdge representativeEdge = edges.iterator().next();
 
     // Use the following execution properties.
     final Pair<PartitionerProperty.PartitionerType, Integer> partitionerProperty =
-      edge.getPropertyValue(PartitionerProperty.class).get();
-    final int dstParallelism = edge.getDst().getPropertyValue(MinParallelismProperty.class).get();
+      representativeEdge.getPropertyValue(PartitionerProperty.class).get();
+    final int dstParallelism = representativeEdge.getDst().getPropertyValue(MinParallelismProperty.class).get();
 
     // Compute the optimal partition distribution, using the message value.
     final Map<Object, Long> messageValue = message.getMessageValue();
     final PartitionSetProperty evenPartitionSet = computeOptimalPartitionDistribution(
       messageValue,
-      (HashPartitioner) Partitioner
-        .getPartitioner(edge.getExecutionProperties(), edge.getDst().getExecutionProperties()),
+      (HashPartitioner) Partitioner.getPartitioner(
+        representativeEdge.getExecutionProperties(), representativeEdge.getDst().getExecutionProperties()),
       partitionerProperty.right(),
       dstParallelism);
 
     // Set the partitionSet property
-    edge.setPropertyPermanently(evenPartitionSet);
+    edges.forEach(edge -> edge.setPropertyPermanently(evenPartitionSet));
 
     // Return the IRDAG.
     return irdag;

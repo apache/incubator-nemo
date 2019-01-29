@@ -16,16 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.partitioner;
+package org.apache.nemo.common.ir.edge.executionproperty;
+
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
- * An implementation of {@link Partitioner} which makes an output data
- * from a source task to a single partition.
+ * Edges with the same MessageId are subject to the same run-time optimization.
  */
-public final class IntactPartitioner implements Partitioner<Integer> {
+public final class MessageIdProperty extends EdgeExecutionProperty<Integer> {
+  /**
+   * Constructor.
+   * @param value value of the execution property.
+   */
+  private MessageIdProperty(final Integer value) {
+    super(value);
+  }
 
-  @Override
-  public Integer partition(final Object element) {
-    return 0;
+  /**
+   * Static method exposing the constructor.
+   * @param value value of the new execution property.
+   * @return the newly created execution property.
+   */
+  public static MessageIdProperty of(final Integer value) {
+    return new MessageIdProperty(value);
   }
 }

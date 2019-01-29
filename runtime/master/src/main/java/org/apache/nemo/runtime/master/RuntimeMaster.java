@@ -390,7 +390,9 @@ public final class RuntimeMaster {
         LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
         throw new RuntimeException(exception);
       case RunTimePassMessage:
-        ((BatchScheduler) scheduler).onRunTimePassMessage(message.getDataSizeMetricMsg().getPartitionSizeList());
+        ((BatchScheduler) scheduler).onRunTimePassMessage(
+          message.getRunTimePassMessageMsg().getTaskId(),
+          message.getRunTimePassMessageMsg().getEntryList());
         break;
       case MetricMessageReceived:
         final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
