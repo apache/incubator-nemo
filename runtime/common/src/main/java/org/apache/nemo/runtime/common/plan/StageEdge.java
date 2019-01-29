@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.common.plan;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
@@ -88,7 +89,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     // if not exists...
     final ArrayList<KeyRange> defaultPartitionSet = new ArrayList<>(dstStage.getParallelism());
     for (int taskIdx = 0; taskIdx < dstStage.getParallelism(); taskIdx++) {
-      defaultPartitionSet.add(taskIdx, KeyRange.of(taskIdx, taskIdx + 1));
+      defaultPartitionSet.add(taskIdx, HashRange.of(taskIdx, taskIdx + 1));
     }
     this.keyRanges = edgeProperties.get(PartitionSetProperty.class).orElse(defaultPartitionSet);
   }

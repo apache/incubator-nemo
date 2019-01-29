@@ -85,7 +85,7 @@ public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
           edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Pull));
           edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           edge.setPropertyPermanently(
-            PartitionerProperty.of(PartitionerProperty.PartitionerType.DedicatedKeyPerElement));
+            PartitionerProperty.of(PartitionerProperty.Type.DedicatedKeyPerElement));
         } else {
           // CASE #3: Unrelated to any stream vertices
           edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Pull));

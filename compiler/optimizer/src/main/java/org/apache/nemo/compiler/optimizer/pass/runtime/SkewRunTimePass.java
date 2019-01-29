@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
+import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.KeyRange;
@@ -64,7 +65,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
     final IREdge representativeEdge = edges.iterator().next();
 
     // Use the following execution properties.
-    final Pair<PartitionerProperty.PartitionerType, Integer> partitionerProperty =
+    final Pair<PartitionerProperty.Type, Integer> partitionerProperty =
       representativeEdge.getPropertyValue(PartitionerProperty.class).get();
     final int dstParallelism = representativeEdge.getDst().getPropertyValue(MinParallelismProperty.class).get();
 
@@ -153,14 +154,14 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
           currentAccumulatedSize -= partitionSizeList.get(finishingKey);
         }
 
-        keyRanges.add(i - 1, KeyRange.of(startingKey, finishingKey));
+        keyRanges.add(i - 1, HashRange.of(startingKey, finishingKey));
         LOG.debug("KeyRange {}~{}, Size {}", startingKey, finishingKey - 1,
           currentAccumulatedSize - prevAccumulatedSize);
 
         prevAccumulatedSize = currentAccumulatedSize;
         startingKey = finishingKey;
       } else { // last one: we put the range of the rest.
-        keyRanges.add(i - 1, KeyRange.of(startingKey, lastKey + 1));
+        keyRanges.add(i - 1, HashRange.of(startingKey, lastKey + 1));
 
         while (finishingKey <= lastKey) {
           currentAccumulatedSize += partitionSizeList.get(finishingKey);

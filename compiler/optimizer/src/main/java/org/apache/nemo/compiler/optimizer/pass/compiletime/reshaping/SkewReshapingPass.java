@@ -130,7 +130,7 @@ public final class SkewReshapingPass extends ReshapingPass {
         final int dstParallelism = representativeEdge.getDst().getPropertyValue(MinParallelismProperty.class).get();
         shuffleEdgeGroup.forEach(e -> {
           e.setPropertyPermanently(PartitionerProperty.of(
-            PartitionerProperty.PartitionerType.Hash, dstParallelism * HASH_RANGE_MULTIPLIER));
+            PartitionerProperty.Type.Hash, dstParallelism * HASH_RANGE_MULTIPLIER));
         });
       }
     });

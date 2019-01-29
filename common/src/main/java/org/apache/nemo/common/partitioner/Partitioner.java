@@ -53,10 +53,10 @@ public interface Partitioner<K extends Serializable> {
    */
   static Partitioner getPartitioner(final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
                                     final ExecutionPropertyMap<VertexExecutionProperty> dstProperties) {
-    final PartitionerProperty.PartitionerType partitionerType =
+    final PartitionerProperty.Type type =
       edgeProperties.get(PartitionerProperty.class).get().left();
     final Partitioner partitioner;
-    switch (partitionerType) {
+    switch (type) {
       case Intact:
         partitioner = new IntactPartitioner();
         break;
@@ -74,7 +74,7 @@ public interface Partitioner<K extends Serializable> {
         break;
       default:
         throw new UnsupportedPartitionerException(
-          new Throwable("Partitioner " + partitionerType.toString() + " is not supported."));
+          new Throwable("Partitioner " + type.toString() + " is not supported."));
     }
     return partitioner;
   }

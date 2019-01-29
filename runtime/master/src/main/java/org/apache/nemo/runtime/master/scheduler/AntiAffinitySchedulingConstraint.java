@@ -32,7 +32,7 @@ import java.util.HashSet;
 import java.util.Optional;
 
 /**
- * This policy aims to distribute partitions with skewed keys to different executors.
+ * Check if one of the tasks running on the executor, and the task to schedule are both in the anti-affinity group.
  */
 @ThreadSafe
 @DriverSide
@@ -45,7 +45,6 @@ public final class AntiAffinitySchedulingConstraint implements SchedulingConstra
 
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    // Check if this executor had already received heavy tasks
     for (final Task runningTask : executor.getRunningTasks()) {
       if (isInAntiAffinityGroup(runningTask) && isInAntiAffinityGroup(task)) {
         return false;

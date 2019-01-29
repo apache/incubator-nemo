@@ -228,7 +228,7 @@ public final class TaskExecutor {
       if (irVertex instanceof OperatorVertex
         && ((OperatorVertex) irVertex).getTransform() instanceof MessageAggregatorTransform) {
         outputCollector = new RunTimeMessageOutputCollector(
-          irVertex, persistentConnectionToMasterMap, this);
+          taskId, irVertex, persistentConnectionToMasterMap, this);
       } else {
         outputCollector = new OperatorVertexOutputCollector(
           irVertex, internalMainOutputs, internalAdditionalOutputMap,

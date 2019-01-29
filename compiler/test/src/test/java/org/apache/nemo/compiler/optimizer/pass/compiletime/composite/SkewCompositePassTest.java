@@ -102,7 +102,7 @@ public class SkewCompositePassTest {
           reducerV.forEach(rV -> {
             if (rV instanceof OperatorVertex &&
               !(((OperatorVertex) rV).getTransform() instanceof MessageAggregatorTransform)) {
-              assertTrue(rV.getPropertyValue(ResourceAntiAffinityProperty.class).get());
+              assertTrue(rV.getPropertyValue(ResourceAntiAffinityProperty.class).isPresent());
             }
           });
       });

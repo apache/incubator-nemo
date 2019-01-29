@@ -18,73 +18,34 @@
  */
 package org.apache.nemo.common;
 
-import java.util.Arrays;
+import java.io.Serializable;
 
 /**
- * Descriptor for hash range.
+ * Represents the key range of data partitions within a block.
+ * @param <K> the type of key to assign for each partition.
  */
-public final class KeyRange {
-  private static final KeyRange ALL = new KeyRange(0, Integer.MAX_VALUE);
-  private final int rangeBeginInclusive;
-  private final int rangeEndExclusive;
+public interface KeyRange<K extends Serializable> extends Serializable {
 
   /**
-   * Private constructor.
-   * @param rangeBeginInclusive point at which the hash range starts (inclusive).
-   * @param rangeEndExclusive point at which the hash range ends (exclusive).
+   * @return whether this instance represents the entire range or not.
    */
-  private KeyRange(final int rangeBeginInclusive, final int rangeEndExclusive) {
-    if (rangeBeginInclusive < 0 || rangeEndExclusive < 0) {
-      throw new RuntimeException("Each boundary value of the range have to be non-negative.");
-    }
-    this.rangeBeginInclusive = rangeBeginInclusive;
-    this.rangeEndExclusive = rangeEndExclusive;
-  }
-
-  /**
-   * @return Gets a hash range descriptor representing the whole data from a partition.
-   */
-  public static KeyRange all() {
-    return ALL;
-  }
-
-  /**
-   * @param rangeStartInclusive the start of the range (inclusive)
-   * @param rangeEndExclusive   the end of the range (exclusive)
-   * @return A hash range descriptor representing [{@code rangeBeginInclusive}, {@code rangeEndExclusive})
-   */
-  public static KeyRange of(final int rangeStartInclusive, final int rangeEndExclusive) {
-    return new KeyRange(rangeStartInclusive, rangeEndExclusive);
-  }
-
-  /**
-   * @return whether this hash range descriptor represents the whole data or not.
-   */
-  public boolean isAll() {
-    return this.equals(ALL);
-  }
+  boolean isAll();
 
   /**
    * @return the beginning of this range (inclusive).
    */
-  public Integer rangeBeginInclusive() {
-    return rangeBeginInclusive;
-  }
+  K rangeBeginInclusive();
 
   /**
-   * @return the end of the range (exclusive)
+   * @return the end of this range (exclusive).
    */
-  public Integer rangeEndExclusive() {
-    return rangeEndExclusive;
-  }
+  K rangeEndExclusive();
 
   /**
-   * @param i the value to test
-   * @return {@code true} if this hash range includes the specified value, {@code false} otherwise
+   * @param key the value to check
+   * @return {@code true} if this key range includes the specified value, {@code false} otherwise
    */
-  public boolean includes(final Integer i) {
-    return i >= rangeBeginInclusive && i < rangeEndExclusive;
-  }
+  boolean includes(final K key);
 
   /**
    * {@inheritDoc}
@@ -92,31 +53,19 @@ public final class KeyRange {
    * The generic type K should override {@link Object}'s toString() as well.
    */
   @Override
-  public String toString() {
-    return String.format("[%d, %d)", rangeBeginInclusive, rangeEndExclusive());
-  }
-
-  @Override
-  public boolean equals(final Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    final KeyRange keyRange = (KeyRange) o;
-    return rangeBeginInclusive == keyRange.rangeBeginInclusive
-      && rangeEndExclusive == keyRange.rangeEndExclusive;
-  }
+  String toString();
 
   /**
-   * @return the hash value.
+   * {@inheritDoc}
+   * This method should be overridden for KeyRange comparisons.
    */
   @Override
-  public int hashCode() {
-    return Arrays.hashCode(new Object[] {
-        rangeBeginInclusive,
-        rangeEndExclusive,
-    });
-  }
+  boolean equals(final Object o);
+
+  /**
+   * {@inheritDoc}
+   * This method should be overridden for KeyRange comparisons.
+   */
+  @Override
+  int hashCode();
 }

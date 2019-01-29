@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
@@ -96,7 +97,7 @@ public final class BlockInputReader implements InputReader {
     final String blockIdWildcard = generateWildCardBlockId(dstTaskIndex);
     final Optional<DataStoreProperty.Value> dataStoreProperty
       = runtimeEdge.getPropertyValue(DataStoreProperty.class);
-    return blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), KeyRange.all());
+    return blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), HashRange.all());
   }
 
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
@@ -108,7 +109,7 @@ public final class BlockInputReader implements InputReader {
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
       futures.add(blockManagerWorker.readBlock(
-        blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), KeyRange.all()));
+        blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), HashRange.all()));
     }
 
     return futures;

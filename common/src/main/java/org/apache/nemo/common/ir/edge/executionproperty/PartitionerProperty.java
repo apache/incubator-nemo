@@ -25,7 +25,7 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
  * Partitioner ExecutionProperty.
  */
 public final class PartitionerProperty
-  extends EdgeExecutionProperty<Pair<PartitionerProperty.PartitionerType, Integer>> {
+  extends EdgeExecutionProperty<Pair<PartitionerProperty.Type, Integer>> {
   public static final int AUTO_NUMBER_OF_PARTITIONS = 0;
 
   /**
@@ -33,7 +33,7 @@ public final class PartitionerProperty
    *
    * @param value value of the execution property.
    */
-  private PartitionerProperty(final Pair<PartitionerType, Integer> value) {
+  private PartitionerProperty(final Pair<Type, Integer> value) {
     super(value);
   }
 
@@ -42,7 +42,7 @@ public final class PartitionerProperty
    * @param type of the partitioner.
    * @return the property.
    */
-  public static PartitionerProperty of(final PartitionerType type) {
+  public static PartitionerProperty of(final Type type) {
     return PartitionerProperty.of(type, AUTO_NUMBER_OF_PARTITIONS, true);
   }
 
@@ -51,7 +51,7 @@ public final class PartitionerProperty
    * @param numOfPartitions to create.
    * @return the property.
    */
-  public static PartitionerProperty of(final PartitionerType type, final int numOfPartitions) {
+  public static PartitionerProperty of(final Type type, final int numOfPartitions) {
     return PartitionerProperty.of(type, numOfPartitions, false);
   }
 
@@ -61,7 +61,7 @@ public final class PartitionerProperty
    * @param auto if the number of partitions is auto.
    * @return the property.
    */
-  private static PartitionerProperty of(final PartitionerType type, final int numOfPartitions, boolean auto) {
+  private static PartitionerProperty of(final Type type, final int numOfPartitions, boolean auto) {
     if (!auto && numOfPartitions <= 0) {
       throw new IllegalArgumentException(String.valueOf(numOfPartitions));
     }
@@ -71,7 +71,7 @@ public final class PartitionerProperty
   /**
    * Partitioning types.
    */
-  public enum PartitionerType {
+  public enum Type {
     Hash,
     Intact,
     DedicatedKeyPerElement
