@@ -18,16 +18,19 @@
  */
 package org.apache.nemo.runtime.common.plan;
 
-import java.util.Optional;
-
 /**
- * Rewriting the plan.
+ * PhysicalPlan rewriter.
  */
 public interface PlanRewriter {
   /**
-   * @param current physical plan.
-   * @param planRewriteEvent event.
-   * @return the new physical plan, empty if the plan was not updated.
+   * @param stageId
+   * @return
    */
-  Optional<PhysicalPlan> rewrite(final PhysicalPlan current, final PlanRewriteEvent<?> planRewriteEvent);
+  PhysicalPlan rewrite(final String stageId);
+
+  /**
+   * @param stageId
+   * @param data
+   */
+  void accumulate(final String stageId, final Object data);
 }

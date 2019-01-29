@@ -21,21 +21,21 @@ package org.apache.nemo.compiler.optimizer.pass.runtime;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 
+import java.util.Set;
+
 /**
  * @param <T> type of the message value.
  */
 public class Message<T> {
   private final T value;
-  private final MessageBarrierVertex producer;
-  private final IREdge edgeToExamine;
+  private final Set<IREdge> edgesToExamine;
 
-  public Message(final T value, final MessageBarrierVertex producer, final IREdge edgeToExamine) {
-    if (value == null || producer == null || edgeToExamine == null) {
+  public Message(final String messageId, final Set<IREdge> edgesToExamine, final T value) {
+    if (value == null || edgesToExamine == null) {
       throw new IllegalArgumentException();
     }
     this.value = value;
-    this.producer = producer;
-    this.edgeToExamine = edgeToExamine;
+    this.edgesToExamine = edgesToExamine;
   }
 
   public T getMessageValue() {
@@ -43,6 +43,6 @@ public class Message<T> {
   }
 
   public IREdge getExaminedEdge() {
-    return edgeToExamine;
+    return edgesToExamine;
   }
 }

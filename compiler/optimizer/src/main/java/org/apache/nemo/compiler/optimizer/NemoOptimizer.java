@@ -31,6 +31,7 @@ import org.apache.nemo.common.ir.vertex.CachedSourceVertex;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
 import org.apache.nemo.conf.JobConf;
 import org.apache.reef.tang.Injector;
@@ -71,12 +72,6 @@ public final class NemoOptimizer implements Optimizer {
     this.pubSubWrapper = pubSubEventHandlerWrapper;
   }
 
-  /**
-   * Optimize the submitted DAG.
-   *
-   * @param dag the input DAG to optimize.
-   * @return optimized DAG, reshaped or tagged with execution properties.
-   */
   @Override
   public IRDAG optimizeAtCompileTime(final IRDAG dag) {
     final String irDagId = "ir-" + irDagCount++ + "-";
@@ -109,13 +104,6 @@ public final class NemoOptimizer implements Optimizer {
       throw new CompileTimeOptimizationException(e);
     }
 
-    // Register run-time optimization.
-    try {
-      optimizationPolicy.runRunTimeOptimizations(injector, pubSubWrapper);
-    } catch (final Exception e) {
-      throw new DynamicOptimizationException(e);
-    }
-
     // Update cached list.
     // TODO #191: Report the actual state of cached data to optimizer.
     // Now we assume that the optimized dag always run properly.
@@ -132,16 +120,31 @@ public final class NemoOptimizer implements Optimizer {
     return optimizedDAG;
   }
 
+  @Override
+  public IRDAG optimizeAtRunTime(final IRDAG dag, final Message message) {
+    try {
+      final Policy optimizationPolicy = (Policy) Class.forName(optimizationPolicyCanonicalName).newInstance();
+
+      if (optimizationPolicy == null) {
+        throw new CompileTimeOptimizationException("A policy name should be specified.");
+      }
+
+      return optimizationPolicy.runRunTimeOptimizations(injector, pubSubWrapper);
+    } catch (final Exception e) {
+      throw new DynamicOptimizationException(e);
+    }
+  }
+
   /**
    * Handle data caching.
-   * At first, it search the edges having cache ID from the given dag and update them to the given map.
+   * At first, it search the edges having cache ID from the given dag and accumulate them to the given map.
    * Then, if some edge of a submitted dag is annotated as "cached" and the data was produced already,
    * the part of the submitted dag which produces the cached data will be cropped and the last vertex
    * before the cached edge will be replaced with a cached data source vertex.
    * This cached edge will be detected and appended to the original dag in scheduler.
    *
    * @param dag           the dag to handle.
-   * @param cacheIdToEdge the map from cache ID to edge to update.
+   * @param cacheIdToEdge the map from cache ID to edge to accumulate.
    * @return the cropped dag regarding to caching.
    */
   private IRDAG handleCaching(final IRDAG dag, final Map<UUID, IREdge> cacheIdToEdge) {

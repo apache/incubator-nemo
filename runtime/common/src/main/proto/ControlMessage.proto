@@ -130,10 +130,11 @@ message BlockStateChangedMsg {
 }
 
 message RunTimePassMessageMsg {
-    repeated Entry entry = 1;
+    required string runtimeEdgeId = 1;
+    repeated RunTimePassMessageEntry entry = 2;
 }
 
-message Entry {
+message RunTimePassMessageEntry {
     required string key = 1;
     required int64 value = 2;
 }

@@ -99,7 +99,7 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
 
     if (minOutputTimestampOfEmittedWindows != Long.MAX_VALUE
       && currentOutputWatermark < minOutputTimestampOfEmittedWindows) {
-      // update current output watermark and emit to next operators
+      // accumulate current output watermark and emit to next operators
       currentOutputWatermark = minOutputTimestampOfEmittedWindows;
       outputCollector.emitWatermark(new Watermark(currentOutputWatermark));
     }

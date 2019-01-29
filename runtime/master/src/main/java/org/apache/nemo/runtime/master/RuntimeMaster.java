@@ -389,8 +389,8 @@ public final class RuntimeMaster {
         final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
         LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
         throw new RuntimeException(exception);
-      case DataSizeMetric:
-        ((BatchScheduler) scheduler).updateDynOptData(message.getDataSizeMetricMsg().getPartitionSizeList());
+      case RunTimePassMessage:
+        ((BatchScheduler) scheduler).onRunTimePassMessage(message.getDataSizeMetricMsg().getPartitionSizeList());
         break;
       case MetricMessageReceived:
         final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();

@@ -21,7 +21,6 @@ package org.apache.nemo.runtime.master.scheduler;
 import com.google.common.collect.Sets;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
@@ -31,7 +30,6 @@ import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.common.state.BlockState;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.*;
-import org.apache.nemo.runtime.master.RunTimePassMessageHandler;
 import org.apache.nemo.common.exception.*;
 import org.apache.nemo.runtime.common.state.StageState;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -63,7 +61,6 @@ public final class BatchScheduler implements Scheduler {
    * Run-time optimizations.
    */
   private final PlanRewriter planRewriter;
-  private final PubSubEventHandlerWrapper pubSubEventHandlerWrapper;
 
   /**
    * Components related to scheduling the given plan.
@@ -88,17 +85,17 @@ public final class BatchScheduler implements Scheduler {
                          final TaskDispatcher taskDispatcher,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final BlockManagerMaster blockManagerMaster,
-                         final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                          final ExecutorRegistry executorRegistry,
                          final PlanStateManager planStateManager) {
     this.planRewriter = planRewriter;
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.blockManagerMaster = blockManagerMaster;
-    this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
     this.executorRegistry = executorRegistry;
     this.planStateManager = planStateManager;
   }
+
+  ////////////////////////////////////////////////////////////////////// Key methods for plan rewriting.
 
   /**
    * Schedules a given plan.
@@ -131,7 +128,7 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public void updatePlan(final PhysicalPlan newPhysicalPlan) {
-    // update the physical plan in the scheduler.
+    // accumulate the physical plan in the scheduler.
     // NOTE: what's already been executed is not modified in the new physical plan.
     // TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
     updatePlan(newPhysicalPlan, planStateManager.getMaxScheduleAttempt());
@@ -140,7 +137,7 @@ public final class BatchScheduler implements Scheduler {
   /**
    * Update the physical plan in the scheduler.
    *
-   * @param newPhysicalPlan    the new physical plan to update.
+   * @param newPhysicalPlan    the new physical plan to accumulate.
    * @param maxScheduleAttempt the maximum number of task scheduling attempt.
    */
   private void updatePlan(final PhysicalPlan newPhysicalPlan,
@@ -165,6 +162,7 @@ public final class BatchScheduler implements Scheduler {
    * @param newState         the state to change to
    * @param vertexPutOnHold  the ID of vertex that is put on hold. It is null otherwise.
    */
+  @Override
   public void onTaskStateReportFromExecutor(final String executorId,
                                             final String taskId,
                                             final int taskAttemptIndex,
@@ -310,6 +308,10 @@ public final class BatchScheduler implements Scheduler {
   public void terminate() {
     this.taskDispatcher.terminate();
     this.executorRegistry.terminate();
+  }
+
+  public void onRunTimePassMessage(final String stageId, final Object data) {
+    planRewriter.accumulate(stageId, data);
   }
 
   ////////////////////////////////////////////////////////////////////// Key methods for scheduling
@@ -487,15 +489,8 @@ public final class BatchScheduler implements Scheduler {
     }
 
     if (stageComplete) {
-      nemoOptimizer.optimizeAtRunTime()
-
-
-      final RunTimePassMessageHandler runTimePassMessageHandler = runTimePassMessageHandlers.stream()
-        .filter(dataHandler -> dataHandler instanceof SkewRunTimePassMessageHandler)
-        .findFirst().orElseThrow(() -> new RuntimeException("SkewRunTimePassMessageHandler is not registered!"));
-      pubSubEventHandlerWrapper.getPubSubEventHandler()
-        .onNext(new DynamicOptimizationEvent(planStateManager.getPhysicalPlan(), runTimePassMessageHandler.getDynOptData(),
-          taskId, executorId, targetEdges));
+      final Optional<PhysicalPlan> updatedPlan = planRewriter.rewrite(planStateManager.getPhysicalPlan(), );
+      updatedPlan.ifPresent(this::updatePlan);
     }
   }
 

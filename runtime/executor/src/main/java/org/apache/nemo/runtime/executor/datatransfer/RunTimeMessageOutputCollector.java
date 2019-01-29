@@ -38,17 +38,17 @@ import java.util.Map;
  *
  * @param <O> output type.
  */
-public final class DynOptDataOutputCollector<O> implements OutputCollector<O> {
-  private static final Logger LOG = LoggerFactory.getLogger(DynOptDataOutputCollector.class.getName());
+public final class RunTimeMessageOutputCollector<O> implements OutputCollector<O> {
+  private static final Logger LOG = LoggerFactory.getLogger(RunTimeMessageOutputCollector.class.getName());
   private static final String NULL_KEY = "NULL";
 
   private final IRVertex irVertex;
   private final PersistentConnectionToMasterMap connectionToMasterMap;
   private final TaskExecutor taskExecutor;
 
-  public DynOptDataOutputCollector(final IRVertex irVertex,
-                                   final PersistentConnectionToMasterMap connectionToMasterMap,
-                                   final TaskExecutor taskExecutor) {
+  public RunTimeMessageOutputCollector(final IRVertex irVertex,
+                                       final PersistentConnectionToMasterMap connectionToMasterMap,
+                                       final TaskExecutor taskExecutor) {
     this.irVertex = irVertex;
     this.connectionToMasterMap = connectionToMasterMap;
     this.taskExecutor = taskExecutor;
@@ -56,14 +56,14 @@ public final class DynOptDataOutputCollector<O> implements OutputCollector<O> {
 
   @Override
   public void emit(final O output) {
-    final Map<Object, Long> aggregatedDynOptData = (Map<Object, Long>) output;
-    final List<ControlMessage.PartitionSizeEntry> partitionSizeEntries = new ArrayList<>();
-    aggregatedDynOptData.forEach((key, size) ->
-      partitionSizeEntries.add(
-        ControlMessage.PartitionSizeEntry.newBuilder()
+    final Map<Object, Long> aggregatedMessage = (Map<Object, Long>) output;
+    final List<ControlMessage.Entry> entries = new ArrayList<>();
+    aggregatedMessage.forEach((key, size) ->
+      entries.add(
+        ControlMessage.Entry.newBuilder()
           // TODO #325: Add (de)serialization for non-string key types in data metric collection
           .setKey(key == null ? NULL_KEY : String.valueOf(key))
-          .setSize(size)
+          .setValue(size)
           .build())
     );
 
@@ -71,9 +71,9 @@ public final class DynOptDataOutputCollector<O> implements OutputCollector<O> {
       .send(ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
         .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-        .setType(ControlMessage.MessageType.DataSizeMetric)
-        .setDataSizeMetricMsg(ControlMessage.DataSizeMetricMsg.newBuilder()
-          .addAllPartitionSize(partitionSizeEntries)
+        .setType(ControlMessage.MessageType.RunTimePassMessage)
+        .setDataSizeMetricMsg(ControlMessage.RunTimePassMessageMsg.newBuilder()
+          .addAllEntry(entries)
         )
         .build());
 

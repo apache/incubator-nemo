@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.nemo.runtime.executor.datatransfer.DynOptDataOutputCollector;
+import org.apache.nemo.runtime.executor.datatransfer.RunTimeMessageOutputCollector;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -227,7 +227,7 @@ public final class TaskExecutor {
 
       if (irVertex instanceof OperatorVertex
         && ((OperatorVertex) irVertex).getTransform() instanceof MessageAggregatorTransform) {
-        outputCollector = new DynOptDataOutputCollector(
+        outputCollector = new RunTimeMessageOutputCollector(
           irVertex, persistentConnectionToMasterMap, this);
       } else {
         outputCollector = new OperatorVertexOutputCollector(
