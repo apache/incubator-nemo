@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
  * distributed execution behaviors, and at the same time enjoy correctness/reusability/composability properties that
  * the IRDAG abstraction provides.
  */
-public class NemoPlanRewriter implements PlanRewriter {
+public final class NemoPlanRewriter implements PlanRewriter {
   private final NemoOptimizer nemoOptimizer;
   private final NemoBackend nemoBackend;
   private final Map<Integer, Map<Object, Long>> messageIdToAggregatedData;
@@ -98,7 +98,8 @@ public class NemoPlanRewriter implements PlanRewriter {
   public void accumulate(final int messageId, final Object data) {
     messageIdToAggregatedData.putIfAbsent(messageId, new HashMap<>());
     final Map<Object, Long> aggregatedData = messageIdToAggregatedData.get(messageId);
-    final List<ControlMessage.RunTimePassMessageEntry> messageEntries = (List<ControlMessage.RunTimePassMessageEntry>) data;
+    final List<ControlMessage.RunTimePassMessageEntry> messageEntries =
+      (List<ControlMessage.RunTimePassMessageEntry>) data;
     messageEntries.forEach(entry -> {
       final Object key = entry.getKey();
       final long partitionSize = entry.getValue();
