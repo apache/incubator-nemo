@@ -74,8 +74,6 @@ public final class NemoPlanRewriter implements PlanRewriter {
 
   @Override
   public PhysicalPlan rewrite(final PhysicalPlan currentPhysicalPlan, final int messageId) {
-    LOG.info("Rewrite {} ==> {}", messageId, messageIdToAggregatedData);
-
     if (currentIRDAG == null) {
       throw new IllegalStateException();
     }
@@ -116,8 +114,6 @@ public final class NemoPlanRewriter implements PlanRewriter {
 
   @Override
   public void accumulate(final int messageId, final Object data) {
-    LOG.info("Accumulate {} {} ==> {}", messageId, data, messageIdToAggregatedData);
-
     messageIdToAggregatedData.putIfAbsent(messageId, new HashMap<>());
     final Map<Object, Long> aggregatedData = messageIdToAggregatedData.get(messageId);
     final List<ControlMessage.RunTimePassMessageEntry> messageEntries =

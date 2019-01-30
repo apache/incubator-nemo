@@ -49,7 +49,7 @@ public final class StagePartitionerTest {
 
   @Before
   public void setup() throws InjectionException {
-    stagePartitioner = Tang.Factory.getTang().newInjector().getInstance(StagePartitioner.class);
+    stagePartitioner = new StagePartitioner();
     stagePartitioner.addIgnoredPropertyKey(IgnoreSchedulingTempDataReceiverProperty.class);
   }
 

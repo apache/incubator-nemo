@@ -507,8 +507,6 @@ public final class BatchScheduler implements Scheduler {
       targetEdges.addAll(targetEdgesFound);
     }
 
-    LOG.info("Target edges to optimize: {}",
-      targetEdges.stream().map(edge -> edge.getId()).collect(Collectors.toSet()));
     return targetEdges;
   }
 

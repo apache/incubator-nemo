@@ -79,10 +79,17 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
         : partitionerProperty.right(),
       dstParallelism);
 
+    LOG.info("Result of analysis: {}", pair);
+
     // Set the partitionSet property
-    edges.forEach(edge -> edge.setPropertyPermanently(pair.left()));
-    representativeEdge.getDst().setPropertyPermanently(pair.right());
-    irdag.getDescendants(representativeEdge.getDst().getId()).forEach(v -> v.setProperty(pair.right()));
+    edges.forEach(edge -> {
+      // PartitionSet property.
+      edge.setPropertyPermanently(pair.left());
+
+      // ResourceAntiAffinity property.
+      edge.getDst().setPropertyPermanently(pair.right());
+      irdag.getDescendants(edge.getDst().getId()).forEach(v -> v.setProperty(pair.right()));
+    });
 
     // Return the IRDAG.
     return irdag;
@@ -105,8 +112,6 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
                                                                           final HashPartitioner partitioner,
                                                                           final int numOfPartitions,
                                                                           final int dstParallelism) {
-    LOG.info("analyze message: {} / {} / {} / {}", keyToCountMap, partitioner, numOfPartitions, dstParallelism);
-
     final Map<Integer, Long> partitionKeyToPartitionCount = new HashMap<>();
     int lastKey = numOfPartitions - 1;
     // Aggregate the counts per each "partition key" assigned by Partitioner.
