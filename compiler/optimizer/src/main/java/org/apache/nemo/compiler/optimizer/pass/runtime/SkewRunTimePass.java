@@ -59,6 +59,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
   public IRDAG apply(final IRDAG irdag, final Message<Map<Object, Long>> message) {
     // The message was produced to examine this edge.
     final Set<IREdge> edges = message.getExaminedEdges();
+    LOG.info("Examined edges {}", edges.stream().map(e -> e.getId()).collect(Collectors.toList()));
 
     final IREdge representativeEdge = edges.iterator().next();
 
@@ -73,12 +74,15 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
       messageValue,
       (HashPartitioner) Partitioner.getPartitioner(
         representativeEdge.getExecutionProperties(), representativeEdge.getDst().getExecutionProperties()),
-      partitionerProperty.right(),
+      partitionerProperty.right() == PartitionerProperty.AUTO_NUMBER_OF_PARTITIONS
+        ? dstParallelism
+        : partitionerProperty.right(),
       dstParallelism);
 
     // Set the partitionSet property
     edges.forEach(edge -> edge.setPropertyPermanently(pair.left()));
     representativeEdge.getDst().setPropertyPermanently(pair.right());
+    irdag.getDescendants(representativeEdge.getDst().getId()).forEach(v -> v.setProperty(pair.right()));
 
     // Return the IRDAG.
     return irdag;
@@ -101,6 +105,7 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
                                                                           final HashPartitioner partitioner,
                                                                           final int numOfPartitions,
                                                                           final int dstParallelism) {
+    LOG.info("analyze message: {} / {} / {} / {}", keyToCountMap, partitioner, numOfPartitions, dstParallelism);
 
     final Map<Integer, Long> partitionKeyToPartitionCount = new HashMap<>();
     int lastKey = numOfPartitions - 1;

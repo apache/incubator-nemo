@@ -23,10 +23,11 @@ package org.apache.nemo.runtime.common.plan;
  */
 public interface PlanRewriter {
   /**
+   * @param currentPhysicalPlan to rewrite.
    * @param messageId of the rewrite.
    * @return physical plan.
    */
-  PhysicalPlan rewrite(final int messageId);
+  PhysicalPlan rewrite(final PhysicalPlan currentPhysicalPlan, final int messageId);
 
   /**
    * @param messageId of the rewrite.

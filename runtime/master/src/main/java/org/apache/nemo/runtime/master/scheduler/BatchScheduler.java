@@ -155,7 +155,8 @@ public final class BatchScheduler implements Scheduler {
     }
 
     if (stageComplete) {
-      final PhysicalPlan updatedPlan = planRewriter.rewrite(getMessageId(targetEdges));
+      final PhysicalPlan updatedPlan = planRewriter.rewrite(
+        planStateManager.getPhysicalPlan(), getMessageId(targetEdges));
       updatePlan(updatedPlan);
     }
   }

@@ -21,11 +21,17 @@ package org.apache.nemo.compiler.backend.nemo;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
+import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
 import org.apache.nemo.compiler.optimizer.NemoOptimizer;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
+import org.apache.nemo.runtime.common.plan.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -46,6 +52,8 @@ import java.util.stream.Collectors;
  * the IRDAG abstraction provides.
  */
 public final class NemoPlanRewriter implements PlanRewriter {
+  private static final Logger LOG = LoggerFactory.getLogger(NemoPlanRewriter.class.getName());
+
   private final NemoOptimizer nemoOptimizer;
   private final NemoBackend nemoBackend;
   private final Map<Integer, Map<Object, Long>> messageIdToAggregatedData;
@@ -65,7 +73,9 @@ public final class NemoPlanRewriter implements PlanRewriter {
   }
 
   @Override
-  public PhysicalPlan rewrite(final int messageId) {
+  public PhysicalPlan rewrite(final PhysicalPlan currentPhysicalPlan, final int messageId) {
+    LOG.info("Rewrite {} ==> {}", messageId, messageIdToAggregatedData);
+
     if (currentIRDAG == null) {
       throw new IllegalStateException();
     }
@@ -80,22 +90,34 @@ public final class NemoPlanRewriter implements PlanRewriter {
       .stream()
       .flatMap(v -> currentIRDAG.getIncomingEdgesOf(v).stream())
       .filter(e -> e.getPropertyValue(MessageIdProperty.class).isPresent()
-        && e.getPropertyValue(MessageIdProperty.class).get() == messageId)
+        && e.getPropertyValue(MessageIdProperty.class).get() == messageId
+        && !(e.getDst() instanceof MessageAggregatorVertex))
       .collect(Collectors.toSet());
     if (examiningEdges.isEmpty()) {
       throw new IllegalArgumentException(String.valueOf(messageId));
     }
 
-    // Optimize using the Message.
+    // Optimize using the Message
     final Message message = new Message(messageId, examiningEdges, aggregatedData);
     final IRDAG newIRDAG = nemoOptimizer.optimizeAtRunTime(currentIRDAG, message);
 
-    // Re-compile the IRDAG into a physical plan, and return.
-    return nemoBackend.compile(newIRDAG);
+    // Re-compile the IRDAG into a physical plan
+    final PhysicalPlan newPhysicalPlan = nemoBackend.compile(newIRDAG);
+
+    // Update the physical plan and return
+    final List<Stage> currentStages = currentPhysicalPlan.getStageDAG().getTopologicalSort();
+    final List<Stage> newStages = newPhysicalPlan.getStageDAG().getTopologicalSort();
+    for (int i = 0; i < currentStages.size(); i++) {
+      final ExecutionPropertyMap<VertexExecutionProperty> newProperties = newStages.get(i).getExecutionProperties();
+      currentStages.get(i).setExecutionProperties(newProperties);
+    }
+    return currentPhysicalPlan;
   }
 
   @Override
   public void accumulate(final int messageId, final Object data) {
+    LOG.info("Accumulate {} {} ==> {}", messageId, data, messageIdToAggregatedData);
+
     messageIdToAggregatedData.putIfAbsent(messageId, new HashMap<>());
     final Map<Object, Long> aggregatedData = messageIdToAggregatedData.get(messageId);
     final List<ControlMessage.RunTimePassMessageEntry> messageEntries =

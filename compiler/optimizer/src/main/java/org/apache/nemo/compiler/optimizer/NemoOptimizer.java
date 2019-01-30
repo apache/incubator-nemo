@@ -21,7 +21,6 @@ package org.apache.nemo.compiler.optimizer;
 import net.jcip.annotations.NotThreadSafe;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
-import org.apache.nemo.common.exception.DynamicOptimizationException;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CacheIDProperty;
@@ -45,21 +44,30 @@ import java.util.stream.Collectors;
  */
 @NotThreadSafe
 public final class NemoOptimizer implements Optimizer {
-
   private final String dagDirectory;
-  private final String optimizationPolicyCanonicalName;
+  private final Policy optimizationPolicy;
+
   private final Map<UUID, Integer> cacheIdToParallelism = new HashMap<>();
   private int irDagCount = 0;
 
+
   /**
    * @param dagDirectory to store JSON representation of intermediate DAGs.
-   * @param optimizationPolicy the name of the optimization policy.
+   * @param policyName the name of the optimization policy.
    */
   @Inject
   private NemoOptimizer(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
-                        @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy) {
+                        @Parameter(JobConf.OptimizationPolicy.class) final String policyName) {
     this.dagDirectory = dagDirectory;
-    this.optimizationPolicyCanonicalName = optimizationPolicy;
+
+    try {
+      optimizationPolicy = (Policy) Class.forName(policyName).newInstance();
+      if (policyName == null) {
+        throw new CompileTimeOptimizationException("A policy name should be specified.");
+      }
+    } catch (final Exception e) {
+      throw new CompileTimeOptimizationException(e);
+    }
   }
 
   @Override
@@ -68,31 +76,21 @@ public final class NemoOptimizer implements Optimizer {
     dag.storeJSON(dagDirectory, irDagId, "IR before optimization");
 
     final IRDAG optimizedDAG;
-    final Policy optimizationPolicy;
     final Map<UUID, IREdge> cacheIdToEdge = new HashMap<>();
 
-    try {
-      // Handle caching first.
-      final IRDAG cacheFilteredDag = handleCaching(dag, cacheIdToEdge);
-      if (!cacheIdToEdge.isEmpty()) {
-        cacheFilteredDag.storeJSON(dagDirectory, irDagId + "FilterCache",
-          "IR after cache filtering");
-      }
-
-      // Conduct compile-time optimization.
-      optimizationPolicy = (Policy) Class.forName(optimizationPolicyCanonicalName).newInstance();
-
-      if (optimizationPolicy == null) {
-        throw new CompileTimeOptimizationException("A policy name should be specified.");
-      }
-
-      optimizedDAG = optimizationPolicy.runCompileTimeOptimization(cacheFilteredDag, dagDirectory);
-      optimizedDAG
-        .storeJSON(dagDirectory, irDagId + optimizationPolicy.getClass().getSimpleName(),
-        "IR optimized for " + optimizationPolicy.getClass().getSimpleName());
-    } catch (final Exception e) {
-      throw new CompileTimeOptimizationException(e);
+    // Handle caching first.
+    final IRDAG cacheFilteredDag = handleCaching(dag, cacheIdToEdge);
+    if (!cacheIdToEdge.isEmpty()) {
+      cacheFilteredDag.storeJSON(dagDirectory, irDagId + "FilterCache",
+        "IR after cache filtering");
     }
+
+    // Conduct compile-time optimization.
+
+    optimizedDAG = optimizationPolicy.runCompileTimeOptimization(cacheFilteredDag, dagDirectory);
+    optimizedDAG
+      .storeJSON(dagDirectory, irDagId + optimizationPolicy.getClass().getSimpleName(),
+        "IR optimized for " + optimizationPolicy.getClass().getSimpleName());
 
     // Update cached list.
     // TODO #191: Report the actual state of cached data to optimizer.
@@ -112,15 +110,7 @@ public final class NemoOptimizer implements Optimizer {
 
   @Override
   public IRDAG optimizeAtRunTime(final IRDAG dag, final Message message) {
-    try {
-      final Policy optimizationPolicy = (Policy) Class.forName(optimizationPolicyCanonicalName).newInstance();
-      if (optimizationPolicy == null) {
-        throw new CompileTimeOptimizationException("A policy name should be specified.");
-      }
-      return optimizationPolicy.runRunTimeOptimizations(dag, message);
-    } catch (final Exception e) {
-      throw new DynamicOptimizationException(e);
-    }
+    return optimizationPolicy.runRunTimeOptimizations(dag, message);
   }
 
   /**
