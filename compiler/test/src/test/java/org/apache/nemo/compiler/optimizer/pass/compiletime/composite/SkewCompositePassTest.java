@@ -49,7 +49,6 @@ import static org.junit.Assert.assertTrue;
 @PrepareForTest(JobLauncher.class)
 public class SkewCompositePassTest {
   private IRDAG mrDAG;
-  private static final long NUM_OF_PASSES_IN_DATA_SKEW_PASS = 3;
 
   @Before
   public void setUp() throws Exception {
@@ -61,8 +60,6 @@ public class SkewCompositePassTest {
   @Test
   public void testCompositePass() {
     final CompositePass dataSkewPass = new SkewCompositePass();
-    assertEquals(NUM_OF_PASSES_IN_DATA_SKEW_PASS, dataSkewPass.getPassList().size());
-
     final Set<Class<? extends ExecutionProperty>> prerequisites = new HashSet<>();
     dataSkewPass.getPassList().forEach(compileTimePass ->
         prerequisites.addAll(compileTimePass.getPrerequisiteExecutionProperties()));

@@ -26,6 +26,7 @@ import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.common.state.BlockState;
 import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.common.state.TaskState;
@@ -237,12 +238,14 @@ public final class TaskRetryTest {
   private void runPhysicalPlan(final TestPlanGenerator.PlanType planType,
                                final Injector injector) throws Exception {
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
+    final PlanRewriter planRewriter = mock(PlanRewriter.class);
     final PhysicalPlan plan = TestPlanGenerator.generatePhysicalPlan(planType, false);
 
     // Get scheduler
     injector.bindVolatileInstance(MetricMessageHandler.class, metricMessageHandler);
     injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
     injector.bindVolatileInstance(SchedulingConstraintRegistry.class, mock(SchedulingConstraintRegistry.class));
+    injector.bindVolatileInstance(PlanRewriter.class, planRewriter);
     planStateManager = injector.getInstance(PlanStateManager.class);
     scheduler = injector.getInstance(BatchScheduler.class);
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);

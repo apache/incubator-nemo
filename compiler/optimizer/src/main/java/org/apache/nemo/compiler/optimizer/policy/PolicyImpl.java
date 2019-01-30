@@ -178,8 +178,8 @@ public final class PolicyImpl implements Policy {
   }
 
   @Override
-  public IRDAG runRunTimeOptimizations(final IRDAG irdag, final Message<?> message) {
-    // TODO: apply the passes.
-    return null;
+  public IRDAG runRunTimeOptimizations(final IRDAG irdag, final Message message) {
+    runTimePasses.forEach(p -> p.apply(irdag, message));
+    return irdag;
   }
 }

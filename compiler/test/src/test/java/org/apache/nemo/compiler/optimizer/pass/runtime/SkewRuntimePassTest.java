@@ -37,6 +37,8 @@ import static org.junit.Assert.assertEquals;
  */
 public class SkewRuntimePassTest {
   private final Map<Object, Long> testMetricData = new HashMap<>();
+  private final static int DST_PARALLELISM = 2;
+  private final static int NUM_PARTITIONS = 10;
 
   @Before
   public void setUp() {
@@ -44,6 +46,7 @@ public class SkewRuntimePassTest {
     buildPartitionSizeList(Arrays.asList(5L, 5L, 10L, 50L, 110L, 5L, 5L, 10L, 50L, 100L));
     buildPartitionSizeList(Arrays.asList(5L, 10L, 5L, 0L, 0L, 5L, 10L, 5L, 0L, 0L));
     buildPartitionSizeList(Arrays.asList(10L, 5L, 5L, 0L, 0L, 10L, 5L, 5L, 0L, 0L));
+    // Ideal distribution = Dst1-Total220[20, 20, 20, 50, 110], Dst2-Total210[20, 20, 20, 50, 100]
   }
 
   /**
@@ -52,12 +55,11 @@ public class SkewRuntimePassTest {
    */
   @Test
   public void testDataSkewDynamicOptimizationPass() {
-    final Integer taskNum = 2;
     final KeyExtractor asIsExtractor = new AsIsKeyExtractor();
-    final HashPartitioner partitioner = new HashPartitioner(taskNum, asIsExtractor);
+    final HashPartitioner partitioner = new HashPartitioner(NUM_PARTITIONS, asIsExtractor);
 
-    final Pair<PartitionSetProperty, ResourceAntiAffinityProperty> resultPair =
-      new SkewRunTimePass(1).analyzeMessage(testMetricData, partitioner, taskNum, taskNum);
+    final Pair<PartitionSetProperty, ResourceAntiAffinityProperty> resultPair = new SkewRunTimePass(1)
+      .analyzeMessage(testMetricData, partitioner, NUM_PARTITIONS, DST_PARALLELISM);
     final List<KeyRange> keyRanges = resultPair.left().getValue();
     final HashSet<Integer> antiAfiinityGroup = resultPair.right().getValue();
 

@@ -23,16 +23,13 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProper
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageSender;
-import org.apache.nemo.runtime.common.plan.PhysicalPlan;
-import org.apache.nemo.runtime.common.plan.Stage;
-import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.MetricMessageHandler;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -74,6 +71,8 @@ public final class BatchSchedulerTest {
   @Before
   public void setUp() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
+    final PlanRewriter planRewriter = mock(PlanRewriter.class);
+    injector.bindVolatileInstance(PlanRewriter.class, planRewriter);
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
 
     executorRegistry = injector.getInstance(ExecutorRegistry.class);

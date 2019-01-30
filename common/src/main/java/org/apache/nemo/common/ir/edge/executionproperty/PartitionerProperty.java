@@ -61,7 +61,7 @@ public final class PartitionerProperty
    * @param auto if the number of partitions is auto.
    * @return the property.
    */
-  private static PartitionerProperty of(final Type type, final int numOfPartitions, boolean auto) {
+  private static PartitionerProperty of(final Type type, final int numOfPartitions, final boolean auto) {
     if (!auto && numOfPartitions <= 0) {
       throw new IllegalArgumentException(String.valueOf(numOfPartitions));
     }

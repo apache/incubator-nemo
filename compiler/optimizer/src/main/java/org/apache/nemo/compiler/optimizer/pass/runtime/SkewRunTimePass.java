@@ -45,14 +45,14 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
   private static final Logger LOG = LoggerFactory.getLogger(SkewRunTimePass.class.getName());
   private static final int DEFAULT_NUM_SKEWED_TASKS = 1;
 
-  private final int numSkewedTasks;
+  private final int numSkewedKeys;
 
   public SkewRunTimePass() {
     this(DEFAULT_NUM_SKEWED_TASKS);
   }
 
   public SkewRunTimePass(final int numOfSkewedKeys) {
-    this.numSkewedTasks = numOfSkewedKeys;
+    this.numSkewedKeys = numOfSkewedKeys;
   }
 
   @Override
@@ -119,7 +119,8 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
     }
 
     // Identify skewed sizes, which is top numSkewedKeys number of keys.
-    final List<Long> skewedSizes = identifySkewedKeys(partitionSizeList);
+    final List<Long> topNSizes = getTopNLargeKeySizes(partitionSizeList);
+    LOG.info("Top {} sizes: {}", numSkewedKeys, topNSizes);
 
     // Calculate the ideal size for each destination task.
     final Long totalSize = partitionSizeList.stream().mapToLong(n -> n).sum(); // get total size
@@ -132,10 +133,10 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
     final ArrayList<KeyRange> keyRanges = new ArrayList<>();
 
     final HashSet<Integer> skewedTaskIndices = new HashSet<>();
-    for (int i = 1; i <= dstParallelism; i++) {
-      if (i != dstParallelism) {
+    for (int dstTaskIndex = 0; dstTaskIndex < dstParallelism; dstTaskIndex++) {
+      if (dstTaskIndex < (dstParallelism - 1)) {
         // Ideal accumulated partition size for this task.
-        final Long idealAccumulatedSize = idealSizePerTask * i;
+        final Long idealAccumulatedSize = idealSizePerTask * (dstTaskIndex + 1);
         // By adding partition sizes, find the accumulated size nearest to the given ideal size.
         while (currentAccumulatedSize < idealAccumulatedSize) {
           currentAccumulatedSize += partitionSizeList.get(finishingKey);
@@ -152,14 +153,22 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
           currentAccumulatedSize -= partitionSizeList.get(finishingKey);
         }
 
-        keyRanges.add(i - 1, HashRange.of(startingKey, finishingKey));
+        boolean isSkewedKey = containsSkewedSize(partitionSizeList, topNSizes, startingKey, finishingKey);
+        if (isSkewedKey) {
+          skewedTaskIndices.add(dstTaskIndex);
+        }
+        keyRanges.add(dstTaskIndex, HashRange.of(startingKey, finishingKey));
         LOG.debug("KeyRange {}~{}, Size {}", startingKey, finishingKey - 1,
           currentAccumulatedSize - prevAccumulatedSize);
 
         prevAccumulatedSize = currentAccumulatedSize;
         startingKey = finishingKey;
       } else { // last one: we put the range of the rest.
-        keyRanges.add(i - 1, HashRange.of(startingKey, lastKey + 1));
+        boolean isSkewedKey = containsSkewedSize(partitionSizeList, topNSizes, startingKey, finishingKey);
+        if (isSkewedKey) {
+          skewedTaskIndices.add(dstTaskIndex);
+        }
+        keyRanges.add(dstTaskIndex, HashRange.of(startingKey, lastKey + 1));
 
         while (finishingKey <= lastKey) {
           currentAccumulatedSize += partitionSizeList.get(finishingKey);
@@ -169,34 +178,24 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
           currentAccumulatedSize - prevAccumulatedSize);
       }
 
-      boolean isSkewedKey = containsSkewedSize(partitionSizeList, skewedSizes, startingKey, finishingKey);
-      if (isSkewedKey) {
-        skewedTaskIndices.add(i - 1);
-      }
     }
 
     return Pair.of(PartitionSetProperty.of(keyRanges), ResourceAntiAffinityProperty.of(skewedTaskIndices));
   }
 
-  public List<Long> identifySkewedKeys(final List<Long> partitionSizeList) {
-    // Identify skewed keys.
-    List<Long> sortedMetricData = partitionSizeList.stream()
-      .sorted(Comparator.reverseOrder())
-      .collect(Collectors.toList());
-    List<Long> skewedSizes = new ArrayList<>();
-    for (int i = 0; i < numSkewedTasks; i++) {
-      skewedSizes.add(sortedMetricData.get(i));
-      LOG.info("Skewed size: {}", sortedMetricData.get(i));
-    }
 
-    return skewedSizes;
+  private List<Long> getTopNLargeKeySizes(final List<Long> partitionSizeList) {
+    return partitionSizeList.stream()
+      .sorted(Comparator.reverseOrder())
+      .limit(numSkewedKeys)
+      .collect(Collectors.toList());
   }
 
   private boolean containsSkewedSize(final List<Long> partitionSizeList,
-                                     final List<Long> skewedKeys,
+                                     final List<Long> topNSizes,
                                      final int startingKey, final int finishingKey) {
     for (int i = startingKey; i < finishingKey; i++) {
-      if (skewedKeys.contains(partitionSizeList.get(i))) {
+      if (topNSizes.contains(partitionSizeList.get(i))) {
         return true;
       }
     }

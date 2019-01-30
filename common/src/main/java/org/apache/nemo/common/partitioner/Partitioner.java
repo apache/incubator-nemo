@@ -66,9 +66,9 @@ public interface Partitioner<K extends Serializable> {
       case Hash:
         final int numOfPartitions = edgeProperties.get(PartitionerProperty.class).get().right();
         // If AUTO, use the number of destination parallelism to minimize the number of partitions
-        final int actualNumOfPartitions = numOfPartitions == PartitionerProperty.AUTO_NUMBER_OF_PARTITIONS
-          ? numOfPartitions
-          : dstProperties.get(MinParallelismProperty.class).get();
+        final int actualNumOfPartitions = (numOfPartitions == PartitionerProperty.AUTO_NUMBER_OF_PARTITIONS)
+          ? dstProperties.get(MinParallelismProperty.class).get()
+          : numOfPartitions;
         final KeyExtractor keyExtractor = edgeProperties.get(KeyExtractorProperty.class).get();
         partitioner = new HashPartitioner(actualNumOfPartitions, keyExtractor);
         break;

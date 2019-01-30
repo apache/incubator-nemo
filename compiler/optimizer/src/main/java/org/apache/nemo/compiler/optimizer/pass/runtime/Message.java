@@ -25,7 +25,7 @@ import java.util.Set;
 /**
  * @param <T> type of the message value.
  */
-public class Message<T> {
+public final class Message<T> {
   private final int messageId;
   private final T value;
   private final Set<IREdge> edgesToExamine;

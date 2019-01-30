@@ -185,7 +185,8 @@ public final class NemoOptimizer implements Optimizer {
         if (cacheId.isPresent() && cacheIdToParallelism.get(cacheId.get()) != null) { // Cached already.
           // Replace the vertex emitting cached edge with a cached source vertex.
           final IRVertex cachedDataRelayVertex = new CachedSourceVertex(cacheIdToParallelism.get(cacheId.get()));
-          cachedDataRelayVertex.setPropertyPermanently(MinParallelismProperty.of(cacheIdToParallelism.get(cacheId.get())));
+          cachedDataRelayVertex.setPropertyPermanently(
+            MinParallelismProperty.of(cacheIdToParallelism.get(cacheId.get())));
 
           builder.addVertex(cachedDataRelayVertex);
           final IREdge newEdge = new IREdge(
