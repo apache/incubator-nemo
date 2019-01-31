@@ -94,6 +94,8 @@ public final class RuntimeMaster {
   private final PlanStateManager planStateManager;
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
+  private final String userMainClass;
+  private final String jobId;
   private final String dagDirectory;
   private final Set<IRVertex> irVertices;
   private final AtomicInteger resourceRequestCount;
@@ -110,6 +112,8 @@ public final class RuntimeMaster {
                         final ClientRPC clientRPC,
                         final MetricManagerMaster metricManagerMaster,
                         final PlanStateManager planStateManager,
+                        @Parameter(JobConf.UserMainClass.class) final String userMainClass,
+                        @Parameter(JobConf.JobId.class) final String jobId,
                         @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
@@ -135,6 +139,8 @@ public final class RuntimeMaster {
         .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.clientRPC = clientRPC;
     this.metricManagerMaster = metricManagerMaster;
+    this.userMainClass = userMainClass;
+    this.jobId = jobId;
     this.dagDirectory = dagDirectory;
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
@@ -144,6 +150,10 @@ public final class RuntimeMaster {
     this.planStateManager = planStateManager;
   }
 
+  /**
+   * Start Metric Server.
+   * @return the metric server.
+   */
   private Server startRestMetricServer() {
     final Server server = new Server(REST_SERVER_PORT);
 
@@ -163,6 +173,16 @@ public final class RuntimeMaster {
     }
 
     return server;
+  }
+
+  /**
+   * Flush metrics.
+   */
+  public void flushMetrics() {
+    // send metric flush request to all executors
+    metricManagerMaster.sendMetricFlushRequest();
+
+    metricStore.dumpAllMetricToFile(Paths.get(dagDirectory, userMainClass + "_" + jobId + "_metric.json").toString());
   }
 
   /**
@@ -199,8 +219,6 @@ public final class RuntimeMaster {
     // No need to speculate anymore
     speculativeTaskCloningThread.shutdown();
 
-    // send metric flush request to all executors
-    metricManagerMaster.sendMetricFlushRequest();
     try {
       // wait for metric flush
       if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
@@ -227,8 +245,6 @@ public final class RuntimeMaster {
       } catch (final Exception e) {
         throw new RuntimeException("Failed to stop rest api server.");
       }
-
-      metricStore.dumpAllMetricToFile(Paths.get(dagDirectory, "metric.json").toString());
     });
 
     // Do not shutdown runtimeMasterThread. We need it to clean things up.

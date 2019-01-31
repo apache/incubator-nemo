@@ -143,6 +143,8 @@ public final class DataTransferTest {
     injector.bindVolatileInstance(MetricManagerMaster.class, mock(MetricManagerMaster.class));
     injector.bindVolatileInstance(MetricMessageHandler.class, mock(MetricMessageHandler.class));
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, EMPTY_DAG_DIRECTORY);
+    injector.bindVolatileParameter(JobConf.UserMainClass.class, "user_main");
+    injector.bindVolatileParameter(JobConf.JobId.class, "jobId");
 
     // Necessary for wiring up the message environments
     injector.bindVolatileInstance(Scheduler.class, injector.getInstance(BatchScheduler.class));
