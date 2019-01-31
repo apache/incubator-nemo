@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
  * @param <V> the vertex type
  * @param <E> the edge type
  */
-public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGQueryInterface<V, E> {
+public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterface<V, E> {
   private static final Logger LOG = LoggerFactory.getLogger(DAG.class.getName());
 
   private final List<V> vertices;
