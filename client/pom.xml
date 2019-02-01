@@ -38,7 +38,7 @@ under the License.
         </dependency>
         <dependency>
             <groupId>org.apache.nemo</groupId>
-            <artifactId>nemo-runtime-common</artifactId>
+            <artifactId>nemo-driver</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

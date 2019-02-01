@@ -50,6 +50,11 @@ under the License.
 
       <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk -->
       <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk</artifactId>
+        <version>1.11.429</version>
+      </dependency>
+      <dependency>
         <groupId>org.apache.beam</groupId>
         <artifactId>beam-runners-core-java</artifactId>
         <version>${beam.version}</version>
