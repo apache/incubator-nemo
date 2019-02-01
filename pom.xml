@@ -76,6 +76,7 @@ under the License.
         <module>compiler</module>
         <module>examples</module>
         <module>runtime</module>
+      <module>offloading</module>
     </modules>
 
     <dependencies>
