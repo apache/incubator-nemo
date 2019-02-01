@@ -18,21 +18,21 @@
  */
 package org.apache.nemo.compiler.optimizer;
 
-import org.apache.nemo.common.dag.DAG;
+import net.jcip.annotations.NotThreadSafe;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.exception.DynamicOptimizationException;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.CachedSourceVertex;
 import org.apache.nemo.common.ir.edge.executionproperty.CacheIDProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.vertex.CachedSourceVertex;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
 import org.apache.nemo.conf.JobConf;
-import net.jcip.annotations.NotThreadSafe;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -78,20 +78,20 @@ public final class NemoOptimizer implements Optimizer {
    * @return optimized DAG, reshaped or tagged with execution properties.
    */
   @Override
-  public DAG<IRVertex, IREdge> optimizeDag(final DAG<IRVertex, IREdge> dag) {
+  public IRDAG optimizeDag(final IRDAG dag) {
     final String irDagId = "ir-" + irDagCount++ + "-";
     dag.storeJSON(dagDirectory, irDagId, "IR before optimization");
 
-    final DAG<IRVertex, IREdge> optimizedDAG;
+    final IRDAG optimizedDAG;
     final Policy optimizationPolicy;
     final Map<UUID, IREdge> cacheIdToEdge = new HashMap<>();
 
     try {
       // Handle caching first.
-      final DAG<IRVertex, IREdge> cacheFilteredDag = handleCaching(dag, cacheIdToEdge);
+      final IRDAG cacheFilteredDag = handleCaching(dag, cacheIdToEdge);
       if (!cacheIdToEdge.isEmpty()) {
         cacheFilteredDag.storeJSON(dagDirectory, irDagId + "FilterCache",
-            "IR after cache filtering");
+          "IR after cache filtering");
       }
 
       // Conduct compile-time optimization.
@@ -102,8 +102,9 @@ public final class NemoOptimizer implements Optimizer {
       }
 
       optimizedDAG = optimizationPolicy.runCompileTimeOptimization(cacheFilteredDag, dagDirectory);
-      optimizedDAG.storeJSON(dagDirectory, irDagId + optimizationPolicy.getClass().getSimpleName(),
-          "IR optimized for " + optimizationPolicy.getClass().getSimpleName());
+      optimizedDAG
+        .storeJSON(dagDirectory, irDagId + optimizationPolicy.getClass().getSimpleName(),
+        "IR optimized for " + optimizationPolicy.getClass().getSimpleName());
     } catch (final Exception e) {
       throw new CompileTimeOptimizationException(e);
     }
@@ -121,8 +122,9 @@ public final class NemoOptimizer implements Optimizer {
     cacheIdToEdge.forEach((cacheId, edge) -> {
       if (!cacheIdToParallelism.containsKey(cacheId)) {
         cacheIdToParallelism.put(
-            cacheId, optimizedDAG.getVertexById(edge.getDst().getId()).getPropertyValue(ParallelismProperty.class)
-                .orElseThrow(() -> new RuntimeException("No parallelism on an IR vertex.")));
+          cacheId, optimizedDAG
+            .getVertexById(edge.getDst().getId()).getPropertyValue(ParallelismProperty.class)
+            .orElseThrow(() -> new RuntimeException("No parallelism on an IR vertex.")));
       }
     });
 
@@ -142,26 +144,25 @@ public final class NemoOptimizer implements Optimizer {
    * @param cacheIdToEdge the map from cache ID to edge to update.
    * @return the cropped dag regarding to caching.
    */
-  private DAG<IRVertex, IREdge> handleCaching(final DAG<IRVertex, IREdge> dag,
-                                              final Map<UUID, IREdge> cacheIdToEdge) {
+  private IRDAG handleCaching(final IRDAG dag, final Map<UUID, IREdge> cacheIdToEdge) {
     dag.topologicalDo(irVertex ->
-        dag.getIncomingEdgesOf(irVertex).forEach(
-            edge -> edge.getPropertyValue(CacheIDProperty.class).
-                ifPresent(cacheId -> cacheIdToEdge.put(cacheId, edge))
-        ));
+      dag.getIncomingEdgesOf(irVertex).forEach(
+        edge -> edge.getPropertyValue(CacheIDProperty.class).
+          ifPresent(cacheId -> cacheIdToEdge.put(cacheId, edge))
+      ));
 
     if (cacheIdToEdge.isEmpty()) {
       return dag;
     } else {
       final DAGBuilder<IRVertex, IREdge> filteredDagBuilder = new DAGBuilder<>();
       final List<IRVertex> sinkVertices = dag.getVertices().stream()
-          .filter(irVertex -> dag.getOutgoingEdgesOf(irVertex).isEmpty())
-          .collect(Collectors.toList());
+        .filter(irVertex -> dag.getOutgoingEdgesOf(irVertex).isEmpty())
+        .collect(Collectors.toList());
       sinkVertices.forEach(filteredDagBuilder::addVertex); // Sink vertex cannot be cached already.
 
       sinkVertices.forEach(sinkVtx -> addNonCachedVerticesAndEdges(dag, sinkVtx, filteredDagBuilder));
 
-      return filteredDagBuilder.buildWithoutSourceCheck();
+      return new IRDAG(filteredDagBuilder.buildWithoutSourceCheck());
     }
   }
 
@@ -172,45 +173,45 @@ public final class NemoOptimizer implements Optimizer {
    * @param irVertex the ir vertex to consider to add.
    * @param builder  the filtered dag builder.
    */
-  private void addNonCachedVerticesAndEdges(final DAG<IRVertex, IREdge> dag,
+  private void addNonCachedVerticesAndEdges(final IRDAG dag,
                                             final IRVertex irVertex,
                                             final DAGBuilder<IRVertex, IREdge> builder) {
     if (irVertex.getPropertyValue(IgnoreSchedulingTempDataReceiverProperty.class).orElse(false)
-        && dag.getIncomingEdgesOf(irVertex).stream()
-        .filter(irEdge -> irEdge.getPropertyValue(CacheIDProperty.class).isPresent())
-        .anyMatch(irEdge -> cacheIdToParallelism
-            .containsKey(irEdge.getPropertyValue(CacheIDProperty.class).get()))) {
+      && dag.getIncomingEdgesOf(irVertex).stream()
+      .filter(irEdge -> irEdge.getPropertyValue(CacheIDProperty.class).isPresent())
+      .anyMatch(irEdge -> cacheIdToParallelism
+        .containsKey(irEdge.getPropertyValue(CacheIDProperty.class).get()))) {
       builder.removeVertex(irVertex); // Ignore ghost vertex which was cached once.
       return;
     }
 
     dag.getIncomingEdgesOf(irVertex).stream()
-        .forEach(edge -> {
-      final Optional<UUID> cacheId = dag.getOutgoingEdgesOf(edge.getSrc()).stream()
+      .forEach(edge -> {
+        final Optional<UUID> cacheId = dag.getOutgoingEdgesOf(edge.getSrc()).stream()
           .filter(edgeToFilter -> edgeToFilter.getPropertyValue(CacheIDProperty.class).isPresent())
           .map(edgeToMap -> edgeToMap.getPropertyValue(CacheIDProperty.class).get())
           .findFirst();
-      if (cacheId.isPresent() && cacheIdToParallelism.get(cacheId.get()) != null) { // Cached already.
-        // Replace the vertex emitting cached edge with a cached source vertex.
-        final IRVertex cachedDataRelayVertex = new CachedSourceVertex(cacheIdToParallelism.get(cacheId.get()));
-        cachedDataRelayVertex.setPropertyPermanently(ParallelismProperty.of(cacheIdToParallelism.get(cacheId.get())));
+        if (cacheId.isPresent() && cacheIdToParallelism.get(cacheId.get()) != null) { // Cached already.
+          // Replace the vertex emitting cached edge with a cached source vertex.
+          final IRVertex cachedDataRelayVertex = new CachedSourceVertex(cacheIdToParallelism.get(cacheId.get()));
+          cachedDataRelayVertex.setPropertyPermanently(ParallelismProperty.of(cacheIdToParallelism.get(cacheId.get())));
 
-        builder.addVertex(cachedDataRelayVertex);
-        final IREdge newEdge = new IREdge(
+          builder.addVertex(cachedDataRelayVertex);
+          final IREdge newEdge = new IREdge(
             edge.getPropertyValue(CommunicationPatternProperty.class)
-                .orElseThrow(() -> new RuntimeException("No communication pattern on an ir edge")),
+              .orElseThrow(() -> new RuntimeException("No communication pattern on an ir edge")),
             cachedDataRelayVertex,
             irVertex);
-        edge.copyExecutionPropertiesTo(newEdge);
-        newEdge.setProperty(CacheIDProperty.of(cacheId.get()));
-        builder.connectVertices(newEdge);
-        // Stop the recursion for this vertex.
-      } else {
-        final IRVertex srcVtx = edge.getSrc();
-        builder.addVertex(srcVtx);
-        builder.connectVertices(edge);
-        addNonCachedVerticesAndEdges(dag, srcVtx, builder);
-      }
-    });
+          edge.copyExecutionPropertiesTo(newEdge);
+          newEdge.setProperty(CacheIDProperty.of(cacheId.get()));
+          builder.connectVertices(newEdge);
+          // Stop the recursion for this vertex.
+        } else {
+          final IRVertex srcVtx = edge.getSrc();
+          builder.addVertex(srcVtx);
+          builder.connectVertices(edge);
+          addNonCachedVerticesAndEdges(dag, srcVtx, builder);
+        }
+      });
   }
 }

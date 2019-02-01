@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.Serializable;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -41,7 +40,7 @@ import java.util.stream.Collectors;
  * @param <V> the vertex type
  * @param <E> the edge type
  */
-public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializable {
+public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterface<V, E> {
   private static final Logger LOG = LoggerFactory.getLogger(DAG.class.getName());
 
   private final List<V> vertices;
@@ -88,12 +87,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
     loopStackDepthMap.forEach(((v, integer) -> this.loopStackDepthMap.put(v.getId(), integer)));
   }
 
-  /**
-   * Retrieves the vertex given its ID.
-   * @param id of the vertex to retrieve
-   * @return the vertex
-   * @throws IllegalVertexOperationException when the requested vertex does not exist.
-   */
+  @Override
   public V getVertexById(final String id) {
     for (final V vertex : vertices) {
       if (vertex.getId().equals(id)) {
@@ -103,88 +97,47 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
     throw new IllegalVertexOperationException("There is no vertex of id: " + id);
   }
 
-  /**
-   * Retrieves the vertices of this DAG.
-   * @return the set of vertices.
-   * Note that the result is never null, ensured by {@link DAGBuilder}.
-   */
+  @Override
   public List<V> getVertices() {
     return vertices;
   }
 
-  /**
-   * Retrieves the root vertices of this DAG.
-   * @return the set of root vertices.
-   */
+  @Override
   public List<V> getRootVertices() {
     return rootVertices;
   }
 
-  /**
-   * Retrieves the incoming edges of the given vertex.
-   * @param v the subject vertex.
-   * @return the set of incoming edges to the vertex.
-   * Note that the result is never null, ensured by {@link DAGBuilder}.
-   */
+  @Override
   public List<E> getIncomingEdgesOf(final V v) {
     return getIncomingEdgesOf(v.getId());
   }
 
-  /**
-   * Retrieves the incoming edges of the given vertex.
-   * @param vertexId the ID of the subject vertex.
-   * @return the set of incoming edges to the vertex.
-   * Note that the result is never null, ensured by {@link DAGBuilder}.
-   */
+  @Override
   public List<E> getIncomingEdgesOf(final String vertexId) {
     return incomingEdges.get(vertexId);
   }
 
-  /**
-   * Retrieves the outgoing edges of the given vertex.
-   * @param v the subject vertex.
-   * @return the set of outgoing edges to the vertex.
-   * Note that the result is never null, ensured by {@link DAGBuilder}.
-   */
+  @Override
   public List<E> getOutgoingEdgesOf(final V v) {
     return getOutgoingEdgesOf(v.getId());
   }
 
-  /**
-   * Retrieves the outgoing edges of the given vertex.
-   * @param vertexId the ID of the subject vertex.
-   * @return the set of outgoing edges to the vertex.
-   * Note that the result is never null, ensured by {@link DAGBuilder}.
-   */
+  @Override
   public List<E> getOutgoingEdgesOf(final String vertexId) {
     return outgoingEdges.get(vertexId);
   }
 
-  /**
-   * Retrieves the parent vertices of the given vertex.
-   * @param vertexId the ID of the subject vertex.
-   * @return the list of parent vertices.
-   */
+  @Override
   public List<V> getParents(final String vertexId) {
     return incomingEdges.get(vertexId).stream().map(Edge::getSrc).collect(Collectors.toList());
   }
 
-  /**
-   * Retrieves the children vertices of the given vertex.
-   * @param vertexId the ID of the subject vertex.
-   * @return the list of children vertices.
-   */
+  @Override
   public List<V> getChildren(final String vertexId) {
     return outgoingEdges.get(vertexId).stream().map(Edge::getDst).collect(Collectors.toList());
   }
 
-  /**
-   * Retrieves the edge between two vertices.
-   * @param srcVertexId the ID of the source vertex.
-   * @param dstVertexId the ID of the destination vertex.
-   * @return the edge if exists.
-   * @throws IllegalEdgeOperationException otherwise.
-   */
+  @Override
   public E getEdgeBetween(final String srcVertexId, final String dstVertexId) throws IllegalEdgeOperationException {
     for (E e : incomingEdges.get(dstVertexId)) {
       if (e.getSrc().getId().equals(srcVertexId)) {
@@ -195,30 +148,14 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
         new Throwable("There exists no edge from " + srcVertexId + " to " + dstVertexId));
   }
 
-  /**
-   * Indicates the traversal order of this DAG.
-   */
-  private enum TraversalOrder {
-    PreOrder,
-    PostOrder
-  }
-
-  /**
-   * Gets the DAG's vertices in topologically sorted order.
-   * This function brings consistent results.
-   * @return the sorted list of vertices in topological order.
-   */
+  @Override
   public List<V> getTopologicalSort() {
     final List<V> sortedList = new ArrayList<>(vertices.size());
     topologicalDo(sortedList::add);
     return sortedList;
   }
 
-  /**
-   * Retrieves the ancestors of a vertex.
-   * @param vertexId to find the ancestors for.
-   * @return the list of ancestors.
-   */
+  @Override
   public List<V> getAncestors(final String vertexId) {
     final List<V> ancestors = new ArrayList<>();
     addAncestors(ancestors, vertexId);
@@ -237,11 +174,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
     });
   }
 
-  /**
-   * Retrieves the descendants of a vertex.
-   * @param vertexId to find the descendants for.
-   * @return the list of descendants.
-   */
+  @Override
   public List<V> getDescendants(final String vertexId) {
     final List<V> descendants = new ArrayList<>();
     final Set<V> visited = new HashSet<>();
@@ -251,21 +184,13 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
     return descendants;
   }
 
-  /**
-   * Filters the vertices according to the given condition.
-   * @param condition that must be satisfied to be included in the filtered list.
-   * @return the list of vertices that meet the condition.
-   */
+  @Override
   public List<V> filterVertices(final Predicate<V> condition) {
     final List<V> filteredVertices = vertices.stream().filter(condition).collect(Collectors.toList());
     return filteredVertices;
   }
 
-  /**
-   * Applies the function to each node in the DAG in a topological order.
-   * This function brings consistent results.
-   * @param function to apply.
-   */
+  @Override
   public void topologicalDo(final Consumer<V> function) {
     final Stack<V> stack = new Stack<>();
     dfsTraverse(stack::push, TraversalOrder.PostOrder);
@@ -274,26 +199,16 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
     }
   }
 
-  /**
-   * Traverses the DAG by DFS, applying the given function.
-   * @param function to apply.
-   * @param traversalOrder which the DFS should be conducted.
-   */
-  private void dfsTraverse(final Consumer<V> function, final TraversalOrder traversalOrder) {
+  @Override
+  public void dfsTraverse(final Consumer<V> function, final TraversalOrder traversalOrder) {
     final Set<V> visited = new HashSet<>();
     getVertices().stream().filter(vertex -> incomingEdges.get(vertex.getId()).isEmpty()) // root Operators
         .filter(vertex -> !visited.contains(vertex))
         .forEachOrdered(vertex -> dfsDo(vertex, function, traversalOrder, visited));
   }
 
-  /**
-   * A recursive helper function for {@link #dfsTraverse(Consumer, TraversalOrder)}.
-   * @param vertex the root vertex of the remaining DAG.
-   * @param vertexConsumer the function to apply.
-   * @param traversalOrder which the DFS should be conducted.
-   * @param visited the set of nodes visited.
-   */
-  private void dfsDo(final V vertex,
+  @Override
+  public void dfsDo(final V vertex,
                      final Consumer<V> vertexConsumer,
                      final TraversalOrder traversalOrder,
                      final Set<V> visited) {
@@ -312,12 +227,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
     }
   }
 
-  /**
-   * Function checks whether there is a path between two vertices.
-   * @param v1 First vertex to check.
-   * @param v2 Second vertex to check.
-   * @return Whether or not there is a path between two vertices.
-   */
+  @Override
   public Boolean pathExistsBetween(final V v1, final V v2) {
     final Set<V> reachableFromV1 = new HashSet<>();
     final Set<V> reachableFromV2 = new HashSet<>();
@@ -328,36 +238,22 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
     return reachableFromV1.contains(v2) || reachableFromV2.contains(v1);
   }
 
-  /**
-   * Checks whether the given vertex is assigned with a wrapping LoopVertex.
-   * @param v Vertex to check.
-   * @return whether or not it is wrapped by a LoopVertex
-   */
+  @Override
   public Boolean isCompositeVertex(final V v) {
     return this.assignedLoopVertexMap.containsKey(v.getId());
   }
 
-  /**
-   * Retrieves the wrapping LoopVertex of the vertex.
-   * @param v Vertex to check.
-   * @return The wrapping LoopVertex.
-   */
+  @Override
   public LoopVertex getAssignedLoopVertexOf(final V v) {
     return this.assignedLoopVertexMap.get(v.getId());
   }
 
-  /**
-   * Retrieves the stack depth of the given vertex.
-   * @param v Vertex to check.
-   * @return The depth of the stack of LoopVertices for the vertex.
-   */
+  @Override
   public Integer getLoopStackDepthOf(final V v) {
     return this.loopStackDepthMap.get(v.getId());
   }
 
-  /**
-   * @return {@link com.fasterxml.jackson.databind.JsonNode} for this DAG.
-   */
+  @Override
   public ObjectNode asJsonNode() {
     final ObjectMapper mapper = new ObjectMapper();
     final ObjectNode node = mapper.createObjectNode();
@@ -393,12 +289,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
 
   public static final String EMPTY_DAG_DIRECTORY = "";
 
-  /**
-   * Stores JSON representation of this DAG into a file.
-   * @param directory the directory which JSON representation is saved to
-   * @param name name of this DAG
-   * @param description description of this DAG
-   */
+  @Override
   public void storeJSON(final String directory, final String name, final String description) {
     if (directory == null || directory.equals(EMPTY_DAG_DIRECTORY)) {
       return;

@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.vertex.*;
-import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
+import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.datatransfer.MultiInputWatermarkManager;
@@ -226,7 +226,7 @@ public final class TaskExecutor {
       final OutputCollector outputCollector;
 
       if (irVertex instanceof OperatorVertex
-        && ((OperatorVertex) irVertex).getTransform() instanceof AggregateMetricTransform) {
+        && ((OperatorVertex) irVertex).getTransform() instanceof MessageAggregatorTransform) {
         outputCollector = new DynOptDataOutputCollector(
           irVertex, persistentConnectionToMasterMap, this);
       } else {

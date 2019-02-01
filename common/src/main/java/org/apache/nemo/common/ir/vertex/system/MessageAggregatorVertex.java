@@ -16,25 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
+package org.apache.nemo.common.ir.vertex.system;
 
-import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.*;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.LargeShuffleReshapingPass;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 
-import java.util.Arrays;
+import java.util.function.BiFunction;
 
 /**
- * A series of passes to optimize large shuffle with disk seek batching techniques.
- * Ref. https://dl.acm.org/citation.cfm?id=2391233
+ * Aggregates upstream messages.
+ * @param <K> of the input pair.
+ * @param <V> of the input pair.
+ * @param <O> of the output aggregated message.
  */
-public final class LargeShuffleCompositePass extends CompositePass {
+public class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
   /**
-   * Default constructor.
+   * @param initialState to use.
+   * @param userFunction for aggregating the messages.
    */
-  public LargeShuffleCompositePass() {
-    super(Arrays.asList(
-        new LargeShuffleReshapingPass(),
-        new LargeShuffleAnnotatingPass()
-    ));
+  public MessageAggregatorVertex(final O initialState, final BiFunction<Pair<K, V>, O, O> userFunction) {
+    super(new MessageAggregatorTransform<>(initialState, userFunction));
   }
 }

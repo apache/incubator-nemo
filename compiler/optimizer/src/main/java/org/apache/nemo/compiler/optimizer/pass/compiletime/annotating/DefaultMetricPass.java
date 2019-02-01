@@ -21,11 +21,9 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 import org.apache.nemo.common.DataSkewMetricFactory;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import java.util.HashMap;
@@ -44,7 +42,7 @@ public final class DefaultMetricPass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(dst ->
       dag.getIncomingEdgesOf(dst).forEach(edge -> {
         if (CommunicationPatternProperty.Value.Shuffle

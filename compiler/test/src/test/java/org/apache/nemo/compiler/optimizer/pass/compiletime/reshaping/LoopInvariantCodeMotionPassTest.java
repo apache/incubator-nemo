@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
@@ -48,9 +49,9 @@ import static org.junit.Assert.assertTrue;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class LoopInvariantCodeMotionPassTest {
-  private DAG<IRVertex, IREdge> originalALSDAG;
-  private DAG<IRVertex, IREdge> groupedDAG;
-  private DAG<IRVertex, IREdge> dagToBeRefactored;
+  private IRDAG originalALSDAG;
+  private IRDAG groupedDAG;
+  private IRDAG dagToBeRefactored;
 
   @Before
   public void setUp() throws Exception {
@@ -102,18 +103,18 @@ public class LoopInvariantCodeMotionPassTest {
       }
     });
 
-    dagToBeRefactored = builder.build();
+    dagToBeRefactored = new IRDAG(builder.build());
   }
 
   @Test
   public void testLoopInvariantCodeMotionPass() throws Exception {
     final long numberOfGroupedVertices = groupedDAG.getVertices().size();
 
-    final DAG<IRVertex, IREdge> processedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
+    final IRDAG processedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
         .apply(dagToBeRefactored);
     assertEquals(numberOfGroupedVertices, processedDAG.getVertices().size());
 
-    final DAG<IRVertex, IREdge> notProcessedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
+    final IRDAG notProcessedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
         .apply(groupedDAG);
     assertEquals(numberOfGroupedVertices, notProcessedDAG.getVertices().size());
   }

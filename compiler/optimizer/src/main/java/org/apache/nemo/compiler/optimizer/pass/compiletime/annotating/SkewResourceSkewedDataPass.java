@@ -18,8 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
@@ -43,7 +42,7 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.getVertices()
       .forEach(v -> dag.getOutgoingEdgesOf(v).stream()
         .filter(edge -> edge.getPropertyValue(MetricCollectionProperty.class).isPresent())
@@ -55,7 +54,6 @@ public final class SkewResourceSkewedDataPass extends AnnotatingPass {
           });
         })
       );
-
     return dag;
   }
 }

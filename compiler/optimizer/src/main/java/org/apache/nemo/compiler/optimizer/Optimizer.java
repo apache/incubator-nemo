@@ -18,9 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
@@ -36,5 +34,5 @@ public interface Optimizer {
    * @param dag the input DAG to optimize.
    * @return optimized DAG, reshaped or tagged with execution properties.
    */
-  DAG<IRVertex, IREdge> optimizeDag(DAG<IRVertex, IREdge> dag);
+  IRDAG optimizeDag(IRDAG dag);
 }

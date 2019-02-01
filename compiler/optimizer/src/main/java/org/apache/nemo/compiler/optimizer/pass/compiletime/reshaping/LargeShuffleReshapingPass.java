@@ -16,42 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
+package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
+import org.apache.nemo.common.ir.vertex.system.StreamVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
-import java.util.List;
-
 /**
- * A pass for tagging shuffle edges different from the default ones.
- * It sets DataFlowModel ExecutionProperty as "push".
+ * Inserts the StreamVertex for each shuffle edge.
  */
-@Annotates(DataFlowProperty.class)
 @Requires(CommunicationPatternProperty.class)
-public final class ShuffleEdgePushPass extends AnnotatingPass {
+public final class LargeShuffleReshapingPass extends ReshapingPass {
+
   /**
    * Default constructor.
    */
-  public ShuffleEdgePushPass() {
-    super(ShuffleEdgePushPass.class);
+  public LargeShuffleReshapingPass() {
+    super(LargeShuffleReshapingPass.class);
   }
+
 
   @Override
   public IRDAG apply(final IRDAG dag) {
-    dag.getVertices().forEach(vertex -> {
-      final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      if (!inEdges.isEmpty()) {
-        inEdges.forEach(edge -> {
-          if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
-              .equals(CommunicationPatternProperty.Value.Shuffle)) {
-            edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
-          }
-        });
-      }
+    dag.topologicalDo(vertex -> {
+      dag.getIncomingEdgesOf(vertex).forEach(edge -> {
+        if (CommunicationPatternProperty.Value.Shuffle
+          .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+          dag.insert(new StreamVertex(), edge);
+        }
+      });
     });
     return dag;
   }

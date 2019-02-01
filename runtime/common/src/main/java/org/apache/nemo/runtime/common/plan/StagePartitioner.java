@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.common.plan;
 
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  */
 @DriverSide
 @ThreadSafe
-public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, Map<IRVertex, Integer>> {
+public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Integer>> {
   private final Set<Class<? extends VertexExecutionProperty>> ignoredPropertyKeys = ConcurrentHashMap.newKeySet();
   private final MutableInt nextStageIndex = new MutableInt(0);
 
@@ -68,7 +68,7 @@ public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, M
    * @return a map between IR vertex and the corresponding stage id
    */
   @Override
-  public Map<IRVertex, Integer> apply(final DAG<IRVertex, IREdge> irDAG) {
+  public Map<IRVertex, Integer> apply(final IRDAG irDAG) {
     final Map<IRVertex, Integer> vertexToStageIdMap = new HashMap<>();
     irDAG.topologicalDo(irVertex -> {
       // Base case: for root vertices
@@ -102,7 +102,7 @@ public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, M
    * @param dag IR DAG which contains {@code edge}
    * @return {@code true} if and only if the source and the destination vertex of the edge can be merged into one stage.
    */
-  private boolean testMergeability(final IREdge edge, final DAG<IRVertex, IREdge> dag) {
+  private boolean testMergeability(final IREdge edge, final IRDAG dag) {
     // If the destination vertex has multiple inEdges, return false
     if (dag.getIncomingEdgesOf(edge.getDst()).size() > 1) {
       return false;

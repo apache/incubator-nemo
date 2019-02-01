@@ -18,13 +18,11 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AggressiveSpeculativeCloningPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ShuffleEdgePushPass;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AggressiveSpeculativeCloningPass;
 import org.apache.reef.tang.Injector;
 
 /**
@@ -47,7 +45,7 @@ public final class BasicPushPolicy implements Policy {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory) {
+  public IRDAG runCompileTimeOptimization(final IRDAG dag, final String dagDirectory) {
     return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
 

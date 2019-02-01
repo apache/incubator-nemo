@@ -24,7 +24,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
-import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
+import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
 
 import java.io.Serializable;
 import java.util.*;
@@ -210,7 +210,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     stack.push(vertex);
     // When we encounter a vertex that we've already gone through, then there is a cycle.
     if (outgoingEdges.get(vertex).stream().map(Edge::getDst).anyMatch(stack::contains)) {
-      throw new CompileTimeOptimizationException("DAG contains a cycle");
+      throw getException("DAG contains a cycle", vertex.toString());
     } else {
       outgoingEdges.get(vertex).stream().map(Edge::getDst)
           .filter(v -> !visited.contains(v))
@@ -232,7 +232,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
           .filter(v -> !(v instanceof SourceVertex))
           .map(V::getId)
           .collect(Collectors.toList()).toString();
-      throw new CompileTimeOptimizationException("DAG source check failed while building DAG. " + problematicVertices);
+      throw getException("DAG source check failed while building DAG", problematicVertices);
     }
   }
 
@@ -250,7 +250,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
       final String problematicVertices = verticesToObserve.get().filter(v ->
           !(v instanceof OperatorVertex || v instanceof LoopVertex))
           .map(V::getId).collect(Collectors.toList()).toString();
-      throw new CompileTimeOptimizationException("DAG sink check failed while building DAG: " + problematicVertices);
+      throw getException("DAG sink check failed while building DAG", problematicVertices);
     }
   }
 
@@ -262,7 +262,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
         .filter(e -> e.getPropertyValue(MetricCollectionProperty.class).isPresent())
         .filter(e -> !(e.getDst() instanceof OperatorVertex
-          && ((OperatorVertex) e.getDst()).getTransform() instanceof AggregateMetricTransform))
+          && e.getDst() instanceof MessageAggregatorVertex))
         .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
         .forEach(e -> {
           throw new CompileTimeOptimizationException("DAG execution property check: "
@@ -329,5 +329,18 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   public DAG<V, E> build() {
     integrityCheck(true, true, true, true);
     return new DAG<>(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
+  }
+
+  /**
+   * Generates a user-friendly exception message.
+   * @param reason of the exception.
+   * @param problematicObjects that caused the exception.
+   * @return exception object.
+   */
+  private CompileTimeOptimizationException getException(final String reason, final String problematicObjects) {
+    final DAG erroredDAG = new DAG<>(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
+    erroredDAG.storeJSON("debug", "errored_ir", "Errored IR");
+    return new CompileTimeOptimizationException(reason + " /// Problematic objects are: "
+      + problematicObjects + " /// see the debug directory for the errored_ir");
   }
 }

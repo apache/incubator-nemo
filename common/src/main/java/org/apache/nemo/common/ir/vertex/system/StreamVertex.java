@@ -16,21 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.optimizer;
+package org.apache.nemo.common.ir.vertex.system;
 
-import org.apache.nemo.common.KeyExtractor;
-import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.StreamTransform;
 
 /**
- * Extracts the key from a pair element.
+ * IRVertex that transforms input data.
+ * It is to be constructed in the compiler frontend with language-specific data transform logic.
  */
-public final class PairKeyExtractor implements KeyExtractor {
-  @Override
-  public Object extractKey(final Object element) {
-    if (element instanceof Pair) {
-      return ((Pair) element).left();
-    } else {
-      throw new IllegalStateException(element.toString());
-    }
+public final class StreamVertex extends OperatorVertex {
+  /**
+   * Constructor.
+   */
+  public StreamVertex() {
+    super(new StreamTransform());
   }
 }

@@ -18,10 +18,10 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.eventhandler.RuntimeEventHandler;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
@@ -54,7 +54,7 @@ public final class PolicyImpl implements Policy {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory) {
+  public IRDAG runCompileTimeOptimization(final IRDAG dag, final String dagDirectory) {
     LOG.info("Launch Compile-time optimizations");
     return process(dag, compileTimePasses.iterator(), dagDirectory);
   }
@@ -67,27 +67,33 @@ public final class PolicyImpl implements Policy {
    * @return the processed DAG.
    * @throws Exception Exceptions on the way.
    */
-  private static DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag,
-                                               final Iterator<CompileTimePass> passes,
-                                               final String dagDirectory) {
+  private static IRDAG process(final IRDAG dag,
+                               final Iterator<CompileTimePass> passes,
+                               final String dagDirectory) {
     if (passes.hasNext()) {
       final CompileTimePass passToApply = passes.next();
-      final DAG<IRVertex, IREdge> processedDAG;
+      final IRDAG processedDAG;
 
       if (passToApply.getCondition().test(dag)) {
         LOG.info("Apply {} to the DAG", passToApply.getClass().getSimpleName());
         // Apply the pass to the DAG.
         processedDAG = passToApply.apply(dag);
-        // Ensure AnnotatingPass and ReshapingPass functions as intended.
-        if ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(dag, processedDAG))
-            || (passToApply instanceof ReshapingPass && !checkReshapingPass(dag, processedDAG))) {
+
+        final boolean advanced = processedDAG.advanceDAGSnapshot((beforePass, afterPass) -> {
+          // Ensure AnnotatingPass and ReshapingPass functions as intended.
+          return !((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(beforePass, afterPass))
+            || (passToApply instanceof ReshapingPass && !checkReshapingPass(beforePass, afterPass)));
+        });
+
+        if (!advanced) {
           throw new CompileTimeOptimizationException(passToApply.getClass().getSimpleName()
-              + " is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
-              + "Modify it or use a general CompileTimePass");
+            + " is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
+            + "Modify it or use a general CompileTimePass");
         }
+
         // Save the processed JSON DAG.
         processedDAG.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
-            "DAG after optimization");
+          "DAG after optimization");
       } else {
         LOG.info("Condition unmet for applying {} to the DAG", passToApply.getClass().getSimpleName());
         processedDAG = dag;
@@ -106,7 +112,7 @@ public final class PolicyImpl implements Policy {
    * @param after DAG after modification.
    * @return true if there is no problem, false if there is a problem.
    */
-  private static Boolean checkAnnotatingPass(final DAG<IRVertex, IREdge> before, final DAG<IRVertex, IREdge> after) {
+  private static Boolean checkAnnotatingPass(final IRDAG before, final IRDAG after) {
     final Iterator<IRVertex> beforeVertices = before.getTopologicalSort().iterator();
     final Iterator<IRVertex> afterVertices = after.getTopologicalSort().iterator();
     while (beforeVertices.hasNext() && afterVertices.hasNext()) {
@@ -134,7 +140,7 @@ public final class PolicyImpl implements Policy {
       }
       // number of edges should match.
       if (beforeVertexIncomingEdges.hasNext() || afterVertexIncomingEdges.hasNext()
-          || beforeVertexOutgoingEdges.hasNext() || afterVertexOutgoingEdges.hasNext()) {
+        || beforeVertexOutgoingEdges.hasNext() || afterVertexOutgoingEdges.hasNext()) {
         return false;
       }
     }
@@ -149,7 +155,7 @@ public final class PolicyImpl implements Policy {
    * @param after DAG after modification.
    * @return true if there is no problem, false if there is a problem.
    */
-  private static Boolean checkReshapingPass(final DAG<IRVertex, IREdge> before, final DAG<IRVertex, IREdge> after) {
+  private static Boolean checkReshapingPass(final IRDAG before, final IRDAG after) {
     final List<IRVertex> previousVertices = before.getVertices();
     for (final IRVertex irVertex : after.getVertices()) {
       final Integer indexOfVertex = previousVertices.indexOf(irVertex);
@@ -176,14 +182,14 @@ public final class PolicyImpl implements Policy {
   public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
     LOG.info("Register run-time optimizations to the PubSubHandler");
     runtimePasses.forEach(runtimePass ->
-        runtimePass.getEventHandlerClasses().forEach(runtimeEventHandlerClass -> {
-          try {
-            final RuntimeEventHandler runtimeEventHandler = injector.getInstance(runtimeEventHandlerClass);
-            pubSubWrapper.getPubSubEventHandler()
-                .subscribe(runtimeEventHandler.getEventClass(), runtimeEventHandler);
-          } catch (final Exception e) {
-            throw new RuntimeException(e);
-          }
-        }));
+      runtimePass.getEventHandlerClasses().forEach(runtimeEventHandlerClass -> {
+        try {
+          final RuntimeEventHandler runtimeEventHandler = injector.getInstance(runtimeEventHandlerClass);
+          pubSubWrapper.getPubSubEventHandler()
+            .subscribe(runtimeEventHandler.getEventClass(), runtimeEventHandler);
+        } catch (final Exception e) {
+          throw new RuntimeException(e);
+        }
+      }));
   }
 }

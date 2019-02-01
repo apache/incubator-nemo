@@ -19,9 +19,7 @@
 package org.apache.nemo.driver;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.backend.Backend;
 import org.apache.nemo.compiler.optimizer.Optimizer;
 import org.apache.nemo.conf.JobConf;
@@ -71,8 +69,8 @@ public final class UserApplicationRunner {
     try {
       LOG.info("##### Nemo Compiler Start #####");
 
-      final DAG<IRVertex, IREdge> dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
-      final DAG<IRVertex, IREdge> optimizedDAG = optimizer.optimizeDag(dag);
+      final IRDAG dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
+      final IRDAG optimizedDAG = optimizer.optimizeDag(dag);
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
 
       LOG.info("##### Nemo Compiler Finish #####");

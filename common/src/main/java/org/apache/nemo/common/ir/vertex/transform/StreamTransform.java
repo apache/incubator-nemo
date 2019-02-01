@@ -28,14 +28,14 @@ import org.slf4j.LoggerFactory;
  * This transform can be used for merging input data into the {@link OutputCollector}.
  * @param <T> input/output type.
  */
-public final class RelayTransform<T> implements Transform<T, T> {
+public final class StreamTransform<T> implements Transform<T, T> {
   private OutputCollector<T> outputCollector;
-  private static final Logger LOG = LoggerFactory.getLogger(RelayTransform.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(StreamTransform.class.getName());
 
   /**
    * Default constructor.
    */
-  public RelayTransform() {
+  public StreamTransform() {
     // Do nothing.
   }
 
@@ -62,7 +62,7 @@ public final class RelayTransform<T> implements Transform<T, T> {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append(RelayTransform.class);
+    sb.append(StreamTransform.class);
     sb.append(":");
     sb.append(super.toString());
     return sb.toString();

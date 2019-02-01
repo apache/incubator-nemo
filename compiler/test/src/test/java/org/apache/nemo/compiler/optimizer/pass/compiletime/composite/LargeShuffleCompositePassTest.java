@@ -22,6 +22,7 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -40,7 +41,7 @@ import static org.junit.Assert.assertEquals;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class LargeShuffleCompositePassTest {
-  private DAG<IRVertex, IREdge> compiledDAG;
+  private IRDAG compiledDAG;
 
   @Before
   public void setUp() throws Exception {
@@ -49,7 +50,7 @@ public class LargeShuffleCompositePassTest {
 
   @Test
   public void testLargeShuffle() {
-    final DAG<IRVertex, IREdge> processedDAG = new LargeShuffleCompositePass().apply(compiledDAG);
+    final IRDAG processedDAG = new LargeShuffleCompositePass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
       if (processedDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
