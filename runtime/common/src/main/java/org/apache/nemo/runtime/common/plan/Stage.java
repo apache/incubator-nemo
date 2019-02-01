@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.commons.lang3.SerializationUtils;
 
@@ -82,7 +82,7 @@ public final class Stage extends Vertex {
    * @return the parallelism
    */
   public int getParallelism() {
-    return executionProperties.get(MinParallelismProperty.class)
+    return executionProperties.get(ParallelismProperty.class)
         .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
   }
 

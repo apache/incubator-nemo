@@ -27,7 +27,6 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,7 +53,7 @@ public final class StagePartitionerTest {
   }
 
   /**
-   * @param parallelism {@link MinParallelismProperty} value for the new vertex
+   * @param parallelism {@link ParallelismProperty} value for the new vertex
    * @param scheduleGroup {@link ScheduleGroupProperty} value for the new vertex
    * @param otherProperties other {@link VertexExecutionProperty} for the new vertex
    * @return new {@link IRVertex}
@@ -62,7 +61,7 @@ public final class StagePartitionerTest {
   private static IRVertex newVertex(final int parallelism, final int scheduleGroup,
                                     final List<VertexExecutionProperty> otherProperties) {
     final IRVertex vertex = new OperatorVertex(EMPTY_TRANSFORM);
-    vertex.setProperty(MinParallelismProperty.of(parallelism));
+    vertex.setProperty(ParallelismProperty.of(parallelism));
     vertex.setProperty(ScheduleGroupProperty.of(scheduleGroup));
     otherProperties.forEach(property -> vertex.setProperty(property));
     return vertex;

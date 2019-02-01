@@ -19,7 +19,7 @@
 package org.apache.nemo.compiler.optimizer.policy;
 
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.LargeShuffleCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
@@ -50,7 +50,7 @@ public final class ConditionalLargeShufflePolicy implements Policy {
    */
   private static int getMaxParallelism(final IRDAG dag) {
     return dag.getVertices().stream()
-        .mapToInt(vertex -> vertex.getPropertyValue(MinParallelismProperty.class).orElse(1))
+        .mapToInt(vertex -> vertex.getPropertyValue(ParallelismProperty.class).orElse(1))
         .max().orElse(1);
   }
 

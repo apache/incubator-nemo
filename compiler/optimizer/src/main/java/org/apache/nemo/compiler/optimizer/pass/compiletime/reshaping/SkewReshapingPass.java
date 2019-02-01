@@ -24,7 +24,7 @@ import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -127,7 +127,7 @@ public final class SkewReshapingPass extends ReshapingPass {
         dag.insert(mbv, mav, encoderProperty, decoderProperty, shuffleEdgeGroup);
 
         // Set the partitioner property
-        final int dstParallelism = representativeEdge.getDst().getPropertyValue(MinParallelismProperty.class).get();
+        final int dstParallelism = representativeEdge.getDst().getPropertyValue(ParallelismProperty.class).get();
         shuffleEdgeGroup.forEach(e -> {
           e.setPropertyPermanently(PartitionerProperty.of(
             PartitionerProperty.Type.Hash, dstParallelism * HASH_RANGE_MULTIPLIER));

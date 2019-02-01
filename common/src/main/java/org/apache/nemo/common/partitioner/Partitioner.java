@@ -25,7 +25,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import java.io.Serializable;
 
@@ -66,7 +66,7 @@ public interface Partitioner<K extends Serializable> {
       case Hash:
         final int numOfPartitions = edgeProperties.get(PartitionerProperty.class).get().right();
         final int actualNumOfPartitions = (numOfPartitions == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM)
-          ? dstProperties.get(MinParallelismProperty.class).get()
+          ? dstProperties.get(ParallelismProperty.class).get()
           : numOfPartitions;
         final KeyExtractor keyExtractor = edgeProperties.get(KeyExtractorProperty.class).get();
         partitioner = new HashPartitioner(actualNumOfPartitions, keyExtractor);

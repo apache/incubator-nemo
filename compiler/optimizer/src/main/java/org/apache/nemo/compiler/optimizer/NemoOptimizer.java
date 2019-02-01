@@ -28,7 +28,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.CachedSourceVertex;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
 import org.apache.nemo.conf.JobConf;
@@ -99,7 +99,7 @@ public final class NemoOptimizer implements Optimizer {
       if (!cacheIdToParallelism.containsKey(cacheId)) {
         cacheIdToParallelism.put(
           cacheId, optimizedDAG
-            .getVertexById(edge.getDst().getId()).getPropertyValue(MinParallelismProperty.class)
+            .getVertexById(edge.getDst().getId()).getPropertyValue(ParallelismProperty.class)
             .orElseThrow(() -> new RuntimeException("No parallelism on an IR vertex.")));
       }
     });
@@ -176,7 +176,7 @@ public final class NemoOptimizer implements Optimizer {
           // Replace the vertex emitting cached edge with a cached source vertex.
           final IRVertex cachedDataRelayVertex = new CachedSourceVertex(cacheIdToParallelism.get(cacheId.get()));
           cachedDataRelayVertex.setPropertyPermanently(
-            MinParallelismProperty.of(cacheIdToParallelism.get(cacheId.get())));
+            ParallelismProperty.of(cacheIdToParallelism.get(cacheId.get())));
 
           builder.addVertex(cachedDataRelayVertex);
           final IREdge newEdge = new IREdge(

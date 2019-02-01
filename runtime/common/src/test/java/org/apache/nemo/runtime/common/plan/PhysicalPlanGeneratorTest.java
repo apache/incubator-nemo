@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -71,7 +71,7 @@ public final class PhysicalPlanGeneratorTest {
   private static final IRVertex newIRVertex(final int scheduleGroup, final int parallelism) {
     final IRVertex irVertex = new OperatorVertex(EMPTY_TRANSFORM);
     irVertex.setProperty(ScheduleGroupProperty.of(scheduleGroup));
-    irVertex.setProperty(MinParallelismProperty.of(parallelism));
+    irVertex.setProperty(ParallelismProperty.of(parallelism));
     return irVertex;
   }
 

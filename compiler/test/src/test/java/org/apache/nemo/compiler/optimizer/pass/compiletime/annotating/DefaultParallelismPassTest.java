@@ -21,7 +21,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,7 +48,7 @@ public class DefaultParallelismPassTest {
   @Test
   public void testAnnotatingPass() {
     final AnnotatingPass parallelismPass = new DefaultParallelismPass();
-    assertTrue(parallelismPass.getExecutionPropertiesToAnnotate().contains(MinParallelismProperty.class));
+    assertTrue(parallelismPass.getExecutionPropertiesToAnnotate().contains(ParallelismProperty.class));
   }
 
   @Test
@@ -56,7 +56,7 @@ public class DefaultParallelismPassTest {
     final IRDAG processedDAG = new DefaultParallelismPass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex ->
-        assertEquals(1, irVertex.getPropertyValue(MinParallelismProperty.class).get().longValue()));
+        assertEquals(1, irVertex.getPropertyValue(ParallelismProperty.class).get().longValue()));
   }
 
   @Test
@@ -67,6 +67,6 @@ public class DefaultParallelismPassTest {
     processedDAG.getTopologicalSort().stream()
         .filter(irVertex -> irVertex instanceof SourceVertex)
         .forEach(irVertex -> assertEquals(desiredSourceParallelism,
-            irVertex.getPropertyValue(MinParallelismProperty.class).get().longValue()));
+            irVertex.getPropertyValue(ParallelismProperty.class).get().longValue()));
   }
 }

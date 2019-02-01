@@ -19,7 +19,7 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 
 import java.util.*;
@@ -39,7 +39,7 @@ public interface InputReader {
   IRVertex getSrcIrVertex();
 
   static int getSourceParallelism(final InputReader inputReader) {
-    return inputReader.getSrcIrVertex().getPropertyValue(MinParallelismProperty.class)
+    return inputReader.getSrcIrVertex().getPropertyValue(ParallelismProperty.class)
       .orElseThrow(() -> new IllegalStateException(inputReader.getSrcIrVertex().getId()));
   }
 }

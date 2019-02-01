@@ -27,7 +27,7 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -98,7 +98,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
    */
   public static ExecutionPropertyMap<VertexExecutionProperty> of(final IRVertex irVertex) {
     final ExecutionPropertyMap<VertexExecutionProperty> map = new ExecutionPropertyMap<>(irVertex.getId());
-    map.put(MinParallelismProperty.of(1));
+    map.put(ParallelismProperty.of(1));
     map.put(ResourcePriorityProperty.of(ResourcePriorityProperty.NONE));
     return map;
   }

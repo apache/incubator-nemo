@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.MinParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.conf.JobConf;
@@ -482,11 +482,11 @@ public final class DataTransferTest {
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
-    srcVertex.setProperty(MinParallelismProperty.of(PARALLELISM_TEN));
+    srcVertex.setProperty(ParallelismProperty.of(PARALLELISM_TEN));
 
     // Dst setup
     final SourceVertex dstVertex = new EmptyComponents.EmptySourceVertex("Destination");
-    dstVertex.setProperty(MinParallelismProperty.of(PARALLELISM_TEN));
+    dstVertex.setProperty(ParallelismProperty.of(PARALLELISM_TEN));
 
     return Pair.of(srcVertex, dstVertex);
   }
@@ -502,11 +502,11 @@ public final class DataTransferTest {
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
-    srcVertex.setProperty(MinParallelismProperty.of(PARALLELISM_TEN));
+    srcVertex.setProperty(ParallelismProperty.of(PARALLELISM_TEN));
 
     // Dst setup
     final SourceVertex dstVertex = new EmptyComponents.EmptySourceVertex("Destination");
-    dstVertex.setProperty(MinParallelismProperty.of(PARALLELISM_TEN));
+    dstVertex.setProperty(ParallelismProperty.of(PARALLELISM_TEN));
 
     return Pair.of(srcVertex, dstVertex);
   }
@@ -515,7 +515,7 @@ public final class DataTransferTest {
     final DAG<IRVertex, RuntimeEdge<IRVertex>> emptyDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>().build();
 
     final ExecutionPropertyMap<VertexExecutionProperty> stageExecutionProperty = new ExecutionPropertyMap<>(stageId);
-    stageExecutionProperty.put(MinParallelismProperty.of(PARALLELISM_TEN));
+    stageExecutionProperty.put(ParallelismProperty.of(PARALLELISM_TEN));
     stageExecutionProperty.put(ScheduleGroupProperty.of(0));
     return new Stage(stageId, emptyDag, stageExecutionProperty, Collections.emptyList());
   }

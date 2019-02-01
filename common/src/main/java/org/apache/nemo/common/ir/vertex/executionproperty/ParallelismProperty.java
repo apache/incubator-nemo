@@ -21,20 +21,20 @@ package org.apache.nemo.common.ir.vertex.executionproperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * This property decides the minimum number of parallel tasks to use for executing the corresponding IRVertex.
+ * This property decides the number of parallel tasks to use for executing the corresponding IRVertex.
  *
- * The actual number of tasks used in the execution can be greater due the following reasons.
+ * IRDAG integrity checks by Nemo include:
  * - A larger number of parallelism of a parent IRVertex connected with an one-to-one IREdge.
- * - A larger number of source (e.g., HDFS) input data partitions. (SourceVertex)
+ * - A larger number of source (e.g., HDFS) input data partitions.
  * - A larger size of the PartitionSet property of the input edge.
  */
-public final class MinParallelismProperty extends VertexExecutionProperty<Integer> {
+public final class ParallelismProperty extends VertexExecutionProperty<Integer> {
   /**
    * Constructor.
    *
    * @param value value of the execution property.
    */
-  private MinParallelismProperty(final Integer value) {
+  private ParallelismProperty(final Integer value) {
     super(value);
   }
 
@@ -44,7 +44,7 @@ public final class MinParallelismProperty extends VertexExecutionProperty<Intege
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static MinParallelismProperty of(final Integer value) {
-    return new MinParallelismProperty(value);
+  public static ParallelismProperty of(final Integer value) {
+    return new ParallelismProperty(value);
   }
 }
