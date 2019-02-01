@@ -29,9 +29,9 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
-import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
-import org.apache.nemo.common.ir.vertex.system.StreamVertex;
+import org.apache.nemo.common.ir.vertex.provided.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.provided.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.provided.StreamVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

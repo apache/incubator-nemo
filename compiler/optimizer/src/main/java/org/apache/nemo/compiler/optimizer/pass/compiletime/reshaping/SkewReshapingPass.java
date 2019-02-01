@@ -24,9 +24,8 @@ import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.provided.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.provided.MessageBarrierVertex;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
@@ -46,20 +45,11 @@ import java.util.stream.Collectors;
  * We insert a {@link MessageBarrierVertex} for each shuffle edge,
  * and aggregate messages for multiple same-destination shuffle edges.
  * */
-@Annotates({MessageIdProperty.class, PartitionerProperty.class})
+@Annotates(PartitionerProperty.class)
 @Requires(CommunicationPatternProperty.class)
 public final class SkewReshapingPass extends ReshapingPass {
   private static final Logger LOG = LoggerFactory.getLogger(SkewReshapingPass.class.getName());
   private static final String MAIN_OUTPUT_TAG = "MAIN_OUTPUT_TAG";
-
-  /**
-   * Hash range multiplier.
-   * If we need to split or recombine an output data from a task after it is stored,
-   * we multiply the hash range with this factor in advance
-   * to prevent the extra deserialize - rehash - serialize process.
-   * In these cases, the hash range will be (hash range multiplier X destination task parallelism).
-   */
-  public static final int HASH_RANGE_MULTIPLIER = 5;
 
   /**
    * Default constructor.
@@ -125,13 +115,6 @@ public final class SkewReshapingPass extends ReshapingPass {
         final MessageBarrierVertex mbv = new MessageBarrierVertex<>(dynOptDataCollector);
         final MessageAggregatorVertex mav = new MessageAggregatorVertex(new HashMap(), dynOptDataAggregator);
         dag.insert(mbv, mav, encoderProperty, decoderProperty, shuffleEdgeGroup);
-
-        // Set the partitioner property
-        final int dstParallelism = representativeEdge.getDst().getPropertyValue(ParallelismProperty.class).get();
-        shuffleEdgeGroup.forEach(e -> {
-          e.setPropertyPermanently(PartitionerProperty.of(
-            PartitionerProperty.Type.Hash, dstParallelism * HASH_RANGE_MULTIPLIER));
-        });
       }
     });
     return dag;

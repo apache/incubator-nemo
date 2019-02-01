@@ -24,7 +24,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
-import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.provided.MessageAggregatorVertex;
 
 import java.io.Serializable;
 import java.util.*;

@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.vertex.system;
+package org.apache.nemo.common.ir.vertex.provided;
 
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.MessageBarrierTransform;
 
 import java.util.Map;
@@ -29,7 +30,7 @@ import java.util.function.BiFunction;
  * @param <K> of the output pair.
  * @param <V> of the output pair.
  */
-public final class MessageBarrierVertex<I, K, V> extends SystemIRVertex {
+public final class MessageBarrierVertex<I, K, V> extends OperatorVertex {
   private final BiFunction<I, Map<K, V>, Map<K, V>> messageFunction;
 
   /**

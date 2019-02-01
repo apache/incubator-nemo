@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.SkewAnnotatingPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.SkewReshapingPass;
 
 import java.util.Arrays;
@@ -31,7 +32,8 @@ public final class SkewCompositePass extends CompositePass {
    */
   public SkewCompositePass() {
     super(Arrays.asList(
-        new SkewReshapingPass()
+      new SkewReshapingPass(),
+      new SkewAnnotatingPass()
     ));
   }
 }

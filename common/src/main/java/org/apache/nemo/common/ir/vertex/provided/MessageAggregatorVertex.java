@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.vertex.system;
+package org.apache.nemo.common.ir.vertex.provided;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 
 import java.util.function.BiFunction;
@@ -29,7 +30,7 @@ import java.util.function.BiFunction;
  * @param <V> of the input pair.
  * @param <O> of the output aggregated message.
  */
-public class MessageAggregatorVertex<K, V, O> extends SystemIRVertex {
+public class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
   /**
    * @param initialState to use.
    * @param userFunction for aggregating the messages.
