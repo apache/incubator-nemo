@@ -123,7 +123,7 @@ public final class StreamingScheduler implements Scheduler {
                                             final TaskState.State newState,
                                             @Nullable final String vertexPutOnHold,
                                             final TaskState.RecoverableTaskFailureCause failureCause) {
-    planStateManager.onTaskStateChanged(taskId, newState);
+    planStateManager.onTaskStateChanged(taskId, newState, 0);
 
     switch (newState) {
       case COMPLETE:

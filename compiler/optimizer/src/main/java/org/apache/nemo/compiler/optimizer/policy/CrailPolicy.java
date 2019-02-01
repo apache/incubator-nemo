@@ -30,18 +30,18 @@ import org.apache.reef.tang.Injector;
 /**
  * A policy to demonstrate the disaggregation optimization, that uses GlusterFS as file  storage.
  */
-public final class DisaggregationPolicy implements Policy {
+public final class CrailPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
-      new PolicyBuilder()
-          .registerCompileTimePass(new DisaggregationEdgeDataStorePass()) //***확인
-          .registerCompileTimePass(new LoopOptimizationCompositePass())
-          .registerCompileTimePass(new DefaultCompositePass());
+    new PolicyBuilder()
+      .registerCompileTimePass(new CrailEdgeDataStorePass()) //***확인
+      .registerCompileTimePass(new LoopOptimizationCompositePass())
+      .registerCompileTimePass(new DefaultCompositePass());
   private final Policy policy;
 
   /**
    * Default constructor.
    */
-  public DisaggregationPolicy() {
+  public CrailPolicy() {
     this.policy = BUILDER.build();
   }
 

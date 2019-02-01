@@ -30,7 +30,6 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.common.state.BlockState;
-import org.apache.nemo.runtime.executor.TestUtil;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
@@ -56,7 +55,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -277,7 +275,7 @@ public final class BlockStoreTest {
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
-  private GlusterFileStore createGlusterFileStore(final String executorId)
+  private RemoteFileStore createGlusterFileStore(final String executorId)
       throws InjectionException {
     final Injector injector = LocalMessageEnvironment.forkInjector(baseInjector, executorId);
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);

@@ -77,8 +77,8 @@ public class ClientEndpointTest {
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
         .flatMap(stage -> planStateManager.getTaskAttemptsToSchedule(stage.getId()).stream())
         .collect(Collectors.toList());
-    tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
-    tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));
+    tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING, 0));
+    tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE, 0));
     assertEquals(PlanState.State.COMPLETE, clientEndpoint.waitUntilJobFinish());
   }
 

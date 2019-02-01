@@ -18,10 +18,12 @@
  */
 package org.apache.nemo.runtime.executor.data.block;
 
+import org.apache.crail.*;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.runtime.executor.data.*;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.Partition;
@@ -81,16 +83,28 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws IOException if fail to write.
    */
   private void writeToFile(final Iterable<SerializedPartition<K>> serializedPartitions)
-      throws IOException {
-    try (final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
-      for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
-        // Reserve a partition write and get the metadata.
-        metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
-        fileOutputStream.write(serializedPartition.getData(), 0, serializedPartition.getLength());
+    throws Exception {
+    if (filePath.contains("crail")) {
+      //Crail 디렉토리의 경우
+      CrailStore fs = null;
+      CrailFile file = fs.create(filePath+'/'+id, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
+      final CrailOutputStream fileOutputStream = file.getDirectOutputStream(1024);
+      CrailBuffer buffer = null;
+      for(final SerializedPartition<K> serializedPartition : serializedPartitions){
+        buffer.put(serializedPartition.getData());
+      }
+      fileOutputStream.write(buffer);
+    }
+    else {
+      try (final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
+        for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
+          // Reserve a partition write and get the metadata.
+          metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
+          fileOutputStream.write(serializedPartition.getData(), 0, serializedPartition.getLength());
+        }
       }
     }
   }
-
   /**
    * Writes an element to non-committed block.
    * Invariant: This should not be invoked after this block is committed.
@@ -159,6 +173,8 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         writeToFile(partitions);
       } catch (final IOException e) {
         throw new BlockWriteException(e);
+      } catch (Exception e) {
+        e.printStackTrace();
       }
     }
   }
@@ -350,6 +366,8 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       nonCommittedPartitionsMap.clear();
     } catch (final IOException e) {
       throw new BlockWriteException(e);
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 
@@ -357,9 +375,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @return the ID of this block.
    */
   @Override
-  public String getId() {
-    return id;
-  }
+  public String getId() { return id; }
 
   /**
    * @return whether this block is committed or not.

@@ -298,9 +298,11 @@ public final class PlanStateManager {
    * @param taskId       the ID of the task.
    * @param newTaskState the new state of the task.
    */
-  public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
+  public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState, long time) {
     // Change task state
     final StateMachine taskState = getTaskStateHelper(taskId).getStateMachine();
+
+
     LOG.debug("Task State Transition: id {}, from {} to {}",
       new Object[]{taskId, taskState.getCurrentState(), newTaskState});
     metricStore.getOrCreateMetric(TaskMetric.class, taskId)
@@ -327,8 +329,13 @@ public final class PlanStateManager {
       })
       .count();
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
+      //Task 완료한 상태
       LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",
         taskId, taskStatesOfThisStage.size() - numOfCompletedTaskIndicesInThisStage, taskStatesOfThisStage.size());
+      if(taskStatesOfThisStage.size()-numOfCompletedTaskIndicesInThisStage==0){
+        LOG.info("Stage start time: {}", time);
+        LOG.info("time consumed for the stage: {}", System.nanoTime() - time);
+      }
     }
 
     // Maintain info for speculative execution
@@ -369,6 +376,7 @@ public final class PlanStateManager {
         throw new UnknownExecutionStateException(new Throwable("This task state is unknown"));
     }
   }
+
 
   /**
    * (PRIVATE METHOD)

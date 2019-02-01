@@ -76,6 +76,13 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class GlusterVolumeDirectory implements Name<String> {
   }
 
+  /**
+   * Directory points the CrailFileSystem to store files.
+  */
+  @NamedParameter(doc = "Directory points the CrailFS volume", short_name = "crail_dir", default_value = "../tmp_crail")
+  public final class CrailVolumeDirectory implements  Name<String> {
+  }
+
   //////////////////////////////// Client-Driver RPC
 
   /**

@@ -298,7 +298,7 @@ public final class BlockManagerWorker {
               .setBlockId(blockId)
               .setState(ControlMessage.BlockStateFromExecutor.NOT_AVAILABLE);
 
-      if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+      if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore) || DataStoreProperty.Value.CrailFileStore.equals(blockStore)) {
         blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
       } else {
         blockStateChangedMsgBuilder.setLocation(executorId);
@@ -341,7 +341,8 @@ public final class BlockManagerWorker {
           final Optional<Block> optionalBlock = getBlockStore(blockStore).readBlock(blockId);
           if (optionalBlock.isPresent()) {
             if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)
-                || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+                || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)
+                || DataStoreProperty.Value.CrailFileStore.equals(blockStore)) {
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
@@ -472,6 +473,8 @@ public final class BlockManagerWorker {
         return localFileStore;
       case GlusterFileStore:
         return remoteFileStore;
+      case CrailFileStore:
+        return remoteFileStore;
       default:
         throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
     }
@@ -493,6 +496,8 @@ public final class BlockManagerWorker {
       case LocalFileStore:
         return ControlMessage.BlockStore.LOCAL_FILE;
       case GlusterFileStore:
+        return ControlMessage.BlockStore.REMOTE_FILE;
+      case CrailFileStore:
         return ControlMessage.BlockStore.REMOTE_FILE;
       default:
         throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
