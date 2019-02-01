@@ -27,6 +27,7 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
 abstract class SystemIRVertex extends OperatorVertex {
   /**
    * Constructor.
+   * @param t transform to use.
    */
   SystemIRVertex(final Transform t) {
     super(t);
