@@ -18,14 +18,12 @@
  */
 package org.apache.nemo.common.ir.vertex.system;
 
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.StreamTransform;
 
 /**
- * IRVertex that transforms input data.
- * It is to be constructed in the compiler frontend with language-specific data transform logic.
+ * Relays input data from upstream vertex to downstream vertex promptly.
  */
-public final class StreamVertex extends OperatorVertex {
+public final class StreamVertex extends SystemIRVertex {
   /**
    * Constructor.
    */

@@ -26,7 +26,9 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
  */
 public final class PartitionerProperty
   extends EdgeExecutionProperty<Pair<PartitionerProperty.Type, Integer>> {
-  public static final int AUTO_NUMBER_OF_PARTITIONS = 0;
+
+  // Lazily use the number of destination parallelism to minimize the number of partitions.
+  public static final int NUM_EQUAL_TO_DST_PARALLELISM = 0;
 
   /**
    * Constructor.
@@ -38,12 +40,11 @@ public final class PartitionerProperty
   }
 
   /**
-   * Use the automatic number of partitions.
    * @param type of the partitioner.
    * @return the property.
    */
   public static PartitionerProperty of(final Type type) {
-    return PartitionerProperty.of(type, AUTO_NUMBER_OF_PARTITIONS, true);
+    return PartitionerProperty.of(type, NUM_EQUAL_TO_DST_PARALLELISM, true);
   }
 
   /**

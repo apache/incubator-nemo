@@ -19,7 +19,6 @@
 package org.apache.nemo.common.ir.vertex.system;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 
 import java.util.function.BiFunction;
@@ -30,7 +29,7 @@ import java.util.function.BiFunction;
  * @param <V> of the input pair.
  * @param <O> of the output aggregated message.
  */
-public class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
+public class MessageAggregatorVertex<K, V, O> extends SystemIRVertex {
   /**
    * @param initialState to use.
    * @param userFunction for aggregating the messages.

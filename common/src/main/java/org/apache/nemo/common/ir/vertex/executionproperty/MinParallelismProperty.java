@@ -21,7 +21,12 @@ package org.apache.nemo.common.ir.vertex.executionproperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * Parallelism ExecutionProperty.
+ * This property decides the minimum number of parallel tasks to use for executing the corresponding IRVertex.
+ *
+ * The actual number of tasks used in the execution can be greater due the following reasons.
+ * - A larger number of parallelism of a parent IRVertex connected with an one-to-one IREdge.
+ * - A larger number of source (e.g., HDFS) input data partitions. (SourceVertex)
+ * - A larger size of the PartitionSet property of the input edge.
  */
 public final class MinParallelismProperty extends VertexExecutionProperty<Integer> {
   /**

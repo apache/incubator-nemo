@@ -18,29 +18,17 @@
  */
 package org.apache.nemo.common.ir.vertex.system;
 
-import org.apache.nemo.common.ir.vertex.transform.MessageBarrierTransform;
-
-import java.util.Map;
-import java.util.function.BiFunction;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.Transform;
 
 /**
- * Generates messages.
- * @param <I> input type
- * @param <K> of the output pair.
- * @param <V> of the output pair.
+ * System vertices can be dynamically inserted into an IRDAG to optimize execution.
  */
-public final class MessageBarrierVertex<I, K, V> extends SystemIRVertex {
-  private final BiFunction<I, Map<K, V>, Map<K, V>> messageFunction;
-
+abstract class SystemIRVertex extends OperatorVertex {
   /**
-   * @param messageFunction for producing a message.
+   * Constructor.
    */
-  public MessageBarrierVertex(final BiFunction<I, Map<K, V>, Map<K, V>> messageFunction) {
-    super(new MessageBarrierTransform<>(messageFunction));
-    this.messageFunction = messageFunction;
-  }
-
-  public BiFunction<I, Map<K, V>, Map<K, V>> getMessageFunction() {
-    return messageFunction;
+  SystemIRVertex(final Transform t) {
+    super(t);
   }
 }
