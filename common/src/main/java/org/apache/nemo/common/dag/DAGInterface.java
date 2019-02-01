@@ -28,13 +28,13 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
- * Interface for querying a DAG.
+ * Methods for querying a directed-acyclic graph (DAG).
  * Implementations of the methods must not modify the topology of the DAG.
  *
  * @param <V> the vertex type
  * @param <E> the edge type
  */
-public interface DAGQueryInterface<V extends Vertex, E extends Edge<V>> extends Serializable {
+public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Serializable {
   /**
    * Retrieves the vertex given its ID.
    * @param id of the vertex to retrieve
