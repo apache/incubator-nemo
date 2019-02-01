@@ -30,6 +30,8 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +41,8 @@ import java.util.List;
  * This means that there can be multiple StageEdges between two Stages.
  */
 public final class StageEdge extends RuntimeEdge<Stage> {
+  private static final Logger LOG = LoggerFactory.getLogger(StageEdge.class.getName());
+
   /**
    * The source {@link IRVertex}.
    * This belongs to the srcStage.
@@ -50,14 +54,6 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    * This belongs to the dstStage.
    */
   private final IRVertex dstVertex;
-
-  // Key IRVertex properties.
-  private final CommunicationPatternProperty.Value dataCommunicationPatternValue;
-  private final DataFlowProperty.Value dataFlowModelValue;
-
-  // Key ranges to read.
-  private final List<KeyRange> keyRanges;
-
 
   /**
    * Constructor.
@@ -79,19 +75,6 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     super(runtimeEdgeId, edgeProperties, srcStage, dstStage);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
-
-    this.dataCommunicationPatternValue = edgeProperties.get(CommunicationPatternProperty.class)
-      .orElseThrow(() -> new RuntimeException(String.format(
-        "CommunicationPatternProperty not set for %s", runtimeEdgeId)));
-    this.dataFlowModelValue = edgeProperties.get(DataFlowProperty.class)
-      .orElseThrow(() -> new RuntimeException(String.format(
-        "DataFlowProperty not set for %s", runtimeEdgeId)));
-    // if not exists...
-    final ArrayList<KeyRange> defaultPartitionSet = new ArrayList<>(dstStage.getParallelism());
-    for (int taskIdx = 0; taskIdx < dstStage.getParallelism(); taskIdx++) {
-      defaultPartitionSet.add(taskIdx, HashRange.of(taskIdx, taskIdx + 1));
-    }
-    this.keyRanges = edgeProperties.get(PartitionSetProperty.class).orElse(defaultPartitionSet);
   }
 
   /**
@@ -157,20 +140,32 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    * @return {@link CommunicationPatternProperty} value.
    */
   public CommunicationPatternProperty.Value getDataCommunicationPattern() {
-    return dataCommunicationPatternValue;
+    return getExecutionProperties().get(CommunicationPatternProperty.class)
+      .orElseThrow(() -> new RuntimeException(String.format(
+        "CommunicationPatternProperty not set for %s", getId())));
   }
 
   /**
    * @return {@link DataFlowProperty} value.
    */
   public DataFlowProperty.Value getDataFlowModel() {
-    return dataFlowModelValue;
+    return getExecutionProperties().get(DataFlowProperty.class)
+      .orElseThrow(() -> new RuntimeException(String.format(
+        "DataFlowProperty not set for %s", getId())));
   }
 
   /**
    * @return {@link org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty} value.
    */
   public List<KeyRange> getKeyRanges() {
+    final ArrayList<KeyRange> defaultPartitionSet = new ArrayList<>(getDst().getParallelism());
+    for (int taskIdx = 0; taskIdx < getDst().getParallelism(); taskIdx++) {
+      defaultPartitionSet.add(taskIdx, HashRange.of(taskIdx, taskIdx + 1));
+    }
+    final List<KeyRange> keyRanges = getExecutionProperties()
+      .get(PartitionSetProperty.class).orElse(defaultPartitionSet);
+    LOG.info("{} -> {} getKeyRanges {}", srcVertex.getId(), dstVertex.getId(), keyRanges);
+
     return keyRanges;
   }
 }
