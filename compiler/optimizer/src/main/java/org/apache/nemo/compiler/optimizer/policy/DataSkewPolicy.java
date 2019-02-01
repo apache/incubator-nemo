@@ -19,6 +19,7 @@
 package org.apache.nemo.compiler.optimizer.policy;
 
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.SkewCompositePass;
@@ -31,6 +32,7 @@ import org.apache.nemo.compiler.optimizer.pass.runtime.SkewRunTimePass;
 public final class DataSkewPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
       new PolicyBuilder()
+        .registerCompileTimePass(new DefaultParallelismPass()) // SkewCompositePass relies on parallelism.
         .registerRunTimePass(new SkewRunTimePass(), new SkewCompositePass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
         .registerCompileTimePass(new DefaultCompositePass());

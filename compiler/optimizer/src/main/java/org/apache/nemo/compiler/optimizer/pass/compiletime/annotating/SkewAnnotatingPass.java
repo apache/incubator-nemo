@@ -22,6 +22,7 @@ import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.provided.MessageAggregatorVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,10 +56,17 @@ public final class SkewAnnotatingPass extends AnnotatingPass {
   public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(v -> {
       dag.getIncomingEdgesOf(v).forEach(e -> {
-        // Set the partitioner property
-        final int dstParallelism = e.getDst().getPropertyValue(ParallelismProperty.class).get();
-        e.setPropertyPermanently(PartitionerProperty.of(
-          PartitionerProperty.Type.Hash, dstParallelism * HASH_RANGE_MULTIPLIER));
+        if (CommunicationPatternProperty.Value.Shuffle
+          .equals(e.getPropertyValue(CommunicationPatternProperty.class).get())
+          && !(e.getDst() instanceof MessageAggregatorVertex)) {
+
+
+          // Set the partitioner property
+          final int dstParallelism = e.getDst().getPropertyValue(ParallelismProperty.class).get();
+          LOG.info("SET {} to {} * {}", e.getId(), dstParallelism, HASH_RANGE_MULTIPLIER);
+          e.setPropertyPermanently(PartitionerProperty.of(
+            PartitionerProperty.Type.Hash, dstParallelism * HASH_RANGE_MULTIPLIER));
+        }
       });
     });
     return dag;
