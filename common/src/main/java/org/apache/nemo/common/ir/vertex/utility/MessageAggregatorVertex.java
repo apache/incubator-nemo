@@ -16,19 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.vertex.provided;
+package org.apache.nemo.common.ir.vertex.utility;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.StreamTransform;
+import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
+
+import java.util.function.BiFunction;
 
 /**
- * Relays input data from upstream vertex to downstream vertex promptly.
+ * Aggregates upstream messages.
+ * @param <K> of the input pair.
+ * @param <V> of the input pair.
+ * @param <O> of the output aggregated message.
  */
-public final class StreamVertex extends OperatorVertex {
+public class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
   /**
-   * Constructor.
+   * @param initialState to use.
+   * @param userFunction for aggregating the messages.
    */
-  public StreamVertex() {
-    super(new StreamTransform());
+  public MessageAggregatorVertex(final O initialState, final BiFunction<Pair<K, V>, O, O> userFunction) {
+    super(new MessageAggregatorTransform<>(initialState, userFunction));
   }
 }

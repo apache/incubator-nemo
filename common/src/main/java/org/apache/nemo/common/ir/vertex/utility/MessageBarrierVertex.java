@@ -16,26 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.vertex.provided;
+package org.apache.nemo.common.ir.vertex.utility;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
+import org.apache.nemo.common.ir.vertex.transform.MessageBarrierTransform;
 
+import java.util.Map;
 import java.util.function.BiFunction;
 
 /**
- * Aggregates upstream messages.
- * @param <K> of the input pair.
- * @param <V> of the input pair.
- * @param <O> of the output aggregated message.
+ * Generates messages.
+ * @param <I> input type
+ * @param <K> of the output pair.
+ * @param <V> of the output pair.
  */
-public class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
+public final class MessageBarrierVertex<I, K, V> extends OperatorVertex {
+  private final BiFunction<I, Map<K, V>, Map<K, V>> messageFunction;
+
   /**
-   * @param initialState to use.
-   * @param userFunction for aggregating the messages.
+   * @param messageFunction for producing a message.
    */
-  public MessageAggregatorVertex(final O initialState, final BiFunction<Pair<K, V>, O, O> userFunction) {
-    super(new MessageAggregatorTransform<>(initialState, userFunction));
+  public MessageBarrierVertex(final BiFunction<I, Map<K, V>, Map<K, V>> messageFunction) {
+    super(new MessageBarrierTransform<>(messageFunction));
+    this.messageFunction = messageFunction;
+  }
+
+  public BiFunction<I, Map<K, V>, Map<K, V>> getMessageFunction() {
+    return messageFunction;
   }
 }

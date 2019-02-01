@@ -16,32 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.vertex.provided;
+package org.apache.nemo.common.ir.vertex.utility;
 
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.MessageBarrierTransform;
-
-import java.util.Map;
-import java.util.function.BiFunction;
+import org.apache.nemo.common.ir.vertex.transform.StreamTransform;
 
 /**
- * Generates messages.
- * @param <I> input type
- * @param <K> of the output pair.
- * @param <V> of the output pair.
+ * Relays input data from upstream vertex to downstream vertex promptly.
  */
-public final class MessageBarrierVertex<I, K, V> extends OperatorVertex {
-  private final BiFunction<I, Map<K, V>, Map<K, V>> messageFunction;
-
+public final class StreamVertex extends OperatorVertex {
   /**
-   * @param messageFunction for producing a message.
+   * Constructor.
    */
-  public MessageBarrierVertex(final BiFunction<I, Map<K, V>, Map<K, V>> messageFunction) {
-    super(new MessageBarrierTransform<>(messageFunction));
-    this.messageFunction = messageFunction;
-  }
-
-  public BiFunction<I, Map<K, V>, Map<K, V>> getMessageFunction() {
-    return messageFunction;
+  public StreamVertex() {
+    super(new StreamTransform());
   }
 }
