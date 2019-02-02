@@ -17,5 +17,5 @@
 # specific language governing permissions and limitations
 # under the License.
 
-java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp runtime/lambda/target/nemo-lambda-0.2-SNAPSHOT.jar:client/target/nemo-client-0.2-SNAPSHOT-shaded.jar:examples/nexmark/target/nexmark-0.2-SNAPSHOT-shaded.jar:`yarn classpath` org.apache.nemo.client.JobLauncher "$@"
+java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp offloading/workers/lambda/target/offloading-lambda-0.2-SNAPSHOT.jar:client/target/nemo-client-0.2-SNAPSHOT-shaded.jar:examples/nexmark/target/nexmark-0.2-SNAPSHOT-shaded.jar:`yarn classpath` org.apache.nemo.client.JobLauncher "$@"
 
