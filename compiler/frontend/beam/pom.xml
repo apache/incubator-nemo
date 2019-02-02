@@ -19,8 +19,12 @@ under the License.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+  <modules>
+    <module>nemo-beam-transform</module>
+    <module>nemo-beam-runner</module>
+  </modules>
 
-    <parent>
+  <parent>
         <groupId>org.apache.nemo</groupId>
         <artifactId>nemo-compiler</artifactId>
         <version>0.2-SNAPSHOT</version>
@@ -29,7 +33,7 @@ under the License.
 
     <artifactId>nemo-compiler-frontend-beam</artifactId>
     <name>Nemo Compiler Frontend: Beam</name>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
     <dependencies>
 	      <dependency>
@@ -37,11 +41,7 @@ under the License.
             <artifactId>nemo-common</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.nemo</groupId>
-            <artifactId>nemo-client</artifactId>
-            <version>${project.version}</version>
-        </dependency>
+
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-core</artifactId>
@@ -49,11 +49,6 @@ under the License.
         </dependency>
 
       <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk -->
-      <dependency>
-        <groupId>org.apache.beam</groupId>
-        <artifactId>beam-runners-core-java</artifactId>
-        <version>${beam.version}</version>
-      </dependency>
       <dependency>
         <groupId>org.apache.beam</groupId>
         <artifactId>beam-sdks-java-io-hadoop-input-format</artifactId>
@@ -65,11 +60,6 @@ under the License.
         <version>${hadoop.version}</version>
         <scope>provided</scope>
       </dependency>
-      <dependency>
-        <groupId>com.google.auto.service</groupId>
-        <artifactId>auto-service</artifactId>
-        <version>${auto-service.version}</version>
-        <optional>true</optional>
-      </dependency>
+
     </dependencies>
 </project>

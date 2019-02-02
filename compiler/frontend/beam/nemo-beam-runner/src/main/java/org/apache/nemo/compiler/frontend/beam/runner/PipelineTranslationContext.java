@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.frontend.beam;
+package org.apache.nemo.compiler.frontend.beam.runner;
 
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.*;

@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.frontend.beam;
+package org.apache.nemo.compiler.frontend.beam.runner;
 
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 
 /**
  * Uses the translator and the context to build a Nemo IR DAG.
