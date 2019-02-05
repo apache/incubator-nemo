@@ -29,14 +29,14 @@ public final class MemorySideInputProcessor implements SideInputProcessor {
   private final byte[] sideInputDecodedFactory;
   private final ConcurrentMap<String, ConcurrentLinkedQueue<MemoryStorageObject>> prefixAndObjectMap;
   private final ConcurrentMap<String, AtomicInteger> prefixAndSizeMap;
-  private final NettyServerTransport lambdaTransport;
+  private final LambdaChannelManager lambdaTransport;
   private final List<String> serializedVertices;
 
   public MemorySideInputProcessor(final SerializerManager serializerManager,
                                   final String edgeId,
                                   final ConcurrentMap<String, ConcurrentLinkedQueue<MemoryStorageObject>> prefixAndObjectMap,
                                   final ConcurrentMap<String, AtomicInteger> prefixAndSizeMap,
-                                  final NettyServerTransport lambdaTransport,
+                                  final LambdaChannelManager lambdaTransport,
                                   final List<String> serializedVertices) {
     this.encoderFactory = ((NemoEventEncoderFactory) serializerManager.getSerializer(edgeId)
       .getEncoderFactory()).getValueEncoderFactory();

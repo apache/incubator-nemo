@@ -21,7 +21,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.datatransfer.NextIntraTaskOperatorInfo;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
-import org.apache.nemo.runtime.executor.offloading.NettyServerTransport;
+import org.apache.nemo.runtime.executor.offloading.LambdaChannelManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +55,7 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
 
   private final byte[] serializedDecoderFactory;
   private long startTime;
-  private final NettyServerTransport lambdaTransport;
+  private final LambdaChannelManager lambdaTransport;
   private GBKChannelHandler channelHandler;
 
   private boolean toLambda = false;
@@ -67,7 +67,8 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
                           final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
                           final List<OutputWriter> externalMainOutputs,
                           final Map<String, List<OutputWriter>> externalAdditionalOutputs,
-                          final List<RuntimeEdge<IRVertex>> internalEdges) {
+                          final List<RuntimeEdge<IRVertex>> internalEdges,
+                          final LambdaChannelManager lambdaChannelManager) {
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
@@ -77,7 +78,7 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
     this.encoderFactory = internalEdges.get(0).getPropertyValue(EncoderProperty.class).get();
     this.decoderFactory = internalEdges.get(0).getPropertyValue(DecoderProperty.class).get();
     this.serializedDecoderFactory = SerializationUtils.serialize(decoderFactory);
-    this.lambdaTransport = NettyServerTransport.INSTANCE;
+    this.lambdaTransport = lambdaChannelManager;
     //this.warmer = new LambdaOffloadingRequester();
     //warmer.warmup();
   }

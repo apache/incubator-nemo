@@ -5,6 +5,7 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -12,25 +13,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class MemoryStorageObjectFactory implements StorageObjectFactory {
   private static final Logger LOG = LoggerFactory.getLogger(MemoryStorageObjectFactory.class.getName());
 
-  public static final MemoryStorageObjectFactory INSTACE = new MemoryStorageObjectFactory();
-
   private ConcurrentMap<String, ConcurrentLinkedQueue<MemoryStorageObject>> prefixAndObjectMap;
   private ConcurrentMap<String, AtomicInteger> prefixAndSizeMap;
 
-  private NettyServerTransport lambdaTransport;
   private boolean initialized = false;
 
   private List<String> serializedVertices;
 
-  private MemoryStorageObjectFactory() {
+  private final LambdaChannelManager lambdaChannelManager;
 
+  @Inject
+  private MemoryStorageObjectFactory(final LambdaChannelManager lambdaChannelManager) {
+    this.lambdaChannelManager = lambdaChannelManager;
   }
 
   private synchronized void lazyInit() {
     if (!initialized) {
       this.prefixAndObjectMap = new ConcurrentHashMap<>();
       this.prefixAndSizeMap = new ConcurrentHashMap<>();
-      this.lambdaTransport = NettyServerTransport.INSTANCE;
       initialized = true;
     }
   }
@@ -63,7 +63,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
     lazyInit();
     LOG.info("Get side input processor: {} at {}", serializedVertices, this.hashCode());
     return new MemorySideInputProcessor(serializerManager, edgeId,
-      prefixAndObjectMap, prefixAndSizeMap, lambdaTransport, serializedVertices);
+      prefixAndObjectMap, prefixAndSizeMap, lambdaChannelManager, serializedVertices);
   }
 }
 

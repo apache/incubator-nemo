@@ -1,95 +1,56 @@
 package org.apache.nemo.runtime.executor.offloading;
 
-import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
-import org.apache.nemo.common.NettyChannelInitializer;
 import org.apache.nemo.runtime.common.offloading.NemoEventHandler;
 import org.apache.nemo.runtime.common.offloading.NettyServerSideChannelHandler;
+import org.apache.nemo.runtime.common.offloading.NettyServerTransport;
 import org.apache.nemo.runtime.executor.offloading.lambda.LambdaOffloadingRequester;
+import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public final class NettyServerTransport {
-  private static final Logger LOG = LoggerFactory.getLogger(NettyServerTransport.class.getName());
-  private static final int SERVER_BOSS_NUM_THREADS = 3;
-  private static final int SERVER_WORKER_NUM_THREADS = 10;
-  private static final String CLASS_NAME = NettyServerTransport.class.getName();
-  private static final String ADDRESS = "172.31.6.35";
-  private static final String PUBLIC_ADDRESS = "52.193.172.156";
-  private static final int PORT = 20332;
+public final class LambdaChannelManager {
+  private static final Logger LOG = LoggerFactory.getLogger(LambdaChannelManager.class.getName());
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-  private EventLoopGroup serverBossGroup;
-  private EventLoopGroup serverWorkerGroup;
-  private Channel acceptor;
   private NemoEventHandler nemoEventHandler;
   private Map<Channel, EventHandler> channelEventHandlerMap;
 
+  private final NettyServerTransport nettyServerTransport;
   private final ExecutorService executorService = Executors.newCachedThreadPool();
 
-  public static final NettyServerTransport INSTANCE = new NettyServerTransport();
-
-  //private final int poolSize = 200;
   private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   private final OffloadingRequester offloadingRequester;
 
-  private NettyServerTransport() {
-    lazyInit();
+  @Inject
+  private LambdaChannelManager(final TcpPortProvider tcpPortProvider) {
+    this.channelEventHandlerMap = new ConcurrentHashMap<>();
+    this.nemoEventHandler = new NemoEventHandler(channelEventHandlerMap);
+    this.nettyServerTransport = new NettyServerTransport(
+      tcpPortProvider, new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler));
+
     LOG.info("Netty server lambda transport created end");
     initialized.set(true);
     this.offloadingRequester = new LambdaOffloadingRequester(
-      nemoEventHandler, PUBLIC_ADDRESS, PORT);
+      nemoEventHandler, nettyServerTransport.getPublicAddress(), nettyServerTransport.getPort());
     //this.offloadingRequester = new VMOffloadingRequester(
     //  nemoEventHandler, PUBLIC_ADDRESS, PORT);
     offloadingRequester.start();
-  }
-
-  private void lazyInit() {
-    this.serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
-      new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
-    this.serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
-      new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
-    this.channelEventHandlerMap = new ConcurrentHashMap<>();
-    this.nemoEventHandler = new NemoEventHandler(channelEventHandlerMap);
-    //this.awsLambda = AWSLambdaClientBuilder.standard().withClientConfiguration(
-    //  new ClientConfiguration().withMaxConnections(150)).build();
-
-    final ServerBootstrap serverBootstrap = new ServerBootstrap();
-    serverBootstrap.group(this.serverBossGroup, this.serverWorkerGroup)
-      .channel(NioServerSocketChannel.class)
-      .childHandler(new NettyChannelInitializer(
-        new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler)))
-      .option(ChannelOption.SO_BACKLOG, 128)
-      .option(ChannelOption.SO_REUSEADDR, true)
-      .childOption(ChannelOption.SO_KEEPALIVE, true);
-    try {
-      this.acceptor = serverBootstrap.bind(
-        new InetSocketAddress(ADDRESS, PORT)).sync().channel();
-      LOG.info("Acceptor in worker open: {}, active:{} ", acceptor.isOpen(), acceptor.isActive());
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
   }
 
   public Object takeResult() {

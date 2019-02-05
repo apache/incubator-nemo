@@ -54,10 +54,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.nemo.runtime.executor.datatransfer.DynOptDataOutputCollector;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
-import org.apache.nemo.runtime.executor.offloading.MemoryStorageObjectFactory;
-import org.apache.nemo.runtime.executor.offloading.StorageObjectFactory;
-import org.apache.nemo.runtime.executor.offloading.MainInputLambdaCollector;
-import org.apache.nemo.runtime.executor.offloading.SideInputLambdaCollector;
+import org.apache.nemo.runtime.executor.offloading.*;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,7 +90,9 @@ public final class TaskExecutor {
 
   private final SerializerManager serializerManager;
 
-  private static final StorageObjectFactory SOFACTORY = MemoryStorageObjectFactory.INSTACE;
+  private final StorageObjectFactory storageObjectFactory;
+
+  //private static final StorageObjectFactory SOFACTORY = MemoryStorageObjectFactory.INSTACE;
   //private static final StorageObjectFactory SOFACTORY = S3StorageObjectFactory.INSTACE;
 
   /**
@@ -114,12 +113,14 @@ public final class TaskExecutor {
                       final BroadcastManagerWorker broadcastManagerWorker,
                       final MetricMessageSender metricMessageSender,
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-                      final SerializerManager serializerManager) {
+                      final SerializerManager serializerManager,
+                      final StorageObjectFactory storageObjectFactory) {
     // Essential information
     this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
+    this.storageObjectFactory = storageObjectFactory;
 
     this.serializerManager = serializerManager;
 
@@ -133,18 +134,6 @@ public final class TaskExecutor {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
 
     // Prepare data structures
-
-    // query 7
-    final List<String> serializedVertices =
-      irVertexDag.getTopologicalSort().stream()
-        .filter(irVertex -> irVertex.getId().equals("vertex14"))
-        .map(irVertex ->  serializeToString(irVertex))
-        .collect(Collectors.toList());
-
-    if (serializedVertices.size() > 0) {
-      SOFACTORY.setSerializedVertices(serializedVertices);
-    }
-
     final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, intermediateDataIOFactory);
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
@@ -276,12 +265,12 @@ public final class TaskExecutor {
         // query 7
         if (irVertex.getId().equals("vertex15")) {
           outputCollector = new SideInputLambdaCollector(
-            internalMainOutputs, irVertex, SOFACTORY.sideInputProcessor(serializerManager,
+            internalMainOutputs, irVertex, storageObjectFactory.sideInputProcessor(serializerManager,
             oedges.get(0).getId()));
         } else if (irVertex.getId().equals("vertex6")) {
           outputCollector =
             new MainInputLambdaCollector(irVertex, internalMainOutputs, internalAdditionalOutputMap,
-              oedges, serializerManager, SOFACTORY);
+              oedges, serializerManager, storageObjectFactory);
         }
 
         // query 8
@@ -794,22 +783,4 @@ public final class TaskExecutor {
   }
 
 
-  /**
-   * Write the object to a Base64 string.
-   * @param obj object
-   * @return serialized object
-   * @throws IOException
-   */
-  public static String serializeToString(final Serializable obj) {
-    try {
-      final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      final ObjectOutputStream oos = new ObjectOutputStream(baos);
-      oos.writeObject(obj);
-      oos.close();
-      return Base64.getEncoder().encodeToString(baos.toByteArray());
-    } catch (final IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-  }
 }

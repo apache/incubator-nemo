@@ -45,14 +45,24 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
+import org.apache.nemo.runtime.executor.offloading.LambdaChannelManager;
+import org.apache.nemo.runtime.executor.offloading.StorageObjectFactory;
 import org.apache.nemo.runtime.executor.task.TaskExecutor;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.util.Base64;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,6 +95,10 @@ public final class Executor {
 
   private final MetricMessageSender metricMessageSender;
 
+  private final LambdaChannelManager lambdaChannelManager;
+
+  private final StorageObjectFactory storageObjectFactory;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -92,7 +106,9 @@ public final class Executor {
                    final SerializerManager serializerManager,
                    final IntermediateDataIOFactory intermediateDataIOFactory,
                    final BroadcastManagerWorker broadcastManagerWorker,
-                   final MetricManagerWorker metricMessageSender) {
+                   final MetricManagerWorker metricMessageSender,
+                   final LambdaChannelManager lambdaChannelManager,
+                   final StorageObjectFactory storageObjectFactory) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
         .namingPattern("TaskExecutor thread-%d")
@@ -102,6 +118,8 @@ public final class Executor {
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
+    this.lambdaChannelManager = lambdaChannelManager;
+    this.storageObjectFactory = storageObjectFactory;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
 
@@ -112,18 +130,54 @@ public final class Executor {
   private synchronized void onTaskReceived(final Task task) {
     LOG.debug("Executor [{}] received Task [{}] to execute.",
         new Object[]{executorId, task.getTaskId()});
-    executorService.execute(() -> launchTask(task));
+
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
+      SerializationUtils.deserialize(task.getSerializedIRDag());
+
+    // TODO: remove
+    // query 7
+    final List<String> serializedVertices =
+      irDag.getTopologicalSort().stream()
+        .filter(irVertex -> irVertex.getId().equals("vertex14"))
+        .map(irVertex ->  serializeToString(irVertex))
+        .collect(Collectors.toList());
+
+    if (serializedVertices.size() > 0) {
+      storageObjectFactory.setSerializedVertices(serializedVertices);
+    }
+    // TODO: remove
+
+    executorService.execute(() -> launchTask(task, irDag));
+  }
+
+
+  /**
+   * Write the object to a Base64 string.
+   * @param obj object
+   * @return serialized object
+   * @throws IOException
+   */
+  public static String serializeToString(final Serializable obj) {
+    try {
+      final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      final ObjectOutputStream oos = new ObjectOutputStream(baos);
+      oos.writeObject(obj);
+      oos.close();
+      return Base64.getEncoder().encodeToString(baos.toByteArray());
+    } catch (final IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   /**
    * Launches the Task, and keeps track of the execution state with taskStateManager.
    * @param task to launch.
    */
-  private void launchTask(final Task task) {
+  private void launchTask(final Task task,
+                          final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
     LOG.info("Launch task: {}", task.getTaskId());
     try {
-      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
-          SerializationUtils.deserialize(task.getSerializedIRDag());
       final TaskStateManager taskStateManager =
           new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
@@ -146,7 +200,7 @@ public final class Executor {
       });
 
       new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-          metricMessageSender, persistentConnectionToMasterMap, serializerManager).execute();
+          metricMessageSender, persistentConnectionToMasterMap, serializerManager, storageObjectFactory).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
