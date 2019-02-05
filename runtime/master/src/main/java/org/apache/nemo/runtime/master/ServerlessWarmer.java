@@ -138,7 +138,7 @@ public final class ServerlessWarmer {
           this.acceptor = serverBootstrap.bind(
             new InetSocketAddress(localAddress, p)).sync().channel();
           LOG.info("Server address: {}, Assigned server port = {}", localAddress, p);
-          return port;
+          return p;
         } catch (final Exception e) {
           e.printStackTrace();
           LOG.info("Server address: {}", localAddress);
