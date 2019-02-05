@@ -80,6 +80,7 @@ public final class ServerlessWarmer {
     this.port = setUpRandomPortNettyServer(serverBootstrap, tcpPortProvider);
     this.publicAddress = NetworkUtils.getPublicIP();
     LOG.info("Public address: {}, localAddress: {}, port: {}", publicAddress, localAddress, port);
+    LOG.info("Acceptor open: {}, active: {}", acceptor.isOpen(), acceptor.isActive());
 
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
       new ClientConfiguration().withMaxConnections(500)).build();
@@ -87,7 +88,6 @@ public final class ServerlessWarmer {
 
   public void start() {
 
-    /*
     LOG.info("Warm up start");
     for (int i = 0; i < POOL_SIZE; i++) {
       executorService.submit(() -> {
@@ -111,7 +111,6 @@ public final class ServerlessWarmer {
         e.printStackTrace();
       }
     }
-    */
   }
 
   public int getPort() {

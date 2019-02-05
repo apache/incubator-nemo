@@ -85,6 +85,7 @@ public final class NettyServerTransport {
     try {
       this.acceptor = serverBootstrap.bind(
         new InetSocketAddress(ADDRESS, PORT)).sync().channel();
+      LOG.info("Acceptor in worker open: {}, active:{} ", acceptor.isOpen(), acceptor.isActive());
     } catch (InterruptedException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
