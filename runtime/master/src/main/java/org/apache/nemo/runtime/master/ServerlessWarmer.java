@@ -87,6 +87,7 @@ public final class ServerlessWarmer {
 
   public void start() {
 
+    /*
     LOG.info("Warm up start");
     for (int i = 0; i < POOL_SIZE; i++) {
       executorService.submit(() -> {
@@ -110,6 +111,7 @@ public final class ServerlessWarmer {
         e.printStackTrace();
       }
     }
+    */
   }
 
   public int getPort() {
