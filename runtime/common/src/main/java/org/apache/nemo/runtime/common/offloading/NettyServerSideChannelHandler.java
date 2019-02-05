@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.offloading;
+package org.apache.nemo.runtime.common.offloading;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -13,13 +13,13 @@ import org.slf4j.LoggerFactory;
 
 
 @ChannelHandler.Sharable
-final class NettyServerSideChannelHandler extends ChannelInboundHandlerAdapter {
+public final class NettyServerSideChannelHandler extends ChannelInboundHandlerAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(NettyServerSideChannelHandler.class.getName());
   private final ChannelGroup channelGroup;
   private final EventHandler<Pair<Channel,NemoEvent>> eventHandler;
 
-  NettyServerSideChannelHandler(final ChannelGroup channelGroup,
-                                final EventHandler<Pair<Channel,NemoEvent>> eventHandler) {
+  public NettyServerSideChannelHandler(final ChannelGroup channelGroup,
+                                       final EventHandler<Pair<Channel,NemoEvent>> eventHandler) {
     this.channelGroup = channelGroup;
     this.eventHandler = eventHandler;
   }

@@ -13,8 +13,9 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.NettyChannelInitializer;
+import org.apache.nemo.runtime.common.offloading.NemoEventHandler;
+import org.apache.nemo.runtime.common.offloading.NettyServerSideChannelHandler;
 import org.apache.nemo.runtime.executor.offloading.lambda.LambdaOffloadingRequester;
-import org.apache.nemo.runtime.executor.offloading.vm.VMOffloadingRequester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +23,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;

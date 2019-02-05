@@ -7,7 +7,7 @@ import com.amazonaws.services.lambda.model.InvokeRequest;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.runtime.executor.datatransfer.AWSUtils;
-import org.apache.nemo.runtime.executor.offloading.NemoEventHandler;
+import org.apache.nemo.runtime.common.offloading.NemoEventHandler;
 import org.apache.nemo.runtime.executor.offloading.OffloadingRequester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,9 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
-import static org.apache.nemo.common.lambda.Constants.LAMBDA_WARMUP;
 import static org.apache.nemo.common.lambda.Constants.POOL_SIZE;
 
 public final class LambdaOffloadingRequester implements OffloadingRequester {
@@ -45,30 +43,6 @@ public final class LambdaOffloadingRequester implements OffloadingRequester {
 
   @Override
   public void start() {
-
-    for (int i = 0; i < POOL_SIZE; i++) {
-      executorService.submit(() -> {
-        // Trigger lambdas
-        final InvokeRequest request = new InvokeRequest()
-          .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
-          .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-            serverAddress, serverPort));
-        return awsLambda.invokeAsync(request);
-      });
-    }
-
-    // take
-    for (int i = 0; i < POOL_SIZE; i++) {
-      try {
-        //channelPool.add(nemoEventHandler.getHandshakeQueue().take().left());
-        nemoEventHandler.getHandshakeQueue().take().left();
-        final Channel channel = nemoEventHandler.getReadyQueue().take().left();
-        channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-
 
     /*
     this.warmer.scheduleAtFixedRate(() -> {

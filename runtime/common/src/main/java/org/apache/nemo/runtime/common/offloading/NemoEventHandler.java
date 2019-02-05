@@ -1,10 +1,9 @@
-package org.apache.nemo.runtime.executor.offloading;
+package org.apache.nemo.runtime.common.offloading;
 
 import io.netty.channel.Channel;
 import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.runtime.executor.offloading.vm.VMOffloadingRequester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,15 +18,18 @@ public final class NemoEventHandler implements EventHandler<Pair<Channel,NemoEve
     private final BlockingQueue<Pair<Channel, NemoEvent>> readyQueue;
     private final BlockingQueue<Pair<Channel,NemoEvent>> resultQueue;
     private final BlockingQueue<Pair<Channel, NemoEvent>> endQueue;
-    private final Map<Channel, EventHandler> channelEventHandlerMap;
     private final AtomicInteger pendingRequest = new AtomicInteger();
 
+    @Deprecated
     public NemoEventHandler(final Map<Channel, EventHandler> channelEventHandlerMap) {
+      this();
+    }
+
+    public NemoEventHandler() {
       this.handshakeQueue = new LinkedBlockingQueue<>();
       this.readyQueue = new LinkedBlockingQueue<>();
       this.resultQueue = new LinkedBlockingQueue<>();
       this.endQueue = new LinkedBlockingQueue<>();
-      this.channelEventHandlerMap = channelEventHandlerMap;
     }
 
     public AtomicInteger getPendingRequest() {

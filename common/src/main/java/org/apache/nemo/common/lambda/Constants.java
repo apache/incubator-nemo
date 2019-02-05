@@ -6,4 +6,6 @@ public  class Constants {
 
   public static final int LAMBDA_WARMUP = 90; // sec
   public static final int POOL_SIZE = 140;
+
+  public static final String SIDEINPUT_LAMBDA_NAME2 = "nemo-dev-imhandler";
 }
