@@ -60,6 +60,7 @@ public final class ServerlessWarmer {
 
   @Inject
   private ServerlessWarmer(final TcpPortProvider tcpPortProvider) {
+    LOG.info("Start serverless warmer");
     this.serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
       new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
     this.serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
@@ -119,14 +120,14 @@ public final class ServerlessWarmer {
       while (true) {
         try {
           final int p = portIterator.next();
-          this.acceptor = serverBootstrap.bind(address, port).sync().channel();
           address = addr.getHostAddress();
+          this.acceptor = serverBootstrap.bind(address, port).sync().channel();
           port = p;
           LOG.info("Server address: {}, Assigned server port = {}", address, port);
           return port;
         } catch (final Exception e) {
           e.printStackTrace();
-          LOG.info("Server address: {}", address);
+          LOG.info("Server address: {}, port: {}", address, port);
           LOG.warn("Duplicate port is assigned to server... try again...");
         }
       }
