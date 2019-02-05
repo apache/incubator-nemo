@@ -100,6 +100,8 @@ public final class ServerlessWarmer {
       });
     }
 
+
+    LOG.info("Waiting handshake queue");
     // take
     for (int i = 0; i < POOL_SIZE; i++) {
       try {
@@ -111,6 +113,7 @@ public final class ServerlessWarmer {
         e.printStackTrace();
       }
     }
+    LOG.info("End of waiting handshake queue");
   }
 
   public int getPort() {
@@ -127,7 +130,7 @@ public final class ServerlessWarmer {
           final int p = portIterator.next();
           localAddress = addr.getHostAddress();
           this.acceptor = serverBootstrap.bind(
-            new InetSocketAddress(publicAddress, port)).sync().channel();
+            new InetSocketAddress(localAddress, port)).sync().channel();
           port = p;
           LOG.info("Server address: {}, Assigned server port = {}", localAddress, port);
           return port;
