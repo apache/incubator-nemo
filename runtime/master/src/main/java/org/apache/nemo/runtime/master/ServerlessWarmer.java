@@ -125,7 +125,8 @@ public final class ServerlessWarmer {
         try {
           final int p = portIterator.next();
           localAddress = addr.getHostAddress();
-          this.acceptor = serverBootstrap.bind(localAddress, port).sync().channel();
+          this.acceptor = serverBootstrap.bind(
+            new InetSocketAddress(localAddress, port)).sync().channel();
           port = p;
           LOG.info("Server address: {}, Assigned server port = {}", localAddress, port);
           return port;
