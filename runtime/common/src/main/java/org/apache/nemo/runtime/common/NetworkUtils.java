@@ -1,11 +1,15 @@
 package org.apache.nemo.runtime.common;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.UnknownHostException;
 import java.util.Enumeration;
 
 public class NetworkUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(NetworkUtils.class.getName());
 
   public static InetAddress getLocalHostLANAddress() throws UnknownHostException {
     try {
@@ -16,6 +20,11 @@ public class NetworkUtils {
         // Iterate all IP addresses assigned to each card...
         for (Enumeration inetAddrs = iface.getInetAddresses(); inetAddrs.hasMoreElements();) {
           InetAddress inetAddr = (InetAddress) inetAddrs.nextElement();
+          LOG.info("Addr: {}, isLoopback: {}, isSiteLocal: {}, isMCGlobal: {}, isMCLinkLocal: {}",
+            inetAddr.getHostAddress(), inetAddr.isLoopbackAddress(), inetAddr.isSiteLocalAddress(),
+            inetAddr.isMCGlobal(), inetAddr.isMCLinkLocal());
+
+          /*
           if (!inetAddr.isLoopbackAddress()) {
 
             if (inetAddr.isSiteLocalAddress()) {
@@ -30,6 +39,7 @@ public class NetworkUtils {
               // only the first. For subsequent iterations, candidate will be non-null.
             }
           }
+          */
         }
       }
       if (candidateAddress != null) {
