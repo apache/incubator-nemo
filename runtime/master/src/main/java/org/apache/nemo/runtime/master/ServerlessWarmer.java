@@ -107,7 +107,6 @@ public final class ServerlessWarmer {
       });
     }
 
-
     LOG.info("Waiting handshake queue");
     // take
     for (int i = 0; i < POOL_SIZE; i++) {

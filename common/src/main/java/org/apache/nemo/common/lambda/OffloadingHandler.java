@@ -111,12 +111,21 @@ public final class OffloadingHandler {
     Channel opendChannel = null;
     for (final Map.Entry<Channel, EventHandler<NemoEvent>> entry : map.entrySet()) {
       final Channel channel = entry.getKey();
-      if (!channel.isOpen()) {
-        channel.close();
-        map.remove(channel);
-      } else {
+      final String address = (String) input.get("address");
+      final Integer port = (Integer) input.get("port");
+
+      final String requestedAddr = "/" + address + ":" + port;
+
+      System.out.println("Requested addr: " + requestedAddr +
+        ", channelAddr: " +channel.remoteAddress().toString());
+
+      if (channel.remoteAddress().toString().equals(requestedAddr)
+        && channel.isOpen()) {
         opendChannel = channel;
         break;
+      } else if (!channel.isOpen()) {
+        channel.close();
+        map.remove(channel);
       }
     }
 
