@@ -98,6 +98,8 @@ public final class RuntimeMaster {
   // REST API server for web metric visualization ui.
   private final Server metricServer;
 
+  private final ServerlessWarmer warmer;
+
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
                         final ContainerManager containerManager,
@@ -105,6 +107,7 @@ public final class RuntimeMaster {
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
                         final MetricManagerMaster metricManagerMaster,
+                        final ServerlessWarmer warmer,
                         final PlanStateManager planStateManager) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
@@ -135,6 +138,8 @@ public final class RuntimeMaster {
     this.objectMapper = new ObjectMapper();
     this.metricServer = startRestMetricServer();
     this.planStateManager = planStateManager;
+    this.warmer = warmer;
+    this.warmer.start();
   }
 
   private Server startRestMetricServer() {

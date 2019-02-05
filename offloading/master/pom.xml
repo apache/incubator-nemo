@@ -11,5 +11,17 @@
 
   <artifactId>offloading-master</artifactId>
 
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.reef</groupId>
+      <artifactId>tang</artifactId>
+      <version>${reef.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.reef</groupId>
+      <artifactId>wake</artifactId>
+      <version>${reef.version}</version>
+    </dependency>
+  </dependencies>
 
 </project>

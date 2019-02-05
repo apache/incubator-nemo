@@ -76,6 +76,7 @@ under the License.
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
         </dependency>
+
         <dependency>
             <!--
             This is needed to view the logs when running unit tests.
