@@ -78,6 +78,13 @@ public final class ServerlessWarmer {
       .childOption(ChannelOption.SO_KEEPALIVE, true);
 
     this.publicAddress = NetworkUtils.getPublicIP();
+    try {
+      this.localAddress = NetworkUtils.getLocalHostLANAddress().getHostAddress();
+    } catch (UnknownHostException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
     this.port = setUpRandomPortNettyServer(serverBootstrap, tcpPortProvider);
     LOG.info("Public address: {}, localAddress: {}, port: {}", publicAddress, localAddress, port);
     LOG.info("Acceptor open: {}, active: {}", acceptor.isOpen(), acceptor.isActive());
@@ -123,24 +130,22 @@ public final class ServerlessWarmer {
   private int setUpRandomPortNettyServer(final ServerBootstrap serverBootstrap,
                                          final TcpPortProvider tcpPortProvider) {
     try {
-      final InetAddress addr = NetworkUtils.getLocalHostLANAddress();
       final Iterator<Integer> portIterator = tcpPortProvider.iterator();
       while (true) {
         try {
-          final int p = portIterator.next();
-          localAddress = addr.getHostAddress();
+          //final int p = portIterator.next();
+          final int p = 20332;
           this.acceptor = serverBootstrap.bind(
-            new InetSocketAddress(localAddress, port)).sync().channel();
-          port = p;
-          LOG.info("Server address: {}, Assigned server port = {}", localAddress, port);
+            new InetSocketAddress(localAddress, p)).sync().channel();
+          LOG.info("Server address: {}, Assigned server port = {}", localAddress, p);
           return port;
         } catch (final Exception e) {
           e.printStackTrace();
-          LOG.info("Server address: {}, port: {}", localAddress, port);
+          LOG.info("Server address: {}", localAddress);
           LOG.warn("Duplicate port is assigned to server... try again...");
         }
       }
-    } catch (UnknownHostException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
