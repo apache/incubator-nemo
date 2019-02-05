@@ -77,8 +77,8 @@ public final class ServerlessWarmer {
       .option(ChannelOption.SO_REUSEADDR, true)
       .childOption(ChannelOption.SO_KEEPALIVE, true);
 
-    this.port = setUpRandomPortNettyServer(serverBootstrap, tcpPortProvider);
     this.publicAddress = NetworkUtils.getPublicIP();
+    this.port = setUpRandomPortNettyServer(serverBootstrap, tcpPortProvider);
     LOG.info("Public address: {}, localAddress: {}, port: {}", publicAddress, localAddress, port);
     LOG.info("Acceptor open: {}, active: {}", acceptor.isOpen(), acceptor.isActive());
 
@@ -127,7 +127,7 @@ public final class ServerlessWarmer {
           final int p = portIterator.next();
           localAddress = addr.getHostAddress();
           this.acceptor = serverBootstrap.bind(
-            new InetSocketAddress(localAddress, port)).sync().channel();
+            new InetSocketAddress(publicAddress, port)).sync().channel();
           port = p;
           LOG.info("Server address: {}, Assigned server port = {}", localAddress, port);
           return port;
