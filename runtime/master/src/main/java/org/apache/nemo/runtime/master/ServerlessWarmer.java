@@ -133,8 +133,7 @@ public final class ServerlessWarmer {
       final Iterator<Integer> portIterator = tcpPortProvider.iterator();
       while (true) {
         try {
-          //final int p = portIterator.next();
-          final int p = 20332;
+          final int p = portIterator.next();
           this.acceptor = serverBootstrap.bind(
             new InetSocketAddress(localAddress, p)).sync().channel();
           LOG.info("Server address: {}, Assigned server port = {}", localAddress, p);
