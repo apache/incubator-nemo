@@ -128,7 +128,7 @@ public final class Executor {
   }
 
   private synchronized void onTaskReceived(final Task task) {
-    LOG.debug("Executor [{}] received Task [{}] to execute.",
+    LOG.info("Executor [{}] received Task [{}] to execute.",
         new Object[]{executorId, task.getTaskId()});
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
@@ -143,6 +143,7 @@ public final class Executor {
         .collect(Collectors.toList());
 
     if (serializedVertices.size() > 0) {
+      LOG.info("Launch task: {}, setSerializedVertices: {}", task.getTaskId(), serializedVertices);
       storageObjectFactory.setSerializedVertices(serializedVertices);
     }
     // TODO: remove
