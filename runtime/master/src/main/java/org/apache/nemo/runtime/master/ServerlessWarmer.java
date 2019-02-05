@@ -52,7 +52,8 @@ public final class ServerlessWarmer {
   private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final AtomicBoolean initialized = new AtomicBoolean(false);
   private int port;
-  private String address;
+  private String localAddress;
+  private final String publicAddress;
   private final NemoEventHandler nemoEventHandler;
 
 
@@ -77,6 +78,8 @@ public final class ServerlessWarmer {
       .childOption(ChannelOption.SO_KEEPALIVE, true);
 
     this.port = setUpRandomPortNettyServer(serverBootstrap, tcpPortProvider);
+    this.publicAddress = NetworkUtils.getPublicIP();
+    LOG.info("Public address: {}, localAddress: {}, port: {}", publicAddress, localAddress, port);
 
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
       new ClientConfiguration().withMaxConnections(500)).build();
@@ -91,7 +94,7 @@ public final class ServerlessWarmer {
         final InvokeRequest request = new InvokeRequest()
           .withFunctionName(Constants.SIDEINPUT_LAMBDA_NAME2)
           .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-            address, port));
+            publicAddress, port));
         return awsLambda.invokeAsync(request);
       });
     }
@@ -121,14 +124,14 @@ public final class ServerlessWarmer {
       while (true) {
         try {
           final int p = portIterator.next();
-          address = addr.getHostAddress();
-          this.acceptor = serverBootstrap.bind(address, port).sync().channel();
+          localAddress = addr.getHostAddress();
+          this.acceptor = serverBootstrap.bind(localAddress, port).sync().channel();
           port = p;
-          LOG.info("Server address: {}, Assigned server port = {}", address, port);
+          LOG.info("Server address: {}, Assigned server port = {}", localAddress, port);
           return port;
         } catch (final Exception e) {
           e.printStackTrace();
-          LOG.info("Server address: {}, port: {}", address, port);
+          LOG.info("Server address: {}, port: {}", localAddress, port);
           LOG.warn("Duplicate port is assigned to server... try again...");
         }
       }
