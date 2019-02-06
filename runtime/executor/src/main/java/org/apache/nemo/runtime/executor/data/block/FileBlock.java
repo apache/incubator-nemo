@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.data.block;
 
 import org.apache.crail.*;
+import org.apache.crail.conf.CrailConfiguration;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
@@ -54,6 +55,8 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   private final Serializer serializer;
   private final String filePath;
   private final FileMetadata<K> metadata;
+  CrailConfiguration conf;
+  CrailStore fs;
 
   /**
    * Constructor.
@@ -72,6 +75,18 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
     this.serializer = serializer;
     this.filePath = filePath;
     this.metadata = metadata;
+    if(filePath.contains("crail")) {
+      try {
+        conf = new CrailConfiguration();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+      try {
+        fs = CrailStore.newInstance(conf);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
   }
 
   /**
@@ -86,10 +101,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
     throws Exception {
     if (filePath.contains("crail")) {
       //Crail 디렉토리의 경우
-      CrailStore fs = null;
       CrailFile file = fs.create(filePath+'/'+id, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
       final CrailOutputStream fileOutputStream = file.getDirectOutputStream(1024);
-      CrailBuffer buffer = null;
+      CrailBuffer buffer = fs.allocateBuffer();
       for(final SerializedPartition<K> serializedPartition : serializedPartitions){
         buffer.put(serializedPartition.getData());
       }
