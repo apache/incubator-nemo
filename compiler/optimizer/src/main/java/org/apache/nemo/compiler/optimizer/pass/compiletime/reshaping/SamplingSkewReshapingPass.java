@@ -32,10 +32,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Optimizes the PartitionSetProperty of shuffle edges to handle data skews using the SamplingVertex.
+ * Optimizes the PartitionSet property of shuffle edges to handle data skews using the SamplingVertex.
  *
- * This pass effectively partitions the IRDAG by shuffle edges, clones each subDAG partition using SamplingVertex
- * to process sampled data, and executes each clone prior to executing the corresponding original partition.
+ * This pass effectively partitions the IRDAG by non-oneToOne edges, clones each subDAG partition using SamplingVertex
+ * to process sampled data, and executes each cloned partition prior to executing the corresponding original partition.
  *
  * Suppose the IRDAG is partitioned into two sub-DAGs as follows:
  * P1 -> P2
@@ -91,11 +91,13 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
       }
     }
 
+    // TODO: In each partition, get the sourcevertex or operatorvertex with inedges from other partitions
+
     // Loop over the set to insert
     // For each pair, insert vertices
     for (final Set<IRVertex> subDAG : subDAGPartitions) {
       final Set<IRVertex> cloneSet = pair.left();
-      final Set<IREdge> outgoingShuffleSet = pair.right();
+      final Set<IRVertex> outgoingShuffleSet = pair.right();
 
       // [STEP 1] Insert the sampling vertices.
       dag.insert(cloneSet, outgoingShuffleSet);
@@ -110,7 +112,7 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
     return dag;
   }
 
-  private Set<IRVertex> recursivelyAdd(final IRVertex curVertex, final IRDAG dag) {
+  private Set<IRVertex> recursivelyBuildPartition(final IRVertex curVertex, final IRDAG dag) {
     final Set<IRVertex> unionSet = new HashSet<>();
     unionSet.add(curVertex);
     for (final IREdge inEdge : dag.getIncomingEdgesOf(curVertex)) {
@@ -119,7 +121,7 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
         && DataStoreProperty.Value.MemoryStore
         .equals(inEdge.getPropertyValue(DataStoreProperty.class).get())
         && dag.getIncomingEdgesOf(curVertex).size() == 1) {
-        unionSet.add()
+        unionSet.addAll(recursivelyBuildPartition(inEdge.getSrc(), dag));
       }
     }
     return unionSet;
