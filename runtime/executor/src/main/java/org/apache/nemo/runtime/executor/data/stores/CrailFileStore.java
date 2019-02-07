@@ -47,8 +47,9 @@ import java.util.Optional;
 @ThreadSafe
 public final class CrailFileStore extends AbstractBlockStore implements RemoteFileStore {
   private final String fileDirectory;
-  //private CrailConfiguration conf;
-  //private CrailStore fs;
+  private CrailConfiguration conf = null;
+  private CrailStore fs = null;
+  CrailFile file = null;
 
   /**
    * Constructor.
@@ -64,9 +65,9 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     super(serializerManager);
     this.fileDirectory =volumeDirectory + "/" + jobId;
     new File(fileDirectory).mkdirs();
-    //this.conf = new CrailConfiguration();
-    //this.fs = null;
-    //CrailFile file = fs.create(fileDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
+    this.conf = new CrailConfiguration();
+    this.fs = CrailStore.newInstance(conf);
+    CrailFile file = fs.create(fileDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
   }
 
   @Override
@@ -76,7 +77,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata metadata =
       RemoteFileMetadata.create(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-    return new FileBlock<>(blockId, serializer, filePath, metadata);
+    return new FileBlock<>(blockId, serializer, filePath, metadata, file);
   }
 
   /**
@@ -160,6 +161,6 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata<K> metadata =
       RemoteFileMetadata.open(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-    return new FileBlock<>(blockId, serializer, filePath, metadata);
+    return new FileBlock<>(blockId, serializer, filePath, metadata, file);
   }
 }
