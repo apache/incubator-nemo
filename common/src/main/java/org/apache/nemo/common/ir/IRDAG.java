@@ -31,6 +31,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -219,6 +220,108 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     });
 
     modifiedDAG = builder.build(); // update the DAG.
+  }
+
+  /**
+   * Inserts a set of vertices that process sampled data.
+   *
+   * Only the incoming edges (and not the outgoing edges) of samplingVertices are preserved.
+   *
+   * Suppose the caller supplies the following arguments to perform a "sampled run" of vertices {V1, V2},
+   * prior to executing them.
+   * - samplingVertices: {V1', V2'}
+   * - dependingVertices: {V1}
+   *
+   * Before: V1 - oneToOneEdge - V2 - shuffleEdge - V3
+   * After: V1' - oneToOneEdge - V2' - controlEdge - V1 - oneToOneEdge - V2 - shuffleEdge - V3
+   *
+   * @param samplingVertices to insert.
+   * @param childrenOfSamplingVertices that must be executed after samplingVertices.
+   */
+  public void insert(final Set<SamplingVertex> samplingVertices,
+                     final Set<IRVertex> childrenOfSamplingVertices) {
+    LOG.info("samplingVertices {}", samplingVertices);
+    LOG.info("childrenOfSamplingVertices {}", childrenOfSamplingVertices);
+
+    // Get the original vertices
+    final Set<IRVertex> originalVertices = samplingVertices.stream()
+      .map(sv -> sv.getOriginalVertex())
+      .collect(Collectors.toSet());
+
+    // Integrity checks
+    // Check the original vertices form a DAG
+    // Create a completely new DAG with the vertex inserted.
+    final DAGBuilder builder = new DAGBuilder();
+
+    // All of the existing vertices and edges remain
+    builder.addVertex()
+
+    // Construct the sampling DAG with the original vertices, referring to the original IRDAG
+    for (final SamplingVertex samplingVertex : samplingVertices) {
+      builder.addVertex(samplingVertex);
+
+      // get origin of sampling
+      // get origin of original
+      // match...
+    }
+
+    // Create an edge from the sinks of the DAGs to the depending vertices
+
+    // Add sampled vertex
+    final int sampledParallelism = idxToSample.size();
+    final IRVertex sampledVtx = vtxToSample instanceof SourceVertex ?
+      ((SourceVertex) vtxToSample).getSampledClone(idxToSample, originalParallelism) : vtxToSample.getClone();
+    vtxToSample.copyExecutionPropertiesTo(sampledVtx);
+    sampledVtx.setPropertyPermanently(ParallelismProperty.of(sampledParallelism));
+    builder.addVertex(sampledVtx);
+    LOG.info("Sampled vtx: " + sampledVtx.getId());
+    IRVertex startVtxToSample = null;
+
+    // Add edges toward the sampled vertex
+    for (final IREdge edgeToVtxToSample : dag.getIncomingEdgesOf(vtxToSample)) {
+      final IREdge edgeToSampledVtx;
+      switch (edgeToVtxToSample.getPropertyValue(CommunicationPatternProperty.class)
+        .orElseThrow(() -> new RuntimeException("No communication pattern on an edge."))) {
+
+
+
+        case OneToOne:
+          if (DataStoreProperty.Value.MemoryStore.equals(
+            edgeToVtxToSample.getPropertyValue(DataStoreProperty.class).get())
+            && dag.getIncomingEdgesOf(vtxToSample).size() == 1) {
+            final Pair<IRVertex, IRVertex> lastVtxPair = appendSampledDag(
+              originalParallelism, idxToSample, edgeToVtxToSample.getSrc(), builder, dag, duplicateId);
+            final IRVertex lastSampledVtx = lastVtxPair.left();
+            startVtxToSample = lastVtxPair.right();
+
+            edgeToSampledVtx =
+              new IREdge(CommunicationPatternProperty.Value.OneToOne, lastSampledVtx, sampledVtx);
+            edgeToVtxToSample.copyExecutionPropertiesTo(edgeToSampledVtx);
+
+            builder.connectVertices(edgeToSampledVtx);
+          } else {
+            edgeToSampledVtx =
+              new IREdge(CommunicationPatternProperty.Value.OneToOne, edgeToVtxToSample.getSrc(), sampledVtx);
+            if (!edgeToVtxToSample.getPropertyValue(DuplicateEdgeGroupProperty.class).isPresent()) {
+              final DuplicateEdgeGroupPropertyValue value =
+                new DuplicateEdgeGroupPropertyValue("Sampling-" + String.valueOf(duplicateId.getAndIncrement()));
+              edgeToVtxToSample.setPropertyPermanently(DuplicateEdgeGroupProperty.of(value));
+            }
+            edgeToVtxToSample.copyExecutionPropertiesTo(edgeToSampledVtx);
+
+            builder.connectVertices(edgeToSampledVtx);
+          }
+          break;
+        default:
+          throw new UnsupportedCommPatternException(new Throwable("Invalid communication pattern!"));
+      }
+    }
+
+    if (startVtxToSample == null) {
+      return Pair.of(sampledVtx, vtxToSample);
+    } else {
+      return Pair.of(sampledVtx, startVtxToSample);
+    }
   }
 
   /**
