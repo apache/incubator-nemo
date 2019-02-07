@@ -94,7 +94,7 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
     //LOG.info("Get result");
     final List<T> result = new ArrayList<>();
 
-    while (endQueue.peek() != null) {
+    while (endQueue.peek() == null) {
       while (!resultQueue.isEmpty()) {
         result.add((T) resultQueue.poll());
       }

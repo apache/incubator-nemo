@@ -190,6 +190,26 @@ public final class OffloadingHandler {
       }
     }
 
+    while (result.peek() != null) {
+      final Object data = result.poll();
+      final ByteBuf byteBuf = opendChannel.alloc().ioBuffer();
+      byteBuf.writeInt(NemoEvent.Type.RESULT.ordinal());
+      final ByteBufOutputStream bis = new ByteBufOutputStream(byteBuf);
+      final EncoderFactory.Encoder encoder;
+      try {
+        encoder = outputEncoderFactory.create(bis);
+        encoder.encode(data);
+        bis.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      System.out.println("Write result");
+      futures.add(opendChannel.writeAndFlush(
+        new NemoEvent(NemoEvent.Type.RESULT, byteBuf)));
+    }
+
     futures.forEach(future -> {
       try {
         future.get();
@@ -321,6 +341,8 @@ public final class OffloadingHandler {
             }
           }
 
+          System.out.println("Data processing done");
+
           nemoEvent.getByteBuf().release();
 
           break;
@@ -412,7 +434,7 @@ public final class OffloadingHandler {
     @Override
     public void emit(Object output) {
       System.out.println("Emit output: " + output.toString());
-      result.add(output.toString());
+      result.add(output);
     }
 
     @Override
