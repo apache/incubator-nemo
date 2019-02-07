@@ -240,7 +240,10 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         try {
           final List<WindowedValue<OutputT>> result = future.get();
           // Emit results
-          result.stream().forEach(val -> getOutputCollector().emit(val));
+          result.stream().forEach(val -> {
+            LOG.info("Result: {}", val);
+            getOutputCollector().emit(val);
+          });
         } catch (InterruptedException e) {
           e.printStackTrace();
           throw new RuntimeException(e);

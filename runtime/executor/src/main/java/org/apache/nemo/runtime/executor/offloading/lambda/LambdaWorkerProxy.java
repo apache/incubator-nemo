@@ -91,7 +91,7 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
 
   @Override
   public <T> List<T> getResult() {
-    LOG.info("Get result");
+    //LOG.info("Get result");
     final List<T> result = new ArrayList<>();
 
     while (endQueue.peek() != null) {
@@ -99,7 +99,7 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
         result.add((T) resultQueue.poll());
       }
 
-      LOG.info("Result is empty, but don't receive end message");
+      //LOG.info("Result is empty, but don't receive end message");
 
       try {
         Thread.sleep(100);
@@ -108,7 +108,7 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
       }
     }
 
-    LOG.info("We received end message!");
+    //LOG.info("We received end message!");
 
     while (!resultQueue.isEmpty()) {
       result.add((T) resultQueue.poll());
@@ -132,7 +132,7 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
     try {
       byteBufOutputStream.close();
 
-      LOG.info("Flush data");
+      //LOG.info("Flush data");
       channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, byteBufOutputStream.buffer()));
 
       byteBufOutputStream = new ByteBufOutputStream(channel.alloc().ioBuffer());

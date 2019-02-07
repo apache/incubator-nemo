@@ -308,7 +308,7 @@ public final class OffloadingHandler {
           while (true) {
             try {
               final Object data = decoder.decode();
-              System.out.println("Receive data: " + data);
+              //System.out.println("Receive data: " + data);
               headTransform.onData(data);
             } catch (IOException e) {
               if (e.getMessage().contains("EOF")) {
