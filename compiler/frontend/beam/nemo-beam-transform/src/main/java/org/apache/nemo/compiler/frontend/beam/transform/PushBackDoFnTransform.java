@@ -209,8 +209,9 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
       // partition
       final ExecutorService executorService = Executors.newCachedThreadPool();
-      final int plusOne = (curPushedBacks.size() - cnt) % Constants.POOL_SIZE > 0 ? 1 : 0;
-      final int partitionSize = ((curPushedBacks.size() - cnt) / Constants.POOL_SIZE) + plusOne;
+      final int numLambda = Constants.POOL_SIZE / Constants.PARALLELISM;
+      final int plusOne = (curPushedBacks.size() - cnt) % numLambda > 0 ? 1 : 0;
+      final int partitionSize = ((curPushedBacks.size() - cnt) / numLambda) + plusOne;
       final List<List<WindowedValue<InputT>>> partitions = Lists.partition(
         curPushedBacks.subList(cnt, curPushedBacks.size()), partitionSize);
       final OffloadingWorkerFactory offloadingWorkerFactory = getContext().getOffloadingWorkerFactory();
