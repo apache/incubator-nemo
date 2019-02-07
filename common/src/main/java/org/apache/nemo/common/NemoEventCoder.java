@@ -38,7 +38,7 @@ public final class NemoEventCoder {
       //byte[] array = new byte[msg.readableBytes()];
       //msg.readBytes(array);
 
-      out.add(new NemoEvent(NemoEvent.Type.values()[typeOrdinal], msg));
+      out.add(new NemoEvent(NemoEvent.Type.values()[typeOrdinal], msg.retain(1)));
     }
   }
 
