@@ -16,14 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common;
+package org.apache.nemo.common.ir.edge.executionproperty;
 
-import java.io.Serializable;
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
- * A serializable metric factory.
- *
- * @param <T> metric type.
+ * Edges with the same MessageId are subject to the same run-time optimization.
  */
-public interface MetricFactory<T> extends Serializable {
+public final class MessageIdProperty extends EdgeExecutionProperty<Integer> {
+  /**
+   * Constructor.
+   * @param value value of the execution property.
+   */
+  private MessageIdProperty(final Integer value) {
+    super(value);
+  }
+
+  /**
+   * Static method exposing the constructor.
+   * @param value value of the new execution property.
+   * @return the newly created execution property.
+   */
+  public static MessageIdProperty of(final Integer value) {
+    return new MessageIdProperty(value);
+  }
 }

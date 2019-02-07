@@ -22,9 +22,10 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.nemo.runtime.common.partitioner.Partitioner;
+import org.apache.nemo.common.partitioner.Partitioner;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,11 +62,13 @@ public final class PipeOutputWriter implements OutputWriter {
   PipeOutputWriter(final String srcTaskId,
                    final RuntimeEdge runtimeEdge,
                    final PipeManagerWorker pipeManagerWorker) {
+    final StageEdge stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
     this.srcTaskId = srcTaskId;
     this.pipeManagerWorker = pipeManagerWorker;
     this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId));
-    this.partitioner = Partitioner.getPartitioner(runtimeEdge);
+    this.partitioner = Partitioner
+      .getPartitioner(stageEdge.getExecutionProperties(), stageEdge.getDstIRVertex().getExecutionProperties());
     this.runtimeEdge = runtimeEdge;
     this.srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(srcTaskId);
   }

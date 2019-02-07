@@ -16,20 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.vertex.system;
+package org.apache.nemo.common.partitioner;
 
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.StreamTransform;
+import java.lang.annotation.*;
 
 /**
- * IRVertex that transforms input data.
- * It is to be constructed in the compiler frontend with language-specific data transform logic.
+ * Declares that all of the designated keys for each element in a {@link Partitioner} is dedicated for the element.
  */
-public final class StreamVertex extends OperatorVertex {
-  /**
-   * Constructor.
-   */
-  public StreamVertex() {
-    super(new StreamTransform());
-  }
+@Target({ElementType.TYPE})
+@Documented
+@Retention(RetentionPolicy.RUNTIME)
+public @interface DedicatedKeyPerElement {
 }

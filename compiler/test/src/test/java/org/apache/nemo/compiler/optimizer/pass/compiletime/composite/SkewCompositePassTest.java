@@ -24,10 +24,10 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityProperty;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.MessageBarrierTransform;
 import org.apache.nemo.compiler.CompilerTestUtil;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSkewedDataProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,7 +49,6 @@ import static org.junit.Assert.assertTrue;
 @PrepareForTest(JobLauncher.class)
 public class SkewCompositePassTest {
   private IRDAG mrDAG;
-  private static final long NUM_OF_PASSES_IN_DATA_SKEW_PASS = 3;
 
   @Before
   public void setUp() throws Exception {
@@ -61,8 +60,6 @@ public class SkewCompositePassTest {
   @Test
   public void testCompositePass() {
     final CompositePass dataSkewPass = new SkewCompositePass();
-    assertEquals(NUM_OF_PASSES_IN_DATA_SKEW_PASS, dataSkewPass.getPassList().size());
-
     final Set<Class<? extends ExecutionProperty>> prerequisites = new HashSet<>();
     dataSkewPass.getPassList().forEach(compileTimePass ->
         prerequisites.addAll(compileTimePass.getPrerequisiteExecutionProperties()));
@@ -102,7 +99,7 @@ public class SkewCompositePassTest {
           reducerV.forEach(rV -> {
             if (rV instanceof OperatorVertex &&
               !(((OperatorVertex) rV).getTransform() instanceof MessageAggregatorTransform)) {
-              assertTrue(rV.getPropertyValue(ResourceSkewedDataProperty.class).get());
+              assertTrue(rV.getPropertyValue(ResourceAntiAffinityProperty.class).isPresent());
             }
           });
       });

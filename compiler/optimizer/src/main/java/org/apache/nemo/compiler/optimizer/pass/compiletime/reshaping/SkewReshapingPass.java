@@ -24,8 +24,8 @@ import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
  * We insert a {@link MessageBarrierVertex} for each shuffle edge,
  * and aggregate messages for multiple same-destination shuffle edges.
  * */
-@Annotates(MetricCollectionProperty.class)
+@Annotates(PartitionerProperty.class)
 @Requires(CommunicationPatternProperty.class)
 public final class SkewReshapingPass extends ReshapingPass {
   private static final Logger LOG = LoggerFactory.getLogger(SkewReshapingPass.class.getName());
@@ -62,7 +62,6 @@ public final class SkewReshapingPass extends ReshapingPass {
   public IRDAG apply(final IRDAG dag) {
     // TODO #210: Data-aware dynamic optimization at run-time
     dag.topologicalDo(v -> {
-
       // Incoming shuffle edges grouped by the AdditionalOutputTagProperty.
       final Function<IREdge, String> groupingFunction = irEdge -> {
         return irEdge.getPropertyValue(AdditionalOutputTagProperty.class).orElse(MAIN_OUTPUT_TAG);

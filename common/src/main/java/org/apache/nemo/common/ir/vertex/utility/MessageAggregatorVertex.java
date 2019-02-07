@@ -16,16 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.partitioner;
+package org.apache.nemo.common.ir.vertex.utility;
+
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
+
+import java.util.function.BiFunction;
 
 /**
- * An implementation of {@link Partitioner} which makes an output data
- * from a source task to a single partition.
+ * Aggregates upstream messages.
+ * @param <K> of the input pair.
+ * @param <V> of the input pair.
+ * @param <O> of the output aggregated message.
  */
-public final class IntactPartitioner implements Partitioner<Integer> {
-
-  @Override
-  public Integer partition(final Object element) {
-    return 0;
+public class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
+  /**
+   * @param initialState to use.
+   * @param userFunction for aggregating the messages.
+   */
+  public MessageAggregatorVertex(final O initialState, final BiFunction<Pair<K, V>, O, O> userFunction) {
+    super(new MessageAggregatorTransform<>(initialState, userFunction));
   }
 }

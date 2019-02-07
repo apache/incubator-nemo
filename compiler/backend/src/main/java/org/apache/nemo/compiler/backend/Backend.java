@@ -30,6 +30,7 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 public interface Backend<Plan> {
   /**
    * Compiles a DAG to a physical execution plan.
+   * The method should not modify the IRDAG in any way (i.e., should be idempotent).
    *
    * @param dag the DAG to compile.
    * @return the execution plan generated.

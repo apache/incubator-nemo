@@ -18,11 +18,10 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.*;
-import org.apache.reef.tang.Injector;
+import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
 import java.util.*;
 
@@ -45,7 +44,7 @@ public final class TestPolicy implements Policy {
 
     compileTimePasses.add(new DefaultScheduleGroupPass());
 
-    this.policy = new PolicyImpl(compileTimePasses, new ArrayList<>());
+    this.policy = new PolicyImpl(compileTimePasses, new HashSet<>());
   }
 
   @Override
@@ -54,7 +53,7 @@ public final class TestPolicy implements Policy {
   }
 
   @Override
-  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
-    this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
+  public IRDAG runRunTimeOptimizations(final IRDAG dag, final Message<?> message) {
+    return this.policy.runRunTimeOptimizations(dag, message);
   }
 }

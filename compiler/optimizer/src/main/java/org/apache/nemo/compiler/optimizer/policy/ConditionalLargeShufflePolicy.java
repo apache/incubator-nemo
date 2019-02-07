@@ -18,13 +18,12 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.LargeShuffleCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
-import org.apache.reef.tang.Injector;
+import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
 /**
  * A policy to demonstrate the large shuffle optimization, witch batches disk seek during data shuffle, conditionally.
@@ -61,7 +60,7 @@ public final class ConditionalLargeShufflePolicy implements Policy {
   }
 
   @Override
-  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
-    this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
+  public IRDAG runRunTimeOptimizations(final IRDAG dag, final Message<?> message) {
+    return this.policy.runRunTimeOptimizations(dag, message);
   }
 }

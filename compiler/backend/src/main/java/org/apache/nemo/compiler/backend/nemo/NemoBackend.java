@@ -52,7 +52,6 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
    * @return the execution plan to be submitted to Runtime.
    */
   public PhysicalPlan compile(final IRDAG irDAG) {
-
     final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(irDAG);
     return new PhysicalPlan(RuntimeIdManager.generatePhysicalPlanId(), stageDAG);
   }

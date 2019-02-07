@@ -41,8 +41,9 @@ import java.util.Optional;
 public final class Stage extends Vertex {
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final byte[] serializedIRDag;
-  private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   private final List<Map<String, Readable>> vertexIdToReadables;
+
+  private ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
 
   /**
    * Constructor.
@@ -98,6 +99,13 @@ public final class Stage extends Vertex {
    */
   public ExecutionPropertyMap<VertexExecutionProperty> getExecutionProperties() {
     return executionProperties;
+  }
+
+  /**
+   * @param executionProperties to set.
+   */
+  public void setExecutionProperties(final ExecutionPropertyMap<VertexExecutionProperty> executionProperties) {
+    this.executionProperties = executionProperties;
   }
 
   /**

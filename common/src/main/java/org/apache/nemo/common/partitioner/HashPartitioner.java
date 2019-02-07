@@ -16,29 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.partitioner;
+package org.apache.nemo.common.partitioner;
+
+import org.apache.nemo.common.KeyExtractor;
 
 /**
- * An implementation of {@link Partitioner} which assigns a dedicated key per an output data from a task.
- * WARNING: Because this partitioner assigns a dedicated key per element, it should be used under specific circumstances
- * that the number of output element is not that many. For example, every output element of
- * StreamTransform inserted by large shuffle optimization is always
- * a partition. In this case, assigning a key for each element can be useful.
+ * An implementation of {@link Partitioner} which hashes output data from a source task
+ * according to the key of elements.
+ * The data will be hashed by their key, and applied "modulo" operation by the number of partitions.
  */
-@DedicatedKeyPerElement
-public final class DedicatedKeyPerElementPartitioner implements Partitioner<Integer> {
-  private int key;
+public final class HashPartitioner implements Partitioner<Integer> {
+  private final int numOfPartitions;
+  private final KeyExtractor keyExtractor;
 
   /**
    * Constructor.
+   *
+   * @param numOfPartitions the number of partitions.
+   * @param keyExtractor   the key extractor that extracts keys from elements.
    */
-  public DedicatedKeyPerElementPartitioner() {
-    // TODO #288: DedicatedKeyPerElementPartitioner should not always return 0
-    key = 0;
+  public HashPartitioner(final int numOfPartitions,
+                         final KeyExtractor keyExtractor) {
+    this.keyExtractor = keyExtractor;
+    this.numOfPartitions = numOfPartitions;
   }
 
   @Override
   public Integer partition(final Object element) {
-    return key++;
+    return Math.abs(keyExtractor.extractKey(element).hashCode() % numOfPartitions);
   }
 }

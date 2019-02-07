@@ -16,15 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.partitioner;
-
-import java.lang.annotation.*;
+package org.apache.nemo.runtime.common.plan;
 
 /**
- * Declares that all of the designated keys for each element in a {@link Partitioner} is dedicated for the element.
+ * PhysicalPlan rewriter.
  */
-@Target({ElementType.TYPE})
-@Documented
-@Retention(RetentionPolicy.RUNTIME)
-public @interface DedicatedKeyPerElement {
+public interface PlanRewriter {
+  /**
+   * @param currentPhysicalPlan to rewrite.
+   * @param messageId of the rewrite.
+   * @return physical plan.
+   */
+  PhysicalPlan rewrite(final PhysicalPlan currentPhysicalPlan, final int messageId);
+
+  /**
+   * @param messageId of the rewrite.
+   * @param data to accumulate.
+   */
+  void accumulate(final int messageId, final Object data);
 }

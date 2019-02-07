@@ -18,13 +18,13 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.SkewCompositePass;
-import org.apache.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
-import org.apache.reef.tang.Injector;
+import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
+import org.apache.nemo.compiler.optimizer.pass.runtime.SkewRunTimePass;
 
 /**
  * A policy to perform data skew dynamic optimization.
@@ -32,7 +32,8 @@ import org.apache.reef.tang.Injector;
 public final class DataSkewPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
       new PolicyBuilder()
-        .registerRuntimePass(new DataSkewRuntimePass(), new SkewCompositePass())
+        .registerCompileTimePass(new DefaultParallelismPass()) // SkewCompositePass relies on parallelism.
+        .registerRunTimePass(new SkewRunTimePass(), new SkewCompositePass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
         .registerCompileTimePass(new DefaultCompositePass());
 
@@ -51,7 +52,7 @@ public final class DataSkewPolicy implements Policy {
   }
 
   @Override
-  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
-    this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
+  public IRDAG runRunTimeOptimizations(final IRDAG dag, final Message<?> message) {
+    return this.policy.runRunTimeOptimizations(dag, message);
   }
 }

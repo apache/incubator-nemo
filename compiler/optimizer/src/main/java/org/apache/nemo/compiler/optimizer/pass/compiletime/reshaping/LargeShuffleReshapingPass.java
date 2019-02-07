@@ -20,7 +20,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.vertex.system.StreamVertex;
+import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**

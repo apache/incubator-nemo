@@ -27,7 +27,6 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,7 +48,7 @@ public final class StagePartitionerTest {
 
   @Before
   public void setup() throws InjectionException {
-    stagePartitioner = Tang.Factory.getTang().newInjector().getInstance(StagePartitioner.class);
+    stagePartitioner = new StagePartitioner();
     stagePartitioner.addIgnoredPropertyKey(IgnoreSchedulingTempDataReceiverProperty.class);
   }
 

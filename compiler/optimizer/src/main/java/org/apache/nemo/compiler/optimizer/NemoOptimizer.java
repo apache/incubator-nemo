@@ -20,9 +20,7 @@ package org.apache.nemo.compiler.optimizer;
 
 import net.jcip.annotations.NotThreadSafe;
 import org.apache.nemo.common.dag.DAGBuilder;
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
-import org.apache.nemo.common.exception.DynamicOptimizationException;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CacheIDProperty;
@@ -31,9 +29,9 @@ import org.apache.nemo.common.ir.vertex.CachedSourceVertex;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
 import org.apache.nemo.conf.JobConf;
-import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -46,75 +44,53 @@ import java.util.stream.Collectors;
  */
 @NotThreadSafe
 public final class NemoOptimizer implements Optimizer {
-
   private final String dagDirectory;
-  private final String optimizationPolicyCanonicalName;
-  private final Injector injector;
-  private final PubSubEventHandlerWrapper pubSubWrapper;
+  private final Policy optimizationPolicy;
+
   private final Map<UUID, Integer> cacheIdToParallelism = new HashMap<>();
   private int irDagCount = 0;
 
+
   /**
    * @param dagDirectory to store JSON representation of intermediate DAGs.
-   * @param optimizationPolicy the name of the optimization policy.
-   * @param pubSubEventHandlerWrapper pub/sub event handler.
-   * @param injector reef injector.
+   * @param policyName the name of the optimization policy.
    */
   @Inject
   private NemoOptimizer(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
-                        @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
-                        final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
-                        final Injector injector) {
+                        @Parameter(JobConf.OptimizationPolicy.class) final String policyName) {
     this.dagDirectory = dagDirectory;
-    this.optimizationPolicyCanonicalName = optimizationPolicy;
-    this.injector = injector;
-    this.pubSubWrapper = pubSubEventHandlerWrapper;
+
+    try {
+      optimizationPolicy = (Policy) Class.forName(policyName).newInstance();
+      if (policyName == null) {
+        throw new CompileTimeOptimizationException("A policy name should be specified.");
+      }
+    } catch (final Exception e) {
+      throw new CompileTimeOptimizationException(e);
+    }
   }
 
-  /**
-   * Optimize the submitted DAG.
-   *
-   * @param dag the input DAG to optimize.
-   * @return optimized DAG, reshaped or tagged with execution properties.
-   */
   @Override
-  public IRDAG optimizeDag(final IRDAG dag) {
+  public IRDAG optimizeAtCompileTime(final IRDAG dag) {
     final String irDagId = "ir-" + irDagCount++ + "-";
     dag.storeJSON(dagDirectory, irDagId, "IR before optimization");
 
     final IRDAG optimizedDAG;
-    final Policy optimizationPolicy;
     final Map<UUID, IREdge> cacheIdToEdge = new HashMap<>();
 
-    try {
-      // Handle caching first.
-      final IRDAG cacheFilteredDag = handleCaching(dag, cacheIdToEdge);
-      if (!cacheIdToEdge.isEmpty()) {
-        cacheFilteredDag.storeJSON(dagDirectory, irDagId + "FilterCache",
-          "IR after cache filtering");
-      }
+    // Handle caching first.
+    final IRDAG cacheFilteredDag = handleCaching(dag, cacheIdToEdge);
+    if (!cacheIdToEdge.isEmpty()) {
+      cacheFilteredDag.storeJSON(dagDirectory, irDagId + "FilterCache",
+        "IR after cache filtering");
+    }
 
-      // Conduct compile-time optimization.
-      optimizationPolicy = (Policy) Class.forName(optimizationPolicyCanonicalName).newInstance();
+    // Conduct compile-time optimization.
 
-      if (optimizationPolicy == null) {
-        throw new CompileTimeOptimizationException("A policy name should be specified.");
-      }
-
-      optimizedDAG = optimizationPolicy.runCompileTimeOptimization(cacheFilteredDag, dagDirectory);
-      optimizedDAG
-        .storeJSON(dagDirectory, irDagId + optimizationPolicy.getClass().getSimpleName(),
+    optimizedDAG = optimizationPolicy.runCompileTimeOptimization(cacheFilteredDag, dagDirectory);
+    optimizedDAG
+      .storeJSON(dagDirectory, irDagId + optimizationPolicy.getClass().getSimpleName(),
         "IR optimized for " + optimizationPolicy.getClass().getSimpleName());
-    } catch (final Exception e) {
-      throw new CompileTimeOptimizationException(e);
-    }
-
-    // Register run-time optimization.
-    try {
-      optimizationPolicy.registerRunTimeOptimizations(injector, pubSubWrapper);
-    } catch (final Exception e) {
-      throw new DynamicOptimizationException(e);
-    }
 
     // Update cached list.
     // TODO #191: Report the actual state of cached data to optimizer.
@@ -130,6 +106,11 @@ public final class NemoOptimizer implements Optimizer {
 
     // Return optimized dag
     return optimizedDAG;
+  }
+
+  @Override
+  public IRDAG optimizeAtRunTime(final IRDAG dag, final Message message) {
+    return optimizationPolicy.runRunTimeOptimizations(dag, message);
   }
 
   /**
@@ -194,7 +175,8 @@ public final class NemoOptimizer implements Optimizer {
         if (cacheId.isPresent() && cacheIdToParallelism.get(cacheId.get()) != null) { // Cached already.
           // Replace the vertex emitting cached edge with a cached source vertex.
           final IRVertex cachedDataRelayVertex = new CachedSourceVertex(cacheIdToParallelism.get(cacheId.get()));
-          cachedDataRelayVertex.setPropertyPermanently(ParallelismProperty.of(cacheIdToParallelism.get(cacheId.get())));
+          cachedDataRelayVertex.setPropertyPermanently(
+            ParallelismProperty.of(cacheIdToParallelism.get(cacheId.get())));
 
           builder.addVertex(cachedDataRelayVertex);
           final IREdge newEdge = new IREdge(

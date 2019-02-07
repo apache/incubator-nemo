@@ -27,7 +27,6 @@ import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.reef.annotations.audience.DriverSide;
 
-import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -47,10 +46,6 @@ import java.util.stream.Collectors;
 public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Integer>> {
   private final Set<Class<? extends VertexExecutionProperty>> ignoredPropertyKeys = ConcurrentHashMap.newKeySet();
   private final MutableInt nextStageIndex = new MutableInt(0);
-
-  @Inject
-  private StagePartitioner() {
-  }
 
   /**
    * By default, the stage partitioner merges two vertices into one stage if and only if the two vertices have

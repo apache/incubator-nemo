@@ -16,28 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common;
+package org.apache.nemo.common.ir.vertex.utility;
 
-import java.util.Map;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.StreamTransform;
 
 /**
- * A {@link MetricFactory} which is used for data skew handling.
+ * Relays input data from upstream vertex to downstream vertex promptly.
  */
-public final class DataSkewMetricFactory implements MetricFactory<Map<Integer, KeyRange>> {
-  private Map<Integer, KeyRange> metric;
-
+public final class StreamVertex extends OperatorVertex {
   /**
-   * Default constructor.
-   * @param metric metric.
+   * Constructor.
    */
-  public DataSkewMetricFactory(final Map<Integer, KeyRange> metric) {
-    this.metric = metric;
-  }
-
-  /**
-   * @return the metric.
-   */
-  public Map<Integer, KeyRange> getMetric() {
-    return metric;
+  public StreamVertex() {
+    super(new StreamTransform());
   }
 }

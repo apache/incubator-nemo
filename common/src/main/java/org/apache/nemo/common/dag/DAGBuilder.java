@@ -21,10 +21,10 @@ package org.apache.nemo.common.dag;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
-import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 
 import java.io.Serializable;
 import java.util.*;
@@ -260,7 +260,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   private void executionPropertyCheck() {
     // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> e.getPropertyValue(MetricCollectionProperty.class).isPresent())
+        .filter(e -> e.getPropertyValue(MessageIdProperty.class).isPresent())
         .filter(e -> !(e.getDst() instanceof OperatorVertex
           && e.getDst() instanceof MessageAggregatorVertex))
         .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))

@@ -25,7 +25,6 @@ import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
 import org.apache.nemo.runtime.master.PipeManagerMaster;
 import org.apache.nemo.runtime.master.PlanStateManager;
-import org.apache.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -46,7 +45,7 @@ import static org.mockito.Mockito.when;
  * Tests {@link StreamingScheduler}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({BlockManagerMaster.class, PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class,
+@PrepareForTest({BlockManagerMaster.class, PubSubEventHandlerWrapper.class,
   TaskDispatcher.class, PendingTaskCollectionPointer.class, ExecutorRegistry.class, PlanStateManager.class,
   PipeManagerMaster.class})
 public final class StreamingSchedulerTest {

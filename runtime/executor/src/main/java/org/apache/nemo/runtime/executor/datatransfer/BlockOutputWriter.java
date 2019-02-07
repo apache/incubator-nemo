@@ -24,9 +24,10 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.block.Block;
-import org.apache.nemo.runtime.common.partitioner.*;
+import org.apache.nemo.common.partitioner.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,10 +63,11 @@ public final class BlockOutputWriter implements OutputWriter {
                     final IRVertex dstIrVertex,
                     final RuntimeEdge<?> runtimeEdge,
                     final BlockManagerWorker blockManagerWorker) {
+    final StageEdge stageEdge = (StageEdge) runtimeEdge;
     this.runtimeEdge = runtimeEdge;
     this.dstIrVertex = dstIrVertex;
-
-    this.partitioner = Partitioner.getPartitioner(runtimeEdge);
+    this.partitioner = Partitioner
+      .getPartitioner(stageEdge.getExecutionProperties(), stageEdge.getDstIRVertex().getExecutionProperties());
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class)
       .orElseThrow(() -> new RuntimeException("No data store property on the edge"));

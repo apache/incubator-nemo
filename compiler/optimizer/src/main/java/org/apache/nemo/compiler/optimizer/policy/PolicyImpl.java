@@ -18,8 +18,6 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import org.apache.nemo.common.eventhandler.RuntimeEventHandler;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -27,30 +25,31 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.ReshapingPass;
-import org.apache.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
-import org.apache.reef.tang.Injector;
+import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
+import org.apache.nemo.compiler.optimizer.pass.runtime.RunTimePass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Implementation of the {@link Policy} interface.
  */
 public final class PolicyImpl implements Policy {
   private final List<CompileTimePass> compileTimePasses;
-  private final List<RuntimePass<?>> runtimePasses;
+  private final Set<RunTimePass<?>> runTimePasses;
   private static final Logger LOG = LoggerFactory.getLogger(PolicyImpl.class.getName());
 
   /**
    * Constructor.
    * @param compileTimePasses compile time passes of the policy.
-   * @param runtimePasses run time passes of the policy.
+   * @param runTimePasses run time passes of the policy.
    */
-  public PolicyImpl(final List<CompileTimePass> compileTimePasses, final List<RuntimePass<?>> runtimePasses) {
+  public PolicyImpl(final List<CompileTimePass> compileTimePasses, final Set<RunTimePass<?>> runTimePasses) {
     this.compileTimePasses = compileTimePasses;
-    this.runtimePasses = runtimePasses;
+    this.runTimePasses = runTimePasses;
   }
 
   @Override
@@ -179,17 +178,8 @@ public final class PolicyImpl implements Policy {
   }
 
   @Override
-  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
-    LOG.info("Register run-time optimizations to the PubSubHandler");
-    runtimePasses.forEach(runtimePass ->
-      runtimePass.getEventHandlerClasses().forEach(runtimeEventHandlerClass -> {
-        try {
-          final RuntimeEventHandler runtimeEventHandler = injector.getInstance(runtimeEventHandlerClass);
-          pubSubWrapper.getPubSubEventHandler()
-            .subscribe(runtimeEventHandler.getEventClass(), runtimeEventHandler);
-        } catch (final Exception e) {
-          throw new RuntimeException(e);
-        }
-      }));
+  public IRDAG runRunTimeOptimizations(final IRDAG irdag, final Message message) {
+    runTimePasses.forEach(p -> p.apply(irdag, message));
+    return irdag;
   }
 }

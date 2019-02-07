@@ -23,7 +23,7 @@ import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
-import org.apache.nemo.common.ir.vertex.system.StreamVertex;
+import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
@@ -40,7 +40,7 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
  *
  * (3) one-to-one-edge
  * Do not encode/compress the byte[]
- * Perform a pull-based and on-disk data transfer with the DedicatedKeyPerElementPartitioner.
+ * Perform a pull-based and on-disk data transfer with the DedicatedKeyPerElement.
  */
 @Annotates({CompressionProperty.class, DataFlowProperty.class, CompressionProperty.class,
   DataPersistenceProperty.class, DataStoreProperty.class, DecoderProperty.class, DecompressionProperty.class,
@@ -85,7 +85,7 @@ public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
           edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Pull));
           edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           edge.setPropertyPermanently(
-            PartitionerProperty.of(PartitionerProperty.Value.DedicatedKeyPerElementPartitioner));
+            PartitionerProperty.of(PartitionerProperty.Type.DedicatedKeyPerElement));
         } else {
           // CASE #3: Unrelated to any stream vertices
           edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Pull));

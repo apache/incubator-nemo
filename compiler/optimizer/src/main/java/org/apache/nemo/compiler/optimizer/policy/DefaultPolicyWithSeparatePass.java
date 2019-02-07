@@ -18,13 +18,12 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultDataStorePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.CompositePass;
-import org.apache.reef.tang.Injector;
+import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
 import java.util.Arrays;
 
@@ -53,8 +52,8 @@ public final class DefaultPolicyWithSeparatePass implements Policy {
   }
 
   @Override
-  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
-    this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
+  public IRDAG runRunTimeOptimizations(final IRDAG dag, final Message<?> message) {
+    return this.policy.runRunTimeOptimizations(dag, message);
   }
 
   /**

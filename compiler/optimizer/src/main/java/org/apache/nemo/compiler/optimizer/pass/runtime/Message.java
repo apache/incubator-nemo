@@ -16,31 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.edge.executionproperty;
+package org.apache.nemo.compiler.optimizer.pass.runtime;
 
-import org.apache.nemo.common.DataSkewMetricFactory;
-import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.edge.IREdge;
+
+import java.util.Set;
 
 /**
- * DataSkewMetric ExecutionProperty.
+ * @param <T> type of the message value.
  */
-public final class DataSkewMetricProperty extends EdgeExecutionProperty<DataSkewMetricFactory> {
-  /**
-   * Constructor.
-   *
-   * @param value value of the execution property.
-   */
-  private DataSkewMetricProperty(final DataSkewMetricFactory value) {
-    super(value);
+public final class Message<T> {
+  private final int messageId;
+  private final T value;
+  private final Set<IREdge> edgesToExamine;
+
+  public Message(final int messageId, final Set<IREdge> edgesToExamine, final T value) {
+    if (edgesToExamine == null || edgesToExamine.isEmpty() || value == null) {
+      throw new IllegalArgumentException();
+    }
+    this.messageId = messageId;
+    this.value = value;
+    this.edgesToExamine = edgesToExamine;
   }
 
-  /**
-   * Static method exposing the constructor.
-   *
-   * @param value value of the new execution property.
-   * @return the newly created execution property.
-   */
-  public static DataSkewMetricProperty of(final DataSkewMetricFactory value) {
-    return new DataSkewMetricProperty(value);
+  public int getMessageId() {
+    return messageId;
+  }
+
+  public T getMessageValue() {
+    return value;
+  }
+
+  public Set<IREdge> getExaminedEdges() {
+    return edgesToExamine;
   }
 }

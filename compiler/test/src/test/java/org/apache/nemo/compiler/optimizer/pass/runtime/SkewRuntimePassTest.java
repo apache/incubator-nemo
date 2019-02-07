@@ -16,13 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.optimizer.pass.runtime;
+package org.apache.nemo.compiler.optimizer.pass.runtime;
 
-import org.apache.nemo.common.HashRange;
-import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.KeyRange;
-import org.apache.nemo.runtime.common.partitioner.DataSkewHashPartitioner;
-import org.apache.nemo.runtime.common.partitioner.Partitioner;
+import org.apache.nemo.common.KeyExtractor;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityProperty;
+import org.apache.nemo.common.partitioner.HashPartitioner;
+import org.apache.nemo.common.partitioner.Partitioner;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -31,10 +33,12 @@ import java.util.*;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Test {@link DataSkewRuntimePass}.
+ * Test {@link SkewRunTimePass}.
  */
-public class DataSkewRuntimePassTest {
+public class SkewRuntimePassTest {
   private final Map<Object, Long> testMetricData = new HashMap<>();
+  private final static int DST_PARALLELISM = 2;
+  private final static int NUM_PARTITIONS = 10;
 
   @Before
   public void setUp() {
@@ -42,6 +46,7 @@ public class DataSkewRuntimePassTest {
     buildPartitionSizeList(Arrays.asList(5L, 5L, 10L, 50L, 110L, 5L, 5L, 10L, 50L, 100L));
     buildPartitionSizeList(Arrays.asList(5L, 10L, 5L, 0L, 0L, 5L, 10L, 5L, 0L, 0L));
     buildPartitionSizeList(Arrays.asList(10L, 5L, 5L, 0L, 0L, 10L, 5L, 5L, 0L, 0L));
+    // Ideal distribution = Dst1-Total220[20, 20, 20, 50, 110], Dst2-Total210[20, 20, 20, 50, 100]
   }
 
   /**
@@ -50,12 +55,13 @@ public class DataSkewRuntimePassTest {
    */
   @Test
   public void testDataSkewDynamicOptimizationPass() {
-    final Integer taskNum = 2;
     final KeyExtractor asIsExtractor = new AsIsKeyExtractor();
-    final Partitioner partitioner = new DataSkewHashPartitioner(taskNum, asIsExtractor);
+    final HashPartitioner partitioner = new HashPartitioner(NUM_PARTITIONS, asIsExtractor);
 
-    final List<KeyRange> keyRanges =
-        new DataSkewRuntimePass(1).calculateKeyRanges(testMetricData, taskNum, partitioner);
+    final Pair<PartitionSetProperty, ResourceAntiAffinityProperty> resultPair = new SkewRunTimePass(1)
+      .analyzeMessage(testMetricData, partitioner, NUM_PARTITIONS, DST_PARALLELISM);
+    final List<KeyRange> keyRanges = resultPair.left().getValue();
+    final HashSet<Integer> antiAfiinityGroup = resultPair.right().getValue();
 
     // Test whether it correctly redistributed hash ranges.
     assertEquals(0, keyRanges.get(0).rangeBeginInclusive());
@@ -64,8 +70,8 @@ public class DataSkewRuntimePassTest {
     assertEquals(10, keyRanges.get(1).rangeEndExclusive());
 
     // Test whether it caught the provided skewness.
-    assertEquals(true, ((HashRange)keyRanges.get(0)).isSkewed());
-    assertEquals(false, ((HashRange)keyRanges.get(1)).isSkewed());
+    assertEquals(true, antiAfiinityGroup.contains(0));
+    assertEquals(false, antiAfiinityGroup.contains(1));
   }
 
   /**

@@ -16,21 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master;
+package org.apache.nemo.common.ir.vertex.executionproperty;
+
+import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
+
+import java.util.HashSet;
 
 /**
- * Handler for aggregating data used in dynamic optimization.
+ * Indices of tasks that must not concurrently run on the same executor.
  */
-public interface DynOptDataHandler {
+public final class ResourceAntiAffinityProperty extends VertexExecutionProperty<HashSet<Integer>> {
   /**
-   * Updates data for dynamic optimization sent from Tasks.
-   * @param dynOptData data used for dynamic optimization.
+   * Default constructor.
+   *
+   * @param value value of the ExecutionProperty
    */
-  void updateDynOptData(Object dynOptData);
+  private ResourceAntiAffinityProperty(final HashSet<Integer> value) {
+    super(value);
+  }
 
   /**
-   * Returns aggregated data for dynamic optimization.
-   * @return aggregated data used for dynamic optimization.
+   * Static method getting execution property.
+   *
+   * @param value value of the new execution property
+   * @return the execution property
    */
-  Object getDynOptData();
+  public static ResourceAntiAffinityProperty of(final HashSet<Integer> value) {
+    return new ResourceAntiAffinityProperty(value);
+  }
 }

@@ -16,15 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.partitioner;
+package org.apache.nemo.common.partitioner;
 
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.exception.UnsupportedPartitionerException;
 import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
+import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import org.apache.nemo.runtime.common.plan.RuntimeEdge;
-import org.apache.nemo.runtime.common.plan.StageEdge;
 
 import java.io.Serializable;
 
@@ -46,40 +47,33 @@ public interface Partitioner<K extends Serializable> {
   K partition(Object element);
 
   /**
-   * Gets appropriate partitioner for an edge.
-   *
-   * @param runtimeEdge the runtime edge.
-   * @return the partitioner for the edge.
+   * @param edgeProperties edge properties.
+   * @param dstProperties vertex properties.
+   * @return the partitioner.
    */
-  static Partitioner getPartitioner(final RuntimeEdge runtimeEdge) {
-    final StageEdge stageEdge = (StageEdge) runtimeEdge;
-    final PartitionerProperty.Value partitionerPropertyValue =
-      (PartitionerProperty.Value) runtimeEdge.getPropertyValueOrRuntimeException(PartitionerProperty.class);
-    final int dstParallelism =
-      stageEdge.getDstIRVertex().getPropertyValue(ParallelismProperty.class)
-        .orElseThrow(() -> new RuntimeException("No parallelism in edge " + runtimeEdge.getId()));
-
+  static Partitioner getPartitioner(final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
+                                    final ExecutionPropertyMap<VertexExecutionProperty> dstProperties) {
+    final PartitionerProperty.Type type =
+      edgeProperties.get(PartitionerProperty.class).get().left();
     final Partitioner partitioner;
-    switch (partitionerPropertyValue) {
-      case IntactPartitioner:
+    switch (type) {
+      case Intact:
         partitioner = new IntactPartitioner();
         break;
-      case HashPartitioner:
-        final KeyExtractor hashKeyExtractor =
-          (KeyExtractor) runtimeEdge.getPropertyValueOrRuntimeException(KeyExtractorProperty.class);
-        partitioner = new HashPartitioner(dstParallelism, hashKeyExtractor);
-        break;
-      case DataSkewHashPartitioner:
-        final KeyExtractor dataSkewKeyExtractor =
-          (KeyExtractor) runtimeEdge.getPropertyValueOrRuntimeException(KeyExtractorProperty.class);
-        partitioner = new DataSkewHashPartitioner(dstParallelism, dataSkewKeyExtractor);
-        break;
-      case DedicatedKeyPerElementPartitioner:
+      case DedicatedKeyPerElement:
         partitioner = new DedicatedKeyPerElementPartitioner();
+        break;
+      case Hash:
+        final int numOfPartitions = edgeProperties.get(PartitionerProperty.class).get().right();
+        final int actualNumOfPartitions = (numOfPartitions == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM)
+          ? dstProperties.get(ParallelismProperty.class).get()
+          : numOfPartitions;
+        final KeyExtractor keyExtractor = edgeProperties.get(KeyExtractorProperty.class).get();
+        partitioner = new HashPartitioner(actualNumOfPartitions, keyExtractor);
         break;
       default:
         throw new UnsupportedPartitionerException(
-          new Throwable("Partitioner " + partitionerPropertyValue + " is not supported."));
+          new Throwable("Partitioner " + type.toString() + " is not supported."));
     }
     return partitioner;
   }

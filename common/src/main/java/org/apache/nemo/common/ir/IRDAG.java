@@ -29,12 +29,13 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
-import org.apache.nemo.common.ir.vertex.system.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.system.MessageBarrierVertex;
-import org.apache.nemo.common.ir.vertex.system.StreamVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -54,6 +55,7 @@ import java.util.stream.Collectors;
  * - Annotation: setProperty(), getPropertyValue() on each IRVertex/IREdge
  * - Reshaping: insert(), delete() on the IRDAG
  */
+@NotThreadSafe
 public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   private static final Logger LOG = LoggerFactory.getLogger(IRDAG.class.getName());
 
@@ -207,7 +209,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           final IREdge edgeToOriginalDst =
             new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
           edge.copyExecutionPropertiesTo(edgeToOriginalDst);
-          edgeToOriginalDst.setPropertyPermanently(MetricCollectionProperty.of(currentMetricCollectionId));
+          edgeToOriginalDst.setPropertyPermanently(MessageIdProperty.of(currentMetricCollectionId));
           builder.connectVertices(edgeToOriginalDst);
         } else {
           // NO MATCH, so simply connect vertices as before.
@@ -247,7 +249,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
-    newEdge.setPropertyPermanently(MetricCollectionProperty.of(currentMetricCollectionId));
+    newEdge.setPropertyPermanently(MessageIdProperty.of(currentMetricCollectionId));
     final KeyExtractor pairKeyExtractor = (element) -> {
       if (element instanceof Pair) {
         return ((Pair) element).left();
