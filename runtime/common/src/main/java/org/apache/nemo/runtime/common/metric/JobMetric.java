@@ -22,6 +22,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.exception.MetricException;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.state.PlanState;
 
@@ -35,6 +37,7 @@ import java.util.List;
 public final class JobMetric implements StateMetric<PlanState.State> {
   private String id;
   private List<StateTransitionEvent<PlanState.State>> stateTransitionEvents = new ArrayList<>();
+  private JsonNode irDagJson;
   private JsonNode stageDagJson;
 
   public JobMetric(final PhysicalPlan physicalPlan) {
@@ -45,7 +48,22 @@ public final class JobMetric implements StateMetric<PlanState.State> {
     this.id = id;
   }
 
-  @JsonProperty("dag")
+  @JsonProperty("ir-dag")
+  public JsonNode getIrDagJson() {
+    return irDagJson;
+  }
+
+  public void setIRDAG(final IRDAG irdag) {
+    final String dagJson = irdag.toString();
+    final ObjectMapper objectMapper = new ObjectMapper();
+    try {
+      this.irDagJson = objectMapper.readTree(dagJson);
+    } catch (final IOException e) {
+      throw new MetricException(e);
+    }
+  }
+
+  @JsonProperty("stage-dag")
   public JsonNode getStageDAG() {
     return stageDagJson;
   }
@@ -56,7 +74,7 @@ public final class JobMetric implements StateMetric<PlanState.State> {
     try {
       this.stageDagJson = objectMapper.readTree(dagJson);
     } catch (final IOException e) {
-      throw new RuntimeException(e);
+      throw new MetricException(e);
     }
   }
 

@@ -22,6 +22,7 @@ import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.*;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -29,6 +30,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.common.metric.JobMetric;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
@@ -169,10 +171,14 @@ public final class RuntimeMaster {
     try {
       server.start();
     } catch (final Exception e) {
-      throw new RuntimeException("Failed to start REST API server.");
+      throw new MetricException("Failed to start REST API server: " + e);
     }
 
     return server;
+  }
+
+  public void recordIRDAGMetrics(final IRDAG irdag, final String planId) {
+    metricStore.getOrCreateMetric(JobMetric.class, planId).setIRDAG(irdag);
   }
 
   /**
@@ -182,7 +188,8 @@ public final class RuntimeMaster {
     // send metric flush request to all executors
     metricManagerMaster.sendMetricFlushRequest();
 
-    metricStore.dumpAllMetricToFile(Paths.get(dagDirectory, userMainClass + "_" + jobId + "_metric.json").toString());
+    metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
+      jobId + "_metric_" + System.currentTimeMillis() + ".json").toString());
   }
 
   /**
@@ -243,7 +250,7 @@ public final class RuntimeMaster {
       try {
         metricServer.stop();
       } catch (final Exception e) {
-        throw new RuntimeException("Failed to stop rest api server.");
+        throw new MetricException("Failed to stop rest api server: " + e);
       }
     });
 
