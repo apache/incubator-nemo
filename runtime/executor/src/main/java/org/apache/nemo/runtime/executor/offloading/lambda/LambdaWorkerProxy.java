@@ -131,6 +131,10 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
   public void flush() {
     try {
       byteBufOutputStream.close();
+
+      LOG.info("Flush data");
+      channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, byteBufOutputStream.buffer()));
+
       byteBufOutputStream = new ByteBufOutputStream(channel.alloc().ioBuffer());
       byteBufOutputStream.writeInt(NemoEvent.Type.DATA.ordinal());
       encoder = inputEncoderFactory.create(byteBufOutputStream);
@@ -138,9 +142,6 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
-
-    LOG.info("Flush data");
-    channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, byteBufOutputStream.buffer()));
   }
 
   @Override
