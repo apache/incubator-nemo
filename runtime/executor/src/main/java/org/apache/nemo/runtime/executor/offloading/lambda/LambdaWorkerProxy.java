@@ -57,12 +57,14 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
               final DecoderFactory.Decoder decoder = outputDecoderFactory.create(bis);
               final Object data = decoder.decode();
               resultQueue.add(data);
+              msg.getByteBuf().release();
             } catch (IOException e) {
               e.printStackTrace();
               throw new RuntimeException();
             }
             break;
           case END:
+            msg.getByteBuf().release();
             endQueue.add(msg);
             break;
           default:

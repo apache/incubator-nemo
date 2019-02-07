@@ -263,6 +263,7 @@ public final class OffloadingHandler {
 
             ois.close();
             bis.close();
+            byteBuf.release();
           } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
@@ -320,6 +321,8 @@ public final class OffloadingHandler {
             }
           }
 
+          nemoEvent.getByteBuf().release();
+
           break;
         }
         case GBK_START: { // query 8
@@ -362,12 +365,14 @@ public final class OffloadingHandler {
         case END:
           // send result
           System.out.println("Offloading end");
+          nemoEvent.getByteBuf().release();
           endBlockingQueue.add(1);
           // end of event
           // update handler
           break;
         case WARMUP_END:
           System.out.println("Warmup end");
+          nemoEvent.getByteBuf().release();
           endBlockingQueue.add(1);
           break;
       }
