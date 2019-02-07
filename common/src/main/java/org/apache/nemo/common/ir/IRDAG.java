@@ -229,9 +229,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   /**
    * Inserts a set of samplingVertices that process sampled data.
    *
-   * Only the incoming edges (and not the outgoing edges) of samplingVertices are preserved.
-   * This allows for cloning and executing subDAG partitions with sampled data, while preventing the clone from
-   * affecting the results of the original IRDAG.
+   * This method automatically inserts the following three types of edges.
+   * (1) Edges between samplingVertices to reflect the original relationship
+   * (2) Edges from the original IRDAG to samplingVertices that clone the inEdges of the original vertices
+   * (3) Edges from the samplingVertices to the original IRDAG to respect executeAfterSamplingVertices
    *
    * Suppose the caller supplies the following arguments to perform a "sampled run" of vertices {V1, V2},
    * prior to executing them.
@@ -241,7 +242,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * Before: V1 - oneToOneEdge - V2 - shuffleEdge - V3
    * After: V1' - oneToOneEdge - V2' - controlEdge - V1 - oneToOneEdge - V2 - shuffleEdge - V3
    *
-   * This preserves semantics as the original IRDAG remains unchanged.
+   * This preserves semantics as the original IRDAG remains unchanged and unaffected.
    *
    * @param samplingVertices to insert.
    * @param executeAfterSamplingVertices that must be executed after samplingVertices.
