@@ -49,6 +49,7 @@ public final class NettyLambdaInboundHandler extends ChannelInboundHandlerAdapte
   public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
     cause.printStackTrace();
     System.out.println("Exception1!: " + cause.toString());
+    channelMap.remove(ctx.channel());
     ctx.close();
     //channelMap.remove(ctx.channel());
   }

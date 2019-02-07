@@ -80,7 +80,7 @@ public final class OffloadingHandler {
 
 	private final List<Transform> buildTransformChain(final List<String> serializedTransforms,
                                                     final ClassLoader classLoader) {
-    final List<Transform> vertices = serializedVertices.stream().map(str -> {
+    final List<Transform> vertices = serializedTransforms.stream().map(str -> {
       return (Transform) SerializeUtils.deserializeFromString(str, classLoader);
     }).collect(Collectors.toList());
 

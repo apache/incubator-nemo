@@ -62,7 +62,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
     final InvokeRequest request = new InvokeRequest()
       .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
       .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-        nettyServerTransport.getPort(), nettyServerTransport.getPort()));
+        nettyServerTransport.getPublicAddress(), nettyServerTransport.getPort()));
     awsLambda.invokeAsync(request);
   }
 
