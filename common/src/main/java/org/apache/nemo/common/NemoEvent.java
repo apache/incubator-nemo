@@ -9,10 +9,8 @@ public final class NemoEvent implements Serializable {
   public enum Type {
     VM_RUN,
     CLIENT_HANDSHAKE,
-    READY,
-    VERTICES,
-    SIDE,
-    MAIN,
+    WORKER_INIT,
+    DATA,
     GBK_START,
     GBK,
     RESULT,

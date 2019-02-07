@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
+import com.google.common.collect.Lists;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -27,15 +28,24 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
+import org.apache.nemo.common.NemoUtils;
+import org.apache.nemo.common.OffloadingWorker;
+import org.apache.nemo.common.OffloadingWorkerFactory;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.lambda.Constants;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
+import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
+import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
+import org.apache.nemo.compiler.frontend.beam.coder.PushBackCoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * DoFn transform implementation with push backs for side inputs.
@@ -51,6 +61,14 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   private long curInputWatermark;
   private long curOutputWatermark;
 
+  private boolean offloading = true; // TODO: fix
+
+  private PushBackLambdaDoFnTransform offloadingTransform;
+  private final List<String> serializedVertices;
+
+  private final Coder mainCoder;
+  private final Coder sideCoder;
+
   /**
    * PushBackDoFnTransform Constructor.
    */
@@ -62,18 +80,30 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
                                final WindowingStrategy<?, ?> windowingStrategy,
                                final Map<Integer, PCollectionView<?>> sideInputs,
                                final PipelineOptions options,
-                               final DisplayData displayData) {
+                               final DisplayData displayData,
+                               final Coder mainCoder,
+                               final Coder sideCoder) {
     super(doFn, inputCoder, outputCoders, mainOutputTag,
       additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
     this.curPushedBacks = new ArrayList<>();
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;
     this.curOutputWatermark = Long.MIN_VALUE;
+    this.offloadingTransform = new PushBackLambdaDoFnTransform(
+      doFn, inputCoder, outputCoders, mainOutputTag,
+      additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
+    this.serializedVertices = Arrays.asList(NemoUtils.serializeToString(offloadingTransform));
+    this.mainCoder = mainCoder;
+    this.sideCoder = sideCoder;
   }
 
   @Override
   protected DoFn wrapDoFn(final DoFn initDoFn) {
     return initDoFn;
+  }
+
+  public void setOffloading(boolean offload) {
+    offloading = offload;
   }
 
   @Override
@@ -92,8 +122,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
       //LOG.info("{}, Add side input at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
 
-
-      int cnt = handlePushBacks();
+      int cnt = handlePushBacksWithSideInput(sideInputElement);
       LOG.info("{}, Handle pushback cnt: {} at {}: {}", System.currentTimeMillis() - st,
         cnt, this.hashCode(), data);
       //System.out.println("{}, Handle pushback cnt: " + cnt + " data : " + data);
@@ -117,6 +146,119 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     }
   }
 
+
+  private int handlePushBacksWithSideInput(final WindowedValue<SideInputElement> sideInput) {
+    // Force-finish, before (possibly) processing pushed-back data.
+    //
+    // Main reason:
+    // {@link org.apache.beam.runners.core.SimplePushbackSideInputDoFnRunner}
+    // caches for each bundle the side inputs that are not ready.
+    // We need to re-start the bundle to advertise the (possibly) newly available side input.
+    forceFinishBundle(); // forced
+
+    // With the new side input added, we may be able to process some pushed-back elements.
+
+
+    /*
+    checkAndInvokeBundle();
+    final int cnt = curPushedBacks.size();
+    final List<Pair<List<WindowedValue<InputT>>, Long>> result =
+      burstyOutputCollector.burstyOperation(curPushedBacks,
+        (windowedValues) -> {
+          long pushedBackAgainWatermark = Long.MAX_VALUE;
+          final List<WindowedValue<InputT>> pushedBackAgain = new ArrayList<>();
+          for (final WindowedValue<InputT> curPushedBack : windowedValues) {
+            final Iterable<WindowedValue<InputT>> pushedBack =
+              getPushBackRunner().processElementInReadyWindows(curPushedBack);
+            for (final WindowedValue<InputT> wv : pushedBack) {
+              pushedBackAgainWatermark = Math.min(pushedBackAgainWatermark, wv.getTimestamp().getMillis());
+              pushedBackAgain.add(wv);
+            }
+          }
+          return Pair.of(pushedBackAgain, pushedBackAgainWatermark);
+        }
+      );
+
+    checkAndFinishBundle();
+    */
+
+    long pushedBackAgainWatermark = Long.MAX_VALUE;
+    final List<WindowedValue<InputT>> pushedBackAgain = new LinkedList<>();
+    int cnt = 0;
+
+    for (final WindowedValue<InputT> curPushedBack : curPushedBacks) {
+      final Iterable<WindowedValue<InputT>> pushedBack =
+        getPushBackRunner().processElementInReadyWindows(curPushedBack);
+      cnt += 1;
+
+      // TODO: adhoc solution
+      if (offloading) {
+        break;
+      }
+
+      for (final WindowedValue<InputT> wv : pushedBack) {
+        pushedBackAgainWatermark = Math.min(pushedBackAgainWatermark, wv.getTimestamp().getMillis());
+        pushedBackAgain.add(wv);
+      }
+    }
+
+    if (offloading) {
+      LOG.info("Start to offloading");
+
+      // partition
+      final ExecutorService executorService = Executors.newCachedThreadPool();
+      final int plusOne = (curPushedBacks.size() - cnt) % Constants.POOL_SIZE > 0 ? 1 : 0;
+      final int partitionSize = ((curPushedBacks.size() - cnt) / Constants.POOL_SIZE) + plusOne;
+      final List<List<WindowedValue<InputT>>> partitions = Lists.partition(curPushedBacks, partitionSize);
+      final OffloadingWorkerFactory offloadingWorkerFactory = getContext().getOffloadingWorkerFactory();
+
+      LOG.info("# of partition: {}, partitionSize: {}", partitions.size(), partitionSize);
+      final List<Future<List<WindowedValue<OutputT>>>> results = new ArrayList<>(partitions.size());
+
+      for (final List<WindowedValue<InputT>> partition : partitions) {
+        results.add(executorService.submit(() -> {
+        final OffloadingWorker worker = offloadingWorkerFactory.createOffloadingWorker(serializedVertices,
+          new BeamEncoderFactory(new PushBackCoder(sideCoder, mainCoder)),
+          new BeamDecoderFactory(new PushBackCoder(sideCoder, mainCoder)),
+          new BeamEncoderFactory(mainCoder), new BeamDecoderFactory(mainCoder));
+
+        worker.write(sideInput);
+        for (final WindowedValue<InputT> val : partition) {
+          worker.write(val);
+        }
+
+        worker.flush();
+        worker.finishOffloading();
+        return worker.getResult();
+        }));
+      }
+
+      // waiting results
+      for (final Future<List<WindowedValue<OutputT>>> future : results) {
+        try {
+          final List<WindowedValue<OutputT>> result = future.get();
+          // Emit results
+          result.stream().forEach(val -> getOutputCollector().emit(val));
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }
+
+
+      // TODO: fix
+      //offloading = false;
+    }
+
+    // TODO: need to guarantee correctness
+    curPushedBacks = pushedBackAgain;
+    curPushedBackWatermark = pushedBackAgainWatermark;
+    return cnt;
+  }
+
   private int handlePushBacks() {
     // Force-finish, before (possibly) processing pushed-back data.
     //
@@ -127,20 +269,21 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     forceFinishBundle(); // forced
 
     // With the new side input added, we may be able to process some pushed-back elements.
-    final List<WindowedValue<InputT>> pushedBackAgain = new ArrayList<>();
+    final List<WindowedValue<InputT>> pushedBackAgain = new LinkedList<>();
     long pushedBackAgainWatermark = Long.MAX_VALUE;
     int cnt = 0;
     for (final WindowedValue<InputT> curPushedBack : curPushedBacks) {
       checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
         getPushBackRunner().processElementInReadyWindows(curPushedBack);
-      checkAndFinishBundle();
       cnt += 1;
+      checkAndFinishBundle();
       for (final WindowedValue<InputT> wv : pushedBack) {
         pushedBackAgainWatermark = Math.min(pushedBackAgainWatermark, wv.getTimestamp().getMillis());
         pushedBackAgain.add(wv);
       }
     }
+
     curPushedBacks = pushedBackAgain;
     curPushedBackWatermark = pushedBackAgainWatermark;
     return cnt;

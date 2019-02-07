@@ -27,11 +27,17 @@ import org.apache.beam.sdk.runners.AppliedPTransform;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
+import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
+import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
+import org.apache.nemo.compiler.frontend.beam.coder.SideInputCoder;
 import org.apache.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.*;
@@ -381,6 +387,21 @@ final class PipelineTranslator {
           ctx.getPipelineOptions(),
           DisplayData.from(beamNode.getTransform()));
       } else {
+
+        // TODO remove: ad-hoc
+        final PValue input =  beamNode.getInputs().values().iterator().next();
+        final Coder elementCoder = ((PCollection) input).getCoder();
+        final Coder windowCoder = ((PCollection) input).getWindowingStrategy().getWindowFn().windowCoder();
+
+        // main input encoder decoder
+        final WindowedValue.FullWindowedValueCoder coder = WindowedValue.getFullCoder(elementCoder, windowCoder);
+
+        // side input encoder decoder
+        final PCollectionView view = sideInputMap.values().iterator().next();
+        final Coder viewCoder = PipelineTranslationContext.getCoderForView(view, ctx);
+        final WindowedValue.FullWindowedValueCoder sideInputElementCoder =
+          WindowedValue.getFullCoder(SideInputCoder.of(viewCoder), windowCoder);
+
         return new PushBackDoFnTransform(
           doFn,
           mainInput.getCoder(),
@@ -390,8 +411,9 @@ final class PipelineTranslator {
           mainInput.getWindowingStrategy(),
           sideInputMap,
           ctx.getPipelineOptions(),
-          DisplayData.from(beamNode.getTransform()));
-
+          DisplayData.from(beamNode.getTransform()),
+          coder,
+          sideInputElementCoder);
       }
     } catch (final IOException e) {
       throw new RuntimeException(e);

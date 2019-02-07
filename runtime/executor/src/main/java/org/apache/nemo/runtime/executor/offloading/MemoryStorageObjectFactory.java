@@ -20,11 +20,11 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
 
   private List<String> serializedVertices;
 
-  private final LambdaChannelManager lambdaChannelManager;
+  private final OffloadingWorkerManager offloadingWorkerManager;
 
   @Inject
-  private MemoryStorageObjectFactory(final LambdaChannelManager lambdaChannelManager) {
-    this.lambdaChannelManager = lambdaChannelManager;
+  private MemoryStorageObjectFactory(final OffloadingWorkerManager offloadingWorkerManager) {
+    this.offloadingWorkerManager = offloadingWorkerManager;
   }
 
   private synchronized void lazyInit() {
@@ -63,7 +63,7 @@ public final class MemoryStorageObjectFactory implements StorageObjectFactory {
     lazyInit();
     LOG.info("Get side input processor: {} at {}", serializedVertices, this.hashCode());
     return new MemorySideInputProcessor(serializerManager, edgeId,
-      prefixAndObjectMap, prefixAndSizeMap, lambdaChannelManager, serializedVertices);
+      prefixAndObjectMap, prefixAndSizeMap, offloadingWorkerManager, serializedVertices);
   }
 }
 

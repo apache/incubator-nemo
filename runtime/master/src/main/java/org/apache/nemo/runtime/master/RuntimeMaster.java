@@ -98,7 +98,7 @@ public final class RuntimeMaster {
   // REST API server for web metric visualization ui.
   private final Server metricServer;
 
-  private final ServerlessWarmer warmer;
+  private final ServerlessContainerWarmer warmer;
 
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
@@ -107,7 +107,7 @@ public final class RuntimeMaster {
                         final MessageEnvironment masterMessageEnvironment,
                         final ClientRPC clientRPC,
                         final MetricManagerMaster metricManagerMaster,
-                        final ServerlessWarmer warmer,
+                        final ServerlessContainerWarmer warmer,
                         final PlanStateManager planStateManager) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time

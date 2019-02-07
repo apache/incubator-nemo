@@ -24,8 +24,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.nemo.common.lambda.Constants.POOL_SIZE;
 
-public final class ServerlessWarmer {
-  private static final Logger LOG = LoggerFactory.getLogger(ServerlessWarmer.class.getName());
+public final class ServerlessContainerWarmer {
+  private static final Logger LOG = LoggerFactory.getLogger(ServerlessContainerWarmer.class.getName());
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
@@ -39,7 +39,7 @@ public final class ServerlessWarmer {
   private final AWSLambdaAsync awsLambda;
 
   @Inject
-  private ServerlessWarmer(final TcpPortProvider tcpPortProvider) {
+  private ServerlessContainerWarmer(final TcpPortProvider tcpPortProvider) {
     this.nemoEventHandler = new NemoEventHandler();
     this.nettyServerTransport = new NettyServerTransport(
       tcpPortProvider, new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler));
@@ -65,8 +65,7 @@ public final class ServerlessWarmer {
     for (int i = 0; i < POOL_SIZE; i++) {
       try {
         //channelPool.add(nemoEventHandler.getHandshakeQueue().take().left());
-        nemoEventHandler.getHandshakeQueue().take().left();
-        final Channel channel = nemoEventHandler.getReadyQueue().take().left();
+        final Channel channel = nemoEventHandler.getHandshakeQueue().take().left();
         channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
       } catch (InterruptedException e) {
         e.printStackTrace();

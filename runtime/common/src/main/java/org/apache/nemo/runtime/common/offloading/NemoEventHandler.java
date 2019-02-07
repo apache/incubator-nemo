@@ -14,65 +14,51 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public final class NemoEventHandler implements EventHandler<Pair<Channel,NemoEvent>> {
   private static final Logger LOG = LoggerFactory.getLogger(NemoEventHandler.class.getName());
-    private final BlockingQueue<Pair<Channel,NemoEvent>> handshakeQueue;
-    private final BlockingQueue<Pair<Channel, NemoEvent>> readyQueue;
-    private final BlockingQueue<Pair<Channel,NemoEvent>> resultQueue;
-    private final BlockingQueue<Pair<Channel, NemoEvent>> endQueue;
-    private final AtomicInteger pendingRequest = new AtomicInteger();
+  private final BlockingQueue<Pair<Channel,NemoEvent>> handshakeQueue;
+  private final BlockingQueue<Pair<Channel, NemoEvent>> readyQueue;
+  private final BlockingQueue<Pair<Channel, NemoEvent>> endQueue;
+  private final AtomicInteger pendingRequest = new AtomicInteger();
+  private final Map<Channel, EventHandler<NemoEvent>> channelEventHandlerMap;
 
-    @Deprecated
-    public NemoEventHandler(final Map<Channel, EventHandler> channelEventHandlerMap) {
-      this();
-    }
+  public NemoEventHandler(final Map<Channel, EventHandler<NemoEvent>> channelEventHandlerMap) {
+    this.handshakeQueue = new LinkedBlockingQueue<>();
+    this.readyQueue = new LinkedBlockingQueue<>();
+    this.endQueue = new LinkedBlockingQueue<>();
+    this.channelEventHandlerMap = channelEventHandlerMap;
+  }
 
-    public NemoEventHandler() {
-      this.handshakeQueue = new LinkedBlockingQueue<>();
-      this.readyQueue = new LinkedBlockingQueue<>();
-      this.resultQueue = new LinkedBlockingQueue<>();
-      this.endQueue = new LinkedBlockingQueue<>();
-    }
+  public NemoEventHandler() {
+    this.handshakeQueue = new LinkedBlockingQueue<>();
+    this.readyQueue = new LinkedBlockingQueue<>();
+    this.endQueue = new LinkedBlockingQueue<>();
+    this.channelEventHandlerMap = null;
+  }
 
-    public AtomicInteger getPendingRequest() {
-      return pendingRequest;
-    }
+  public AtomicInteger getPendingRequest() {
+    return pendingRequest;
+  }
 
-    public BlockingQueue<Pair<Channel, NemoEvent>> getReadyQueue() {
-      return readyQueue;
-    }
+  public BlockingQueue<Pair<Channel, NemoEvent>> getReadyQueue() {
+    return readyQueue;
+  }
 
-    public BlockingQueue<Pair<Channel, NemoEvent>> getHandshakeQueue() {
-      return handshakeQueue;
-    }
+  public BlockingQueue<Pair<Channel, NemoEvent>> getHandshakeQueue() {
+    return handshakeQueue;
+  }
 
-    public BlockingQueue<Pair<Channel, NemoEvent>> getResultQueue() {
-      return resultQueue;
-    }
-
-    public BlockingQueue<Pair<Channel, NemoEvent>> getEndQueue() {
-      return endQueue;
-    }
-
-    @Override
-    public void onNext(Pair<Channel,NemoEvent> nemoEvent) {
-      final NemoEvent event = (NemoEvent) nemoEvent.right();
-      switch (event.getType()) {
-        case CLIENT_HANDSHAKE:
-          handshakeQueue.add(nemoEvent);
-          break;
-        case READY:
-          readyQueue.add(nemoEvent);
-          break;
-        case RESULT:
-          LOG.info("Result from {}", nemoEvent.left());
-          //channelEventHandlerMap.get(nemoEvent.left()).onNext(nemoEvent.right());
-          resultQueue.add(nemoEvent);
-          break;
-        case END:
-          //channelEventHandlerMap.get(nemoEvent.left()).onNext(nemoEvent.right());
-          endQueue.add(nemoEvent);
-          break;
-        default:
-          throw new IllegalStateException("Illegal type: " + event.getType().name());
-      }
+  @Override
+  public void onNext(Pair<Channel,NemoEvent> nemoEvent) {
+    final NemoEvent event = (NemoEvent) nemoEvent.right();
+    switch (event.getType()) {
+      case CLIENT_HANDSHAKE:
+        handshakeQueue.add(nemoEvent);
+        break;
+      default:
+        if (channelEventHandlerMap != null) {
+          if (channelEventHandlerMap.containsKey(nemoEvent.left())) {
+            channelEventHandlerMap.get(nemoEvent.left()).onNext(event);
+          }
+        }
     }
   }
+}

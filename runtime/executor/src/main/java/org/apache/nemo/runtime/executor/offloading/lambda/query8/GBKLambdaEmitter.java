@@ -21,7 +21,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.executor.datatransfer.NextIntraTaskOperatorInfo;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
-import org.apache.nemo.runtime.executor.offloading.LambdaChannelManager;
+import org.apache.nemo.runtime.executor.offloading.OffloadingWorkerManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +55,7 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
 
   private final byte[] serializedDecoderFactory;
   private long startTime;
-  private final LambdaChannelManager lambdaTransport;
+  private final OffloadingWorkerManager lambdaTransport;
   private GBKChannelHandler channelHandler;
 
   private boolean toLambda = false;
@@ -68,7 +68,7 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
                           final List<OutputWriter> externalMainOutputs,
                           final Map<String, List<OutputWriter>> externalAdditionalOutputs,
                           final List<RuntimeEdge<IRVertex>> internalEdges,
-                          final LambdaChannelManager lambdaChannelManager) {
+                          final OffloadingWorkerManager offloadingWorkerManager) {
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
@@ -78,7 +78,7 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
     this.encoderFactory = internalEdges.get(0).getPropertyValue(EncoderProperty.class).get();
     this.decoderFactory = internalEdges.get(0).getPropertyValue(DecoderProperty.class).get();
     this.serializedDecoderFactory = SerializationUtils.serialize(decoderFactory);
-    this.lambdaTransport = lambdaChannelManager;
+    this.lambdaTransport = offloadingWorkerManager;
     //this.warmer = new LambdaOffloadingRequester();
     //warmer.warmup();
   }
@@ -121,9 +121,11 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
         channels = new ArrayList<>(numLambdas);
         for (int i = 0; i < numLambdas; i++) {
           executorService.submit(() -> {
+            /*
             try {
               // TODO: fix!!!
-              final Channel channel = lambdaTransport.createOffloadingChannel(new LinkedList<>()).get();
+
+              final Channel channel = lambdaTransport.createLambdaWorker(new LinkedList<>()).get();
               lambdaTransport.setChannelHandler(channel, channelHandler);
               channel.writeAndFlush(new NemoEvent(NemoEvent.Type.GBK_START,
                 serializedDecoderFactory, serializedDecoderFactory.length));
@@ -135,6 +137,7 @@ public class GBKLambdaEmitter<O> implements OutputCollector<O> {
               e.printStackTrace();
               throw new RuntimeException(e);
             }
+            */
           });
         }
 

@@ -18,12 +18,14 @@
  */
 package org.apache.nemo.driver;
 
+import org.apache.nemo.common.OffloadingWorkerFactory;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageParameters;
+import org.apache.nemo.runtime.executor.offloading.LambdaOffloadingWorkerFactory;
 import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
 import org.apache.nemo.runtime.master.RuntimeMaster;
@@ -258,6 +260,7 @@ public final class NemoDriver {
         .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
         .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+      .bindImplementation(OffloadingWorkerFactory.class, LambdaOffloadingWorkerFactory.class) // TODO: fix
         .build();
   }
 

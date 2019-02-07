@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor;
 
+import org.apache.nemo.common.OffloadingWorkerFactory;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
@@ -32,16 +33,25 @@ public final class TransformContextImpl implements Transform.Context {
   private final BroadcastManagerWorker broadcastManagerWorker;
   private String data;
   private final IRVertex irVertex;
+  private final OffloadingWorkerFactory offloadingWorkerFactory;
 
   /**
    * Constructor of Context Implementation.
    * @param broadcastManagerWorker for broadcast variables.
    */
   public TransformContextImpl(final BroadcastManagerWorker broadcastManagerWorker,
-                              final IRVertex irVertex) {
+                              final IRVertex irVertex,
+                              final OffloadingWorkerFactory offloadingWorkerFactory) {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.data = null;
     this.irVertex = irVertex;
+    this.offloadingWorkerFactory = offloadingWorkerFactory;
+  }
+
+
+  @Override
+  public OffloadingWorkerFactory getOffloadingWorkerFactory() {
+    return offloadingWorkerFactory;
   }
 
   @Override

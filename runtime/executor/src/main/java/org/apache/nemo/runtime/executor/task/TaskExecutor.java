@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
+import org.apache.nemo.common.OffloadingWorkerFactory;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
@@ -90,7 +91,7 @@ public final class TaskExecutor {
 
   private final SerializerManager serializerManager;
 
-  private final StorageObjectFactory storageObjectFactory;
+  private final OffloadingWorkerFactory offloadingWorkerFactory;
 
   //private static final StorageObjectFactory SOFACTORY = MemoryStorageObjectFactory.INSTACE;
   //private static final StorageObjectFactory SOFACTORY = S3StorageObjectFactory.INSTACE;
@@ -114,13 +115,14 @@ public final class TaskExecutor {
                       final MetricMessageSender metricMessageSender,
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                       final SerializerManager serializerManager,
-                      final StorageObjectFactory storageObjectFactory) {
+                      final OffloadingWorkerFactory offloadingWorkerFactory) {
     // Essential information
     this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
-    this.storageObjectFactory = storageObjectFactory;
+
+    this.offloadingWorkerFactory = offloadingWorkerFactory;
 
     this.serializerManager = serializerManager;
 
@@ -262,6 +264,7 @@ public final class TaskExecutor {
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap);
 
+        /*
         // query 7
         if (irVertex.getId().equals("vertex15")) {
           outputCollector = new SideInputLambdaCollector(
@@ -272,6 +275,7 @@ public final class TaskExecutor {
             new MainInputLambdaCollector(irVertex, internalMainOutputs, internalAdditionalOutputMap,
               oedges, serializerManager, storageObjectFactory);
         }
+        */
 
         // query 8
         /*
@@ -285,7 +289,8 @@ public final class TaskExecutor {
 
       // Create VERTEX HARNESS
       final VertexHarness vertexHarness = new VertexHarness(
-        irVertex, outputCollector, new TransformContextImpl(broadcastManagerWorker, irVertex),
+        irVertex, outputCollector, new TransformContextImpl(
+          broadcastManagerWorker, irVertex, offloadingWorkerFactory),
         externalMainOutputs, externalAdditionalOutputMap);
 
       prepareTransform(vertexHarness);

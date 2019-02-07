@@ -258,7 +258,7 @@ final class PipelineTranslationContext {
    * @param view {@link PCollectionView}
    * @return appropriate {@link Coder} for {@link PCollectionView}
    */
-  private static Coder<?> getCoderForView(final PCollectionView view, final PipelineTranslationContext context) {
+  public static Coder<?> getCoderForView(final PCollectionView view, final PipelineTranslationContext context) {
     final TransformHierarchy.Node src = context.getProducerBeamNodeOf(view);
     final KvCoder<?, ?> inputKVCoder = (KvCoder) src.getOutputs().values().stream()
       .filter(v -> v instanceof PCollection)

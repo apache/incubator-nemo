@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
+import org.apache.nemo.common.OffloadingWorkerFactory;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.coder.DecoderFactory;
@@ -45,8 +46,6 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
-import org.apache.nemo.runtime.executor.offloading.LambdaChannelManager;
-import org.apache.nemo.runtime.executor.offloading.StorageObjectFactory;
 import org.apache.nemo.runtime.executor.task.TaskExecutor;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
@@ -95,9 +94,7 @@ public final class Executor {
 
   private final MetricMessageSender metricMessageSender;
 
-  private final LambdaChannelManager lambdaChannelManager;
-
-  private final StorageObjectFactory storageObjectFactory;
+  private final OffloadingWorkerFactory offloadingWorkerFactory;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -107,8 +104,7 @@ public final class Executor {
                    final IntermediateDataIOFactory intermediateDataIOFactory,
                    final BroadcastManagerWorker broadcastManagerWorker,
                    final MetricManagerWorker metricMessageSender,
-                   final LambdaChannelManager lambdaChannelManager,
-                   final StorageObjectFactory storageObjectFactory) {
+                   final OffloadingWorkerFactory offloadingWorkerFactory) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
         .namingPattern("TaskExecutor thread-%d")
@@ -118,8 +114,7 @@ public final class Executor {
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
-    this.lambdaChannelManager = lambdaChannelManager;
-    this.storageObjectFactory = storageObjectFactory;
+    this.offloadingWorkerFactory = offloadingWorkerFactory;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
 
@@ -135,6 +130,7 @@ public final class Executor {
       SerializationUtils.deserialize(task.getSerializedIRDag());
 
     // TODO: remove
+    /*
     // query 7
     final List<String> serializedVertices =
       irDag.getTopologicalSort().stream()
@@ -146,6 +142,7 @@ public final class Executor {
       LOG.info("Launch task: {}, setSerializedVertices: {}", task.getTaskId(), serializedVertices);
       storageObjectFactory.setSerializedVertices(serializedVertices);
     }
+    */
     // TODO: remove
 
     executorService.execute(() -> launchTask(task, irDag));
@@ -201,7 +198,7 @@ public final class Executor {
       });
 
       new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-          metricMessageSender, persistentConnectionToMasterMap, serializerManager, storageObjectFactory).execute();
+          metricMessageSender, persistentConnectionToMasterMap, serializerManager, offloadingWorkerFactory).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
