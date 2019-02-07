@@ -58,6 +58,8 @@ public final class NemoEventHandler implements EventHandler<Pair<Channel,NemoEve
         if (channelEventHandlerMap != null) {
           if (channelEventHandlerMap.containsKey(nemoEvent.left())) {
             channelEventHandlerMap.get(nemoEvent.left()).onNext(event);
+          } else {
+            LOG.info("No channel {} for {} // {}", nemoEvent.left(), event, channelEventHandlerMap.values());
           }
         }
     }
