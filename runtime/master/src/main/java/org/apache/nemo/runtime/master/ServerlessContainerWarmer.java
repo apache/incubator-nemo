@@ -48,7 +48,7 @@ public final class ServerlessContainerWarmer {
   }
 
   public void start() {
-    LOG.info("Warm up start");
+    LOG.info("Warm up start: {}", POOL_SIZE);
     for (int i = 0; i < POOL_SIZE; i++) {
       executorService.submit(() -> {
         // Trigger lambdas
