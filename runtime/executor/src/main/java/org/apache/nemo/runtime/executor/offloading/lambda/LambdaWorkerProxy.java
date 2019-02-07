@@ -52,6 +52,7 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
       public void onNext(NemoEvent msg) {
         switch (msg.getType()) {
           case RESULT:
+            LOG.info("Receive result");
             final ByteBufInputStream bis = new ByteBufInputStream(msg.getByteBuf());
             try {
               final DecoderFactory.Decoder decoder = outputDecoderFactory.create(bis);
@@ -64,6 +65,7 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
             }
             break;
           case END:
+            LOG.info("Receive end");
             msg.getByteBuf().release();
             endQueue.add(msg);
             break;
@@ -97,12 +99,16 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
         result.add((T) resultQueue.poll());
       }
 
+      LOG.info("Result is empty, but don't receive end message");
+
       try {
         Thread.sleep(100);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
+
+    LOG.info("We received end message!");
 
     while (!resultQueue.isEmpty()) {
       result.add((T) resultQueue.poll());
