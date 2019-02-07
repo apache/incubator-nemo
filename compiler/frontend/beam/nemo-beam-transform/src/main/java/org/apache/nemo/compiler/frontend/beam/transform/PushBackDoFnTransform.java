@@ -182,6 +182,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     checkAndFinishBundle();
     */
 
+    checkAndInvokeBundle();
     long pushedBackAgainWatermark = Long.MAX_VALUE;
     final List<WindowedValue<InputT>> pushedBackAgain = new LinkedList<>();
     int cnt = 0;
@@ -191,14 +192,14 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         getPushBackRunner().processElementInReadyWindows(curPushedBack);
       cnt += 1;
 
-      // TODO: adhoc solution
-      if (offloading) {
-        break;
-      }
-
       for (final WindowedValue<InputT> wv : pushedBack) {
         pushedBackAgainWatermark = Math.min(pushedBackAgainWatermark, wv.getTimestamp().getMillis());
         pushedBackAgain.add(wv);
+      }
+
+      // TODO: adhoc solution
+      if (offloading) {
+        break;
       }
     }
 
@@ -209,7 +210,8 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       final ExecutorService executorService = Executors.newCachedThreadPool();
       final int plusOne = (curPushedBacks.size() - cnt) % Constants.POOL_SIZE > 0 ? 1 : 0;
       final int partitionSize = ((curPushedBacks.size() - cnt) / Constants.POOL_SIZE) + plusOne;
-      final List<List<WindowedValue<InputT>>> partitions = Lists.partition(curPushedBacks, partitionSize);
+      final List<List<WindowedValue<InputT>>> partitions = Lists.partition(
+        curPushedBacks.subList(cnt, curPushedBacks.size()), partitionSize);
       final OffloadingWorkerFactory offloadingWorkerFactory = getContext().getOffloadingWorkerFactory();
 
       LOG.info("# of partition: {}, partitionSize: {}", partitions.size(), partitionSize);
@@ -252,6 +254,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       // TODO: fix
       //offloading = false;
     }
+    checkAndFinishBundle();
 
     // TODO: need to guarantee correctness
     curPushedBacks = pushedBackAgain;
