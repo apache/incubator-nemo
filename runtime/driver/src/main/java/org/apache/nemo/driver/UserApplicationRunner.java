@@ -19,13 +19,13 @@
 package org.apache.nemo.driver;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.backend.Backend;
+import org.apache.nemo.compiler.backend.nemo.NemoPlanRewriter;
 import org.apache.nemo.compiler.optimizer.Optimizer;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
@@ -48,16 +48,19 @@ public final class UserApplicationRunner {
   private final RuntimeMaster runtimeMaster;
   private final Optimizer optimizer;
   private final Backend<PhysicalPlan> backend;
+  private final PlanRewriter planRewriter;
 
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.MaxTaskAttempt.class) final int maxScheduleAttempt,
                                 final Optimizer optimizer,
                                 final Backend<PhysicalPlan> backend,
-                                final RuntimeMaster runtimeMaster) {
+                                final RuntimeMaster runtimeMaster,
+                                final PlanRewriter planRewriter) {
     this.maxScheduleAttempt = maxScheduleAttempt;
     this.runtimeMaster = runtimeMaster;
     this.optimizer = optimizer;
     this.backend = backend;
+    this.planRewriter = planRewriter;
   }
 
   /**
@@ -71,10 +74,10 @@ public final class UserApplicationRunner {
     try {
       LOG.info("##### Nemo Compiler Start #####");
 
-      final DAG<IRVertex, IREdge> dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
-      final DAG<IRVertex, IREdge> optimizedDAG = optimizer.optimizeDag(dag);
+      final IRDAG dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
+      final IRDAG optimizedDAG = optimizer.optimizeAtCompileTime(dag);
+      ((NemoPlanRewriter) planRewriter).setIRDAG(optimizedDAG);
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
-
       LOG.info("##### Nemo Compiler Finish #####");
 
       // Execute!

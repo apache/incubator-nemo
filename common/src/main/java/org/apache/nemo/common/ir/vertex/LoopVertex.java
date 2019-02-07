@@ -310,6 +310,11 @@ public final class LoopVertex extends IRVertex {
     this.maxNumberOfIterations--;
   }
 
+  /**
+   * Check termination condition.
+   * @param that another vertex.
+   * @return true if equals.
+   */
   public boolean terminationConditionEquals(final LoopVertex that) {
     if (this.maxNumberOfIterations.equals(that.getMaxNumberOfIterations()) && Util
         .checkEqualityOfIntPredicates(this.terminationCondition, that.getTerminationCondition(),

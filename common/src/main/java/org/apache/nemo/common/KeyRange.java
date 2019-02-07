@@ -26,7 +26,7 @@ import java.io.Serializable;
  */
 public interface KeyRange<K extends Serializable> extends Serializable {
 
- /**
+  /**
    * @return whether this instance represents the entire range or not.
    */
   boolean isAll();

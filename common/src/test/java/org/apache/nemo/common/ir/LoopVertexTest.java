@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.common.ir;
 
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -41,8 +40,8 @@ import static org.junit.Assert.assertEquals;
  */
 public class LoopVertexTest {
   private final LoopVertex loopVertex = new LoopVertex("fakeTransform");
-  private DAG<IRVertex, IREdge> originalDAG;
-  private DAG<IRVertex, IREdge> newDAG;
+  private IRDAG originalDAG;
+  private IRDAG newDAG;
 
   private final IRVertex source = new EmptyComponents.EmptySourceVertex<>("Source");
   private final IRVertex map1 = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
@@ -62,12 +61,12 @@ public class LoopVertexTest {
     loopVertex.addDagIncomingEdge(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1));
     loopVertex.addIterativeIncomingEdge(new IREdge(CommunicationPatternProperty.Value.OneToOne, map2, map1));
 
-    originalDAG = builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
+    originalDAG = new IRDAG(builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
         .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1))
         .connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
         .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
         .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine, map2))
-        .build();
+        .build());
   }
 
   @Test

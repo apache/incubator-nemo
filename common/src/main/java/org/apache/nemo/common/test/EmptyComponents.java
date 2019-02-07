@@ -21,8 +21,8 @@ package org.apache.nemo.common.test;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -54,7 +54,7 @@ public final class EmptyComponents {
    * Builds dummy IR DAG for testing.
    * @return the dummy IR DAG.
    */
-  public static DAG<IRVertex, IREdge> buildEmptyDAG() {
+  public static IRDAG buildEmptyDAG() {
     DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     final IRVertex s = new EmptyComponents.EmptySourceVertex<>("s");
     final IRVertex t1 = new OperatorVertex(new EmptyComponents.EmptyTransform("t1"));
@@ -73,7 +73,7 @@ public final class EmptyComponents {
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t3));
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, t3, t4));
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t5));
-    return dagBuilder.build();
+    return new IRDAG(dagBuilder.build());
   }
 
   /**
@@ -82,7 +82,7 @@ public final class EmptyComponents {
    * and KeyExtractorProperty by default.
    * @return the dummy IR DAG.
    */
-  public static DAG<IRVertex, IREdge> buildEmptyDAGForSkew() {
+  public static IRDAG buildEmptyDAGForSkew() {
     DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     final IRVertex s = new EmptyComponents.EmptySourceVertex<>("s");
     final IRVertex t1 = new OperatorVertex(new EmptyComponents.EmptyTransform("t1"));
@@ -116,7 +116,7 @@ public final class EmptyComponents {
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t3));
     dagBuilder.connectVertices(shuffleEdgeBetweenT3AndT4);
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t5));
-    return dagBuilder.build();
+    return new IRDAG(dagBuilder.build());
   }
 
   /**

@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.common.plan;
 
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
@@ -52,12 +53,12 @@ public final class PhysicalPlanGeneratorTest {
 
     final IRVertex v0 = newIRVertex(0, 5);
     final IRVertex v1 = newIRVertex(0, 3);
-    final DAG<IRVertex, IREdge> irDAG = new DAGBuilder<IRVertex, IREdge>()
+    final IRDAG irDAG = new IRDAG(new DAGBuilder<IRVertex, IREdge>()
         .addVertex(v0)
         .addVertex(v1)
         .connectVertices(newIREdge(v0, v1, CommunicationPatternProperty.Value.OneToOne,
             DataFlowProperty.Value.Pull))
-        .buildWithoutSourceSinkCheck();
+        .buildWithoutSourceSinkCheck());
 
     final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(irDAG);
     final Iterator<Stage> stages = stageDAG.getVertices().iterator();

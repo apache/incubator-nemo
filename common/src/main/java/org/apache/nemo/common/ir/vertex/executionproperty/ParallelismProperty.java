@@ -21,7 +21,12 @@ package org.apache.nemo.common.ir.vertex.executionproperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * Parallelism ExecutionProperty.
+ * This property decides the number of parallel tasks to use for executing the corresponding IRVertex.
+ *
+ * IRDAG integrity checks by Nemo include:
+ * - A larger number of parallelism of a parent IRVertex connected with an one-to-one IREdge.
+ * - A larger number of source (e.g., HDFS) input data partitions.
+ * - A larger size of the PartitionSet property of the input edge.
  */
 public final class ParallelismProperty extends VertexExecutionProperty<Integer> {
   /**

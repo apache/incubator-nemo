@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.vertex.*;
-import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
+import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.datatransfer.MultiInputWatermarkManager;
@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.nemo.runtime.executor.datatransfer.DynOptDataOutputCollector;
+import org.apache.nemo.runtime.executor.datatransfer.RunTimeMessageOutputCollector;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -226,9 +226,9 @@ public final class TaskExecutor {
       final OutputCollector outputCollector;
 
       if (irVertex instanceof OperatorVertex
-        && ((OperatorVertex) irVertex).getTransform() instanceof AggregateMetricTransform) {
-        outputCollector = new DynOptDataOutputCollector(
-          irVertex, persistentConnectionToMasterMap, this);
+        && ((OperatorVertex) irVertex).getTransform() instanceof MessageAggregatorTransform) {
+        outputCollector = new RunTimeMessageOutputCollector(
+          taskId, irVertex, persistentConnectionToMasterMap, this);
       } else {
         outputCollector = new OperatorVertexOutputCollector(
           irVertex, internalMainOutputs, internalAdditionalOutputMap,

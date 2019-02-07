@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.common.plan;
 
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
@@ -46,22 +47,19 @@ import java.util.function.Function;
 /**
  * A function that converts an IR DAG to physical DAG.
  */
-public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdge>, DAG<Stage, StageEdge>> {
-  private final String dagDirectory;
-  private final StagePartitioner stagePartitioner;
+public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, StageEdge>> {
   private static final Logger LOG = LoggerFactory.getLogger(PhysicalPlanGenerator.class.getName());
+
+  private final String dagDirectory;
 
   /**
    * Private constructor.
    *
-   * @param stagePartitioner provides stage partitioning
    * @param dagDirectory the directory in which to store DAG data.
    */
   @Inject
-  private PhysicalPlanGenerator(final StagePartitioner stagePartitioner,
-                                @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
+  private PhysicalPlanGenerator(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     this.dagDirectory = dagDirectory;
-    this.stagePartitioner = stagePartitioner;
   }
 
   /**
@@ -71,7 +69,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
    * @return {@link PhysicalPlan} to execute.
    */
   @Override
-  public DAG<Stage, StageEdge> apply(final DAG<IRVertex, IREdge> irDAG) {
+  public DAG<Stage, StageEdge> apply(final IRDAG irDAG) {
     // first, stage-partition the IR DAG.
     final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG);
 
@@ -100,7 +98,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
 
     dagOfStages.topologicalDo(irVertex -> dagOfStages.getIncomingEdgesOf(irVertex).forEach(e -> {
       final Optional<DuplicateEdgeGroupPropertyValue> duplicateEdgeGroupProperty =
-          e.getPropertyValue(DuplicateEdgeGroupProperty.class);
+        e.getPropertyValue(DuplicateEdgeGroupProperty.class);
       if (duplicateEdgeGroupProperty.isPresent()) {
         final String duplicateGroupId = duplicateEdgeGroupProperty.get().getGroupId();
         edgeGroupToIrEdge.computeIfAbsent(duplicateGroupId, k -> new ArrayList<>()).add(e);
@@ -110,11 +108,11 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
     edgeGroupToIrEdge.forEach((id, edges) -> {
       final StageEdge firstEdge = edges.get(0);
       final DuplicateEdgeGroupPropertyValue firstDuplicateEdgeValue =
-          firstEdge.getPropertyValue(DuplicateEdgeGroupProperty.class).get();
+        firstEdge.getPropertyValue(DuplicateEdgeGroupProperty.class).get();
 
       edges.forEach(e -> {
         final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
-            e.getPropertyValue(DuplicateEdgeGroupProperty.class).get();
+          e.getPropertyValue(DuplicateEdgeGroupProperty.class).get();
         if (firstDuplicateEdgeValue.isRepresentativeEdgeDecided()) {
           duplicateEdgeGroupProperty.setRepresentativeEdgeId(firstDuplicateEdgeValue.getRepresentativeEdgeId());
         } else {
@@ -131,11 +129,13 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
    * @param irDAG stage-partitioned IR DAG.
    * @return the DAG composed of stages and stage edges.
    */
-  public DAG<Stage, StageEdge> stagePartitionIrDAG(final DAG<IRVertex, IREdge> irDAG) {
+  public DAG<Stage, StageEdge> stagePartitionIrDAG(final IRDAG irDAG) {
+    final StagePartitioner stagePartitioner = new StagePartitioner();
     final DAGBuilder<Stage, StageEdge> dagOfStagesBuilder = new DAGBuilder<>();
     final Set<IREdge> interStageEdges = new HashSet<>();
     final Map<Integer, Stage> stageIdToStageMap = new HashMap<>();
     final Map<IRVertex, Integer> vertexToStageIdMap = stagePartitioner.apply(irDAG);
+    final HashSet<IRVertex> isStagePartitioned = new HashSet<>();
 
     final Map<Integer, Set<IRVertex>> vertexSetForEachStage = new LinkedHashMap<>();
     irDAG.topologicalDo(irVertex -> {
@@ -151,8 +151,9 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
       final String stageIdentifier = RuntimeIdManager.generateStageId(stageId);
       final ExecutionPropertyMap<VertexExecutionProperty> stageProperties = new ExecutionPropertyMap<>(stageIdentifier);
       stagePartitioner.getStageProperties(stageVertices.iterator().next()).forEach(stageProperties::put);
+
       final int stageParallelism = stageProperties.get(ParallelismProperty.class)
-          .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
+        .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
 
       final DAGBuilder<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAGBuilder = new DAGBuilder<>();
 
@@ -165,7 +166,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
       // For each IRVertex,
       for (final IRVertex irVertex : stageVertices) {
         // Take care of the readables of a source vertex.
-        if (irVertex instanceof SourceVertex && !irVertex.getStagePartitioned()) {
+        if (irVertex instanceof SourceVertex && !isStagePartitioned.contains(irVertex)) {
           final SourceVertex sourceVertex = (SourceVertex) irVertex;
           try {
             final List<Readable> readables = sourceVertex.getReadables(stageParallelism);
@@ -191,10 +192,10 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
           // both vertices are in the same stage.
           if (vertexToStageIdMap.get(srcVertex).equals(vertexToStageIdMap.get(dstVertex))) {
             stageInternalDAGBuilder.connectVertices(new RuntimeEdge<>(
-                irEdge.getId(),
-                irEdge.getExecutionProperties(),
-                irEdge.getSrc(),
-                irEdge.getDst()));
+              irEdge.getId(),
+              irEdge.getExecutionProperties(),
+              irEdge.getSrc(),
+              irEdge.getDst()));
           } else { // edge comes from another stage
             interStageEdges.add(irEdge);
           }
@@ -203,7 +204,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
       // If this runtime stage contains at least one vertex, build it!
       if (!stageInternalDAGBuilder.isEmpty()) {
         final DAG<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAG
-            = stageInternalDAGBuilder.buildWithoutSourceSinkCheck();
+          = stageInternalDAGBuilder.buildWithoutSourceSinkCheck();
         final Stage stage = new Stage(stageIdentifier, stageInternalDAG, stageProperties, vertexIdToReadables);
         dagOfStagesBuilder.addVertex(stage);
         stageIdToStageMap.put(stageId, stage);
@@ -211,9 +212,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
 
       // To prevent re-fetching readables in source vertex
       // during re-generation of physical plan for dynamic optimization.
-      for (IRVertex irVertex : stageVertices) {
-        irVertex.setStagePartitioned();
-      }
+      isStagePartitioned.addAll(stageVertices);
     }
 
     // Add StageEdges
@@ -222,11 +221,11 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
       final Stage dstStage = stageIdToStageMap.get(vertexToStageIdMap.get(interStageEdge.getDst()));
       if (srcStage == null || dstStage == null) {
         throw new IllegalVertexOperationException(String.format("Stage not added to the builder:%s%s",
-            srcStage == null ? String.format(" source stage for %s", interStageEdge.getSrc()) : "",
-            dstStage == null ? String.format(" destination stage for %s", interStageEdge.getDst()) : ""));
+          srcStage == null ? String.format(" source stage for %s", interStageEdge.getSrc()) : "",
+          dstStage == null ? String.format(" destination stage for %s", interStageEdge.getDst()) : ""));
       }
       dagOfStagesBuilder.connectVertices(new StageEdge(interStageEdge.getId(), interStageEdge.getExecutionProperties(),
-          interStageEdge.getSrc(), interStageEdge.getDst(), srcStage, dstStage));
+        interStageEdge.getSrc(), interStageEdge.getDst(), srcStage, dstStage));
     }
 
     return dagOfStagesBuilder.build();
@@ -238,14 +237,14 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
    */
   private void integrityCheck(final Stage stage) {
     stage.getPropertyValue(ParallelismProperty.class)
-        .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
+      .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
     stage.getPropertyValue(ScheduleGroupProperty.class)
-        .orElseThrow(() -> new RuntimeException("ScheduleGroup property must be set for Stage"));
+      .orElseThrow(() -> new RuntimeException("ScheduleGroup property must be set for Stage"));
 
     stage.getIRDAG().getVertices().forEach(irVertex -> {
       // Check vertex type.
       if (!(irVertex instanceof  SourceVertex
-          || irVertex instanceof OperatorVertex)) {
+        || irVertex instanceof OperatorVertex)) {
         throw new UnsupportedOperationException(irVertex.toString());
       }
     });
@@ -260,7 +259,6 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
   private void splitScheduleGroupByPullStageEdges(final DAG<Stage, StageEdge> dag) {
     final MutableInt nextScheduleGroup = new MutableInt(0);
     final Map<Stage, Integer> stageToScheduleGroupMap = new HashMap<>();
-
     dag.topologicalDo(currentStage -> {
       // Base case: assign New ScheduleGroup of the Stage
       stageToScheduleGroupMap.computeIfAbsent(currentStage, s -> getAndIncrement(nextScheduleGroup));
@@ -290,11 +288,11 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
           if (stageEdge.getDataFlowModel() != DataFlowProperty.Value.Pull) {
             if (scheduleGroup != null && source.getScheduleGroup() != scheduleGroup) {
               throw new RuntimeException(String.format("Multiple Push inEdges from different ScheduleGroup: %d, %d",
-                  scheduleGroup, source.getScheduleGroup()));
+                scheduleGroup, source.getScheduleGroup()));
             }
             if (source.getScheduleGroup() != destination.getScheduleGroup()) {
               throw new RuntimeException(String.format("Split ScheduleGroup by push StageEdge: %d, %d",
-                  source.getScheduleGroup(), destination.getScheduleGroup()));
+                source.getScheduleGroup(), destination.getScheduleGroup()));
             }
             scheduleGroup = source.getScheduleGroup();
             newScheduleGroup = stageToScheduleGroupMap.get(source);
@@ -312,7 +310,6 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
     dag.topologicalDo(stage -> {
       final int scheduleGroup = stageToScheduleGroupMap.get(stage);
       stage.getExecutionProperties().put(ScheduleGroupProperty.of(scheduleGroup));
-      stage.getIRDAG().topologicalDo(vertex -> vertex.setProperty(ScheduleGroupProperty.of(scheduleGroup)));
     });
   }
 
