@@ -277,20 +277,23 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     forceFinishBundle(); // forced
 
     // With the new side input added, we may be able to process some pushed-back elements.
+    checkAndInvokeBundle();
     final List<WindowedValue<InputT>> pushedBackAgain = new LinkedList<>();
     long pushedBackAgainWatermark = Long.MAX_VALUE;
     int cnt = 0;
     for (final WindowedValue<InputT> curPushedBack : curPushedBacks) {
-      checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
         getPushBackRunner().processElementInReadyWindows(curPushedBack);
       cnt += 1;
-      checkAndFinishBundle();
       for (final WindowedValue<InputT> wv : pushedBack) {
         pushedBackAgainWatermark = Math.min(pushedBackAgainWatermark, wv.getTimestamp().getMillis());
         pushedBackAgain.add(wv);
       }
     }
+
+    checkAndFinishBundle();
+
+    LOG.info("Pushback again size: {}", pushedBackAgain.size());
 
     curPushedBacks = pushedBackAgain;
     curPushedBackWatermark = pushedBackAgainWatermark;
