@@ -256,7 +256,7 @@ public final class OffloadingHandler {
           //ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
           List<String> serializedV;
           try {
-            ObjectInputStream ois = new ObjectInputStream(bis);
+            ObjectInputStream ois = new ExternalJarObjectInputStream(classLoader, bis);
             serializedV = (List<String>) ois.readObject();
             decoderFactory = (DecoderFactory) ois.readObject();
             outputEncoderFactory = (EncoderFactory) ois.readObject();
