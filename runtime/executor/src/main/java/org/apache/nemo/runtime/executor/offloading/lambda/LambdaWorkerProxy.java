@@ -8,7 +8,6 @@ import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.OffloadingWorker;
-import org.apache.nemo.compiler.frontend.beam.transform.PushBackDoFnTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
