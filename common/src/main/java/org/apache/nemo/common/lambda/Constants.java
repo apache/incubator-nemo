@@ -9,4 +9,6 @@ public  class Constants {
   public static final int PARALLELISM = 8;
 
   public static final String SIDEINPUT_LAMBDA_NAME2 = "nemo-dev-imhandler";
+
+  public static final int FLUSH_BYTES = 1 * 1024 * 1024; // MB
 }

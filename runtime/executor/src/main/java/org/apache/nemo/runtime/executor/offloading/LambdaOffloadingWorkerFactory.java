@@ -83,55 +83,84 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
                                                  final DecoderFactory outputDecoderFactory) {
 
     createChannelRequest();
-    final Channel channel;
-    try {
-      channel = nemoEventHandler.getHandshakeQueue().take().left();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
 
+    final Future<Channel> channelFuture = new Future<Channel>() {
+      @Override
+      public boolean cancel(boolean mayInterruptIfRunning) {
+        return false;
+      }
 
-    final ByteBuf buffer = channel.alloc().buffer();
-    buffer.writeInt(NemoEvent.Type.WORKER_INIT.ordinal());
+      @Override
+      public boolean isCancelled() {
+        return false;
+      }
 
-    ByteBufOutputStream bos = new ByteBufOutputStream(buffer);
-    ObjectOutputStream oos = null;
-    try {
-      oos = new ObjectOutputStream(bos);
-      oos.writeObject(serializedTransforms);
-      oos.writeObject(inputDecoderFactory);
-      oos.writeObject(outputEncoderFactory);
-      oos.close();
-      bos.close();
-    } catch (final IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
+      @Override
+      public boolean isDone() {
+        return false;
+      }
 
-    channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WORKER_INIT, buffer));
-
-    final int pendingNum = pendingRequest.decrementAndGet();
-    if (pendingNum == 0) {
-      executorService.execute(() -> {
-        while (extraRequest.get() > 0) {
-          LOG.info("Pending: {}, Extra: {}", pendingRequest.get(), extraRequest.get());
-          if (extraRequest.getAndDecrement() > 0) {
-            try {
-              final Channel extraChannel = nemoEventHandler.getHandshakeQueue().take().left();
-              extraChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-              throw new RuntimeException(e);
-            }
-          } else {
-            extraRequest.incrementAndGet();
-          }
+      @Override
+      public Channel get() throws InterruptedException, ExecutionException {
+        final Channel channel;
+        try {
+          channel = nemoEventHandler.getHandshakeQueue().take().left();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
         }
-      });
-    }
 
-    return new LambdaWorkerProxy(channel, this, channelEventHandlerMap, inputEncoderFactory,
+
+        final ByteBuf buffer = channel.alloc().buffer();
+        buffer.writeInt(NemoEvent.Type.WORKER_INIT.ordinal());
+
+        ByteBufOutputStream bos = new ByteBufOutputStream(buffer);
+        ObjectOutputStream oos = null;
+        try {
+          oos = new ObjectOutputStream(bos);
+          oos.writeObject(serializedTransforms);
+          oos.writeObject(inputDecoderFactory);
+          oos.writeObject(outputEncoderFactory);
+          oos.close();
+          bos.close();
+        } catch (final IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+
+        channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WORKER_INIT, buffer));
+
+        final int pendingNum = pendingRequest.decrementAndGet();
+        if (pendingNum == 0) {
+          executorService.execute(() -> {
+            while (extraRequest.get() > 0) {
+              LOG.info("Pending: {}, Extra: {}", pendingRequest.get(), extraRequest.get());
+              if (extraRequest.getAndDecrement() > 0) {
+                try {
+                  final Channel extraChannel = nemoEventHandler.getHandshakeQueue().take().left();
+                  extraChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                  throw new RuntimeException(e);
+                }
+              } else {
+                extraRequest.incrementAndGet();
+              }
+            }
+          });
+        }
+
+        return channel;
+      }
+
+      @Override
+      public Channel get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        return null;
+      }
+    };
+
+
+    return new LambdaWorkerProxy(channelFuture, this, channelEventHandlerMap, inputEncoderFactory,
       inputDecoderFactory, outputEncoderFactory, outputDecoderFactory);
   }
 
