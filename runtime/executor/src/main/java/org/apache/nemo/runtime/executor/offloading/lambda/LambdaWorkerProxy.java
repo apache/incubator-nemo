@@ -175,19 +175,13 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
   @Override
   public void flush() {
     try {
-      byteBufOutputStream.close();
-
-      //LOG.info("Flush data");
-      channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, byteBufOutputStream.buffer()));
-
-      if (channel == null) {
-        byteBufOutputStream = new ByteBufOutputStream(Unpooled.directBuffer(Constants.FLUSH_BYTES + 1000));
-      } else {
+      if (channel != null) {
+        byteBufOutputStream.close();
+        channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, byteBufOutputStream.buffer()));
         byteBufOutputStream = new ByteBufOutputStream(channel.alloc().ioBuffer(Constants.FLUSH_BYTES + 1000));
+        byteBufOutputStream.writeInt(NemoEvent.Type.DATA.ordinal());
+        encoder = inputEncoderFactory.create(byteBufOutputStream);
       }
-
-      byteBufOutputStream.writeInt(NemoEvent.Type.DATA.ordinal());
-      encoder = inputEncoderFactory.create(byteBufOutputStream);
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -196,15 +190,30 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
 
   @Override
   public void finishOffloading() {
-
     try {
       byteBufOutputStream.close();
-      byteBufOutputStream.buffer().release();
     } catch (IOException e) {
       e.printStackTrace();
     }
 
-    channel.writeAndFlush(new NemoEvent(NemoEvent.Type.END, new byte[0], 0));
+    if (channel != null) {
+      channel.writeAndFlush(new NemoEvent(NemoEvent.Type.END, new byte[0], 0));
+      byteBufOutputStream.buffer().release();
+    } else {
+      // waiting for channel
+      while (channel == null) {
+        try {
+          Thread.sleep(300);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      // send buffered data
+      channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, byteBufOutputStream.buffer()));
+      channel.writeAndFlush(new NemoEvent(NemoEvent.Type.END, new byte[0], 0));
+    }
+
     offloadingWorkerFactory.deleteOffloadingWorker(this);
   }
 }
