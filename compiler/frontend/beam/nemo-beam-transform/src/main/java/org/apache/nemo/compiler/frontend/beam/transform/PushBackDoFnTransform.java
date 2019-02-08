@@ -226,12 +226,16 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
           new BeamDecoderFactory(new PushBackCoder(sideCoder, mainCoder)),
           new BeamEncoderFactory(mainCoder), new BeamDecoderFactory(mainCoder));
 
+        final long ssst = System.currentTimeMillis();
         worker.write(sideInput);
         for (final WindowedValue<InputT> val : partition) {
           worker.write(val);
         }
 
         worker.flush();
+
+        LOG.info("Data flush time: {}", (System.currentTimeMillis() - ssst));
+
         worker.finishOffloading();
         return worker.getResult();
         }));
