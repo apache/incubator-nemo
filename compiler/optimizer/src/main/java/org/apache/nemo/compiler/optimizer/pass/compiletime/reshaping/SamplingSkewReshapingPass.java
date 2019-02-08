@@ -18,11 +18,12 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
-import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.slf4j.Logger;
@@ -62,52 +63,33 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
 
   @Override
   public IRDAG apply(final IRDAG dag) {
-    // For each shuffle edge, create a set of sampling vertices
-    final List<IRVertex> topoSortedVertices = new ArrayList<>();
-    dag.topologicalDo(topoSortedVertices::add);
+    dag.topologicalDo(v -> {
+      for (final IREdge e : dag.getIncomingEdgesOf(v)) {
+        if (!CommunicationPatternProperty.Value.OneToOne.equals(
+          e.getPropertyValue(CommunicationPatternProperty.class).get())) {
+          // Compute the partition and its source vertices
+          final IRVertex shuffleWriter = e.getSrc();
+          final Set<IRVertex> partitionAll = recursivelyBuildPartition(shuffleWriter, dag);
+          final Set<IRVertex> partitionSources = partitionAll.stream().filter(vertexInPartition ->
+            dag.getIncomingEdgesOf(vertexInPartition).stream()
+              .map(Edge::getSrc)
+              .allMatch(partitionAll::contains)
+          ).collect(Collectors.toSet());
 
-    // Current
-    final Set<Set<SamplingVertex>> subDAGPartitions = new HashSet<>();
-    Set<IRVertex> currentCloneSet = new HashSet<>();
+          // Insert sampling vertices.
+          final Set<SamplingVertex> samplingVertices = partitionAll
+            .stream()
+            .map(vertexInPartition -> new SamplingVertex(vertexInPartition, SAMPLE_RATE))
+            .collect(Collectors.toSet());
+          dag.insert(samplingVertices, partitionSources);
 
-    for (final IRVertex v : topoSortedVertices) {
-      // Add to the current set
-      currentCloneSet.add(v);
-
-      // Find outgoing shuffle edges
-      final Set<IREdge> outEdges = dag.getOutgoingEdgesOf(v)
-        .stream()
-        .filter(outEdge -> CommunicationPatternProperty.Value.Shuffle
-          .equals(outEdge.getPropertyValue(CommunicationPatternProperty.class).get()))
-        .collect(Collectors.toSet());
-
-      if (outEdges.isEmpty()) {
-        // Shuffle
-
-      } else {
-        // Shuffle
-        subDAGPartitions.add(Pair.of(currentCloneSet, outEdges));
-        currentCloneSet = new HashSet<>();
+          // Insert the message vertex.
+          // TODO: reuse code from the existing skew pass
+          final MessageBarrierVertex mbv =
+          dag.insert();
+        }
       }
-    }
-
-    // TODO: In each partition, get the sourcevertex or operatorvertex with inedges from other partitions
-
-    // Loop over the set to insert
-    // For each pair, insert vertices
-    for (final Set<IRVertex> subDAG : subDAGPartitions) {
-      final Set<IRVertex> cloneSet = pair.left();
-      final Set<IRVertex> outgoingShuffleSet = pair.right();
-
-      // [STEP 1] Insert the sampling vertices.
-      dag.insert(cloneSet, outgoingShuffleSet);
-
-      // [STEP 2] Insert the messaging vertices.
-      // TODO: borrow the message logic from SkewReshapingPass
-      // TODO: target edges different, "edge cloning" different for messageVertex
-      SamplingVertex sink;
-      dag.insert(messagevertex, sink.getOutgoingEdgesToOriginalDestinations());
-    }
+    });
 
     return dag;
   }

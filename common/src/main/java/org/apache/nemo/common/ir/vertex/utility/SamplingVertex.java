@@ -24,7 +24,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import java.util.Set;
 
 /**
- * Samples data.
+ * Executes the original IRVertex using a subset of input data partitions.
  */
 public final class SamplingVertex extends IRVertex {
   final IRVertex originalVertex;
@@ -53,6 +53,13 @@ public final class SamplingVertex extends IRVertex {
       IntStream.range(0, originalParallelism).boxed().collect(Collectors.toList());
     Collections.shuffle(randomIndices, new Random(System.currentTimeMillis()));
     final List<Integer> idxToSample = randomIndices.subList(0, sampledParallelism);
+
+
+    final int sampledParallelism = idxToSample.size();
+    final IRVertex sampledVtx = vtxToSample instanceof SourceVertex ?
+      ((SourceVertex) vtxToSample).getSampledClone(idxToSample, originalParallelism) : vtxToSample.getClone();
+    vtxToSample.copyExecutionPropertiesTo(sampledVtx);
+    sampledVtx.setPropertyPermanently(ParallelismProperty.of(sampledParallelism));
   }
 
   public IRVertex getOriginalVertex() {

@@ -19,6 +19,7 @@
 package org.apache.nemo.common.ir;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.Sets;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
@@ -38,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
@@ -53,8 +55,9 @@ import java.util.stream.Collectors;
  *
  * Largely two types of IRDAG optimization(modification) methods are provided.
  * All of these methods preserve application semantics.
- * - Annotation: setProperty(), getPropertyValue() on each IRVertex/IREdge
+ *
  * - Reshaping: insert(), delete() on the IRDAG
+ * - Annotation: setProperty(), getPropertyValue() on each IRVertex/IREdge
  */
 @NotThreadSafe
 public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
@@ -106,7 +109,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    */
   public void insert(final StreamVertex streamVertex, final IREdge edgeToStreamize) {
     // Create a completely new DAG with the vertex inserted.
-    final DAGBuilder builder = new DAGBuilder();
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     // Insert the vertex.
     builder.addVertex(streamVertex);
@@ -167,13 +170,13 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
                      final EncoderProperty mbvOutputEncoder,
                      final DecoderProperty mbvOutputDecoder,
                      final Set<IREdge> edgesToGetStatisticsOf) {
+    // Create a completely new DAG with the vertex inserted.
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
     if (edgesToGetStatisticsOf.stream().map(edge -> edge.getDst().getId()).collect(Collectors.toSet()).size() != 1) {
       throw new IllegalArgumentException("Not destined to the same vertex: " + edgesToGetStatisticsOf.toString());
     }
     final IRVertex dst = edgesToGetStatisticsOf.iterator().next().getDst();
-
-    // Create a completely new DAG with the vertex inserted.
-    final DAGBuilder builder = new DAGBuilder();
 
     // Current metric collection id.
     final int currentMetricCollectionId = metricCollectionId.incrementAndGet();
@@ -249,48 +252,54 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    */
   public void insert(final Set<SamplingVertex> samplingVertices,
                      final Set<IRVertex> executeAfterSamplingVertices) {
+    // Create a completely new DAG with the vertex inserted.
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+    // Integrity checks
     LOG.info("samplingVertices {}", samplingVertices);
     LOG.info("childrenOfSamplingVertices {}", executeAfterSamplingVertices);
 
+    // All of the existing vertices and edges remain intact
+    modifiedDAG.topologicalDo(v -> {
+      builder.addVertex(v);
+      modifiedDAG.getIncomingEdgesOf(v).forEach(builder::connectVertices);
+    });
+
+    // Add the sampling vertices
+    samplingVertices.forEach(builder::addVertex);
+
     // Get the original vertices
-    final Set<IRVertex> originalVertices = samplingVertices.stream()
-      .map(sv -> sv.getOriginalVertex())
+    final Map<IRVertex, IRVertex> originalToSampling = samplingVertices.stream()
+      .collect(Collectors.toMap(SamplingVertex::getOriginalVertex, Function.identity()));
+    final Set<IREdge> inEdgesOfOriginals = originalToSampling.keySet()
+      .stream()
+      .flatMap(ov -> modifiedDAG.getIncomingEdgesOf(ov).stream())
       .collect(Collectors.toSet());
 
-    // Integrity checks
-    // Check the original vertices form a DAG
-    // Create a completely new DAG with the vertex inserted.
-    final DAGBuilder builder = new DAGBuilder();
+    // [EDGE TYPE 1] Between sampling vertices
+    final Set<IREdge> betweenOriginals = inEdgesOfOriginals
+      .stream()
+      .filter(ovInEdge -> originalToSampling.containsKey(ovInEdge.getSrc()))
+      .collect(Collectors.toSet());
+    betweenOriginals.stream().map(boEdge -> new IREdge(
+      boEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
+      originalToSampling.get(boEdge.getSrc()),
+      originalToSampling.get(boEdge.getDst()))).forEach(builder::connectVertices);
 
-    // All of the existing vertices and edges remain
-    builder.addVertex()
+    // [EDGE TYPE 2] Original IRDAG to sampling vertices
+    final Set<IREdge> notBetweenOriginals = inEdgesOfOriginals
+      .stream()
+      .filter(ovInEdge -> !originalToSampling.containsKey(ovInEdge.getSrc()))
+      .collect(Collectors.toSet());
+    notBetweenOriginals.stream().map(nboEdge -> new IREdge(
+      nboEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
+      nboEdge.getSrc(), // consume the original data
+      originalToSampling.get(nboEdge.getDst()))).forEach(builder::connectVertices);
 
-    // Construct the sampling DAG with the original vertices, referring to the original IRDAG
-    for (final SamplingVertex samplingVertex : samplingVertices) {
-      builder.addVertex(samplingVertex);
+    // [EDGE TYPE 3] Sampling vertices to vertices to execute after
 
-      // get origin of sampling
-      // get origin of original
-      // match...
-    }
 
-    // Create an edge from the sinks of the DAGs to the depending vertices
-
-    // Add sampled vertex
-    final int sampledParallelism = idxToSample.size();
-    final IRVertex sampledVtx = vtxToSample instanceof SourceVertex ?
-      ((SourceVertex) vtxToSample).getSampledClone(idxToSample, originalParallelism) : vtxToSample.getClone();
-    vtxToSample.copyExecutionPropertiesTo(sampledVtx);
-    sampledVtx.setPropertyPermanently(ParallelismProperty.of(sampledParallelism));
-    builder.addVertex(sampledVtx);
-    LOG.info("Sampled vtx: " + sampledVtx.getId());
-    IRVertex startVtxToSample = null;
-
-    if (startVtxToSample == null) {
-      return Pair.of(sampledVtx, vtxToSample);
-    } else {
-      return Pair.of(sampledVtx, startVtxToSample);
-    }
+    modifiedDAG = builder.build(); // update the DAG.
   }
 
   /**
