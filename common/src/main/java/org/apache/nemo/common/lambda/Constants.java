@@ -10,5 +10,5 @@ public  class Constants {
 
   public static final String SIDEINPUT_LAMBDA_NAME2 = "nemo-dev-imhandler";
 
-  public static final int FLUSH_BYTES = 5 * 1024 * 1024; // MB
+  public static final int FLUSH_BYTES = 10 * 1024 * 1024; // MB
 }
