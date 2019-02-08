@@ -198,7 +198,6 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
 
     if (channel != null) {
       channel.writeAndFlush(new NemoEvent(NemoEvent.Type.END, new byte[0], 0));
-      byteBufOutputStream.buffer().release();
     } else {
       // waiting for channel
       while (channel == null) {
