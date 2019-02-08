@@ -55,9 +55,8 @@ import java.util.stream.Collectors;
  *
  * Largely two types of IRDAG optimization(modification) methods are provided.
  * All of these methods preserve application semantics.
- *
- * - Reshaping: insert(), delete() on the IRDAG
  * - Annotation: setProperty(), getPropertyValue() on each IRVertex/IREdge
+ * - Reshaping: insert(), delete() on the IRDAG
  */
 @NotThreadSafe
 public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
@@ -255,7 +254,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
-    // Integrity checks
+    // TODO: Integrity checks
     LOG.info("samplingVertices {}", samplingVertices);
     LOG.info("childrenOfSamplingVertices {}", executeAfterSamplingVertices);
 
@@ -286,18 +285,27 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       originalToSampling.get(boEdge.getSrc()),
       originalToSampling.get(boEdge.getDst()))).forEach(builder::connectVertices);
 
-    // [EDGE TYPE 2] Original IRDAG to sampling vertices
+    // [EDGE TYPE 2] From original IRDAG to sampling vertices
     final Set<IREdge> notBetweenOriginals = inEdgesOfOriginals
       .stream()
       .filter(ovInEdge -> !originalToSampling.containsKey(ovInEdge.getSrc()))
       .collect(Collectors.toSet());
     notBetweenOriginals.stream().map(nboEdge -> new IREdge(
       nboEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
-      nboEdge.getSrc(), // consume the original data
+      nboEdge.getSrc(), // sampling vertices consume a subset of original data partitions here
       originalToSampling.get(nboEdge.getDst()))).forEach(builder::connectVertices);
 
-    // [EDGE TYPE 3] Sampling vertices to vertices to execute after
-
+    // [EDGE TYPE 3] From sampling vertices to vertices that should be executed after
+    final Set<IRVertex> parentsOfAnotherOriginal = betweenOriginals.stream()
+      .map(IREdge::getSrc)
+      .collect(Collectors.toSet());
+    final Sets.SetView<IRVertex> sinks = Sets.difference(originalToSampling.keySet(), parentsOfAnotherOriginal);
+    for (final IRVertex executeAfter : executeAfterSamplingVertices) {
+      for (final IRVertex sink : sinks) {
+        // Control edge that enforces execution ordering
+        builder.connectVertices(new IREdge(CommunicationPatternProperty.Value.BroadCast, sink, executeAfter));
+      }
+    }
 
     modifiedDAG = builder.build(); // update the DAG.
   }
