@@ -93,6 +93,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
     if (pendingNum == 0) {
       executorService.execute(() -> {
         while (extraRequest.get() > 0) {
+          LOG.info("Pending: {}, Extra: {}", pendingRequest.get(), extraRequest.get());
           if (extraRequest.getAndDecrement() > 0) {
             try {
               final Channel extraChannel = nemoEventHandler.getHandshakeQueue().take().left();
@@ -136,6 +137,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
     if (pendingRequest.get() > 0) {
       if (extraRequest.get() <= pendingRequest.get()) {
         extraRequest.getAndIncrement();
+        LOG.info("Pending: {}, Increase Extra: {}", pendingRequest.get(), extraRequest.get());
         createChannelRequest();
       }
     }
