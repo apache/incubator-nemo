@@ -133,16 +133,14 @@ public final class OffloadingHandler {
 
     if (opendChannel == null) {
       opendChannel = channelOpen(input);
-      map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
     }
+    map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
 
     System.out.println("Open channel: " + opendChannel);
-    // write handshake
-    System.out.println("Write handshake");
-    opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.CLIENT_HANDSHAKE, new byte[0], 0));
 
     // load class loader
-		if (status.equals(LambdaStatus.INIT)) {
+    if (classLoader == null) {
+      System.out.println("Loading jar: " + opendChannel);
       try {
         classLoader = classLoaderCallable.call();
       } catch (Exception e) {
@@ -152,6 +150,10 @@ public final class OffloadingHandler {
       status = LambdaStatus.READY;
       LOG.info("Create class loader: {}");
     }
+
+    // write handshake
+    System.out.println("Write handshake");
+    opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.CLIENT_HANDSHAKE, new byte[0], 0));
 
     // ready state
     //opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.READY, new byte[0], 0));

@@ -5,6 +5,7 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
+import org.apache.nemo.common.OffloadingWorkerFactory;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.OffloadingWorker;
@@ -35,13 +36,17 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
 
   private EncoderFactory.Encoder encoder;
 
+  private final OffloadingWorkerFactory offloadingWorkerFactory;
+
   public LambdaWorkerProxy(final Channel channel,
+                           final OffloadingWorkerFactory offloadingWorkerFactory,
                            final ConcurrentMap<Channel, EventHandler<NemoEvent>> channelEventHandlerMap,
                            final EncoderFactory inputEncoderFactory,
                            final DecoderFactory inputDecoderFactory,
                            final EncoderFactory outputEncoderFactory,
                            final DecoderFactory outputDecoderFactory) {
     this.channel = channel;
+    this.offloadingWorkerFactory = offloadingWorkerFactory;
     this.byteBufOutputStream = new ByteBufOutputStream(channel.alloc().ioBuffer());
     this.channelEventHandlerMap = channelEventHandlerMap;
     this.resultQueue = new LinkedBlockingQueue<>();
@@ -147,5 +152,6 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
   @Override
   public void finishOffloading() {
     channel.writeAndFlush(new NemoEvent(NemoEvent.Type.END, new byte[0], 0));
+    offloadingWorkerFactory.deleteOffloadingWorker(this);
   }
 }

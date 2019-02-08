@@ -31,6 +31,7 @@ import java.io.ObjectOutputStream;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFactory {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaOffloadingWorkerFactory.class.getName());
@@ -44,6 +45,9 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
 
   private final AtomicBoolean initialized = new AtomicBoolean(false);
   private final AWSLambdaAsync awsLambda;
+
+  private final AtomicInteger pendingRequest = new AtomicInteger(0);
+  private final AtomicInteger extraRequest = new AtomicInteger(0);
 
   @Inject
   private LambdaOffloadingWorkerFactory(final TcpPortProvider tcpPortProvider) {
@@ -59,10 +63,13 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   }
 
   private void createChannelRequest() {
+    pendingRequest.getAndIncrement();
+
     final InvokeRequest request = new InvokeRequest()
       .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
       .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
         nettyServerTransport.getPublicAddress(), nettyServerTransport.getPort()));
+
     awsLambda.invokeAsync(request);
   }
 
@@ -80,6 +87,25 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
     } catch (InterruptedException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
+    }
+
+    final int pendingNum = pendingRequest.decrementAndGet();
+    if (pendingNum == 0) {
+      executorService.execute(() -> {
+        while (extraRequest.get() > 0) {
+          if (extraRequest.getAndDecrement() > 0) {
+            try {
+              final Channel extraChannel = nemoEventHandler.getHandshakeQueue().take().left();
+              extraChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+          } else {
+            extraRequest.incrementAndGet();
+          }
+        }
+      });
     }
 
     final ByteBuf buffer = channel.alloc().buffer();
@@ -100,7 +126,18 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
     }
 
     channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WORKER_INIT, buffer));
-    return new LambdaWorkerProxy(channel, channelEventHandlerMap, inputEncoderFactory,
+    return new LambdaWorkerProxy(channel, this, channelEventHandlerMap, inputEncoderFactory,
       inputDecoderFactory, outputEncoderFactory, outputDecoderFactory);
+  }
+
+  @Override
+  public void deleteOffloadingWorker(OffloadingWorker worker) {
+    // extra request for pending job
+    if (pendingRequest.get() > 0) {
+      if (extraRequest.get() <= pendingRequest.get()) {
+        extraRequest.getAndIncrement();
+        createChannelRequest();
+      }
+    }
   }
 }

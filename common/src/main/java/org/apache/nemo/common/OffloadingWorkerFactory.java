@@ -13,4 +13,6 @@ public interface OffloadingWorkerFactory {
                                           DecoderFactory inputDecoderFactory,
                                           EncoderFactory outputEncoderFactory,
                                           DecoderFactory outputDecoderFactory);
+
+  void deleteOffloadingWorker(OffloadingWorker worker);
 }
