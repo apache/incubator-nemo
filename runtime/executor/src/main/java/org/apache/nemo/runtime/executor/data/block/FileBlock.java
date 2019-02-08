@@ -55,7 +55,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   private final Serializer serializer;
   private final String filePath;
   private final FileMetadata<K> metadata;
-  CrailConfiguration conf = null;
+  //CrailConfiguration conf = null;
   CrailStore fs = null;
   CrailFile file = null;
 
@@ -83,7 +83,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
                    final Serializer serializer,
                    final String filePath,
                    final FileMetadata<K> metadata,
-                   CrailFile file) {
+                   CrailStore fs) {
     this.id = blockId;
     this.nonCommittedPartitionsMap = new HashMap<>();
     this.serializer = serializer;
@@ -93,7 +93,12 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         //conf = new CrailConfiguration();
         //fs = CrailStore.newInstance(conf);
         //file = fs.create(filePath+'/'+id, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
-        this.file = file;
+      try {
+        this.fs = fs;
+        this.file = fs.create(filePath+'/'+id, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
     }
   }
 

@@ -84,7 +84,7 @@ public final class BlockOutputWriter implements OutputWriter {
   public void write(final Object element) {
     if (nonDummyBlock) {
         blockToWrite.write(partitioner.partition(element), element);
-
+        //LOG.info("HY: class of block written: {}", blockToWrite.getClass());
       final DedicatedKeyPerElement dedicatedKeyPerElement =
           partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
       if (dedicatedKeyPerElement != null) {
