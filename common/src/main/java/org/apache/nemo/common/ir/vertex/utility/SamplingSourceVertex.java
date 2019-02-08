@@ -30,22 +30,22 @@ import java.util.stream.IntStream;
  */
 public final class SamplingSourceVertex<T> extends SourceVertex<T> {
   private SourceVertex<T> originalVertex;
-  private float sampleRate;
+  private float desiredSampleRate;
   private final Random random; // for deterministic getReadables()
 
   /**
    * Constructor.
    */
   public SamplingSourceVertex(final SourceVertex<T> originalVertex,
-                              final float sampleRate) {
+                              final float desiredSampleRate) {
     this.originalVertex = originalVertex;
-    this.sampleRate = sampleRate;
+    this.desiredSampleRate = desiredSampleRate;
     this.random = new Random();
   }
 
   @Override
   public SamplingSourceVertex getClone() {
-    final SamplingSourceVertex that = new SamplingSourceVertex<>(this.originalVertex, this.sampleRate);
+    final SamplingSourceVertex that = new SamplingSourceVertex<>(this.originalVertex, this.desiredSampleRate);
     this.copyExecutionPropertiesTo(that);
     return that;
   }
@@ -58,7 +58,7 @@ public final class SamplingSourceVertex<T> extends SourceVertex<T> {
   @Override
   public List<Readable<T>> getReadables(final int desiredNumOfSplits) throws Exception {
     final List<Readable<T>> originalReadables = originalVertex.getReadables(desiredNumOfSplits);
-    final int numOfSampledReadables = (int) Math.ceil(originalReadables.size() *  sampleRate);
+    final int numOfSampledReadables = (int) Math.ceil(originalReadables.size() * desiredSampleRate);
 
     // Random indices
     final List<Integer> randomIndices =

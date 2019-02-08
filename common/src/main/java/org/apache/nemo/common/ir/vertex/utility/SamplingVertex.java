@@ -46,14 +46,6 @@ public abstract class SamplingVertex extends IRVertex {
         new DuplicateEdgeGroupPropertyValue(String.valueOf(duplicateId.getAndIncrement()));
       edgeToVtxToSample.setPropertyPermanently(DuplicateEdgeGroupProperty.of(value));
     }
-
-    final int sampledParallelism = Math.max(Math.round(originalParallelism * sampleRate), 1);
-
-    final int sampledParallelism = idxToSample.size();
-    final IRVertex sampledVtx = vtxToSample instanceof SourceVertex ?
-      ((SourceVertex) vtxToSample).getSampledClone(idxToSample, originalParallelism) : vtxToSample.getClone();
-    vtxToSample.copyExecutionPropertiesTo(sampledVtx);
-    sampledVtx.setPropertyPermanently(ParallelismProperty.of(sampledParallelism));
   }
 
   public IRVertex getOriginalVertex() {

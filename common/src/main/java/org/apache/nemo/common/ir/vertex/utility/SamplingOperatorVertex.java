@@ -25,16 +25,16 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
  */
 public final class SamplingOperatorVertex extends OperatorVertex {
   private OperatorVertex originalVertex;
-  private float sampleRate;
+  private float desiredSampleRate;
 
   /**
    * Constructor.
    */
   public SamplingOperatorVertex(final OperatorVertex originalVertex,
-                                final float sampleRate) {
-    super(originalVertex.getTransform());
+                                final float desiredSampleRate) {
+    super(originalVertex.getTransform()); // TODO: indicate number of actual tasks to use --> to be used in "Stage"
     this.originalVertex = originalVertex;
-    this.sampleRate = sampleRate;
+    this.desiredSampleRate = desiredSampleRate;
   }
 
   public OperatorVertex getOriginalVertex() {
