@@ -271,6 +271,8 @@ public final class OffloadingHandler {
     private final BlockingQueue<Object> result;
     private DecoderFactory decoderFactory;
 
+    private long workerFinishTime;
+
     public LambdaEventHandler(final Channel opendChannel,
                               final BlockingQueue<Object> result) {
       this.opendChannel = opendChannel;
@@ -327,10 +329,14 @@ public final class OffloadingHandler {
             new LambdaRuntimeContext(
               new OperatorVertex(finalTransform)), outputCollector);
           System.out.println("End of worker init: " + (System.currentTimeMillis() - st));
+
+          workerFinishTime = System.currentTimeMillis();
           break;
         }
         case DATA: {
           final long st = System.currentTimeMillis();
+          System.out.println("Worker init -> data time: " + (st - workerFinishTime));
+
           final ByteBufInputStream bis = new ByteBufInputStream(nemoEvent.getByteBuf());
           DecoderFactory.Decoder decoder;
           try {

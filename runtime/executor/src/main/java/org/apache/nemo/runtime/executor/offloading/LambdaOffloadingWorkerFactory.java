@@ -137,6 +137,9 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
 
   @Override
   public void deleteOffloadingWorker(OffloadingWorker worker) {
+    // work stealing here!
+
+
     // extra request for pending job
     if (pendingRequest.get() > 0) {
       if (extraRequest.get() <= pendingRequest.get()) {
