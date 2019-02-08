@@ -49,6 +49,7 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
   private ObjectOutputStream objectOutputStream;
   private ByteBufOutputStream byteBufOutputStream;
 
+  final ExecutorService channelThread = Executors.newSingleThreadExecutor();
 
 
   public LambdaWorkerProxy(final Future<Channel> channelFuture,
@@ -80,7 +81,6 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
       throw new RuntimeException(e);
     }
 
-    final ExecutorService channelThread = Executors.newSingleThreadExecutor();
     channelThread.execute(() -> {
       try {
         channel = channelFuture.get();
@@ -212,5 +212,6 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
     }
 
     offloadingWorkerFactory.deleteOffloadingWorker(this);
+    channelThread.shutdown();
   }
 }
