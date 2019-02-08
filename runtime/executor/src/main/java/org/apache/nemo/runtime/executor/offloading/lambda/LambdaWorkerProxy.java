@@ -97,6 +97,8 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
   @Override
   public <T> List<T> getResult() {
     //LOG.info("Get result");
+
+
     final List<T> result = new ArrayList<>();
 
     while (endQueue.peek() == null) {

@@ -91,6 +91,26 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
       throw new RuntimeException(e);
     }
 
+
+    final ByteBuf buffer = channel.alloc().buffer();
+    buffer.writeInt(NemoEvent.Type.WORKER_INIT.ordinal());
+
+    ByteBufOutputStream bos = new ByteBufOutputStream(buffer);
+    ObjectOutputStream oos = null;
+    try {
+      oos = new ObjectOutputStream(bos);
+      oos.writeObject(serializedTransforms);
+      oos.writeObject(inputDecoderFactory);
+      oos.writeObject(outputEncoderFactory);
+      oos.close();
+      bos.close();
+    } catch (final IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
+    channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WORKER_INIT, buffer));
+
     final int pendingNum = pendingRequest.decrementAndGet();
     if (pendingNum == 0) {
       executorService.execute(() -> {
@@ -111,24 +131,6 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
       });
     }
 
-    final ByteBuf buffer = channel.alloc().buffer();
-    buffer.writeInt(NemoEvent.Type.WORKER_INIT.ordinal());
-
-    ByteBufOutputStream bos = new ByteBufOutputStream(buffer);
-    ObjectOutputStream oos = null;
-    try {
-      oos = new ObjectOutputStream(bos);
-      oos.writeObject(serializedTransforms);
-      oos.writeObject(inputDecoderFactory);
-      oos.writeObject(outputEncoderFactory);
-      oos.close();
-      bos.close();
-    } catch (final IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-
-    channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WORKER_INIT, buffer));
     return new LambdaWorkerProxy(channel, this, channelEventHandlerMap, inputEncoderFactory,
       inputDecoderFactory, outputEncoderFactory, outputDecoderFactory);
   }

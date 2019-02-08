@@ -106,6 +106,8 @@ public final class OffloadingHandler {
   }
 
 	public Object handleRequest(Map<String, Object> input) {
+	  final long st = System.currentTimeMillis();
+
 		System.out.println("Input: " + input);
     final LinkedBlockingQueue<Object> result = new LinkedBlockingQueue<>();
 
@@ -152,7 +154,7 @@ public final class OffloadingHandler {
     }
 
     // write handshake
-    System.out.println("Write handshake");
+    System.out.println("Write handshake: " + (System.currentTimeMillis() - st));
     opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.CLIENT_HANDSHAKE, new byte[0], 0));
 
     // ready state
@@ -180,17 +182,19 @@ public final class OffloadingHandler {
         }
 
         System.out.println("Write result");
-        futures.add(opendChannel.writeAndFlush(
+        futures.add(opendChannel.write(
           new NemoEvent(NemoEvent.Type.RESULT, byteBuf)));
       }
 
       try {
-        Thread.sleep(500);
+        Thread.sleep(10);
       } catch (InterruptedException e) {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
     }
+
+    final long sst = System.currentTimeMillis();
 
     while (result.peek() != null) {
       final Object data = result.poll();
@@ -208,10 +212,11 @@ public final class OffloadingHandler {
       }
 
       System.out.println("Write result");
-      futures.add(opendChannel.writeAndFlush(
+      futures.add(opendChannel.write(
         new NemoEvent(NemoEvent.Type.RESULT, byteBuf)));
     }
 
+    /*
     futures.forEach(future -> {
       try {
         future.get();
@@ -223,6 +228,7 @@ public final class OffloadingHandler {
         throw new RuntimeException(e);
       }
     });
+    */
 
     try {
       // wait until end
@@ -243,7 +249,7 @@ public final class OffloadingHandler {
         // warm up end... just finish
       }
 
-      System.out.println("END of invocation");
+      System.out.println("END of invocation: " + (System.currentTimeMillis() - sst));
     } catch (InterruptedException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
