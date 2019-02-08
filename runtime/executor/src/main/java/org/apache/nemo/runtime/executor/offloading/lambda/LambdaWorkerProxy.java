@@ -21,6 +21,7 @@ import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.*;
 
 public final class LambdaWorkerProxy implements OffloadingWorker {
@@ -69,7 +70,7 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
     this.outputEncoderFactory = outputEncoderFactory;
     this.outputDecoderFactory = outputDecoderFactory;
 
-    final ByteBuf byteBuffer = Unpooled.directBuffer(Constants.FLUSH_BYTES);
+    final ByteBuf byteBuffer = Unpooled.directBuffer();
     this.byteBufOutputStream = new ByteBufOutputStream(byteBuffer);
     try {
       byteBufOutputStream.writeInt(NemoEvent.Type.DATA.ordinal());
@@ -162,10 +163,6 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
-
-    if (isFlushTime()) {
-      flush();
-    }
   }
 
   private boolean isFlushTime() {
@@ -197,6 +194,7 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
     }
 
     if (channel != null) {
+      byteBufOutputStream.buffer().release();
       channel.writeAndFlush(new NemoEvent(NemoEvent.Type.END, new byte[0], 0));
     } else {
       // waiting for channel
