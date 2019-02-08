@@ -228,18 +228,23 @@ public final class OffloadingHandler {
       // wait until end
       System.out.println("Wait end flag");
       final Integer endFlag = handler.endBlockingQueue.take();
+      if (endFlag == 0) {
+        System.out.println("end");
+        try {
+          opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.END, new byte[0], 0)).get();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      } else {
+        // warm up end... just finish
+      }
+
       System.out.println("END of invocation");
     } catch (InterruptedException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-
-    try {
-      opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.END, new byte[0], 0)).get();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    } catch (ExecutionException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
@@ -271,6 +276,7 @@ public final class OffloadingHandler {
       switch (nemoEvent.getType()) {
         case WORKER_INIT: {
           System.out.println("Worker init...");
+          final long st = System.currentTimeMillis();
           // load transforms
           final ByteBuf byteBuf = nemoEvent.getByteBuf();
           ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
@@ -314,10 +320,11 @@ public final class OffloadingHandler {
           finalTransform.prepare(
             new LambdaRuntimeContext(
               new OperatorVertex(finalTransform)), outputCollector);
-          System.out.println("End of worker init");
+          System.out.println("End of worker init: " + (System.currentTimeMillis() - st));
           break;
         }
         case DATA: {
+          final long st = System.currentTimeMillis();
           final ByteBufInputStream bis = new ByteBufInputStream(nemoEvent.getByteBuf());
           DecoderFactory.Decoder decoder;
           try {
@@ -343,7 +350,7 @@ public final class OffloadingHandler {
             }
           }
 
-          System.out.println("Data processing done");
+          System.out.println("Data processing done: " + (System.currentTimeMillis() - st));
 
           nemoEvent.getByteBuf().release();
 
@@ -390,7 +397,7 @@ public final class OffloadingHandler {
           // send result
           System.out.println("Offloading end");
           nemoEvent.getByteBuf().release();
-          endBlockingQueue.add(1);
+          endBlockingQueue.add(0);
           // end of event
           // update handler
           break;

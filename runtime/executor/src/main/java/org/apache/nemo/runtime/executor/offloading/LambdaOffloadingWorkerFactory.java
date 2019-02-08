@@ -49,6 +49,8 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   private final AtomicInteger pendingRequest = new AtomicInteger(0);
   private final AtomicInteger extraRequest = new AtomicInteger(0);
 
+  private final InvokeRequest request;
+
   @Inject
   private LambdaOffloadingWorkerFactory(final TcpPortProvider tcpPortProvider) {
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
@@ -60,15 +62,15 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
     initialized.set(true);
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
       new ClientConfiguration().withMaxConnections(500)).build();
+
+    this.request = new InvokeRequest()
+      .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
+      .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
+        nettyServerTransport.getPublicAddress(), nettyServerTransport.getPort()));
   }
 
   private void createChannelRequest() {
     pendingRequest.getAndIncrement();
-
-    final InvokeRequest request = new InvokeRequest()
-      .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
-      .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
-        nettyServerTransport.getPublicAddress(), nettyServerTransport.getPort()));
 
     awsLambda.invokeAsync(request);
   }
