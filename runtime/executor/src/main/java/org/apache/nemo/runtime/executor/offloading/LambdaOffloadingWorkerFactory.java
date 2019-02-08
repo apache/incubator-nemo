@@ -138,7 +138,12 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
       if (extraRequest.get() <= pendingRequest.get()) {
         extraRequest.getAndIncrement();
         LOG.info("Pending: {}, Increase Extra: {}", pendingRequest.get(), extraRequest.get());
-        createChannelRequest();
+        final InvokeRequest request = new InvokeRequest()
+          .withFunctionName(AWSUtils.SIDEINPUT_LAMBDA_NAME2)
+          .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
+            nettyServerTransport.getPublicAddress(), nettyServerTransport.getPort()));
+
+        awsLambda.invokeAsync(request);
       }
     }
   }
