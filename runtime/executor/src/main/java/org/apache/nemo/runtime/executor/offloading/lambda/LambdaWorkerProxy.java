@@ -177,8 +177,8 @@ public final class LambdaWorkerProxy implements OffloadingWorker {
     try {
       if (channel != null) {
         byteBufOutputStream.close();
-        channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, byteBufOutputStream.buffer()));
-        byteBufOutputStream = new ByteBufOutputStream(channel.alloc().ioBuffer(Constants.FLUSH_BYTES + 1000));
+        channel.write(new NemoEvent(NemoEvent.Type.DATA, byteBufOutputStream.buffer()));
+        byteBufOutputStream = new ByteBufOutputStream(channel.alloc().ioBuffer());
         byteBufOutputStream.writeInt(NemoEvent.Type.DATA.ordinal());
         encoder = inputEncoderFactory.create(byteBufOutputStream);
       }
