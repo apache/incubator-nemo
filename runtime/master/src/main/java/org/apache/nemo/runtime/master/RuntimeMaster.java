@@ -96,7 +96,6 @@ public final class RuntimeMaster {
   private final PlanStateManager planStateManager;
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
-  private final String userMainClass;
   private final String jobId;
   private final String dagDirectory;
   private final Set<IRVertex> irVertices;
@@ -114,7 +113,6 @@ public final class RuntimeMaster {
                         final ClientRPC clientRPC,
                         final MetricManagerMaster metricManagerMaster,
                         final PlanStateManager planStateManager,
-                        @Parameter(JobConf.UserMainClass.class) final String userMainClass,
                         @Parameter(JobConf.JobId.class) final String jobId,
                         @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     // We would like to use a single thread for runtime master operations
@@ -141,7 +139,6 @@ public final class RuntimeMaster {
         .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.clientRPC = clientRPC;
     this.metricManagerMaster = metricManagerMaster;
-    this.userMainClass = userMainClass;
     this.jobId = jobId;
     this.dagDirectory = dagDirectory;
     this.irVertices = new HashSet<>();
