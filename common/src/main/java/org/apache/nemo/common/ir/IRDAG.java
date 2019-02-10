@@ -90,7 +90,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   }
 
   public String irDAGSummary() {
-    return "RV" + getRootVertices().size() + " V" + getVertices().size() + " E" + getVertices().stream()
+    return "RV" + getRootVertices().size() + "_V" + getVertices().size() + "_E" + getVertices().stream()
       .mapToInt(v -> getIncomingEdgesOf(v).size())
       .sum();
   }

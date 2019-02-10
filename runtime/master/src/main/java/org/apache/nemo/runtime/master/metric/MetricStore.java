@@ -25,7 +25,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.exception.UnsupportedMetricException;
-import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.runtime.common.metric.*;
 import org.apache.nemo.runtime.common.state.PlanState;
 import org.slf4j.Logger;
@@ -226,16 +225,18 @@ public final class MetricStore {
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
    */
   public void saveOptimizationMetricsToDB() {
-    final String optimizationDBName = "jdbc:sqlite:optimization.db";
+    LOG.info("properties: {}" + System.getProperties().stringPropertyNames());
+
+    final String optimizationDBName = "jdbc:sqlite:" + MetricUtils.fetchProjectRootPath() + "/optimization.db";
 
     try (final Connection c = DriverManager.getConnection(optimizationDBName)) {
+      LOG.info("Opened database successfully at {}", optimizationDBName);
       try (final Statement statement = c.createStatement()) {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
         getMetricMap(JobMetric.class).values().forEach(o -> {
           final JobMetric jobMetric = (JobMetric) o;
-          final IRDAG irdag = jobMetric.getIrDag();
-          final String tableName = irdag.irDAGSummary();
+          final String tableName = jobMetric.getIrDagSummary();
 
           final long startTime = jobMetric.getStateTransitionEvents().stream()
             .filter(ste -> ste.getPrevState().equals(PlanState.State.READY)
@@ -247,17 +248,19 @@ public final class MetricStore {
             .findFirst().orElseThrow(() -> new MetricException("job has never completed"))
             .getTimestamp();
           final long duration = endTime - startTime;  // ms
-          final String vertexProperties = MetricUtils.stringifyVertexProperties(irdag);
-          final String edgeProperties = MetricUtils.stringifyEdgeProperties(irdag);
+          final String vertexProperties = jobMetric.getVertexProperties();
+          final String edgeProperties = jobMetric.getEdgeProperties();
 
           try {
             String sql = "CREATE TABLE IF NOT EXISTS " + tableName
               + " (id INTEGER PRIMARY KEY AUTOINCREMENT, duration INTEGER NOT NULL, "
               + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL);";
+            LOG.info("EXECUTING SQL: {}", sql);
             statement.executeUpdate(sql);
 
             sql = "INSERT INTO " + tableName + " (duration, vertex_properties, edge_properties) "
               + "VALUES (" + duration + ", '" + vertexProperties + "', '" + edgeProperties + "');";
+            LOG.info("EXECUTING SQL: {}", sql);
             statement.executeUpdate(sql);
           } catch (SQLException e) {
             throw new MetricException(e);
@@ -267,7 +270,6 @@ public final class MetricStore {
     } catch (SQLException e) {
       throw new MetricException(e);
     }
-    LOG.info("Opened database successfully");
   }
 
 

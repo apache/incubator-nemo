@@ -17,10 +17,17 @@
  * under the License.
  */
 
-package org.apache.nemo.runtime.master.metric;
+package org.apache.nemo.runtime.common.metric;
 
+import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 /**
  * Utility class for metrics.
@@ -43,7 +50,7 @@ public final class MetricUtils {
     irdag.getVertices().forEach(v ->
       v.getExecutionProperties().forEachProperties(ep ->
         epFormatter(builder, v.getNumericId(), ep)));
-    return builder.toString();
+    return builder.toString().trim();
   }
 
   /**
@@ -57,7 +64,7 @@ public final class MetricUtils {
       irdag.getIncomingEdgesOf(v).forEach(e ->
         e.getExecutionProperties().forEachProperties(ep ->
           epFormatter(builder, v.getNumericId(), ep))));
-    return builder.toString();
+    return builder.toString().trim();
   }
 
   /**
@@ -73,5 +80,21 @@ public final class MetricUtils {
     builder.append(":");
     builder.append(ep.getValue());
     builder.append(" ");
+  }
+
+  public static String fetchProjectRootPath() {
+    return recursivelyFindTravis(Paths.get(System.getProperty("user.dir")));
+  }
+
+  private static String recursivelyFindTravis(final Path path) {
+    try (final Stream stream = Files.find(path, 1, (p, attributes) -> p.endsWith(".travis.yml"))){
+      if (stream.count() > 0) {
+        return path.toAbsolutePath().toString();
+      } else {
+        return recursivelyFindTravis(path.getParent());
+      }
+    } catch (IOException e) {
+      throw new MetricException(e);
+    }
   }
 }

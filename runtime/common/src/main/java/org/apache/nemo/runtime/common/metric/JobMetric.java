@@ -39,7 +39,9 @@ import java.util.List;
 public final class JobMetric implements StateMetric<PlanState.State> {
   private final String id;
   private final List<StateTransitionEvent<PlanState.State>> stateTransitionEvents;
-  private IRDAG irdag;
+  private String irDagSummary;
+  private String vertexProperties;
+  private String edgeProperties;
   private JsonNode irDagJson;
   private JsonNode stageDagJson;
 
@@ -65,12 +67,16 @@ public final class JobMetric implements StateMetric<PlanState.State> {
     return irDagJson;
   }
 
-  /**
-   * Getter of the IR DAG.
-   * @return the IR DAG.
-   */
-  public IRDAG getIrDag() {
-    return this.irdag;
+  public String getIrDagSummary() {
+    return this.irDagSummary;
+  }
+
+  public String getVertexProperties() {
+    return this.vertexProperties;
+  }
+
+  public String getEdgeProperties() {
+    return this.edgeProperties;
   }
 
   /**
@@ -78,7 +84,9 @@ public final class JobMetric implements StateMetric<PlanState.State> {
    * @param irDag the IR DAG.
    */
   public void setIRDAG(final IRDAG irDag) {
-    this.irdag = irDag;
+    this.irDagSummary = irDag.irDAGSummary();
+    this.vertexProperties = MetricUtils.stringifyVertexProperties(irDag);
+    this.edgeProperties = MetricUtils.stringifyEdgeProperties(irDag);
     final ObjectMapper objectMapper = new ObjectMapper();
     try {
       this.irDagJson = objectMapper.readTree(irDag.toString());
