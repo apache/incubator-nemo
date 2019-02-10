@@ -227,7 +227,7 @@ public final class MetricStore {
   public void saveOptimizationMetricsToDB() {
     LOG.info("properties: {}" + System.getProperties().stringPropertyNames());
 
-    final String optimizationDBName = "jdbc:sqlite:" + MetricUtils.fetchProjectRootPath() + "/optimization.db";
+    final String optimizationDBName = "jdbc:sqlite:" + MetricUtils.fetchProjectRootPath() + "/optimization_db.sqlite3";
 
     try (final Connection c = DriverManager.getConnection(optimizationDBName)) {
       LOG.info("Opened database successfully at {}", optimizationDBName);
