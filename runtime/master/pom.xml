@@ -77,6 +77,11 @@ under the License.
             <version>${jackson.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>${sqlite-jdbc.version}</version>
+        </dependency>
+        <dependency>
             <!--
             This is needed to view the logs when running unit tests.
             See https://dzone.com/articles/how-configure-slf4j-different for details.

@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.exception.UnsupportedMetricException;
 import org.apache.nemo.runtime.common.metric.*;
 
@@ -34,9 +35,9 @@ import java.util.*;
  * All metric classes should be JSON-serializable by {@link ObjectMapper}.
  */
 public final class MetricStore {
-  private final Map<Class, Map<String, Object>> metricMap = new HashMap<>();
+  private final Map<Class<? extends Metric>, Map<String, Object>> metricMap = new HashMap<>();
   // You can add more metrics by adding item to this metricList list.
-  private final Map<String, Class> metricList = new HashMap<>();
+  private final Map<String, Class<? extends Metric>> metricList = new HashMap<>();
   /**
    * Private constructor.
    */
@@ -66,7 +67,7 @@ public final class MetricStore {
       throw new NoSuchElementException();
     }
 
-    return metricList.get(className);
+    return (Class<T>) metricList.get(className);
   }
 
   /**
@@ -76,7 +77,7 @@ public final class MetricStore {
    * @param <T> class of metric
    */
   public <T extends Metric> void putMetric(final T metric) {
-    final Class metricClass = metric.getClass();
+    final Class<? extends Metric> metricClass = metric.getClass();
     if (!metricList.values().contains(metricClass)) {
       throw new UnsupportedMetricException(new Throwable("Unsupported metric"));
     }
@@ -106,11 +107,7 @@ public final class MetricStore {
    * @return a metric object.
    */
   public <T extends Metric> Map<String, Object> getMetricMap(final Class<T> metricClass) {
-    final Map<String, Object> metric = metricMap.computeIfAbsent(metricClass, k -> new HashMap<>());
-    if (metric == null) {
-      throw new NoSuchElementException("No metric found");
-    }
-    return metric;
+    return metricMap.computeIfAbsent(metricClass, k -> new HashMap<>());
   }
 
   /**
@@ -122,13 +119,13 @@ public final class MetricStore {
    * @return a metric object. If there was no such metric, newly create one.
    */
   public <T extends Metric> T getOrCreateMetric(final Class<T> metricClass, final String id) {
-    T metric =  (T) metricMap.computeIfAbsent(metricClass, k -> new HashMap<>()).get(id);
+    T metric = (T) metricMap.computeIfAbsent(metricClass, k -> new HashMap<>()).get(id);
     if (metric == null) {
       try {
         metric = metricClass.getConstructor(new Class[]{String.class}).newInstance(id);
         putMetric(metric);
       } catch (final Exception e) {
-        throw new RuntimeException(e);
+        throw new MetricException(e);
       }
     }
     return metric;
@@ -158,19 +155,19 @@ public final class MetricStore {
     final ObjectMapper objectMapper = new ObjectMapper();
     final JsonFactory jsonFactory = new JsonFactory();
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8);
-    jsonGenerator.setCodec(objectMapper);
 
-    jsonGenerator.writeStartObject();
-    jsonGenerator.writeFieldName(metricClass.getSimpleName());
-    jsonGenerator.writeStartObject();
-    for (final Map.Entry<String, Object> idToMetricEntry : getMetricMap(metricClass).entrySet()) {
-      generatePreprocessedJsonFromMetricEntry(idToMetricEntry, jsonGenerator, objectMapper);
+    try (final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8)) {
+      jsonGenerator.setCodec(objectMapper);
+
+      jsonGenerator.writeStartObject();
+      jsonGenerator.writeFieldName(metricClass.getSimpleName());
+      jsonGenerator.writeStartObject();
+      for (final Map.Entry<String, Object> idToMetricEntry : getMetricMap(metricClass).entrySet()) {
+        generatePreprocessedJsonFromMetricEntry(idToMetricEntry, jsonGenerator, objectMapper);
+      }
+      jsonGenerator.writeEndObject();
+      jsonGenerator.writeEndObject();
     }
-    jsonGenerator.writeEndObject();
-    jsonGenerator.writeEndObject();
-
-    jsonGenerator.close();
     return stream.toString();
   }
 
@@ -183,21 +180,22 @@ public final class MetricStore {
     final ObjectMapper objectMapper = new ObjectMapper();
     final JsonFactory jsonFactory = new JsonFactory();
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8);
-    jsonGenerator.setCodec(objectMapper);
 
-    jsonGenerator.writeStartObject();
-    for (final Map.Entry<Class, Map<String, Object>> metricMapEntry : metricMap.entrySet()) {
-      jsonGenerator.writeFieldName(metricMapEntry.getKey().getSimpleName());
+    try (final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8)) {
+      jsonGenerator.setCodec(objectMapper);
+
       jsonGenerator.writeStartObject();
-      for (final Map.Entry<String, Object> idToMetricEntry : metricMapEntry.getValue().entrySet()) {
-        generatePreprocessedJsonFromMetricEntry(idToMetricEntry, jsonGenerator, objectMapper);
+      for (final Map.Entry<Class<? extends Metric>, Map<String, Object>> metricMapEntry : metricMap.entrySet()) {
+        jsonGenerator.writeFieldName(metricMapEntry.getKey().getSimpleName());
+        jsonGenerator.writeStartObject();
+        for (final Map.Entry<String, Object> idToMetricEntry : metricMapEntry.getValue().entrySet()) {
+          generatePreprocessedJsonFromMetricEntry(idToMetricEntry, jsonGenerator, objectMapper);
+        }
+        jsonGenerator.writeEndObject();
       }
       jsonGenerator.writeEndObject();
     }
-    jsonGenerator.writeEndObject();
 
-    jsonGenerator.close();
     return stream.toString();
   }
 
@@ -206,14 +204,11 @@ public final class MetricStore {
    * @param filePath path to dump JSON.
    */
   public void dumpAllMetricToFile(final String filePath) {
-    try {
+    try (final BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
       final String jsonDump = dumpAllMetricToJson();
-      final BufferedWriter writer = new BufferedWriter(new FileWriter(filePath));
-
       writer.write(jsonDump);
-      writer.close();
     } catch (final IOException e) {
-      throw new RuntimeException(e);
+      throw new MetricException(e);
     }
   }
 
@@ -232,10 +227,7 @@ public final class MetricStore {
     final T metric = getMetricWithId(metricClass, id);
     final JsonFactory jsonFactory = new JsonFactory();
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    final JsonGenerator jsonGenerator;
-    try {
-      jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8);
-
+    try (final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8)) {
       jsonGenerator.setCodec(objectMapper);
 
       jsonGenerator.writeStartObject();
@@ -246,11 +238,9 @@ public final class MetricStore {
       jsonGenerator.writeObject(metric);
       jsonGenerator.writeEndObject();
 
-      jsonGenerator.close();
-
       metricBroadcaster.broadcast(stream.toString());
     } catch (final IOException e) {
-      throw new RuntimeException(e);
+      throw new MetricException(e);
     }
   }
 }
