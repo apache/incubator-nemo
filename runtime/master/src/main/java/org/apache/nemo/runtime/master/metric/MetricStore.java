@@ -234,7 +234,7 @@ public final class MetricStore {
 
         getMetricMap(JobMetric.class).values().forEach(o -> {
           final JobMetric jobMetric = (JobMetric) o;
-          final IRDAG irdag = jobMetric.getIrdag();
+          final IRDAG irdag = jobMetric.getIrDag();
           final String tableName = irdag.irDAGSummary();
 
           final long startTime = jobMetric.getStateTransitionEvents().stream()
