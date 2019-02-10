@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master;
+package org.apache.nemo.runtime.master.metric;
 
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
@@ -25,9 +25,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.exception.UnsupportedMetricException;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.runtime.common.metric.*;
+import org.apache.nemo.runtime.common.state.PlanState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.*;
 
 /**
@@ -35,6 +43,7 @@ import java.util.*;
  * All metric classes should be JSON-serializable by {@link ObjectMapper}.
  */
 public final class MetricStore {
+  private static final Logger LOG = LoggerFactory.getLogger(MetricStore.class.getName());
   private final Map<Class<? extends Metric>, Map<String, Object>> metricMap = new HashMap<>();
   // You can add more metrics by adding item to this metricList list.
   private final Map<String, Class<? extends Metric>> metricList = new HashMap<>();
@@ -210,6 +219,55 @@ public final class MetricStore {
     } catch (final IOException e) {
       throw new MetricException(e);
     }
+  }
+
+  /**
+   * Save the job metrics for the optimization to the DB.
+   * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
+   */
+  public void saveOptimizationMetricsToDB() {
+    final String optimizationDBName = "jdbc:sqlite:optimization.db";
+
+    try (final Connection c = DriverManager.getConnection(optimizationDBName)) {
+      try (final Statement statement = c.createStatement()) {
+        statement.setQueryTimeout(30);  // set timeout to 30 sec.
+
+        getMetricMap(JobMetric.class).values().forEach(o -> {
+          final JobMetric jobMetric = (JobMetric) o;
+          final IRDAG irdag = jobMetric.getIrdag();
+          final String tableName = irdag.irDAGSummary();
+
+          final long startTime = jobMetric.getStateTransitionEvents().stream()
+            .filter(ste -> ste.getPrevState().equals(PlanState.State.READY)
+              && ste.getNewState().equals(PlanState.State.EXECUTING))
+            .findFirst().orElseThrow(() -> new MetricException("job has never started"))
+            .getTimestamp();
+          final long endTime = jobMetric.getStateTransitionEvents().stream()
+            .filter(ste -> ste.getNewState().equals(PlanState.State.COMPLETE))
+            .findFirst().orElseThrow(() -> new MetricException("job has never completed"))
+            .getTimestamp();
+          final long duration = endTime - startTime;  // ms
+          final String vertexProperties = MetricUtils.stringifyVertexProperties(irdag);
+          final String edgeProperties = MetricUtils.stringifyEdgeProperties(irdag);
+
+          try {
+            String sql = "CREATE TABLE IF NOT EXISTS " + tableName
+              + " (id INTEGER PRIMARY KEY AUTOINCREMENT, duration INTEGER NOT NULL, "
+              + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL);";
+            statement.executeUpdate(sql);
+
+            sql = "INSERT INTO " + tableName + " (duration, vertex_properties, edge_properties) "
+              + "VALUES (" + duration + ", '" + vertexProperties + "', '" + edgeProperties + "');";
+            statement.executeUpdate(sql);
+          } catch (SQLException e) {
+            throw new MetricException(e);
+          }
+        });
+      }
+    } catch (SQLException e) {
+      throw new MetricException(e);
+    }
+    LOG.info("Opened database successfully");
   }
 
 

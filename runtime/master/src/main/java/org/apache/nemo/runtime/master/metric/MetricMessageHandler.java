@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master;
+package org.apache.nemo.runtime.master.metric;
 
 import org.apache.reef.tang.annotations.DefaultImplementation;
 

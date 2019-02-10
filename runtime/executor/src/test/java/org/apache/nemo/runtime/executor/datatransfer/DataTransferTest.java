@@ -50,6 +50,8 @@ import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.master.*;
 import org.apache.commons.io.FileUtils;
+import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;

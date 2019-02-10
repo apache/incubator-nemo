@@ -37,7 +37,7 @@ import java.util.List;
 public final class JobMetric implements StateMetric<PlanState.State> {
   private String id;
   private List<StateTransitionEvent<PlanState.State>> stateTransitionEvents = new ArrayList<>();
-  private JsonNode irDagJson;
+  private IRDAG irdag;
   private JsonNode stageDagJson;
 
   public JobMetric(final PhysicalPlan physicalPlan) {
@@ -49,18 +49,22 @@ public final class JobMetric implements StateMetric<PlanState.State> {
   }
 
   @JsonProperty("ir-dag")
-  public JsonNode getIrDagJson() {
-    return irDagJson;
-  }
-
-  public void setIRDAG(final IRDAG irdag) {
+  public JsonNode getIRDAG() {
     final String dagJson = irdag.toString();
     final ObjectMapper objectMapper = new ObjectMapper();
     try {
-      this.irDagJson = objectMapper.readTree(dagJson);
+      return objectMapper.readTree(dagJson);
     } catch (final IOException e) {
       throw new MetricException(e);
     }
+  }
+
+  public IRDAG getIrdag() {
+    return this.irdag;
+  }
+
+  public void setIRDAG(final IRDAG irDag) {
+    this.irdag = irDag;
   }
 
   @JsonProperty("stage-dag")

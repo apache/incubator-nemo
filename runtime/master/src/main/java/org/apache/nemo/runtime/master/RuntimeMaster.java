@@ -33,6 +33,9 @@ import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.metric.JobMetric;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
+import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.nemo.runtime.master.servlet.*;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
@@ -185,8 +188,9 @@ public final class RuntimeMaster {
     // send metric flush request to all executors
     metricManagerMaster.sendMetricFlushRequest();
 
+    metricStore.saveOptimizationMetricsToDB();
     metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
-      jobId + "_metric_" + System.currentTimeMillis() + ".json").toString());
+      "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
   }
 
   /**
@@ -298,9 +302,8 @@ public final class RuntimeMaster {
   public void onContainerAllocated(final String executorId,
                                    final AllocatedEvaluator allocatedEvaluator,
                                    final Configuration executorConfiguration) {
-    runtimeMasterThread.execute(() -> {
-      containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration);
-    });
+    runtimeMasterThread.execute(() ->
+      containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
   }
 
   /**
@@ -355,9 +358,8 @@ public final class RuntimeMaster {
   public final class MasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
     @Override
     public void onMessage(final ControlMessage.Message message) {
-      runtimeMasterThread.execute(() -> {
-        handleControlMessage(message);
-      });
+      runtimeMasterThread.execute(() ->
+        handleControlMessage(message));
     }
 
     @Override
