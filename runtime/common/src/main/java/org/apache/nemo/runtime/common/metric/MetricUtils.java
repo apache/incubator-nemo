@@ -82,12 +82,21 @@ public final class MetricUtils {
     builder.append(" ");
   }
 
+  /**
+   * Finds the project root path by looking for the travis.yml file.
+   * @return the project root path.
+   */
   public static String fetchProjectRootPath() {
     return recursivelyFindTravis(Paths.get(System.getProperty("user.dir")));
   }
 
+  /**
+   * Helper method to recursively find the travis.yml file.
+   * @param path the path to search for.
+   * @return the path containing the travis.yml file.
+   */
   private static String recursivelyFindTravis(final Path path) {
-    try (final Stream stream = Files.find(path, 1, (p, attributes) -> p.endsWith(".travis.yml"))){
+    try (final Stream stream = Files.find(path, 1, (p, attributes) -> p.endsWith(".travis.yml"))) {
       if (stream.count() > 0) {
         return path.toAbsolutePath().toString();
       } else {
