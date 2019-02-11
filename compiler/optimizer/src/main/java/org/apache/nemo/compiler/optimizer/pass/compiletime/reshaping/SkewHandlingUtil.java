@@ -34,7 +34,7 @@ import java.util.function.BiFunction;
 /**
  * A utility class for skew handling passes.
  */
-public final class SkewHandlingUtil {
+final class SkewHandlingUtil {
   static BiFunction<Object, Map<Object, Long>, Map<Object, Long>> getDynOptCollector(final KeyExtractor keyExtractor) {
     return (BiFunction<Object, Map<Object, Long>, Map<Object, Long>> & Serializable)
       (element, dynOptData) -> {

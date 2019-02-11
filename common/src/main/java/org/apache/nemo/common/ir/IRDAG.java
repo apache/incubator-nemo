@@ -180,50 +180,37 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     // Current metric collection id.
     final int currentMetricCollectionId = metricCollectionId.incrementAndGet();
 
-    // First, add all the vertices.
-    modifiedDAG.topologicalDo(v -> builder.addVertex(v));
+    // All of the existing vertices and edges remain intact
+    modifiedDAG.topologicalDo(v -> {
+      builder.addVertex(v);
+      modifiedDAG.getIncomingEdgesOf(v).forEach(inEdge -> {
+        builder.connectVertices(inEdge);
+        if (edgesToGetStatisticsOf.contains(inEdge)) {
+          inEdge.setPropertyPermanently(MessageIdProperty.of(currentMetricCollectionId));
+        }
+      });
+    });
 
+    // From mav to dst
     // Add a control dependency (no output) from the messageAggregatorVertex to the destination.
     builder.addVertex(messageAggregatorVertex);
     final IREdge noDataEdge = new IREdge(CommunicationPatternProperty.Value.BroadCast, messageAggregatorVertex, dst);
     builder.connectVertices(noDataEdge);
 
-    // Add the edges and the messageBarrierVertex.
-    modifiedDAG.topologicalDo(v -> {
-      for (final IREdge edge : modifiedDAG.getIncomingEdgesOf(v)) {
-        if (edgesToGetStatisticsOf.contains(edge)) {
-          // MATCH!
-          final MessageBarrierVertex mbv = new MessageBarrierVertex<>(messageBarrierVertex.getMessageFunction());
-          builder.addVertex(mbv);
+    // Build the edges: src - mbv - mav
+    for (final IREdge edge : edgesToGetStatisticsOf) {
+      final MessageBarrierVertex mbv = new MessageBarrierVertex<>(messageBarrierVertex.getMessageFunction());
+      builder.addVertex(mbv);
 
-          // Clone the edgeToGetStatisticsOf
-          final IREdge clone = new IREdge(CommunicationPatternProperty.Value.OneToOne, edge.getSrc(), mbv);
-          clone.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
-          clone.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
-          edge.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag -> {
-            clone.setProperty(AdditionalOutputTagProperty.of(tag));
-          });
-          builder.connectVertices(clone);
+      // From src to mbv
+      final IREdge clone = getClone(edge, mbv, CloneDirection.TO_NEW_VERTEX);
+      builder.connectVertices(clone);
 
-          // messageBarrierVertex to the messageAggregatorVertex
-          final IREdge edgeToABV = edgeBetweenMessageVertices(mbv,
-            messageAggregatorVertex, mbvOutputEncoder, mbvOutputDecoder, currentMetricCollectionId);
-          builder.connectVertices(edgeToABV);
-
-          // The original edge
-          // We then insert the vertex with MessageBarrierTransform and vertex with MessageAggregatorTransform
-          // between the vertex and incoming vertices.
-          final IREdge edgeToOriginalDst =
-            new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), v);
-          edge.copyExecutionPropertiesTo(edgeToOriginalDst);
-          edgeToOriginalDst.setPropertyPermanently(MessageIdProperty.of(currentMetricCollectionId));
-          builder.connectVertices(edgeToOriginalDst);
-        } else {
-          // NO MATCH, so simply connect vertices as before.
-          builder.connectVertices(edge);
-        }
-      }
-    });
+      // From mbv to mav
+      final IREdge edgeToABV = edgeBetweenMessageVertices(mbv,
+        messageAggregatorVertex, mbvOutputEncoder, mbvOutputDecoder, currentMetricCollectionId);
+      builder.connectVertices(edgeToABV);
+    }
 
     modifiedDAG = builder.build(); // update the DAG.
   }
@@ -316,6 +303,23 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   }
 
   ////////////////////////////////////////////////// Private helper methods.
+
+  private enum CloneDirection {
+    TO_NEW_VERTEX,
+    FROM_NEW_VERTEX
+  }
+
+  private IREdge getClone(final IREdge edge, final IRVertex newVertex, final CloneDirection direction) {
+    final IREdge clone = direction.equals(CloneDirection.TO_NEW_VERTEX)
+      ? new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), newVertex)
+      : new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), newVertex, edge.getDst());
+    clone.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
+    clone.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
+    edge.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag -> {
+      clone.setProperty(AdditionalOutputTagProperty.of(tag));
+    });
+    return clone;
+  }
 
   /**
    * @param mbv src.

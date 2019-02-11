@@ -18,6 +18,9 @@
  */
 package org.apache.nemo.common.ir.vertex.utility;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 /**
@@ -60,6 +63,28 @@ public final class SamplingVertex extends IRVertex {
     return desiredSampleRate;
   }
 
+  /**
+   * Obtains a clone of an original edge that is attached to this sampling vertex.
+   *
+   * Original edge: src - to - dst
+   * When src == originalVertex, return thisSamplingVertex - to - dst
+   * When dst == originalVertex, return src - to - thisSamplingVertex
+   *
+   * @param originalEdge to clone.
+   * @return a clone of the edge.
+   */
+  public IREdge getCloneOfOriginalEdge(final IREdge originalEdge) {
+    if (originalEdge.getSrc().equals(originalVertex)) {
+      return new IREdge(
+        originalEdge.getPropertyValue(CommunicationPatternProperty.class).get(), this, originalEdge.getDst());
+    } else if (originalEdge.getDst().equals(originalVertex)) {
+      return new IREdge(
+        originalEdge.getPropertyValue(CommunicationPatternProperty.class).get(), originalEdge.getSrc(), this);
+    } else {
+      throw new IllegalArgumentException(originalEdge.getId());
+    }
+  }
+
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
@@ -74,5 +99,10 @@ public final class SamplingVertex extends IRVertex {
   @Override
   public IRVertex getClone() {
     return new SamplingVertex(originalVertex, desiredSampleRate);
+  }
+
+  @Override
+  public final JsonNode getPropertiesAsJsonNode() {
+    return originalVertex.getPropertiesAsJsonNode();
   }
 }

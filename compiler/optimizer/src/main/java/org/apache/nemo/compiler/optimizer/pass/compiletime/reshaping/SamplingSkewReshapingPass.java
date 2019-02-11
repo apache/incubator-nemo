@@ -18,11 +18,14 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
+import avro.shaded.com.google.common.collect.Sets;
+import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
@@ -65,7 +68,7 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
   public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(v -> {
       for (final IREdge e : dag.getIncomingEdgesOf(v)) {
-        if (!CommunicationPatternProperty.Value.OneToOne.equals(
+        if (CommunicationPatternProperty.Value.Shuffle.equals(
           e.getPropertyValue(CommunicationPatternProperty.class).get())) {
           // Compute the partition and its source vertices
           final IRVertex shuffleWriter = e.getSrc();
@@ -84,9 +87,21 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
           dag.insert(samplingVertices, partitionSources);
 
           // Insert the message vertex.
-          // TODO: reuse code from the existing skew pass
-          final MessageBarrierVertex mbv =
-          dag.insert();
+          // We first obtain a clonedShuffleEdge to analyze the data statistics of the shuffle outputs of
+          // the sampling vertex right before shuffle.
+          final SamplingVertex rightBeforeShuffle = samplingVertices.stream()
+            .filter(sv -> sv.getOriginalVertex().equals(e.getSrc()))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException());
+          final IREdge clonedShuffleEdge = rightBeforeShuffle.getCloneOfOriginalEdge(e);
+
+          final KeyExtractor keyExtractor = e.getPropertyValue(KeyExtractorProperty.class).get();
+          dag.insert(
+            new MessageBarrierVertex<>(SkewHandlingUtil.getDynOptCollector(keyExtractor)),
+            new MessageAggregatorVertex(new HashMap(), SkewHandlingUtil.getDynOptAggregator()),
+            SkewHandlingUtil.getEncoder(e),
+            SkewHandlingUtil.getDecoder(e),
+            Sets.newHashSet(clonedShuffleEdge)); // this works although clonedShuffleEdge is not in the dag.
         }
       }
     });

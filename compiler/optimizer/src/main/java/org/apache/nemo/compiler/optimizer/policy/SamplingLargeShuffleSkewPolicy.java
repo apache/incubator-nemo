@@ -18,14 +18,12 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.*;
-import org.apache.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
-import org.apache.reef.tang.Injector;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.SamplingSkewReshapingPass;
+import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
+import org.apache.nemo.compiler.optimizer.pass.runtime.SkewRunTimePass;
 
 /**
  * A policy to demonstrate the large shuffle optimization, witch batches disk seek during data shuffle.
@@ -35,9 +33,10 @@ public final class SamplingLargeShuffleSkewPolicy implements Policy {
       new PolicyBuilder()
           .registerCompileTimePass(new DefaultParallelismPass())
           .registerCompileTimePass(new LargeShuffleCompositePass())
-          .registerRuntimePass(new DataSkewRuntimePass(), new SamplingSkewCompositePass())
+          .registerRunTimePass(new SkewRunTimePass(), new SamplingSkewReshapingPass())
           .registerCompileTimePass(new LoopOptimizationCompositePass())
-          .registerCompileTimePass(new DefaultCompositePassWOP());
+          .registerCompileTimePass(new DefaultCompositePass());
+
   private final Policy policy;
 
   /**
@@ -48,12 +47,12 @@ public final class SamplingLargeShuffleSkewPolicy implements Policy {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> runCompileTimeOptimization(final DAG<IRVertex, IREdge> dag, final String dagDirectory) {
+  public IRDAG runCompileTimeOptimization(final IRDAG dag, final String dagDirectory) {
     return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
 
   @Override
-  public void registerRunTimeOptimizations(final Injector injector, final PubSubEventHandlerWrapper pubSubWrapper) {
-    this.policy.registerRunTimeOptimizations(injector, pubSubWrapper);
+  public IRDAG runRunTimeOptimizations(final IRDAG dag, final Message<?> message) {
+    return this.policy.runRunTimeOptimizations(dag, message);
   }
 }
