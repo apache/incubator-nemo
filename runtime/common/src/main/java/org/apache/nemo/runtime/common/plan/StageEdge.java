@@ -158,10 +158,9 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    * @return {@link org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty} value.
    */
   public List<KeyRange> getKeyRanges() {
-    // TODO: refactor default
-    final ArrayList<KeyRange> defaultPartitionSet = new ArrayList<>(getDst().getParallelism());
-    for (int taskIdx = 0; taskIdx < getDst().getParallelism(); taskIdx++) {
-      defaultPartitionSet.add(taskIdx, HashRange.of(taskIdx, taskIdx + 1));
+    final ArrayList<KeyRange> defaultPartitionSet = new ArrayList<>();
+    for (final int taskIndex : getDst().getTaskIndices()) {
+      defaultPartitionSet.add(taskIndex, HashRange.of(taskIndex, taskIndex + 1));
     }
     final List<KeyRange> keyRanges = getExecutionProperties()
       .get(PartitionSetProperty.class).orElse(defaultPartitionSet);

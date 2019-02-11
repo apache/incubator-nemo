@@ -288,13 +288,12 @@ public final class BatchScheduler implements Scheduler {
         stage.getPropertyValue(ClonedSchedulingProperty.class).ifPresent(cloneConf -> {
           if (!cloneConf.isUpFrontCloning()) { // Upfront cloning is already handled.
             final double fractionToWaitFor = cloneConf.getFractionToWaitFor();
-            final int parallelism = stage.getParallelism();
             final Object[] completedTaskTimes = planStateManager.getCompletedTaskTimeListMs(stageId).toArray();
 
             // Only after the fraction of the tasks are done...
             // Delayed cloning (aggressive)
             if (completedTaskTimes.length > 0
-              && completedTaskTimes.length >= Math.round(parallelism * fractionToWaitFor)) {
+              && completedTaskTimes.length >= Math.round(stage.getTaskIndices().size() * fractionToWaitFor)) {
               Arrays.sort(completedTaskTimes);
               final long medianTime = (long) completedTaskTimes[completedTaskTimes.length / 2];
               final double medianTimeMultiplier = cloneConf.getMedianTimeMultiplier();

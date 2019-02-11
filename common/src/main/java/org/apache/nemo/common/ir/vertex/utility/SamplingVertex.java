@@ -20,32 +20,45 @@ package org.apache.nemo.common.ir.vertex.utility;
 
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
+import java.util.Random;
+
 /**
  * Executes the original IRVertex using a subset of input data partitions.
  */
 public abstract class SamplingVertex extends IRVertex {
   final IRVertex originalVertex;
-  final float sampleRate;
+  final float desiredSampleRate;
+
+  private final Random random; // for deterministic getReadables()
 
   /**
    * Constructor.
    */
   public SamplingVertex(final IRVertex originalVertex, final float sampleRate) {
-    this.originalVertex = originalVertex;
-    this.sampleRate = sampleRate;
-
-
     if (originalVertex instanceof SamplingVertex) {
       throw new IllegalArgumentException("Cannot sample again: " + originalVertex.toString());
     }
     this.originalVertex = originalVertex;
     this.sampleRate = sampleRate;
-
+    /*
     if (!edgeToVtxToSample.getPropertyValue(DuplicateEdgeGroupProperty.class).isPresent()) {
       final DuplicateEdgeGroupPropertyValue value =
         new DuplicateEdgeGroupPropertyValue(String.valueOf(duplicateId.getAndIncrement()));
       edgeToVtxToSample.setPropertyPermanently(DuplicateEdgeGroupProperty.of(value));
     }
+    */
+
+    final List<Readable<T>> originalReadables = originalVertex.getReadables(desiredNumOfSplits);
+    final int numOfSampledReadables = (int) Math.ceil(originalReadables.size() * desiredSampleRate);
+
+    // Random indices
+    final List<Integer> randomIndices =
+      IntStream.range(0, originalReadables.size()).boxed().collect(Collectors.toList());
+    Collections.shuffle(randomIndices, random);
+
+    // Return the selected readables
+    final List<Integer> indicesToSample = randomIndices.subList(0, numOfSampledReadables);
+    return indicesToSample.stream().map(originalReadables::get).collect(Collectors.toList());
   }
 
   public IRVertex getOriginalVertex() {

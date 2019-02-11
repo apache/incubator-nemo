@@ -79,11 +79,11 @@ public final class Stage extends Vertex {
   }
 
   /**
-   * @return the parallelism
+   * @return task indices of this stage to execute.
+   * For non-sampling vertices, returns [0, 1, 2, ..., parallelism-1].
+   * For sampling vertices, returns a list of size (parallelism * samplingRate).
    */
-  public int getParallelism() {
-    return executionProperties.get(ParallelismProperty.class)
-        .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
+  public List<Integer> getTaskIndices() {
   }
 
   /**
@@ -132,7 +132,7 @@ public final class Stage extends Vertex {
     final ObjectNode node = JsonNodeFactory.instance.objectNode();
     node.put("scheduleGroup", getScheduleGroup());
     node.set("irDag", irDag.asJsonNode());
-    node.put("parallelism", getParallelism());
+    node.put("parallelism", executionProperties.get(ParallelismProperty.class).get());
     node.set("executionProperties", executionProperties.asJsonNode());
     return node;
   }
