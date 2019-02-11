@@ -1,14 +1,9 @@
 package org.apache.nemo.common;
 
-import javafx.util.Pair;
-import org.apache.nemo.common.EventHandler;
-import org.apache.nemo.common.OffloadingTransform;
-import org.apache.nemo.common.OffloadingSerializer;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 
 import java.util.List;
-import java.util.concurrent.Future;
 
 public interface ServerlessExecutorService<I> {
 
