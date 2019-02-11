@@ -221,7 +221,7 @@ public final class MetricStore {
   }
 
   /**
-   * Save the job metrics for the optimization to the DB.
+   * Save the job metrics for the optimization to the DB, in the form of LibSVM.
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
    */
   public void saveOptimizationMetricsToDB() {
