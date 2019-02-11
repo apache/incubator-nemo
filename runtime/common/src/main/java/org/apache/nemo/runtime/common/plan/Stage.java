@@ -39,6 +39,7 @@ import java.util.Optional;
  * Stage.
  */
 public final class Stage extends Vertex {
+  private final List<Integer> taskIndices;
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final byte[] serializedIRDag;
   private final List<Map<String, Readable>> vertexIdToReadables;
@@ -49,15 +50,18 @@ public final class Stage extends Vertex {
    * Constructor.
    *
    * @param stageId             ID of the stage.
+   * @param taskIndices         indices of the tasks to execute.
    * @param irDag               the DAG of the task in this stage.
    * @param executionProperties set of {@link VertexExecutionProperty} for this stage
    * @param vertexIdToReadables the list of maps between vertex ID and {@link Readable}.
    */
   public Stage(final String stageId,
+               final List<Integer> taskIndices,
                final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
                final ExecutionPropertyMap<VertexExecutionProperty> executionProperties,
                final List<Map<String, Readable>> vertexIdToReadables) {
     super(stageId);
+    this.taskIndices = taskIndices;
     this.irDag = irDag;
     this.serializedIRDag = SerializationUtils.serialize(irDag);
     this.executionProperties = executionProperties;
@@ -84,6 +88,7 @@ public final class Stage extends Vertex {
    * For sampling vertices, returns a list of size (parallelism * samplingRate).
    */
   public List<Integer> getTaskIndices() {
+    return taskIndices;
   }
 
   /**

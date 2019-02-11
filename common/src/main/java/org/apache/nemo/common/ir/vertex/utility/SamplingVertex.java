@@ -25,6 +25,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
  */
 public final class SamplingVertex extends IRVertex {
   private final IRVertex originalVertex;
+  private final IRVertex cloneOfOriginalVertex;
   private final float desiredSampleRate;
 
   /**
@@ -33,6 +34,7 @@ public final class SamplingVertex extends IRVertex {
    *                          The actual sample rate may vary depending on neighboring sampling vertices.
    */
   public SamplingVertex(final IRVertex originalVertex, final float desiredSampleRate) {
+    super();
     if (originalVertex instanceof SamplingVertex) {
       throw new IllegalArgumentException("Cannot sample again: " + originalVertex.toString());
     }
@@ -40,11 +42,18 @@ public final class SamplingVertex extends IRVertex {
       throw new IllegalArgumentException(String.valueOf(desiredSampleRate));
     }
     this.originalVertex = originalVertex;
+    this.cloneOfOriginalVertex = originalVertex.getClone();
     this.desiredSampleRate = desiredSampleRate;
+    originalVertex.copyExecutionPropertiesTo(this);
   }
 
   public IRVertex getOriginalVertex() {
     return originalVertex;
+  }
+
+  public IRVertex getCloneOfOriginalVertex() {
+    this.copyExecutionPropertiesTo(cloneOfOriginalVertex);
+    return cloneOfOriginalVertex;
   }
 
   public float getDesiredSampleRate() {

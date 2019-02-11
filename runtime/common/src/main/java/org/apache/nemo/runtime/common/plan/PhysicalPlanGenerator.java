@@ -152,13 +152,22 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
     });
 
     for (final int stageId : vertexSetForEachStage.keySet()) {
-      final Set<IRVertex> stageVertices = vertexSetForEachStage.get(stageId);
+      // Handle sampling vertices.
+      final Set<IRVertex> stageVertices = vertexSetForEachStage.get(stageId)
+        .stream()
+        .map(v -> v instanceof SamplingVertex ? ((SamplingVertex) v).getCloneOfOriginalVertex() : v)
+        .collect(Collectors.toSet());
+
       final String stageIdentifier = RuntimeIdManager.generateStageId(stageId);
       final ExecutionPropertyMap<VertexExecutionProperty> stageProperties = new ExecutionPropertyMap<>(stageIdentifier);
       stagePartitioner.getStageProperties(stageVertices.iterator().next()).forEach(stageProperties::put);
 
       final int stageParallelism = stageProperties.get(ParallelismProperty.class)
         .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
+
+      // Directly uses vertexSetForEachStage.get(stageId), due to SamplingVertex
+      final List<Integer> taskIndices =
+        getTaskIndicesToExecute(vertexSetForEachStage.get(stageId), stageParallelism, random);
 
       final DAGBuilder<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAGBuilder = new DAGBuilder<>();
 
@@ -210,7 +219,12 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
       if (!stageInternalDAGBuilder.isEmpty()) {
         final DAG<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAG
           = stageInternalDAGBuilder.buildWithoutSourceSinkCheck();
-        final Stage stage = new Stage(stageIdentifier, stageInternalDAG, stageProperties, vertexIdToReadables);
+        final Stage stage = new Stage(
+          stageIdentifier,
+          taskIndices,
+          stageInternalDAG,
+          stageProperties,
+          vertexIdToReadables);
         dagOfStagesBuilder.addVertex(stage);
         stageIdToStageMap.put(stageId, stage);
       }
