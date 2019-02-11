@@ -28,6 +28,7 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
+import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
@@ -42,7 +43,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * A function that converts an IR DAG to physical DAG.
@@ -136,6 +140,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
     final Map<Integer, Stage> stageIdToStageMap = new HashMap<>();
     final Map<IRVertex, Integer> vertexToStageIdMap = stagePartitioner.apply(irDAG);
     final HashSet<IRVertex> isStagePartitioned = new HashSet<>();
+    final Random random = new Random(hashCode()); // to produce same results for same input IRDAGs
 
     final Map<Integer, Set<IRVertex>> vertexSetForEachStage = new LinkedHashMap<>();
     irDAG.topologicalDo(irVertex -> {
@@ -229,6 +234,30 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
     }
 
     return dagOfStagesBuilder.build();
+  }
+
+  private List<Integer> getTaskIndicesToExecute(final Set<IRVertex> vertices,
+                                                final int stageParallelism,
+                                                final Random random) {
+    if (vertices.stream().map(v -> v instanceof SamplingVertex).collect(Collectors.toSet()).size() != 1) {
+      throw new IllegalArgumentException("Must be either all sampling vertices, or none: " + vertices.toString());
+    }
+
+    if (vertices.iterator().next() instanceof SamplingVertex) {
+      // Use min of the desired sample rates
+      final float min_sample_rate = vertices.stream()
+        .map(v -> ((SamplingVertex) v).getDesiredSampleRate())
+        .reduce(BinaryOperator.minBy(Float::compareTo))
+        .orElseThrow(() -> new IllegalArgumentException(vertices.toString()));
+
+      // Compute and return indices
+      final int numOfTaskIndices = (int) Math.ceil(stageParallelism * min_sample_rate);
+      final List<Integer> randomIndices = IntStream.range(0, stageParallelism).boxed().collect(Collectors.toList());
+      Collections.shuffle(randomIndices, random);
+      return randomIndices.subList(0, numOfTaskIndices);
+    } else {
+      return IntStream.range(0, stageParallelism).boxed().collect(Collectors.toList());
+    }
   }
 
   /**

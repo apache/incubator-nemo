@@ -20,63 +20,50 @@ package org.apache.nemo.common.ir.vertex.utility;
 
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
-import java.util.Random;
-
 /**
  * Executes the original IRVertex using a subset of input data partitions.
  */
-public abstract class SamplingVertex extends IRVertex {
-  final IRVertex originalVertex;
-  final float desiredSampleRate;
-
-  private final Random random; // for deterministic getReadables()
+public final class SamplingVertex extends IRVertex {
+  private final IRVertex originalVertex;
+  private final float desiredSampleRate;
 
   /**
-   * Constructor.
+   * @param originalVertex to clone.
+   * @param desiredSampleRate percentage of tasks to execute.
+   *                          The actual sample rate may vary depending on neighboring sampling vertices.
    */
-  public SamplingVertex(final IRVertex originalVertex, final float sampleRate) {
+  public SamplingVertex(final IRVertex originalVertex, final float desiredSampleRate) {
     if (originalVertex instanceof SamplingVertex) {
       throw new IllegalArgumentException("Cannot sample again: " + originalVertex.toString());
     }
-    this.originalVertex = originalVertex;
-    this.sampleRate = sampleRate;
-    /*
-    if (!edgeToVtxToSample.getPropertyValue(DuplicateEdgeGroupProperty.class).isPresent()) {
-      final DuplicateEdgeGroupPropertyValue value =
-        new DuplicateEdgeGroupPropertyValue(String.valueOf(duplicateId.getAndIncrement()));
-      edgeToVtxToSample.setPropertyPermanently(DuplicateEdgeGroupProperty.of(value));
+    if (desiredSampleRate > 1 || desiredSampleRate <= 0) {
+      throw new IllegalArgumentException(String.valueOf(desiredSampleRate));
     }
-    */
-
-    final List<Readable<T>> originalReadables = originalVertex.getReadables(desiredNumOfSplits);
-    final int numOfSampledReadables = (int) Math.ceil(originalReadables.size() * desiredSampleRate);
-
-    // Random indices
-    final List<Integer> randomIndices =
-      IntStream.range(0, originalReadables.size()).boxed().collect(Collectors.toList());
-    Collections.shuffle(randomIndices, random);
-
-    // Return the selected readables
-    final List<Integer> indicesToSample = randomIndices.subList(0, numOfSampledReadables);
-    return indicesToSample.stream().map(originalReadables::get).collect(Collectors.toList());
+    this.originalVertex = originalVertex;
+    this.desiredSampleRate = desiredSampleRate;
   }
 
   public IRVertex getOriginalVertex() {
     return originalVertex;
   }
 
-  public float getSampleRate() {
-    return sampleRate;
+  public float getDesiredSampleRate() {
+    return desiredSampleRate;
   }
 
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("SamplingVertex(sampleRate:");
-    sb.append(String.valueOf(sampleRate));
+    sb.append("SamplingVertex(desiredSampleRate:");
+    sb.append(String.valueOf(desiredSampleRate));
     sb.append(")[");
     sb.append(originalVertex.toString());
     sb.append("]");
     return sb.toString();
+  }
+
+  @Override
+  public IRVertex getClone() {
+    return new SamplingVertex(originalVertex, desiredSampleRate);
   }
 }
