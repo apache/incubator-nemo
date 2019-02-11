@@ -259,13 +259,13 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
 
     if (vertices.iterator().next() instanceof SamplingVertex) {
       // Use min of the desired sample rates
-      final float min_sample_rate = vertices.stream()
+      final float minSampleRate = vertices.stream()
         .map(v -> ((SamplingVertex) v).getDesiredSampleRate())
         .reduce(BinaryOperator.minBy(Float::compareTo))
         .orElseThrow(() -> new IllegalArgumentException(vertices.toString()));
 
       // Compute and return indices
-      final int numOfTaskIndices = (int) Math.ceil(stageParallelism * min_sample_rate);
+      final int numOfTaskIndices = (int) Math.ceil(stageParallelism * minSampleRate);
       final List<Integer> randomIndices = IntStream.range(0, stageParallelism).boxed().collect(Collectors.toList());
       Collections.shuffle(randomIndices, random);
       return randomIndices.subList(0, numOfTaskIndices);

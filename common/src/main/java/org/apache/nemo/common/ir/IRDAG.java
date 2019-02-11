@@ -254,10 +254,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
-    // TODO: Integrity checks
-    LOG.info("samplingVertices {}", samplingVertices);
-    LOG.info("childrenOfSamplingVertices {}", executeAfterSamplingVertices);
-
     // All of the existing vertices and edges remain intact
     modifiedDAG.topologicalDo(v -> {
       builder.addVertex(v);

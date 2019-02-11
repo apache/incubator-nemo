@@ -159,13 +159,11 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    */
   public List<KeyRange> getKeyRanges() {
     final ArrayList<KeyRange> defaultPartitionSet = new ArrayList<>();
-    for (final int taskIndex : getDst().getTaskIndices()) {
+    for (int taskIndex = 0; taskIndex <  getDst().getParallelism(); taskIndex++) {
       defaultPartitionSet.add(taskIndex, HashRange.of(taskIndex, taskIndex + 1));
     }
     final List<KeyRange> keyRanges = getExecutionProperties()
       .get(PartitionSetProperty.class).orElse(defaultPartitionSet);
-    LOG.info("{} -> {} getKeyRanges {}", srcVertex.getId(), dstVertex.getId(), keyRanges);
-
     return keyRanges;
   }
 }

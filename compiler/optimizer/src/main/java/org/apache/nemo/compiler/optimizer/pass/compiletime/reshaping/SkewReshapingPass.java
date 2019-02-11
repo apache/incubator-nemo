@@ -76,43 +76,12 @@ public final class SkewReshapingPass extends ReshapingPass {
         // Get the key extractor
         final KeyExtractor keyExtractor = representativeEdge.getPropertyValue(KeyExtractorProperty.class).get();
 
-        // For collecting the data
-        final BiFunction<Object, Map<Object, Long>, Map<Object, Long>> dynOptDataCollector =
-          (BiFunction<Object, Map<Object, Long>, Map<Object, Long>> & Serializable)
-            (element, dynOptData) -> {
-              Object key = keyExtractor.extractKey(element);
-              if (dynOptData.containsKey(key)) {
-                dynOptData.compute(key, (existingKey, existingCount) -> (long) existingCount + 1L);
-              } else {
-                dynOptData.put(key, 1L);
-              }
-              return dynOptData;
-            };
-
-        // For aggregating the collected data
-        final BiFunction<Pair<Object, Long>, Map<Object, Long>, Map<Object, Long>> dynOptDataAggregator =
-          (BiFunction<Pair<Object, Long>, Map<Object, Long>, Map<Object, Long>> & Serializable)
-            (element, aggregatedDynOptData) -> {
-              final Object key = element.left();
-              final Long count = element.right();
-              if (aggregatedDynOptData.containsKey(key)) {
-                aggregatedDynOptData.compute(key, (existingKey, accumulatedCount) -> accumulatedCount + count);
-              } else {
-                aggregatedDynOptData.put(key, count);
-              }
-              return aggregatedDynOptData;
-            };
-
-        // Coders to use
-        final EncoderProperty encoderProperty = EncoderProperty.of(PairEncoderFactory.
-          of(representativeEdge.getPropertyValue(KeyEncoderProperty.class).get(), LongEncoderFactory.of()));
-        final DecoderProperty decoderProperty = DecoderProperty.of(PairDecoderFactory
-          .of(representativeEdge.getPropertyValue(KeyDecoderProperty.class).get(), LongDecoderFactory.of()));
-
         // Insert the vertices
-        final MessageBarrierVertex mbv = new MessageBarrierVertex<>(dynOptDataCollector);
-        final MessageAggregatorVertex mav = new MessageAggregatorVertex(new HashMap(), dynOptDataAggregator);
-        dag.insert(mbv, mav, encoderProperty, decoderProperty, shuffleEdgeGroup);
+        final MessageBarrierVertex mbv = new MessageBarrierVertex<>(SkewHandlingUtil.getDynOptCollector(keyExtractor));
+        final MessageAggregatorVertex mav =
+          new MessageAggregatorVertex(new HashMap(), SkewHandlingUtil.getDynOptAggregator());
+        dag.insert(mbv, mav, SkewHandlingUtil.getEncoder(representativeEdge),
+          SkewHandlingUtil.getDecoder(representativeEdge), shuffleEdgeGroup);
       }
     });
     return dag;

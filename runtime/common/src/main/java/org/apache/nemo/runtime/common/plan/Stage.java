@@ -92,6 +92,14 @@ public final class Stage extends Vertex {
   }
 
   /**
+   * @return the parallelism.
+   */
+  public int getParallelism() {
+    return executionProperties.get(ParallelismProperty.class)
+      .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
+  }
+
+  /**
    * @return the schedule group.
    */
   public int getScheduleGroup() {
@@ -137,7 +145,8 @@ public final class Stage extends Vertex {
     final ObjectNode node = JsonNodeFactory.instance.objectNode();
     node.put("scheduleGroup", getScheduleGroup());
     node.set("irDag", irDag.asJsonNode());
-    node.put("parallelism", executionProperties.get(ParallelismProperty.class).get());
+    node.put("parallelism", getParallelism());
+    node.put("num of task indices", getTaskIndices().size());
     node.set("executionProperties", executionProperties.asJsonNode());
     return node;
   }
