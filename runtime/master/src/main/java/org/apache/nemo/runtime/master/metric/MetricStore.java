@@ -225,8 +225,6 @@ public final class MetricStore {
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
    */
   public void saveOptimizationMetricsToDB() {
-    LOG.info("properties: {}" + System.getProperties().stringPropertyNames());
-
     final String optimizationDBName = "jdbc:sqlite:" + MetricUtils.fetchProjectRootPath() + "/optimization_db.sqlite3";
 
     try (final Connection c = DriverManager.getConnection(optimizationDBName)) {
