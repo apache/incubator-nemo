@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.master;
+package org.apache.nemo.offloading.client;
 
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
@@ -9,10 +9,7 @@ import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.NemoEvent;
-import org.apache.nemo.common.lambda.Constants;
-import org.apache.nemo.runtime.common.offloading.NemoEventHandler;
-import org.apache.nemo.runtime.common.offloading.NettyServerSideChannelHandler;
-import org.apache.nemo.runtime.common.offloading.NettyServerTransport;
+import org.apache.nemo.common.Constants;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +19,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.nemo.common.lambda.Constants.POOL_SIZE;
+import static org.apache.nemo.common.Constants.POOL_SIZE;
 
 public final class ServerlessContainerWarmer {
   private static final Logger LOG = LoggerFactory.getLogger(ServerlessContainerWarmer.class.getName());

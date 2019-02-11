@@ -15,6 +15,7 @@
     <module>client</module>
     <module>master</module>
     <module>workers</module>
+    <module>common</module>
   </modules>
 
 

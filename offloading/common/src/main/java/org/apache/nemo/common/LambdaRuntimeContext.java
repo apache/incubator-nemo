@@ -1,6 +1,5 @@
-package org.apache.nemo.common.lambda;
+package org.apache.nemo.common;
 
-import org.apache.nemo.common.OffloadingWorkerFactory;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 
@@ -16,8 +15,8 @@ public final class LambdaRuntimeContext implements Transform.Context {
   }
 
   @Override
-  public OffloadingWorkerFactory getOffloadingWorkerFactory() {
-    throw new RuntimeException("Unsupported operation in LambdaWorker");
+  public ServerlessExecutorProvider getServerlessExecutorProvider() {
+    throw new RuntimeException("Invalid operation");
   }
 
   @Override

@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.common.offloading;
+package org.apache.nemo.offloading.client;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -9,7 +9,6 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.nemo.common.NettyChannelInitializer;
-import org.apache.nemo.runtime.common.NetworkUtils;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

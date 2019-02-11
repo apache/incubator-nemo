@@ -18,14 +18,16 @@
  */
 package org.apache.nemo.driver;
 
-import org.apache.nemo.common.OffloadingWorkerFactory;
+import org.apache.nemo.offloading.client.OffloadingWorkerFactory;
+import org.apache.nemo.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.offloading.client.ServerlessExecutorProviderImpl;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageParameters;
-import org.apache.nemo.runtime.executor.offloading.LambdaOffloadingWorkerFactory;
+import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
 import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
 import org.apache.nemo.runtime.master.RuntimeMaster;
@@ -38,7 +40,6 @@ import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.context.FailedContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
-import org.apache.reef.driver.evaluator.JVMProcess;
 import org.apache.reef.driver.evaluator.JVMProcessFactory;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
@@ -261,6 +262,7 @@ public final class NemoDriver {
         .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
       .bindImplementation(OffloadingWorkerFactory.class, LambdaOffloadingWorkerFactory.class) // TODO: fix
+      .bindImplementation(ServerlessExecutorProvider.class, ServerlessExecutorProviderImpl.class) // TODO: fix
         .build();
   }
 

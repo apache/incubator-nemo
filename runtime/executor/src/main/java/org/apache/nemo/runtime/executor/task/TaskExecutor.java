@@ -19,8 +19,8 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
-import org.apache.nemo.common.OffloadingWorkerFactory;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -55,7 +55,6 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.nemo.runtime.executor.datatransfer.DynOptDataOutputCollector;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
-import org.apache.nemo.runtime.executor.offloading.*;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,7 +90,7 @@ public final class TaskExecutor {
 
   private final SerializerManager serializerManager;
 
-  private final OffloadingWorkerFactory offloadingWorkerFactory;
+  private final ServerlessExecutorProvider serverlessExecutorProvider;
 
   //private static final StorageObjectFactory SOFACTORY = MemoryStorageObjectFactory.INSTACE;
   //private static final StorageObjectFactory SOFACTORY = S3StorageObjectFactory.INSTACE;
@@ -115,14 +114,14 @@ public final class TaskExecutor {
                       final MetricMessageSender metricMessageSender,
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                       final SerializerManager serializerManager,
-                      final OffloadingWorkerFactory offloadingWorkerFactory) {
+                      final ServerlessExecutorProvider serverlessExecutorProvider) {
     // Essential information
     this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
 
-    this.offloadingWorkerFactory = offloadingWorkerFactory;
+    this.serverlessExecutorProvider = serverlessExecutorProvider;
 
     this.serializerManager = serializerManager;
 
@@ -290,7 +289,7 @@ public final class TaskExecutor {
       // Create VERTEX HARNESS
       final VertexHarness vertexHarness = new VertexHarness(
         irVertex, outputCollector, new TransformContextImpl(
-          broadcastManagerWorker, irVertex, offloadingWorkerFactory),
+          broadcastManagerWorker, irVertex, serverlessExecutorProvider),
         externalMainOutputs, externalAdditionalOutputMap);
 
       prepareTransform(vertexHarness);

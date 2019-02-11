@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.common;
+package org.apache.nemo.offloading.client;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,7 +7,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.*;
-import java.util.Enumeration;
 
 public class NetworkUtils {
   private static final Logger LOG = LoggerFactory.getLogger(NetworkUtils.class.getName());

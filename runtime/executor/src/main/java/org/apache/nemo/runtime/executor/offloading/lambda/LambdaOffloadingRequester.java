@@ -4,11 +4,8 @@ import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.lambda.AWSLambdaAsync;
 import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
-import io.netty.channel.Channel;
-import org.apache.nemo.common.NemoEvent;
-import org.apache.nemo.common.lambda.Constants;
-import org.apache.nemo.runtime.executor.datatransfer.AWSUtils;
-import org.apache.nemo.runtime.common.offloading.NemoEventHandler;
+import org.apache.nemo.offloading.client.AWSUtils;
+import org.apache.nemo.offloading.client.NemoEventHandler;
 import org.apache.nemo.runtime.executor.offloading.OffloadingRequester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,8 +13,6 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-
-import static org.apache.nemo.common.lambda.Constants.POOL_SIZE;
 
 public final class LambdaOffloadingRequester implements OffloadingRequester {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaOffloadingRequester.class.getName());

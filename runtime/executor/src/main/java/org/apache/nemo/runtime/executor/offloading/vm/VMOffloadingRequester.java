@@ -20,8 +20,8 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.NettyChannelInitializer;
-import org.apache.nemo.common.lambda.NettyLambdaInboundHandler;
-import org.apache.nemo.runtime.common.offloading.NemoEventHandler;
+import org.apache.nemo.common.NettyLambdaInboundHandler;
+import org.apache.nemo.offloading.client.NemoEventHandler;
 import org.apache.nemo.runtime.executor.offloading.OffloadingRequester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +31,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.nemo.common.lambda.Constants.VM_WORKER_PORT;
+import static org.apache.nemo.common.Constants.VM_WORKER_PORT;
 
 public final class VMOffloadingRequester implements OffloadingRequester {
   private static final Logger LOG = LoggerFactory.getLogger(VMOffloadingRequester.class.getName());

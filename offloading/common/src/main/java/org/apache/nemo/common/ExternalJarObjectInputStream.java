@@ -1,4 +1,4 @@
-package org.apache.nemo.common.lambda;
+package org.apache.nemo.common;
 
 import java.io.*;
 

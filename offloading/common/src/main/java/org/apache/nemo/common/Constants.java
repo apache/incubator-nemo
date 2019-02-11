@@ -1,4 +1,4 @@
-package org.apache.nemo.common.lambda;
+package org.apache.nemo.common;
 
 public  class Constants {
   public static final int VM_WORKER_PORT = 25321;

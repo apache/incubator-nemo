@@ -1,4 +1,4 @@
-package org.apache.nemo.common.lambda;
+package org.apache.nemo.common;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -12,9 +12,6 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.nemo.common.EventHandler;
-import org.apache.nemo.common.NemoEvent;
-import org.apache.nemo.common.NettyChannelInitializer;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -24,7 +21,6 @@ import org.apache.nemo.common.punctuation.Watermark;
 
 import java.io.*;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +34,7 @@ public final class OffloadingHandler {
 	private static final Logger LOG = LoggerFactory.getLogger(OffloadingHandler.class);
 	//private static final String PATH = "/tmp/shaded.jar";
 	private ClassLoader classLoader = null;
-	private Transform headTransform = null;
+	private OffloadingTransform offloadingTransform = null;
 
 	//private final String serializedUserCode = "rO0ABXNyABZRdWVyeTdTaWRlSW5wdXRIYW5kbGVyMlM6Ib0vAkQCAAB4cA==";
   /**
@@ -62,6 +58,8 @@ public final class OffloadingHandler {
   private final Callable<ClassLoader> classLoaderCallable;
 
   private EncoderFactory outputEncoderFactory;
+
+  private LambdaOutputHandler outputCollector;
 
 	public OffloadingHandler(final Callable<ClassLoader> classLoaderCallable) {
 		LOG.info("Handler is created!");
@@ -109,7 +107,7 @@ public final class OffloadingHandler {
 	  final long st = System.currentTimeMillis();
 
 		System.out.println("Input: " + input);
-    final LinkedBlockingQueue<Object> result = new LinkedBlockingQueue<>();
+    final LinkedBlockingQueue<Pair<Object, Integer>> result = new LinkedBlockingQueue<>();
 
     // open channel
     Channel opendChannel = null;
@@ -182,7 +180,7 @@ public final class OffloadingHandler {
         }
 
         System.out.println("Write result");
-        futures.add(opendChannel.write(
+        futures.add(opendChannel.writeAndFlush(
           new NemoEvent(NemoEvent.Type.RESULT, byteBuf)));
       }
 
@@ -197,14 +195,15 @@ public final class OffloadingHandler {
     final long sst = System.currentTimeMillis();
 
     while (result.peek() != null) {
-      final Object data = result.poll();
+      final Pair<Object, Integer> data = result.poll();
       final ByteBuf byteBuf = opendChannel.alloc().ioBuffer();
       byteBuf.writeInt(NemoEvent.Type.RESULT.ordinal());
       final ByteBufOutputStream bis = new ByteBufOutputStream(byteBuf);
       final EncoderFactory.Encoder encoder;
       try {
         encoder = outputEncoderFactory.create(bis);
-        encoder.encode(data);
+        encoder.encode(data.left());
+        bis.writeInt(data.right());
         bis.close();
       } catch (IOException e) {
         e.printStackTrace();
@@ -268,13 +267,13 @@ public final class OffloadingHandler {
 
     private final BlockingQueue<Integer> endBlockingQueue = new LinkedBlockingQueue<>();
     private final Channel opendChannel;
-    private final BlockingQueue<Object> result;
+    private final BlockingQueue<Pair<Object, Integer>> result;
     private DecoderFactory decoderFactory;
 
     private long workerFinishTime;
 
     public LambdaEventHandler(final Channel opendChannel,
-                              final BlockingQueue<Object> result) {
+                              final BlockingQueue<Pair<Object, Integer>> result) {
       this.opendChannel = opendChannel;
       this.result = result;
     }
@@ -290,10 +289,9 @@ public final class OffloadingHandler {
           ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
           //System.out.println("Serialized transforms size: " + bytes.length);
           //ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-          List<String> serializedV;
           try {
             ObjectInputStream ois = new ExternalJarObjectInputStream(classLoader, bis);
-            serializedV = (List<String>) ois.readObject();
+            offloadingTransform = (OffloadingTransform) ois.readObject();
             decoderFactory = (DecoderFactory) ois.readObject();
             outputEncoderFactory = (EncoderFactory) ois.readObject();
 
@@ -308,26 +306,10 @@ public final class OffloadingHandler {
             throw new RuntimeException(e);
           }
 
-          if (serializedVertices == null || !serializedVertices.equals(serializedV)) {
-            //System.out.println("Serialize transforms");
-            serializedVertices = serializedV;
-            transforms = buildTransformChain(serializedVertices, classLoader);
-            headTransform = transforms.get(0);
-
-            // connect transforms
-            for (int i = 0; i < transforms.size() - 1; i++) {
-              final OutputCollector outputCollector = new ChainOutputHandler(transforms.get(i+1));
-              transforms.get(i).prepare(
-                new LambdaRuntimeContext(new OperatorVertex(transforms.get(i))),
-                outputCollector);
-            }
-          }
-
-          final OutputCollector outputCollector = new LambdaOutputHandler(result);
-          final Transform finalTransform = transforms.get(transforms.size() - 1);
-          finalTransform.prepare(
+          outputCollector = new LambdaOutputHandler(result);
+          offloadingTransform.prepare(
             new LambdaRuntimeContext(
-              new OperatorVertex(finalTransform)), outputCollector);
+              new OperatorVertex(offloadingTransform)), outputCollector);
           System.out.println("End of worker init: " + (System.currentTimeMillis() - st));
 
           workerFinishTime = System.currentTimeMillis();
@@ -346,19 +328,20 @@ public final class OffloadingHandler {
             throw new RuntimeException();
           }
 
-          while (true) {
-            try {
-              final Object data = decoder.decode();
-              //System.out.println("Receive data: " + data);
-              headTransform.onData(data);
-            } catch (IOException e) {
-              if (e.getMessage().contains("EOF")) {
-                System.out.println("eof!");
-                break;
-              } else {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-              }
+          try {
+            final Object data = decoder.decode();
+            final int dataId = bis.readInt();
+            outputCollector.setDataId(dataId);
+
+            //System.out.println("Receive data: " + data);
+            offloadingTransform.onData(data);
+          } catch (IOException e) {
+            if (e.getMessage().contains("EOF")) {
+              System.out.println("eof!");
+              break;
+            } else {
+              e.printStackTrace();
+              throw new RuntimeException(e);
             }
           }
 
@@ -366,43 +349,6 @@ public final class OffloadingHandler {
 
           nemoEvent.getByteBuf().release();
 
-          break;
-        }
-        case GBK_START: { // query 8
-          System.out.println("Start gbk");
-          final ByteArrayInputStream bis = new ByteArrayInputStream(nemoEvent.getBytes());
-          gbkDecoderFactory =
-            SerializeUtils.deserialize(bis, classLoader);
-          break;
-        }
-        case GBK: {// query 8
-          // TODO
-          //System.out.println("Receive gbk data");
-          final ByteArrayInputStream bis = new ByteArrayInputStream(nemoEvent.getBytes());
-          try {
-            final DecoderFactory.Decoder gbkDecoder = gbkDecoderFactory.create(bis);
-            WindowedValue mainInput = null;
-            int cnt = 0;
-            while (true) {
-              try {
-                mainInput = (WindowedValue) gbkDecoder.decode();
-                //handler.processMainAndSideInput(mainInput, sideInput, outputCollector);
-                headTransform.onData(mainInput);
-                cnt += 1;
-              } catch (final IOException e) {
-                if (e.getMessage().contains("EOF")) {
-                  //System.out.println("Cnt: " + cnt + ", eof!");
-                } else {
-                  System.out.println("Cnt: " + cnt + "Windowed value: " + mainInput + ", sideInput: " + sideInput);
-                  throw e;
-                }
-                break;
-              }
-            }
-          } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          }
           break;
         }
         case END:
@@ -446,16 +392,21 @@ public final class OffloadingHandler {
 
 	final class LambdaOutputHandler  implements OutputCollector {
 
-	  private final BlockingQueue<Object> result;
+	  private final BlockingQueue<Pair<Object, Integer>> result;
+	  private int dataId;
 
-	  public LambdaOutputHandler(final BlockingQueue<Object> result) {
+	  public LambdaOutputHandler(final BlockingQueue<Pair<Object, Integer>> result) {
 	    this.result = result;
+    }
+
+    void setDataId(final int id) {
+	    dataId = id;
     }
 
     @Override
     public void emit(Object output) {
       System.out.println("Emit output: " + output.toString());
-      result.add(output);
+      result.add(Pair.of(output, dataId));
     }
 
     @Override

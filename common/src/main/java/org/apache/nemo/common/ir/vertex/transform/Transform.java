@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.common.ir.vertex.transform;
 
-import org.apache.nemo.common.OffloadingWorkerFactory;
+import org.apache.nemo.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -65,7 +65,7 @@ public interface Transform<I, O> extends Serializable {
    */
   interface Context extends Serializable {
 
-    OffloadingWorkerFactory getOffloadingWorkerFactory();
+    ServerlessExecutorProvider getServerlessExecutorProvider();
 
     /**
      * @return the broadcast variable.

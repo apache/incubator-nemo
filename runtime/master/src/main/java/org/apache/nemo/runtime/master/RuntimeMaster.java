@@ -22,6 +22,7 @@ import com.google.protobuf.ByteString;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.offloading.client.ServerlessContainerWarmer;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;

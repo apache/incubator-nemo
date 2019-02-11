@@ -19,52 +19,55 @@
 package org.apache.nemo.compiler.frontend.beam.coder;
 
 import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.CoderException;
-import org.apache.beam.sdk.coders.StructuredCoder;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
  * EncoderFactory for side inputs.
  */
 
-public final class PushBackCoder extends Coder {
-  private final Coder<Object> sideInputCoder;
-  private final Coder<Object> mainInputCoder;
+public final class PushBackCoder extends Coder<Pair<WindowedValue<SideInputElement>, List<WindowedValue>>> {
+  private final Coder<WindowedValue<SideInputElement>> sideInputCoder;
+  private final Coder<WindowedValue> mainInputCoder;
 
-  private boolean startEncode = false;
-  private boolean startDecode = false;
 
-  public PushBackCoder(final Coder sideInputcoder,
-                       final Coder mainInputCoder) {
+  public PushBackCoder(final Coder<WindowedValue<SideInputElement>> sideInputcoder,
+                       final Coder<WindowedValue> mainInputCoder) {
     this.sideInputCoder = sideInputcoder;
     this.mainInputCoder = mainInputCoder;
   }
 
-
   @Override
-  public void encode(Object value, OutputStream outStream) throws CoderException, IOException {
-    if (!startEncode) {
-      sideInputCoder.encode(value, outStream);
-      startEncode = true;
-    } else {
-      mainInputCoder.encode(value, outStream);
+  public void encode(Pair<WindowedValue<SideInputElement>,
+    List<WindowedValue>> value, OutputStream outStream) throws IOException {
+    sideInputCoder.encode(value.left(), outStream);
+    final byte[] lenByte = ByteBuffer.allocate(4).putInt(value.right().size()).array();
+    outStream.write(lenByte);
+    for (WindowedValue mainData : value.right()) {
+      mainInputCoder.encode(mainData, outStream);
     }
   }
 
   @Override
-  public Object decode(final InputStream inStream) throws IOException {
-    if (!startDecode) {
-      startDecode = true;
-      return sideInputCoder.decode(inStream);
-    } else {
-      return mainInputCoder.decode(inStream);
+  public Pair<WindowedValue<SideInputElement>, List<WindowedValue>> decode(
+    final InputStream inStream) throws IOException {
+    final WindowedValue<SideInputElement> side = sideInputCoder.decode(inStream);
+    final DataInputStream din = new DataInputStream(inStream);
+    final int len = din.readInt();
+    final List<WindowedValue> main = new ArrayList<>(len);
+
+    for (int i = 0; i < len; i++) {
+      main.add(mainInputCoder.decode(inStream));
     }
+
+    return Pair.of(side, main);
   }
 
   @Override

@@ -30,11 +30,11 @@ import org.apache.commons.lang.SerializationUtils;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
-import org.apache.nemo.runtime.executor.datatransfer.AWSUtils;
+import org.apache.nemo.offloading.client.AWSUtils;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
 import org.apache.nemo.runtime.executor.offloading.SideInputProcessor;
-import org.apache.nemo.common.lambda.LambdaDecoderFactory;
+import org.apache.nemo.common.LambdaDecoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +50,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
-import static org.apache.nemo.runtime.executor.datatransfer.AWSUtils.S3_BUCKET_NAME;
+import static org.apache.nemo.offloading.client.AWSUtils.S3_BUCKET_NAME;
 
 public final class S3SideInputProcessor<O> implements SideInputProcessor<O> {
   private static final Logger LOG = LoggerFactory.getLogger(S3SideInputProcessor.class.getName());

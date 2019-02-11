@@ -31,7 +31,7 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.NextIntraTaskOperatorInfo;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
-import org.apache.nemo.common.lambda.LambdaDecoderFactory;
+import org.apache.nemo.common.LambdaDecoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
-import static org.apache.nemo.common.lambda.Constants.MAIN_INPUT_PARTITION_SIZE;
+import static org.apache.nemo.common.Constants.MAIN_INPUT_PARTITION_SIZE;
 
 /**
  * OutputCollector implementation.

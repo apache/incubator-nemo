@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.executor;
 
-import org.apache.nemo.common.OffloadingWorkerFactory;
+import org.apache.nemo.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
@@ -33,7 +33,7 @@ public final class TransformContextImpl implements Transform.Context {
   private final BroadcastManagerWorker broadcastManagerWorker;
   private String data;
   private final IRVertex irVertex;
-  private final OffloadingWorkerFactory offloadingWorkerFactory;
+  private final ServerlessExecutorProvider serverlessExecutorProvider;
 
   /**
    * Constructor of Context Implementation.
@@ -41,17 +41,16 @@ public final class TransformContextImpl implements Transform.Context {
    */
   public TransformContextImpl(final BroadcastManagerWorker broadcastManagerWorker,
                               final IRVertex irVertex,
-                              final OffloadingWorkerFactory offloadingWorkerFactory) {
+                              final ServerlessExecutorProvider serverlessExecutorProvider) {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.data = null;
     this.irVertex = irVertex;
-    this.offloadingWorkerFactory = offloadingWorkerFactory;
+    this.serverlessExecutorProvider = serverlessExecutorProvider;
   }
 
-
   @Override
-  public OffloadingWorkerFactory getOffloadingWorkerFactory() {
-    return offloadingWorkerFactory;
+  public ServerlessExecutorProvider getServerlessExecutorProvider() {
+    return serverlessExecutorProvider;
   }
 
   @Override

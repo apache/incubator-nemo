@@ -1,4 +1,4 @@
-package org.apache.nemo.common.lambda;
+package org.apache.nemo.common;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;

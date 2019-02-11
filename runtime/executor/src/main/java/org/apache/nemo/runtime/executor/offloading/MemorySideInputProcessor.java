@@ -1,20 +1,15 @@
 package org.apache.nemo.runtime.executor.offloading;
 
-import io.netty.channel.Channel;
 import org.apache.commons.lang.SerializationUtils;
-import org.apache.nemo.common.DirectByteArrayOutputStream;
-import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
-import org.apache.nemo.common.lambda.LambdaDecoderFactory;
+import org.apache.nemo.common.LambdaDecoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;

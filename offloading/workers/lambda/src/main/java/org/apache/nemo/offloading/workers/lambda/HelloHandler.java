@@ -12,8 +12,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.lambda.LambdaDecoderFactory;
-import org.apache.nemo.common.lambda.SerializeUtils;
+import org.apache.nemo.common.LambdaDecoderFactory;
+import org.apache.nemo.common.SerializeUtils;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.io.*;
