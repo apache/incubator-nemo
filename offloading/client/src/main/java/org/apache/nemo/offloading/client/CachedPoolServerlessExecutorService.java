@@ -98,34 +98,42 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     });
 
     scheduler.scheduleAtFixedRate(() -> {
-      LOG.info("Init workers: {}, Running workers: {}, Ready workers: {} ",
-        initializingWorkers.size(), runningWorkers.size(), readyWorkers.size());
+      try {
+        LOG.info("Init workers: {}, Running workers: {}, Ready workers: {} ",
+          initializingWorkers.size(), runningWorkers.size(), readyWorkers.size());
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
     }, 1, 1, TimeUnit.SECONDS);
 
     // schedule init/active worker
     scheduler.scheduleAtFixedRate(() -> {
 
-      synchronized (initializingWorkers) {
-        final Iterator<OffloadingWorker> iterator = initializingWorkers.iterator();
-        while (iterator.hasNext()) {
-          final OffloadingWorker worker = iterator.next();
-          if (worker.isReady()) {
-            iterator.remove();
-            readyWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+      try {
+        synchronized (initializingWorkers) {
+          final Iterator<OffloadingWorker> iterator = initializingWorkers.iterator();
+          while (iterator.hasNext()) {
+            final OffloadingWorker worker = iterator.next();
+            if (worker.isReady()) {
+              iterator.remove();
+              readyWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+            }
           }
         }
-      }
 
-      // active workers
-      synchronized (runningWorkers) {
-        final Iterator<OffloadingWorker> iterator = runningWorkers.iterator();
-        while (iterator.hasNext()) {
-          final OffloadingWorker worker = iterator.next();
-          if (worker.isReady()) {
-            iterator.remove();
-            readyWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+        // active workers
+        synchronized (runningWorkers) {
+          final Iterator<OffloadingWorker> iterator = runningWorkers.iterator();
+          while (iterator.hasNext()) {
+            final OffloadingWorker worker = iterator.next();
+            if (worker.isReady()) {
+              iterator.remove();
+              readyWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+            }
           }
         }
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
       }
     }, 200, 200, TimeUnit.MILLISECONDS);
 
@@ -199,7 +207,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     final OffloadingWorker<I, O> worker =
       workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
     dataBufferList.add(encodeData(data, Unpooled.directBuffer()));
-    initializingWorkers.add(worker);
+
+    synchronized (initializingWorkers) {
+      initializingWorkers.add(worker);
+    }
   }
 
   private void executeBufferedData() {
@@ -237,6 +248,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   @Override
   public void shutdown() {
+    LOG.info("Shutting down workers...");
     // shutdown all workers
     while (!runningWorkers.isEmpty() || !initializingWorkers.isEmpty() || !readyWorkers.isEmpty()) {
       // handle buffered data

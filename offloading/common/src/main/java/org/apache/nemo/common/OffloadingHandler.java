@@ -194,8 +194,10 @@ public final class OffloadingHandler {
 
 		// send result
     while (result.peek() != null || handler.endBlockingQueue.isEmpty()) {
-      final Pair<Object, Integer> data = result.poll();
-      writeResult(opendChannel, futures, data);
+      if (result.peek() != null) {
+        final Pair<Object, Integer> data = result.poll();
+        writeResult(opendChannel, futures, data);
+      }
 
       try {
         Thread.sleep(10);
@@ -331,7 +333,7 @@ public final class OffloadingHandler {
             offloadingTransform.onData(data);
 
             if (!outputCollector.hasDataReceived) {
-              outputCollector.emit(Pair.of(NoResult.INSTANCE, dataId));
+              outputCollector.emit(NoResult.INSTANCE);
             }
 
             outputCollector.hasDataReceived = false;
@@ -407,7 +409,7 @@ public final class OffloadingHandler {
 
     @Override
     public void emit(Object output) {
-      System.out.println("Emit output of data " + dataId + ": " + output.toString());
+      System.out.println("Emit output of data " + dataId);
       result.add(Pair.of(output, dataId));
       hasDataReceived = true;
     }

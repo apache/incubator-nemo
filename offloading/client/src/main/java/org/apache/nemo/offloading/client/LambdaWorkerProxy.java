@@ -82,12 +82,12 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
           public void onNext(NemoEvent msg) {
             switch (msg.getType()) {
               case RESULT:
-                LOG.info("Receive result");
                 final ByteBufInputStream bis = new ByteBufInputStream(msg.getByteBuf());
                 try {
                   final int hasInstance = bis.readByte();
                   if (hasInstance == 0) {
                     final int resultId = bis.readInt();
+                    LOG.info("Receive result of data {}, {}", resultId, null);
                     resultMap.put(resultId, Optional.empty());
                     pendingData.remove(resultId);
                     msg.getByteBuf().release();
@@ -95,6 +95,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                     final DecoderFactory.Decoder<O> decoder = outputDecoderFactory.create(bis);
                     final O data = decoder.decode();
                     final int resultId = bis.readInt();
+                    LOG.info("Receive result of data {}, {}", resultId, data);
                     resultMap.put(resultId, Optional.of(data));
                     pendingData.remove(resultId);
                     msg.getByteBuf().release();
