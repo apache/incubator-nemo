@@ -65,7 +65,7 @@ under the License.
         <!-- Tests -->
         <mockito.version>2.13.0</mockito.version>
         <powermock.version>2.0.0-beta.5</powermock.version>
-        <surefire.version>3.0.0-M1</surefire.version>
+        <surefire.version>2.19.1</surefire.version>
         <junit.version>4.12</junit.version>
     </properties>
 
