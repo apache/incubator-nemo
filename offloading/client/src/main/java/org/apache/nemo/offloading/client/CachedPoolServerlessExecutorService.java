@@ -183,6 +183,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   private void createNewWorker(final I data) {
     // create new worker
+
+    workerInitBuffer.retain();
     final OffloadingWorker<I, O> worker =
       workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
     dataBufferList.add(encodeData(data, Unpooled.directBuffer()));

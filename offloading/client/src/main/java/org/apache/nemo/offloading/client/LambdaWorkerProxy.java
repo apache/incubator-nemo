@@ -174,6 +174,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
     pendingData.put(dataId, true);
 
     if (channel != null) {
+      LOG.info("Write data");
       channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, input));
       return new Future<O>() {
         @Override
