@@ -289,12 +289,13 @@ public final class MetricStore {
         try {
           String sql = "CREATE TABLE IF NOT EXISTS " + tableName
             + " (id " + autoincrement + ", duration INTEGER NOT NULL, inputsize INTEGER NOT NULL, "
-            + "jvmmemsize INTEGER NOT NULL, memsize INTEGER NOT NULL, "
+            + "jvmmemsize BIGINT NOT NULL, memsize BIGINT NOT NULL, "
             + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL);";
           LOG.info("EXECUTING SQL: {}", sql);
           statement.executeUpdate(sql);
 
-          sql = "INSERT INTO " + tableName + " (duration, inputsize, jvmmemsize, memsize, vertex_properties, edge_properties) "
+          sql = "INSERT INTO " + tableName
+            + " (duration, inputsize, jvmmemsize, memsize, vertex_properties, edge_properties) "
             + "VALUES (" + duration + ", " + inputSize + ", "
             + jvmMemSize + ", " + memSize + ", '"
             + vertexProperties + "', '" + edgeProperties + "');";
