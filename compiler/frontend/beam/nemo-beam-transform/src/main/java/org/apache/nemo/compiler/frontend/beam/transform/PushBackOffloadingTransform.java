@@ -50,7 +50,7 @@ import java.util.Map;
  * DoFn transform implementation with push backs for side inputs.
  */
 public final class PushBackOffloadingTransform<InputT, OutputT> implements OffloadingTransform<Pair<WindowedValue<SideInputElement>, List<WindowedValue>>, WindowedValue<OutputT>> {
-  private static final Logger LOG = LoggerFactory.getLogger(PushBackDoFnTransform.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(PushBackOffloadingTransform.class.getName());
   private List<WindowedValue<InputT>> curPushedBacks;
   private long curPushedBackWatermark; // Long.MAX_VALUE when no pushed-back exists.
   private long curInputWatermark;
