@@ -251,14 +251,14 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
     //LOG.info("{}, Add side input at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
 
     int cnt = handlePushBacks();
-    LOG.info("{}, Handle pushback cnt: {} at {}: {}", System.currentTimeMillis() - st,
-      cnt, this.hashCode(), data);
+    LOG.info("{}, Handle pushback cnt: {}", System.currentTimeMillis() - st,
+      cnt);
     //System.out.println("{}, Handle pushback cnt: " + cnt + " data : " + data);
 
     // See if we can emit a new watermark, as we may have processed some pushed-back elements
     onWatermark(new Watermark(curInputWatermark));
     //LOG.info("{}, On watermark at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
-    System.out.println("Pushback latency: " + (System.currentTimeMillis() - st) +" of " + data);
+    System.out.println("Pushback latency: " + (System.currentTimeMillis() - st));
   }
 
 
