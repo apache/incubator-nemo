@@ -262,7 +262,7 @@ public final class MetricStore {
   private void deregisterBeamDriver() {
     final String beamDriver = "org.apache.beam.sdk.extensions.sql.impl.JdbcDriver";
     final Enumeration<Driver> drivers = DriverManager.getDrivers();
-    while(drivers.hasMoreElements()) {
+    while (drivers.hasMoreElements()) {
       final Driver d = drivers.nextElement();
       if (d.getClass().getName().equals(beamDriver)) {
         try {
