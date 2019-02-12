@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
-import avro.shaded.com.google.common.collect.Sets;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.IRDAG;
@@ -74,10 +73,13 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
           final IRVertex shuffleWriter = e.getSrc();
           final Set<IRVertex> partitionAll = recursivelyBuildPartition(shuffleWriter, dag);
           final Set<IRVertex> partitionSources = partitionAll.stream().filter(vertexInPartition ->
-            dag.getIncomingEdgesOf(vertexInPartition).stream()
+            !dag.getIncomingEdgesOf(vertexInPartition).stream()
               .map(Edge::getSrc)
-              .allMatch(partitionAll::contains)
+              .anyMatch(partitionAll::contains)
           ).collect(Collectors.toSet());
+          LOG.info("Sources: {} in {}",
+            partitionSources.stream().map(IRVertex::getId).collect(Collectors.toSet()).toString(),
+            partitionAll.stream().map(IRVertex::getId).collect(Collectors.toSet()).toString());
 
           // Insert sampling vertices.
           final Set<SamplingVertex> samplingVertices = partitionAll
@@ -101,7 +103,7 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
             new MessageAggregatorVertex(new HashMap(), SkewHandlingUtil.getDynOptAggregator()),
             SkewHandlingUtil.getEncoder(e),
             SkewHandlingUtil.getDecoder(e),
-            Sets.newHashSet(clonedShuffleEdge)); // this works although clonedShuffleEdge is not in the dag.
+            new HashSet<>(Arrays.asList(clonedShuffleEdge))); // this works although clonedShuffleEdge is not in the dag
         }
       }
     });

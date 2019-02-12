@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Sets;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.DAGInterface;
@@ -38,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -203,7 +205,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       builder.addVertex(mbv);
 
       // From src to mbv
-      final IREdge clone = getClone(edge, mbv, CloneDirection.TO_NEW_VERTEX);
+      final IREdge clone = Util.cloneEdge(CommunicationPatternProperty.Value.OneToOne, edge, edge.getSrc(), mbv);
       builder.connectVertices(clone);
 
       // From mbv to mav
@@ -238,6 +240,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    */
   public void insert(final Set<SamplingVertex> samplingVertices,
                      final Set<IRVertex> executeAfterSamplingVertices) {
+    LOG.info("samplingVertices {} / executeAfterSamplingVertices {}", samplingVertices, executeAfterSamplingVertices);
+
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
@@ -263,8 +267,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       .stream()
       .filter(ovInEdge -> originalToSampling.containsKey(ovInEdge.getSrc()))
       .collect(Collectors.toSet());
-    betweenOriginals.stream().map(boEdge -> new IREdge(
-      boEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
+    betweenOriginals.stream().map(boEdge -> Util.cloneEdge(
+      boEdge,
       originalToSampling.get(boEdge.getSrc()),
       originalToSampling.get(boEdge.getDst()))).forEach(builder::connectVertices);
 
@@ -273,8 +277,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       .stream()
       .filter(ovInEdge -> !originalToSampling.containsKey(ovInEdge.getSrc()))
       .collect(Collectors.toSet());
-    notBetweenOriginals.stream().map(nboEdge -> new IREdge(
-      nboEdge.getPropertyValue(CommunicationPatternProperty.class).get(),
+    notBetweenOriginals.stream().map(nboEdge -> Util.cloneEdge(
+      nboEdge,
       nboEdge.getSrc(), // sampling vertices consume a subset of original data partitions here
       originalToSampling.get(nboEdge.getDst()))).forEach(builder::connectVertices);
 
@@ -282,7 +286,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     final Set<IRVertex> parentsOfAnotherOriginal = betweenOriginals.stream()
       .map(IREdge::getSrc)
       .collect(Collectors.toSet());
-    final Sets.SetView<IRVertex> sinks = Sets.difference(originalToSampling.keySet(), parentsOfAnotherOriginal);
+    final Set<IRVertex> sinks = Sets.difference(originalToSampling.keySet(), parentsOfAnotherOriginal)
+      .stream()
+      .map(originalToSampling::get)
+      .collect(Collectors.toSet());
     for (final IRVertex executeAfter : executeAfterSamplingVertices) {
       for (final IRVertex sink : sinks) {
         // Control edge that enforces execution ordering
@@ -303,23 +310,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   }
 
   ////////////////////////////////////////////////// Private helper methods.
-
-  private enum CloneDirection {
-    TO_NEW_VERTEX,
-    FROM_NEW_VERTEX
-  }
-
-  private IREdge getClone(final IREdge edge, final IRVertex newVertex, final CloneDirection direction) {
-    final IREdge clone = direction.equals(CloneDirection.TO_NEW_VERTEX)
-      ? new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), edge.getSrc(), newVertex)
-      : new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(), newVertex, edge.getDst());
-    clone.setProperty(EncoderProperty.of(edge.getPropertyValue(EncoderProperty.class).get()));
-    clone.setProperty(DecoderProperty.of(edge.getPropertyValue(DecoderProperty.class).get()));
-    edge.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag -> {
-      clone.setProperty(AdditionalOutputTagProperty.of(tag));
-    });
-    return clone;
-  }
 
   /**
    * @param mbv src.
@@ -471,5 +461,15 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   @Override
   public List<IRVertex> filterVertices(final Predicate<IRVertex> condition) {
     return modifiedDAG.filterVertices(condition);
+  }
+
+  ////////////////////////////////////////////////// Utility methods for debugging
+
+  public static String stringifyIRVertexIds(final Collection<IRVertex> vertices) {
+    return vertices.stream().map(IRVertex::getId).collect(Collectors.toSet()).toString();
+  }
+
+  public static String stringifyIREdgeIds(final Collection<IREdge> edges) {
+    return edges.stream().map(IREdge::getId).collect(Collectors.toSet()).toString();
   }
 }

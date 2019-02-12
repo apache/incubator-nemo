@@ -19,8 +19,8 @@
 package org.apache.nemo.common.ir.vertex.utility;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 /**
@@ -75,11 +75,9 @@ public final class SamplingVertex extends IRVertex {
    */
   public IREdge getCloneOfOriginalEdge(final IREdge originalEdge) {
     if (originalEdge.getSrc().equals(originalVertex)) {
-      return new IREdge(
-        originalEdge.getPropertyValue(CommunicationPatternProperty.class).get(), this, originalEdge.getDst());
+      return Util.cloneEdge(originalEdge, this, originalEdge.getDst());
     } else if (originalEdge.getDst().equals(originalVertex)) {
-      return new IREdge(
-        originalEdge.getPropertyValue(CommunicationPatternProperty.class).get(), originalEdge.getSrc(), this);
+      return Util.cloneEdge(originalEdge, originalEdge.getSrc(), this);
     } else {
       throw new IllegalArgumentException(originalEdge.getId());
     }

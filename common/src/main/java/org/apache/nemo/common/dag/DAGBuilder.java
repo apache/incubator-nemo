@@ -25,6 +25,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 
 import java.io.Serializable;
 import java.util.*;
@@ -227,7 +228,8 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     final Supplier<Stream<V>> verticesToObserve = () -> vertices.stream().filter(v -> incomingEdges.get(v).isEmpty())
         .filter(v -> v instanceof IRVertex);
     // They should all match SourceVertex
-    if (verticesToObserve.get().anyMatch(v -> !(v instanceof SourceVertex))) {
+    if (!(verticesToObserve.get().allMatch(v -> (v instanceof SourceVertex)
+      || (v instanceof SamplingVertex && ((SamplingVertex) v).getOriginalVertex() instanceof SourceVertex)))) {
       final String problematicVertices = verticesToObserve.get()
           .filter(v -> !(v instanceof SourceVertex))
           .map(V::getId)

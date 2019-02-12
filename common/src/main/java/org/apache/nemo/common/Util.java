@@ -16,7 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.util;
+package org.apache.nemo.common;
+
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import java.util.function.IntPredicate;
 
@@ -42,7 +49,7 @@ public final class Util {
    * @return whether or not we can say that they are equal.
    */
   public static boolean checkEqualityOfIntPredicates(final IntPredicate firstPredicate,
-      final IntPredicate secondPredicate, final int noOfTimes) {
+                                                     final IntPredicate secondPredicate, final int noOfTimes) {
     for (int value = 0; value <= noOfTimes; value++) {
       if (firstPredicate.test(value) != secondPredicate.test(value)) {
         return false;
@@ -51,4 +58,47 @@ public final class Util {
     return true;
   }
 
+  /**
+   * Creates a new edge with several execution properties same as the given edge.
+   * The copied execution properties include those minimally required for execution, such as commPattern and encoding.
+   *
+   * @param edgeToClone to copy execution properties from.
+   * @param newSrc of the new edge.
+   * @param newDst of the new edge.
+   * @return the new edge.
+   */
+  public static IREdge cloneEdge(final IREdge edgeToClone,
+                                 final IRVertex newSrc,
+                                 final IRVertex newDst) {
+    return cloneEdge(
+      edgeToClone.getPropertyValue(CommunicationPatternProperty.class).get(), edgeToClone, newSrc, newDst);
+  }
+
+  /**
+   * @param commPattern to use.
+   * @param edgeToClone to copy execution properties from.
+   * @param newSrc of the new edge.
+   * @param newDst of the new edge.
+   * @return the new edge.
+   */
+  public static IREdge cloneEdge(final CommunicationPatternProperty.Value commPattern,
+                                 final IREdge edgeToClone,
+                                 final IRVertex newSrc,
+                                 final IRVertex newDst) {
+    final IREdge clone = new IREdge(commPattern, newSrc, newDst);
+    clone.setProperty(EncoderProperty.of(edgeToClone.getPropertyValue(EncoderProperty.class).get()));
+    clone.setProperty(DecoderProperty.of(edgeToClone.getPropertyValue(DecoderProperty.class).get()));
+    edgeToClone.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag -> {
+      clone.setProperty(AdditionalOutputTagProperty.of(tag));
+    });
+    return clone;
+  }
+
+  /**
+   * @param src vertex.
+   * @param dst vertex.
+   * @return the control edge.
+   */
+  public static IREdge getControlEdge(final IRVertex src, final IRVertex dst) {
+  }
 }
