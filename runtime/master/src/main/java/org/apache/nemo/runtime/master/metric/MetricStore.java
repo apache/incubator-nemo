@@ -267,8 +267,7 @@ public final class MetricStore {
 
       getMetricMap(JobMetric.class).values().forEach(o -> {
         final JobMetric jobMetric = (JobMetric) o;
-        final String tableName = jobMetric.getIrDagSummary()
-          + "_MEM" + ;
+        final String tableName = jobMetric.getIrDagSummary();
 
         final long startTime = jobMetric.getStateTransitionEvents().stream()
           .filter(ste -> ste.getPrevState().equals(PlanState.State.READY)
