@@ -65,11 +65,6 @@ under the License.
             <scope>test</scope>
         </dependency>
         <dependency>
-          <groupId>org.apache.crail</groupId>
-          <artifactId>crail-client</artifactId>
-          <version>1.2-incubating-SNAPSHOT</version>
-        </dependency>
-        <dependency>
             <!--
             This is needed to view the logs when running unit tests.
             See https://dzone.com/articles/how-configure-slf4j-different for details.
