@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.util.Optional;
 import java.util.concurrent.*;
 
 public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
@@ -43,7 +44,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
   final ExecutorService channelThread = Executors.newSingleThreadExecutor();
 
-  private final ConcurrentMap<Integer, O> resultMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, Optional<O>> resultMap = new ConcurrentHashMap<>();
   private final ConcurrentMap<Integer, Boolean> pendingData = new ConcurrentHashMap<>();
 
 
@@ -84,12 +85,20 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                 LOG.info("Receive result");
                 final ByteBufInputStream bis = new ByteBufInputStream(msg.getByteBuf());
                 try {
-                  final DecoderFactory.Decoder<O> decoder = outputDecoderFactory.create(bis);
-                  final O data = decoder.decode();
-                  final int resultId = bis.readInt();
-                  resultMap.put(resultId, data);
-                  pendingData.remove(resultId);
-                  msg.getByteBuf().release();
+                  final int hasInstance = bis.readByte();
+                  if (hasInstance == 0) {
+                    final int resultId = bis.readInt();
+                    resultMap.put(resultId, Optional.empty());
+                    pendingData.remove(resultId);
+                    msg.getByteBuf().release();
+                  } else {
+                    final DecoderFactory.Decoder<O> decoder = outputDecoderFactory.create(bis);
+                    final O data = decoder.decode();
+                    final int resultId = bis.readInt();
+                    resultMap.put(resultId, Optional.of(data));
+                    pendingData.remove(resultId);
+                    msg.getByteBuf().release();
+                  }
                 } catch (IOException e) {
                   e.printStackTrace();
                   throw new RuntimeException();
@@ -167,16 +176,16 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   }
 
   @Override
-  public Future<O> execute(final ByteBuf input) {
+  public Future<Optional<O>> execute(final ByteBuf input) {
     final int dataId = dataIdCnt++;
     input.writeInt(dataId);
 
     pendingData.put(dataId, true);
 
     if (channel != null) {
-      LOG.info("Write data");
+      LOG.info("Write data id: {}", dataId);
       channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, input));
-      return new Future<O>() {
+      return new Future<Optional<O>>() {
         @Override
         public boolean cancel(boolean mayInterruptIfRunning) {
           return false;
@@ -193,7 +202,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
         }
 
         @Override
-        public O get() throws InterruptedException, ExecutionException {
+        public Optional<O> get() throws InterruptedException, ExecutionException {
           while (resultMap.get(dataId) == null) {
            Thread.sleep(200);
           }
@@ -201,7 +210,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
         }
 
         @Override
-        public O get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        public Optional<O> get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
           return null;
         }
       };

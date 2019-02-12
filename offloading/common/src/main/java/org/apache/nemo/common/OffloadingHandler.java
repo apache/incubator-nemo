@@ -103,6 +103,36 @@ public final class OffloadingHandler {
     return opendChannel;
   }
 
+  private void writeResult(final Channel opendChannel,
+                           final List<ChannelFuture> futures,
+                           final Pair<Object, Integer> data) {
+    final ByteBuf byteBuf = opendChannel.alloc().ioBuffer();
+    byteBuf.writeInt(NemoEvent.Type.RESULT.ordinal());
+
+    if (data.left() == NoResult.INSTANCE) {
+      // bit 0 1
+      byteBuf.writeByte(0);
+      byteBuf.writeInt(data.right());
+    } else {
+      byteBuf.writeByte(1);
+      final ByteBufOutputStream bis = new ByteBufOutputStream(byteBuf);
+      final EncoderFactory.Encoder encoder;
+      try {
+        encoder = outputEncoderFactory.create(bis);
+        encoder.encode(data.left());
+        bis.writeInt(data.right());
+        bis.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
+
+    System.out.println("Write result");
+    futures.add(opendChannel.writeAndFlush(
+      new NemoEvent(NemoEvent.Type.RESULT, byteBuf)));
+  }
+
 	public Object handleRequest(Map<String, Object> input) {
 	  final long st = System.currentTimeMillis();
 
@@ -163,26 +193,9 @@ public final class OffloadingHandler {
 		final List<ChannelFuture> futures = new LinkedList<>();
 
 		// send result
-    while (handler.endBlockingQueue.isEmpty()) {
-      while (result.peek() != null) {
-        final Object data = result.poll();
-        final ByteBuf byteBuf = opendChannel.alloc().ioBuffer();
-        byteBuf.writeInt(NemoEvent.Type.RESULT.ordinal());
-        final ByteBufOutputStream bis = new ByteBufOutputStream(byteBuf);
-        final EncoderFactory.Encoder encoder;
-        try {
-          encoder = outputEncoderFactory.create(bis);
-          encoder.encode(data);
-          bis.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-
-        System.out.println("Write result");
-        futures.add(opendChannel.writeAndFlush(
-          new NemoEvent(NemoEvent.Type.RESULT, byteBuf)));
-      }
+    while (result.peek() != null || handler.endBlockingQueue.isEmpty()) {
+      final Pair<Object, Integer> data = result.poll();
+      writeResult(opendChannel, futures, data);
 
       try {
         Thread.sleep(10);
@@ -193,27 +206,6 @@ public final class OffloadingHandler {
     }
 
     final long sst = System.currentTimeMillis();
-
-    while (result.peek() != null) {
-      final Pair<Object, Integer> data = result.poll();
-      final ByteBuf byteBuf = opendChannel.alloc().ioBuffer();
-      byteBuf.writeInt(NemoEvent.Type.RESULT.ordinal());
-      final ByteBufOutputStream bis = new ByteBufOutputStream(byteBuf);
-      final EncoderFactory.Encoder encoder;
-      try {
-        encoder = outputEncoderFactory.create(bis);
-        encoder.encode(data.left());
-        bis.writeInt(data.right());
-        bis.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-
-      System.out.println("Write result");
-      futures.add(opendChannel.write(
-        new NemoEvent(NemoEvent.Type.RESULT, byteBuf)));
-    }
 
     /*
     futures.forEach(future -> {
@@ -333,8 +325,17 @@ public final class OffloadingHandler {
             final int dataId = bis.readInt();
             outputCollector.setDataId(dataId);
 
+            System.out.println("Read data " + dataId);
+
             //System.out.println("Receive data: " + data);
             offloadingTransform.onData(data);
+
+            if (!outputCollector.hasDataReceived) {
+              outputCollector.emit(Pair.of(NoResult.INSTANCE, dataId));
+            }
+
+            outputCollector.hasDataReceived = false;
+
           } catch (IOException e) {
             if (e.getMessage().contains("EOF")) {
               System.out.println("eof!");
@@ -394,6 +395,7 @@ public final class OffloadingHandler {
 
 	  private final BlockingQueue<Pair<Object, Integer>> result;
 	  private int dataId;
+	  public boolean hasDataReceived = false;
 
 	  public LambdaOutputHandler(final BlockingQueue<Pair<Object, Integer>> result) {
 	    this.result = result;
@@ -405,8 +407,9 @@ public final class OffloadingHandler {
 
     @Override
     public void emit(Object output) {
-      System.out.println("Emit output: " + output.toString());
+      System.out.println("Emit output of data " + dataId + ": " + output.toString());
       result.add(Pair.of(output, dataId));
+      hasDataReceived = true;
     }
 
     @Override
@@ -417,6 +420,12 @@ public final class OffloadingHandler {
     @Override
     public void emit(String dstVertexId, Object output) {
 
+    }
+  }
+
+  static final class NoResult {
+    public static final NoResult INSTANCE = new NoResult();
+    private NoResult() {
     }
   }
 }

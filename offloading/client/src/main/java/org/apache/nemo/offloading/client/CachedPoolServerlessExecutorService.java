@@ -41,7 +41,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   private final PriorityQueue<Pair<Long, OffloadingWorker>> readyWorkers;
 
-  private final BlockingQueue<Future<O>> outputQueue;
+  private final BlockingQueue<Future<Optional<O>>> outputQueue;
 
   private volatile boolean finished = false;
 
@@ -84,8 +84,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
       while (!Thread.currentThread().isInterrupted() && !finished) {
         try {
-          final O output = outputQueue.take().get();
-          eventHandler.onNext(output);
+          final Optional<O> output = outputQueue.take().get();
+          if (output.isPresent()) {
+            eventHandler.onNext(output.get());
+          }
         } catch (InterruptedException e) {
           e.printStackTrace();
         } catch (ExecutionException e) {
