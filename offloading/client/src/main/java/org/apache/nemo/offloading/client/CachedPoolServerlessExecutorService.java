@@ -174,6 +174,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   }
 
   private ByteBuf encodeData(final I data, final ByteBuf byteBuf) {
+    byteBuf.writeInt(NemoEvent.Type.DATA.ordinal());
+
     final ByteBufOutputStream dataBos = new ByteBufOutputStream(byteBuf);
     try {
       final EncoderFactory.Encoder<I> encoder =
