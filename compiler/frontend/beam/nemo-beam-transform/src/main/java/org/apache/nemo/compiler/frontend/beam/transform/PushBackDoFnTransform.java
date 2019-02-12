@@ -63,7 +63,6 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   private boolean offloading = true; // TODO: fix
 
   private PushBackOffloadingTransform offloadingTransform;
-  private final List<String> serializedVertices;
 
   private final Coder mainCoder;
   private final Coder sideCoder;
@@ -95,8 +94,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     this.curOutputWatermark = Long.MIN_VALUE;
     this.offloadingTransform = new PushBackOffloadingTransform(
       doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, sideInputs, options, displayData, mainCoder, sideCoder);
-    this.serializedVertices = Arrays.asList(NemoUtils.serializeToString(offloadingTransform));
+      additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
     this.mainCoder = mainCoder;
     this.sideCoder = sideCoder;
   }
@@ -253,7 +251,6 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       LOG.info("Start to offloading");
 
       // partition
-      final ExecutorService executorService = Executors.newCachedThreadPool();
       final int numLambda = Constants.POOL_SIZE / Constants.PARALLELISM;
       final int plusOne = (curPushedBacks.size() - cnt) % numLambda > 0 ? 1 : 0;
       final int partitionSize = ((curPushedBacks.size() - cnt) / numLambda) + plusOne;
