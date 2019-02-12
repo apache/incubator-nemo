@@ -5,6 +5,8 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
@@ -19,7 +21,7 @@ import java.util.concurrent.*;
  */
 @NotThreadSafe
 final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecutorService<I> {
-
+  private static final Logger LOG = LoggerFactory.getLogger(CachedPoolServerlessExecutorService.class.getName());
   private final OffloadingWorkerFactory workerFactory;
 
   private final List<OffloadingWorker> initializingWorkers;
@@ -92,6 +94,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         }
       }
     });
+
+    scheduler.scheduleAtFixedRate(() -> {
+      LOG.info("Init workers: {}, Running workers: {}, Ready workers: {} ",
+        initializingWorkers.size(), runningWorkers.size(), readyWorkers.size());
+    }, 1, 1, TimeUnit.SECONDS);
 
     // schedule init/active worker
     scheduler.scheduleAtFixedRate(() -> {
@@ -183,7 +190,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   private void createNewWorker(final I data) {
     // create new worker
-
+    LOG.info("Create worker");
     workerInitBuffer.retain();
     final OffloadingWorker<I, O> worker =
       workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
@@ -200,6 +207,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       while (!readyWorkers.isEmpty() && !dataBufferList.isEmpty()) {
         final OffloadingWorker readyWorker = readyWorkers.poll().right();
         final ByteBuf buf = dataBufferList.remove(0);
+        LOG.info("Execute data for worker {}, isReadY: {}", readyWorker, readyWorker.isReady());
         outputQueue.add(readyWorker.execute(buf));
         synchronized (runningWorkers) {
           // possible concurreny issue
