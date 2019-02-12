@@ -150,6 +150,11 @@ under the License.
                 <version>1.6.2</version>
                 <scope>test</scope>
             </dependency>
+            <dependency>
+              <groupId>org.apache.crail</groupId>
+              <artifactId>crail-client</artifactId>
+              <version>1.2-incubating-SNAPSHOT</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
