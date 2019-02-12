@@ -87,7 +87,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           final Future<Optional<O>> output = outputQueue.poll();
           if (output != null) {
             if (output.isDone() && output.get().isPresent()) {
-              //LOG.info("Output receive: {}", output);
+              LOG.info("Output receive: {}", output);
               eventHandler.onNext(output.get().get());
             }
           }
