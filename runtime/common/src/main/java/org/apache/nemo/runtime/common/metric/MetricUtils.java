@@ -28,6 +28,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Driver;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -135,6 +139,25 @@ public final class MetricUtils {
       }
     } catch (IOException e) {
       throw new MetricException(e);
+    }
+  }
+
+  /**
+   * De-register Beam JDBC driver, which produces inconsistent results.
+   */
+  public static void deregisterBeamDriver() {
+    final String beamDriver = "org.apache.beam.sdk.extensions.sql.impl.JdbcDriver";
+    final Enumeration<Driver> drivers = DriverManager.getDrivers();
+    while (drivers.hasMoreElements()) {
+      final Driver d = drivers.nextElement();
+      if (d.getClass().getName().equals(beamDriver)) {
+        try {
+          DriverManager.deregisterDriver(d);
+        } catch (SQLException e) {
+          throw new MetricException(e);
+        }
+        break;
+      }
     }
   }
 }

@@ -245,7 +245,7 @@ public final class MetricStore {
     final String passwd = "fake_password";
     final String[] syntax = {"SERIAL PRIMARY KEY"};
 
-    deregisterBeamDriver();
+    MetricUtils.deregisterBeamDriver();
     try (final Connection c = DriverManager.getConnection(optimizationDBName, id, passwd)) {
       LOG.info("Opened database successfully at {}", optimizationDBName);
       saveOptimizationMetrics(c, syntax);
@@ -253,25 +253,6 @@ public final class MetricStore {
       LOG.error("Error while saving optimization metrics to PostgreSQL: {}", e);
       LOG.info("Saving metrics on the local SQLite DB");
       saveOptimizationMetricsToSQLite();
-    }
-  }
-
-  /**
-   * De-register Beam JDBC driver, which produces inconsistent results.
-   */
-  private void deregisterBeamDriver() {
-    final String beamDriver = "org.apache.beam.sdk.extensions.sql.impl.JdbcDriver";
-    final Enumeration<Driver> drivers = DriverManager.getDrivers();
-    while (drivers.hasMoreElements()) {
-      final Driver d = drivers.nextElement();
-      if (d.getClass().getName().equals(beamDriver)) {
-        try {
-          DriverManager.deregisterDriver(d);
-        } catch (SQLException e) {
-          LOG.error("Could not deregister Beam driver: {}", e);
-        }
-        break;
-      }
     }
   }
 
