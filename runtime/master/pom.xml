@@ -82,6 +82,11 @@ under the License.
             <version>${sqlite-jdbc.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
+        </dependency>
+        <dependency>
             <!--
             This is needed to view the logs when running unit tests.
             See https://dzone.com/articles/how-configure-slf4j-different for details.

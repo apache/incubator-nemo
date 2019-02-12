@@ -224,52 +224,74 @@ public final class MetricStore {
    * Save the job metrics for the optimization to the DB, in the form of LibSVM.
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
    */
-  public void saveOptimizationMetricsToDB() {
+  public void saveOptimizationMetricsToSQLite() {
     final String optimizationDBName = "jdbc:sqlite:" + MetricUtils.fetchProjectRootPath() + "/optimization_db.sqlite3";
+    final String autoincrement = "INTEGER PRIMARY KEY AUTOINCREMENT";
 
     try (final Connection c = DriverManager.getConnection(optimizationDBName)) {
       LOG.info("Opened database successfully at {}", optimizationDBName);
-      try (final Statement statement = c.createStatement()) {
-        statement.setQueryTimeout(30);  // set timeout to 30 sec.
-
-        getMetricMap(JobMetric.class).values().forEach(o -> {
-          final JobMetric jobMetric = (JobMetric) o;
-          final String tableName = jobMetric.getIrDagSummary();
-
-          final long startTime = jobMetric.getStateTransitionEvents().stream()
-            .filter(ste -> ste.getPrevState().equals(PlanState.State.READY)
-              && ste.getNewState().equals(PlanState.State.EXECUTING))
-            .findFirst().orElseThrow(() -> new MetricException("job has never started"))
-            .getTimestamp();
-          final long endTime = jobMetric.getStateTransitionEvents().stream()
-            .filter(ste -> ste.getNewState().equals(PlanState.State.COMPLETE))
-            .findFirst().orElseThrow(() -> new MetricException("job has never completed"))
-            .getTimestamp();
-          final long duration = endTime - startTime;  // ms
-          final String vertexProperties = jobMetric.getVertexProperties();
-          final String edgeProperties = jobMetric.getEdgeProperties();
-
-          try {
-            String sql = "CREATE TABLE IF NOT EXISTS " + tableName
-              + " (id INTEGER PRIMARY KEY AUTOINCREMENT, duration INTEGER NOT NULL, "
-              + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL);";
-            LOG.info("EXECUTING SQL: {}", sql);
-            statement.executeUpdate(sql);
-
-            sql = "INSERT INTO " + tableName + " (duration, vertex_properties, edge_properties) "
-              + "VALUES (" + duration + ", '" + vertexProperties + "', '" + edgeProperties + "');";
-            LOG.info("EXECUTING SQL: {}", sql);
-            statement.executeUpdate(sql);
-          } catch (SQLException e) {
-            throw new MetricException(e);
-          }
-        });
-      }
+      saveOptimizationMetrics(c, autoincrement);
     } catch (SQLException e) {
       throw new MetricException(e);
     }
   }
 
+  public void saveOptimizationMetricsToPostgreSQL() {
+    final String optimizationDBName = "jdbc:postgresql://nemo-optimization."
+      + "cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization";
+    final String id = "postgres";
+    final String passwd = "fake_password";
+    final String autoincrement = "SERIAL PRIMARY KEY";
+
+    try (final Connection c = DriverManager.getConnection(optimizationDBName, id, passwd)) {
+      LOG.info("Opened database successfully at {}", optimizationDBName);
+      saveOptimizationMetrics(c, autoincrement);
+    } catch (SQLException e) {
+      throw new MetricException(e);
+    }
+  }
+
+  private void saveOptimizationMetrics(final Connection c, final String autoincrement) {
+    try (final Statement statement = c.createStatement()) {
+      statement.setQueryTimeout(30);  // set timeout to 30 sec.
+
+      getMetricMap(JobMetric.class).values().forEach(o -> {
+        final JobMetric jobMetric = (JobMetric) o;
+        final String tableName = jobMetric.getIrDagSummary();
+
+        final long startTime = jobMetric.getStateTransitionEvents().stream()
+          .filter(ste -> ste.getPrevState().equals(PlanState.State.READY)
+            && ste.getNewState().equals(PlanState.State.EXECUTING))
+          .findFirst().orElseThrow(() -> new MetricException("job has never started"))
+          .getTimestamp();
+        final long endTime = jobMetric.getStateTransitionEvents().stream()
+          .filter(ste -> ste.getNewState().equals(PlanState.State.COMPLETE))
+          .findFirst().orElseThrow(() -> new MetricException("job has never completed"))
+          .getTimestamp();
+        final long duration = endTime - startTime;  // ms
+        final String vertexProperties = jobMetric.getVertexProperties();
+        final String edgeProperties = jobMetric.getEdgeProperties();
+        final Integer inputSize = jobMetric.getInputSize();
+
+        try {
+          String sql = "CREATE TABLE IF NOT EXISTS " + tableName
+            + " (id " + autoincrement + ", duration INTEGER NOT NULL, inputsize INTEGER NOT NULL, "
+            + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL);";
+          LOG.info("EXECUTING SQL: {}", sql);
+          statement.executeUpdate(sql);
+
+          sql = "INSERT INTO " + tableName + " (duration, inputsize, vertex_properties, edge_properties) "
+            + "VALUES (" + duration + ", " + inputSize + ", '" + vertexProperties + "', '" + edgeProperties + "');";
+          LOG.info("EXECUTING SQL: {}", sql);
+          statement.executeUpdate(sql);
+        } catch (SQLException e) {
+          throw new MetricException(e);
+        }
+      });
+    } catch (SQLException e) {
+      throw new MetricException(e);
+    }
+  }
 
   /**
    * Send changed metric data to {@link MetricBroadcaster}, which will broadcast it to

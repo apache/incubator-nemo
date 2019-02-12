@@ -188,7 +188,7 @@ public final class RuntimeMaster {
     // send metric flush request to all executors
     metricManagerMaster.sendMetricFlushRequest();
 
-    metricStore.saveOptimizationMetricsToDB();
+    metricStore.saveOptimizationMetricsToPostgreSQL();
     metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
       "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
   }

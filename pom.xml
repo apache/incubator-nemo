@@ -62,6 +62,7 @@ under the License.
         <jetty-servlet.version>9.4.10.v20180503</jetty-servlet.version>
         <commons-math.version>3.6.1</commons-math.version>
         <sqlite-jdbc.version>3.25.2</sqlite-jdbc.version>
+        <postgresql.version>42.2.5</postgresql.version>
         <slf4j.version>1.7.20</slf4j.version>
         <!-- Tests -->
         <mockito.version>2.13.0</mockito.version>
