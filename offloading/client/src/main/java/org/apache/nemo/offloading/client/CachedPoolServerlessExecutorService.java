@@ -71,7 +71,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     this.runningWorkers = new LinkedList<>();
     this.workerInitBuffer = Unpooled.directBuffer();
     this.offloadingSerializer = offloadingSerializer;
-    this.scheduler = Executors.newSingleThreadScheduledExecutor();
+    this.scheduler = Executors.newScheduledThreadPool(2);
     this.eventHandler = eventHandler;
     //this.statePartitioner = statePartitioner;
     //this.stateIndexAndWorkerMap = new HashMap<>();
@@ -198,24 +198,27 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     initializingWorkers.add(worker);
   }
 
+  private void executeBufferedData() {
+    while (!readyWorkers.isEmpty() && !dataBufferList.isEmpty()) {
+      final OffloadingWorker readyWorker = readyWorkers.poll().right();
+      final ByteBuf buf = dataBufferList.remove(0);
+      LOG.info("Execute data for worker {}, isReadY: {}", readyWorker, readyWorker.isReady());
+      outputQueue.add(readyWorker.execute(buf));
+      synchronized (runningWorkers) {
+        // possible concurreny issue
+        // (readyWorker may become "ready" before it is added to the runningWorkers )
+        runningWorkers.add(readyWorker);
+      }
+    }
+  }
+
   @Override
   public void execute(I data) {
     if (readyWorkers.isEmpty()) {
       createNewWorker(data);
     } else {
+      executeBufferedData();
       // select a worker
-      while (!readyWorkers.isEmpty() && !dataBufferList.isEmpty()) {
-        final OffloadingWorker readyWorker = readyWorkers.poll().right();
-        final ByteBuf buf = dataBufferList.remove(0);
-        LOG.info("Execute data for worker {}, isReadY: {}", readyWorker, readyWorker.isReady());
-        outputQueue.add(readyWorker.execute(buf));
-        synchronized (runningWorkers) {
-          // possible concurreny issue
-          // (readyWorker may become "ready" before it is added to the runningWorkers )
-          runningWorkers.add(readyWorker);
-        }
-      }
-
       if (!readyWorkers.isEmpty()) {
         // process current input data
         final OffloadingWorker worker = readyWorkers.poll().right();
@@ -232,16 +235,33 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   public void shutdown() {
     // shutdown all workers
     while (!runningWorkers.isEmpty() || !initializingWorkers.isEmpty() || !readyWorkers.isEmpty()) {
-      while (!readyWorkers.isEmpty()) {
+      // handle buffered data
+      while (!readyWorkers.isEmpty() && !dataBufferList.isEmpty()) {
+        final OffloadingWorker readyWorker = readyWorkers.poll().right();
+        final ByteBuf buf = dataBufferList.remove(0);
+        LOG.info("BB Execute data for worker {}, isReadY: {}", readyWorker, readyWorker.isReady());
+        outputQueue.add(readyWorker.execute(buf));
+        synchronized (runningWorkers) {
+          // possible concurreny issue
+          // (readyWorker may become "ready" before it is added to the runningWorkers )
+          runningWorkers.add(readyWorker);
+        }
+      }
+
+      // finish ready workers if there are no buffered data
+      while (!readyWorkers.isEmpty() && dataBufferList.isEmpty()) {
         final OffloadingWorker worker = readyWorkers.poll().right();
         worker.finishOffloading();
       }
+
       try {
         Thread.sleep(100);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
+
+    finished = true;
 
     outputEmitterThread.shutdown();
     scheduler.shutdown();
