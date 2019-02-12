@@ -87,7 +87,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           final Future<Optional<O>> output = outputQueue.poll();
           if (output != null) {
             if (output.isDone() && output.get().isPresent()) {
-              LOG.info("Output receive: {}", output);
+              //LOG.info("Output receive: {}", output);
               eventHandler.onNext(output.get().get());
             }
           }
@@ -222,7 +222,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   private void createNewWorker(final I data) {
     // create new worker
-    LOG.info("Create worker");
+    //LOG.info("Create worker");
     workerInitBuffer.retain();
     final OffloadingWorker<I, O> worker =
       workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
@@ -237,7 +237,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     while (!readyWorkers.isEmpty() && !dataBufferList.isEmpty()) {
       final OffloadingWorker readyWorker = readyWorkers.poll().right();
       final ByteBuf buf = dataBufferList.remove(0);
-      LOG.info("Execute data for worker {}, isReadY: {}", readyWorker, readyWorker.isReady());
+      //LOG.info("Execute data for worker {}, isReadY: {}", readyWorker, readyWorker.isReady());
       outputQueue.add(readyWorker.execute(buf));
       synchronized (runningWorkers) {
         // possible concurreny issue
@@ -275,7 +275,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       while (!readyWorkers.isEmpty() && !dataBufferList.isEmpty()) {
         final OffloadingWorker readyWorker = readyWorkers.poll().right();
         final ByteBuf buf = dataBufferList.remove(0);
-        LOG.info("BB Execute data for worker {}, isReadY: {}", readyWorker, readyWorker.isReady());
         outputQueue.add(readyWorker.execute(buf));
         synchronized (runningWorkers) {
           // possible concurreny issue
