@@ -32,10 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.lang.management.ManagementFactory;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.*;
 
 /**
@@ -225,8 +222,7 @@ public final class MetricStore {
    * Save the job metrics for the optimization to the DB, in the form of LibSVM, to SQLite.
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
    */
-  public void saveOptimizationMetricsToSQLite() throws ClassNotFoundException {
-    Class.forName("org.sqlite.JDBC");
+  public void saveOptimizationMetricsToSQLite() {
     final String optimizationDBName = "jdbc:sqlite:" + MetricUtils.fetchProjectRootPath() + "/optimization_db.sqlite3";
     final String[] syntax = {"INTEGER PRIMARY KEY AUTOINCREMENT"};
 
@@ -242,14 +238,14 @@ public final class MetricStore {
    * Save the job metrics for the optimization to the DB, in the form of LibSVM, to PostgreSQL.
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
    */
-  public void saveOptimizationMetricsToPostgreSQL() throws ClassNotFoundException {
-    Class.forName("org.postgresql.Driver");
+  public void saveOptimizationMetricsToPostgreSQL() {
     final String optimizationDBName = "jdbc:postgresql://nemo-optimization."
       + "cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization";
     final String id = "postgres";
     final String passwd = "fake_password";
     final String[] syntax = {"SERIAL PRIMARY KEY"};
 
+    deregisterBeamDriver();
     try (final Connection c = DriverManager.getConnection(optimizationDBName, id, passwd)) {
       LOG.info("Opened database successfully at {}", optimizationDBName);
       saveOptimizationMetrics(c, syntax);
@@ -257,6 +253,25 @@ public final class MetricStore {
       LOG.error("Error while saving optimization metrics to PostgreSQL: {}", e);
       LOG.info("Saving metrics on the local SQLite DB");
       saveOptimizationMetricsToSQLite();
+    }
+  }
+
+  /**
+   * De-register Beam JDBC driver, which produces inconsistent results.
+   */
+  private void deregisterBeamDriver() {
+    final String beamDriver = "org.apache.beam.sdk.extensions.sql.impl.JdbcDriver";
+    final Enumeration<Driver> drivers = DriverManager.getDrivers();
+    while(drivers.hasMoreElements()) {
+      final Driver d = drivers.nextElement();
+      if (d.getClass().getName().equals(beamDriver)) {
+        try {
+          DriverManager.deregisterDriver(d);
+        } catch (SQLException e) {
+          LOG.error("Could not deregister Beam driver: {}", e);
+        }
+        break;
+      }
     }
   }
 

@@ -190,11 +190,7 @@ public final class RuntimeMaster {
 
     metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
       "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
-    try {
-      metricStore.saveOptimizationMetricsToPostgreSQL();
-    } catch (ClassNotFoundException e) {
-      LOG.error("ClassNotFound: {}", e);
-    }
+    metricStore.saveOptimizationMetricsToPostgreSQL();
   }
 
   /**
