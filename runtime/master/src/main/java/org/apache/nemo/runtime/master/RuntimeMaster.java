@@ -188,9 +188,13 @@ public final class RuntimeMaster {
     // send metric flush request to all executors
     metricManagerMaster.sendMetricFlushRequest();
 
-    metricStore.saveOptimizationMetricsToPostgreSQL();
     metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
       "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
+    try {
+      metricStore.saveOptimizationMetricsToPostgreSQL();
+    } catch (ClassNotFoundException e) {
+      LOG.error("ClassNotFound: {}", e);
+    }
   }
 
   /**

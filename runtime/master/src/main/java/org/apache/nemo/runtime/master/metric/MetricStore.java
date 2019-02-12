@@ -225,7 +225,8 @@ public final class MetricStore {
    * Save the job metrics for the optimization to the DB, in the form of LibSVM, to SQLite.
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
    */
-  public void saveOptimizationMetricsToSQLite() {
+  public void saveOptimizationMetricsToSQLite() throws ClassNotFoundException {
+    Class.forName("org.sqlite.JDBC");
     final String optimizationDBName = "jdbc:sqlite:" + MetricUtils.fetchProjectRootPath() + "/optimization_db.sqlite3";
     final String[] syntax = {"INTEGER PRIMARY KEY AUTOINCREMENT"};
 
@@ -241,7 +242,8 @@ public final class MetricStore {
    * Save the job metrics for the optimization to the DB, in the form of LibSVM, to PostgreSQL.
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
    */
-  public void saveOptimizationMetricsToPostgreSQL() {
+  public void saveOptimizationMetricsToPostgreSQL() throws ClassNotFoundException {
+    Class.forName("org.postgresql.Driver");
     final String optimizationDBName = "jdbc:postgresql://nemo-optimization."
       + "cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization";
     final String id = "postgres";
