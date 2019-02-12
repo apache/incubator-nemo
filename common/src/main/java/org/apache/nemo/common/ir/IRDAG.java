@@ -43,7 +43,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -64,8 +63,6 @@ import java.util.stream.Collectors;
 public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   private static final Logger LOG = LoggerFactory.getLogger(IRDAG.class.getName());
 
-  private final AtomicInteger metricCollectionId;
-
   private DAG<IRVertex, IREdge> dagSnapshot; // the DAG that was saved most recently.
   private DAG<IRVertex, IREdge> modifiedDAG; // the DAG that is being updated.
 
@@ -75,7 +72,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   public IRDAG(final DAG<IRVertex, IREdge> originalUserApplicationDAG) {
     this.modifiedDAG = originalUserApplicationDAG;
     this.dagSnapshot = originalUserApplicationDAG;
-    this.metricCollectionId = new AtomicInteger(0);
   }
 
   //////////////////////////////////////////////////
@@ -179,16 +175,13 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     }
     final IRVertex dst = edgesToGetStatisticsOf.iterator().next().getDst();
 
-    // Current metric collection id.
-    final int currentMetricCollectionId = metricCollectionId.incrementAndGet();
-
     // All of the existing vertices and edges remain intact
     modifiedDAG.topologicalDo(v -> {
       builder.addVertex(v);
       modifiedDAG.getIncomingEdgesOf(v).forEach(inEdge -> {
         builder.connectVertices(inEdge);
         if (edgesToGetStatisticsOf.contains(inEdge)) {
-          inEdge.setPropertyPermanently(MessageIdProperty.of(currentMetricCollectionId));
+          inEdge.setPropertyPermanently(MessageIdProperty.of(messageAggregatorVertex.getMessageId()));
         }
       });
     });
@@ -196,8 +189,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     // From mav to dst
     // Add a control dependency (no output) from the messageAggregatorVertex to the destination.
     builder.addVertex(messageAggregatorVertex);
-    final IREdge noDataEdge = new IREdge(CommunicationPatternProperty.Value.BroadCast, messageAggregatorVertex, dst);
-    builder.connectVertices(noDataEdge);
+    builder.connectVertices(Util.createControlEdge(messageAggregatorVertex, dst));
 
     // Build the edges: src - mbv - mav
     for (final IREdge edge : edgesToGetStatisticsOf) {
@@ -209,8 +201,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       builder.connectVertices(clone);
 
       // From mbv to mav
-      final IREdge edgeToABV = edgeBetweenMessageVertices(mbv,
-        messageAggregatorVertex, mbvOutputEncoder, mbvOutputDecoder, currentMetricCollectionId);
+      final IREdge edgeToABV = edgeBetweenMessageVertices(
+        mbv, messageAggregatorVertex, mbvOutputEncoder, mbvOutputDecoder);
       builder.connectVertices(edgeToABV);
     }
 
@@ -293,7 +285,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     for (final IRVertex executeAfter : executeAfterSamplingVertices) {
       for (final IRVertex sink : sinks) {
         // Control edge that enforces execution ordering
-        builder.connectVertices(new IREdge(CommunicationPatternProperty.Value.BroadCast, sink, executeAfter));
+        builder.connectVertices(Util.createControlEdge(sink, executeAfter));
       }
     }
 
@@ -316,19 +308,16 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * @param mav dst.
    * @param encoder src-dst encoder.
    * @param decoder src-dst decoder.
-   * @param currentMetricCollectionId of the edge.
    * @return the edge.
    */
   private IREdge edgeBetweenMessageVertices(final MessageBarrierVertex mbv,
                                             final MessageAggregatorVertex mav,
                                             final EncoderProperty encoder,
-                                            final DecoderProperty decoder,
-                                            final int currentMetricCollectionId) {
+                                            final DecoderProperty decoder) {
     final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mbv, mav);
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
-    newEdge.setPropertyPermanently(MessageIdProperty.of(currentMetricCollectionId));
     final KeyExtractor pairKeyExtractor = (element) -> {
       if (element instanceof Pair) {
         return ((Pair) element).left();

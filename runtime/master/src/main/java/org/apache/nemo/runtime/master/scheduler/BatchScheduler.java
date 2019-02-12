@@ -25,6 +25,7 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.common.state.BlockState;
@@ -484,13 +485,16 @@ public final class BatchScheduler implements Scheduler {
 
     // Stage put on hold, i.e. stage with vertex containing MessageAggregatorTransform
     // should have a parent stage whose outgoing edges contain the target edge of dynamic optimization.
-    final List<StageEdge> edgesToStagePutOnHold = stageDag.getIncomingEdgesOf(stagePutOnHold);
-    if (edgesToStagePutOnHold.isEmpty()) {
-      throw new RuntimeException("No edges toward specified put on hold stage");
+    final List<Integer> messageIds = stagePutOnHold.getIRDAG()
+      .getVertices()
+      .stream()
+      .filter(v -> v instanceof MessageAggregatorVertex)
+      .map(mav -> ((MessageAggregatorVertex) mav).getMessageId())
+      .collect(Collectors.toList());
+    if (messageIds.size() != 1) {
+      throw new IllegalStateException("Must be exactly one message id: " + messageIds.toString());
     }
-    final int messageId = edgesToStagePutOnHold.get(0).getPropertyValue(MessageIdProperty.class)
-      .orElseThrow(() -> new RuntimeException("No message id for this put on hold stage"));
-
+    final int messageId = messageIds.get(0);
     final Set<StageEdge> targetEdges = new HashSet<>();
 
     // Get edges with identical MessageIdProperty (except the put on hold stage)
@@ -499,8 +503,7 @@ public final class BatchScheduler implements Scheduler {
         .filter(candidateEdge -> {
           final Optional<Integer> candidateMCId =
             candidateEdge.getPropertyValue(MessageIdProperty.class);
-          return candidateMCId.isPresent() && candidateMCId.get().equals(messageId)
-            && !edgesToStagePutOnHold.contains(candidateEdge);
+          return candidateMCId.isPresent() && candidateMCId.get().equals(messageId);
         })
         .collect(Collectors.toSet());
       targetEdges.addAll(targetEdgesFound);

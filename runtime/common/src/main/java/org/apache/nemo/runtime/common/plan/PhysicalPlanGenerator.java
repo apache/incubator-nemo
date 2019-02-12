@@ -84,7 +84,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
     handleDuplicateEdgeGroupProperty(dagOfStages);
 
     // Split StageGroup by Pull StageEdges
-    splitScheduleGroupByPullStageEdges(dagOfStages);
+    // splitScheduleGroupByPullStageEdges(dagOfStages);
 
     // for debugging purposes.
     dagOfStages.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
@@ -194,8 +194,6 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
         // Add vertex to the stage.
         stageInternalDAGBuilder.addVertex(vertexToPutIntoStage);
       }
-
-      LOG.info("Stage vertices: {}", IRDAG.stringifyIRVertexIds(stageVertices));
 
       for (final IRVertex dstVertex : stageVertices) {
         // Connect all the incoming edges for the vertex.

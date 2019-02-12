@@ -31,6 +31,8 @@ import java.util.function.IntPredicate;
  * Class to hold the utility methods.
  */
 public final class Util {
+  // Assume that this tag is never used in user application
+  private static final String CONTROL_EDGE_TAG = "CONTROL_EDGE";
 
   /**
    * Private constructor for utility class.
@@ -59,9 +61,6 @@ public final class Util {
   }
 
   /**
-   * Creates a new edge with several execution properties same as the given edge.
-   * The copied execution properties include those minimally required for execution, such as commPattern and encoding.
-   *
    * @param edgeToClone to copy execution properties from.
    * @param newSrc of the new edge.
    * @param newDst of the new edge.
@@ -75,6 +74,9 @@ public final class Util {
   }
 
   /**
+   * Creates a new edge with several execution properties same as the given edge.
+   * The copied execution properties include those minimally required for execution, such as encoder/decoders.
+   *
    * @param commPattern to use.
    * @param edgeToClone to copy execution properties from.
    * @param newSrc of the new edge.
@@ -99,6 +101,9 @@ public final class Util {
    * @param dst vertex.
    * @return the control edge.
    */
-  public static IREdge getControlEdge(final IRVertex src, final IRVertex dst) {
+  public static IREdge createControlEdge(final IRVertex src, final IRVertex dst) {
+    final IREdge controlEdge = new IREdge(CommunicationPatternProperty.Value.BroadCast, src, dst);
+    controlEdge.setPropertyPermanently(AdditionalOutputTagProperty.of(CONTROL_EDGE_TAG));
+    return controlEdge;
   }
 }

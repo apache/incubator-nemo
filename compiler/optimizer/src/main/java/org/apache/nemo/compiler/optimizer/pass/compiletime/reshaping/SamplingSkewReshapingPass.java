@@ -77,9 +77,6 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
               .map(Edge::getSrc)
               .anyMatch(partitionAll::contains)
           ).collect(Collectors.toSet());
-          LOG.info("Sources: {} in {}",
-            partitionSources.stream().map(IRVertex::getId).collect(Collectors.toSet()).toString(),
-            partitionAll.stream().map(IRVertex::getId).collect(Collectors.toSet()).toString());
 
           // Insert sampling vertices.
           final Set<SamplingVertex> samplingVertices = partitionAll
