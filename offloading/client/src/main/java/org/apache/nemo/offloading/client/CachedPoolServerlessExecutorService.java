@@ -104,8 +104,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       while (!outputQueue.isEmpty()) {
         try {
           final Optional<O> output = outputQueue.take().get();
-          LOG.info("Output receive: {}", output);
           if (output.isPresent()) {
+            LOG.info("Output receive: {}", output);
             eventHandler.onNext(output.get());
           }
         } catch (InterruptedException e) {

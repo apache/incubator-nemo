@@ -114,6 +114,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       eventHandler = new EventHandler<WindowedValue<OutputT>>() {
         @Override
         public void onNext(WindowedValue<OutputT> msg) {
+          LOG.info("Result {}", msg);
           getOutputCollector().emit(msg);
         }
       };
