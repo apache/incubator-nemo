@@ -82,9 +82,29 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     this.outputEmitterThread = Executors.newSingleThreadExecutor();
     outputEmitterThread.execute(() -> {
 
-      while (!Thread.currentThread().isInterrupted() && !finished) {
+      while (!finished) {
+        try {
+          final Future<Optional<O>> output = outputQueue.poll();
+          if (output != null) {
+            if (output.isDone() && output.get().isPresent()) {
+              LOG.info("Output receive: {}", output);
+              eventHandler.onNext(output.get().get());
+            }
+          }
+
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }
+
+      while (!outputQueue.isEmpty()) {
         try {
           final Optional<O> output = outputQueue.take().get();
+          LOG.info("Output receive: {}", output);
           if (output.isPresent()) {
             eventHandler.onNext(output.get());
           }
