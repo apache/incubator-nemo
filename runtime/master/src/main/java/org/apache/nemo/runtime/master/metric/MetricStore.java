@@ -227,13 +227,13 @@ public final class MetricStore {
    */
   public void saveOptimizationMetricsToSQLite() {
     final String optimizationDBName = "jdbc:sqlite:" + MetricUtils.fetchProjectRootPath() + "/optimization_db.sqlite3";
-    final String autoincrement = "INTEGER PRIMARY KEY AUTOINCREMENT";
+    final String[] syntax = {"INTEGER PRIMARY KEY AUTOINCREMENT"};
 
     try (final Connection c = DriverManager.getConnection(optimizationDBName)) {
       LOG.info("Opened database successfully at {}", optimizationDBName);
-      saveOptimizationMetrics(c, autoincrement);
+      saveOptimizationMetrics(c, syntax);
     } catch (SQLException e) {
-      throw new MetricException(e);
+      LOG.error("Error while saving optimization metrics to SQLite: {}", e);
     }
   }
 
@@ -246,22 +246,24 @@ public final class MetricStore {
       + "cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization";
     final String id = "postgres";
     final String passwd = "fake_password";
-    final String autoincrement = "SERIAL PRIMARY KEY";
+    final String[] syntax = {"SERIAL PRIMARY KEY"};
 
     try (final Connection c = DriverManager.getConnection(optimizationDBName, id, passwd)) {
       LOG.info("Opened database successfully at {}", optimizationDBName);
-      saveOptimizationMetrics(c, autoincrement);
+      saveOptimizationMetrics(c, syntax);
     } catch (SQLException e) {
-      throw new MetricException(e);
+      LOG.error("Error while saving optimization metrics to PostgreSQL: {}", e);
+      LOG.info("Saving metrics on the local SQLite DB");
+      saveOptimizationMetricsToSQLite();
     }
   }
 
   /**
    * Save the job metrics for the optimization to the DB, in the form of LibSVM.
    * @param c the connection to the DB.
-   * @param autoincrement the autoincrement syntax for the db.
+   * @param syntax the db-specific syntax.
    */
-  private void saveOptimizationMetrics(final Connection c, final String autoincrement) {
+  private void saveOptimizationMetrics(final Connection c, final String[] syntax) {
     try (final Statement statement = c.createStatement()) {
       statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
@@ -288,9 +290,10 @@ public final class MetricStore {
 
         try {
           String sql = "CREATE TABLE IF NOT EXISTS " + tableName
-            + " (id " + autoincrement + ", duration INTEGER NOT NULL, inputsize INTEGER NOT NULL, "
+            + " (id " + syntax[0] + ", duration INTEGER NOT NULL, inputsize INTEGER NOT NULL, "
             + "jvmmemsize BIGINT NOT NULL, memsize BIGINT NOT NULL, "
-            + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL);";
+            + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL, "
+            + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
           LOG.info("EXECUTING SQL: {}", sql);
           statement.executeUpdate(sql);
 
@@ -302,11 +305,11 @@ public final class MetricStore {
           LOG.info("EXECUTING SQL: {}", sql);
           statement.executeUpdate(sql);
         } catch (SQLException e) {
-          throw new MetricException(e);
+          LOG.error("Error while saving optimization metrics: {}", e);
         }
       });
     } catch (SQLException e) {
-      throw new MetricException(e);
+      LOG.error("Error while saving optimization metrics: {}", e);
     }
   }
 
