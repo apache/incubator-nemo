@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.lang.management.ManagementFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -221,7 +222,7 @@ public final class MetricStore {
   }
 
   /**
-   * Save the job metrics for the optimization to the DB, in the form of LibSVM.
+   * Save the job metrics for the optimization to the DB, in the form of LibSVM, to SQLite.
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
    */
   public void saveOptimizationMetricsToSQLite() {
@@ -236,6 +237,10 @@ public final class MetricStore {
     }
   }
 
+  /**
+   * Save the job metrics for the optimization to the DB, in the form of LibSVM, to PostgreSQL.
+   * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
+   */
   public void saveOptimizationMetricsToPostgreSQL() {
     final String optimizationDBName = "jdbc:postgresql://nemo-optimization."
       + "cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization";
@@ -251,13 +256,19 @@ public final class MetricStore {
     }
   }
 
+  /**
+   * Save the job metrics for the optimization to the DB, in the form of LibSVM.
+   * @param c the connection to the DB.
+   * @param autoincrement the autoincrement syntax for the db.
+   */
   private void saveOptimizationMetrics(final Connection c, final String autoincrement) {
     try (final Statement statement = c.createStatement()) {
       statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
       getMetricMap(JobMetric.class).values().forEach(o -> {
         final JobMetric jobMetric = (JobMetric) o;
-        final String tableName = jobMetric.getIrDagSummary();
+        final String tableName = jobMetric.getIrDagSummary()
+          + "_MEM" + ;
 
         final long startTime = jobMetric.getStateTransitionEvents().stream()
           .filter(ste -> ste.getPrevState().equals(PlanState.State.READY)
@@ -272,16 +283,22 @@ public final class MetricStore {
         final String vertexProperties = jobMetric.getVertexProperties();
         final String edgeProperties = jobMetric.getEdgeProperties();
         final Integer inputSize = jobMetric.getInputSize();
+        final long jvmMemSize = Runtime.getRuntime().maxMemory();
+        final long memSize = ((com.sun.management.OperatingSystemMXBean) ManagementFactory
+          .getOperatingSystemMXBean()).getTotalPhysicalMemorySize();
 
         try {
           String sql = "CREATE TABLE IF NOT EXISTS " + tableName
             + " (id " + autoincrement + ", duration INTEGER NOT NULL, inputsize INTEGER NOT NULL, "
+            + "jvmmemsize INTEGER NOT NULL, memsize INTEGER NOT NULL, "
             + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL);";
           LOG.info("EXECUTING SQL: {}", sql);
           statement.executeUpdate(sql);
 
-          sql = "INSERT INTO " + tableName + " (duration, inputsize, vertex_properties, edge_properties) "
-            + "VALUES (" + duration + ", " + inputSize + ", '" + vertexProperties + "', '" + edgeProperties + "');";
+          sql = "INSERT INTO " + tableName + " (duration, inputsize, jvmmemsize, memsize, vertex_properties, edge_properties) "
+            + "VALUES (" + duration + ", " + inputSize + ", "
+            + jvmMemSize + ", " + memSize + ", '"
+            + vertexProperties + "', '" + edgeProperties + "');";
           LOG.info("EXECUTING SQL: {}", sql);
           statement.executeUpdate(sql);
         } catch (SQLException e) {
