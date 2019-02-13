@@ -59,6 +59,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     final OffloadingTransform offloadingTransform,
     final OffloadingSerializer<I, O> offloadingSerializer,
     final EventHandler<O> eventHandler) {
+
+    LOG.info("Start cached pool serverless executor service");
+
     this.workerFactory = workerFactory;
     this.speculativeDataCounterMap = new HashMap<>();
     this.speculativeDataProcessedMap = new HashMap<>();
