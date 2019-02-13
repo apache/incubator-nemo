@@ -41,11 +41,11 @@ import java.util.stream.Collectors;
  * to process sampled data, and executes each cloned partition prior to executing the corresponding original partition.
  *
  * Suppose the IRDAG is partitioned into two sub-DAGs as follows:
- * P1 -> P2
+ * P1 - P2
  *
  * Then, this pass will produce something like:
- * P1' -> P1 -> P2
- *           -> P2' -> P2
+ * P1' - P1 - P2
+ *          - P2' - P2
  * where Px' consists of SamplingVertex objects that clone the execution of Px.
  *
  * For each Px' this pass also inserts a MessageBarrierVertex, to use its data statistics for dynamically optimizing

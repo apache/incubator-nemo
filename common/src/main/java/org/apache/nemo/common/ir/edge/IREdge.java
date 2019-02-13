@@ -35,7 +35,7 @@ import java.util.*;
 /**
  * Physical execution plan of intermediate data movement.
  */
-public class IREdge extends Edge<IRVertex> {
+public final class IREdge extends Edge<IRVertex> {
   private final ExecutionPropertyMap<EdgeExecutionProperty> executionProperties;
 
   /**

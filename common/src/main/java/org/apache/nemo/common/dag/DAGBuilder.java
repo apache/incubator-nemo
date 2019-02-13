@@ -19,7 +19,6 @@
 package org.apache.nemo.common.dag;
 
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
-import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;

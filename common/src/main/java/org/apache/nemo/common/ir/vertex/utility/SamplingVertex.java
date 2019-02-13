@@ -100,7 +100,7 @@ public final class SamplingVertex extends IRVertex {
   }
 
   @Override
-  public final JsonNode getPropertiesAsJsonNode() {
+  public JsonNode getPropertiesAsJsonNode() {
     return getCloneOfOriginalVertex().getPropertiesAsJsonNode();
   }
 }

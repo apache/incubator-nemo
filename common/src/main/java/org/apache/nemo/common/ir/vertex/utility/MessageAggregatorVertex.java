@@ -33,7 +33,7 @@ import java.util.function.BiFunction;
  * @param <V> of the input pair.
  * @param <O> of the output aggregated message.
  */
-public class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
+public final class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
   private static final Logger LOG = LoggerFactory.getLogger(MessageAggregatorVertex.class.getName());
 
   private static final AtomicInteger MESSAGE_ID_GENERATOR = new AtomicInteger(0);

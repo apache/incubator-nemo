@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.common;
 
-import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
