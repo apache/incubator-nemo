@@ -191,8 +191,13 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
     input.writeInt(dataId);
     pendingData.put(dataId, true);
 
-    // for future use
+    // for future use (speculative execution)
     input.retain();
+
+    if (currentProcessingInput != null) {
+      throw new RuntimeException("Current processing input should be null");
+    }
+
     currentProcessingInput = Pair.of(input.duplicate(), dataId);
 
     if (channel != null) {

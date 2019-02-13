@@ -33,17 +33,19 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   private final OffloadingSerializer<I, O> offloadingSerializer;
 
   private final ScheduledExecutorService scheduler;
-  private final ExecutorService outputEmitterThread;
 
   private final EventHandler<O> eventHandler;
 
   private final List<ByteBuf> dataBufferList;
 
-  private final PriorityQueue<Pair<Long, OffloadingWorker>> readyWorkers;
+  private final PriorityBlockingQueue<Pair<Long, OffloadingWorker>> readyWorkers;
 
-  private final BlockingQueue<Future<Optional<O>>> outputQueue;
+  private final BlockingQueue<Pair<Integer, Future<Optional<O>>>> outputQueue;
 
-  private volatile boolean finished = false;
+  // key: data id, val: # of speculative executions
+  private final Map<Integer, Integer> speculativeDataCounterMap;
+  // key: data id, val: true (if the data is already processed by a worker)
+  private final Map<Integer, Boolean> speculativeDataProcessedMap;
 
   //private final StatePartitioner<I, S> statePartitioner;
   //private final List<ByteBuf> states;
@@ -55,7 +57,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     final OffloadingSerializer<I, O> offloadingSerializer,
     final EventHandler<O> eventHandler) {
     this.workerFactory = workerFactory;
-    this.readyWorkers = new PriorityQueue<>(new Comparator<Pair<Long, OffloadingWorker>>() {
+    this.speculativeDataCounterMap = new HashMap<>();
+    this.speculativeDataProcessedMap = new HashMap<>();
+    this.readyWorkers = new PriorityBlockingQueue<>(100, new Comparator<Pair<Long, OffloadingWorker>>() {
       @Override
       public int compare(Pair<Long, OffloadingWorker> o1, Pair<Long, OffloadingWorker> o2) {
         if (o1.left() < o2.left()) {
@@ -71,53 +75,15 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     this.runningWorkers = new LinkedList<>();
     this.workerInitBuffer = Unpooled.directBuffer();
     this.offloadingSerializer = offloadingSerializer;
-    this.scheduler = Executors.newScheduledThreadPool(2);
+    this.scheduler = Executors.newScheduledThreadPool(1);
     this.eventHandler = eventHandler;
     //this.statePartitioner = statePartitioner;
     //this.stateIndexAndWorkerMap = new HashMap<>();
 
     this.dataBufferList = new ArrayList<>();
-
     this.outputQueue = new LinkedBlockingQueue<>();
-    this.outputEmitterThread = Executors.newSingleThreadExecutor();
-    outputEmitterThread.execute(() -> {
 
-      while (!finished) {
-        try {
-          final Future<Optional<O>> output = outputQueue.poll();
-          if (output != null) {
-            if (output.isDone() && output.get().isPresent()) {
-              LOG.info("Output receive: {}", output);
-              eventHandler.onNext(output.get().get());
-            }
-          }
-
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        } catch (ExecutionException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }
-
-      while (!outputQueue.isEmpty()) {
-        try {
-          final Optional<O> output = outputQueue.take().get();
-          if (output.isPresent()) {
-            LOG.info("Output receive: {}", output);
-            eventHandler.onNext(output.get());
-          }
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        } catch (ExecutionException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }
-    });
-
-    scheduler.scheduleAtFixedRate(() -> {
+    this.scheduler.scheduleAtFixedRate(() -> {
       try {
         LOG.info("Init workers: {}, Running workers: {}, Ready workers: {} ",
           initializingWorkers.size(), runningWorkers.size(), readyWorkers.size());
@@ -127,9 +93,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     }, 1, 1, TimeUnit.SECONDS);
 
     // schedule init/active worker
-    scheduler.scheduleAtFixedRate(() -> {
+    this.scheduler.scheduleAtFixedRate(() -> {
 
       try {
+
+        // initializing worker -> ready workers
         synchronized (initializingWorkers) {
           final Iterator<OffloadingWorker> iterator = initializingWorkers.iterator();
           while (iterator.hasNext()) {
@@ -141,7 +109,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           }
         }
 
-        // active workers
+        // running workers -> ready workers
         synchronized (runningWorkers) {
           final Iterator<OffloadingWorker> iterator = runningWorkers.iterator();
           while (iterator.hasNext()) {
@@ -152,10 +120,14 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             }
           }
         }
+
+        outputEmittion();
+        speculativeExecution();
+
       } catch (final Exception e) {
         throw new RuntimeException(e);
       }
-    }, 200, 200, TimeUnit.MILLISECONDS);
+    }, 100, 100, TimeUnit.MILLISECONDS);
 
     final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
     this.workerInitBuffer.writeInt(NemoEvent.Type.WORKER_INIT.ordinal());
@@ -203,6 +175,99 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     */
   }
 
+  private void speculativeExecution() {
+
+    // speculative execution when there are ready workers
+    if (!readyWorkers.isEmpty() && !runningWorkers.isEmpty()) {
+      synchronized (runningWorkers) {
+        final List<OffloadingWorker> readyToRunningWorkers = new ArrayList<>(runningWorkers.size());
+
+        for (final OffloadingWorker runningWorker : runningWorkers) {
+          final Pair<Long, OffloadingWorker> readyWorkerPair = readyWorkers.poll();
+          if (readyWorkerPair == null) {
+            // exit speculative execution if there are no ready workers
+            break;
+          } else {
+            final Pair<Integer, ByteBuf> data = runningWorker.getCurrentProcessingInput();
+            if (data != null) {
+
+              // TODO: consideration
+              // 여기서 ByteBuf가 release 될수도 있음 (기존의 running worker에서 execution을 끝냈을 경우)
+              final int cnt = speculativeDataCounterMap.getOrDefault(data.left(), 0);
+              speculativeDataCounterMap.put(data.left(), cnt + 1);
+
+              LOG.info("Speculative execution for data {}, cnt: {}", data.left(),
+                speculativeDataCounterMap.get(data.left()));
+
+              if (!speculativeDataProcessedMap.containsKey(data.left())) {
+                speculativeDataProcessedMap.put(data.left(), false);
+              }
+
+              final OffloadingWorker readyWorker = readyWorkerPair.right();
+              outputQueue.add(Pair.of(data.left(), readyWorker.execute(data.right(), data.left())));
+              readyToRunningWorkers.add(readyWorker);
+            }
+          }
+        }
+
+        if (!readyToRunningWorkers.isEmpty()) {
+          runningWorkers.addAll(readyToRunningWorkers);
+        }
+      }
+    }
+  }
+
+  private void outputEmittion() {
+    // emit output
+    final Iterator<Pair<Integer, Future<Optional<O>>>> iterator = outputQueue.iterator();
+    while (iterator.hasNext()) {
+      try {
+        final Pair<Integer, Future<Optional<O>>> output = iterator.next();
+        boolean isEmittable = true;
+        final int dataId = output.left();
+        final Future<Optional<O>> data = output.right();
+
+        if (speculativeDataCounterMap.containsKey(dataId)) {
+          // speculative execution result
+          if (!speculativeDataProcessedMap.get(dataId)) {
+            // if the output is the first output among speculative execution
+            // set true
+            speculativeDataProcessedMap.put(dataId, true);
+          } else {
+            // this result is already emitted
+            // TODO: reject execution
+            isEmittable = false;
+            iterator.remove();
+          }
+
+          final int count = speculativeDataCounterMap.get(dataId) - 1;
+
+          LOG.info("Speculative execution output emittion, data: {}, cnt: {}", dataId,
+            count);
+
+          if (count <= 0) {
+            speculativeDataCounterMap.remove(dataId);
+            speculativeDataProcessedMap.remove(dataId);
+          }
+        }
+
+        if (isEmittable) {
+          if (data.isDone() && data.get().isPresent()) {
+            iterator.remove();
+            LOG.info("Output receive: {}", data);
+            eventHandler.onNext(data.get().get());
+          }
+        }
+
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      } catch (ExecutionException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
   private ByteBuf encodeData(final I data, final ByteBuf byteBuf) {
     byteBuf.writeInt(NemoEvent.Type.DATA.ordinal());
 
@@ -220,6 +285,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     return dataBos.buffer();
   }
 
+  // init worker
   private void createNewWorker(final I data) {
     // create new worker
     //LOG.info("Create worker");
@@ -233,17 +299,25 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     }
   }
 
-  private void executeBufferedData() {
-    while (!readyWorkers.isEmpty() && !dataBufferList.isEmpty()) {
-      final OffloadingWorker readyWorker = readyWorkers.poll().right();
-      final ByteBuf buf = dataBufferList.remove(0);
+  // ready -> running
+  private void readyToRunning(final ByteBuf buf,
+                              final Pair<Long, OffloadingWorker> readyWorkerPair) {
+    if (readyWorkerPair != null) {
+      final OffloadingWorker readyWorker = readyWorkerPair.right();
+      final int dataId = workerFactory.getAndIncreaseDataId();
       //LOG.info("Execute data for worker {}, isReadY: {}", readyWorker, readyWorker.isReady());
-      outputQueue.add(readyWorker.execute(buf, workerFactory.getAndIncreaseDataId()));
+      outputQueue.add(Pair.of(dataId, readyWorker.execute(buf, dataId)));
       synchronized (runningWorkers) {
-        // possible concurreny issue
-        // (readyWorker may become "ready" before it is added to the runningWorkers )
         runningWorkers.add(readyWorker);
       }
+    }
+  }
+
+  private void executeBufferedData() {
+    while (!readyWorkers.isEmpty() && !dataBufferList.isEmpty()) {
+      final Pair<Long, OffloadingWorker> readyWorkerPair = readyWorkers.poll();
+      final ByteBuf buf = dataBufferList.remove(0);
+      readyToRunning(buf, readyWorkerPair);
     }
   }
 
@@ -256,10 +330,12 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       // select a worker
       if (!readyWorkers.isEmpty()) {
         // process current input data
-        final OffloadingWorker worker = readyWorkers.poll().right();
-        final ByteBuf encodedData =
-          encodeData(data, worker.getChannel().alloc().ioBuffer());
-        outputQueue.add(worker.execute(encodedData, workerFactory.getAndIncreaseDataId()));
+        final Pair<Long, OffloadingWorker> readyWorkerPair = readyWorkers.poll();
+        if (readyWorkerPair != null) {
+          final ByteBuf encodedData =
+            encodeData(data, readyWorkerPair.right().getChannel().alloc().ioBuffer());
+          readyToRunning(encodedData, readyWorkerPair);
+        }
       } else {
         createNewWorker(data);
       }
@@ -273,20 +349,17 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     while (!runningWorkers.isEmpty() || !initializingWorkers.isEmpty() || !readyWorkers.isEmpty()) {
       // handle buffered data
       while (!readyWorkers.isEmpty() && !dataBufferList.isEmpty()) {
-        final OffloadingWorker readyWorker = readyWorkers.poll().right();
+        final Pair<Long, OffloadingWorker> readyWorkerPair = readyWorkers.poll();
         final ByteBuf buf = dataBufferList.remove(0);
-        outputQueue.add(readyWorker.execute(buf, workerFactory.getAndIncreaseDataId()));
-        synchronized (runningWorkers) {
-          // possible concurreny issue
-          // (readyWorker may become "ready" before it is added to the runningWorkers )
-          runningWorkers.add(readyWorker);
-        }
+        readyToRunning(buf, readyWorkerPair);
       }
 
       // finish ready workers if there are no buffered data
       while (!readyWorkers.isEmpty() && dataBufferList.isEmpty()) {
-        final OffloadingWorker worker = readyWorkers.poll().right();
-        worker.finishOffloading();
+        final Pair<Long, OffloadingWorker> readyWorkerPair = readyWorkers.poll();
+        if (readyWorkerPair != null) {
+          readyWorkerPair.right().finishOffloading();
+        }
       }
 
       try {
@@ -296,9 +369,15 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       }
     }
 
-    finished = true;
+    // waiting for all outputs
+    if (!outputQueue.isEmpty()) {
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
 
-    outputEmitterThread.shutdown();
     scheduler.shutdown();
 
     // TODO: release worker init buffer
