@@ -140,7 +140,7 @@ public final class IREdge extends Edge<IRVertex> {
     return node;
   }
 
-  /////////// For edge clones (e.g., original encoders/decoders of StreamVertex edges)
+  /////////// For saving original EPs (e.g., save original encoders/decoders of StreamVertex edges)
 
   private final Map<Class, EdgeExecutionProperty> snapshot = new HashMap<>();
 

@@ -84,6 +84,10 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
     handleDuplicateEdgeGroupProperty(dagOfStages);
 
     // Split StageGroup by Pull StageEdges
+    //
+    // TODO #337: IRDAG Unit Tests
+    // Move this test to IRDAG unit tests.
+    //
     // splitScheduleGroupByPullStageEdges(dagOfStages);
 
     // for debugging purposes.

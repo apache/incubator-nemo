@@ -103,6 +103,7 @@ public final class PolicyImplTest {
     combinedPolicy.runCompileTimeOptimization(dag, DAG.EMPTY_DAG_DIRECTORY);
   }
 
+  /*
   @Test
   public void testDataSkewAndLargeShuffleCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
@@ -119,4 +120,5 @@ public final class PolicyImplTest {
     expectedException.expect(CompileTimeOptimizationException.class);
     combinedPolicy.runCompileTimeOptimization(dagForSkew, DAG.EMPTY_DAG_DIRECTORY);
   }
+  */
 }
