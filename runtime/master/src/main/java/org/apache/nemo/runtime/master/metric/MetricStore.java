@@ -219,15 +219,14 @@ public final class MetricStore {
   }
 
   /**
-   * Save the job metrics for the optimization to the DB, in the form of LibSVM, to SQLite.
+   * Save the job metrics for the optimization to the DB, in the form of LibSVM, to a local SQLite DB.
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
    */
-  public void saveOptimizationMetricsToSQLite() {
-    final String optimizationDBName = "jdbc:sqlite:" + MetricUtils.fetchProjectRootPath() + "/optimization_db.sqlite3";
+  private void saveOptimizationMetricsToLocal() {
     final String[] syntax = {"INTEGER PRIMARY KEY AUTOINCREMENT"};
 
-    try (final Connection c = DriverManager.getConnection(optimizationDBName)) {
-      LOG.info("Opened database successfully at {}", optimizationDBName);
+    try (final Connection c = DriverManager.getConnection(MetricUtils.SQLITE_DB_NAME)) {
+      LOG.info("Opened database successfully at {}", MetricUtils.SQLITE_DB_NAME);
       saveOptimizationMetrics(c, syntax);
     } catch (SQLException e) {
       LOG.error("Error while saving optimization metrics to SQLite: {}", e);
@@ -235,24 +234,25 @@ public final class MetricStore {
   }
 
   /**
-   * Save the job metrics for the optimization to the DB, in the form of LibSVM, to PostgreSQL.
+   * Save the job metrics for the optimization to the DB, in the form of LibSVM, to a remote DB, if applicable.
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
    */
-  public void saveOptimizationMetricsToPostgreSQL() {
-    final String optimizationDBName = "jdbc:postgresql://nemo-optimization."
-      + "cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization";
-    final String id = "postgres";
-    final String passwd = "fake_password";
+  public void saveOptimizationMetricsToDB(final String address, final String id, final String passwd) {
     final String[] syntax = {"SERIAL PRIMARY KEY"};
 
-    MetricUtils.deregisterBeamDriver();
-    try (final Connection c = DriverManager.getConnection(optimizationDBName, id, passwd)) {
-      LOG.info("Opened database successfully at {}", optimizationDBName);
+    if (!MetricUtils.metaDataLoaded()) {
+      saveOptimizationMetricsToLocal();
+      return;
+    }
+
+    try (final Connection c = DriverManager.getConnection(address, id, passwd)) {
+      LOG.info("Opened database successfully at {}", MetricUtils.POSTGRESQL_METADATA_DB_NAME);
+      MetricUtils.deregisterBeamDriver();
       saveOptimizationMetrics(c, syntax);
     } catch (SQLException e) {
       LOG.error("Error while saving optimization metrics to PostgreSQL: {}", e);
       LOG.info("Saving metrics on the local SQLite DB");
-      saveOptimizationMetricsToSQLite();
+      saveOptimizationMetricsToLocal();
     }
   }
 
@@ -287,21 +287,19 @@ public final class MetricStore {
           .getOperatingSystemMXBean()).getTotalPhysicalMemorySize();
 
         try {
-          String sql = "CREATE TABLE IF NOT EXISTS " + tableName
-            + " (id " + syntax[0] + ", duration INTEGER NOT NULL, inputsize INTEGER NOT NULL, "
-            + "jvmmemsize BIGINT NOT NULL, memsize BIGINT NOT NULL, "
-            + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL, "
-            + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
+          statement.executeUpdate("CREATE TABLE IF NOT EXISTS " + tableName
+              + " (id " + syntax[0] + ", duration INTEGER NOT NULL, inputsize INTEGER NOT NULL, "
+              + "jvmmemsize BIGINT NOT NULL, memsize BIGINT NOT NULL, "
+              + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL, "
+              + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);");
           LOG.info("CREATED TABLE For {} IF NOT PRESENT", tableName);
-          statement.executeUpdate(sql);
 
-          sql = "INSERT INTO " + tableName
+          statement.executeUpdate("INSERT INTO " + tableName
             + " (duration, inputsize, jvmmemsize, memsize, vertex_properties, edge_properties) "
             + "VALUES (" + duration + ", " + inputSize + ", "
             + jvmMemSize + ", " + memSize + ", '"
-            + vertexProperties + "', '" + edgeProperties + "');";
+            + vertexProperties + "', '" + edgeProperties + "');");
           LOG.info("Recorded metrics on the table for {}", tableName);
-          statement.executeUpdate(sql);
         } catch (SQLException e) {
           LOG.error("Error while saving optimization metrics: {}", e);
         }

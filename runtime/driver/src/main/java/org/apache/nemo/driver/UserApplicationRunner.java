@@ -81,9 +81,9 @@ public final class UserApplicationRunner {
       LOG.info("##### Nemo Compiler Finish #####");
 
       // Execute!
-      runtimeMaster.recordIRDAGMetrics(optimizedDAG, physicalPlan.getPlanId());
       final Pair<PlanStateManager, ScheduledExecutorService> executionResult =
           runtimeMaster.execute(physicalPlan, maxScheduleAttempt);
+      runtimeMaster.recordIRDAGMetrics(optimizedDAG, physicalPlan.getPlanId());
 
       // Wait for the job to finish and stop logging
       final PlanStateManager planStateManager = executionResult.left();

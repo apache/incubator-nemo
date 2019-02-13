@@ -101,6 +101,9 @@ public final class RuntimeMaster {
   private final ObjectMapper objectMapper;
   private final String jobId;
   private final String dagDirectory;
+  private final String dbAddress;
+  private final String dbId;
+  private final String dbPassword;
   private final Set<IRVertex> irVertices;
   private final AtomicInteger resourceRequestCount;
   private CountDownLatch metricCountDownLatch;
@@ -117,6 +120,9 @@ public final class RuntimeMaster {
                         final MetricManagerMaster metricManagerMaster,
                         final PlanStateManager planStateManager,
                         @Parameter(JobConf.JobId.class) final String jobId,
+                        @Parameter(JobConf.DBAddress.class) final String dbAddress,
+                        @Parameter(JobConf.DBId.class) final String dbId,
+                        @Parameter(JobConf.DBPasswd.class) final String dbPassword,
                         @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
@@ -144,6 +150,9 @@ public final class RuntimeMaster {
     this.metricManagerMaster = metricManagerMaster;
     this.jobId = jobId;
     this.dagDirectory = dagDirectory;
+    this.dbAddress = dbAddress;
+    this.dbId = dbId;
+    this.dbPassword = dbPassword;
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
@@ -190,7 +199,7 @@ public final class RuntimeMaster {
 
     metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
       "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
-    metricStore.saveOptimizationMetricsToPostgreSQL();
+    metricStore.saveOptimizationMetricsToDB(dbAddress, dbId, dbPassword);
   }
 
   /**
