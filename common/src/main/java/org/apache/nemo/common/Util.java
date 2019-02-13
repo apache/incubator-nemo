@@ -20,10 +20,7 @@ package org.apache.nemo.common;
 
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import java.util.function.IntPredicate;
@@ -105,6 +102,19 @@ public final class Util {
     edgeToClone.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag -> {
       clone.setProperty(AdditionalOutputTagProperty.of(tag));
     });
+
+    edgeToClone.getPropertyValue(PartitionerProperty.class).ifPresent(p -> {
+      if (p.right() == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM) {
+        clone.setProperty(PartitionerProperty.of(p.left()));
+      } else {
+        clone.setProperty(PartitionerProperty.of(p.left(), p.right()));
+      }
+    });
+
+    edgeToClone.getPropertyValue(KeyExtractorProperty.class).ifPresent(ke -> {
+      clone.setProperty(KeyExtractorProperty.of(ke));
+    });
+
     return clone;
   }
 

@@ -130,6 +130,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
           // Edge from the streamVertex.
           final IREdge fromSV = new IREdge(CommunicationPatternProperty.Value.OneToOne, streamVertex, v);
+          fromSV.setProperty(EncoderProperty.of(edgeToStreamize.getPropertyValue(EncoderProperty.class).get()));
+          fromSV.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
 
           // Future optimizations may want to use the original encoders/compressions.
           toSV.setPropertySnapshot();
@@ -292,10 +294,14 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       .stream()
       .filter(ovInEdge -> !originalToSampling.containsKey(ovInEdge.getSrc()))
       .collect(Collectors.toSet());
-    notBetweenOriginals.stream().map(nboEdge -> Util.cloneEdge(
-      nboEdge,
-      nboEdge.getSrc(), // sampling vertices consume a subset of original data partitions here
-      originalToSampling.get(nboEdge.getDst()))).forEach(builder::connectVertices);
+    notBetweenOriginals.stream().map(nboEdge -> {
+      final IREdge cloneEdge = Util.cloneEdge(
+        nboEdge,
+        nboEdge.getSrc(), // sampling vertices consume a subset of original data partitions here
+        originalToSampling.get(nboEdge.getDst()));
+      nboEdge.copyExecutionPropertiesTo(cloneEdge); // exec properties must be exactly the same
+      return cloneEdge;
+    }).forEach(builder::connectVertices);
 
     // [EDGE TYPE 3] From sampling vertices to vertices that should be executed after
     final Set<IRVertex> parentsOfAnotherOriginal = betweenOriginals.stream()
