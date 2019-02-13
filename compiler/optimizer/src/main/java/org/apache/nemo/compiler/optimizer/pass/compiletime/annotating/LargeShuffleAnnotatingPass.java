@@ -40,9 +40,7 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
  * Do not encode/compress the byte[]
  * Perform a pull-based and on-disk data transfer with the DedicatedKeyPerElement.
  */
-@Annotates({CompressionProperty.class, DataFlowProperty.class, CompressionProperty.class,
-  DataPersistenceProperty.class, DataStoreProperty.class, DecoderProperty.class, DecompressionProperty.class,
-  EncoderProperty.class, PartitionerProperty.class, ResourceSlotProperty.class})
+@Annotates({DataFlowProperty.class, DataPersistenceProperty.class, DataStoreProperty.class, ResourceSlotProperty.class})
 @Requires(CommunicationPatternProperty.class)
 public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
   /**
