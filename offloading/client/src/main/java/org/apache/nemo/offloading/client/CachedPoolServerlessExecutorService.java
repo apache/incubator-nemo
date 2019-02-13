@@ -139,7 +139,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       } catch (final Exception e) {
         throw new RuntimeException(e);
       }
-    }, 100, 100, TimeUnit.MILLISECONDS);
+    }, 300, 300, TimeUnit.MILLISECONDS);
 
     final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
     this.workerInitBuffer.writeInt(NemoEvent.Type.WORKER_INIT.ordinal());
@@ -359,7 +359,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   @Override
   public void shutdown() {
-    LOG.info("Shutting down workers...");
+    LOG.info("Shutting down workers {}...", createdWorkers);
     // shutdown all workers
     while (finishedWorkers < createdWorkers) {
       // handle buffered data
