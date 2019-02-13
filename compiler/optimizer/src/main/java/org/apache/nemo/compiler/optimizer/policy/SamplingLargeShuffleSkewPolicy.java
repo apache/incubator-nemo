@@ -32,8 +32,8 @@ public final class SamplingLargeShuffleSkewPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
     new PolicyBuilder()
       .registerCompileTimePass(new DefaultParallelismPass())
-      .registerRunTimePass(new SkewRunTimePass(), new SamplingSkewReshapingPass())
       .registerCompileTimePass(new LargeShuffleCompositePass())
+      .registerRunTimePass(new SkewRunTimePass(), new SamplingSkewReshapingPass())
       .registerCompileTimePass(new LoopOptimizationCompositePass())
       .registerCompileTimePass(new DefaultCompositePass());
 

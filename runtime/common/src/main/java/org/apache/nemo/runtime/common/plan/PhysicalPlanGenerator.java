@@ -156,14 +156,9 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
       final String stageIdentifier = RuntimeIdManager.generateStageId(stageId);
       final ExecutionPropertyMap<VertexExecutionProperty> stageProperties = new ExecutionPropertyMap<>(stageIdentifier);
       stagePartitioner.getStageProperties(stageVertices.iterator().next()).forEach(stageProperties::put);
-
       final int stageParallelism = stageProperties.get(ParallelismProperty.class)
         .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
-
-      // Directly uses vertexSetForEachStage.get(stageId), due to SamplingVertex
-      final List<Integer> taskIndices =
-        getTaskIndicesToExecute(vertexSetForEachStage.get(stageId), stageParallelism, random);
-
+      final List<Integer> taskIndices = getTaskIndicesToExecute(stageVertices, stageParallelism, random);
       final DAGBuilder<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAGBuilder = new DAGBuilder<>();
 
       // Prepare vertexIdToReadables

@@ -81,7 +81,7 @@ public final class SkewReshapingPass extends ReshapingPass {
         final MessageAggregatorVertex mav =
           new MessageAggregatorVertex(new HashMap(), SkewHandlingUtil.getDynOptAggregator());
         dag.insert(mbv, mav, SkewHandlingUtil.getEncoder(representativeEdge),
-          SkewHandlingUtil.getDecoder(representativeEdge), shuffleEdgeGroup);
+          SkewHandlingUtil.getDecoder(representativeEdge), shuffleEdgeGroup, shuffleEdgeGroup);
       }
     });
     return dag;

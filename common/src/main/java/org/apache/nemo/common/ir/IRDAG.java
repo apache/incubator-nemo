@@ -23,6 +23,8 @@ import com.google.common.collect.Sets;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
+import org.apache.nemo.common.coder.BytesDecoderFactory;
+import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.DAGInterface;
@@ -120,20 +122,33 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           // MATCH!
 
           // Edge to the streamVertex
-          final IREdge edgeToStreamizeWithNewDestination = new IREdge(
+          final IREdge toSV = new IREdge(
             edgeToStreamize.getPropertyValue(CommunicationPatternProperty.class).get(),
             edgeToStreamize.getSrc(),
             streamVertex);
-          edgeToStreamize.copyExecutionPropertiesTo(edgeToStreamizeWithNewDestination);
+          edgeToStreamize.copyExecutionPropertiesTo(toSV);
 
           // Edge from the streamVertex.
-          final IREdge oneToOneEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, streamVertex, v);
-          oneToOneEdge.setProperty(EncoderProperty.of(edgeToStreamize.getPropertyValue(EncoderProperty.class).get()));
-          oneToOneEdge.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
+          final IREdge fromSV = new IREdge(CommunicationPatternProperty.Value.OneToOne, streamVertex, v);
+
+          // Future optimizations may want to use the original encoders/compressions.
+          toSV.setPropertySnapshot();
+          fromSV.setPropertySnapshot();
+
+          // Annotations for efficient data transfers - toSV
+          toSV.setPropertyPermanently(DecoderProperty.of(BytesDecoderFactory.of()));
+          toSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.LZ4));
+          toSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.None));
+
+          // Annotations for efficient data transfers - fromSV
+          fromSV.setPropertyPermanently(EncoderProperty.of(BytesEncoderFactory.of()));
+          fromSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.None));
+          fromSV.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.LZ4));
+          fromSV.setPropertyPermanently(PartitionerProperty.of(PartitionerProperty.Type.DedicatedKeyPerElement));
 
           // Track the new edges.
-          builder.connectVertices(edgeToStreamizeWithNewDestination);
-          builder.connectVertices(oneToOneEdge);
+          builder.connectVertices(toSV);
+          builder.connectVertices(fromSV);
         } else {
           // NO MATCH, so simply connect vertices as before.
           builder.connectVertices(edge);
@@ -161,34 +176,29 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * @param mbvOutputEncoder to use.
    * @param mbvOutputDecoder to use.
    * @param edgesToGetStatisticsOf to examine.
+   * @param edgesToOptimize to optimize.
    */
   public void insert(final MessageBarrierVertex messageBarrierVertex,
                      final MessageAggregatorVertex messageAggregatorVertex,
                      final EncoderProperty mbvOutputEncoder,
                      final DecoderProperty mbvOutputDecoder,
-                     final Set<IREdge> edgesToGetStatisticsOf) {
+                     final Set<IREdge> edgesToGetStatisticsOf,
+                     final Set<IREdge> edgesToOptimize) {
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
-
-    if (edgesToGetStatisticsOf.stream().map(edge -> edge.getDst().getId()).collect(Collectors.toSet()).size() != 1) {
-      throw new IllegalArgumentException("Not destined to the same vertex: " + edgesToGetStatisticsOf.toString());
-    }
-    final IRVertex dst = edgesToGetStatisticsOf.iterator().next().getDst();
 
     // All of the existing vertices and edges remain intact
     modifiedDAG.topologicalDo(v -> {
       builder.addVertex(v);
-      modifiedDAG.getIncomingEdgesOf(v).forEach(inEdge -> {
-        builder.connectVertices(inEdge);
-        if (edgesToGetStatisticsOf.contains(inEdge)) {
-          inEdge.setPropertyPermanently(MessageIdProperty.of(messageAggregatorVertex.getMessageId()));
-        }
-      });
+      modifiedDAG.getIncomingEdgesOf(v).forEach(builder::connectVertices);
     });
+
+    ////////////////////////////////// STEP 1: Insert new vertices and edges
 
     // From mav to dst
     // Add a control dependency (no output) from the messageAggregatorVertex to the destination.
     builder.addVertex(messageAggregatorVertex);
+    final IRVertex dst = edgesToGetStatisticsOf.iterator().next().getDst();
     builder.connectVertices(Util.createControlEdge(messageAggregatorVertex, dst));
 
     // Build the edges: src - mbv - mav
@@ -205,6 +215,19 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         mbv, messageAggregatorVertex, mbvOutputEncoder, mbvOutputDecoder);
       builder.connectVertices(edgeToABV);
     }
+
+    ////////////////////////////////// STEP 2: Annotate the MessageId on optimization target edges
+
+    if (edgesToOptimize.stream().map(edge -> edge.getDst().getId()).collect(Collectors.toSet()).size() != 1) {
+      throw new IllegalArgumentException("Not destined to the same vertex: " + edgesToOptimize.toString());
+    }
+    modifiedDAG.topologicalDo(v -> {
+      modifiedDAG.getIncomingEdgesOf(v).forEach(inEdge -> {
+        if (edgesToOptimize.contains(inEdge)) {
+          inEdge.setPropertyPermanently(MessageIdProperty.of(messageAggregatorVertex.getMessageId()));
+        }
+      });
+    });
 
     modifiedDAG = builder.build(); // update the DAG.
   }

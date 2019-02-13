@@ -100,7 +100,8 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
             new MessageAggregatorVertex(new HashMap(), SkewHandlingUtil.getDynOptAggregator()),
             SkewHandlingUtil.getEncoder(e),
             SkewHandlingUtil.getDecoder(e),
-            new HashSet<>(Arrays.asList(clonedShuffleEdge))); // this works although clonedShuffleEdge is not in the dag
+            new HashSet<>(Arrays.asList(clonedShuffleEdge)), // this works although the clone is not in the dag
+            new HashSet<>(Arrays.asList(e))); // we want to optimize the original edge, not the clone
         }
       }
     });

@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.common;
 
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -88,8 +89,19 @@ public final class Util {
                                  final IRVertex newSrc,
                                  final IRVertex newDst) {
     final IREdge clone = new IREdge(commPattern, newSrc, newDst);
-    clone.setProperty(EncoderProperty.of(edgeToClone.getPropertyValue(EncoderProperty.class).get()));
-    clone.setProperty(DecoderProperty.of(edgeToClone.getPropertyValue(DecoderProperty.class).get()));
+
+    if (edgeToClone.getPropertySnapshot().containsKey(EncoderProperty.class)) {
+      clone.setProperty(edgeToClone.getPropertySnapshot().get(EncoderProperty.class));
+    } else {
+      clone.setProperty(EncoderProperty.of(edgeToClone.getPropertyValue(EncoderProperty.class).get()));
+    }
+
+    if (edgeToClone.getPropertySnapshot().containsKey(DecoderProperty.class)) {
+      clone.setProperty(edgeToClone.getPropertySnapshot().get(DecoderProperty.class));
+    } else {
+      clone.setProperty(DecoderProperty.of(edgeToClone.getPropertyValue(DecoderProperty.class).get()));
+    }
+
     edgeToClone.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag -> {
       clone.setProperty(AdditionalOutputTagProperty.of(tag));
     });
