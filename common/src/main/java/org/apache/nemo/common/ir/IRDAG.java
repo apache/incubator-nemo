@@ -42,7 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -485,15 +484,5 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   @Override
   public List<IRVertex> filterVertices(final Predicate<IRVertex> condition) {
     return modifiedDAG.filterVertices(condition);
-  }
-
-  ////////////////////////////////////////////////// Utility methods for debugging
-
-  public static String stringifyIRVertexIds(final Collection<IRVertex> vertices) {
-    return vertices.stream().map(IRVertex::getId).collect(Collectors.toSet()).toString();
-  }
-
-  public static String stringifyIREdgeIds(final Collection<IREdge> edges) {
-    return edges.stream().map(IREdge::getId).collect(Collectors.toSet()).toString();
   }
 }

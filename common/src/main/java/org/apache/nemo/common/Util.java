@@ -22,7 +22,9 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
+import java.util.Collection;
 import java.util.function.IntPredicate;
+import java.util.stream.Collectors;
 
 /**
  * Class to hold the utility methods.
@@ -126,5 +128,21 @@ public final class Util {
     final IREdge controlEdge = new IREdge(CommunicationPatternProperty.Value.BroadCast, src, dst);
     controlEdge.setPropertyPermanently(AdditionalOutputTagProperty.of(CONTROL_EDGE_TAG));
     return controlEdge;
+  }
+
+  /**
+   * @param vertices to stringify ids of.
+   * @return the string of ids.
+   */
+  public static String stringifyIRVertexIds(final Collection<IRVertex> vertices) {
+    return vertices.stream().map(IRVertex::getId).collect(Collectors.toSet()).toString();
+  }
+
+  /**
+   * @param edges to stringify ids of.
+   * @return the string of ids.
+   */
+  public static String stringifyIREdgeIds(final Collection<IREdge> edges) {
+    return edges.stream().map(IREdge::getId).collect(Collectors.toSet()).toString();
   }
 }
