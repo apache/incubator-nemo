@@ -292,7 +292,7 @@ public final class MetricStore {
             + "jvmmemsize BIGINT NOT NULL, memsize BIGINT NOT NULL, "
             + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL, "
             + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
-          LOG.info("EXECUTING SQL: {}", sql);
+          LOG.info("CREATED TABLE For {} IF NOT PRESENT", tableName);
           statement.executeUpdate(sql);
 
           sql = "INSERT INTO " + tableName
@@ -300,7 +300,7 @@ public final class MetricStore {
             + "VALUES (" + duration + ", " + inputSize + ", "
             + jvmMemSize + ", " + memSize + ", '"
             + vertexProperties + "', '" + edgeProperties + "');";
-          LOG.info("EXECUTING SQL: {}", sql);
+          LOG.info("Recorded metrics on the table for {}", tableName);
           statement.executeUpdate(sql);
         } catch (SQLException e) {
           LOG.error("Error while saving optimization metrics: {}", e);
