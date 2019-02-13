@@ -21,9 +21,12 @@ package org.apache.nemo.common;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
+/**
+ * A KeyExtractor for Pair class.
+ */
 public final class PairKeyExtractor implements KeyExtractor {
   @Override
-  public Object extractKey(Object element) {
+  public Object extractKey(final Object element) {
     if (element instanceof Pair) {
       return ((Pair) element).left();
     } else {

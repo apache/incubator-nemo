@@ -19,7 +19,6 @@
 package org.apache.nemo.common.ir;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.PairKeyExtractor;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
