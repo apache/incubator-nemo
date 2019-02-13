@@ -227,7 +227,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
           while (resultMap.get(dataId) == null) {
            Thread.sleep(200);
           }
-          return resultMap.remove(dataId);
+          return resultMap.get(dataId);
         }
 
         @Override
