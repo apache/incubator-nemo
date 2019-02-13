@@ -85,8 +85,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
     this.scheduler.scheduleAtFixedRate(() -> {
       try {
-        LOG.info("Init workers: {}, Running workers: {}, Ready workers: {} ",
-          initializingWorkers.size(), runningWorkers.size(), readyWorkers.size());
+        LOG.info("Init workers: {}, Running workers: {}, Ready workers: {}, Output: {} ",
+          initializingWorkers.size(), runningWorkers.size(), readyWorkers.size(), outputQueue.size());
       } catch (final Exception e) {
         throw new RuntimeException(e);
       }
@@ -252,10 +252,12 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         }
 
         if (isEmittable) {
-          if (data.isDone() && data.get().isPresent()) {
+          if (data.isDone()) {
             iterator.remove();
-            LOG.info("Output receive: {}", data);
-            eventHandler.onNext(data.get().get());
+            if (data.get().isPresent()) {
+              LOG.info("Output receive: {}", data);
+              eventHandler.onNext(data.get().get());
+            }
           }
         }
 
@@ -378,10 +380,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       }
     }
 
+    LOG.info("Shutting down done");
+
     scheduler.shutdown();
 
     // TODO: release worker init buffer
     workerInitBuffer.release();
-    scheduler.shutdown();
   }
 }

@@ -90,8 +90,10 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                   currentProcessingInput = null;
                   curInputBuf.release();
 
+
                   if (hasInstance == 0) {
                     final int resultId = bis.readInt();
+                    LOG.info("Receive data id {}", resultId);
                     //LOG.info("Receive result of data {}, {}", resultId, null);
                     resultMap.put(resultId, Optional.empty());
                     pendingData.remove(resultId);
@@ -100,6 +102,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                     final DecoderFactory.Decoder<O> decoder = outputDecoderFactory.create(bis);
                     final O data = decoder.decode();
                     final int resultId = bis.readInt();
+                    LOG.info("Receive data id {}", resultId);
                     //LOG.info("Receive result of data {}, {}", resultId, data);
                     resultMap.put(resultId, Optional.of(data));
                     pendingData.remove(resultId);
