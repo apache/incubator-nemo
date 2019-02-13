@@ -9,4 +9,6 @@ public interface OffloadingWorkerFactory {
                                           OffloadingSerializer offloadingSerializer);
 
   void deleteOffloadingWorker(OffloadingWorker worker);
+
+  int getAndIncreaseDataId();
 }

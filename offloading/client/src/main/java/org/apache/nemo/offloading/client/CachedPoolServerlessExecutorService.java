@@ -238,7 +238,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       final OffloadingWorker readyWorker = readyWorkers.poll().right();
       final ByteBuf buf = dataBufferList.remove(0);
       //LOG.info("Execute data for worker {}, isReadY: {}", readyWorker, readyWorker.isReady());
-      outputQueue.add(readyWorker.execute(buf));
+      outputQueue.add(readyWorker.execute(buf, workerFactory.getAndIncreaseDataId()));
       synchronized (runningWorkers) {
         // possible concurreny issue
         // (readyWorker may become "ready" before it is added to the runningWorkers )
@@ -259,7 +259,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         final OffloadingWorker worker = readyWorkers.poll().right();
         final ByteBuf encodedData =
           encodeData(data, worker.getChannel().alloc().ioBuffer());
-        outputQueue.add(worker.execute(encodedData));
+        outputQueue.add(worker.execute(encodedData, workerFactory.getAndIncreaseDataId()));
       } else {
         createNewWorker(data);
       }
@@ -275,7 +275,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       while (!readyWorkers.isEmpty() && !dataBufferList.isEmpty()) {
         final OffloadingWorker readyWorker = readyWorkers.poll().right();
         final ByteBuf buf = dataBufferList.remove(0);
-        outputQueue.add(readyWorker.execute(buf));
+        outputQueue.add(readyWorker.execute(buf, workerFactory.getAndIncreaseDataId()));
         synchronized (runningWorkers) {
           // possible concurreny issue
           // (readyWorker may become "ready" before it is added to the runningWorkers )

@@ -32,8 +32,12 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   private final AtomicBoolean initialized = new AtomicBoolean(false);
   private final AWSLambdaAsync awsLambda;
 
+  private final AtomicInteger dataId = new AtomicInteger(0);
+
+  /*
   private final AtomicInteger pendingRequest = new AtomicInteger(0);
   private final AtomicInteger extraRequest = new AtomicInteger(0);
+  */
 
   private final InvokeRequest request;
 
@@ -56,7 +60,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   }
 
   private void createChannelRequest() {
-    pendingRequest.getAndIncrement();
+    //pendingRequest.getAndIncrement();
 
     awsLambda.invokeAsync(request);
   }
@@ -95,6 +99,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
 
         channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WORKER_INIT, workerInitBuffer));
 
+        /*
         final int pendingNum = pendingRequest.decrementAndGet();
         if (pendingNum == 0) {
           executorService.execute(() -> {
@@ -114,6 +119,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
             }
           });
         }
+        */
 
         return channel;
       }
@@ -131,9 +137,9 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   @Override
   public void deleteOffloadingWorker(OffloadingWorker worker) {
     // work stealing here!
-
-
     // extra request for pending job
+
+    /*
     if (pendingRequest.get() > 0) {
       if (extraRequest.get() <= pendingRequest.get()) {
         extraRequest.getAndIncrement();
@@ -146,5 +152,11 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
         awsLambda.invokeAsync(request);
       }
     }
+    */
+  }
+
+  @Override
+  public int getAndIncreaseDataId() {
+    return dataId.getAndIncrement();
   }
 }

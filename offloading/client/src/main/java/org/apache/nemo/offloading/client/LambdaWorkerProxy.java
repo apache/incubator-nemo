@@ -7,6 +7,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.Constants;
@@ -35,8 +36,6 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
   private final Future<Channel> channelFuture;
 
-  private int dataIdCnt = 0;
-
   // two data stream: when channel is null, we buffer byte in byte array output
   // otherwise, we use byteBufOutputStream directly.
   //private ObjectOutputStream objectOutputStream;
@@ -46,6 +45,8 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
   private final ConcurrentMap<Integer, Optional<O>> resultMap = new ConcurrentHashMap<>();
   private final ConcurrentMap<Integer, Boolean> pendingData = new ConcurrentHashMap<>();
+
+  private Pair<ByteBuf, Integer> currentProcessingInput = null;
 
 
   public LambdaWorkerProxy(final Future<Channel> channelFuture,
@@ -85,6 +86,10 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                 final ByteBufInputStream bis = new ByteBufInputStream(msg.getByteBuf());
                 try {
                   final int hasInstance = bis.readByte();
+                  final ByteBuf curInputBuf = currentProcessingInput.left();
+                  currentProcessingInput = null;
+                  curInputBuf.release();
+
                   if (hasInstance == 0) {
                     final int resultId = bis.readInt();
                     //LOG.info("Receive result of data {}, {}", resultId, null);
@@ -177,11 +182,18 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   }
 
   @Override
-  public Future<Optional<O>> execute(final ByteBuf input) {
-    final int dataId = dataIdCnt++;
-    input.writeInt(dataId);
+  public Pair<ByteBuf, Integer> getCurrentProcessingInput() {
+    return currentProcessingInput;
+  }
 
+  @Override
+  public Future<Optional<O>> execute(final ByteBuf input, final int dataId) {
+    input.writeInt(dataId);
     pendingData.put(dataId, true);
+
+    // for future use
+    input.retain();
+    currentProcessingInput = Pair.of(input.duplicate(), dataId);
 
     if (channel != null) {
       LOG.info("Write data id: {}", dataId);
@@ -218,11 +230,6 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
     } else {
       throw new RuntimeException("Channel is null");
     }
-  }
-
-  @Override
-  public Future<O> execute(I input) {
-    throw new RuntimeException("Not supported");
   }
 
 
