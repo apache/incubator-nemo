@@ -101,7 +101,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       try {
 
         // initializing worker -> ready workers
-        LOG.info("Before initWorker {}", Thread.currentThread().getId());
+        //LOG.info("Before initWorker {}", Thread.currentThread().getId());
         synchronized (initializingWorkers) {
           final Iterator<OffloadingWorker> iterator = initializingWorkers.iterator();
           while (iterator.hasNext()) {
@@ -112,10 +112,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             }
           }
         }
-        LOG.info("After initWorker {}", Thread.currentThread().getId());
+        //LOG.info("After initWorker {}", Thread.currentThread().getId());
 
         // running workers -> ready workers
-        LOG.info("Before runningWorkers {}", Thread.currentThread().getId());
+        //LOG.info("Before runningWorkers {}", Thread.currentThread().getId());
         synchronized (runningWorkers) {
           final Iterator<OffloadingWorker> iterator = runningWorkers.iterator();
           while (iterator.hasNext()) {
@@ -126,11 +126,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             }
           }
         }
-        LOG.info("After runningWorkers {}", Thread.currentThread().getId());
+        //LOG.info("After runningWorkers {}", Thread.currentThread().getId());
 
-        LOG.info("Before outputEmission {}", Thread.currentThread().getId());
+        //LOG.info("Before outputEmission {}", Thread.currentThread().getId());
         outputEmittion();
-        LOG.info("After outputEmission {}", Thread.currentThread().getId());
+        //LOG.info("After outputEmission {}", Thread.currentThread().getId());
         //speculativeExecution();
 
       } catch (final Exception e) {
