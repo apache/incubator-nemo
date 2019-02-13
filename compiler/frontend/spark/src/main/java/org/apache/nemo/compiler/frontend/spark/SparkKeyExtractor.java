@@ -52,6 +52,6 @@ public final class SparkKeyExtractor implements KeyExtractor {
 
   @Override
   public int hashCode() {
-    return new HashCodeBuilder(37, 17).toHashCode();
+    return new HashCodeBuilder(2437, 17).toHashCode();
   }
 }

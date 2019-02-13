@@ -16,27 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.frontend.beam;
 
-import org.apache.beam.sdk.util.WindowedValue;
+package org.apache.nemo.common;
+
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.nemo.common.KeyExtractor;
-import org.apache.beam.sdk.values.KV;
 
-/**
- * Extracts the key from a KV element.
- * For non-KV elements, the elements themselves become the key.
- */
-final class BeamKeyExtractor implements KeyExtractor {
+public final class PairKeyExtractor implements KeyExtractor {
   @Override
-  public Object extractKey(final Object element) {
-    final Object valueToExtract = element instanceof WindowedValue ? ((WindowedValue) element).getValue() : element;
-    if (valueToExtract instanceof KV) {
-      // Handle null keys, since Beam allows KV with null keys.
-      final Object key = ((KV) valueToExtract).getKey();
-      return key == null ? 0 : key;
+  public Object extractKey(Object element) {
+    if (element instanceof Pair) {
+      return ((Pair) element).left();
     } else {
-      return element;
+      throw new IllegalStateException(element.toString());
     }
   }
 
@@ -55,6 +46,6 @@ final class BeamKeyExtractor implements KeyExtractor {
 
   @Override
   public int hashCode() {
-    return new HashCodeBuilder(2117, 37).toHashCode();
+    return new HashCodeBuilder(133, 37).toHashCode();
   }
 }

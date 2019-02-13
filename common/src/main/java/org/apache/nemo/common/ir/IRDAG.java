@@ -19,8 +19,8 @@
 package org.apache.nemo.common.ir;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.PairKeyExtractor;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.DAGInterface;
@@ -256,14 +256,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
     newEdge.setPropertyPermanently(MessageIdProperty.of(currentMetricCollectionId));
-    final KeyExtractor pairKeyExtractor = (element) -> {
-      if (element instanceof Pair) {
-        return ((Pair) element).left();
-      } else {
-        throw new IllegalStateException(element.toString());
-      }
-    };
-    newEdge.setProperty(KeyExtractorProperty.of(pairKeyExtractor));
+    newEdge.setProperty(KeyExtractorProperty.of(new PairKeyExtractor()));
     newEdge.setPropertyPermanently(encoder);
     newEdge.setPropertyPermanently(decoder);
     return newEdge;

@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.common.ir.vertex.executionproperty;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 import java.io.Serializable;
@@ -118,6 +120,34 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Clon
       sb.append(" / multiplier: ");
       sb.append(medianTimeMultiplier);
       return sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      CloneConf cloneConf = (CloneConf) o;
+
+      return new EqualsBuilder()
+        .append(isUpFrontCloning(), cloneConf.isUpFrontCloning())
+        .append(getFractionToWaitFor(), cloneConf.getFractionToWaitFor())
+        .append(getMedianTimeMultiplier(), cloneConf.getMedianTimeMultiplier())
+        .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+      return new HashCodeBuilder(17, 37)
+        .append(isUpFrontCloning())
+        .append(getFractionToWaitFor())
+        .append(getMedianTimeMultiplier())
+        .toHashCode();
     }
   }
 }
