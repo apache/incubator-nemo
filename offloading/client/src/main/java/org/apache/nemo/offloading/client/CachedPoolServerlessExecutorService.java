@@ -47,6 +47,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   // key: data id, val: true (if the data is already processed by a worker)
   private final Map<Integer, Boolean> speculativeDataProcessedMap;
 
+  private int createdWorkers = 0;
+  private int finishedWorkers = 0;
+
   //private final StatePartitioner<I, S> statePartitioner;
   //private final List<ByteBuf> states;
   //private final Map<Integer, OffloadingWorker<I, O>> stateIndexAndWorkerMap;
@@ -289,6 +292,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   // init worker
   private void createNewWorker(final I data) {
+    createdWorkers += 1;
     // create new worker
     //LOG.info("Create worker");
     workerInitBuffer.retain();
@@ -348,7 +352,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   public void shutdown() {
     LOG.info("Shutting down workers...");
     // shutdown all workers
-    while (!runningWorkers.isEmpty() || !initializingWorkers.isEmpty() || !readyWorkers.isEmpty()) {
+    while (finishedWorkers < createdWorkers) {
       // handle buffered data
       while (!readyWorkers.isEmpty() && !dataBufferList.isEmpty()) {
         final Pair<Long, OffloadingWorker> readyWorkerPair = readyWorkers.poll();
@@ -361,11 +365,12 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         final Pair<Long, OffloadingWorker> readyWorkerPair = readyWorkers.poll();
         if (readyWorkerPair != null) {
           readyWorkerPair.right().finishOffloading();
+          finishedWorkers += 1;
         }
       }
 
       try {
-        Thread.sleep(100);
+        Thread.sleep(200);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
