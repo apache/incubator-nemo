@@ -28,6 +28,7 @@ import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.DAGInterface;
+import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.exception.IllegalEdgeOperationException;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
@@ -109,6 +110,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   public void insert(final StreamVertex streamVertex, final IREdge edgeToStreamize) {
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+    // Integrity check
+    if (edgeToStreamize.getPropertyValue(MessageIdProperty.class).isPresent()) {
+      throw new CompileTimeOptimizationException(edgeToStreamize.getId() + " has a MessageId, and cannot be removed");
+    }
 
     // Insert the vertex.
     builder.addVertex(streamVertex);
