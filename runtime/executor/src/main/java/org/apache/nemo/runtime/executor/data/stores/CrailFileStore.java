@@ -64,10 +64,10 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
                          final SerializerManager serializerManager) throws Exception {
     super(serializerManager);
     this.fileDirectory =volumeDirectory + "/" + jobId;
-    //new File(fileDirectory).mkdirs();
+    new File(fileDirectory).mkdirs();
     this.conf = new CrailConfiguration();
     this.fs = CrailStore.newInstance(conf);
-    CrailFile file = fs.create(fileDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.PARENT, CrailLocationClass.PARENT, true).get().asFile();
+    //CrailFile file = fs.create(fileDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
   }
 
   @Override
@@ -77,7 +77,6 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata metadata =
       RemoteFileMetadata.create(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-
     return new FileBlock<>(blockId, serializer, filePath, metadata, fs);
   }
 
