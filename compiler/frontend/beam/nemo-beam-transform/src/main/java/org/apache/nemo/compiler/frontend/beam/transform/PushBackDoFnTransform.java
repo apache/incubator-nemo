@@ -196,14 +196,14 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
         if (offloading) {
           if (byteBufList.isEmpty()) {
-            final ByteBuf byteBuf = Unpooled.directBuffer();
+            final ByteBuf byteBuf = Unpooled.buffer();
             byteBuf.writeInt(NemoEvent.Type.DATA.ordinal());
             byteBufList.add(new ByteBufOutputStream(byteBuf));
           }
 
           final int lastIndex = byteBufList.size() - 1;
           if (byteBufList.get(lastIndex).buffer().readableBytes() > Constants.FLUSH_BYTES) {
-            final ByteBuf byteBuf = Unpooled.directBuffer();
+            final ByteBuf byteBuf = Unpooled.buffer();
             byteBuf.writeInt(NemoEvent.Type.DATA.ordinal());
             byteBufList.add(new ByteBufOutputStream(byteBuf));
           }
@@ -255,7 +255,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     }
 
 
-    LOG.info("# of partition: {}, partitionSize: {}, execute latency;",
+    LOG.info("# of partition: {}, partitionSize: {}, execute latency: {}",
       byteBufList.size(), Constants.FLUSH_BYTES, System.currentTimeMillis() - st);
 
     final long st1 = System.currentTimeMillis();
