@@ -89,6 +89,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
     this.serializer = serializer;
     this.filePath = filePath;
     this.metadata = metadata;
+    LOG.info("HY: block id : {}", blockId);
     if(filePath.contains("crail")) {
         //conf = new CrailConfiguration();
         //fs = CrailStore.newInstance(conf);
