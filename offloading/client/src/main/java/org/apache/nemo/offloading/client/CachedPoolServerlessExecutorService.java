@@ -130,7 +130,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       } catch (final Exception e) {
         throw new RuntimeException(e);
       }
-    }, 200, 200, TimeUnit.MILLISECONDS);
+    }, 300, 300, TimeUnit.MILLISECONDS);
 
     final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
     this.workerInitBuffer.writeInt(NemoEvent.Type.WORKER_INIT.ordinal());
