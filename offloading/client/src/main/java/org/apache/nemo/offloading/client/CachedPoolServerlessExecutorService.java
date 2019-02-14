@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.lang.ref.Reference;
 import java.util.*;
 import java.util.concurrent.*;
@@ -336,8 +337,30 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     }
   }
 
+
+  // init worker
+  private void createNewWorker(final ByteBuf data) {
+    createdWorkers += 1;
+    // create new worker
+    //LOG.info("Create worker");
+    workerInitBuffer.retain();
+    dataBufferQueue.add(data);
+
+    final OffloadingWorker<I, O> worker =
+      workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
+
+    synchronized (initializingWorkers) {
+      initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+    }
+  }
+
   @Override
   public void execute(I data) {
+    createNewWorker(data);
+  }
+
+  @Override
+  public void execute(ByteBuf data) {
     createNewWorker(data);
   }
 
