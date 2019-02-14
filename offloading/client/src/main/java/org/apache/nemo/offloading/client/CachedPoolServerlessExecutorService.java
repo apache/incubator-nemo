@@ -101,13 +101,13 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         synchronized (initializingWorkers) {
           final Iterator<Pair<Long, OffloadingWorker>> iterator = initializingWorkers.iterator();
           while (iterator.hasNext()) {
-            final OffloadingWorker worker = iterator.next().right();
-            if (worker.isReady()) {
-              LOG.info("Init worker latency: {}", System.currentTimeMillis() - iterator.next().left());
+            final Pair<Long, OffloadingWorker> pair = iterator.next();
+            if (pair.right().isReady()) {
+              LOG.info("Init worker latency: {}", System.currentTimeMillis() - pair.left());
               iterator.remove();
               // do not add it to ready workers
               // instead, just execute data
-              executeData(worker);
+              executeData(pair.right());
             }
           }
         }
@@ -116,10 +116,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         final List<OffloadingWorker> readyWorkers = new ArrayList<>(runningWorkers.size());
         final Iterator<Pair<Long, OffloadingWorker>> iterator = runningWorkers.iterator();
         while (iterator.hasNext()) {
-          final OffloadingWorker worker = iterator.next().right();
-          if (worker.isReady()) {
+          final Pair<Long, OffloadingWorker> pair = iterator.next();
+          if (pair.right().isReady()) {
             iterator.remove();
-            readyWorkers.add(worker);
+            readyWorkers.add(pair.right());
           }
         }
 
