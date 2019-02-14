@@ -47,6 +47,11 @@ public final class IntDecoderFactory implements DecoderFactory<Integer> {
     return new IntDecoder(inputStream);
   }
 
+  @Override
+  public String toString() {
+    return "IntDecoderFactory{}";
+  }
+
   /**
    * IntDecoder.
    */

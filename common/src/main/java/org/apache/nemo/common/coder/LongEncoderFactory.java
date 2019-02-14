@@ -49,6 +49,11 @@ public final class LongEncoderFactory implements EncoderFactory<Long> {
     return new LongEncoder(outputStream);
   }
 
+  @Override
+  public String toString() {
+    return "LongEncoderFactory{}";
+  }
+
   /**
    * LongEncoder.
    */

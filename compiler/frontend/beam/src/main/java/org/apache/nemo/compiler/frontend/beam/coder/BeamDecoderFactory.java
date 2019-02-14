@@ -55,6 +55,11 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
     }
   }
 
+  @Override
+  public String toString() {
+    return beamCoder.toString().getClass().getName();
+  }
+
   /**
    * Abstract class for Beam Decoder.
    * @param <T2> the type of element to decode.
@@ -150,10 +155,5 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
       }
       return decodeInternal();
     }
-  }
-
-  @Override
-  public String toString() {
-    return beamCoder.toString();
   }
 }
