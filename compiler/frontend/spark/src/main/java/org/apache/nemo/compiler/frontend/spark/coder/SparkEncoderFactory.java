@@ -49,9 +49,9 @@ public final class SparkEncoderFactory<T> implements EncoderFactory<T> {
 
   @Override
   public String toString() {
-    return "SparkEncoderFactory{" +
-      "serializer=" + serializer +
-      '}';
+    return "SparkEncoderFactory{"
+      + "serializer=" + serializer
+      + '}';
   }
 
   /**

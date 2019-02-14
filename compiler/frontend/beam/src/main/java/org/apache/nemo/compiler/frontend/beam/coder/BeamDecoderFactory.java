@@ -57,7 +57,7 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
 
   @Override
   public String toString() {
-    return beamCoder.toString().getClass().getName();
+    return beamCoder.getClass().getName();
   }
 
   /**

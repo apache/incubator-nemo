@@ -46,9 +46,9 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
 
   @Override
   public String toString() {
-    return "NemoEventDecoderFactory{" +
-      "valueDecoderFactory=" + valueDecoderFactory +
-      '}';
+    return "NemoEventDecoderFactory{"
+      + "valueDecoderFactory=" + valueDecoderFactory
+      + '}';
   }
 
   /**

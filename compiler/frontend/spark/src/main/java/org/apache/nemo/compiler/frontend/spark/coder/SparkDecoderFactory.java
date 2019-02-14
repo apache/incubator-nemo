@@ -49,9 +49,9 @@ public final class SparkDecoderFactory<T> implements DecoderFactory<T> {
 
   @Override
   public String toString() {
-    return "SparkDecoderFactory{" +
-      "serializer=" + serializer +
-      '}';
+    return "SparkDecoderFactory{"
+      + "serializer=" + serializer
+      + '}';
   }
 
   /**
