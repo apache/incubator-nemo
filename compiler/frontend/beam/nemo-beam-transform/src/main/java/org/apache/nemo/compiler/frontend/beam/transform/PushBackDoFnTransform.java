@@ -260,20 +260,28 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       final List<List<WindowedValue<InputT>>> partitions = Lists.partition(
         curPushedBacks.subList(cnt, curPushedBacks.size()), partitionSize);
 
+      final long e1 = System.currentTimeMillis();
+
       final ServerlessExecutorProvider slsProvider = getContext().getServerlessExecutorProvider();
 
       //final List<Future<List<WindowedValue<OutputT>>>> results = new ArrayList<>(partitions.size());
 
       final ServerlessExecutorService<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>> slsExecutor =
         slsProvider.newCachedPool(offloadingTransform, offloadingSerializer, eventHandler);
+
+      final long e2 = System.currentTimeMillis();
+
       for (final List<WindowedValue<InputT>> partition : partitions) {
         final Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>
           offloadingData = Pair.of(sideInput, partition);
         slsExecutor.execute(offloadingData);
       }
 
-      LOG.info("# of partition: {}, partitionSize: {}, time to invoke: {}", partitions.size(), partitionSize,
-        (System.currentTimeMillis() - st));
+      final long e3 = System.currentTimeMillis();
+
+      LOG.info("# of partition: {}, partitionSize: {}, partition latency: {}, executor creation time: {}, time to invoke: {}", partitions.size(), partitionSize,
+        (e1 - st), (e2 - st), (e3 - st));
+
       final long st1 = System.currentTimeMillis();
 
       slsExecutor.shutdown();
