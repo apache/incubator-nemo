@@ -119,6 +119,11 @@ under the License.
             <artifactId>crail-assembly</artifactId>
             <version>1.2-incubating-SNAPSHOT</version>
         </dependency>
+      <dependency>
+        <groupId>org.apache.crail</groupId>
+        <artifactId>crail-client</artifactId>
+        <version>1.2-incubating-SNAPSHOT</version>
+      </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
