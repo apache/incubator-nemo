@@ -272,13 +272,14 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
     forceFinishBundle(); // forced
 
     // With the new side input added, we may be able to process some pushed-back elements.
-    checkAndInvokeBundle();
     final List<WindowedValue<InputT>> pushedBackAgain = new LinkedList<>();
     long pushedBackAgainWatermark = Long.MAX_VALUE;
     int cnt = 0;
     for (final WindowedValue<InputT> curPushedBack : curPushedBacks) {
+      checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
         pushBackRunner.processElementInReadyWindows(curPushedBack);
+      checkAndFinishBundle();
       cnt += 1;
       for (final WindowedValue<InputT> wv : pushedBack) {
         pushedBackAgainWatermark = Math.min(pushedBackAgainWatermark, wv.getTimestamp().getMillis());
@@ -286,7 +287,6 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
       }
     }
 
-    checkAndFinishBundle();
 
     LOG.info("Pushback again size: {}", pushedBackAgain.size());
 
