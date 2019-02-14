@@ -79,7 +79,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   /**
    * Directory points the CrailFileSystem to store files.
   */
-  @NamedParameter(doc = "Directory points the CrailFS volume", short_name = "crail_dir", default_value = "../tmp_crail")
+  @NamedParameter(doc = "Directory points the CrailFS volume", short_name = "crail_dir", default_value = "/tmp_crail")
   public final class CrailVolumeDirectory implements  Name<String> {
   }
 
