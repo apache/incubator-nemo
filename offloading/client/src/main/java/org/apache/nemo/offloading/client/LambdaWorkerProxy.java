@@ -207,6 +207,9 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
       LOG.info("Write data id: {}", dataId);
       channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, input));
       return new Future<Optional<O>>() {
+
+        private Optional<O> result = null;
+
         @Override
         public boolean cancel(boolean mayInterruptIfRunning) {
           return false;
@@ -219,20 +222,30 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
         @Override
         public boolean isDone() {
-          return resultMap.get(dataId) != null;
+          if (result == null) {
+            result = resultMap.get(dataId);
+            if (result == null) {
+              return false;
+            } else {
+              resultMap.remove(dataId);
+              return true;
+            }
+          } else {
+            return true;
+          }
         }
 
         @Override
         public Optional<O> get() throws InterruptedException, ExecutionException {
-          while (resultMap.get(dataId) == null) {
-           Thread.sleep(200);
+          while (!isDone()) {
+            Thread.sleep(200);
           }
-          return resultMap.get(dataId);
+          return result;
         }
 
         @Override
         public Optional<O> get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-          return null;
+          throw new RuntimeException("Not support");
         }
       };
     } else {
@@ -274,8 +287,6 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
       e.printStackTrace();
     }
     */
-
-    resultMap.clear();
 
     if (channel != null) {
       //byteBufOutputStream.buffer().release();

@@ -11,8 +11,10 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.lang.ref.Reference;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This should be called by one thread.
@@ -77,17 +79,16 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     this.dataBufferQueue = new LinkedBlockingQueue<>();
     this.outputQueue = new LinkedBlockingQueue<>();
 
-    this.scheduler.scheduleAtFixedRate(() -> {
-      try {
-        LOG.info("Init workers: {}, Running workers: {}, Output: {} ",
-          initializingWorkers.size(), runningWorkers.size(), outputQueue.size());
-      } catch (final Exception e) {
-        throw new RuntimeException(e);
-      }
-    }, 1, 1, TimeUnit.SECONDS);
 
+    final AtomicLong st = new AtomicLong(System.currentTimeMillis());
     // schedule init/active worker
     this.scheduler.scheduleAtFixedRate(() -> {
+
+      if (System.currentTimeMillis() - st.get() > 2000) {
+        st.set(System.currentTimeMillis());
+        LOG.info("Init workers: {}, Running workers: {}, Output: {} ",
+          initializingWorkers.size(), runningWorkers.size(), outputQueue.size());
+      }
 
       try {
         // initializing worker -> running workers
