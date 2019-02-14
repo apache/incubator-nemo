@@ -68,11 +68,12 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     super(serializerManager);
     this.fileDirectory =volumeDirectory + "/" + jobId;
     new File(fileDirectory).mkdirs();
+
     this.conf = new CrailConfiguration();
     this.fs = CrailStore.newInstance(conf);
     //LOG.info("HY: CrailStore created. Not yet for the file directory itself");
     //Parent Node (/tmp_crail/jobId/) creation needed
-    fs.create(fileDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, false);
+    //fs.create(fileDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, false);
   }
 
   @Override
