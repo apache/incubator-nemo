@@ -96,8 +96,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       try {
         this.fs = fs;
         this.file = fs.create(filePath+'/'+id, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
-        LOG.info("HY:crail file created");
+        LOG.info("HY: crail file block created");
       } catch (Exception e) {
+        LOG.info("HY: crail file block creation failed");
         e.printStackTrace();
       }
     }
