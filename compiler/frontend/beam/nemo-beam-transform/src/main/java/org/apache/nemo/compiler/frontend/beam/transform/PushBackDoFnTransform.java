@@ -61,7 +61,7 @@ import java.util.concurrent.Future;
 public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<InputT, InputT, OutputT> {
   private static final Logger LOG = LoggerFactory.getLogger(PushBackDoFnTransform.class.getName());
 
-  private List<WindowedValue<InputT>> curPushedBacks;
+  private transient List<WindowedValue<InputT>> curPushedBacks;
   private transient List<ByteBufOutputStream> curPushedBacksOS;
 
   private long curPushedBackWatermark; // Long.MAX_VALUE when no pushed-back exists.
@@ -122,6 +122,9 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   @Override
   public void onData(final WindowedValue data) {
     if (!initialized) {
+      curPushedBacksOS = new ArrayList<>();
+      curPushedBacks = new ArrayList<>();
+
       eventHandler = new EventHandler<WindowedValue<OutputT>>() {
         @Override
         public void onNext(WindowedValue<OutputT> msg) {
