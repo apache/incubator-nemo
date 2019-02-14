@@ -96,6 +96,8 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
       if (entry.getKey().maxTimestamp().getMillis() < inputWatermark.getTimestamp()) {
         // emit the windowed data if the watermark timestamp > the window max boundary
         final O output = viewFn.apply(new MultiView<>(entry.getValue()));
+
+        System.out.println("View output emit time: " + System.currentTimeMillis());
         outputCollector.emit(WindowedValue.of(
           output, entry.getKey().maxTimestamp(), entry.getKey(), PaneInfo.ON_TIME_AND_ONLY_FIRING));
         iterator.remove();

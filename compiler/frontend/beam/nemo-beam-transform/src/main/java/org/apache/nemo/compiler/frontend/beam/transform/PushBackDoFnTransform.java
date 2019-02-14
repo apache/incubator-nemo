@@ -175,6 +175,8 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         cnt = handlePushBacks();
       }
 
+      System.out.println("Timestamp of pushback last " + System.currentTimeMillis());
+
       LOG.info("{}, Handle pushback cnt: {} at {}: {}", System.currentTimeMillis() - st,
         cnt, this.hashCode(), data);
       //System.out.println("{}, Handle pushback cnt: " + cnt + " data : " + data);
@@ -262,7 +264,8 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
     slsExecutor.shutdown();
 
-    LOG.info("Time to wait shutdown; {}", System.currentTimeMillis() - st1);
+    LOG.info("Time to wait shutdown {}, timestamp: {}", System.currentTimeMillis() - st1,
+      System.currentTimeMillis());
 
     // TODO: fix
     //offloading = false;
@@ -301,7 +304,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     }
 
 
-    LOG.info("Pushback again size: {}", pushedBackAgain.size());
+
 
     curPushedBacks = pushedBackAgain;
     curPushedBackWatermark = pushedBackAgainWatermark;
