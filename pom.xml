@@ -114,8 +114,12 @@ under the License.
             <version>${powermock.version}</version>
             <scope>test</scope>
         </dependency>
+	<dependency>
+            <groupId>org.apache.crail</groupId>
+            <artifactId>crail-assembly</artifactId>
+            <version>1.2-incubating-SNAPSHOT</version>
+        </dependency>
     </dependencies>
-
     <dependencyManagement>
         <dependencies>
             <!-- Follow netty version of grpc which is more later than the netty version of reef-wake -->
@@ -149,11 +153,6 @@ under the License.
                 <artifactId>slf4j-simple</artifactId>
                 <version>1.6.2</version>
                 <scope>test</scope>
-            </dependency>
-            <dependency>
-              <groupId>org.apache.crail</groupId>
-              <artifactId>crail-client</artifactId>
-              <version>1.2-incubating-SNAPSHOT</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -19,4 +19,5 @@
 
 java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp examples/beam/target/nemo-examples-beam-$(mvn -q \
   -Dexec.executable=echo -Dexec.args='${project.version}' \
-  --non-recursive exec:exec)-shaded.jar:`yarn classpath` org.apache.nemo.client.JobLauncher "$@"
+  --non-recursive exec:exec)-shaded.jar:$CRAIL_JAR:`yarn classpath` org.apache.nemo.client.JobLauncher "$@"
+
