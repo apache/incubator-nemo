@@ -272,9 +272,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           if (data.isDone()) {
             LOG.info("Output id {} done", dataId);
             iterator.remove();
-            if (data.get().isPresent()) {
-              LOG.info("Output receive: {}", data);
-              eventHandler.onNext(data.get().get());
+            final Optional<O> optional = data.get();
+            if (optional.isPresent()) {
+              LOG.info("Output receive: {}", optional.get());
+              eventHandler.onNext(optional.get());
             }
           }
         }
