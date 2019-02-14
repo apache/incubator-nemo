@@ -28,28 +28,71 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Random;
+import java.util.stream.IntStream;
 
 /**
  * Tests for {@link IRDAG}.
  */
 public class IRDAGTest {
+  private static final int NUM_OF_RANDOM_SEEDS = 100;
+  private static final int NUM_OF_METHOD_CALLS = 100;
 
   @Test
-  public void testInserts() {
+  public void testParallelism() {
+    // simple test case
+
+    // comm pattern
+
+    // xxx
+  }
+
+  @Test
+  public void testXX() {
+    // simple test case
+  }
+
+  @Test
+  public void testMessageBarrierVertex() {
+    // simple test case
     MessageBarrierVertex;
     StreamVertex;
     SamplingVertex;
   }
 
   @Test
-  public void testDeletes() {
+  public void testStreamVertex() {
+    // simple test case
+    // insert
+    // delete
+    MessageBarrierVertex;
+    StreamVertex;
+    SamplingVertex;
+  }
+
+  @Test
+  public void testSamplingVertex() {
+    // simple test case
+    // insert
+    // delete
   }
 
   @Test
   public void testRandomCalls() {
-    // Randomly insert user-configurable execution properties
-    // Checker checks this...
-    // IRDAGBuilder(?)
+    IntStream.range(0, 100).boxed().forEach(seed -> {
+      final Random random = new Random(seed);
+      // (1) Randomly insert vertices
+      // (2) Randomly annotate user-configurable properties
+      // (3) Randomly delete vertices
+      //
+      // Actually execute...?
+      //
+      // user-configurable execution properties
+      // Checker checks this...
+      // IRDAGBuilder(?)
+    });
   }
+
+
 
 }
