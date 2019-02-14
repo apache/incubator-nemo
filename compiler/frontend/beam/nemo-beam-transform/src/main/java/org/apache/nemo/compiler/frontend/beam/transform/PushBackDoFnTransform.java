@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
-import com.google.common.collect.Lists;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
@@ -40,17 +39,12 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
-import org.apache.nemo.compiler.frontend.beam.coder.PushBackCoder;
 import org.apache.nemo.compiler.frontend.beam.coder.PushBackCoder2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 /**
  * DoFn transform implementation with push backs for side inputs.
@@ -62,7 +56,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   private static final Logger LOG = LoggerFactory.getLogger(PushBackDoFnTransform.class.getName());
 
   private transient List<WindowedValue<InputT>> curPushedBacks;
-  private transient List<ByteBufOutputStream> curPushedBacksOS;
+  private transient List<ByteBufOutputStream> byteBufList;
 
   private long curPushedBackWatermark; // Long.MAX_VALUE when no pushed-back exists.
   private long curInputWatermark;
@@ -98,8 +92,6 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
                                final Coder sideCoder) {
     super(doFn, inputCoder, outputCoders, mainOutputTag,
       additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
-    this.curPushedBacks = new ArrayList<>();
-    this.curPushedBacksOS = new ArrayList<>();
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;
     this.curOutputWatermark = Long.MIN_VALUE;
@@ -122,7 +114,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   @Override
   public void onData(final WindowedValue data) {
     if (!initialized) {
-      curPushedBacksOS = new ArrayList<>();
+      byteBufList = new ArrayList<>();
       curPushedBacks = new ArrayList<>();
 
       eventHandler = new EventHandler<WindowedValue<OutputT>>() {
@@ -203,18 +195,18 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         curPushedBacks.add(wv);
 
         if (offloading) {
-          if (curPushedBacksOS.isEmpty()) {
+          if (byteBufList.isEmpty()) {
             final ByteBuf byteBuf = Unpooled.directBuffer();
-            curPushedBacksOS.add(new ByteBufOutputStream(byteBuf));
+            byteBufList.add(new ByteBufOutputStream(byteBuf));
           }
 
-          final int lastIndex = curPushedBacks.size() - 1;
-          if (curPushedBacksOS.get(lastIndex).buffer().readableBytes() > Constants.FLUSH_BYTES) {
+          final int lastIndex = byteBufList.size() - 1;
+          if (byteBufList.get(lastIndex).buffer().readableBytes() > Constants.FLUSH_BYTES) {
             final ByteBuf byteBuf = Unpooled.directBuffer();
-            curPushedBacksOS.add(new ByteBufOutputStream(byteBuf));
+            byteBufList.add(new ByteBufOutputStream(byteBuf));
           }
 
-          final ByteBufOutputStream bos = curPushedBacksOS.get(curPushedBacks.size() - 1);
+          final ByteBufOutputStream bos = byteBufList.get(byteBufList.size() - 1);
           try {
             bos.writeBoolean(true);
             mainCoder.encode(wv, bos);
@@ -247,7 +239,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       slsProvider.newCachedPool(offloadingTransform, offloadingSerializer, eventHandler);
 
     // encode side input
-    for (final ByteBufOutputStream bos : curPushedBacksOS) {
+    for (final ByteBufOutputStream bos : byteBufList) {
       try {
         bos.writeBoolean(false);
         sideCoder.encode(sideInput, bos);
@@ -262,7 +254,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
 
     LOG.info("# of partition: {}, partitionSize: {}, execute latency;",
-      curPushedBacksOS.size(), Constants.FLUSH_BYTES, System.currentTimeMillis() - st);
+      byteBufList.size(), Constants.FLUSH_BYTES, System.currentTimeMillis() - st);
 
     final long st1 = System.currentTimeMillis();
 
@@ -275,7 +267,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     checkAndFinishBundle();
 
     // TODO: need to guarantee correctness
-    curPushedBacksOS.clear();
+    byteBufList.clear();
     curPushedBacks = pushedBackAgain;
     curPushedBackWatermark = pushedBackAgainWatermark;
     return cnt;
