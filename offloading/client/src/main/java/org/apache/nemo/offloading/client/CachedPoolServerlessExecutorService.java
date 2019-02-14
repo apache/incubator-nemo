@@ -26,7 +26,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   private static final Logger LOG = LoggerFactory.getLogger(CachedPoolServerlessExecutorService.class.getName());
   private final OffloadingWorkerFactory workerFactory;
 
-  private final List<OffloadingWorker> initializingWorkers;
+  private final List<Pair<Long, OffloadingWorker>> initializingWorkers;
 
   // left: start time, right: worker
   private final List<Pair<Long, OffloadingWorker>> runningWorkers;
@@ -99,10 +99,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       try {
         // initializing worker -> running workers
         synchronized (initializingWorkers) {
-          final Iterator<OffloadingWorker> iterator = initializingWorkers.iterator();
+          final Iterator<Pair<Long, OffloadingWorker>> iterator = initializingWorkers.iterator();
           while (iterator.hasNext()) {
-            final OffloadingWorker worker = iterator.next();
+            final OffloadingWorker worker = iterator.next().right();
             if (worker.isReady()) {
+              LOG.info("Init worker latency: {}", System.currentTimeMillis() - iterator.next().left());
               iterator.remove();
               // do not add it to ready workers
               // instead, just execute data
@@ -331,7 +332,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
 
     synchronized (initializingWorkers) {
-      initializingWorkers.add(worker);
+      initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
     }
   }
 

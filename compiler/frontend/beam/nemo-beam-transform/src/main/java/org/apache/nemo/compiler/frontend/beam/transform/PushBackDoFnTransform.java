@@ -251,6 +251,8 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     if (offloading) {
       LOG.info("Start to offloading");
 
+      final long st = System.currentTimeMillis();
+
       // partition
       final int numLambda = Constants.POOL_SIZE / Constants.PARALLELISM;
       final int plusOne = (curPushedBacks.size() - cnt) % numLambda > 0 ? 1 : 0;
@@ -260,7 +262,6 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
       final ServerlessExecutorProvider slsProvider = getContext().getServerlessExecutorProvider();
 
-      LOG.info("# of partition: {}, partitionSize: {}", partitions.size(), partitionSize);
       //final List<Future<List<WindowedValue<OutputT>>>> results = new ArrayList<>(partitions.size());
 
       final ServerlessExecutorService<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>> slsExecutor =
@@ -271,7 +272,13 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         slsExecutor.execute(offloadingData);
       }
 
+      LOG.info("# of partition: {}, partitionSize: {}, time to invoke: {}", partitions.size(), partitionSize,
+        (System.currentTimeMillis() - st));
+      final long st1 = System.currentTimeMillis();
+
       slsExecutor.shutdown();
+
+      LOG.info("Time to wait shutdown; {}", System.currentTimeMillis() - st1);
 
       // TODO: result
 
