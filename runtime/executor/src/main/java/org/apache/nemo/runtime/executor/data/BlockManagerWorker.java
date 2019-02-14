@@ -264,7 +264,7 @@ public final class BlockManagerWorker {
             .setBlockId(blockId)
             .setState(ControlMessage.BlockStateFromExecutor.AVAILABLE);
 
-    if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+    if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore) || DataStoreProperty.Value.CrailFileStore.equals(blockStore)) {
       blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
     } else {
       blockStateChangedMsgBuilder.setLocation(executorId);
@@ -520,7 +520,7 @@ public final class BlockManagerWorker {
       case LOCAL_FILE:
         return DataStoreProperty.Value.LocalFileStore;
       case REMOTE_FILE:
-        return DataStoreProperty.Value.GlusterFileStore;
+        return DataStoreProperty.Value.CrailFileStore;
       default:
         throw new UnsupportedBlockStoreException(new Exception("This block store is not yet supported"));
     }
