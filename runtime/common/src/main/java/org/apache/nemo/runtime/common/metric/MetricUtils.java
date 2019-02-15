@@ -135,7 +135,7 @@ public final class MetricUtils {
   /**
    * Save the BiMaps to DB if changes are necessary (rarely executed).
    */
-  public static void updateMetaData() {
+  private static void updateMetaData() {
     if (!metaDataLoaded()
       || (MUST_UPDATE_EP_METADATA.getCount() + MUST_UPDATE_EP_KEY_METADATA.getCount() == 2)) {
       // no need to update
@@ -196,11 +196,13 @@ public final class MetricUtils {
         e.getExecutionProperties().forEachProperties(ep ->
           epFormatter(eStringBuilder, EDGE, e.getNumericId(), ep))));
 
+//    Update the metric metadata if new execution property key / values have been discovered and updates are required.
+    updateMetaData();
     return Pair.of(vStringBuilder.toString().trim(), eStringBuilder.toString().trim());
   }
 
   /**
-   * Formatter for execution properties.
+   * Formatter for execution properties. It updates the metadata for the metrics if new EP key / values are discovered.
    * @param builder string builder to append the metrics to.
    * @param idx index specifying whether it's a vertex or an edge. This should be one digit.
    * @param numericId numeric ID of the vertex or the edge.
@@ -212,6 +214,7 @@ public final class MetricUtils {
     builder.append(numericId);
     builder.append("0");
     final Integer epKeyIndex = EP_KEY_METADATA.inverse().computeIfAbsent(ep.getClass(), epClass -> {
+//      Update the metadata if new EP key has been discovered.
       LOG.info("New EP Key Index: {} for {}", EP_KEY_METADATA.size() + 1, epClass.getSimpleName());
       MUST_UPDATE_EP_KEY_METADATA.countDown();
       return EP_KEY_METADATA.size() + 1;
@@ -226,6 +229,7 @@ public final class MetricUtils {
 
   /**
    * Helper method to convert Execution Property value objects to an integer index.
+   * It updates the metadata for the metrics if new EP values are discovered.
    * @param epKeyIndex the index of the execution property key.
    * @param ep the execution property containing the value.
    * @return the converted value index.
@@ -257,6 +261,7 @@ public final class MetricUtils {
         final Integer valueIndex = Math.toIntExact(EP_METADATA.keySet().stream()
           .filter(pair -> pair.left().equals(epKeyIndex))
           .count()) + 1;
+//      Update the metadata if new EP value has been discovered.
         EP_METADATA.put(Pair.of(epKeyIndex, valueIndex), ep);
         LOG.info("New EP Index: ({}, {}) for {}", epKeyIndex, valueIndex, ep);
         MUST_UPDATE_EP_METADATA.countDown();
