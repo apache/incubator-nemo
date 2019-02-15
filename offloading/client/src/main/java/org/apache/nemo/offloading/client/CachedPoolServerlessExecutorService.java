@@ -399,7 +399,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       // logging
       if (System.currentTimeMillis() - prevTime > 2000) {
         prevTime = System.currentTimeMillis();
-        LOG.info("Shutting down workers {}/{}...", finishedWorkers, createdWorkers);
+        LOG.info("Shutting down workers {}/{}... scheduler is shutdown: {}, is terminated: {}",
+          finishedWorkers, createdWorkers, scheduler.isShutdown(), scheduler.isTerminated());
       }
 
       try {
