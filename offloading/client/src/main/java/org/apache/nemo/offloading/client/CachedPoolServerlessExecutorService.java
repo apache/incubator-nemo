@@ -47,8 +47,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   private final BlockingQueue<PendingOutput<O>> outputQueue;
 
-  // key: data id, val: # of speculative executions
-  private final Map<Integer, Integer> speculativeDataCounterMap;
   // key: data id, val: true (if the data is already processed by a worker)
   private final Map<Integer, Boolean> speculativeDataProcessedMap;
 
@@ -73,7 +71,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     LOG.info("Start cached pool serverless executor service");
 
     this.workerFactory = workerFactory;
-    this.speculativeDataCounterMap = new HashMap<>();
     this.speculativeDataProcessedMap = new HashMap<>();
     this.initializingWorkers = new LinkedList<>();
     this.runningWorkers = new LinkedList<>();
@@ -127,6 +124,15 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           if (pair.right().isReady()) {
             iterator.remove();
             readyWorkers.add(pair.right());
+          } else if (isOutputEmitted(pair.right())) {
+            // the output is already emitted
+            // just finish this worker
+            iterator.remove();
+            final Pair<ByteBuf, Integer> data = pair.right().getCurrentProcessingInput();
+            final int dataId = data.right();
+
+            LOG.info("Reject execution for data: {}", dataId);
+            pair.right().finishOffloading();
           }
         }
 
@@ -238,12 +244,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       if (data != null) {
         final int dataId = data.right();
         // TODO: consideration
-        LOG.info("Speculative execution for data {}, cnt: {}, runningWorkerCnt: {}, readyWorkerCnt: {}", dataId,
-          speculativeDataCounterMap.get(dataId), runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
-
-        // 여기서 ByteBuf가 release 될수도 있음 (기존의 running worker에서 execution을 끝냈을 경우)
-        final int cnt = speculativeDataCounterMap.getOrDefault(dataId, 1);
-        speculativeDataCounterMap.put(dataId, cnt + 1);
+        LOG.info("Speculative execution for data {}, runningWorkerCnt: {}, readyWorkerCnt: {}", dataId,
+          runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
 
         if (!speculativeDataProcessedMap.containsKey(dataId)) {
           speculativeDataProcessedMap.put(dataId, false);
@@ -266,31 +268,12 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
         if (data.isDone()) {
 
-          boolean isEmittable = true;
-          if (speculativeDataCounterMap.containsKey(dataId)) {
-            // speculative execution result
-            if (!speculativeDataProcessedMap.get(dataId)) {
-              // if the output is the first output among speculative execution
-              // set true
-              speculativeDataProcessedMap.put(dataId, true);
-            } else {
-              // this result is already emitted
-              // TODO: reject execution
-              isEmittable = false;
-            }
+          boolean isEmittable = !speculativeDataProcessedMap.getOrDefault(dataId, false);
 
-            final int count = speculativeDataCounterMap.get(dataId) - 1;
-            speculativeDataCounterMap.put(dataId, count);
-
-            LOG.info("Speculative execution output emittion, data: {}, cnt: {}, emittable: {}", dataId,
-              count, isEmittable);
-
-            if (count <= 0) {
-              speculativeDataCounterMap.remove(dataId);
-              speculativeDataProcessedMap.remove(dataId);
-            }
+          if (speculativeDataProcessedMap.containsKey(dataId)) {
+            LOG.info("Speculative execution output emittion, data: {}, emittable: {}", dataId,
+              isEmittable);
           }
-
 
           LOG.info("Output latency {}, id {} done", System.currentTimeMillis() - output.startTime, dataId);
           iterator.remove();
