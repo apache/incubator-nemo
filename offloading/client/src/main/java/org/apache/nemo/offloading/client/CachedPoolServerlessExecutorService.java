@@ -211,7 +211,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
     } else {
       // speculative execution
-      speculativeExecution(worker);
+      //speculativeExecution(worker);
+      worker.finishOffloading();
+      finishedWorkers += 1;
     }
   }
 
