@@ -102,8 +102,10 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                 try {
                   final int hasInstance = bis.readByte();
                   final ByteBuf curInputBuf = currentProcessingInput.left();
-                  currentProcessingInput = null;
-                  curInputBuf.release();
+                  synchronized (curInputBuf) {
+                    currentProcessingInput = null;
+                    curInputBuf.release();
+                  }
 
 
                   if (hasInstance == 0) {
@@ -213,12 +215,19 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   }
 
   @Override
-  public Future<Optional<O>> execute(final ByteBuf input, final int dataId) {
-    input.writeInt(dataId);
+  public Future<Optional<O>> execute(final ByteBuf input, final int dataId,
+                                     final boolean speculative) {
+    // for future use (speculative execution)
+    synchronized (input) {
+      input.retain();
+    }
+
+    if (!speculative) {
+      input.writeInt(dataId);
+    }
+
     pendingData.put(dataId, true);
 
-    // for future use (speculative execution)
-    input.retain();
 
     if (currentProcessingInput != null) {
       throw new RuntimeException("Current processing input should be null");

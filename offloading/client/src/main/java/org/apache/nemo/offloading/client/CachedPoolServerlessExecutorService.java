@@ -207,7 +207,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     final ByteBuf dataBuf = dataBufferQueue.poll();
     if (dataBuf != null) {
       final int dataId = workerFactory.getAndIncreaseDataId();
-      outputQueue.add(new PendingOutput(worker.execute(dataBuf, dataId), dataId));
+      outputQueue.add(new PendingOutput(worker.execute(dataBuf, dataId, false), dataId));
       runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
     } else {
       // speculative execution
@@ -238,7 +238,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           speculativeDataProcessedMap.put(dataId, false);
         }
 
-        outputQueue.add(new PendingOutput<>(readyWorker.execute(data.left(), dataId), dataId));
+        outputQueue.add(new PendingOutput<>(readyWorker.execute(data.left(), dataId, true), dataId));
         runningWorkers.add(Pair.of(System.currentTimeMillis(), readyWorker));
       }
     }

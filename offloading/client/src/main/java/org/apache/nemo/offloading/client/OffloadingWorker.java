@@ -10,7 +10,7 @@ import java.util.concurrent.Future;
 
 public interface OffloadingWorker<I, O> {
 
-  Future<Optional<O>> execute(ByteBuf input, int dataId);
+  Future<Optional<O>> execute(ByteBuf input, int dataId, boolean speculative);
   //Future<O> execute(I input);
 
   void finishOffloading();
