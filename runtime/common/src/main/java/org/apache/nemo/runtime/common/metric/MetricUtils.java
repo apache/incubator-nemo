@@ -196,7 +196,7 @@ public final class MetricUtils {
         e.getExecutionProperties().forEachProperties(ep ->
           epFormatter(eStringBuilder, EDGE, e.getNumericId(), ep))));
 
-//    Update the metric metadata if new execution property key / values have been discovered and updates are required.
+    // Update the metric metadata if new execution property key / values have been discovered and updates are required.
     updateMetaData();
     return Pair.of(vStringBuilder.toString().trim(), eStringBuilder.toString().trim());
   }
@@ -214,7 +214,7 @@ public final class MetricUtils {
     builder.append(numericId);
     builder.append("0");
     final Integer epKeyIndex = EP_KEY_METADATA.inverse().computeIfAbsent(ep.getClass(), epClass -> {
-//      Update the metadata if new EP key has been discovered.
+      // Update the metadata if new EP key has been discovered.
       LOG.info("New EP Key Index: {} for {}", EP_KEY_METADATA.size() + 1, epClass.getSimpleName());
       MUST_UPDATE_EP_KEY_METADATA.countDown();
       return EP_KEY_METADATA.size() + 1;
@@ -261,7 +261,7 @@ public final class MetricUtils {
         final Integer valueIndex = Math.toIntExact(EP_METADATA.keySet().stream()
           .filter(pair -> pair.left().equals(epKeyIndex))
           .count()) + 1;
-//      Update the metadata if new EP value has been discovered.
+        // Update the metadata if new EP value has been discovered.
         EP_METADATA.put(Pair.of(epKeyIndex, valueIndex), ep);
         LOG.info("New EP Index: ({}, {}) for {}", epKeyIndex, valueIndex, ep);
         MUST_UPDATE_EP_METADATA.countDown();
