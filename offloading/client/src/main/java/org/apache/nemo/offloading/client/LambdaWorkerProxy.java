@@ -224,6 +224,8 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
     if (!speculative) {
       input.writeInt(dataId);
+    } else {
+      input.retain();
     }
 
     pendingData.put(dataId, true);
