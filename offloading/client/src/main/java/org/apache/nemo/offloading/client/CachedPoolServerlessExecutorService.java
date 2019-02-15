@@ -250,8 +250,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     final ByteBuf dataBuf = dataBufferQueue.poll();
     if (dataBuf != null) {
       final int dataId = workerFactory.getAndIncreaseDataId();
-      outputQueue.add(new PendingOutput((Future<Optional<O>>)
-        worker.execute(dataBuf, dataId, false).left(), dataId));
+      outputQueue.add(new PendingOutput(worker.execute(dataBuf, dataId, false), dataId));
       runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
     } else {
       // speculative execution
@@ -272,21 +271,16 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       final Pair<ByteBuf, Integer> data = runningWorker.getCurrentProcessingInput();
       if (data != null) {
         final int dataId = data.right();
+        // TODO: consideration
+        LOG.info("Speculative execution for data {}, runningWorkerCnt: {}, readyWorkerCnt: {}", dataId,
+          runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
 
-
-        final Pair<Future<Optional<O>>, Boolean> pair = readyWorker.execute(data.left(), dataId, true);
-
-        if (pair.right()) {
-          // TODO: consideration
-          LOG.info("Speculative execution for data {}, runningWorkerCnt: {}, readyWorkerCnt: {}", dataId,
-            runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
-
-          if (!speculativeDataProcessedMap.containsKey(dataId)) {
-            speculativeDataProcessedMap.put(dataId, false);
-          }
-          outputQueue.add(new PendingOutput<>(pair.left(), dataId));
-          runningWorkers.add(Pair.of(System.currentTimeMillis(), readyWorker));
+        if (!speculativeDataProcessedMap.containsKey(dataId)) {
+          speculativeDataProcessedMap.put(dataId, false);
         }
+
+        outputQueue.add(new PendingOutput<>(readyWorker.execute(data.left(), dataId, true), dataId));
+        runningWorkers.add(Pair.of(System.currentTimeMillis(), readyWorker));
       }
     }
   }

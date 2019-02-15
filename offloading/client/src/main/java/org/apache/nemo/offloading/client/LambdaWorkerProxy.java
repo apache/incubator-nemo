@@ -217,23 +217,17 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   }
 
   @Override
-  public Pair<Future<Optional<O>>, Boolean> execute(final ByteBuf input, final int dataId,
+  public Future<Optional<O>> execute(final ByteBuf input, final int dataId,
                                      final boolean speculative) {
     // for future use (speculative execution)
     synchronized (input) {
-
-      if (currentProcessingInput == null) {
-        return Pair.of(null, false);
-      }
-
       input.retain();
-      if (speculative) {
-        input.retain();
-      }
     }
 
     if (!speculative) {
       input.writeInt(dataId);
+    } else {
+      input.retain();
     }
 
     pendingData.put(dataId, true);
@@ -248,7 +242,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
     if (channel != null) {
       LOG.info("Write data id: {}", dataId);
       channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, input));
-      return Pair.of(new Future<Optional<O>>() {
+      return new Future<Optional<O>>() {
 
         private Optional<O> result = null;
 
@@ -289,7 +283,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
         public Optional<O> get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
           throw new RuntimeException("Not support");
         }
-      }, true);
+      };
     } else {
       throw new RuntimeException("Channel is null");
     }
