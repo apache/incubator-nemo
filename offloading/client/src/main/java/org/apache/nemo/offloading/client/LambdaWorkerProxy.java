@@ -81,9 +81,17 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
       try {
         final Pair<Channel, NemoEvent> pair = channelFuture.get();
         channel = pair.left();
-        final ByteBuffer byteBuf = ByteBuffer.wrap(pair.right().getBytes());
-        final int cnt = byteBuf.getInt();
+        final ByteBuf byteBuf = pair.right().getByteBuf();
+        final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+        final int cnt;
+        try {
+          cnt = bis.readInt();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
         dataProcessingCnt = cnt;
+        byteBuf.release();
 
         channelEventHandlerMap.put(channel, new EventHandler<NemoEvent>() {
           @Override

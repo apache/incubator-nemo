@@ -52,7 +52,7 @@ public final class NemoEventHandler implements EventHandler<Pair<Channel,NemoEve
     switch (event.getType()) {
       case CLIENT_HANDSHAKE:
         handshakeQueue.add(nemoEvent);
-        nemoEvent.right().getByteBuf().release();
+        //nemoEvent.right().getByteBuf().release();
         break;
       default:
         if (channelEventHandlerMap != null) {

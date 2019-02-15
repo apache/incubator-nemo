@@ -17,7 +17,7 @@ public final class NemoEventCoder {
       if (msg.getByteBuf() != null) {
         out.add(msg.getByteBuf());
       } else {
-        final ByteBuf buf = ctx.alloc().buffer(8 + msg.getLen());
+        final ByteBuf buf = ctx.alloc().buffer(4 + msg.getLen());
         //System.out.println("Encoded bytes: " + msg.getLen() + 8);
         buf.writeInt(msg.getType().ordinal());
         buf.writeBytes(msg.getBytes(), 0, msg.getLen());

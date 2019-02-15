@@ -226,12 +226,12 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       final Pair<Integer, ByteBuf> data = runningWorker.getCurrentProcessingInput();
       if (data != null) {
         // TODO: consideration
+        LOG.info("Speculative execution for data {}, cnt: {}, runningWorkerCnt: {}, readyWorkerCnt: {}", data.left(),
+          speculativeDataCounterMap.get(data.left()), runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
+
         // 여기서 ByteBuf가 release 될수도 있음 (기존의 running worker에서 execution을 끝냈을 경우)
         final int cnt = speculativeDataCounterMap.getOrDefault(data.left(), 0);
         speculativeDataCounterMap.put(data.left(), cnt + 1);
-
-        LOG.info("Speculative execution for data {}, cnt: {}, runningWorkerCnt: {}, readyWorkerCnt: {}", data.left(),
-          speculativeDataCounterMap.get(data.left()), runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
 
         if (!speculativeDataProcessedMap.containsKey(data.left())) {
           speculativeDataProcessedMap.put(data.left(), false);
