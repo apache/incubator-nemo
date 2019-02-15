@@ -102,11 +102,8 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                 try {
                   final int hasInstance = bis.readByte();
                   final ByteBuf curInputBuf = currentProcessingInput.left();
-                  synchronized (curInputBuf) {
                     currentProcessingInput = null;
                     curInputBuf.release();
-                  }
-
 
                   if (hasInstance == 0) {
                     final int resultId = bis.readInt();
@@ -220,9 +217,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   public Future<Optional<O>> execute(final ByteBuf input, final int dataId,
                                      final boolean speculative) {
     // for future use (speculative execution)
-    synchronized (input) {
-      input.retain();
-    }
+    input.retain();
 
     if (!speculative) {
       input.writeInt(dataId);

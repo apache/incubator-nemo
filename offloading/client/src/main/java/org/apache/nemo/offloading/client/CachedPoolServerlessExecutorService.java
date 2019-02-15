@@ -3,6 +3,7 @@ package org.apache.nemo.offloading.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
+import io.netty.util.IllegalReferenceCountException;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.slf4j.Logger;
@@ -271,16 +272,27 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       final Pair<ByteBuf, Integer> data = runningWorker.getCurrentProcessingInput();
       if (data != null) {
         final int dataId = data.right();
-        // TODO: consideration
-        LOG.info("Speculative execution for data {}, runningWorkerCnt: {}, readyWorkerCnt: {}", dataId,
-          runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
 
-        if (!speculativeDataProcessedMap.containsKey(dataId)) {
-          speculativeDataProcessedMap.put(dataId, false);
+
+        try {
+          outputQueue.add(new PendingOutput<>(readyWorker.execute(data.left(), dataId, true), dataId));
+
+          // TODO: consideration
+          LOG.info("Speculative execution for data {}, runningWorkerCnt: {}, readyWorkerCnt: {}", dataId,
+            runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
+
+          if (!speculativeDataProcessedMap.containsKey(dataId)) {
+            speculativeDataProcessedMap.put(dataId, false);
+          }
+
+          runningWorkers.add(Pair.of(System.currentTimeMillis(), readyWorker));
+        } catch (final IllegalReferenceCountException e) {
+          // the input becomes null ... this means that we don't have to do speculative execution
+          // just finish the worker!
+          LOG.info("Illegal reference count exception... just finis worker");
+          readyWorker.finishOffloading();
+          finishedWorkers += 1;
         }
-
-        outputQueue.add(new PendingOutput<>(readyWorker.execute(data.left(), dataId, true), dataId));
-        runningWorkers.add(Pair.of(System.currentTimeMillis(), readyWorker));
       }
     }
   }
