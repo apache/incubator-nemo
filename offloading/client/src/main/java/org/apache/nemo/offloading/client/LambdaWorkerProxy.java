@@ -111,19 +111,21 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                   if (hasInstance == 0) {
                     final int resultId = bis.readInt();
                     dataProcessingCnt = bis.readInt();
-                    LOG.info("Receive data id {}, processing cnt: {}", resultId, dataProcessingCnt);
                     //LOG.info("Receive result of data {}, {}", resultId, null);
                     resultMap.put(resultId, Optional.empty());
                     pendingData.remove(resultId);
+                    LOG.info("Receive data id {}, processing cnt: {}, pendingData: {}", resultId, dataProcessingCnt,
+                      pendingData);
                   } else {
                     final DecoderFactory.Decoder<O> decoder = outputDecoderFactory.create(bis);
                     final O data = decoder.decode();
                     final int resultId = bis.readInt();
                     dataProcessingCnt = bis.readInt();
-                    LOG.info("Receive data id {}, processing cnt: {}", resultId, dataProcessingCnt);
                     //LOG.info("Receive result of data {}, {}", resultId, data);
                     resultMap.put(resultId, Optional.of(data));
                     pendingData.remove(resultId);
+                    LOG.info("Receive data id {}, processing cnt: {}, pendingData: {}", resultId, dataProcessingCnt,
+                      pendingData);
                   }
 
 
