@@ -252,44 +252,43 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     while (iterator.hasNext()) {
       try {
         final PendingOutput<O> output = iterator.next();
-        boolean isEmittable = true;
         final int dataId = output.dataId;
         final Future<Optional<O>> data = output.output;
 
-        if (speculativeDataCounterMap.containsKey(dataId)) {
-          // speculative execution result
-          if (!speculativeDataProcessedMap.get(dataId)) {
-            // if the output is the first output among speculative execution
-            // set true
-            speculativeDataProcessedMap.put(dataId, true);
-          } else {
-            // this result is already emitted
-            // TODO: reject execution
-            isEmittable = false;
-            iterator.remove();
-          }
+        if (data.isDone()) {
 
-          final int count = speculativeDataCounterMap.get(dataId) - 1;
-          speculativeDataCounterMap.put(dataId, count);
-
-          LOG.info("Speculative execution output emittion, data: {}, cnt: {}", dataId,
-            count);
-
-          if (count <= 0) {
-            speculativeDataCounterMap.remove(dataId);
-            speculativeDataProcessedMap.remove(dataId);
-          }
-        }
-
-        if (isEmittable) {
-          if (data.isDone()) {
-            LOG.info("Output latency {}, id {} done", System.currentTimeMillis() - output.startTime, dataId);
-            iterator.remove();
-            final Optional<O> optional = data.get();
-            if (optional.isPresent()) {
-              LOG.info("Output receive: {}", optional.get());
-              eventHandler.onNext(optional.get());
+          boolean isEmittable = true;
+          if (speculativeDataCounterMap.containsKey(dataId)) {
+            // speculative execution result
+            if (!speculativeDataProcessedMap.get(dataId)) {
+              // if the output is the first output among speculative execution
+              // set true
+              speculativeDataProcessedMap.put(dataId, true);
+            } else {
+              // this result is already emitted
+              // TODO: reject execution
+              isEmittable = false;
             }
+
+            final int count = speculativeDataCounterMap.get(dataId) - 1;
+            speculativeDataCounterMap.put(dataId, count);
+
+            LOG.info("Speculative execution output emittion, data: {}, cnt: {}, emittable: {}", dataId,
+              count, isEmittable);
+
+            if (count <= 0) {
+              speculativeDataCounterMap.remove(dataId);
+              speculativeDataProcessedMap.remove(dataId);
+            }
+          }
+
+
+          LOG.info("Output latency {}, id {} done", System.currentTimeMillis() - output.startTime, dataId);
+          iterator.remove();
+          final Optional<O> optional = data.get();
+          if (isEmittable && optional.isPresent()) {
+            LOG.info("Output receive: {}", optional.get());
+            eventHandler.onNext(optional.get());
           }
         }
 
