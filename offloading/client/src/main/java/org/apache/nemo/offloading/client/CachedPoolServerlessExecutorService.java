@@ -210,17 +210,42 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     }
   }
 
+  private boolean hasBeenPerformedSpeculativeExecution(final OffloadingWorker runningWorker) {
+    final Pair<ByteBuf, Integer> curInput = runningWorker.getCurrentProcessingInput();
+    if (curInput != null) {
+      return speculativeDataProcessedMap.containsKey(curInput.right());
+    } else {
+      return true;
+    }
+  }
+
   private OffloadingWorker selectRunningWorkerForSpeculativeExecution(final OffloadingWorker readyWorker) {
     int cnt = Integer.MAX_VALUE;
     OffloadingWorker target = null;
+
+    // first find a worker that does not perform speculative execution
     for (final Pair<Long, OffloadingWorker> runningWorkerPair : runningWorkers) {
       final OffloadingWorker runningWorker = runningWorkerPair.right();
       final int runningWorkerCnt = runningWorker.getDataProcessingCnt();
-      if (cnt > runningWorkerCnt && !isOutputEmitted(runningWorker)
+      if (cnt > runningWorkerCnt && !hasBeenPerformedSpeculativeExecution(runningWorker)
         && runningWorkerCnt + 1 < readyWorker.getDataProcessingCnt()) {
         target = runningWorker;
       }
     }
+
+    // if there is no worker that perform speculative execution
+    // just select a running worker that has low worker count
+    if (target == null) {
+      for (final Pair<Long, OffloadingWorker> runningWorkerPair : runningWorkers) {
+        final OffloadingWorker runningWorker = runningWorkerPair.right();
+        final int runningWorkerCnt = runningWorker.getDataProcessingCnt();
+        if (cnt > runningWorkerCnt && !isOutputEmitted(runningWorker)
+          && runningWorkerCnt + 1 < readyWorker.getDataProcessingCnt()) {
+          target = runningWorker;
+        }
+      }
+    }
+
     return target;
   }
 
