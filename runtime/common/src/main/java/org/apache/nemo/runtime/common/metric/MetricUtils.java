@@ -271,7 +271,7 @@ public final class MetricUtils {
   }
 
   /**
-   * Finds the project root path by looking for the travis.yml file.
+   * Finds the project root path.
    * @return the project root path.
    */
   private static String fetchProjectRootPath() {
