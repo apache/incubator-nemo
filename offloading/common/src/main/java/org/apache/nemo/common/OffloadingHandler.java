@@ -21,6 +21,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 
 import java.io.*;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +61,8 @@ public final class OffloadingHandler {
   private EncoderFactory outputEncoderFactory;
 
   private LambdaOutputHandler outputCollector;
+
+  private int dataProcessingCnt = 0;
 
 	public OffloadingHandler(final Callable<ClassLoader> classLoaderCallable) {
 		LOG.info("Handler is created!");
@@ -113,6 +116,7 @@ public final class OffloadingHandler {
       // bit 0 1
       byteBuf.writeByte(0);
       byteBuf.writeInt(data.right());
+      byteBuf.writeInt(dataProcessingCnt);
     } else {
       byteBuf.writeByte(1);
       final ByteBufOutputStream bis = new ByteBufOutputStream(byteBuf);
@@ -121,6 +125,7 @@ public final class OffloadingHandler {
         encoder = outputEncoderFactory.create(bis);
         encoder.encode(data.left());
         bis.writeInt(data.right());
+        bis.writeInt(dataProcessingCnt);
         bis.close();
       } catch (IOException e) {
         e.printStackTrace();
@@ -182,8 +187,10 @@ public final class OffloadingHandler {
     }
 
     // write handshake
-    System.out.println("Write handshake: " + (System.currentTimeMillis() - st));
-    opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.CLIENT_HANDSHAKE, new byte[0], 0));
+    System.out.println("Data processing cnt: " + dataProcessingCnt
+      + ", Write handshake: " + (System.currentTimeMillis() - st));
+    byte[] bytes = ByteBuffer.allocate(4).putInt(dataProcessingCnt).array();
+    opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
 
     // ready state
     //opendChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.READY, new byte[0], 0));
@@ -341,7 +348,6 @@ public final class OffloadingHandler {
           } catch (IOException e) {
             if (e.getMessage().contains("EOF")) {
               System.out.println("eof!");
-              break;
             } else {
               e.printStackTrace();
               throw new RuntimeException(e);
@@ -349,6 +355,7 @@ public final class OffloadingHandler {
           }
 
           System.out.println("Data processing done: " + (System.currentTimeMillis() - st));
+          dataProcessingCnt += 1;
 
           nemoEvent.getByteBuf().release();
 

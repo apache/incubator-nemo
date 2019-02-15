@@ -185,6 +185,24 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     */
   }
 
+  private boolean isOutputEmitted(final OffloadingWorker runningWorker) {
+    return speculativeDataProcessedMap.getOrDefault(runningWorker.getCurrentProcessingInput().right(), false);
+  }
+
+  private OffloadingWorker selectRunningWorkerForSpeculativeExecution(final OffloadingWorker readyWorker) {
+    int cnt = Integer.MAX_VALUE;
+    OffloadingWorker target = null;
+    for (final Pair<Long, OffloadingWorker> runningWorkerPair : runningWorkers) {
+      final OffloadingWorker runningWorker = runningWorkerPair.right();
+      final int runningWorkerCnt = runningWorker.getDataProcessingCnt();
+      if (cnt > runningWorkerCnt && !isOutputEmitted(runningWorker)
+        && runningWorkerCnt < readyWorker.getDataProcessingCnt()) {
+        target = runningWorker;
+      }
+    }
+    return target;
+  }
+
   private void executeData(final OffloadingWorker worker) {
     final ByteBuf dataBuf = dataBufferQueue.poll();
     if (dataBuf != null) {
@@ -192,61 +210,38 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       outputQueue.add(new PendingOutput(worker.execute(dataBuf, dataId), dataId));
       runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
     } else {
-      // just end the worker
-      worker.finishOffloading();
-      finishedWorkers += 1;
-
       // speculative execution
-      //speculativeExecution(worker);
+      speculativeExecution(worker);
     }
   }
 
-  /*
   private void speculativeExecution(final OffloadingWorker readyWorker) {
     // speculative execution when there are ready workers
-    if (!runningWorkers.isEmpty()) {
-      synchronized (runningWorkers) {
-        final List<OffloadingWorker> readyToRunningWorkers = new ArrayList<>(runningWorkers.size());
-
-        for (final OffloadingWorker runningWorker : runningWorkers) {
-          final Pair<Long, OffloadingWorker> readyWorkerPair = readyWorkers.poll();
-          if (readyWorkerPair == null) {
-            // exit speculative execution if there are no ready workers
-            break;
-          } else {
-            final Pair<Integer, ByteBuf> data = runningWorker.getCurrentProcessingInput();
-            if (data != null) {
-
-              // TODO: consideration
-              // 여기서 ByteBuf가 release 될수도 있음 (기존의 running worker에서 execution을 끝냈을 경우)
-              final int cnt = speculativeDataCounterMap.getOrDefault(data.left(), 0);
-              speculativeDataCounterMap.put(data.left(), cnt + 1);
-
-              LOG.info("Speculative execution for data {}, cnt: {}", data.left(),
-                speculativeDataCounterMap.get(data.left()));
-
-              if (!speculativeDataProcessedMap.containsKey(data.left())) {
-                speculativeDataProcessedMap.put(data.left(), false);
-              }
-
-              final OffloadingWorker readyWorker = readyWorkerPair.right();
-              outputQueue.add(Pair.of(data.left(), readyWorker.execute(data.right(), data.left())));
-              readyToRunningWorkers.add(readyWorker);
-            }
-          }
-        }
-
-        if (!readyToRunningWorkers.isEmpty()) {
-          runningWorkers.addAll(readyToRunningWorkers);
-        }
-      }
-    } else {
+    final OffloadingWorker runningWorker = selectRunningWorkerForSpeculativeExecution(readyWorker);
+    if (runningWorker == null) {
       // just end the worker
       readyWorker.finishOffloading();
       finishedWorkers += 1;
+    } else {
+      final Pair<Integer, ByteBuf> data = runningWorker.getCurrentProcessingInput();
+      if (data != null) {
+        // TODO: consideration
+        // 여기서 ByteBuf가 release 될수도 있음 (기존의 running worker에서 execution을 끝냈을 경우)
+        final int cnt = speculativeDataCounterMap.getOrDefault(data.left(), 0);
+        speculativeDataCounterMap.put(data.left(), cnt + 1);
+
+        LOG.info("Speculative execution for data {}, cnt: {}, runningWorkerCnt: {}, readyWorkerCnt: {}", data.left(),
+          speculativeDataCounterMap.get(data.left()), runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
+
+        if (!speculativeDataProcessedMap.containsKey(data.left())) {
+          speculativeDataProcessedMap.put(data.left(), false);
+        }
+
+        outputQueue.add(new PendingOutput<>(readyWorker.execute(data.right(), data.left()), data.left()));
+        runningWorkers.add(Pair.of(System.currentTimeMillis(), readyWorker));
+      }
     }
   }
-  */
 
   private void outputEmittion() {
     // emit output

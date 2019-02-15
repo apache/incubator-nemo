@@ -24,4 +24,6 @@ public interface OffloadingWorker<I, O> {
   Channel getChannel();
 
   Pair<ByteBuf, Integer> getCurrentProcessingInput();
+
+  int getDataProcessingCnt();
 }

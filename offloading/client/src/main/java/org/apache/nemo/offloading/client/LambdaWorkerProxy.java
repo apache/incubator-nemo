@@ -16,12 +16,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
 import java.util.Optional;
 import java.util.concurrent.*;
 
 public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaWorkerProxy.class.getName());
   private volatile Channel channel;
+  private volatile int dataProcessingCnt = 0;
   private volatile boolean finished = false;
   private final BlockingQueue<NemoEvent> endQueue;
   private final ConcurrentMap<Channel, EventHandler<NemoEvent>> channelEventHandlerMap;
@@ -34,7 +36,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
   private final OffloadingWorkerFactory offloadingWorkerFactory;
 
-  private final Future<Channel> channelFuture;
+  private final Future<Pair<Channel, NemoEvent>> channelFuture;
 
   // two data stream: when channel is null, we buffer byte in byte array output
   // otherwise, we use byteBufOutputStream directly.
@@ -49,7 +51,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private Pair<ByteBuf, Integer> currentProcessingInput = null;
 
 
-  public LambdaWorkerProxy(final Future<Channel> channelFuture,
+  public LambdaWorkerProxy(final Future<Pair<Channel, NemoEvent>> channelFuture,
                            final OffloadingWorkerFactory offloadingWorkerFactory,
                            final ConcurrentMap<Channel, EventHandler<NemoEvent>> channelEventHandlerMap,
                            final EncoderFactory inputEncoderFactory,
@@ -77,7 +79,12 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
     channelThread.execute(() -> {
       try {
-        channel = channelFuture.get();
+        final Pair<Channel, NemoEvent> pair = channelFuture.get();
+        channel = pair.left();
+        final ByteBuffer byteBuf = ByteBuffer.wrap(pair.right().getBytes());
+        final int cnt = byteBuf.getInt();
+        dataProcessingCnt = cnt;
+
         channelEventHandlerMap.put(channel, new EventHandler<NemoEvent>() {
           @Override
           public void onNext(NemoEvent msg) {
@@ -93,21 +100,24 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
                   if (hasInstance == 0) {
                     final int resultId = bis.readInt();
-                    LOG.info("Receive data id {}", resultId);
+                    dataProcessingCnt = bis.readInt();
+                    LOG.info("Receive data id {}, processing cnt: {}", resultId, dataProcessingCnt);
                     //LOG.info("Receive result of data {}, {}", resultId, null);
                     resultMap.put(resultId, Optional.empty());
                     pendingData.remove(resultId);
-                    msg.getByteBuf().release();
                   } else {
                     final DecoderFactory.Decoder<O> decoder = outputDecoderFactory.create(bis);
                     final O data = decoder.decode();
                     final int resultId = bis.readInt();
-                    LOG.info("Receive data id {}", resultId);
+                    dataProcessingCnt = bis.readInt();
+                    LOG.info("Receive data id {}, processing cnt: {}", resultId, dataProcessingCnt);
                     //LOG.info("Receive result of data {}, {}", resultId, data);
                     resultMap.put(resultId, Optional.of(data));
                     pendingData.remove(resultId);
-                    msg.getByteBuf().release();
                   }
+
+
+                  msg.getByteBuf().release();
                 } catch (IOException e) {
                   e.printStackTrace();
                   throw new RuntimeException();
@@ -187,6 +197,11 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   @Override
   public Pair<ByteBuf, Integer> getCurrentProcessingInput() {
     return currentProcessingInput;
+  }
+
+  @Override
+  public int getDataProcessingCnt() {
+    return dataProcessingCnt;
   }
 
   @Override

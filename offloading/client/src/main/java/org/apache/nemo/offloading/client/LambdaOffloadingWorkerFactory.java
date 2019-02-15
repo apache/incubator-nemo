@@ -71,7 +71,8 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
 
     createChannelRequest();
 
-    final Future<Channel> channelFuture = new Future<Channel>() {
+    final Future<Pair<Channel, NemoEvent>> channelFuture = new Future<Pair<Channel, NemoEvent>>() {
+
       @Override
       public boolean cancel(boolean mayInterruptIfRunning) {
         return false;
@@ -88,16 +89,16 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
       }
 
       @Override
-      public Channel get() throws InterruptedException, ExecutionException {
-        final Channel channel;
+      public Pair<Channel, NemoEvent> get() throws InterruptedException, ExecutionException {
+        final Pair<Channel, NemoEvent> pair;
         try {
-          channel = nemoEventHandler.getHandshakeQueue().take().left();
+          pair = nemoEventHandler.getHandshakeQueue().take();
         } catch (InterruptedException e) {
           e.printStackTrace();
           throw new RuntimeException(e);
         }
 
-        channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WORKER_INIT, workerInitBuffer));
+        pair.left().writeAndFlush(new NemoEvent(NemoEvent.Type.WORKER_INIT, workerInitBuffer));
 
         /*
         final int pendingNum = pendingRequest.decrementAndGet();
@@ -121,11 +122,11 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
         }
         */
 
-        return channel;
+        return pair;
       }
 
       @Override
-      public Channel get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+      public Pair<Channel, NemoEvent> get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
         return null;
       }
     };
