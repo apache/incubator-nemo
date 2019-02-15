@@ -103,9 +103,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
       try {
         // initializing worker -> running workers
-        if (logging) {
-          LOG.info("Thread: {}, Start - Init", Thread.currentThread().getId());
-        }
 
         synchronized (initializingWorkers) {
           final Iterator<Pair<Long, OffloadingWorker>> iterator = initializingWorkers.iterator();
@@ -121,21 +118,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           }
         }
 
-        if (logging) {
-          LOG.info("Thread: {}, End - Init", Thread.currentThread().getId());
-
-
-          // we should handle output before changing runningWorker to readyWorker
-          LOG.info("Thread: {}, Start - outputEmission", Thread.currentThread().getId());
-        }
-
         outputEmittion();
-        if (logging) {
-          LOG.info("Thread: {}, End - outputEmission", Thread.currentThread().getId());
 
-          // Reschedule running worker if it becomes ready
-          LOG.info("Thread: {}, Start - running", Thread.currentThread().getId());
-        }
         final List<OffloadingWorker> readyWorkers = new ArrayList<>(runningWorkers.size());
         final Iterator<Pair<Long, OffloadingWorker>> iterator = runningWorkers.iterator();
         while (iterator.hasNext()) {
@@ -145,20 +129,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             readyWorkers.add(pair.right());
           }
         }
-        if (logging) {
-          LOG.info("Thread: {}, End - running", Thread.currentThread().getId());
 
-          // Reschedule ready workers
-          LOG.info("Thread: {}, Start - execute", Thread.currentThread().getId());
-        }
         readyWorkers.forEach(readyWorker -> {
           executeData(readyWorker);
         });
-
-        if (logging) {
-          LOG.info("Thread: {}, End - execute", Thread.currentThread().getId());
-        }
-
 
         //speculativeExecution();
 
@@ -216,7 +190,12 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   }
 
   private boolean isOutputEmitted(final OffloadingWorker runningWorker) {
-    return speculativeDataProcessedMap.getOrDefault(runningWorker.getCurrentProcessingInput().right(), false);
+    final Pair<ByteBuf, Integer> curInput = runningWorker.getCurrentProcessingInput();
+    if (curInput != null) {
+      return speculativeDataProcessedMap.getOrDefault(curInput.right(), false);
+    } else {
+      return true;
+    }
   }
 
   private OffloadingWorker selectRunningWorkerForSpeculativeExecution(final OffloadingWorker readyWorker) {
