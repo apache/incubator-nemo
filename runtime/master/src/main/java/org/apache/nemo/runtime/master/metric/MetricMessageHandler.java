@@ -16,42 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.frontend.spark;
+package org.apache.nemo.runtime.master.metric;
 
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.nemo.common.KeyExtractor;
-import scala.Tuple2;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Extracts the key from a KV element.
- * For non-KV elements, the elements themselves become the key.
+ * Metric message handler.
  */
-public final class SparkKeyExtractor implements KeyExtractor {
-  @Override
-  public Object extractKey(final Object element) {
-    if (element instanceof Tuple2) {
-      return ((Tuple2) element)._1;
-    } else {
-      return element;
-    }
-  }
+@DefaultImplementation(MetricManagerMaster.class)
+public interface MetricMessageHandler {
 
-  @Override
-  public boolean equals(final Object o) {
-    if (this == o) {
-      return true;
-    }
+  /**
+   * Handle the received metric message.
+   * @param metricType a given type for the metric (ex. TaskMetric).
+   * @param metricId  id of the metric.
+   * @param metricField field name of the metric.
+   * @param metricValue serialized metric data value.
+   */
+  void onMetricMessageReceived(final String metricType, final String metricId,
+                               final String metricField, final byte[] metricValue);
 
-    if (o == null || getClass() != o.getClass()) {
-
-      return false;
-    }
-
-    return true;
-  }
-
-  @Override
-  public int hashCode() {
-    return new HashCodeBuilder(2437, 17).toHashCode();
-  }
+  /**
+   * Cleans up and terminates this handler.
+   */
+  void terminate();
 }

@@ -22,6 +22,7 @@ import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.*;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -29,8 +30,12 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
+import org.apache.nemo.runtime.common.metric.JobMetric;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
+import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.nemo.runtime.master.servlet.*;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
@@ -94,7 +99,11 @@ public final class RuntimeMaster {
   private final PlanStateManager planStateManager;
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
+  private final String jobId;
   private final String dagDirectory;
+  private final String dbAddress;
+  private final String dbId;
+  private final String dbPassword;
   private final Set<IRVertex> irVertices;
   private final AtomicInteger resourceRequestCount;
   private CountDownLatch metricCountDownLatch;
@@ -110,6 +119,10 @@ public final class RuntimeMaster {
                         final ClientRPC clientRPC,
                         final MetricManagerMaster metricManagerMaster,
                         final PlanStateManager planStateManager,
+                        @Parameter(JobConf.JobId.class) final String jobId,
+                        @Parameter(JobConf.DBAddress.class) final String dbAddress,
+                        @Parameter(JobConf.DBId.class) final String dbId,
+                        @Parameter(JobConf.DBPasswd.class) final String dbPassword,
                         @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
@@ -135,7 +148,11 @@ public final class RuntimeMaster {
         .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.clientRPC = clientRPC;
     this.metricManagerMaster = metricManagerMaster;
+    this.jobId = jobId;
     this.dagDirectory = dagDirectory;
+    this.dbAddress = dbAddress;
+    this.dbId = dbId;
+    this.dbPassword = dbPassword;
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
@@ -144,6 +161,10 @@ public final class RuntimeMaster {
     this.planStateManager = planStateManager;
   }
 
+  /**
+   * Start Metric Server.
+   * @return the metric server.
+   */
   private Server startRestMetricServer() {
     final Server server = new Server(REST_SERVER_PORT);
 
@@ -159,10 +180,26 @@ public final class RuntimeMaster {
     try {
       server.start();
     } catch (final Exception e) {
-      throw new RuntimeException("Failed to start REST API server.");
+      throw new MetricException("Failed to start REST API server: " + e);
     }
 
     return server;
+  }
+
+  public void recordIRDAGMetrics(final IRDAG irdag, final String planId) {
+    metricStore.getOrCreateMetric(JobMetric.class, planId).setIRDAG(irdag);
+  }
+
+  /**
+   * Flush metrics.
+   */
+  public void flushMetrics() {
+    // send metric flush request to all executors
+    metricManagerMaster.sendMetricFlushRequest();
+
+    metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
+      "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
+    metricStore.saveOptimizationMetricsToDB(dbAddress, dbId, dbPassword);
   }
 
   /**
@@ -199,8 +236,6 @@ public final class RuntimeMaster {
     // No need to speculate anymore
     speculativeTaskCloningThread.shutdown();
 
-    // send metric flush request to all executors
-    metricManagerMaster.sendMetricFlushRequest();
     try {
       // wait for metric flush
       if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
@@ -225,10 +260,8 @@ public final class RuntimeMaster {
       try {
         metricServer.stop();
       } catch (final Exception e) {
-        throw new RuntimeException("Failed to stop rest api server.");
+        throw new MetricException("Failed to stop rest api server: " + e);
       }
-
-      metricStore.dumpAllMetricToFile(Paths.get(dagDirectory, "metric.json").toString());
     });
 
     // Do not shutdown runtimeMasterThread. We need it to clean things up.
@@ -278,9 +311,8 @@ public final class RuntimeMaster {
   public void onContainerAllocated(final String executorId,
                                    final AllocatedEvaluator allocatedEvaluator,
                                    final Configuration executorConfiguration) {
-    runtimeMasterThread.execute(() -> {
-      containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration);
-    });
+    runtimeMasterThread.execute(() ->
+      containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
   }
 
   /**
@@ -335,9 +367,8 @@ public final class RuntimeMaster {
   public final class MasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
     @Override
     public void onMessage(final ControlMessage.Message message) {
-      runtimeMasterThread.execute(() -> {
-        handleControlMessage(message);
-      });
+      runtimeMasterThread.execute(() ->
+        handleControlMessage(message));
     }
 
     @Override

@@ -29,6 +29,7 @@ import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.common.state.StageState;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.reef.tang.Injector;
 import org.junit.Before;
 import org.junit.Test;

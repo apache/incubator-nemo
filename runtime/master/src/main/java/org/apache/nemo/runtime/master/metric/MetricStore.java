@@ -16,17 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master;
+package org.apache.nemo.runtime.master.metric;
 
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.exception.UnsupportedMetricException;
 import org.apache.nemo.runtime.common.metric.*;
+import org.apache.nemo.runtime.common.state.PlanState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.lang.management.ManagementFactory;
+import java.sql.*;
 import java.util.*;
 
 /**
@@ -34,9 +40,10 @@ import java.util.*;
  * All metric classes should be JSON-serializable by {@link ObjectMapper}.
  */
 public final class MetricStore {
-  private final Map<Class, Map<String, Object>> metricMap = new HashMap<>();
+  private static final Logger LOG = LoggerFactory.getLogger(MetricStore.class.getName());
+  private final Map<Class<? extends Metric>, Map<String, Object>> metricMap = new HashMap<>();
   // You can add more metrics by adding item to this metricList list.
-  private final Map<String, Class> metricList = new HashMap<>();
+  private final Map<String, Class<? extends Metric>> metricList = new HashMap<>();
   /**
    * Private constructor.
    */
@@ -66,7 +73,7 @@ public final class MetricStore {
       throw new NoSuchElementException();
     }
 
-    return metricList.get(className);
+    return (Class<T>) metricList.get(className);
   }
 
   /**
@@ -76,7 +83,7 @@ public final class MetricStore {
    * @param <T> class of metric
    */
   public <T extends Metric> void putMetric(final T metric) {
-    final Class metricClass = metric.getClass();
+    final Class<? extends Metric> metricClass = metric.getClass();
     if (!metricList.values().contains(metricClass)) {
       throw new UnsupportedMetricException(new Throwable("Unsupported metric"));
     }
@@ -106,11 +113,7 @@ public final class MetricStore {
    * @return a metric object.
    */
   public <T extends Metric> Map<String, Object> getMetricMap(final Class<T> metricClass) {
-    final Map<String, Object> metric = metricMap.computeIfAbsent(metricClass, k -> new HashMap<>());
-    if (metric == null) {
-      throw new NoSuchElementException("No metric found");
-    }
-    return metric;
+    return metricMap.computeIfAbsent(metricClass, k -> new HashMap<>());
   }
 
   /**
@@ -122,13 +125,13 @@ public final class MetricStore {
    * @return a metric object. If there was no such metric, newly create one.
    */
   public <T extends Metric> T getOrCreateMetric(final Class<T> metricClass, final String id) {
-    T metric =  (T) metricMap.computeIfAbsent(metricClass, k -> new HashMap<>()).get(id);
+    T metric = (T) metricMap.computeIfAbsent(metricClass, k -> new HashMap<>()).get(id);
     if (metric == null) {
       try {
         metric = metricClass.getConstructor(new Class[]{String.class}).newInstance(id);
         putMetric(metric);
       } catch (final Exception e) {
-        throw new RuntimeException(e);
+        throw new MetricException(e);
       }
     }
     return metric;
@@ -158,19 +161,19 @@ public final class MetricStore {
     final ObjectMapper objectMapper = new ObjectMapper();
     final JsonFactory jsonFactory = new JsonFactory();
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8);
-    jsonGenerator.setCodec(objectMapper);
 
-    jsonGenerator.writeStartObject();
-    jsonGenerator.writeFieldName(metricClass.getSimpleName());
-    jsonGenerator.writeStartObject();
-    for (final Map.Entry<String, Object> idToMetricEntry : getMetricMap(metricClass).entrySet()) {
-      generatePreprocessedJsonFromMetricEntry(idToMetricEntry, jsonGenerator, objectMapper);
+    try (final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8)) {
+      jsonGenerator.setCodec(objectMapper);
+
+      jsonGenerator.writeStartObject();
+      jsonGenerator.writeFieldName(metricClass.getSimpleName());
+      jsonGenerator.writeStartObject();
+      for (final Map.Entry<String, Object> idToMetricEntry : getMetricMap(metricClass).entrySet()) {
+        generatePreprocessedJsonFromMetricEntry(idToMetricEntry, jsonGenerator, objectMapper);
+      }
+      jsonGenerator.writeEndObject();
+      jsonGenerator.writeEndObject();
     }
-    jsonGenerator.writeEndObject();
-    jsonGenerator.writeEndObject();
-
-    jsonGenerator.close();
     return stream.toString();
   }
 
@@ -183,21 +186,22 @@ public final class MetricStore {
     final ObjectMapper objectMapper = new ObjectMapper();
     final JsonFactory jsonFactory = new JsonFactory();
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8);
-    jsonGenerator.setCodec(objectMapper);
 
-    jsonGenerator.writeStartObject();
-    for (final Map.Entry<Class, Map<String, Object>> metricMapEntry : metricMap.entrySet()) {
-      jsonGenerator.writeFieldName(metricMapEntry.getKey().getSimpleName());
+    try (final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8)) {
+      jsonGenerator.setCodec(objectMapper);
+
       jsonGenerator.writeStartObject();
-      for (final Map.Entry<String, Object> idToMetricEntry : metricMapEntry.getValue().entrySet()) {
-        generatePreprocessedJsonFromMetricEntry(idToMetricEntry, jsonGenerator, objectMapper);
+      for (final Map.Entry<Class<? extends Metric>, Map<String, Object>> metricMapEntry : metricMap.entrySet()) {
+        jsonGenerator.writeFieldName(metricMapEntry.getKey().getSimpleName());
+        jsonGenerator.writeStartObject();
+        for (final Map.Entry<String, Object> idToMetricEntry : metricMapEntry.getValue().entrySet()) {
+          generatePreprocessedJsonFromMetricEntry(idToMetricEntry, jsonGenerator, objectMapper);
+        }
+        jsonGenerator.writeEndObject();
       }
       jsonGenerator.writeEndObject();
     }
-    jsonGenerator.writeEndObject();
 
-    jsonGenerator.close();
     return stream.toString();
   }
 
@@ -206,17 +210,104 @@ public final class MetricStore {
    * @param filePath path to dump JSON.
    */
   public void dumpAllMetricToFile(final String filePath) {
-    try {
+    try (final BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
       final String jsonDump = dumpAllMetricToJson();
-      final BufferedWriter writer = new BufferedWriter(new FileWriter(filePath));
-
       writer.write(jsonDump);
-      writer.close();
     } catch (final IOException e) {
-      throw new RuntimeException(e);
+      throw new MetricException(e);
     }
   }
 
+  /**
+   * Save the job metrics for the optimization to the DB, in the form of LibSVM, to a local SQLite DB.
+   * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
+   */
+  private void saveOptimizationMetricsToLocal() {
+    final String[] syntax = {"INTEGER PRIMARY KEY AUTOINCREMENT"};
+
+    try (final Connection c = DriverManager.getConnection(MetricUtils.SQLITE_DB_NAME)) {
+      LOG.info("Opened database successfully at {}", MetricUtils.SQLITE_DB_NAME);
+      saveOptimizationMetrics(c, syntax);
+    } catch (SQLException e) {
+      LOG.error("Error while saving optimization metrics to SQLite: {}", e);
+    }
+  }
+
+  /**
+   * Save the job metrics for the optimization to the DB, in the form of LibSVM, to a remote DB, if applicable.
+   * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
+   */
+  public void saveOptimizationMetricsToDB(final String address, final String id, final String passwd) {
+    final String[] syntax = {"SERIAL PRIMARY KEY"};
+
+    if (!MetricUtils.metaDataLoaded()) {
+      saveOptimizationMetricsToLocal();
+      return;
+    }
+
+    try (final Connection c = DriverManager.getConnection(address, id, passwd)) {
+      LOG.info("Opened database successfully at {}", MetricUtils.POSTGRESQL_METADATA_DB_NAME);
+      MetricUtils.deregisterBeamDriver();
+      saveOptimizationMetrics(c, syntax);
+    } catch (SQLException e) {
+      LOG.error("Error while saving optimization metrics to PostgreSQL: {}", e);
+      LOG.info("Saving metrics on the local SQLite DB");
+      saveOptimizationMetricsToLocal();
+    }
+  }
+
+  /**
+   * Save the job metrics for the optimization to the DB, in the form of LibSVM.
+   * @param c the connection to the DB.
+   * @param syntax the db-specific syntax.
+   */
+  private void saveOptimizationMetrics(final Connection c, final String[] syntax) {
+    try (final Statement statement = c.createStatement()) {
+      statement.setQueryTimeout(30);  // set timeout to 30 sec.
+
+      getMetricMap(JobMetric.class).values().forEach(o -> {
+        final JobMetric jobMetric = (JobMetric) o;
+        final String tableName = jobMetric.getIrDagSummary();
+
+        final long startTime = jobMetric.getStateTransitionEvents().stream()
+          .filter(ste -> ste.getPrevState().equals(PlanState.State.READY)
+            && ste.getNewState().equals(PlanState.State.EXECUTING))
+          .findFirst().orElseThrow(() -> new MetricException("job has never started"))
+          .getTimestamp();
+        final long endTime = jobMetric.getStateTransitionEvents().stream()
+          .filter(ste -> ste.getNewState().equals(PlanState.State.COMPLETE))
+          .findFirst().orElseThrow(() -> new MetricException("job has never completed"))
+          .getTimestamp();
+        final long duration = endTime - startTime;  // ms
+        final String vertexProperties = jobMetric.getVertexProperties();
+        final String edgeProperties = jobMetric.getEdgeProperties();
+        final Integer inputSize = jobMetric.getInputSize();
+        final long jvmMemSize = Runtime.getRuntime().maxMemory();
+        final long memSize = ((com.sun.management.OperatingSystemMXBean) ManagementFactory
+          .getOperatingSystemMXBean()).getTotalPhysicalMemorySize();
+
+        try {
+          statement.executeUpdate("CREATE TABLE IF NOT EXISTS " + tableName
+              + " (id " + syntax[0] + ", duration INTEGER NOT NULL, inputsize INTEGER NOT NULL, "
+              + "jvmmemsize BIGINT NOT NULL, memsize BIGINT NOT NULL, "
+              + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL, "
+              + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);");
+          LOG.info("CREATED TABLE For {} IF NOT PRESENT", tableName);
+
+          statement.executeUpdate("INSERT INTO " + tableName
+            + " (duration, inputsize, jvmmemsize, memsize, vertex_properties, edge_properties) "
+            + "VALUES (" + duration + ", " + inputSize + ", "
+            + jvmMemSize + ", " + memSize + ", '"
+            + vertexProperties + "', '" + edgeProperties + "');");
+          LOG.info("Recorded metrics on the table for {}", tableName);
+        } catch (SQLException e) {
+          LOG.error("Error while saving optimization metrics: {}", e);
+        }
+      });
+    } catch (SQLException e) {
+      LOG.error("Error while saving optimization metrics: {}", e);
+    }
+  }
 
   /**
    * Send changed metric data to {@link MetricBroadcaster}, which will broadcast it to
@@ -232,10 +323,7 @@ public final class MetricStore {
     final T metric = getMetricWithId(metricClass, id);
     final JsonFactory jsonFactory = new JsonFactory();
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    final JsonGenerator jsonGenerator;
-    try {
-      jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8);
-
+    try (final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8)) {
       jsonGenerator.setCodec(objectMapper);
 
       jsonGenerator.writeStartObject();
@@ -246,11 +334,9 @@ public final class MetricStore {
       jsonGenerator.writeObject(metric);
       jsonGenerator.writeEndObject();
 
-      jsonGenerator.close();
-
       metricBroadcaster.broadcast(stream.toString());
     } catch (final IOException e) {
-      throw new RuntimeException(e);
+      throw new MetricException(e);
     }
   }
 }

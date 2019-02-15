@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.master.servlet;
 
-import org.apache.nemo.runtime.master.MetricBroadcaster;
+import org.apache.nemo.runtime.master.metric.MetricBroadcaster;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.StatusCode;
 import org.eclipse.jetty.websocket.api.WebSocketAdapter;
