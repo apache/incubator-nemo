@@ -129,10 +129,15 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             // just finish this worker
             iterator.remove();
             final Pair<ByteBuf, Integer> data = pair.right().getCurrentProcessingInput();
-            final int dataId = data.right();
 
-            LOG.info("Reject execution for data: {}", dataId);
-            pair.right().finishOffloading();
+            if (data == null) {
+              // this is end
+              readyWorkers.add(pair.right());
+            } else {
+              final int dataId = data.right();
+              LOG.info("Reject execution for data: {}", dataId);
+              pair.right().finishOffloading();
+            }
           }
         }
 
