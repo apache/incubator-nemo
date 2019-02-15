@@ -62,6 +62,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   private long totalProcessingTime = 0;
   private int processingCnt = 0;
 
+  final AtomicLong st = new AtomicLong(System.currentTimeMillis());
+
   CachedPoolServerlessExecutorService(
     final OffloadingWorkerFactory workerFactory,
     final OffloadingTransform offloadingTransform,
@@ -87,7 +89,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     this.outputQueue = new LinkedBlockingQueue<>();
 
 
-    final AtomicLong st = new AtomicLong(System.currentTimeMillis());
+
     // schedule init/active worker
     this.scheduler.scheduleAtFixedRate(() -> {
 
@@ -399,8 +401,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       // logging
       if (System.currentTimeMillis() - prevTime > 2000) {
         prevTime = System.currentTimeMillis();
-        LOG.info("Shutting down workers {}/{}... scheduler is shutdown: {}, is terminated: {}",
-          finishedWorkers, createdWorkers, scheduler.isShutdown(), scheduler.isTerminated());
+        LOG.info("Shutting down workers {}/{}... scheduler is shutdown: {}, is terminated: {}, triggerTime: {}",
+          finishedWorkers, createdWorkers, scheduler.isShutdown(), scheduler.isTerminated(),
+          st.get());
       }
 
       try {
