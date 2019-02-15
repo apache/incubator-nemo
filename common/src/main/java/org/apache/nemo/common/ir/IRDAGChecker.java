@@ -18,25 +18,16 @@
  */
 package org.apache.nemo.common.ir;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
-import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
-import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.Function;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /**
  * Checker range:
@@ -57,27 +48,39 @@ public class IRDAGChecker {
   private final List<NeighborChecker> neighborCheckerList;
   private final List<GlobalDAGChecker> globalDAGCheckerList;
 
+  /**
+   * Checks each single vertex.
+   */
   private interface SingleVertexChecker {
     CheckerResult check(final IRVertex irVertex);
   }
 
+  /**
+   * Checks each single edge.
+   */
   private interface SingleEdgeChecker {
     CheckerResult check(final IREdge irEdge);
   }
 
+  /**
+   * Checks each vertex and its neighbor edges.
+   */
   private interface NeighborChecker {
     CheckerResult check(final IRVertex irVertex,
                         final List<IREdge> inEdges,
                         final List<IREdge> outEdges);
   }
 
+  /**
+   * Checks the entire DAG.
+   */
   public interface GlobalDAGChecker {
     CheckerResult check(final IRDAG irdag);
   }
 
   ///////////////////////////// Successes and Failures
 
-  public final static CheckerResult SUCCESS = new CheckerResult();
+  private final CheckerResult SUCCESS = new CheckerResult(true, "");
 
   private class CheckerResult {
     private final boolean pass;
@@ -98,7 +101,7 @@ public class IRDAGChecker {
   }
 
   CheckerResult success() {
-    return new CheckerResult(true, "");
+    return SUCCESS;
   }
 
   CheckerResult failure(final String failReason) {
@@ -131,50 +134,42 @@ public class IRDAGChecker {
     }
   }
 
-  /*
-  CheckerResult failure(final IRVertex v, Class... eps) {
-    final List<Class> epsList = Arrays.asList(eps);
-    final boolean isAllSame = epsList.stream()
-      .map(ep -> v.getPropertyValue(ep))
-      .distinct()
-      .limit(2)
-      .count() <= 1;
-      .anyMatch(optional -> !optional.isPresent());
-
-    if (missingValue) {
-      return failure();
-    } else {
-      epsList.stream()
-        .map(ep -> v.getPropertyValue(ep))
-    }
-  }
-  */
-
   ///////////////////////////// Set up
 
-  public void setUp() {
+  private Set<Integer> getExpectedTaskOffsets(final int parallelism) {
+    return IntStream.range(0, parallelism)
+      .boxed()
+      .collect(Collectors.toSet());
+  }
 
-    /////////// Parallelism-related checkers
-
-    final SingleVertexChecker parallelismInSingleVertex = (v -> {
+  /**
+   * Parallelism-related checkers.
+   */
+  void addParallelismCheckers() {
+    final SingleVertexChecker parallelismWithOtherEPsInSingleVertex = (v -> {
       final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
-      final Optional<Integer> resourceSiteSize
-        = v.getPropertyValue(ResourceSiteProperty.class).map(rs -> rs.size());
-      final Optional<Integer> antiAffinitySize
-        = v.getPropertyValue(ResourceAntiAffinityProperty.class).map(raa -> raa.size());
-
       if (!parallelism.isPresent()) {
         return success(); // No need to check, if the parallelism is not set yet
-      } else if (!parallelism.equals(resourceSiteSize)) {
-        return failure(v, ParallelismProperty.class, ResourceSiteProperty.class);
-      } else if (!parallelism.equals(antiAffinitySize)) {
-        return failure(v, ParallelismProperty.class, ResourceAntiAffinityProperty.class);
-      } else {
-        return success();
       }
-    });
 
-    final SingleVertexChecker parallelismInSourceVertex = (v -> {
+      final Optional<Integer> resourceSiteSize = v.getPropertyValue(ResourceSiteProperty.class)
+        .map(rs -> rs.values().stream().mapToInt(Integer::intValue).sum());
+      if (!parallelism.equals(resourceSiteSize)) {
+        return failure(v, ParallelismProperty.class, ResourceSiteProperty.class);
+      }
+
+      final Optional<HashSet<Integer>> antiAffinitySet = v.getPropertyValue(ResourceAntiAffinityProperty.class);
+      if (antiAffinitySet.isPresent()) {
+        if (!getExpectedTaskOffsets(parallelism.get()).containsAll(antiAffinitySet.get())) {
+          return failure(v, ParallelismProperty.class, ResourceAntiAffinityProperty.class);
+        }
+      }
+
+      return success();
+    });
+    singleVertexCheckerList.add(parallelismWithOtherEPsInSingleVertex);
+
+    final SingleVertexChecker parallelismOfSourceVertex = (v -> {
       final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
 
       try {
@@ -189,23 +184,25 @@ public class IRDAGChecker {
 
       return success();
     });
+    singleVertexCheckerList.add(parallelismOfSourceVertex);
 
-    final NeighborChecker parallelismWithCommPattern = (v, inEdges, outEdges) -> {
+    final NeighborChecker parallelismWithCommPattern = ((v, inEdges, outEdges) -> {
       // Just look at incoming edges, as this checker will be applied on every vertex
       for (final IREdge inEdge : inEdges) {
         if (CommunicationPatternProperty.Value.OneToOne
           .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
           if (inEdge.getSrc().getPropertyValue(ParallelismProperty.class)
             .equals(v.getPropertyValue(ParallelismProperty.class))) {
-            return failure();
+            return failure(v, irEdge, xx);
           }
         }
       }
 
       return success();
-    }
+    });
+    neighborCheckerList.add(parallelismWithCommPattern);
 
-    final NeighborChecker parallelismWithPartitioners = (v, inEdges, outEdges) -> {
+    final NeighborChecker parallelismWithPartitionSet = ((v, inEdges, outEdges) -> {
       final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
       if (!parallelism.isPresent()) {
         return success(); // No need to check, if the parallelism is not set yet
@@ -218,35 +215,37 @@ public class IRDAGChecker {
 
       }
 
-      for (final IREdge outEdge : outEdges) {
-        final Optional<Integer> partitionerNum =
-          outEdge.getPropertyValue(PartitionerProperty.class).map(pp -> pp.right());
-        if (!parallelism.equals(partitionerNum)) {
-          return failure()
-        }
-      }
-
       return success();
-    }
-
-    /////////// Other checkers
-
-
-    // parallelism and must match
-
-    // encoder and decoder must match
-
-    // compressor
-
-    // key encoder and decoder
-
-    // same-additional output tag should have same encoder/decoders
-
+    });
+    neighborCheckerList.add(parallelismWithPartitionSet);
   }
+
+
 
   ///////////////////////////// Set up
 
-  private CheckerResult doCheck(final DAG<IRVertex, IREdge> underlyingDAG) {
+  public void setUp() {
+    addParallelismCheckers();
+
+    /////////// Other checkers
+
+    // How to check symmetry?
+    // encoder and decoder must be symmetric
+    // compressor and decompressor must be asymmetric
+    // key encoder and decoder must be symmetric
+
+    // same-additional output tag should have same encoder/decoders
+
+    // vertices: stream/sampling/messagebarrier
+  }
+
+  /**
+   * Applies all of the checkers on the DAG.
+   *
+   * @param underlyingDAG to check
+   * @return the result.
+   */
+  public CheckerResult doCheck(final DAG<IRVertex, IREdge> underlyingDAG) {
     underlyingDAG.topologicalDo(v -> {
       // Run per-vertex checkers
       singleVertexCheckerList.forEach(checker -> {
@@ -293,6 +292,7 @@ public class IRDAGChecker {
   ////////////////////////////////////////// Execution properties
 
   public void testVertexEPs() {
+
     //////////////// User-configurable
 
     // Uses task indices
@@ -319,6 +319,7 @@ public class IRDAGChecker {
   }
 
   public void testEdgeEPs() {
+
     //////////////// User-configurable
 
     // Okay?
@@ -329,8 +330,6 @@ public class IRDAGChecker {
     // Uses task indices
     PartitionerProperty;
     PartitionSetProperty;
-
-
 
     //////////////// Configured by Nemo
 
