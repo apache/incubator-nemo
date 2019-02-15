@@ -91,7 +91,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     // schedule init/active worker
     this.scheduler.scheduleAtFixedRate(() -> {
 
+      boolean logging = false;
       if (System.currentTimeMillis() - st.get() > 2000) {
+        logging = true;
         st.set(System.currentTimeMillis());
         LOG.info("Init workers: {}, Running workers: {}, Output: {} ",
           initializingWorkers.size(), runningWorkers.size(), outputQueue.size());
@@ -99,7 +101,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
       try {
         // initializing worker -> running workers
-        LOG.info("Thread: {}, Start - Init", Thread.currentThread().getId());
+        if (logging) {
+          LOG.info("Thread: {}, Start - Init", Thread.currentThread().getId());
+        }
+
         synchronized (initializingWorkers) {
           final Iterator<Pair<Long, OffloadingWorker>> iterator = initializingWorkers.iterator();
           while (iterator.hasNext()) {
@@ -113,16 +118,22 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             }
           }
         }
-        LOG.info("Thread: {}, End - Init", Thread.currentThread().getId());
+
+        if (logging) {
+          LOG.info("Thread: {}, End - Init", Thread.currentThread().getId());
 
 
-        // we should handle output before changing runningWorker to readyWorker
-        LOG.info("Thread: {}, Start - outputEmission", Thread.currentThread().getId());
+          // we should handle output before changing runningWorker to readyWorker
+          LOG.info("Thread: {}, Start - outputEmission", Thread.currentThread().getId());
+        }
+
         outputEmittion();
-        LOG.info("Thread: {}, End - outputEmission", Thread.currentThread().getId());
+        if (logging) {
+          LOG.info("Thread: {}, End - outputEmission", Thread.currentThread().getId());
 
-        // Reschedule running worker if it becomes ready
-        LOG.info("Thread: {}, Start - running", Thread.currentThread().getId());
+          // Reschedule running worker if it becomes ready
+          LOG.info("Thread: {}, Start - running", Thread.currentThread().getId());
+        }
         final List<OffloadingWorker> readyWorkers = new ArrayList<>(runningWorkers.size());
         final Iterator<Pair<Long, OffloadingWorker>> iterator = runningWorkers.iterator();
         while (iterator.hasNext()) {
@@ -132,14 +143,19 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             readyWorkers.add(pair.right());
           }
         }
-        LOG.info("Thread: {}, End - running", Thread.currentThread().getId());
+        if (logging) {
+          LOG.info("Thread: {}, End - running", Thread.currentThread().getId());
 
-        // Reschedule ready workers
-        LOG.info("Thread: {}, Start - execute", Thread.currentThread().getId());
+          // Reschedule ready workers
+          LOG.info("Thread: {}, Start - execute", Thread.currentThread().getId());
+        }
         readyWorkers.forEach(readyWorker -> {
           executeData(readyWorker);
         });
-        LOG.info("Thread: {}, End - execute", Thread.currentThread().getId());
+
+        if (logging) {
+          LOG.info("Thread: {}, End - execute", Thread.currentThread().getId());
+        }
 
 
         //speculativeExecution();
