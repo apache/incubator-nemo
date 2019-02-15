@@ -49,6 +49,7 @@ public abstract class SourceVertex<O> extends IRVertex {
   public SourceVertex(final SourceVertex that) {
     super(that);
   }
+
   /**
    * Gets parallel readables.
    *

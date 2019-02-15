@@ -24,13 +24,19 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Checker range:
@@ -51,15 +57,15 @@ public class IRDAGChecker {
   private final List<NeighborChecker> neighborCheckerList;
   private final List<GlobalDAGChecker> globalDAGCheckerList;
 
-  public interface SingleVertexChecker {
+  private interface SingleVertexChecker {
     CheckerResult check(final IRVertex irVertex);
   }
 
-  public interface SingleEdgeChecker {
+  private interface SingleEdgeChecker {
     CheckerResult check(final IREdge irEdge);
   }
 
-  public interface NeighborChecker {
+  private interface NeighborChecker {
     CheckerResult check(final IRVertex irVertex,
                         final List<IREdge> inEdges,
                         final List<IREdge> outEdges);
@@ -71,75 +77,172 @@ public class IRDAGChecker {
 
   ///////////////////////////// Successes and Failures
 
+  public final static CheckerResult SUCCESS = new CheckerResult();
+
   private class CheckerResult {
-    final boolean pass;
-    final String failReason;
-  }
+    private final boolean pass;
+    private final String failReason; // empty string if pass = true
 
-
-  CheckerResult success() {
-  }
-
-  CheckerResult failure(final Object vertexOrEdge, Class... eps) {
-    // Two exception reasons
-    //
-    // (1) ExecutionProperty compatibility
-    // (2) ExecutionProperty - utility vertex compatibility
-    if (vertexOrEdge instanceof IRVertex) {
-      final String x = "IRVertex " + getId() + " incompatible"
-
-    } else if (vertexOrEdge instanceof IREdge) {
-
-    } else {
-
+    CheckerResult(final boolean pass, final String failReason) {
+      this.pass = pass;
+      this.failReason = failReason;
     }
 
-    super("Incompatible execution properties (IRVertex/IREdge id, execution property): "
-      + Arrays.asList(idEPPairs).toString());
+    final boolean isPassed() {
+      return pass;
+    }
+
+    final String getFailReason() {
+      return failReason;
+    }
   }
 
-  CheckerResult failure(final Object vertexOrEdge, Class... eps) {
+  CheckerResult success() {
+    return new CheckerResult(true, "");
   }
+
+  CheckerResult failure(final String failReason) {
+    return new CheckerResult(false, failReason);
+  }
+
+  CheckerResult failure(final IRVertex v, final Class... eps) {
+    final List<Class> epsList = Arrays.asList(eps);
+    final boolean isMissingValue = epsList.stream()
+      .map(ep -> v.getPropertyValue(ep))
+      .anyMatch(optional -> !optional.isPresent());
+
+    if (isMissingValue) {
+      throw new IllegalArgumentException(epsList.toString());
+    } else {
+      return failure(String.format("IRVertex %s incompatible properties: %s", v.getId(), epsList.toString()));
+    }
+  }
+
+  CheckerResult failure(final IREdge e, final Class... eps) {
+    final List<Class> epsList = Arrays.asList(eps);
+    final boolean isMissingValue = epsList.stream()
+      .map(ep -> e.getPropertyValue(ep))
+      .anyMatch(optional -> !optional.isPresent());
+
+    if (isMissingValue) {
+      throw new IllegalArgumentException(epsList.toString());
+    } else {
+      return failure(String.format("IREdge %s incompatible properties: %s", e.getId(), epsList.toString()));
+    }
+  }
+
+  /*
+  CheckerResult failure(final IRVertex v, Class... eps) {
+    final List<Class> epsList = Arrays.asList(eps);
+    final boolean isAllSame = epsList.stream()
+      .map(ep -> v.getPropertyValue(ep))
+      .distinct()
+      .limit(2)
+      .count() <= 1;
+      .anyMatch(optional -> !optional.isPresent());
+
+    if (missingValue) {
+      return failure();
+    } else {
+      epsList.stream()
+        .map(ep -> v.getPropertyValue(ep))
+    }
+  }
+  */
 
   ///////////////////////////// Set up
 
   public void setUp() {
-    // IRDAG
-    // IRDAG => builds using DAGBuilder
-    // IRDAG => check semantics using IRDAGChecker
 
-    final SingleEdgeChecker singleEdgeChecker = (irEdge) -> irEdge.getSrc();
+    /////////// Parallelism-related checkers
 
-    // Single vertex parallelism
     final SingleVertexChecker parallelismInSingleVertex = (v -> {
-      final int parallelism = v.getPropertyValue(ParallelismProperty.class).get();
+      final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
+      final Optional<Integer> resourceSiteSize
+        = v.getPropertyValue(ResourceSiteProperty.class).map(rs -> rs.size());
+      final Optional<Integer> antiAffinitySize
+        = v.getPropertyValue(ResourceAntiAffinityProperty.class).map(raa -> raa.size());
 
-      v.getPropertyValue(ResourceSiteProperty.class).ifPresent(rs -> {
-        if (rs.size() != parallelism) {
-          return failure(v, ParallelismProperty.class, ResourceSiteProperty.class);
-        }
-      });
+      if (!parallelism.isPresent()) {
+        return success(); // No need to check, if the parallelism is not set yet
+      } else if (!parallelism.equals(resourceSiteSize)) {
+        return failure(v, ParallelismProperty.class, ResourceSiteProperty.class);
+      } else if (!parallelism.equals(antiAffinitySize)) {
+        return failure(v, ParallelismProperty.class, ResourceAntiAffinityProperty.class);
+      } else {
+        return success();
+      }
+    });
 
-      v.getPropertyValue(ResourceAntiAffinityProperty.class).ifPresent(raa -> {
-        if (raa.size() != parallelism) {
-          return failure(v, ParallelismProperty.class, ResourceSiteProperty.class);
+    final SingleVertexChecker parallelismInSourceVertex = (v -> {
+      final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
+
+      try {
+        if (parallelism.isPresent() && v instanceof SourceVertex) {
+          if (parallelism.get() != ((SourceVertex) v).getReadables(parallelism.get()).size()) {
+            return failure();
+          }
         }
-      });
+      } catch (Exception e) {
+        return failure(e.getMessage());
+      }
 
       return success();
     });
 
-    // Something something
+    final NeighborChecker parallelismWithCommPattern = (v, inEdges, outEdges) -> {
+      // Just look at incoming edges, as this checker will be applied on every vertex
+      for (final IREdge inEdge : inEdges) {
+        if (CommunicationPatternProperty.Value.OneToOne
+          .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+          if (inEdge.getSrc().getPropertyValue(ParallelismProperty.class)
+            .equals(v.getPropertyValue(ParallelismProperty.class))) {
+            return failure();
+          }
+        }
+      }
+
+      return success();
+    }
+
+    final NeighborChecker parallelismWithPartitioners = (v, inEdges, outEdges) -> {
+      final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
+      if (!parallelism.isPresent()) {
+        return success(); // No need to check, if the parallelism is not set yet
+      }
+
+      for (final IREdge inEdge : inEdges) {
+        final Optional<List<Integer>> partitionSetFlattened = inEdge.getPropertyValue(PartitionSetProperty.class)
+          .flatMap(ps -> ps.stream().flatMap(keyRange ->
+            IntStream.range((int) keyRange.rangeBeginInclusive(), (int) keyRange.rangeEndExclusive()).boxed()));
+
+      }
+
+      for (final IREdge outEdge : outEdges) {
+        final Optional<Integer> partitionerNum =
+          outEdge.getPropertyValue(PartitionerProperty.class).map(pp -> pp.right());
+        if (!parallelism.equals(partitionerNum)) {
+          return failure()
+        }
+      }
+
+      return success();
+    }
+
+    /////////// Other checkers
 
 
+    // parallelism and must match
 
-    // Something something
+    // encoder and decoder must match
 
+    // compressor
 
+    // key encoder and decoder
 
-    // Something something
+    // same-additional output tag should have same encoder/decoders
+
   }
-
 
   ///////////////////////////// Set up
 
@@ -187,6 +290,8 @@ public class IRDAGChecker {
     return success();
   }
 
+  ////////////////////////////////////////// Execution properties
+
   public void testVertexEPs() {
     //////////////// User-configurable
 
@@ -212,55 +317,6 @@ public class IRDAGChecker {
     // Dyn Opt
     MessageIdProperty;
   }
-
-  private boolean checkSingleEdge(final IREdge edge) {
-    // parallelism and must match
-
-    // encoder and decoder must match
-
-    // compressor
-
-    // key encoder and decoder
-  }
-
-  private boolean checkSingleVertex(final IRVertex vertex) {
-    final int parallelism = vertex.getPropertyValue(ParallelismProperty.class).get();
-    vertex.getPropertyValue(ResourceSiteProperty.class).ifPresent(rs -> {
-      rs.size() == parallelism;
-    });
-    vertex.getPropertyValue(ResourceAntiAffinityProperty.class).ifPresent(raa -> {
-      raa.size() == parallelism;
-    });
-  }
-
-  private boolean checkNeighbors(final IRVertex vertex,
-                                 final List<IREdge> inEdges,
-                                 final List<IREdge> outEdges) {
-    final int parallelism = vertex.getPropertyValue(ParallelismProperty.class).get();
-
-    inEdges.forEach(inEdge -> {
-      inEdge.getPropertyValue(PartitionerProperty.class).ifPresent(pp -> {
-        pp.right() == parallelism;
-      });
-
-      inEdge.getPropertyValue(PartitionSetProperty.class).ifPresent(ps -> {
-        ps.size() == parallelism;
-      });
-    });
-  }
-
-  private boolean checkNeighborsTwo(final IRVertex vertex,
-                                    final List<IREdge> inEdges,
-                                    final List<IREdge> outEdges) {
-    // same-additional output tag should have same encoder/decoders
-
-    //
-  }
-
-  private boolean checkStreamVertex(final StreamVertex streamVertex, final IREdge inEdge, final IREdge outEdge) {
-  }
-
-
 
   public void testEdgeEPs() {
     //////////////// User-configurable
