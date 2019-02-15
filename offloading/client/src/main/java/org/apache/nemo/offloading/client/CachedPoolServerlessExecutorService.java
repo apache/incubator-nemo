@@ -136,6 +136,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             } else {
               final int dataId = data.right();
               LOG.info("Reject execution for data: {}", dataId);
+              finishedWorkers += 1;
               pair.right().finishOffloading();
             }
           }
