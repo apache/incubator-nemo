@@ -164,6 +164,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
 
       } catch (final Exception e) {
+        e.printStackTrace();
         throw new RuntimeException(e);
       }
     }, 300, 300, TimeUnit.MILLISECONDS);
