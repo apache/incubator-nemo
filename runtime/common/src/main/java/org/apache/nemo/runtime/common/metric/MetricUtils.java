@@ -46,18 +46,18 @@ import java.util.stream.Stream;
 public final class MetricUtils {
   private static final Logger LOG = LoggerFactory.getLogger(MetricUtils.class.getName());
 
-  private static final CountDownLatch META_DATA_LOADED = new CountDownLatch(1);
-  private static final CountDownLatch MUST_UPDATE_INDEX_EP_KEY_BI_MAP = new CountDownLatch(1);
-  private static final CountDownLatch MUST_UPDATE_INDEX_EP_BI_MAP = new CountDownLatch(1);
+  private static final CountDownLatch METADATA_LOADED = new CountDownLatch(1);
+  private static final CountDownLatch MUST_UPDATE_EP_KEY_METADATA = new CountDownLatch(1);
+  private static final CountDownLatch MUST_UPDATE_EP_METADATA = new CountDownLatch(1);
 
   private static final Pair<HashBiMap<Integer, Class<? extends ExecutionProperty>>,
-    HashBiMap<Pair<Integer, Integer>, ExecutionProperty<?>>> BI_MAP_BI_MAP_PAIR = loadBiMaps();
+    HashBiMap<Pair<Integer, Integer>, ExecutionProperty<?>>> METADATA = loadMetaData();
   // BiMap of (1) INDEX and (2) the Execution Property class
   private static final HashBiMap<Integer, Class<? extends ExecutionProperty>>
-    INDEX_EP_KEY_BI_MAP = BI_MAP_BI_MAP_PAIR.left();
+    EP_KEY_METADATA = METADATA.left();
   // BiMap of (1) the Execution Property class INDEX and the value INDEX pair and (2) the Execution Property.
   private static final HashBiMap<Pair<Integer, Integer>, ExecutionProperty<?>>
-    INDEX_EP_BI_MAP = BI_MAP_BI_MAP_PAIR.right();
+    EP_METADATA = METADATA.right();
 
   private static final int VERTEX = 1;
   private static final int EDGE = 2;
@@ -66,7 +66,7 @@ public final class MetricUtils {
     "jdbc:sqlite:" + MetricUtils.fetchProjectRootPath() + "/optimization_db.sqlite3";
   public static final String POSTGRESQL_METADATA_DB_NAME =
     "jdbc:postgresql://nemo-optimization.cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization";
-  private static final String META_TABLE_NAME = "nemo_optimization_meta";
+  private static final String METADATA_TABLE_NAME = "nemo_optimization_meta";
 
   /**
    * Private constructor.
@@ -79,7 +79,7 @@ public final class MetricUtils {
    * @return the loaded BiMaps, or initialized ones.
    */
   private static Pair<HashBiMap<Integer, Class<? extends ExecutionProperty>>,
-    HashBiMap<Pair<Integer, Integer>, ExecutionProperty<?>>> loadBiMaps() {
+    HashBiMap<Pair<Integer, Integer>, ExecutionProperty<?>>> loadMetaData() {
     deregisterBeamDriver();
     try (final Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
       "postgres", "fake_password")) {
@@ -87,11 +87,11 @@ public final class MetricUtils {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
         statement.executeUpdate(
-          "CREATE TABLE IF NOT EXISTS " + META_TABLE_NAME
+          "CREATE TABLE IF NOT EXISTS " + METADATA_TABLE_NAME
           + " (key TEXT NOT NULL UNIQUE, data BYTEA NOT NULL);");
 
         final ResultSet rsl = statement.executeQuery(
-          "SELECT * FROM " + META_TABLE_NAME + " WHERE key='INDEX_EP_KEY';");
+          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE key='EP_KEY_METADATA';");
         LOG.info("Metadata can be loaded.");
         if (rsl.next()) {
           final HashBiMap<Integer, Class<? extends ExecutionProperty>> indexEpKeyBiMap =
@@ -99,22 +99,22 @@ public final class MetricUtils {
           rsl.close();
 
           final ResultSet rsr = statement.executeQuery(
-            "SELECT * FROM " + META_TABLE_NAME + " WHERE key='INDEX_EP';");
+            "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE key='EP_METADATA';");
           if (rsr.next()) {
             final HashBiMap<Pair<Integer, Integer>, ExecutionProperty<?>> indexEpBiMap =
               SerializationUtils.deserialize(rsr.getBytes("Data"));
             rsr.close();
 
-            META_DATA_LOADED.countDown();
+            METADATA_LOADED.countDown();
             LOG.info("Metadata successfully loaded from DB.");
             return Pair.of(indexEpKeyBiMap, indexEpBiMap);
           } else {
-            META_DATA_LOADED.countDown();
-            LOG.info("No initial metadata for Index-EP map.");
+            METADATA_LOADED.countDown();
+            LOG.info("No initial metadata for EP.");
             return Pair.of(indexEpKeyBiMap, HashBiMap.create());
           }
         } else {
-          META_DATA_LOADED.countDown();
+          METADATA_LOADED.countDown();
           LOG.info("No initial metadata.");
           return Pair.of(HashBiMap.create(), HashBiMap.create());
         }
@@ -129,18 +129,18 @@ public final class MetricUtils {
   }
 
   public static Boolean metaDataLoaded() {
-    return META_DATA_LOADED.getCount() == 0;
+    return METADATA_LOADED.getCount() == 0;
   }
 
   /**
    * Save the BiMaps to DB if changes are necessary (rarely executed).
    */
-  private static void saveBiMaps() {
+  private static void saveMetaData() {
     if (!metaDataLoaded()
-      || (MUST_UPDATE_INDEX_EP_BI_MAP.getCount() + MUST_UPDATE_INDEX_EP_KEY_BI_MAP.getCount() == 2)) {
+      || (MUST_UPDATE_EP_METADATA.getCount() + MUST_UPDATE_EP_KEY_METADATA.getCount() == 2)) {
       // no need to update
       LOG.info("Not saving Metadata: metadata loaded: {}, Index-EP data: {}, Index-EP Key data: {}",
-        metaDataLoaded(), MUST_UPDATE_INDEX_EP_BI_MAP.getCount() == 0, MUST_UPDATE_INDEX_EP_KEY_BI_MAP.getCount() == 0);
+        metaDataLoaded(), MUST_UPDATE_EP_METADATA.getCount() == 0, MUST_UPDATE_EP_KEY_METADATA.getCount() == 0);
       return;
     }
     LOG.info("Saving Metadata..");
@@ -151,25 +151,25 @@ public final class MetricUtils {
       try (final Statement statement = c.createStatement()) {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
-        if (MUST_UPDATE_INDEX_EP_KEY_BI_MAP.getCount() == 0) {
+        if (MUST_UPDATE_EP_KEY_METADATA.getCount() == 0) {
           try (final PreparedStatement pstmt = c.prepareStatement(
-            "INSERT INTO " + META_TABLE_NAME + " (key, data) "
-              + "VALUES ('INDEX_EP_KEY', ?) ON CONFLICT (key) DO UPDATE SET data = excluded.data;")) {
+            "INSERT INTO " + METADATA_TABLE_NAME + " (key, data) "
+              + "VALUES ('EP_KEY_METADATA', ?) ON CONFLICT (key) DO UPDATE SET data = excluded.data;")) {
             pstmt.setBinaryStream(1,
-              new ByteArrayInputStream(SerializationUtils.serialize(INDEX_EP_KEY_BI_MAP)));
+              new ByteArrayInputStream(SerializationUtils.serialize(EP_KEY_METADATA)));
             pstmt.executeUpdate();
-            LOG.info("Index-EP Key Metadata saved to DB.");
+            LOG.info("EP Key Metadata saved to DB.");
           }
         }
 
-        if (MUST_UPDATE_INDEX_EP_BI_MAP.getCount() == 0) {
+        if (MUST_UPDATE_EP_METADATA.getCount() == 0) {
           try (final PreparedStatement pstmt =
-                 c.prepareStatement("INSERT INTO " + META_TABLE_NAME + "(key, data) "
-                     + "VALUES ('INDEX_EP', ?) ON CONFLICT (key) DO UPDATE SET data = excluded.data;")) {
+                 c.prepareStatement("INSERT INTO " + METADATA_TABLE_NAME + "(key, data) "
+                     + "VALUES ('EP_METADATA', ?) ON CONFLICT (key) DO UPDATE SET data = excluded.data;")) {
             pstmt.setBinaryStream(1,
-              new ByteArrayInputStream(SerializationUtils.serialize(INDEX_EP_BI_MAP)));
+              new ByteArrayInputStream(SerializationUtils.serialize(EP_METADATA)));
             pstmt.executeUpdate();
-            LOG.info("Index-EP Metadata saved to DB.");
+            LOG.info("EP Metadata saved to DB.");
           }
         }
       }
@@ -196,7 +196,7 @@ public final class MetricUtils {
         e.getExecutionProperties().forEachProperties(ep ->
           epFormatter(eStringBuilder, EDGE, e.getNumericId(), ep))));
 
-    saveBiMaps();
+    saveMetaData();
     return Pair.of(vStringBuilder.toString().trim(), eStringBuilder.toString().trim());
   }
 
@@ -212,10 +212,10 @@ public final class MetricUtils {
     builder.append(idx);
     builder.append(numericId);
     builder.append("0");
-    final Integer epKeyIndex = INDEX_EP_KEY_BI_MAP.inverse().computeIfAbsent(ep.getClass(), epClass -> {
-      LOG.info("New EP Key Index: {} for {}", INDEX_EP_KEY_BI_MAP.size() + 1, epClass.getSimpleName());
-      MUST_UPDATE_INDEX_EP_KEY_BI_MAP.countDown();
-      return INDEX_EP_KEY_BI_MAP.size() + 1;
+    final Integer epKeyIndex = EP_KEY_METADATA.inverse().computeIfAbsent(ep.getClass(), epClass -> {
+      LOG.info("New EP Key Index: {} for {}", EP_KEY_METADATA.size() + 1, epClass.getSimpleName());
+      MUST_UPDATE_EP_KEY_METADATA.countDown();
+      return EP_KEY_METADATA.size() + 1;
     });
     builder.append(epKeyIndex);
 
@@ -243,24 +243,24 @@ public final class MetricUtils {
     } else {
       final ExecutionProperty<?> ep1;
       if (o instanceof EncoderFactory || o instanceof DecoderFactory) {
-        ep1 = INDEX_EP_BI_MAP.values().stream()
+        ep1 = EP_METADATA.values().stream()
           .filter(ep2 -> ep2.getValue().toString().equals(o.toString()))
           .findFirst().orElse(null);
       } else {
-        ep1 = INDEX_EP_BI_MAP.values().stream()
+        ep1 = EP_METADATA.values().stream()
           .filter(ep2 -> ep2.getValue().equals(o))
           .findFirst().orElse(null);
       }
 
       if (ep1 != null) {
-        return INDEX_EP_BI_MAP.inverse().get(ep1).right();
+        return EP_METADATA.inverse().get(ep1).right();
       } else {
-        final Integer valueIndex = Math.toIntExact(INDEX_EP_BI_MAP.keySet().stream()
+        final Integer valueIndex = Math.toIntExact(EP_METADATA.keySet().stream()
           .filter(pair -> pair.left().equals(epKeyIndex))
           .count()) + 1;
-        INDEX_EP_BI_MAP.put(Pair.of(epKeyIndex, valueIndex), ep);
+        EP_METADATA.put(Pair.of(epKeyIndex, valueIndex), ep);
         LOG.info("New EP Index: ({}, {}) for {}", epKeyIndex, valueIndex, ep);
-        MUST_UPDATE_INDEX_EP_BI_MAP.countDown();
+        MUST_UPDATE_EP_METADATA.countDown();
         return valueIndex;
       }
     }
