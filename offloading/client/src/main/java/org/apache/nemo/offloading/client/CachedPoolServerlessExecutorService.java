@@ -276,6 +276,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           boolean isEmittable = !speculativeDataProcessedMap.getOrDefault(dataId, false);
 
           if (speculativeDataProcessedMap.containsKey(dataId)) {
+            speculativeDataProcessedMap.put(dataId, true);
             LOG.info("Speculative execution output emittion, data: {}, emittable: {}", dataId,
               isEmittable);
           }
