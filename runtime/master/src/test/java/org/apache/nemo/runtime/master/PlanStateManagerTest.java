@@ -98,7 +98,7 @@ public final class PlanStateManagerTest {
   /**
    * Test whether the methods waiting for the finish of the plan works properly.
    */
-  @Test(timeout = 2000)
+  @Test(timeout = 4000)
   public void testWaitUntilFinish() throws Exception {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
