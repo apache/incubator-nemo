@@ -196,7 +196,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       final OffloadingWorker runningWorker = runningWorkerPair.right();
       final int runningWorkerCnt = runningWorker.getDataProcessingCnt();
       if (cnt > runningWorkerCnt && !isOutputEmitted(runningWorker)
-        && runningWorkerCnt < readyWorker.getDataProcessingCnt()) {
+        && runningWorkerCnt + 1 < readyWorker.getDataProcessingCnt()) {
         target = runningWorker;
       }
     }
@@ -211,9 +211,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
     } else {
       // speculative execution
-      //speculativeExecution(worker);
-      worker.finishOffloading();
-      finishedWorkers += 1;
+      speculativeExecution(worker);
+      //worker.finishOffloading();
+      //finishedWorkers += 1;
     }
   }
 
@@ -270,6 +270,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           }
 
           final int count = speculativeDataCounterMap.get(dataId) - 1;
+          speculativeDataCounterMap.put(dataId, count);
 
           LOG.info("Speculative execution output emittion, data: {}, cnt: {}", dataId,
             count);
