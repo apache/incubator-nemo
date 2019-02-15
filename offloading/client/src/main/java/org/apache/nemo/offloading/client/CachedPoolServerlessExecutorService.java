@@ -222,7 +222,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   private OffloadingWorker selectRunningWorkerForSpeculativeExecution(final OffloadingWorker readyWorker) {
     int cnt = Integer.MAX_VALUE;
     OffloadingWorker target = null;
-
+    int cnt2 = Integer.MAX_VALUE;
+    OffloadingWorker target2 = null;
     // first find a worker that does not perform speculative execution
     for (final Pair<Long, OffloadingWorker> runningWorkerPair : runningWorkers) {
       final OffloadingWorker runningWorker = runningWorkerPair.right();
@@ -231,22 +232,18 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         && runningWorkerCnt + 1 < readyWorker.getDataProcessingCnt()) {
         target = runningWorker;
       }
-    }
 
-    // if there is no worker that perform speculative execution
-    // just select a running worker that has low worker count
-    if (target == null) {
-      for (final Pair<Long, OffloadingWorker> runningWorkerPair : runningWorkers) {
-        final OffloadingWorker runningWorker = runningWorkerPair.right();
-        final int runningWorkerCnt = runningWorker.getDataProcessingCnt();
-        if (cnt > runningWorkerCnt && !isOutputEmitted(runningWorker)
-          && runningWorkerCnt + 1 < readyWorker.getDataProcessingCnt()) {
-          target = runningWorker;
-        }
+      if (cnt2 > runningWorkerCnt && !isOutputEmitted(runningWorker)
+        && runningWorkerCnt + 1 < readyWorker.getDataProcessingCnt()) {
+        target2 = runningWorker;
       }
     }
 
-    return target;
+    if (target == null) {
+      return target2;
+    } else {
+      return target;
+    }
   }
 
   private void executeData(final OffloadingWorker worker) {
