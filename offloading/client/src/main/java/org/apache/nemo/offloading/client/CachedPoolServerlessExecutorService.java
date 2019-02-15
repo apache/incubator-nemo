@@ -272,7 +272,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         final int dataId = output.dataId;
         final Future<Optional<O>> data = output.output;
 
-        if (data.isDone()) {
+        if (speculativeDataProcessedMap.getOrDefault(dataId, false)) {
+          // this is already emitted. just remove
+          iterator.remove();
+        } else if (data.isDone()) {
 
           boolean isEmittable = !speculativeDataProcessedMap.getOrDefault(dataId, false);
 
