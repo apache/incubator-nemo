@@ -135,7 +135,7 @@ public final class MetricUtils {
   /**
    * Save the BiMaps to DB if changes are necessary (rarely executed).
    */
-  private static void saveMetaData() {
+  public static void updateMetaData() {
     if (!metaDataLoaded()
       || (MUST_UPDATE_EP_METADATA.getCount() + MUST_UPDATE_EP_KEY_METADATA.getCount() == 2)) {
       // no need to update
@@ -196,7 +196,6 @@ public final class MetricUtils {
         e.getExecutionProperties().forEachProperties(ep ->
           epFormatter(eStringBuilder, EDGE, e.getNumericId(), ep))));
 
-    saveMetaData();
     return Pair.of(vStringBuilder.toString().trim(), eStringBuilder.toString().trim());
   }
 

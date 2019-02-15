@@ -105,6 +105,7 @@ public final class JobMetric implements StateMetric<PlanState.State> {
     final Pair<String, String> stringifiedProperties = MetricUtils.stringifyIRDAGProperties(irDag);
     this.vertexProperties = stringifiedProperties.left();
     this.edgeProperties = stringifiedProperties.right();
+    MetricUtils.updateMetaData();
     final ObjectMapper objectMapper = new ObjectMapper();
     try {
       this.irDagJson = objectMapper.readTree(irDag.toString());
