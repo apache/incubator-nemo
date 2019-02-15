@@ -223,21 +223,22 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       readyWorker.finishOffloading();
       finishedWorkers += 1;
     } else {
-      final Pair<Integer, ByteBuf> data = runningWorker.getCurrentProcessingInput();
+      final Pair<ByteBuf, Integer> data = runningWorker.getCurrentProcessingInput();
       if (data != null) {
+        final int dataId = data.right();
         // TODO: consideration
-        LOG.info("Speculative execution for data {}, cnt: {}, runningWorkerCnt: {}, readyWorkerCnt: {}", data.left(),
-          speculativeDataCounterMap.get(data.left()), runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
+        LOG.info("Speculative execution for data {}, cnt: {}, runningWorkerCnt: {}, readyWorkerCnt: {}", dataId,
+          speculativeDataCounterMap.get(dataId), runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
 
         // 여기서 ByteBuf가 release 될수도 있음 (기존의 running worker에서 execution을 끝냈을 경우)
-        final int cnt = speculativeDataCounterMap.getOrDefault(data.left(), 0);
-        speculativeDataCounterMap.put(data.left(), cnt + 1);
+        final int cnt = speculativeDataCounterMap.getOrDefault(dataId, 1);
+        speculativeDataCounterMap.put(dataId, cnt + 1);
 
-        if (!speculativeDataProcessedMap.containsKey(data.left())) {
-          speculativeDataProcessedMap.put(data.left(), false);
+        if (!speculativeDataProcessedMap.containsKey(dataId)) {
+          speculativeDataProcessedMap.put(dataId, false);
         }
 
-        outputQueue.add(new PendingOutput<>(readyWorker.execute(data.right(), data.left()), data.left()));
+        outputQueue.add(new PendingOutput<>(readyWorker.execute(data.left(), dataId), dataId));
         runningWorkers.add(Pair.of(System.currentTimeMillis(), readyWorker));
       }
     }
