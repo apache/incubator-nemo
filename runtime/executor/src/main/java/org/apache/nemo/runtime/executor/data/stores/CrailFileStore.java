@@ -84,13 +84,19 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
 
   @Override
   public Block createBlock(final String blockId) {
-    LOG.info("HY: Create Block started");
     deleteBlock(blockId);
     final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
+    final String metaPath = DataUtil.blockIdToMetaFilePath(blockId, fileDirectory);
+    CrailFile file = null;
+    try {
+      file = fs.create(metaPath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
+      file.syncDir();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
     final RemoteFileMetadata metadata =
-      RemoteFileMetadata.create(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-    LOG.info("HY: Create Block ended");
+      RemoteFileMetadata.create(metaPath);
     return new FileBlock<>(blockId, serializer, filePath, metadata, fs);
   }
 
