@@ -25,6 +25,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.runtime.executor.data.*;
 import org.apache.nemo.runtime.executor.data.block.Block;
+import org.apache.nemo.runtime.executor.data.metadata.LocalFileMetadata;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.apache.nemo.runtime.executor.data.metadata.RemoteFileMetadata;
 import org.apache.nemo.runtime.executor.data.block.FileBlock;
@@ -88,8 +89,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final String metaPath = DataUtil.blockIdToMetaFilePath(blockId, fileDirectory);
-    final RemoteFileMetadata metadata =
-      RemoteFileMetadata.create(metaPath);
+    final LocalFileMetadata metadata = new LocalFileMetadata();
     return new FileBlock<>(blockId, serializer, filePath, metadata, fs);
   }
 
