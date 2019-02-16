@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -116,13 +117,14 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
     if (filePath.contains("crail")) {
       LOG.info("HY: FileBlock writeToFile started");
       //Crail 디렉토리의 경우 미리 생성해놓은 CrailFile을 이용하여 write
-      final CrailOutputStream fileOutputStream = file.getDirectOutputStream(1024);
-      CrailBuffer buffer = fs.allocateBuffer();
+      final CrailBufferedOutputStream fileOutputStream = file.getBufferedOutputStream(0);
+
       for(final SerializedPartition<K> serializedPartition : serializedPartitions){
-        buffer.put(serializedPartition.getData());
+        //buffer.put(serializedPartition.getData());
+        fileOutputStream.write(serializedPartition.getData());
       }
-      fileOutputStream.write(buffer);
-      LOG.info("HY: FileBlock writeToFile started");
+      //fileOutputStream.write(buffer);
+      LOG.info("HY: FileBlock writeToFile ended");
     }
     else {
       try (final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
