@@ -89,7 +89,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final String metaPath = DataUtil.blockIdToMetaFilePath(blockId, fileDirectory);
-    final LocalFileMetadata metadata = new LocalFileMetadata();
+    final RemoteFileMetadata metadata = RemoteFileMetadata.create(metaPath);
     return new FileBlock<>(blockId, serializer, filePath, metadata, fs);
   }
 
