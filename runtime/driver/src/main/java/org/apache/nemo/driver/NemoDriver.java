@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.driver;
 
+import org.apache.crail.*;
+import org.apache.crail.conf.CrailConfiguration;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.conf.JobConf;
@@ -54,6 +56,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -85,6 +88,10 @@ public final class NemoDriver {
 
   // Client for sending log messages
   private final RemoteClientMessageLoggingHandler handler;
+
+  //Crail
+  CrailConfiguration conf;
+  CrailStore fs;
 
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
@@ -147,6 +154,33 @@ public final class NemoDriver {
     @Override
     public void onNext(final StartTime startTime) {
       setUpLogger();
+      boolean baseDirExists;
+      try {
+        conf = new CrailConfiguration();
+        fs = CrailStore.newInstance(conf);
+
+        LOG.info("creating main dir /tmp_crail");
+      /*
+      try {
+        if(fs.lookup("/tmp_crail").get() != null){
+          baseDirExists = true;
+        }
+        else{
+          baseDirExists = false;
+        }
+      } catch (Exception e) {
+        LOG.info("fs.lookup failed");
+        e.printStackTrace();
+      }
+      */
+        fs.delete("/tmp_crail", true).get().syncDir();
+        fs.create("/tmp_crail", CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
+        LOG.info("creating main dir done");
+      }
+      catch(Exception e){
+        LOG.info("HY: Error occurred during driver crail main dir setup");
+        e.printStackTrace();
+      }
       runtimeMaster.requestContainer(resourceSpecificationString);
     }
   }
