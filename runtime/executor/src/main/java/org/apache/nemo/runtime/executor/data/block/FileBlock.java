@@ -114,6 +114,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   private void writeToFile(final Iterable<SerializedPartition<K>> serializedPartitions)
     throws Exception {
     if (filePath.contains("crail")) {
+      LOG.info("HY: FileBlock writeToFile started");
       //Crail 디렉토리의 경우 미리 생성해놓은 CrailFile을 이용하여 write
       final CrailOutputStream fileOutputStream = file.getDirectOutputStream(1024);
       CrailBuffer buffer = fs.allocateBuffer();
@@ -121,6 +122,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         buffer.put(serializedPartition.getData());
       }
       fileOutputStream.write(buffer);
+      LOG.info("HY: FileBlock writeToFile started");
     }
     else {
       try (final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
