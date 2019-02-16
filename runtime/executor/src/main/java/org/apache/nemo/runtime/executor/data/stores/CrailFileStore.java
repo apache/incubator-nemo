@@ -70,7 +70,13 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     this.fs = CrailStore.newInstance(conf);
     int host = fs.getLocationClass().value();
     this.fileDirectory = volumeDirectory + "/" + host + "/files";
-    fs.create(fileDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
+    try {
+      fs.create(fileDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
+    }
+    catch(Exception e){
+      LOG.info("HY: files directory creation failed");
+      e.printStackTrace();
+    }
   }
 
   @Override
