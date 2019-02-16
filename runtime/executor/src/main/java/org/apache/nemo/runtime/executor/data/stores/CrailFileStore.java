@@ -66,23 +66,11 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
                          @Parameter(JobConf.JobId.class) final String jobId,
                          final SerializerManager serializerManager) throws Exception {
     super(serializerManager);
-    this.fileDirectory = volumeDirectory + "/" + jobId;
-    //new File(fileDirectory).mkdirs();
     this.conf = new CrailConfiguration();
     this.fs = CrailStore.newInstance(conf);
-    boolean baseDirExists=false;
-      try {
-        if(fs.lookup(fileDirectory).get() != null){
-          baseDirExists = true;
-        }
-      } catch (Exception e) {
-        LOG.info("fs.lookup failed");
-        e.printStackTrace();
-      }
-
-    if(!baseDirExists){
-      fs.create(fileDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
-    }
+    int host = fs.getLocationClass().value();
+    this.fileDirectory = volumeDirectory + "/" + host + "/files";
+    fs.create(fileDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
   }
 
   @Override
