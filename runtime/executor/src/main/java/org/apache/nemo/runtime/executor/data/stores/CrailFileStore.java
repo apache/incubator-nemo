@@ -50,6 +50,7 @@ import java.util.Optional;
 public final class CrailFileStore extends AbstractBlockStore implements RemoteFileStore {
   private static final Logger LOG = LoggerFactory.getLogger(CrailFileStore.class.getName());
   private final String fileDirectory;
+  private final String hostDirectory;
   private CrailConfiguration conf = null;
   private CrailStore fs = null;
   //CrailFile file = null;
@@ -69,6 +70,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     this.conf = new CrailConfiguration();
     this.fs = CrailStore.newInstance(conf);
     int host = fs.getLocationClass().value();
+    this.hostDirectory = volumeDirectory + "/" + host;
     this.fileDirectory = volumeDirectory + "/" + host + "/files";
     try {
       fs.create(fileDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
