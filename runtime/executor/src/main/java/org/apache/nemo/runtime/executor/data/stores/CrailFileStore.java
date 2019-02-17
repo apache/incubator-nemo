@@ -51,7 +51,6 @@ import java.util.Optional;
 public final class CrailFileStore extends AbstractBlockStore implements RemoteFileStore {
   private static final Logger LOG = LoggerFactory.getLogger(CrailFileStore.class.getName());
   private final String fileDirectory;
-  private final String hostDirectory;
   private CrailConfiguration conf = null;
   private CrailStore fs = null;
   //CrailFile file = null;
@@ -70,17 +69,8 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     super(serializerManager);
     this.conf = new CrailConfiguration();
     this.fs = CrailStore.newInstance(conf);
-    int host = fs.getLocationClass().value();
-    this.hostDirectory = volumeDirectory + "/" + host;
-    this.fileDirectory = volumeDirectory + "/" + host + "/files";
-    try {
-      fs.create(hostDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
-      fs.create(fileDirectory, CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
-    }
-    catch(Exception e){
-      LOG.info("HY: files directory creation failed");
-      e.printStackTrace();
-    }
+    //int host = fs.getLocationClass().value();
+    this.fileDirectory = volumeDirectory + "/files";
   }
 
   @Override

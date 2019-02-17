@@ -120,10 +120,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       final CrailBufferedOutputStream fileOutputStream = file.getBufferedOutputStream(0);
 
       for(final SerializedPartition<K> serializedPartition : serializedPartitions){
-        //buffer.put(serializedPartition.getData());
         fileOutputStream.write(serializedPartition.getData());
       }
-      //fileOutputStream.write(buffer);
+      fileOutputStream.close();
       LOG.info("HY: FileBlock writeToFile ended");
     }
     else {
