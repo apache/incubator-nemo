@@ -145,28 +145,32 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    * @throws IOException if fail to open.
    */
   public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath) throws Exception{
-    if (fs.lookup(metaFilePath)==null){
+    try {
+      fs.lookup(metaFilePath);
+    }
+    catch(Exception e){
       throw new IOException("File " + metaFilePath + " does not exist!");
     }
-    final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();
-    try (
-        CrailBufferedInputStream metaFileInputstream =file.getBufferedInputStream(0);
-    ) {
-      while (metaFileInputstream.available() > 0) {
-        final int keyLength = metaFileInputstream.readInt();
-        final byte[] desKey = new byte[keyLength];
-        if (keyLength != metaFileInputstream.read(desKey)) {
-          throw new IOException("Invalid key length!");
-        }
+      final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();
+      try (
+        CrailBufferedInputStream metaFileInputstream = file.getBufferedInputStream(0);
+      ) {
+        while (metaFileInputstream.available() > 0) {
+          final int keyLength = metaFileInputstream.readInt();
+          final byte[] desKey = new byte[keyLength];
+          if (keyLength != metaFileInputstream.read(desKey)) {
+            throw new IOException("Invalid key length!");
+          }
 
-        final PartitionMetadata<T> partitionMetadata = new PartitionMetadata<>(
+          final PartitionMetadata<T> partitionMetadata = new PartitionMetadata<>(
             SerializationUtils.deserialize(desKey),
             metaFileInputstream.readInt(),
             metaFileInputstream.readLong()
-        );
-        partitionMetadataList.add(partitionMetadata);
+          );
+          partitionMetadataList.add(partitionMetadata);
+        }
       }
-    }
+
     return new CrailFileMetadata<>(metaFilePath, partitionMetadataList);
   }
 }
