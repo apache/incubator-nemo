@@ -345,10 +345,12 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   public void deleteFile() throws IOException {
     metadata.deleteMetadata();
     try {
-      if (fs.lookup(filePath) != null) {
-        fs.delete(filePath, true);
-      }
-    }catch (Exception e){
+      fs.lookup(filePath);
+      fs.delete(filePath, true);
+    }catch (IOException e){
+      e.printStackTrace();
+    }
+    catch (Exception e){
       LOG.info("HY: deleteFile failed");
       e.printStackTrace();
     }
