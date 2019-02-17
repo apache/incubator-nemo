@@ -180,6 +180,7 @@ public final class NemoDriver {
         LOG.info("failed to delete /tmp_crail");
       }
         fs.create("/tmp_crail", CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
+        fs.create("/tmp_crail/files", CrailNodeType.DIRECTORY, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().syncDir();
         LOG.info("creating main dir done");
       }
       catch(Exception e){
