@@ -146,9 +146,8 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
   public boolean deleteBlock(final String blockId) throws BlockFetchException{
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     FileBlock block=null;
-
     try {
-      if (fs.lookup(filePath)==null) {
+      if (fs.lookup(filePath)!=null) {
         try {
           block = getBlockFromFile(blockId);
           block.deleteFile();

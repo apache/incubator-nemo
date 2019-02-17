@@ -344,8 +344,13 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   public void deleteFile() throws IOException {
     metadata.deleteMetadata();
-    if (new File(filePath).exists()) {
-      Files.delete(Paths.get(filePath));
+    try {
+      if (fs.lookup(filePath) != null) {
+        fs.delete(filePath, true);
+      }
+    }catch (Exception e){
+      LOG.info("HY: deleteFile failed");
+      e.printStackTrace();
     }
   }
 
