@@ -160,19 +160,6 @@ public final class NemoDriver {
         fs = CrailStore.newInstance(conf);
 
         LOG.info("creating main dir /tmp_crail");
-      /*
-      try {
-        if(fs.lookup("/tmp_crail").get() != null){
-          baseDirExists = true;
-        }
-        else{
-          baseDirExists = false;
-        }
-      } catch (Exception e) {
-        LOG.info("fs.lookup failed");
-        e.printStackTrace();
-      }
-      */
       try{
         fs.delete("/tmp_crail", true).get().syncDir();
       }
