@@ -118,16 +118,22 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
   public Optional<Block> readBlock(final String blockId) throws BlockFetchException {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     try {
-        fs.lookup(filePath);
+      if (fs.lookup(filePath).get()==null) {
+        return Optional.empty();
+      } else {
         try {
           final FileBlock block = getBlockFromFile(blockId);
           return Optional.of(block);
         } catch (final IOException e) {
           throw new BlockFetchException(e);
+        } catch (Exception e){
+          e.printStackTrace();
+          throw new BlockFetchException(e);
         }
+      }
     } catch (Exception e) {
       e.printStackTrace();
-      return Optional.empty();
+      throw new BlockFetchException(e);
     }
   }
 
@@ -142,14 +148,18 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
 
     try {
-      fs.lookup(filePath).get().asFile();
-      final FileBlock block = getBlockFromFile(blockId);
-      block.deleteFile();
-      return true;
+      if (fs.lookup(filePath).get()!=null) {
+        final FileBlock block = getBlockFromFile(blockId);
+        block.deleteFile();
+        return true;
+      } else {
+        return false;
+      }
     } catch (final IOException e) {
       throw new BlockFetchException(e);
-    } catch(Exception e){
-      return false;
+    } catch (Exception e){
+      e.printStackTrace();
+      throw new BlockFetchException(e);
     }
   }
 
