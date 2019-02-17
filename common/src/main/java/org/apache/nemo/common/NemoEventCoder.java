@@ -38,7 +38,13 @@ public final class NemoEventCoder {
       //byte[] array = new byte[msg.readableBytes()];
       //msg.readBytes(array);
 
-      out.add(new NemoEvent(NemoEvent.Type.values()[typeOrdinal], msg.retain(1)));
+      try {
+        out.add(new NemoEvent(NemoEvent.Type.values()[typeOrdinal], msg.retain(1)));
+      } catch (final ArrayIndexOutOfBoundsException e) {
+        e.printStackTrace();
+        System.out.println("Type ordinal: " + typeOrdinal);
+        throw e;
+      }
     }
   }
 
