@@ -146,10 +146,9 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
   @Override
   public boolean deleteBlock(final String blockId) throws BlockFetchException{
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
-    
-  try {
-      CrailFile file = fs.lookup(filePath).get().asFile(); file.syncDir();
-      if (file!=null) {
+
+    try {
+      if (fs.lookup(filePath).get()!=null) {
         final FileBlock block = getBlockFromFile(blockId);
         block.deleteFile();
         return true;
@@ -159,7 +158,8 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     } catch (final IOException e) {
       throw new BlockFetchException(e);
     } catch (Exception e){
-	return false;
+	e.printStackTrace();
+	throw new BlockFetchException(e);
     }
   }
 
