@@ -117,15 +117,22 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
 
   public Optional<Block> readBlock(final String blockId) throws BlockFetchException {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
-    if (!new File(filePath).isFile()) {
-      return Optional.empty();
-    } else {
-      try {
-        final FileBlock block = getBlockFromFile(blockId);
-        return Optional.of(block);
-      } catch (final IOException e) {
-        throw new BlockFetchException(e);
+    try {
+      if(fs.lookup(filePath)==null){
+        return Optional.empty();
       }
+      else {
+        try {
+          final FileBlock block = getBlockFromFile(blockId);
+          return Optional.of(block);
+        } catch (final IOException e) {
+          throw new BlockFetchException(e);
+        }
+      }
+    } catch (Exception e) {
+      LOG.info("HY: lookup failed during readBlock");
+      e.printStackTrace();
+      return null;
     }
   }
 
@@ -136,7 +143,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
    * @return whether the block exists or not.
    */
   @Override
-  public boolean deleteBlock(final String blockId) throws BlockFetchException {
+  public boolean deleteBlock(final String blockId) {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
 
     try {
@@ -147,7 +154,8 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
       } else {
         return false;
       }
-    } catch (final IOException e) {
+    } catch (final Exception e) {
+      LOG.info("HY: getBlockFromFile might have failed");
       throw new BlockFetchException(e);
     }
   }
@@ -163,11 +171,11 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
    * @return the {@link FileBlock} gotten.
    * @throws IOException if fail to get.
    */
-  private <K extends Serializable> FileBlock<K> getBlockFromFile(final String blockId) throws IOException {
+  private <K extends Serializable> FileBlock<K> getBlockFromFile(final String blockId) throws Exception {
     final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
-    final RemoteFileMetadata<K> metadata =
-      RemoteFileMetadata.open(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
+    final CrailFileMetadata<K> metadata =
+      CrailFileMetadata.open(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
     return new FileBlock<>(blockId, serializer, filePath, metadata, fs);
   }
 }
