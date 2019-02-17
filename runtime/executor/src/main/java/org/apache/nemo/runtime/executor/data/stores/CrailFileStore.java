@@ -143,21 +143,27 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
    * @return whether the block exists or not.
    */
   @Override
-  public boolean deleteBlock(final String blockId) {
+  public boolean deleteBlock(final String blockId) throws BlockFetchException{
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
+    FileBlock block=null;
 
     try {
-      if (new File(filePath).isFile()) {
-        final FileBlock block = getBlockFromFile(blockId);
-        block.deleteFile();
+      if (fs.lookup(filePath)==null) {
+        try {
+          block = getBlockFromFile(blockId);
+          block.deleteFile();
+        }
+        catch(Exception e) {
+          LOG.info("HY: getBlockFromFile failed");
+        }
         return true;
       } else {
         return false;
       }
-    } catch (final Exception e) {
-      LOG.info("HY: getBlockFromFile might have failed");
-      throw new BlockFetchException(e);
+    } catch (Exception e) {
+      e.printStackTrace();
     }
+    return false;
   }
 
   /**
