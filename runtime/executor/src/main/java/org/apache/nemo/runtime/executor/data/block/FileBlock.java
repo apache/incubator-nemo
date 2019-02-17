@@ -118,8 +118,8 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       LOG.info("HY: FileBlock writeToFile started");
       //Crail 디렉토리의 경우 미리 생성해놓은 CrailFile을 이용하여 write
       final CrailBufferedOutputStream fileOutputStream = file.getBufferedOutputStream(0);
-
       for(final SerializedPartition<K> serializedPartition : serializedPartitions){
+        metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
         fileOutputStream.write(serializedPartition.getData());
       }
       fileOutputStream.close();
