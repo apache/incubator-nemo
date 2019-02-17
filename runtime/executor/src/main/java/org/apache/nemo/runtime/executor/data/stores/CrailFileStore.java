@@ -142,10 +142,10 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
 
     try {
-      fs.lookup(filePath);
+      fs.lookup(filePath).get().asFile();
       final FileBlock block = getBlockFromFile(blockId);
       block.deleteFile();
-      return false;
+      return true;
     } catch (final IOException e) {
       throw new BlockFetchException(e);
     } catch(Exception e){
