@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.data.metadata;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.crail.*;
 import org.apache.crail.conf.CrailConfiguration;
+import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.runtime.executor.data.stores.CrailFileStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -157,11 +158,11 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    */
   public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath) throws Exception{
     LOG.info("HY: metafilePath {}", metaFilePath);
+    CrailFile file=null;
     try {
-      if (fs.lookup(metaFilePath).get() == null) {
-        throw new IOException("File " + metaFilePath + " does not exist!");
-      }
-    }catch(Exception e){
+      file = fs.lookup(metaFilePath).get().asFile();
+      file.syncDir();
+    }catch (Exception e){
       throw new IOException("HY: File "+metaFilePath+ " does not exist!");
     }
     final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();
