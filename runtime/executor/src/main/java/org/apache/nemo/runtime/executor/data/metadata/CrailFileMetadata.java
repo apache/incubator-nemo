@@ -57,8 +57,14 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
     try {
       conf = new CrailConfiguration();
       fs = CrailStore.newInstance(conf);
-      this.file = fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
-      file.syncDir();
+      try {
+        this.file = fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
+        file.syncDir();
+      }catch (Exception e){
+        //when it already exists
+        this.file = fs.lookup(metaFilePath).get().asFile();
+        file.syncDir();
+      }
     }
     catch(Exception e){
       LOG.info("HY: CrailConfiguration failed");
