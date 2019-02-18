@@ -152,12 +152,12 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    */
   public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath) throws Exception{
     LOG.info("HY: metafilePath {}", metaFilePath);
+    CrailFile file=null;
     try {
-      if (fs.lookup(metaFilePath).get() == null) {
-        throw new IOException("File " + metaFilePath + " does not exist!");
-      }
-    }catch(Exception e){
-      throw new IOException("HY: File "+metaFilePath+ " does not exist!");
+      file = fs.lookup(metaFilePath).get().asFile();
+      file.syncDir();
+    }catch (Exception e){
+      LOG.info("HY: File "+metaFilePath+" not found!");
     }
     final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();
     try (
