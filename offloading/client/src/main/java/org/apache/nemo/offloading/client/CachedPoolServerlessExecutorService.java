@@ -61,6 +61,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   private long totalProcessingTime = 0;
   private int processingCnt = 0;
 
+  private int bufferedCnt = 0;
+  private int addedOutput = 0;
+
   final AtomicLong st = new AtomicLong(System.currentTimeMillis());
 
   CachedPoolServerlessExecutorService(
@@ -194,6 +197,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
                 //LOG.info("Create worker");
                 workerInitBuffer.retain();
                 dataBufferQueue.add(data);
+                bufferedCnt += 1;
 
                 final OffloadingWorker<I, O> worker =
                   workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
@@ -314,7 +318,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       final boolean speculative = speculativeDataProcessedMap.containsKey(dataId);
 
       try {
-        outputQueue.add(new PendingOutput(worker.execute(dataBuf, dataId, speculative), dataId));
+        final PendingOutput po = new PendingOutput(worker.execute(dataBuf, dataId, speculative), dataId);
+        outputQueue.add(po);
+        addedOutput += 1;
         runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
       } catch (final IllegalReferenceCountException e) {
         // the input becomes null ... this means that we don't have to do speculative execution
@@ -346,6 +352,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
         try {
           outputQueue.add(new PendingOutput<>(readyWorker.execute(data.left(), dataId, true), dataId));
+          addedOutput += 1;
 
           // TODO: consideration
           LOG.info("Speculative execution for data {}, runningWorkerCnt: {}, readyWorkerCnt: {}", dataId,
@@ -383,11 +390,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
           boolean isEmittable = !speculativeDataProcessedMap.getOrDefault(dataId, false);
 
-          if (speculativeDataProcessedMap.containsKey(dataId)) {
-            speculativeDataProcessedMap.put(dataId, true);
-            LOG.info("Speculative execution output emittion, data: {}, emittable: {}", dataId,
-              isEmittable);
-          }
+          speculativeDataProcessedMap.put(dataId, true);
+          LOG.info("Speculative execution output emittion, data: {}, emittable: {}", dataId,
+            isEmittable);
 
           LOG.info("Output latency {}, id {} done", System.currentTimeMillis() - output.startTime, dataId);
           iterator.remove();
@@ -433,6 +438,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
     dataBufferQueue.add(Pair.of(encodeData(data, Unpooled.directBuffer()),
       workerFactory.getAndIncreaseDataId()));
+    bufferedCnt += 1;
 
     final OffloadingWorker<I, O> worker =
       workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
@@ -450,6 +456,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     //LOG.info("Create worker");
     workerInitBuffer.retain();
     dataBufferQueue.add(Pair.of(data, workerFactory.getAndIncreaseDataId()));
+    bufferedCnt += 1;
 
     final OffloadingWorker<I, O> worker =
       workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
@@ -492,12 +499,13 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     }
 
     // waiting for all outputs
-    LOG.info("Waiting {} outputs...", outputQueue.size());
+    LOG.info("Waiting {} outputs... {}", outputQueue.size(), outputQueue);
     while (!outputQueue.isEmpty()) {
       // logging
       if (System.currentTimeMillis() - prevTime > 2000) {
         prevTime = System.currentTimeMillis();
-        LOG.info("Waiting {} outputs...", outputQueue.size());
+        LOG.info("Waiting {} outputs... {}", outputQueue.size(), outputQueue);
+        LOG.info("Created worker: {}, Finished worker: [}, added output: {}", createdWorkers, finishedWorkers);
       }
       try {
         Thread.sleep(200);
