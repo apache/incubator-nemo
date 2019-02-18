@@ -26,12 +26,12 @@ import java.io.Serializable;
  * Invariant data ExecutionProperty. Use to indicate same data edge when unrolling loop vertex.
  * See Conf
  */
-public final class DuplicateEdgeGroupProperty extends EdgeExecutionProperty<DuplicateEdgeGroupProperty.Conf> {
+public final class DuplicateEdgeGroupProperty extends EdgeExecutionProperty<DuplicateEdgeGroupPropertyValue> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private DuplicateEdgeGroupProperty(final Conf value) {
+  private DuplicateEdgeGroupProperty(final DuplicateEdgeGroupPropertyValue value) {
     super(value);
   }
 
@@ -40,102 +40,7 @@ public final class DuplicateEdgeGroupProperty extends EdgeExecutionProperty<Dupl
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static DuplicateEdgeGroupProperty of(final Conf value) {
+  public static DuplicateEdgeGroupProperty of(final DuplicateEdgeGroupPropertyValue value) {
     return new DuplicateEdgeGroupProperty(value);
-  }
-
-  /**
-   * Value of DuplicateEdgeGroupProperty.
-   * If isRepresentativeEdgeDecided is false, its physical edge id(representativeEdgeId) is not yet discovered.
-   * representativeEdgeId is the id of an edge that represents the group with an id of groupId.
-   * groupId uniquely defines a group of edges that handle the same data.
-   */
-  public final class Conf implements Serializable {
-    private static final int GROUP_SIZE_UNDECIDED = -1;
-    private boolean isRepresentativeEdgeDecided;
-    private String groupId;
-    private String representativeEdgeId;
-    private int groupSize;
-
-    /**
-     * Constructor.
-     *
-     * @param groupId Group ID.
-     */
-    public Conf(final String groupId) {
-      this.isRepresentativeEdgeDecided = false;
-      this.groupId = groupId;
-      this.groupSize = GROUP_SIZE_UNDECIDED;
-    }
-
-    /**
-     * Set physical edge id.
-     *
-     * @param representativeEdgeId physical edge id of representative edge.
-     */
-    public void setRepresentativeEdgeId(final String representativeEdgeId) {
-      if (isRepresentativeEdgeDecided && !this.representativeEdgeId.equals(representativeEdgeId)) {
-        throw new RuntimeException("edge id is already decided");
-      }
-      this.isRepresentativeEdgeDecided = true;
-      this.representativeEdgeId = representativeEdgeId;
-    }
-
-    /**
-     * Set the group size.
-     *
-     * @param groupSize the group size.
-     */
-    public void setGroupSize(final int groupSize) {
-      if (groupSize <= 0) {
-        throw new RuntimeException("non-positive value of groupSize is not allowed");
-      }
-      this.groupSize = groupSize;
-    }
-
-    /**
-     * Get the physical edge id of the representative edge.
-     *
-     * @return physical edge id of the representative edge.
-     */
-    public String getRepresentativeEdgeId() {
-      if (!isRepresentativeEdgeDecided) {
-        throw new RuntimeException("representativeEdgeId is not decided yet");
-      }
-      return representativeEdgeId;
-    }
-
-    /**
-     * Get the data id.
-     *
-     * @return data id.
-     */
-    public String getGroupId() {
-      return groupId;
-    }
-
-    /**
-     * Get the group size.
-     *
-     * @return the group size.
-     */
-    public int getGroupSize() {
-      if (groupSize == -1) {
-        throw new RuntimeException("groupSize is not decided yet");
-      }
-      return groupSize;
-    }
-
-    /**
-     * @return whether the representative edge is decided or not.
-     */
-    public boolean isRepresentativeEdgeDecided() {
-      return isRepresentativeEdgeDecided;
-    }
-
-    @Override
-    public String toString() {
-      return String.format("DuplicateEdgeGroup(%s)", representativeEdgeId != null ? representativeEdgeId : "");
-    }
   }
 }

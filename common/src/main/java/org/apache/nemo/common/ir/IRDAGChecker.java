@@ -22,10 +22,13 @@ import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -109,17 +112,16 @@ public class IRDAGChecker {
 
       final Optional<Integer> resourceSiteSize = v.getPropertyValue(ResourceSiteProperty.class)
         .map(rs -> rs.values().stream().mapToInt(Integer::intValue).sum());
-      if (!parallelism.equals(resourceSiteSize)) {
+      if (resourceSiteSize.isPresent() && !parallelism.equals(resourceSiteSize)) {
         return failure("Parallelism must equal to sum of site nums",
           v, ParallelismProperty.class, ResourceSiteProperty.class);
       }
 
       final Optional<HashSet<Integer>> antiAffinitySet = v.getPropertyValue(ResourceAntiAffinityProperty.class);
-      if (antiAffinitySet.isPresent()) {
-        if (!getExpectedTaskOffsets(parallelism.get()).containsAll(antiAffinitySet.get())) {
-          return failure("Offsets must be within parallelism",
-            v, ParallelismProperty.class, ResourceAntiAffinityProperty.class);
-        }
+      if (antiAffinitySet.isPresent()
+        && !getExpectedTaskOffsets(parallelism.get()).containsAll(antiAffinitySet.get())) {
+        return failure("Offsets must be within parallelism",
+          v, ParallelismProperty.class, ResourceAntiAffinityProperty.class);
       }
 
       return success();
@@ -149,7 +151,7 @@ public class IRDAGChecker {
       for (final IREdge inEdge : inEdges) {
         if (CommunicationPatternProperty.Value.OneToOne
           .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-          if (inEdge.getSrc().getPropertyValue(ParallelismProperty.class)
+          if (!inEdge.getSrc().getPropertyValue(ParallelismProperty.class)
             .equals(v.getPropertyValue(ParallelismProperty.class))) {
             return failure("OneToOne edges must have the same parallelism",
               v, ParallelismProperty.class, inEdge, CommunicationPatternProperty.class);
@@ -163,22 +165,12 @@ public class IRDAGChecker {
 
     final NeighborChecker parallelismWithPartitionSet = ((v, inEdges, outEdges) -> {
       final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
-      if (!parallelism.isPresent()) {
-        return success(); // No need to check, if the parallelism is not set yet
-      }
-
       for (final IREdge inEdge : inEdges) {
-        final Optional<ArrayList<KeyRange>> partitionSetFlattened = inEdge.getPropertyValue(PartitionSetProperty.class);
-        if (partitionSetFlattened.isPresent()) {
-          final List<Integer> flattenedOffsets = partitionSetFlattened.get()
-            .stream()
-            .flatMap(keyRange -> IntStream.range(
-              (int) keyRange.rangeBeginInclusive(), (int) keyRange.rangeEndExclusive()).boxed())
-            .collect(Collectors.toList());
-          if (!getExpectedTaskOffsets(parallelism.get()).equals(flattenedOffsets)) {
-            return failure("PartitionSet must contain all task offsets required for the parallelism",
-              v, ParallelismProperty.class, inEdge, PartitionSetProperty.class);
-          }
+        final Optional<Integer> keyRangeListSize = inEdge.getPropertyValue(PartitionSetProperty.class)
+          .map(keyRangeList -> keyRangeList.size());
+        if (parallelism.isPresent() && keyRangeListSize.isPresent() && !parallelism.equals(keyRangeListSize)) {
+          return failure("PartitionSet must contain all task offsets required for the dst parallelism",
+            v, ParallelismProperty.class, inEdge, PartitionSetProperty.class);
         }
       }
 
@@ -186,6 +178,41 @@ public class IRDAGChecker {
     });
     neighborCheckerList.add(parallelismWithPartitionSet);
   }
+
+  /*
+  void addPartitionerCheckers() {
+    // partitioner num
+    final NeighborChecker partitionerAndPartitionSet = ((v, inEdges, outEdges) -> {
+      final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
+      if (!parallelism.isPresent()) {
+        return success(); // No need to check, if the parallelism is not set yet
+      }
+
+      for (final IREdge inEdge : inEdges) {
+        final Optional<ArrayList<KeyRange>> partitionSet = inEdge.getPropertyValue(PartitionSetProperty.class);
+        if (partitionSet.isPresent()) {
+          // Parallelism
+          final List<Integer> flattenedPartitionOffsets = partitionSet.get()
+            .stream()
+            .flatMap(keyRange -> IntStream.range(
+              (int) keyRange.rangeBeginInclusive(), (int) keyRange.rangeEndExclusive()).boxed())
+            .collect(Collectors.toList());
+          if (!getExpectedTaskOffsets(partitioner.get()).equals(flattenedPartitionOffsets)) {
+            return failure("PartitionSet must contain all task offsets required for the parallelism",
+              v, ParallelismProperty.class, inEdge, PartitionSetProperty.class);
+          }
+
+
+        }
+      }
+
+      return success();
+    });
+    neighborCheckerList.add(partitionerAndPartitionSet);
+
+    // partition set
+  }
+  */
 
   /**
    * Parallelism-related checkers.
@@ -369,12 +396,13 @@ public class IRDAGChecker {
       + failureOne.failReason + ") incompatible with (" + failureTwo.failReason + ")");
   }
 
-  CheckerResult failure(final String description, final IRVertex v, final Class... eps) {
-    final List<Class> epsList = Arrays.asList(eps);
-    final boolean isMissingValue = epsList.stream()
-      .map(ep -> v.getPropertyValue(ep))
-      .anyMatch(optional -> !optional.isPresent());
-
+  CheckerResult failure(final String description,
+                        final IRVertex v,
+                        final Class... eps) {
+    final List<Optional> epsList = Arrays.stream(eps)
+      .map(ep -> (Class<VertexExecutionProperty<Serializable>>)ep)
+      .map(ep -> v.getPropertyValue(ep)).collect(Collectors.toList());
+    final boolean isMissingValue = epsList.stream().anyMatch(optional -> !((Optional) optional).isPresent());
     if (isMissingValue) {
       throw new IllegalArgumentException(epsList.toString());
     } else {
@@ -382,16 +410,18 @@ public class IRDAGChecker {
     }
   }
 
-  CheckerResult failure(final String description, final IREdge e, final Class... eps) {
-    final List<Class> epsList = Arrays.asList(eps);
-    final boolean isMissingValue = epsList.stream()
-      .map(ep -> e.getPropertyValue(ep))
-      .anyMatch(optional -> !optional.isPresent());
-
+  CheckerResult failure(final String description,
+                        final IREdge e,
+                        final Class... eps) {
+    final List<Optional> epsList = Arrays.stream(eps)
+      .map(ep -> (Class<EdgeExecutionProperty<Serializable>>)ep)
+      .map(ep -> e.getPropertyValue(ep)).collect(Collectors.toList());
+    final boolean isMissingValue = epsList.stream().anyMatch(optional -> !((Optional) optional).isPresent());
     if (isMissingValue) {
       throw new IllegalArgumentException(epsList.toString());
     } else {
-      return failure(String.format("%s - [IREdge %s: %s]", description, e.getId(), epsList.toString()));
+      return failure(String.format("%s - [IREdge(%s->%s) %s: %s]",
+        description, e.getSrc().getId(), e.getDst().getId(), e.getId(), epsList.toString()));
     }
   }
 }

@@ -182,6 +182,7 @@ public final class EmptyComponents {
    */
   public static final class EmptySourceVertex<T> extends SourceVertex<T> {
     private String name;
+    private int minNumReadables;
 
     /**
      * Constructor.
@@ -189,7 +190,18 @@ public final class EmptyComponents {
      * @param name name for the vertex.
      */
     public EmptySourceVertex(final String name) {
+      new EmptySourceVertex(name, 1);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param name name for the vertex.
+     * @param minNumReadables for the vertex.
+     */
+    public EmptySourceVertex(final String name, final int minNumReadables) {
       this.name = name;
+      this.minNumReadables = minNumReadables;
     }
 
     /**
@@ -217,8 +229,8 @@ public final class EmptyComponents {
 
     @Override
     public List<Readable<T>> getReadables(final int desirednumOfSplits) {
-      final List list = new ArrayList(desirednumOfSplits);
-      for (int i = 0; i < desirednumOfSplits; i++) {
+      final List<Readable<T>> list = new ArrayList<>(Math.max(minNumReadables, desirednumOfSplits));
+      for (int i = 0; i < Math.max(minNumReadables, desirednumOfSplits); i++) {
         list.add(new EmptyReadable<>());
       }
       return list;

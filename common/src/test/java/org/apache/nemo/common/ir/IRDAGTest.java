@@ -18,34 +18,97 @@
  */
 package org.apache.nemo.common.ir;
 
+import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
-import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
+import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.List;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.stream.IntStream;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Tests for {@link IRDAG}.
  */
 public class IRDAGTest {
-  private static final int NUM_OF_RANDOM_SEEDS = 100;
-  private static final int NUM_OF_METHOD_CALLS = 100;
+  private final static int MIN_NUM_SOURCE_READABLES = 5;
+
+  private SourceVertex sourceVertex;
+  private IREdge oneToOneEdge;
+  private OperatorVertex firstOperatorVertex;
+  private IREdge shuffleEdge;
+  private OperatorVertex secondOperatorVertex;
+
+  private IRDAG irdag;
+
+  @Before
+  public void setUp() throws Exception {
+    sourceVertex = new EmptyComponents.EmptySourceVertex("source", MIN_NUM_SOURCE_READABLES);
+    firstOperatorVertex = new OperatorVertex(new EmptyComponents.EmptyTransform("first"));
+    secondOperatorVertex = new OperatorVertex(new EmptyComponents.EmptyTransform("second"));
+
+    oneToOneEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, sourceVertex, firstOperatorVertex);
+    shuffleEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, firstOperatorVertex, secondOperatorVertex);
+
+    final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<IRVertex, IREdge>()
+      .addVertex(sourceVertex)
+      .addVertex(firstOperatorVertex)
+      .addVertex(secondOperatorVertex)
+      .connectVertices(oneToOneEdge)
+      .connectVertices(shuffleEdge);
+    irdag = new IRDAG(dagBuilder.build());
+  }
+
+  private void mustPass() {
+    final IRDAGChecker.CheckerResult checkerResult = irdag.checkIntegrity();
+    if (!checkerResult.isPassed()) {
+      throw new RuntimeException("Expected pass, but failed due to ==> " + checkerResult.getFailReason());
+    }
+  }
+
+  private void mustFail() {
+    assertFalse(irdag.checkIntegrity().isPassed());
+  }
 
   @Test
-  public void testParallelism() {
-    // simple test case
-
-    // comm pattern
-
-    // xxx
+  public void testParallelismSuccess() {
+    sourceVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES));
+    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES));
+    secondOperatorVertex.setProperty(ParallelismProperty.of(2));
+    shuffleEdge.setProperty(PartitionSetProperty.of(new ArrayList<>(Arrays.asList(
+      HashRange.of(0, 3),
+      HashRange.of(3, MIN_NUM_SOURCE_READABLES)))));
+    mustPass();
   }
+
+  @Test
+  public void testParallelismSource() {
+    sourceVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES - 1)); // this causes failure
+    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES - 1));
+    secondOperatorVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES - 1));
+    mustFail();
+  }
+
+  @Test
+  public void testParallelismCommPattern() {
+    sourceVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES));
+    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES - 1)); // this causes failure
+    secondOperatorVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES - 2));
+    mustFail();
+  }
+
+
 
   @Test
   public void testXX() {
@@ -53,29 +116,17 @@ public class IRDAGTest {
   }
 
   @Test
-  public void testMessageBarrierVertex() {
-    // simple test case
-    MessageBarrierVertex;
-    StreamVertex;
-    SamplingVertex;
-  }
-
-  @Test
   public void testStreamVertex() {
+    /*
     // simple test case
     // insert
     // delete
     MessageBarrierVertex;
     StreamVertex;
     SamplingVertex;
+    */
   }
 
-  @Test
-  public void testSamplingVertex() {
-    // simple test case
-    // insert
-    // delete
-  }
 
   @Test
   public void testRandomCalls() {
@@ -92,7 +143,4 @@ public class IRDAGTest {
       // IRDAGBuilder(?)
     });
   }
-
-
-
 }
