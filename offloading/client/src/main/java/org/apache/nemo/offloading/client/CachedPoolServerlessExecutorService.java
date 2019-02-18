@@ -90,10 +90,28 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     // schedule init/active worker
     this.scheduler.scheduleAtFixedRate(() -> {
 
-      if (System.currentTimeMillis() - st.get() > 2000) {
+      boolean logging = false;
+      if (System.currentTimeMillis() - st.get() > 5000) {
+        logging = true;
         st.set(System.currentTimeMillis());
         LOG.info("Init workers: {}, Running workers: {}, Output: {} ",
           initializingWorkers.size(), runningWorkers.size(), outputQueue.size());
+
+
+        for (final Pair<Long, OffloadingWorker> pair : runningWorkers) {
+          if (st.get() - pair.left() > 7000) {
+            final Pair<ByteBuf, Integer> input = pair.right().getCurrentProcessingInput();
+            if (input != null) {
+              LOG.info("Running worker for data {}, time: {}", input.right(), (st.get() - pair.left()));
+            }
+          }
+        }
+
+        for (final PendingOutput output : outputQueue) {
+          if (st.get() - output.startTime > 7000) {
+            LOG.info("Pending output:  data {}, time: {}", output.dataId, (st.get() - output.startTime));
+          }
+        }
       }
 
       try {
