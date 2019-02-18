@@ -42,7 +42,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   private final EventHandler<O> eventHandler;
 
-  private final BlockingQueue<ByteBuf> dataBufferQueue;
+  private final BlockingQueue<Pair<ByteBuf, Integer>> dataBufferQueue;
 
   //private final PriorityBlockingQueue<Pair<Long, OffloadingWorker>> readyWorkers;
 
@@ -134,6 +134,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
         outputEmittion();
 
+        long curTime = System.currentTimeMillis();
         final List<OffloadingWorker> readyWorkers = new ArrayList<>(runningWorkers.size());
         final Iterator<Pair<Long, OffloadingWorker>> iterator = runningWorkers.iterator();
         while (iterator.hasNext()) {
@@ -141,6 +142,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           if (pair.right().isReady()) {
             iterator.remove();
             readyWorkers.add(pair.right());
+
+            totalProcessingTime += (pair.left() - curTime);
+            processingCnt += 1;
+
           } else if (isOutputEmitted(pair.right())) {
             // the output is already emitted
             // just finish this worker
@@ -150,6 +155,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             if (data == null) {
               // this is end
               readyWorkers.add(pair.right());
+
+              totalProcessingTime += (pair.left() - curTime);
+              processingCnt += 1;
+
             } else {
               final int dataId = data.right();
               LOG.info("Reject execution for data: {}", dataId);
@@ -164,6 +173,40 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         });
 
         //speculativeExecution();
+        if (initializingWorkers.isEmpty() &&
+          (finishedWorkers / (double) createdWorkers) > 0.6) {
+          curTime = System.currentTimeMillis();
+          final long avgTime = totalProcessingTime / processingCnt;
+          for (final Pair<Long, OffloadingWorker> pair : runningWorkers) {
+            if (!hasBeenPerformedSpeculativeExecution(pair.right()) &&
+              curTime - pair.left() > avgTime * 2) {
+              // speculative execution1!
+              final OffloadingWorker runningWorker = pair.right();
+              final Pair<ByteBuf, Integer> data = runningWorker.getCurrentProcessingInput();
+              if (data != null) {
+                final int dataId = data.right();
+
+                LOG.info("Create new worker for speculatve execution of data {}, elapsed time: {}, avg time: {}"
+                  , dataId, (curTime - pair.left()), avgTime);
+
+                createdWorkers += 1;
+                // create new worker
+                //LOG.info("Create worker");
+                workerInitBuffer.retain();
+                dataBufferQueue.add(data);
+
+                final OffloadingWorker<I, O> worker =
+                  workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
+
+                speculativeDataProcessedMap.put(dataId, false);
+
+                synchronized (initializingWorkers) {
+                  initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+                }
+              }
+            }
+          }
+        }
 
 
       } catch (final Exception e) {
@@ -264,10 +307,13 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   }
 
   private void executeData(final OffloadingWorker worker) {
-    final ByteBuf dataBuf = dataBufferQueue.poll();
-    if (dataBuf != null) {
-      final int dataId = workerFactory.getAndIncreaseDataId();
-      outputQueue.add(new PendingOutput(worker.execute(dataBuf, dataId, false), dataId));
+    final Pair<ByteBuf, Integer> pair = dataBufferQueue.poll();
+    if (pair != null) {
+      final int dataId = pair.right();
+      final ByteBuf dataBuf = pair.left();
+      final boolean speculative = speculativeDataProcessedMap.containsKey(dataId);
+
+      outputQueue.add(new PendingOutput(worker.execute(dataBuf, dataId, speculative), dataId));
       runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
     } else {
       // speculative execution
@@ -377,7 +423,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     //LOG.info("Create worker");
     workerInitBuffer.retain();
 
-    dataBufferQueue.add(encodeData(data, Unpooled.directBuffer()));
+    dataBufferQueue.add(Pair.of(encodeData(data, Unpooled.directBuffer()),
+      workerFactory.getAndIncreaseDataId()));
 
     final OffloadingWorker<I, O> worker =
       workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
@@ -394,7 +441,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     // create new worker
     //LOG.info("Create worker");
     workerInitBuffer.retain();
-    dataBufferQueue.add(data);
+    dataBufferQueue.add(Pair.of(data, workerFactory.getAndIncreaseDataId()));
 
     final OffloadingWorker<I, O> worker =
       workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);

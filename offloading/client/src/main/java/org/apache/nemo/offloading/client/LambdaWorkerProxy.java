@@ -255,14 +255,6 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
         @Override
         public boolean isDone() {
 
-          if (channelFuture.isDone()) {
-            if (!channelFuture.isSuccess()) {
-              // retry output emission
-              LOG.warn("Data sending exception of dataid {}", dataId);
-              throw new RuntimeException("Data sending exception of dataid " + dataId);
-            }
-          }
-
           if (result == null) {
             result = resultMap.get(dataId);
             if (result == null) {
