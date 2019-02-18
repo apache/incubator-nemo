@@ -60,7 +60,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
       try {
         this.file = fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
         file.syncDir();
-      }catch (Exception e){
+      } catch (Exception e){
         //when it already exists
         this.file = fs.lookup(metaFilePath).get().asFile();
         file.syncDir();
@@ -83,12 +83,17 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
     super(partitionMetadataList);
     this.metaFilePath = metaFilePath;
     try {
-      conf = new CrailConfiguration();
-      fs = CrailStore.newInstance(conf);
-      this.file = fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
-      file.syncDir();
-    }
-    catch(Exception e){
+      try {
+        conf = new CrailConfiguration();
+        fs = CrailStore.newInstance(conf);
+        this.file = fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
+        file.syncDir();
+      } catch (Exception e) {
+        //when it already exists
+        this.file = fs.lookup(metaFilePath).get().asFile();
+        file.syncDir();
+      }
+    } catch(Exception e){
       LOG.info("HY: CrailConfiguration failed");
       e.printStackTrace();
     }
