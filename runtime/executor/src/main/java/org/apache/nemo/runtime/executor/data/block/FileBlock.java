@@ -101,6 +101,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         LOG.info("HY: crail file block creation might have failed");
         //e1.printStackTrace();
         try{
+          this.fs = fs;
           this.file = fs.lookup(filePath).get().asFile();
           file.syncDir();
           LOG.info("HY: {} fetched", blockId);
