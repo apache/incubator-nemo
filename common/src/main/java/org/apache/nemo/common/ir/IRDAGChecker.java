@@ -24,6 +24,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
+import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -41,12 +42,7 @@ import java.util.stream.IntStream;
  */
 public class IRDAGChecker {
 
-  ///////////////////////////// Checkers to use
-
-  private final List<SingleVertexChecker> singleVertexCheckerList;
-  private final List<SingleEdgeChecker> singleEdgeCheckerList;
-  private final List<NeighborChecker> neighborCheckerList;
-  private final List<GlobalDAGChecker> globalDAGCheckerList;
+  ///////////////////////////// Checker interfaces
 
   /**
    * Checks each single vertex.
@@ -78,63 +74,12 @@ public class IRDAGChecker {
     CheckerResult check(final IRDAG irdag);
   }
 
-  ///////////////////////////// Successes and Failures
-
-  private final CheckerResult SUCCESS = new CheckerResult(true, "");
-
-  private class CheckerResult {
-    private final boolean pass;
-    private final String failReason; // empty string if pass = true
-
-    CheckerResult(final boolean pass, final String failReason) {
-      this.pass = pass;
-      this.failReason = failReason;
-    }
-
-    final boolean isPassed() {
-      return pass;
-    }
-
-    final String getFailReason() {
-      return failReason;
-    }
-  }
-
-  CheckerResult success() {
-    return SUCCESS;
-  }
-
-  CheckerResult failure(final String failReason) {
-    return new CheckerResult(false, failReason);
-  }
-
-  CheckerResult failure(final IRVertex v, final Class... eps) {
-    final List<Class> epsList = Arrays.asList(eps);
-    final boolean isMissingValue = epsList.stream()
-      .map(ep -> v.getPropertyValue(ep))
-      .anyMatch(optional -> !optional.isPresent());
-
-    if (isMissingValue) {
-      throw new IllegalArgumentException(epsList.toString());
-    } else {
-      return failure(String.format("IRVertex %s incompatible properties: %s", v.getId(), epsList.toString()));
-    }
-  }
-
-  CheckerResult failure(final IREdge e, final Class... eps) {
-    final List<Class> epsList = Arrays.asList(eps);
-    final boolean isMissingValue = epsList.stream()
-      .map(ep -> e.getPropertyValue(ep))
-      .anyMatch(optional -> !optional.isPresent());
-
-    if (isMissingValue) {
-      throw new IllegalArgumentException(epsList.toString());
-    } else {
-      return failure(String.format("IREdge %s incompatible properties: %s", e.getId(), epsList.toString()));
-    }
-  }
-
   ///////////////////////////// Set up
+
+  private final List<SingleVertexChecker> singleVertexCheckerList;
+  private final List<SingleEdgeChecker> singleEdgeCheckerList;
+  private final List<NeighborChecker> neighborCheckerList;
+  private final List<GlobalDAGChecker> globalDAGCheckerList;
 
   private Set<Integer> getExpectedTaskOffsets(final int parallelism) {
     return IntStream.range(0, parallelism)
@@ -187,7 +132,7 @@ public class IRDAGChecker {
     singleVertexCheckerList.add(parallelismOfSourceVertex);
 
     final NeighborChecker parallelismWithCommPattern = ((v, inEdges, outEdges) -> {
-      // Just look at incoming edges, as this checker will be applied on every vertex
+      // Just look at incoming (anedges, as this checker will be applied on every vertex
       for (final IREdge inEdge : inEdges) {
         if (CommunicationPatternProperty.Value.OneToOne
           .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
@@ -220,21 +165,42 @@ public class IRDAGChecker {
     neighborCheckerList.add(parallelismWithPartitionSet);
   }
 
+  /**
+   * Parallelism-related checkers.
+   */
+  void addMessageBarrierCheckers() {
+    // Check vertices to optimize
+    final SingleVertexChecker mustHaveMessageIds = (v -> {
+    })
+
+    // Message Ids and same additional-output
 
 
-  ///////////////////////////// Set up
 
-  public void setUp() {
-    addParallelismCheckers();
 
-    /////////// Other checkers
 
+
+    //
+  }
+
+  void addStreamVertexCheckers() {
+
+  }
+
+  void addEncodingCompressionCheckers() {
     // How to check symmetry?
     // encoder and decoder must be symmetric
     // compressor and decompressor must be asymmetric
     // key encoder and decoder must be symmetric
 
     // same-additional output tag should have same encoder/decoders
+  }
+
+  public void setUp() {
+    addParallelismCheckers();
+
+    /////////// Other checkers
+
 
     // vertices: stream/sampling/messagebarrier
   }
@@ -351,5 +317,61 @@ public class IRDAGChecker {
     KeyDecoderProperty;
     KeyEncoderProperty;
     KeyExtractorProperty;
+  }
+
+  ///////////////////////////// Successes and Failures
+
+  private final CheckerResult SUCCESS = new CheckerResult(true, "");
+
+  private class CheckerResult {
+    private final boolean pass;
+    private final String failReason; // empty string if pass = true
+
+    CheckerResult(final boolean pass, final String failReason) {
+      this.pass = pass;
+      this.failReason = failReason;
+    }
+
+    final boolean isPassed() {
+      return pass;
+    }
+
+    final String getFailReason() {
+      return failReason;
+    }
+  }
+
+  CheckerResult success() {
+    return SUCCESS;
+  }
+
+  CheckerResult failure(final String failReason) {
+    return new CheckerResult(false, failReason);
+  }
+
+  CheckerResult failure(final IRVertex v, final Class... eps) {
+    final List<Class> epsList = Arrays.asList(eps);
+    final boolean isMissingValue = epsList.stream()
+      .map(ep -> v.getPropertyValue(ep))
+      .anyMatch(optional -> !optional.isPresent());
+
+    if (isMissingValue) {
+      throw new IllegalArgumentException(epsList.toString());
+    } else {
+      return failure(String.format("IRVertex %s incompatible properties: %s", v.getId(), epsList.toString()));
+    }
+  }
+
+  CheckerResult failure(final IREdge e, final Class... eps) {
+    final List<Class> epsList = Arrays.asList(eps);
+    final boolean isMissingValue = epsList.stream()
+      .map(ep -> e.getPropertyValue(ep))
+      .anyMatch(optional -> !optional.isPresent());
+
+    if (isMissingValue) {
+      throw new IllegalArgumentException(epsList.toString());
+    } else {
+      return failure(String.format("IREdge %s incompatible properties: %s", e.getId(), epsList.toString()));
+    }
   }
 }
