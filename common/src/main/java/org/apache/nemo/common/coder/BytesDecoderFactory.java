@@ -54,6 +54,11 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
     return new BytesDecoder(inputStream);
   }
 
+  @Override
+  public String toString() {
+    return "BytesDecoderFactory{}";
+  }
+
   /**
    * BytesDecoder.
    */

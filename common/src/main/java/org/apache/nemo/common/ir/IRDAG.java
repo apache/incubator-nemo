@@ -19,8 +19,7 @@
 package org.apache.nemo.common.ir;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.nemo.common.KeyExtractor;
-import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.PairKeyExtractor;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.DAGInterface;
@@ -87,6 +86,12 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       dagSnapshot = modifiedDAG;
     }
     return canAdvance;
+  }
+
+  public String irDAGSummary() {
+    return "RV" + getRootVertices().size() + "_V" + getVertices().size() + "_E" + getVertices().stream()
+      .mapToInt(v -> getIncomingEdgesOf(v).size())
+      .sum();
   }
 
   ////////////////////////////////////////////////// Methods for reshaping the DAG topology.
@@ -250,14 +255,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
     newEdge.setPropertyPermanently(MessageIdProperty.of(currentMetricCollectionId));
-    final KeyExtractor pairKeyExtractor = (element) -> {
-      if (element instanceof Pair) {
-        return ((Pair) element).left();
-      } else {
-        throw new IllegalStateException(element.toString());
-      }
-    };
-    newEdge.setProperty(KeyExtractorProperty.of(pairKeyExtractor));
+    newEdge.setProperty(KeyExtractorProperty.of(new PairKeyExtractor()));
     newEdge.setPropertyPermanently(encoder);
     newEdge.setPropertyPermanently(decoder);
     return newEdge;
@@ -382,5 +380,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   @Override
   public List<IRVertex> filterVertices(final Predicate<IRVertex> condition) {
     return modifiedDAG.filterVertices(condition);
+  }
+
+  @Override
+  public String toString() {
+    return asJsonNode().toString();
   }
 }

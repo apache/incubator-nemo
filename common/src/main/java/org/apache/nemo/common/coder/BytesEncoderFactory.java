@@ -51,6 +51,11 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
     return new BytesEncoder(outputStream);
   }
 
+  @Override
+  public String toString() {
+    return "BytesEncoderFactory{}";
+  }
+
   /**
    * BytesEncoder.
    */

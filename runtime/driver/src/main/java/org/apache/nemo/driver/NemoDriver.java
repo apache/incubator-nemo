@@ -189,6 +189,8 @@ public final class NemoDriver {
       // send driver notification that user application is done.
       clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
           .setType(ControlMessage.DriverToClientMessageType.ExecutionDone).build());
+      // flush metrics
+      runtimeMaster.flushMetrics();
     });
   }
 

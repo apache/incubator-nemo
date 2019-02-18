@@ -44,6 +44,8 @@ import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.common.metric.JobMetric;
 import org.apache.nemo.runtime.common.metric.StageMetric;
 import org.apache.nemo.runtime.common.metric.TaskMetric;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
+import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -343,7 +345,7 @@ public final class PlanStateManager {
     switch (newTaskState) {
       // INCOMPLETE stage
       case SHOULD_RETRY:
-        final boolean isAPeerAttemptCompleted = getPeerAttemptsforTheSameTaskIndex(taskId).stream()
+        final boolean isAPeerAttemptCompleted = getPeerAttemptsForTheSameTaskIndex(taskId).stream()
           .anyMatch(state -> state.equals(TaskState.State.COMPLETE));
         if (!isAPeerAttemptCompleted) {
           // None of the peers has completed, hence this stage is incomplete
@@ -563,7 +565,7 @@ public final class PlanStateManager {
       || state.equals(TaskState.State.ON_HOLD);
   }
 
-  private List<TaskState.State> getPeerAttemptsforTheSameTaskIndex(final String taskId) {
+  private List<TaskState.State> getPeerAttemptsForTheSameTaskIndex(final String taskId) {
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
     final int attempt = RuntimeIdManager.getAttemptFromTaskId(taskId);

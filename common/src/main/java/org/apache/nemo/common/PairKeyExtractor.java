@@ -16,27 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master.servlet;
 
-import org.apache.nemo.runtime.master.metric.MetricStore;
-import org.apache.nemo.runtime.common.metric.StageMetric;
+package org.apache.nemo.common;
 
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 /**
- * Servlet which handles {@link StageMetric} metric request.
+ * A KeyExtractor for Pair class.
  */
-public final class StageMetricServlet extends HttpServlet {
+public final class PairKeyExtractor implements KeyExtractor {
+  @Override
+  public Object extractKey(final Object element) {
+    if (element instanceof Pair) {
+      return ((Pair) element).left();
+    } else {
+      throw new IllegalStateException(element.toString());
+    }
+  }
 
   @Override
-  protected void doGet(final HttpServletRequest request, final HttpServletResponse response)
-      throws IOException {
-    final MetricStore metricStore = MetricStore.getStore();
-    response.setContentType("application/json");
-    response.setStatus(HttpServletResponse.SC_OK);
-    response.getWriter().println(metricStore.dumpMetricToJson(StageMetric.class));
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder(133, 37).toHashCode();
   }
 }

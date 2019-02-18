@@ -47,6 +47,11 @@ public final class IntEncoderFactory implements EncoderFactory<Integer> {
     return new IntEncoder(outputStream);
   }
 
+  @Override
+  public String toString() {
+    return "IntEncoderFactory{}";
+  }
+
   /**
    * IntEncoder.
    */
