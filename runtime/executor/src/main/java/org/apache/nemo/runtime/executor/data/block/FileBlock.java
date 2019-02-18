@@ -234,17 +234,37 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       final List<NonSerializedPartition<K>> deserializedPartitions = new ArrayList<>();
       try {
         final List<Pair<K, byte[]>> partitionKeyBytesPairs = new ArrayList<>();
-        try (final FileInputStream fileStream = new FileInputStream(filePath)) {
-          for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
-            final K key = partitionMetadata.getKey();
-            if (keyRange.includes(key)) {
-              // The key value of this partition is in the range.
-              final byte[] partitionBytes = new byte[partitionMetadata.getPartitionSize()];
-              fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
-              partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
-            } else {
-              // Have to skip this partition.
-              skipBytes(fileStream, partitionMetadata.getPartitionSize());
+        if (filePath.contains("crail")) {
+          try{
+            final CrailBufferedInputStream fileStream = file.getBufferedInputStream(0);
+            for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
+              final K key = partitionMetadata.getKey();
+              if (keyRange.includes(key)) {
+                // The key value of this partition is in the range.
+                final byte[] partitionBytes = new byte[partitionMetadata.getPartitionSize()];
+                fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
+                partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
+              } else {
+                // Have to skip this partition.
+                skipBytes(fileStream, partitionMetadata.getPartitionSize());
+              }
+            }
+          }catch(Exception e){
+            e.printStackTrace();
+          }
+        } else {
+          try (final FileInputStream fileStream = new FileInputStream(filePath)) {
+            for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
+              final K key = partitionMetadata.getKey();
+              if (keyRange.includes(key)) {
+                // The key value of this partition is in the range.
+                final byte[] partitionBytes = new byte[partitionMetadata.getPartitionSize()];
+                fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
+                partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
+              } else {
+                // Have to skip this partition.
+                skipBytes(fileStream, partitionMetadata.getPartitionSize());
+              }
             }
           }
         }
