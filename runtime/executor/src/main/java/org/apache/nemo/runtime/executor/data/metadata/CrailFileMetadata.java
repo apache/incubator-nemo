@@ -145,6 +145,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    * @throws IOException if fail to open.
    */
   public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath) throws Exception{
+    LOG.info("HY: metafilePath {}", metaFilePath);
     if (fs.lookup(metaFilePath).get()==null) {
       throw new IOException("File " + metaFilePath + " does not exist!");
     }
