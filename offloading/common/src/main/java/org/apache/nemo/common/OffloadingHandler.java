@@ -207,7 +207,7 @@ public final class OffloadingHandler {
       }
 
       try {
-        Thread.sleep(200);
+        Thread.sleep(10);
       } catch (InterruptedException e) {
         e.printStackTrace();
         throw new RuntimeException(e);

@@ -132,14 +132,14 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
     @Override
     public void write(final int i) throws IOException {
-      final ByteBuf byteBuf = channel.alloc().buffer(1, 1);
+      final ByteBuf byteBuf = channel.alloc().ioBuffer(1, 1);
       byteBuf.writeByte(i);
       writeByteBuf(byteBuf);
     }
 
     @Override
     public void write(final byte[] bytes, final int offset, final int length) throws IOException {
-      final ByteBuf byteBuf = channel.alloc().buffer(length, length);
+      final ByteBuf byteBuf = channel.alloc().ioBuffer(length, length);
       byteBuf.writeBytes(bytes, offset, length);
       writeByteBuf(byteBuf);
     }
@@ -210,7 +210,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      */
     public void writeElement(final Object element,
                              final Serializer serializer) {
-      final ByteBuf byteBuf = channel.alloc().buffer();
+      final ByteBuf byteBuf = channel.alloc().ioBuffer();
       final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
       try {
         final OutputStream wrapped =
