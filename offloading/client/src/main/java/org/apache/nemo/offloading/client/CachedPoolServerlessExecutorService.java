@@ -143,7 +143,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             iterator.remove();
             readyWorkers.add(pair.right());
 
-            totalProcessingTime += (pair.left() - curTime);
+            totalProcessingTime += (curTime - pair.left());
             processingCnt += 1;
 
           } else if (isOutputEmitted(pair.right())) {
@@ -156,7 +156,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
               // this is end
               readyWorkers.add(pair.right());
 
-              totalProcessingTime += (pair.left() - curTime);
+              totalProcessingTime += (curTime - pair.left());
               processingCnt += 1;
 
             } else {
@@ -313,8 +313,16 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       final ByteBuf dataBuf = pair.left();
       final boolean speculative = speculativeDataProcessedMap.containsKey(dataId);
 
-      outputQueue.add(new PendingOutput(worker.execute(dataBuf, dataId, speculative), dataId));
-      runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+      try {
+        outputQueue.add(new PendingOutput(worker.execute(dataBuf, dataId, speculative), dataId));
+        runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+      } catch (final IllegalReferenceCountException e) {
+        // the input becomes null ... this means that we don't have to do speculative execution
+        // just finish the worker!
+        LOG.info("Illegal reference count exception for executing data {}... just finis worker", dataId);
+        worker.finishOffloading();
+        finishedWorkers += 1;
+      }
     } else {
       // speculative execution
       //speculativeExecution(worker);
@@ -351,7 +359,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         } catch (final IllegalReferenceCountException e) {
           // the input becomes null ... this means that we don't have to do speculative execution
           // just finish the worker!
-          LOG.info("Illegal reference count exception... just finis worker");
+          LOG.info("Illegal reference count exception for executing data {}... just finis worker", dataId);
           readyWorker.finishOffloading();
           finishedWorkers += 1;
         }
