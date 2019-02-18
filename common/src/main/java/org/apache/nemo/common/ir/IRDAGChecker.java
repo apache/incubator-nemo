@@ -18,29 +18,44 @@
  */
 package org.apache.nemo.common.ir;
 
+import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
 
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Checker range:
- * single vertex, single edge, neighbors, all
- *
- * Checker properties:
- * vertex property, edge property, combination with utility vertices and communication patterns
- *
- * Checker exception
- * A generic layer? (for analysis/debugging)
+ * Checks the integrity of an IR DAG.
  */
 public class IRDAGChecker {
+  private static final IRDAGChecker SINGLETON = new IRDAGChecker();
+
+  private final List<SingleVertexChecker> singleVertexCheckerList;
+  private final List<SingleEdgeChecker> singleEdgeCheckerList;
+  private final List<NeighborChecker> neighborCheckerList;
+  private final List<GlobalDAGChecker> globalDAGCheckerList;
+
+  public static IRDAGChecker get() {
+    return SINGLETON;
+  }
+
+  private IRDAGChecker() {
+    this.singleVertexCheckerList = new ArrayList<>();
+    this.singleEdgeCheckerList = new ArrayList<>();
+    this.neighborCheckerList = new ArrayList<>();
+    this.globalDAGCheckerList = new ArrayList<>();
+
+    addParallelismCheckers();
+    addEncodingCompressionCheckers();
+    addMessageBarrierCheckers();
+    addStreamVertexCheckers();
+  }
 
   ///////////////////////////// Checker interfaces
 
@@ -71,15 +86,10 @@ public class IRDAGChecker {
    * Checks the entire DAG.
    */
   public interface GlobalDAGChecker {
-    CheckerResult check(final IRDAG irdag);
+    CheckerResult check(final DAG<IRVertex, IREdge> irdag);
   }
 
   ///////////////////////////// Set up
-
-  private final List<SingleVertexChecker> singleVertexCheckerList;
-  private final List<SingleEdgeChecker> singleEdgeCheckerList;
-  private final List<NeighborChecker> neighborCheckerList;
-  private final List<GlobalDAGChecker> globalDAGCheckerList;
 
   private Set<Integer> getExpectedTaskOffsets(final int parallelism) {
     return IntStream.range(0, parallelism)
@@ -100,13 +110,15 @@ public class IRDAGChecker {
       final Optional<Integer> resourceSiteSize = v.getPropertyValue(ResourceSiteProperty.class)
         .map(rs -> rs.values().stream().mapToInt(Integer::intValue).sum());
       if (!parallelism.equals(resourceSiteSize)) {
-        return failure(v, ParallelismProperty.class, ResourceSiteProperty.class);
+        return failure("Parallelism must equal to sum of site nums",
+          v, ParallelismProperty.class, ResourceSiteProperty.class);
       }
 
       final Optional<HashSet<Integer>> antiAffinitySet = v.getPropertyValue(ResourceAntiAffinityProperty.class);
       if (antiAffinitySet.isPresent()) {
         if (!getExpectedTaskOffsets(parallelism.get()).containsAll(antiAffinitySet.get())) {
-          return failure(v, ParallelismProperty.class, ResourceAntiAffinityProperty.class);
+          return failure("Offsets must be within parallelism",
+            v, ParallelismProperty.class, ResourceAntiAffinityProperty.class);
         }
       }
 
@@ -116,11 +128,12 @@ public class IRDAGChecker {
 
     final SingleVertexChecker parallelismOfSourceVertex = (v -> {
       final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
-
       try {
         if (parallelism.isPresent() && v instanceof SourceVertex) {
-          if (parallelism.get() != ((SourceVertex) v).getReadables(parallelism.get()).size()) {
-            return failure();
+          final int numOfReadables = ((SourceVertex) v).getReadables(parallelism.get()).size();
+          if (parallelism.get() != numOfReadables) {
+            return failure(String.format("(Parallelism %d) != (Number of SourceVertex %s Readables %d)",
+              parallelism.get(), v.getId(), numOfReadables));
           }
         }
       } catch (Exception e) {
@@ -138,7 +151,8 @@ public class IRDAGChecker {
           .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
           if (inEdge.getSrc().getPropertyValue(ParallelismProperty.class)
             .equals(v.getPropertyValue(ParallelismProperty.class))) {
-            return failure(v, irEdge, xx);
+            return failure("OneToOne edges must have the same parallelism",
+              v, ParallelismProperty.class, inEdge, CommunicationPatternProperty.class);
           }
         }
       }
@@ -154,10 +168,18 @@ public class IRDAGChecker {
       }
 
       for (final IREdge inEdge : inEdges) {
-        final Optional<List<Integer>> partitionSetFlattened = inEdge.getPropertyValue(PartitionSetProperty.class)
-          .flatMap(ps -> ps.stream().flatMap(keyRange ->
-            IntStream.range((int) keyRange.rangeBeginInclusive(), (int) keyRange.rangeEndExclusive()).boxed()));
-
+        final Optional<ArrayList<KeyRange>> partitionSetFlattened = inEdge.getPropertyValue(PartitionSetProperty.class);
+        if (partitionSetFlattened.isPresent()) {
+          final List<Integer> flattenedOffsets = partitionSetFlattened.get()
+            .stream()
+            .flatMap(keyRange -> IntStream.range(
+              (int) keyRange.rangeBeginInclusive(), (int) keyRange.rangeEndExclusive()).boxed())
+            .collect(Collectors.toList());
+          if (!getExpectedTaskOffsets(parallelism.get()).equals(flattenedOffsets)) {
+            return failure("PartitionSet must contain all task offsets required for the parallelism",
+              v, ParallelismProperty.class, inEdge, PartitionSetProperty.class);
+          }
+        }
       }
 
       return success();
@@ -170,16 +192,7 @@ public class IRDAGChecker {
    */
   void addMessageBarrierCheckers() {
     // Check vertices to optimize
-    final SingleVertexChecker mustHaveMessageIds = (v -> {
-    })
-
     // Message Ids and same additional-output
-
-
-
-
-
-
     //
   }
 
@@ -196,15 +209,6 @@ public class IRDAGChecker {
     // same-additional output tag should have same encoder/decoders
   }
 
-  public void setUp() {
-    addParallelismCheckers();
-
-    /////////// Other checkers
-
-
-    // vertices: stream/sampling/messagebarrier
-  }
-
   /**
    * Applies all of the checkers on the DAG.
    *
@@ -212,48 +216,49 @@ public class IRDAGChecker {
    * @return the result.
    */
   public CheckerResult doCheck(final DAG<IRVertex, IREdge> underlyingDAG) {
-    underlyingDAG.topologicalDo(v -> {
+    for (final IRVertex v : underlyingDAG.getTopologicalSort()) {
       // Run per-vertex checkers
-      singleVertexCheckerList.forEach(checker -> {
+      for (final SingleVertexChecker checker : singleVertexCheckerList) {
         final CheckerResult result = checker.check(v);
-        if (result) {
+        if (!result.isPassed()) {
           return result;
         }
-      });
+      }
 
       final List<IREdge> inEdges = underlyingDAG.getIncomingEdgesOf(v);
       final List<IREdge> outEdges = underlyingDAG.getOutgoingEdgesOf(v);
 
       // Run per-edge checkers
-      inEdges.forEach(e -> {
-        singleEdgeCheckerList.forEach(checker -> {
-          final CheckerResult result = checker.check(e);
-          if (result) {
+      for (final IREdge inEdge : inEdges) {
+        for (final SingleEdgeChecker checker : singleEdgeCheckerList) {
+          final CheckerResult result = checker.check(inEdge);
+          if (!result.isPassed()) {
             return result;
           }
-        });
-      });
+        }
+      }
 
       // Run neighbor edges
-      neighborCheckerList.forEach(checker -> {
+      for (final NeighborChecker checker : neighborCheckerList) {
         final CheckerResult result = checker.check(v, inEdges, outEdges);
-        if (result) {
+        if (!result.isPassed()) {
           return result;
         }
-      });
-    });
+      }
+    }
 
     // Run global checkers
-    globalDAGCheckerList.forEach(checker -> {
+    for (final GlobalDAGChecker checker : globalDAGCheckerList) {
       final CheckerResult result = checker.check(underlyingDAG);
-      if (result) {
+      if (!result.isPassed()) {
         return result;
       }
-    });
+    }
 
-    // All passed
     return success();
   }
+
+  /*
 
   ////////////////////////////////////////// Execution properties
 
@@ -319,11 +324,13 @@ public class IRDAGChecker {
     KeyExtractorProperty;
   }
 
+  */
+
   ///////////////////////////// Successes and Failures
 
   private final CheckerResult SUCCESS = new CheckerResult(true, "");
 
-  private class CheckerResult {
+  public class CheckerResult {
     private final boolean pass;
     private final String failReason; // empty string if pass = true
 
@@ -349,7 +356,20 @@ public class IRDAGChecker {
     return new CheckerResult(false, failReason);
   }
 
-  CheckerResult failure(final IRVertex v, final Class... eps) {
+  CheckerResult failure(final String description,
+                        final Object vertexOrEdgeOne, final Class epOne,
+                        final Object vertexOrEdgeTwo, final Class epTwo) {
+    final CheckerResult failureOne = vertexOrEdgeOne instanceof IRVertex
+      ? failure("First", (IRVertex) vertexOrEdgeOne, epOne)
+      : failure("First", (IREdge) vertexOrEdgeOne, epOne);
+    final CheckerResult failureTwo = vertexOrEdgeTwo instanceof IRVertex
+      ? failure("Second", (IRVertex) vertexOrEdgeTwo, epTwo)
+      : failure("Second", (IREdge) vertexOrEdgeTwo, epTwo);
+    return failure(description + " - ("
+      + failureOne.failReason + ") incompatible with (" + failureTwo.failReason + ")");
+  }
+
+  CheckerResult failure(final String description, final IRVertex v, final Class... eps) {
     final List<Class> epsList = Arrays.asList(eps);
     final boolean isMissingValue = epsList.stream()
       .map(ep -> v.getPropertyValue(ep))
@@ -358,11 +378,11 @@ public class IRDAGChecker {
     if (isMissingValue) {
       throw new IllegalArgumentException(epsList.toString());
     } else {
-      return failure(String.format("IRVertex %s incompatible properties: %s", v.getId(), epsList.toString()));
+      return failure(String.format("%s - [IRVertex %s: %s]", description, v.getId(), epsList.toString()));
     }
   }
 
-  CheckerResult failure(final IREdge e, final Class... eps) {
+  CheckerResult failure(final String description, final IREdge e, final Class... eps) {
     final List<Class> epsList = Arrays.asList(eps);
     final boolean isMissingValue = epsList.stream()
       .map(ep -> e.getPropertyValue(ep))
@@ -371,7 +391,7 @@ public class IRDAGChecker {
     if (isMissingValue) {
       throw new IllegalArgumentException(epsList.toString());
     } else {
-      return failure(String.format("IREdge %s incompatible properties: %s", e.getId(), epsList.toString()));
+      return failure(String.format("%s - [IREdge %s: %s]", description, e.getId(), epsList.toString()));
     }
   }
 }

@@ -72,6 +72,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     this.metricCollectionId = new AtomicInteger(0);
   }
 
+  public IRDAGChecker.CheckerResult checkIntegrity() {
+    return IRDAGChecker.get().doCheck(modifiedDAG);
+  }
+
   //////////////////////////////////////////////////
 
   /**
