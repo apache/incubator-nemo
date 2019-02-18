@@ -5,6 +5,7 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.NemoEvent;
 import org.apache.nemo.common.Pair;
@@ -236,7 +237,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
     if (channel != null) {
       LOG.info("Write data id: {}", dataId);
-      channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, input));
+      final ChannelFuture channelFuture = channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, input));
       return new Future<Optional<O>>() {
 
         private Optional<O> result = null;
@@ -253,6 +254,15 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
         @Override
         public boolean isDone() {
+
+          if (channelFuture.isDone()) {
+            if (!channelFuture.isSuccess()) {
+              // retry output emission
+              LOG.warn("Data sending exception of dataid {}", dataId);
+              throw new RuntimeException("Data sending exception of dataid " + dataId);
+            }
+          }
+
           if (result == null) {
             result = resultMap.get(dataId);
             if (result == null) {
