@@ -98,7 +98,6 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
    */
   public static ExecutionPropertyMap<VertexExecutionProperty> of(final IRVertex irVertex) {
     final ExecutionPropertyMap<VertexExecutionProperty> map = new ExecutionPropertyMap<>(irVertex.getId());
-    map.put(ParallelismProperty.of(1));
     map.put(ResourcePriorityProperty.of(ResourcePriorityProperty.NONE));
     return map;
   }

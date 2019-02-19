@@ -87,8 +87,8 @@ public class IRDAGTest {
     firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES));
     secondOperatorVertex.setProperty(ParallelismProperty.of(2));
     shuffleEdge.setProperty(PartitionSetProperty.of(new ArrayList<>(Arrays.asList(
-      HashRange.of(0, 3),
-      HashRange.of(3, MIN_NUM_SOURCE_READABLES)))));
+      HashRange.of(0, 1),
+      HashRange.of(1, 2)))));
     mustPass();
   }
 
@@ -108,10 +108,47 @@ public class IRDAGTest {
     mustFail();
   }
 
-
+  @Test
+  public void testPartitionSetNonShuffle() {
+    oneToOneEdge.setProperty(PartitionSetProperty.of(new ArrayList<>())); // non-shuffle
+    mustFail();
+  }
 
   @Test
-  public void testXX() {
+  public void testPartitionerNonShuffle() {
+    oneToOneEdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.Hash, 2)); // non-shuffle
+    mustFail();
+  }
+
+  @Test
+  public void testPartitionWriteAndRead() {
+    firstOperatorVertex.setProperty(ParallelismProperty.of(1));
+    secondOperatorVertex.setProperty(ParallelismProperty.of(2));
+    shuffleEdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.Hash, 3));
+    shuffleEdge.setProperty(PartitionSetProperty.of(new ArrayList<>(Arrays.asList(
+      HashRange.of(0, 2),
+      HashRange.of(2, 3)))));
+    mustPass();
+
+    // This is incompatible with PartitionSet
+    shuffleEdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.Hash, 2));
+    mustFail();
+
+    shuffleEdge.setProperty(PartitionSetProperty.of(new ArrayList<>(Arrays.asList(
+      HashRange.of(0, 1),
+      HashRange.of(1, 2)))));
+    mustPass();
+  }
+
+  @Test
+  public void testCompressionSymmetry() {
+    oneToOneEdge.setProperty(CompressionProperty.of(CompressionProperty.Value.Gzip));
+    oneToOneEdge.setProperty(DecompressionProperty.of(CompressionProperty.Value.LZ4));
+    mustFail();
+  }
+
+  @Test
+  public void testPartitioner() {
     // simple test case
   }
 
