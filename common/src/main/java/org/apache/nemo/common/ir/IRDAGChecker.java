@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.common.ir;
 
+import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
@@ -26,6 +28,10 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
+import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
+import org.apache.nemo.common.util.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.*;
@@ -36,6 +42,8 @@ import java.util.stream.IntStream;
  * Checks the integrity of an IR DAG.
  */
 public class IRDAGChecker {
+  private static final Logger LOG = LoggerFactory.getLogger(IRDAGChecker.class.getName());
+
   private static final IRDAGChecker SINGLETON = new IRDAGChecker();
 
   private final List<SingleVertexChecker> singleVertexCheckerList;
@@ -54,6 +62,8 @@ public class IRDAGChecker {
     this.globalDAGCheckerList = new ArrayList<>();
 
     addParallelismCheckers();
+    addShuffleEdgeCheckers();
+    addPartitioningCheckers();
     addEncodingCompressionCheckers();
     addMessageBarrierCheckers();
     addStreamVertexCheckers();
@@ -93,8 +103,8 @@ public class IRDAGChecker {
 
   ///////////////////////////// Set up
 
-  private Set<Integer> getExpectedTaskOffsets(final int parallelism) {
-    return IntStream.range(0, parallelism)
+  private Set<Integer> getZeroToNSet(final int n) {
+    return IntStream.range(0, n)
       .boxed()
       .collect(Collectors.toSet());
   }
@@ -118,7 +128,7 @@ public class IRDAGChecker {
 
       final Optional<HashSet<Integer>> antiAffinitySet = v.getPropertyValue(ResourceAntiAffinityProperty.class);
       if (antiAffinitySet.isPresent()
-        && !getExpectedTaskOffsets(parallelism.get()).containsAll(antiAffinitySet.get())) {
+        && !getZeroToNSet(parallelism.get()).containsAll(antiAffinitySet.get())) {
         return failure("Offsets must be within parallelism",
           v, ParallelismProperty.class, ResourceAntiAffinityProperty.class);
       }
@@ -146,14 +156,16 @@ public class IRDAGChecker {
     singleVertexCheckerList.add(parallelismOfSourceVertex);
 
     final NeighborChecker parallelismWithCommPattern = ((v, inEdges, outEdges) -> {
-      // Just look at incoming (anedges, as this checker will be applied on every vertex
+      // Just look at incoming (edges, as this checker will be applied on every vertex
       for (final IREdge inEdge : inEdges) {
         if (CommunicationPatternProperty.Value.OneToOne
           .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-          if (!inEdge.getSrc().getPropertyValue(ParallelismProperty.class)
+          if (v.getPropertyValue(ParallelismProperty.class).isPresent()
+            && inEdge.getSrc().getPropertyValue(ParallelismProperty.class).isPresent()
+            && !inEdge.getSrc().getPropertyValue(ParallelismProperty.class)
             .equals(v.getPropertyValue(ParallelismProperty.class))) {
             return failure("OneToOne edges must have the same parallelism",
-              v, ParallelismProperty.class, inEdge, CommunicationPatternProperty.class);
+              inEdge.getSrc(), ParallelismProperty.class, v, ParallelismProperty.class);
           }
         }
       }
@@ -178,30 +190,32 @@ public class IRDAGChecker {
     neighborCheckerList.add(parallelismWithPartitionSet);
   }
 
-  /*
-  void addPartitionerCheckers() {
-    // partitioner num
+  void addPartitioningCheckers() {
     final NeighborChecker partitionerAndPartitionSet = ((v, inEdges, outEdges) -> {
-      final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
-      if (!parallelism.isPresent()) {
-        return success(); // No need to check, if the parallelism is not set yet
-      }
-
       for (final IREdge inEdge : inEdges) {
+        final Optional<Pair<PartitionerProperty.Type, Integer>> partitioner =
+          inEdge.getPropertyValue(PartitionerProperty.class);
         final Optional<ArrayList<KeyRange>> partitionSet = inEdge.getPropertyValue(PartitionSetProperty.class);
-        if (partitionSet.isPresent()) {
-          // Parallelism
-          final List<Integer> flattenedPartitionOffsets = partitionSet.get()
+        // Shuffle edge
+        if (partitioner.isPresent() && partitionSet.isPresent()) {
+          final Set<Integer> flattenedPartitionOffsets = partitionSet.get()
             .stream()
             .flatMap(keyRange -> IntStream.range(
               (int) keyRange.rangeBeginInclusive(), (int) keyRange.rangeEndExclusive()).boxed())
-            .collect(Collectors.toList());
-          if (!getExpectedTaskOffsets(partitioner.get()).equals(flattenedPartitionOffsets)) {
-            return failure("PartitionSet must contain all task offsets required for the parallelism",
-              v, ParallelismProperty.class, inEdge, PartitionSetProperty.class);
+            .collect(Collectors.toSet());
+          if (partitioner.get().right() == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM) {
+            final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
+            if (parallelism.isPresent() &&
+              !getZeroToNSet(parallelism.get()).equals(flattenedPartitionOffsets)) {
+              return failure("PartitionSet must contain all partition offsets required for dst parallelism",
+                v, ParallelismProperty.class, inEdge, PartitionSetProperty.class);
+            }
+          } else {
+            if (!getZeroToNSet(partitioner.get().right()).equals(flattenedPartitionOffsets)) {
+              return failure("PartitionSet must contain all partition offsets required for the partitioner",
+                inEdge, PartitionerProperty.class, PartitionSetProperty.class);
+            }
           }
-
-
         }
       }
 
@@ -211,7 +225,37 @@ public class IRDAGChecker {
 
     // partition set
   }
-  */
+
+  void addShuffleEdgeCheckers() {
+    final NeighborChecker shuffleChecker = ((v, inEdges, outEdges) -> {
+      for (final IREdge inEdge : inEdges) {
+        if (CommunicationPatternProperty.Value.Shuffle
+          .equals(inEdge.getPropertyValue(CommunicationPatternProperty.class).get())) {
+          // Shuffle edges must have the following properties
+          if (!inEdge.getPropertyValue(KeyExtractorProperty.class).isPresent()
+            || !inEdge.getPropertyValue(KeyEncoderProperty.class).isPresent()
+            || !inEdge.getPropertyValue(KeyDecoderProperty.class).isPresent()) {
+            return failure("Shuffle edge does not have a Key-related property: " + inEdge.getId());
+          }
+        } else {
+          // Non-shuffle edges must not have the following properties
+          final Optional<Pair<PartitionerProperty.Type, Integer>> partitioner =
+            inEdge.getPropertyValue(PartitionerProperty.class);
+          if (partitioner.isPresent() && partitioner.get().left().equals(PartitionerProperty.Type.Hash)) {
+            return failure("Only shuffle can have the hash partitioner",
+              inEdge, CommunicationPatternProperty.class, PartitionerProperty.class);
+          }
+          if (inEdge.getPropertyValue(PartitionSetProperty.class).isPresent()) {
+            return failure("Only shuffle can select partition sets",
+              inEdge, CommunicationPatternProperty.class, PartitionSetProperty.class);
+          }
+        }
+      }
+
+      return success();
+    });
+    neighborCheckerList.add(shuffleChecker);
+  }
 
   /**
    * Parallelism-related checkers.
@@ -227,12 +271,41 @@ public class IRDAGChecker {
   }
 
   void addEncodingCompressionCheckers() {
+    final NeighborChecker additionalOutputEncoder = ((irVertex, inEdges, outEdges) -> {
+      final Map<Optional<String>, List<IREdge>> tagToOutEdges = outEdges.stream().collect(Collectors.groupingBy(
+        (outEdge -> outEdge.getPropertyValue(AdditionalOutputTagProperty.class)),
+        Collectors.toList()));
+      for (final List<IREdge> sameTagOutEdges : tagToOutEdges.values()) {
+        if (1 != sameTagOutEdges.stream()
+          .map(e -> e.getPropertyValue(EncoderProperty.class).get().getClass()).distinct().count()) {
+          return failure("Incompatible encoders in " + sameTagOutEdges.toString());
+        }
+        if (1 != sameTagOutEdges.stream()
+          .map(e -> e.getPropertyValue(DecoderProperty.class).get().getClass()).distinct().count()) {
+          return failure("Incompatible decoders in " + sameTagOutEdges.toString());
+        }
+      }
+      return success();
+    });
+    neighborCheckerList.add(additionalOutputEncoder);
+
+    // TODO: check single-edge encoder/decoder symmetry
+
+    final SingleEdgeChecker compressAndDecompress = (edge -> {
+      if (!(edge.getDst() instanceof StreamVertex)) {
+        if (edge.getPropertyValue(CompressionProperty.class) != edge.getPropertyValue(DecompressionProperty.class)) {
+          return failure("Compression and decompression must be symmetric",
+            edge, CompressionProperty.class, DecompressionProperty.class);
+        }
+      }
+      return success();
+    });
+    singleEdgeCheckerList.add(compressAndDecompress);
+
     // How to check symmetry?
     // encoder and decoder must be symmetric
     // compressor and decompressor must be asymmetric
     // key encoder and decoder must be symmetric
-
-    // same-additional output tag should have same encoder/decoders
   }
 
   /**
