@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.executor;
 
-import org.apache.nemo.common.ServerlessExecutorProvider;
+import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;

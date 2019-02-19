@@ -50,9 +50,6 @@ package:
   artifact: target/offloading-lambda-0.2-SNAPSHOT.jar
 
 functions:
-  hello:
-    handler: org.apache.nemo.offloading.workers.lambda.HelloHandler
-    events:
   imhandler:
     handler: org.apache.nemo.offloading.workers.lambda.LambdaWorker
 #      - stream:

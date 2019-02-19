@@ -1,17 +1,11 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
-import com.google.common.base.MoreObjects;
-import com.google.common.collect.*;
+import org.apache.beam.repackaged.beam_runners_core_construction_java.com.google.common.base.MoreObjects;
+import org.apache.beam.repackaged.beam_runners_core_construction_java.com.google.common.collect.HashBasedTable;
+import org.apache.beam.repackaged.beam_runners_core_construction_java.com.google.common.collect.Table;
 import org.apache.beam.runners.core.*;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.state.*;
-import org.apache.beam.sdk.transforms.Combine;
-import org.apache.beam.sdk.transforms.CombineWithContext;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
-import org.apache.beam.sdk.transforms.windowing.TimestampCombiner;
-import org.apache.beam.sdk.util.CoderUtils;
-import org.apache.beam.sdk.util.CombineFnUtil;
 import org.apache.beam.sdk.util.WindowTracing;
 import org.apache.nemo.common.Pair;
 import org.joda.time.Instant;
@@ -19,14 +13,11 @@ import org.joda.time.Instant;
 import javax.annotation.Nullable;
 import java.util.*;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 
 public class NemoTimerInternals<K> implements TimerInternals {
 
   /** The current set timers by namespace and ID. */
-  Table<StateNamespace, String, TimerInternals.TimerData> existingTimers = HashBasedTable.create();
+  Table<StateNamespace, String, TimerData> existingTimers = HashBasedTable.create();
 
   /** Pending input watermark timers, in timestamp order. */
   private final NavigableSet<Pair<K, TimerData>> watermarkTimers;
@@ -102,12 +93,6 @@ public class NemoTimerInternals<K> implements TimerInternals {
       existingTimers.put(timerData.getNamespace(), timerData.getTimerId(), timerData);
       timersForDomain(timerData.getDomain()).add(Pair.of(key, timerData));
     } else {
-      checkArgument(
-        timerData.getDomain().equals(existing.getDomain()),
-        "Attempt to set %s for time domain %s, but it is already set for time domain %s",
-        timerData.getTimerId(),
-        timerData.getDomain(),
-        existing.getDomain());
 
       if (!timerData.getTimestamp().equals(existing.getTimestamp())) {
         NavigableSet<Pair<K, TimerInternals.TimerData>> timers = timersForDomain(timerData.getDomain());

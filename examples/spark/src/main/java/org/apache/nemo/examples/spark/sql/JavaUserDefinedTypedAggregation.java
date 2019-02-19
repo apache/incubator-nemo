@@ -194,7 +194,7 @@ public final class JavaUserDefinedTypedAggregation {
     }
 
     /**
-     * Specifies the EncoderFactory for the intermediate value type.
+     * Specifies the OffloadingEncoder for the intermediate value type.
      *
      * @return buffer encoder.
      */
@@ -203,7 +203,7 @@ public final class JavaUserDefinedTypedAggregation {
     }
 
     /**
-     * Specifies the EncoderFactory for the final output value type.
+     * Specifies the OffloadingEncoder for the final output value type.
      *
      * @return output encoder.
      */

@@ -1,7 +1,7 @@
 package org.apache.nemo.offloading.client;
 
 import io.netty.buffer.ByteBuf;
-import org.apache.nemo.common.OffloadingSerializer;
+import org.apache.nemo.offloading.common.OffloadingSerializer;
 
 public interface OffloadingWorkerFactory {
 

@@ -4,16 +4,12 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.util.IllegalReferenceCountException;
-import org.apache.nemo.common.*;
-import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.offloading.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.lang.ref.Reference;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -23,7 +19,6 @@ import java.util.concurrent.atomic.AtomicLong;
  * @param <I>
  * @param <O>
  */
-@NotThreadSafe
 final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecutorService<I> {
   private static final Logger LOG = LoggerFactory.getLogger(CachedPoolServerlessExecutorService.class.getName());
   private final OffloadingWorkerFactory workerFactory;
@@ -220,7 +215,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     }, 300, 300, TimeUnit.MILLISECONDS);
 
     final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
-    this.workerInitBuffer.writeInt(NemoEvent.Type.WORKER_INIT.ordinal());
+    this.workerInitBuffer.writeInt(OffloadingEvent.Type.WORKER_INIT.ordinal());
     ObjectOutputStream oos = null;
     try {
       oos = new ObjectOutputStream(bos);
@@ -245,13 +240,13 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     // state serialize
     /*
     if (statePartitioner != null) {
-      final EncoderFactory<S> stateEncoderFactory = statePartitioner.getStateEncoderFactory();
+      final OffloadingEncoder<S> stateEncoderFactory = statePartitioner.getStateEncoderFactory();
       this.states = new ArrayList<>(statePartitioner.getStatePartition().size());
       for (final S state : statePartitioner.getStatePartition()) {
         final ByteBuf byteBuf = Unpooled.directBuffer();
         final ByteBufOutputStream bbos = new ByteBufOutputStream(byteBuf);
         try {
-          final EncoderFactory.Encoder<S> encoder = stateEncoderFactory.create(bbos);
+          final OffloadingEncoder.Encoder<S> encoder = stateEncoderFactory.create(bbos);
           encoder.encode(state);
           bbos.close();
           states.add(byteBuf);
@@ -413,13 +408,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   }
 
   private ByteBuf encodeData(final I data, final ByteBuf byteBuf) {
-    byteBuf.writeInt(NemoEvent.Type.DATA.ordinal());
+    byteBuf.writeInt(OffloadingEvent.Type.DATA.ordinal());
 
     final ByteBufOutputStream dataBos = new ByteBufOutputStream(byteBuf);
     try {
-      final EncoderFactory.Encoder<I> encoder =
-        offloadingSerializer.getInputEncoder().create(dataBos);
-      encoder.encode(data);
+      offloadingSerializer.getInputEncoder().encode(data, dataBos);
       dataBos.close();
     } catch (IOException e) {
       e.printStackTrace();

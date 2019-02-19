@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * OutputCollector for dynamic optimization data.
+ * OffloadingOutputCollector for dynamic optimization data.
  *
  * @param <O> output type.
  */

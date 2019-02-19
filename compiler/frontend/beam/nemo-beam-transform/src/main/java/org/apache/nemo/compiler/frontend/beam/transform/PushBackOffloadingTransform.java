@@ -26,18 +26,16 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvokers;
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
-import org.apache.nemo.common.OffloadingTransform;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.InMemorySideInputReader;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
+import org.apache.nemo.offloading.common.OffloadingOutputCollector;
+import org.apache.nemo.offloading.common.OffloadingTransform;
+import org.apache.nemo.common.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +64,7 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
   private final Map<TupleTag<?>, Coder<?>> outputCoders;
 
 
-  private transient OutputCollector<WindowedValue<OutputT>> outputCollector;
+  private transient OffloadingOutputCollector<WindowedValue<OutputT>> outputCollector;
   private transient DoFnRunner<InputT, OutputT> doFnRunner;
 
 
@@ -88,7 +86,7 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
   private long currBundleCount = 0;
   private boolean bundleFinished = true;
   private final DisplayData displayData;
-  private transient Context context;
+  private transient OffloadingContext context;
   /**
    * PushBackDoFnTransform Constructor.
    */
@@ -168,8 +166,9 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
       }
     }
   }
+
   @Override
-  public void prepare(Context context, OutputCollector<WindowedValue<OutputT>> oc) {
+  public void prepare(OffloadingContext context, OffloadingOutputCollector<WindowedValue<OutputT>> oc) {
     // deserialize pipeline option
     final NemoPipelineOptions options = serializedOptions.get().as(NemoPipelineOptions.class);
     this.outputCollector = oc;
@@ -256,7 +255,6 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
     //System.out.println("{}, Handle pushback cnt: " + cnt + " data : " + data);
 
     // See if we can emit a new watermark, as we may have processed some pushed-back elements
-    onWatermark(new Watermark(curInputWatermark));
     //LOG.info("{}, On watermark at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
     System.out.println("Pushback latency: " + (System.currentTimeMillis() - st));
   }
@@ -296,28 +294,29 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
   }
 
   @Override
-  public void onWatermark(final Watermark watermark) {
-    checkAndInvokeBundle();
-    curInputWatermark = watermark.getTimestamp();
-    sideInputReader.setCurrentWatermarkOfAllMainAndSideInputs(curInputWatermark);
-
-    final long outputWatermarkCandidate = Math.min(curInputWatermark, curPushedBackWatermark);
-    if (outputWatermarkCandidate > curOutputWatermark) {
-      // Watermark advances!
-      outputCollector.emitWatermark(new Watermark(outputWatermarkCandidate));
-      curOutputWatermark = outputWatermarkCandidate;
-    }
-    checkAndFinishBundle();
-  }
-
-  @Override
   public void close() {
-    // This makes all unavailable side inputs as available empty side inputs.
-    onWatermark(new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()));
     // All push-backs should be processed here.
     handlePushBacks();
 
     forceFinishBundle();
     doFnInvoker.invokeTeardown();
+  }
+
+  final class DefaultOutputManager<OutputT> implements DoFnRunners.OutputManager {
+    private final TupleTag<OutputT> mainOutputTag;
+    private final OffloadingOutputCollector<WindowedValue<OutputT>> outputCollector;
+
+    DefaultOutputManager(final OffloadingOutputCollector<WindowedValue<OutputT>> outputCollector,
+                         final TupleTag<OutputT> mainOutputTag) {
+      this.outputCollector = outputCollector;
+      this.mainOutputTag = mainOutputTag;
+    }
+
+    @Override
+    public <T> void output(final TupleTag<T> tag, final WindowedValue<T> output) {
+      if (tag.equals(mainOutputTag)) {
+        outputCollector.emit((WindowedValue<OutputT>) output);
+      }
+    }
   }
 }

@@ -8,7 +8,7 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.S3Object;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.nemo.common.OffloadingHandler;
+import org.apache.nemo.offloading.workers.common.OffloadingHandler;
 
 import java.io.*;
 import java.net.MalformedURLException;

@@ -28,13 +28,12 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * EncoderFactory for side inputs.
+ * OffloadingEncoder for side inputs.
  */
 
 public final class PushBackCoder2 extends Coder<Pair<WindowedValue<SideInputElement>, List<WindowedValue>>> {

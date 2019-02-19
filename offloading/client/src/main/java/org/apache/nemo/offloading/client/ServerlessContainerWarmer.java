@@ -8,8 +8,8 @@ import io.netty.channel.Channel;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.nemo.common.NemoEvent;
-import org.apache.nemo.common.Constants;
+import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.Constants;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +19,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.nemo.common.Constants.POOL_SIZE;
+import static org.apache.nemo.offloading.common.Constants.POOL_SIZE;
 
 public final class ServerlessContainerWarmer {
   private static final Logger LOG = LoggerFactory.getLogger(ServerlessContainerWarmer.class.getName());
@@ -28,7 +28,7 @@ public final class ServerlessContainerWarmer {
 
   private final ExecutorService executorService = Executors.newCachedThreadPool();
   private final AtomicBoolean initialized = new AtomicBoolean(false);
-  private final NemoEventHandler nemoEventHandler;
+  private final OffloadingEventHandler nemoEventHandler;
 
   private final NettyServerTransport nettyServerTransport;
 
@@ -37,7 +37,7 @@ public final class ServerlessContainerWarmer {
 
   @Inject
   private ServerlessContainerWarmer(final TcpPortProvider tcpPortProvider) {
-    this.nemoEventHandler = new NemoEventHandler();
+    this.nemoEventHandler = new OffloadingEventHandler();
     this.nettyServerTransport = new NettyServerTransport(
       tcpPortProvider, new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler));
     this.awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
@@ -63,7 +63,7 @@ public final class ServerlessContainerWarmer {
       try {
         //channelPool.add(nemoEventHandler.getHandshakeQueue().take().left());
         final Channel channel = nemoEventHandler.getHandshakeQueue().take().left();
-        channel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
+        channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WARMUP_END, new byte[0], 0));
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

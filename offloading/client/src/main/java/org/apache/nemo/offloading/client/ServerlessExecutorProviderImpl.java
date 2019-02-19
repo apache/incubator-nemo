@@ -1,6 +1,8 @@
 package org.apache.nemo.offloading.client;
 
-import org.apache.nemo.common.*;
+import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.offloading.common.OffloadingSerializer;
+import org.apache.nemo.offloading.common.OffloadingTransform;
 
 import javax.inject.Inject;
 

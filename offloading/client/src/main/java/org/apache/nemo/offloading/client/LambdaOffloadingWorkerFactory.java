@@ -9,7 +9,10 @@ import io.netty.channel.Channel;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.nemo.common.*;
+import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.OffloadingSerializer;
+import org.apache.nemo.offloading.common.Pair;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,8 +26,8 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   private static final Logger LOG = LoggerFactory.getLogger(LambdaOffloadingWorkerFactory.class.getName());
 
   private final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-  private NemoEventHandler nemoEventHandler;
-  private final ConcurrentMap<Channel, EventHandler<NemoEvent>> channelEventHandlerMap;
+  private OffloadingEventHandler nemoEventHandler;
+  private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
 
   private final NettyServerTransport nettyServerTransport;
   private final ExecutorService executorService = Executors.newCachedThreadPool();
@@ -44,7 +47,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   @Inject
   private LambdaOffloadingWorkerFactory(final TcpPortProvider tcpPortProvider) {
     this.channelEventHandlerMap = new ConcurrentHashMap<>();
-    this.nemoEventHandler = new NemoEventHandler(channelEventHandlerMap);
+    this.nemoEventHandler = new OffloadingEventHandler(channelEventHandlerMap);
     this.nettyServerTransport = new NettyServerTransport(
       tcpPortProvider, new NettyServerSideChannelHandler(serverChannelGroup, nemoEventHandler));
 
@@ -71,7 +74,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
 
     createChannelRequest();
 
-    final Future<Pair<Channel, NemoEvent>> channelFuture = new Future<Pair<Channel, NemoEvent>>() {
+    final Future<Pair<Channel, OffloadingEvent>> channelFuture = new Future<Pair<Channel, OffloadingEvent>>() {
 
       @Override
       public boolean cancel(boolean mayInterruptIfRunning) {
@@ -89,8 +92,8 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
       }
 
       @Override
-      public Pair<Channel, NemoEvent> get() throws InterruptedException, ExecutionException {
-        final Pair<Channel, NemoEvent> pair;
+      public Pair<Channel, OffloadingEvent> get() throws InterruptedException, ExecutionException {
+        final Pair<Channel, OffloadingEvent> pair;
         try {
           pair = nemoEventHandler.getHandshakeQueue().take();
         } catch (InterruptedException e) {
@@ -98,7 +101,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
           throw new RuntimeException(e);
         }
 
-        pair.left().writeAndFlush(new NemoEvent(NemoEvent.Type.WORKER_INIT, workerInitBuffer));
+        pair.left().writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT, workerInitBuffer));
 
         /*
         final int pendingNum = pendingRequest.decrementAndGet();
@@ -109,7 +112,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
               if (extraRequest.getAndDecrement() > 0) {
                 try {
                   final Channel extraChannel = nemoEventHandler.getHandshakeQueue().take().left();
-                  extraChannel.writeAndFlush(new NemoEvent(NemoEvent.Type.WARMUP_END, new byte[0], 0));
+                  extraChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WARMUP_END, new byte[0], 0));
                 } catch (InterruptedException e) {
                   e.printStackTrace();
                   throw new RuntimeException(e);
@@ -126,7 +129,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
       }
 
       @Override
-      public Pair<Channel, NemoEvent> get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+      public Pair<Channel, OffloadingEvent> get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
         return null;
       }
     };

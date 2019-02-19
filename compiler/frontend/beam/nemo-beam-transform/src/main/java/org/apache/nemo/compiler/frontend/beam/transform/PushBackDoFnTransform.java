@@ -30,15 +30,12 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
-import org.apache.nemo.common.*;
-import org.apache.nemo.common.coder.DecoderFactory;
-import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.Constants;
+import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
+import org.apache.nemo.offloading.client.ServerlessExecutorService;
+import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
-import org.apache.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
-import org.apache.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
 import org.apache.nemo.compiler.frontend.beam.coder.PushBackCoder2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,27 +122,28 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         }
       };
 
-      final EncoderFactory inputEncoderFactory = new BeamEncoderFactory(new PushBackCoder2(sideCoder, mainCoder));
-      final DecoderFactory inputDecoderFactory = new BeamDecoderFactory(new PushBackCoder2(sideCoder, mainCoder));
-      final EncoderFactory outputEncoderFactory = new BeamEncoderFactory(mainCoder);
-      final DecoderFactory outputDecoderFactory = new BeamDecoderFactory(mainCoder);
+
+      final OffloadingCoderWrapper<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>>
+        inputCoder = new OffloadingCoderWrapper(new PushBackCoder2(sideCoder ,mainCoder));
+      final OffloadingCoderWrapper outputCoder = new OffloadingCoderWrapper(mainCoder);
+
       offloadingSerializer =
         new OffloadingSerializer<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>, WindowedValue<OutputT>>() {
           @Override
-          public EncoderFactory<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>> getInputEncoder() {
-            return inputEncoderFactory;
+          public OffloadingEncoder<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>> getInputEncoder() {
+            return inputCoder;
           }
           @Override
-          public DecoderFactory<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>> getInputDecoder() {
-            return inputDecoderFactory;
+          public OffloadingDecoder<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>> getInputDecoder() {
+            return inputCoder;
           }
           @Override
-          public EncoderFactory<WindowedValue<OutputT>> getOutputEncoder() {
-            return outputEncoderFactory;
+          public OffloadingEncoder<WindowedValue<OutputT>> getOutputEncoder() {
+            return outputCoder;
           }
           @Override
-          public DecoderFactory<WindowedValue<OutputT>> getOutputDecoder() {
-            return outputDecoderFactory;
+          public OffloadingDecoder<WindowedValue<OutputT>> getOutputDecoder() {
+            return outputCoder;
           }
         };
 
@@ -199,14 +197,14 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         if (offloading) {
           if (byteBufList.isEmpty()) {
             final ByteBuf byteBuf = Unpooled.buffer();
-            byteBuf.writeInt(NemoEvent.Type.DATA.ordinal());
+            byteBuf.writeInt(OffloadingEvent.Type.DATA.ordinal());
             byteBufList.add(new ByteBufOutputStream(byteBuf));
           }
 
           final int lastIndex = byteBufList.size() - 1;
           if (byteBufList.get(lastIndex).buffer().readableBytes() > Constants.FLUSH_BYTES) {
             final ByteBuf byteBuf = Unpooled.buffer();
-            byteBuf.writeInt(NemoEvent.Type.DATA.ordinal());
+            byteBuf.writeInt(OffloadingEvent.Type.DATA.ordinal());
             byteBufList.add(new ByteBufOutputStream(byteBuf));
           }
 

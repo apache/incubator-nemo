@@ -11,10 +11,11 @@
 
   <artifactId>offloading-common</artifactId>
   <dependencies>
+    <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
     <dependency>
-      <groupId>org.apache.nemo</groupId>
-      <artifactId>nemo-common</artifactId>
-      <version>${project.version}</version>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-all</artifactId>
+      <version>4.1.16.Final</version>
     </dependency>
   </dependencies>
 </project>

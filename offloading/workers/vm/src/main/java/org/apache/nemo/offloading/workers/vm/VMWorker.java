@@ -8,11 +8,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.nemo.common.EventHandler;
-import org.apache.nemo.common.NemoEvent;
-import org.apache.nemo.common.NettyChannelInitializer;
-import org.apache.nemo.common.Constants;
-import org.apache.nemo.common.OffloadingHandler;
+import org.apache.nemo.offloading.common.*;
+import org.apache.nemo.offloading.workers.common.OffloadingHandler;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,11 +44,11 @@ public class VMWorker {
         return this.getClass().getClassLoader();
       });
 
-    final BlockingQueue<NemoEvent> requestQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<OffloadingEvent> requestQueue = new LinkedBlockingQueue<>();
     singleThread.execute(() -> {
       while (true) {
         try {
-          final NemoEvent event = requestQueue.take();
+          final OffloadingEvent event = requestQueue.take();
           executorService.execute(() -> {
             final String str = new String(event.getBytes());
             System.out.println("Receive request " + str);
@@ -97,10 +94,10 @@ public class VMWorker {
   final class NettyServerSideChannelHandler extends ChannelInboundHandlerAdapter {
     private final Logger LOG = LoggerFactory.getLogger(NettyServerSideChannelHandler.class.getName());
     private final ChannelGroup channelGroup;
-    private final BlockingQueue<NemoEvent> requestQueue;
+    private final BlockingQueue<OffloadingEvent> requestQueue;
 
     NettyServerSideChannelHandler(final ChannelGroup channelGroup,
-                                  final BlockingQueue<NemoEvent> requestQueue) {
+                                  final BlockingQueue<OffloadingEvent> requestQueue) {
       this.channelGroup = channelGroup;
       this.requestQueue = requestQueue;
     }
@@ -119,7 +116,7 @@ public class VMWorker {
     @Override
     public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
       LOG.info("Channel read from {}, {}", ctx.channel(), msg);
-      requestQueue.add((NemoEvent)msg);
+      requestQueue.add((OffloadingEvent)msg);
     }
 
     /**
