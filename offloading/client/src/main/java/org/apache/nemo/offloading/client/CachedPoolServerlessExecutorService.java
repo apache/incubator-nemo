@@ -505,7 +505,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       if (System.currentTimeMillis() - prevTime > 2000) {
         prevTime = System.currentTimeMillis();
         LOG.info("Waiting {} outputs... {}", outputQueue.size(), outputQueue);
-        LOG.info("Created worker: {}, Finished worker: [}, added output: {}", createdWorkers, finishedWorkers);
+        LOG.info("Created worker: {}, Finished worker: {}, added output: {}", createdWorkers, finishedWorkers);
       }
       try {
         Thread.sleep(200);
