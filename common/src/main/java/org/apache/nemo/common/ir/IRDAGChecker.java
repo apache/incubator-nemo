@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.common.ir;
 
-import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
