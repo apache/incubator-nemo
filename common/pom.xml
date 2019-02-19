@@ -31,37 +31,33 @@ under the License.
     <name>Nemo Common</name>
 
     <dependencies>
-        <dependency>
-            <groupId>org.apache.reef</groupId>
-            <artifactId>reef-io</artifactId>
-            <version>${reef.version}</version>
-        </dependency>
       <dependency>
         <groupId>org.apache.nemo</groupId>
         <artifactId>offloading-client</artifactId>
         <version>0.2-SNAPSHOT</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.nemo</groupId>
-        <artifactId>offloading-common</artifactId>
-        <version>0.2-SNAPSHOT</version>
+        <groupId>org.apache.reef</groupId>
+        <artifactId>reef-io</artifactId>
+        <version>${reef.version}</version>
       </dependency>
-        <dependency>
-            <groupId>org.apache.reef</groupId>
-            <artifactId>reef-common</artifactId>
-            <version>${reef.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-mapreduce-client-core</artifactId>
-            <version>${hadoop.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-          <groupId>org.apache.beam</groupId>
-          <artifactId>beam-sdks-java-core</artifactId>
-          <version>${beam.version}</version>
-        </dependency>
+      <dependency>
+        <groupId>org.apache.reef</groupId>
+        <artifactId>reef-common</artifactId>
+        <version>${reef.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-mapreduce-client-core</artifactId>
+        <version>${hadoop.version}</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.beam</groupId>
+        <artifactId>beam-sdks-java-core</artifactId>
+        <version>${beam.version}</version>
+        <scope>test</scope>
+      </dependency>
 
     </dependencies>
 </project>
