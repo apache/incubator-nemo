@@ -26,13 +26,17 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
+import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertFalse;
@@ -154,6 +158,29 @@ public class IRDAGTest {
 
   @Test
   public void testStreamVertex() {
+    final StreamVertex svOne = new StreamVertex();
+    final StreamVertex svTwo = new StreamVertex();
+    final StreamVertex svThree = new StreamVertex();
+
+    irdag.insert(svOne, oneToOneEdge);
+    mustPass();
+
+    irdag.insert(svTwo, shuffleEdge);
+    mustPass();
+
+    // stream again with the new edge
+    irdag.insert(svThree, shuffleEdge);
+    mustPass();
+
+    irdag.delete(svTwo);
+    mustPass();
+
+    irdag.delete(svThree);
+    mustPass();
+
+    irdag.delete(svOne);
+    mustPass();
+
     /*
     // simple test case
     // insert
@@ -164,20 +191,137 @@ public class IRDAGTest {
     */
   }
 
+  @Test
+  public void testMessageBarrierVertex() {
+    final MessageBarrierVertex mbOne = new MessageBarrierVertex();
+    final MessageBarrierVertex mbTwo = new MessageBarrierVertex();
+    final MessageBarrierVertex mbThree = new MessageBarrierVertex();
+
+    irdag.insert(mbOne, oneToOneEdge);
+    mustPass();
+
+    irdag.insert(mbTwo, shuffleEdge);
+    mustPass();
+
+    // stream again with the new edge
+    irdag.insert(mbThree, shuffleEdge);
+    mustPass();
+
+    irdag.delete(mbTwo);
+    mustPass();
+
+    irdag.delete(mbThree);
+    mustPass();
+
+    irdag.delete(mbOne);
+    mustPass();
+
+    /*
+    // simple test case
+    // insert
+    // delete
+    MessageBarrierVertex;
+    StreamVertex;
+    SamplingVertex;
+    */
+  }
 
   @Test
-  public void testRandomCalls() {
-    IntStream.range(0, 100).boxed().forEach(seed -> {
-      final Random random = new Random(seed);
-      // (1) Randomly insert vertices
-      // (2) Randomly annotate user-configurable properties
-      // (3) Randomly delete vertices
-      //
-      // Actually execute...?
-      //
-      // user-configurable execution properties
-      // Checker checks this...
-      // IRDAGBuilder(?)
-    });
+  public void testTenThousandRandomConfigurations() {
+    // 10 thousand random configurations (some duplicate configurations possible)
+    final int tenThousandConfigs = 10000;
+
+    final List<IRVertex> insertedVertices = new ArrayList<>();
+    for (int i = 0; i < tenThousandConfigs; i++) {
+      final int numOfTotalMethods = 7;
+      final int methodIndex = random.nextInt(numOfTotalMethods);
+      switch (methodIndex) {
+        // Annotation methods
+        // For simplicity, we test only the EPs for which all possible values are valid.
+        case 0: selectRandomVertex().setProperty(randomCSP()); break;
+        case 1: selectRandomVertex().setProperty(randomRLP()); break;
+        case 2: selectRandomVertex().setProperty(randomRPP()); break;
+        case 3: selectRandomVertex().setProperty(randomRSP()); break;
+        case 4: selectRandomEdge().setProperty(randomDFP()); break;
+        case 5: selectRandomEdge().setProperty(randomDPP()); break;
+        case 6: selectRandomEdge().setProperty(randomDSP()); break; // the last index must be (numOfTotalMethods - 1)
+
+        // Reshaping methods
+        case 7:
+          final StreamVertex sv = new StreamVertex();
+          irdag.insert(sv, selectRandomEdge());
+          insertedVertices.add(sv);
+          break;
+        case 8:
+          final MessageBarrierVertex mbv = new MessageBarrierVertex();
+          irdag.insert(mbv, selectRandomEdge());
+          insertedVertices.add(mbv);
+          break;
+        case 9:
+          irdag.delete(insertedVertices.remove(random.nextInt(insertedVertices.size())));
+          break;
+        default: throw new IllegalStateException(String.valueOf(methodIndex));
+      }
+
+      // Must pass
+      mustPass();
+    }
+  }
+
+  /////////////////////////// Random property generation
+
+  private Random random = new Random(0);
+
+  private IREdge selectRandomEdge() {
+    final List<IREdge> edges = irdag.getVertices().stream()
+      .flatMap(v -> irdag.getIncomingEdgesOf(v).stream()).collect(Collectors.toList());
+    return edges.get(random.nextInt(edges.size()));
+  }
+
+  private IRVertex selectRandomVertex() {
+    return irdag.getVertices().get(random.nextInt(irdag.getVertices().size()));
+  }
+
+  ///////////////// Random vertex EP
+
+  private ClonedSchedulingProperty randomCSP() {
+    return random.nextBoolean()
+      ? ClonedSchedulingProperty.of(new ClonedSchedulingProperty.CloneConf()) // upfront
+      : ClonedSchedulingProperty.of(new ClonedSchedulingProperty.CloneConf(0.5, 1.5));
+  }
+
+  private ResourceLocalityProperty randomRLP() {
+    return ResourceLocalityProperty.of(random.nextBoolean());
+  }
+
+  private ResourcePriorityProperty randomRPP() {
+    return random.nextBoolean()
+      ? ResourcePriorityProperty.of(ResourcePriorityProperty.TRANSIENT)
+      : ResourcePriorityProperty.of(ResourcePriorityProperty.NONE);
+  }
+
+  private ResourceSlotProperty randomRSP() {
+    return ResourceSlotProperty.of(random.nextBoolean());
+  }
+
+  ///////////////// Random edge EP
+
+  private DataFlowProperty randomDFP() {
+    return random.nextBoolean()
+      ? DataFlowProperty.of(DataFlowProperty.Value.Pull)
+      : DataFlowProperty.of(DataFlowProperty.Value.Push);
+  }
+
+  private DataPersistenceProperty randomDPP() {
+    return random.nextBoolean()
+      ? DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep)
+      : DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard);
+  }
+
+  private DataStoreProperty randomDSP() {
+    DataStoreProperty.Value.MemoryStore
+    DataStoreProperty.Value.SerializedMemoryStore
+    DataStoreProperty.Value.LocalFileStore
+    DataStoreProperty.Value.GlusterFileStore
   }
 }
