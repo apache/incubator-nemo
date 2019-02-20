@@ -100,6 +100,13 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
   ////////////////////////////////////////////////// Methods for reshaping the DAG topology.
 
+  public void delete(final IRVertex irVertex) {
+    if (!(irVertex instanceof StreamVertex || irVertex instanceof StreamVertex)) {
+      // unsupported vertex
+    }
+
+  }
+
   /**
    * Inserts a new vertex that streams data.
    *

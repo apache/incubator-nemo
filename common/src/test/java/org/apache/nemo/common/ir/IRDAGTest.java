@@ -37,10 +37,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Tests for {@link IRDAG}.
@@ -226,6 +224,8 @@ public class IRDAGTest {
     */
   }
 
+  private Random random = new Random(0); // deterministic seed for reproducibility
+
   @Test
   public void testTenThousandRandomConfigurations() {
     // 10 thousand random configurations (some duplicate configurations possible)
@@ -233,7 +233,7 @@ public class IRDAGTest {
 
     final List<IRVertex> insertedVertices = new ArrayList<>();
     for (int i = 0; i < tenThousandConfigs; i++) {
-      final int numOfTotalMethods = 7;
+      final int numOfTotalMethods = 10;
       final int methodIndex = random.nextInt(numOfTotalMethods);
       switch (methodIndex) {
         // Annotation methods
@@ -244,7 +244,7 @@ public class IRDAGTest {
         case 3: selectRandomVertex().setProperty(randomRSP()); break;
         case 4: selectRandomEdge().setProperty(randomDFP()); break;
         case 5: selectRandomEdge().setProperty(randomDPP()); break;
-        case 6: selectRandomEdge().setProperty(randomDSP()); break; // the last index must be (numOfTotalMethods - 1)
+        case 6: selectRandomEdge().setProperty(randomDSP()); break;
 
         // Reshaping methods
         case 7:
@@ -257,8 +257,10 @@ public class IRDAGTest {
           irdag.insert(mbv, selectRandomEdge());
           insertedVertices.add(mbv);
           break;
-        case 9:
-          irdag.delete(insertedVertices.remove(random.nextInt(insertedVertices.size())));
+        case 9: // the last index must be (numOfTotalMethods - 1)
+          if (!insertedVertices.isEmpty()) {
+            irdag.delete(insertedVertices.remove(random.nextInt(insertedVertices.size())));
+          }
           break;
         default: throw new IllegalStateException(String.valueOf(methodIndex));
       }
@@ -270,7 +272,6 @@ public class IRDAGTest {
 
   /////////////////////////// Random property generation
 
-  private Random random = new Random(0);
 
   private IREdge selectRandomEdge() {
     final List<IREdge> edges = irdag.getVertices().stream()
@@ -319,9 +320,12 @@ public class IRDAGTest {
   }
 
   private DataStoreProperty randomDSP() {
-    DataStoreProperty.Value.MemoryStore
-    DataStoreProperty.Value.SerializedMemoryStore
-    DataStoreProperty.Value.LocalFileStore
-    DataStoreProperty.Value.GlusterFileStore
+    switch (random.nextInt(4)) {
+      case 0: return DataStoreProperty.of(DataStoreProperty.Value.MemoryStore);
+      case 1: return DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore);
+      case 2: return DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore);
+      case 3: return DataStoreProperty.of(DataStoreProperty.Value.GlusterFileStore);
+      default: throw new IllegalStateException();
+    }
   }
 }
