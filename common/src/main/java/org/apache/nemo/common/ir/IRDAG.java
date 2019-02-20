@@ -34,6 +34,7 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
@@ -42,14 +43,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * An IRDAG object captures a high-level data processing application (e.g., Spark/Beam application).
@@ -115,12 +115,13 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     // Integrity check
-    if (edgeToStreamize.getPropertyValue(MessageIdProperty.class).isPresent()) {
+    if (edgeToStreamize.getPropertyValue(MessageIdEdgeProperty.class).isPresent()) {
       throw new CompileTimeOptimizationException(edgeToStreamize.getId() + " has a MessageId, and cannot be removed");
     }
 
     // Insert the vertex.
-    builder.addVertex(streamVertex);
+    final IRVertex vertexToInsert = wrapSamplingVertexIfNeeded(streamVertex, edgeToStreamize.getSrc());
+    builder.addVertex(vertexToInsert);
 
     // Build the new DAG to reflect the new topology.
     modifiedDAG.topologicalDo(v -> {
@@ -134,11 +135,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           final IREdge toSV = new IREdge(
             edgeToStreamize.getPropertyValue(CommunicationPatternProperty.class).get(),
             edgeToStreamize.getSrc(),
-            streamVertex);
+            vertexToInsert);
           edgeToStreamize.copyExecutionPropertiesTo(toSV);
 
           // Edge from the streamVertex.
-          final IREdge fromSV = new IREdge(CommunicationPatternProperty.Value.OneToOne, streamVertex, v);
+          final IREdge fromSV = new IREdge(CommunicationPatternProperty.Value.OneToOne, vertexToInsert, v);
           fromSV.setProperty(EncoderProperty.of(edgeToStreamize.getPropertyValue(EncoderProperty.class).get()));
           fromSV.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
 
@@ -167,7 +168,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       }
     });
 
-    modifiedDAG = builder.build(); // update the DAG.
+    modifiedDAG = buildDAG(builder); // update the DAG.
   }
 
   /**
@@ -198,6 +199,13 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     assertNonExistence(messageBarrierVertex);
     assertNonExistence(messageAggregatorVertex);
 
+    if (edgesToGetStatisticsOf.stream().map(edge -> edge.getDst().getId()).collect(Collectors.toSet()).size() != 1) {
+      throw new IllegalArgumentException("Not destined to the same vertex: " + edgesToOptimize.toString());
+    }
+    if (edgesToOptimize.stream().map(edge -> edge.getDst().getId()).collect(Collectors.toSet()).size() != 1) {
+      throw new IllegalArgumentException("Not destined to the same vertex: " + edgesToOptimize.toString());
+    }
+
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
@@ -207,43 +215,47 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       modifiedDAG.getIncomingEdgesOf(v).forEach(builder::connectVertices);
     });
 
-    ////////////////////////////////// STEP 1: Insert new vertices and edges
+    ////////////////////////////////// STEP 1: Insert new vertices and edges (src - mbv - mav - dst)
+
+    // From src to mbv
+    final List<IRVertex> mbvList = new ArrayList<>();
+    for (final IREdge edge : edgesToGetStatisticsOf) {
+      final IRVertex mbvToAdd = wrapSamplingVertexIfNeeded(
+        new MessageBarrierVertex<>(messageBarrierVertex.getMessageFunction()), edge.getSrc());
+      builder.addVertex(mbvToAdd);
+      mbvList.add(mbvToAdd);
+
+      final IREdge clone = Util.cloneEdge(CommunicationPatternProperty.Value.OneToOne, edge, edge.getSrc(), mbvToAdd);
+      builder.connectVertices(clone);
+    }
+
+    // Add mav (no need to wrap with a sampling vertex)
+    builder.addVertex(messageAggregatorVertex);
+
+    // From mbv to mav
+    for (final IRVertex mbv : mbvList) {
+      final IREdge edgeToMav = edgeBetweenMessageVertices(
+        mbv, messageAggregatorVertex, mbvOutputEncoder, mbvOutputDecoder);
+      builder.connectVertices(edgeToMav);
+    }
 
     // From mav to dst
     // Add a control dependency (no output) from the messageAggregatorVertex to the destination.
-    builder.addVertex(messageAggregatorVertex);
-    final IRVertex dst = edgesToGetStatisticsOf.iterator().next().getDst();
-    builder.connectVertices(Util.createControlEdge(messageAggregatorVertex, dst));
-
-    // Build the edges: src - mbv - mav
-    for (final IREdge edge : edgesToGetStatisticsOf) {
-      final MessageBarrierVertex mbv = new MessageBarrierVertex<>(messageBarrierVertex.getMessageFunction());
-      builder.addVertex(mbv);
-
-      // From src to mbv
-      final IREdge clone = Util.cloneEdge(CommunicationPatternProperty.Value.OneToOne, edge, edge.getSrc(), mbv);
-      builder.connectVertices(clone);
-
-      // From mbv to mav
-      final IREdge edgeToABV = edgeBetweenMessageVertices(
-        mbv, messageAggregatorVertex, mbvOutputEncoder, mbvOutputDecoder);
-      builder.connectVertices(edgeToABV);
-    }
+    builder.connectVertices(
+      Util.createControlEdge(messageAggregatorVertex, edgesToGetStatisticsOf.iterator().next().getDst()));
 
     ////////////////////////////////// STEP 2: Annotate the MessageId on optimization target edges
 
-    if (edgesToOptimize.stream().map(edge -> edge.getDst().getId()).collect(Collectors.toSet()).size() != 1) {
-      throw new IllegalArgumentException("Not destined to the same vertex: " + edgesToOptimize.toString());
-    }
     modifiedDAG.topologicalDo(v -> {
       modifiedDAG.getIncomingEdgesOf(v).forEach(inEdge -> {
         if (edgesToOptimize.contains(inEdge)) {
-          inEdge.setPropertyPermanently(MessageIdProperty.of(messageAggregatorVertex.getMessageId()));
+          inEdge.setPropertyPermanently(MessageIdEdgeProperty.of(
+            messageAggregatorVertex.getPropertyValue(MessageIdVertexProperty.class).get()));
         }
       });
     });
 
-    modifiedDAG = builder.build(); // update the DAG.
+    modifiedDAG = buildDAG(builder); // update the DAG.
   }
 
   /**
@@ -263,6 +275,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * After: V1' - oneToOneEdge - V2' - controlEdge - V1 - oneToOneEdge - V2 - shuffleEdge - V3
    *
    * This preserves semantics as the original IRDAG remains unchanged and unaffected.
+   *
+   * (Future calls to insert() can add new vertices that connect to sampling vertices. Such new vertices will also be
+   * wrapped with sampling vertices, and will be also executed before executeAfterSamplingVertices)
    *
    * @param samplingVertices to insert.
    * @param executeAfterSamplingVertices that must be executed after samplingVertices.
@@ -316,10 +331,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     }).forEach(builder::connectVertices);
 
     // [EDGE TYPE 3] From sampling vertices to vertices that should be executed after
-    final Set<IRVertex> parentsOfAnotherOriginal = betweenOriginals.stream()
-      .map(IREdge::getSrc)
-      .collect(Collectors.toSet());
-    final Set<IRVertex> sinks = Sets.difference(originalToSampling.keySet(), parentsOfAnotherOriginal)
+    final Set<IRVertex> sinks = getSinksWithinVertexSet(modifiedDAG, originalToSampling.keySet())
       .stream()
       .map(originalToSampling::get)
       .collect(Collectors.toSet());
@@ -330,7 +342,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       }
     }
 
-    modifiedDAG = builder.build(); // update the DAG.
+    modifiedDAG = buildDAG(builder); // update the DAG.
   }
 
   /**
@@ -343,6 +355,98 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   }
 
   ////////////////////////////////////////////////// Private helper methods.
+
+  private Set<IRVertex> getSinksWithinVertexSet(final DAG<IRVertex, IREdge> dag,
+                                                final Set<IRVertex> vertexSet) {
+    LOG.info("Trying to get sinks within {}", Util.stringifyIRVertexIds(vertexSet));
+
+    final Set<IRVertex> parentsOfAnotherVertex = vertexSet.stream()
+      .flatMap(v -> dag.getOutgoingEdgesOf(v).stream())
+      .filter(e -> vertexSet.contains(e.getDst()))
+      .map(IREdge::getSrc) // makes the result a subset of the input vertexSet
+      .collect(Collectors.toSet());
+    return Sets.difference(vertexSet, parentsOfAnotherVertex);
+  }
+
+  private IRVertex wrapSamplingVertexIfNeeded(final IRVertex newVertex, final IRVertex existingVertexToConnectWith) {
+    // If the connecting vertex is a sampling vertex, the new vertex must be wrapped inside a sampling vertex too.
+    return existingVertexToConnectWith instanceof SamplingVertex
+      ? new SamplingVertex(newVertex, ((SamplingVertex) existingVertexToConnectWith).getDesiredSampleRate())
+      : newVertex;
+  }
+
+  private Set<IRVertex> getSamplingVertexPartition(final DAG<IRVertex, IREdge> dag,
+                                                   final Set<IRVertex> visited,
+                                                   final IRVertex curVertex) {
+    if (!visited.contains(curVertex)
+      // If the aggregator vertex is connected with a sampling vertex, then we include it in the partition.
+      && (curVertex instanceof SamplingVertex || curVertex instanceof MessageAggregatorVertex)) {
+      visited.add(curVertex);
+
+      final Set<IRVertex> srcSet = dag.getIncomingEdgesOf(curVertex)
+        .stream()
+        // only non control edges
+        .filter(e -> !e.getPropertyValue(AdditionalOutputTagProperty.class).equals(Optional.of(Util.CONTROL_EDGE_TAG)))
+        .map(IREdge::getSrc)
+        .collect(Collectors.toSet());
+      final Set<IRVertex> dstSet = dag.getOutgoingEdgesOf(curVertex)
+        .stream()
+        // only non control edges
+        .filter(e -> !e.getPropertyValue(AdditionalOutputTagProperty.class).equals(Optional.of(Util.CONTROL_EDGE_TAG)))
+        .map(IREdge::getDst)
+        .collect(Collectors.toSet());
+
+      final Set<IRVertex> recursiveNeighbors = Stream.concat(
+        srcSet.stream().flatMap(src -> getSamplingVertexPartition(dag, visited, src).stream()),
+        dstSet.stream().flatMap(dst -> getSamplingVertexPartition(dag, visited, dst).stream()))
+        .collect(Collectors.toSet());
+      return Sets.union(recursiveNeighbors, Sets.newHashSet(curVertex));
+    } else {
+      visited.add(curVertex);
+
+      return Collections.emptySet();
+    }
+  }
+
+  private DAG<IRVertex, IREdge> buildDAG(final DAGBuilder<IRVertex, IREdge> builder) {
+    // See if we need to insert new control edges to extend the ordering of sampling vertices and
+    // executeAfterSamplingVertices.
+    final DAG<IRVertex, IREdge> currentDAG = builder.build();
+
+    final Set<IRVertex> visited = new HashSet<>();
+    for (final IRVertex v : getTopologicalSort()) {
+      final Set<IRVertex> samplingVertexPartition = getSamplingVertexPartition(currentDAG, visited, v);
+      LOG.info("{} is a Sampling vertex partition for {}",
+        Util.stringifyIRVertexIds(samplingVertexPartition), v.getId());
+
+      if (!samplingVertexPartition.isEmpty()) {
+        final Set<IREdge> outgoingControlEdges = samplingVertexPartition.stream()
+          .flatMap(sv -> currentDAG.getOutgoingEdgesOf(sv).stream())
+          .filter(e -> e.getPropertyValue(AdditionalOutputTagProperty.class).equals(Optional.of(Util.CONTROL_EDGE_TAG)))
+          .collect(Collectors.toSet());
+        final Set<IRVertex> outgoingControlEdgeSources = outgoingControlEdges.stream()
+          .map(IREdge::getSrc)
+          .collect(Collectors.toSet());
+
+        final Set<IRVertex> sinksOfPartition = getSinksWithinVertexSet(currentDAG, samplingVertexPartition);
+
+        LOG.info("sinks of partition {} / outgoingControlEdgeSources {} / outgoingControlEdges {}",
+          Util.stringifyIRVertexIds(sinksOfPartition),
+          Util.stringifyIRVertexIds(outgoingControlEdgeSources),
+          Util.stringifyIREdgeIds(outgoingControlEdges));
+
+        for (final IRVertex sinkWithoutControlEdge : Sets.difference(sinksOfPartition, outgoingControlEdgeSources)) {
+          for (final IRVertex outgoingControlEdgeDst :
+            outgoingControlEdges.stream().map(IREdge::getDst).collect(Collectors.toSet())) {
+            // Control edge that enforces execution ordering
+            builder.connectVertices(Util.createControlEdge(sinkWithoutControlEdge, outgoingControlEdgeDst));
+          }
+        }
+      }
+    }
+
+    return builder.build();
+  }
 
   private void assertNonExistence(final IRVertex v) {
     if (getVertices().contains(v)) {
@@ -357,8 +461,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * @param decoder src-dst decoder.
    * @return the edge.
    */
-  private IREdge edgeBetweenMessageVertices(final MessageBarrierVertex mbv,
-                                            final MessageAggregatorVertex mav,
+  private IREdge edgeBetweenMessageVertices(final IRVertex mbv,
+                                            final IRVertex mav,
                                             final EncoderProperty encoder,
                                             final DecoderProperty decoder) {
     final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mbv, mav);

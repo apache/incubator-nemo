@@ -20,7 +20,7 @@ package org.apache.nemo.compiler.backend.nemo;
 
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.MessageIdEdgeProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
@@ -87,8 +87,8 @@ public final class NemoPlanRewriter implements PlanRewriter {
       .getVertices()
       .stream()
       .flatMap(v -> currentIRDAG.getIncomingEdgesOf(v).stream())
-      .filter(e -> e.getPropertyValue(MessageIdProperty.class).isPresent()
-        && e.getPropertyValue(MessageIdProperty.class).get() == messageId
+      .filter(e -> e.getPropertyValue(MessageIdEdgeProperty.class).isPresent()
+        && e.getPropertyValue(MessageIdEdgeProperty.class).get() == messageId
         && !(e.getDst() instanceof MessageAggregatorVertex))
       .collect(Collectors.toSet());
     if (examiningEdges.isEmpty()) {

@@ -25,7 +25,6 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.commons.lang3.mutable.MutableInt;
-import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.*;
@@ -106,9 +105,6 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
     // If the edge is not OneToOne, return false
     if (edge.getPropertyValue(CommunicationPatternProperty.class).get()
         != CommunicationPatternProperty.Value.OneToOne) {
-      return false;
-    }
-    if (edge.getSrc() instanceof SamplingVertex ^ edge.getDst() instanceof SamplingVertex) {
       return false;
     }
     // Return true if and only if the execution properties of the two vertices are compatible

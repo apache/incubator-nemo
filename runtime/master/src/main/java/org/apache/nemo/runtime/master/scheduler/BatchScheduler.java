@@ -22,9 +22,10 @@ import com.google.common.collect.Sets;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.MessageIdEdgeProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.*;
@@ -164,7 +165,7 @@ public final class BatchScheduler implements Scheduler {
 
   private int getMessageId(final Set<StageEdge> stageEdges) {
     final Set<Integer> messageIds = stageEdges.stream()
-      .map(edge -> edge.getExecutionProperties().get(MessageIdProperty.class).get())
+      .map(edge -> edge.getExecutionProperties().get(MessageIdEdgeProperty.class).get())
       .collect(Collectors.toSet());
     if (messageIds.size() != 1) {
       throw new IllegalArgumentException(stageEdges.toString());
@@ -465,7 +466,7 @@ public final class BatchScheduler implements Scheduler {
 
   /**
    * Get the target edges of dynamic optimization.
-   * The edges are annotated with {@link MessageIdProperty}, which are outgoing edges of
+   * The edges are annotated with {@link MessageIdEdgeProperty}, which are outgoing edges of
    * parents of the stage put on hold.
    *
    * See {@link org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.SkewReshapingPass}
@@ -488,21 +489,21 @@ public final class BatchScheduler implements Scheduler {
     final List<Integer> messageIds = stagePutOnHold.getIRDAG()
       .getVertices()
       .stream()
-      .filter(v -> v instanceof MessageAggregatorVertex)
-      .map(mav -> ((MessageAggregatorVertex) mav).getMessageId())
+      .filter(v -> v.getPropertyValue(MessageIdVertexProperty.class).isPresent())
+      .map(v -> v.getPropertyValue(MessageIdVertexProperty.class).get())
       .collect(Collectors.toList());
     if (messageIds.size() != 1) {
-      throw new IllegalStateException("Must be exactly one message id: " + messageIds.toString());
+      throw new IllegalStateException("Must be exactly one vertex with the message id: " + messageIds.toString());
     }
     final int messageId = messageIds.get(0);
     final Set<StageEdge> targetEdges = new HashSet<>();
 
-    // Get edges with identical MessageIdProperty (except the put on hold stage)
+    // Get edges with identical MessageIdEdgeProperty (except the put on hold stage)
     for (final Stage stage : stageDag.getVertices()) {
       final Set<StageEdge> targetEdgesFound = stageDag.getOutgoingEdgesOf(stage).stream()
         .filter(candidateEdge -> {
           final Optional<Integer> candidateMCId =
-            candidateEdge.getPropertyValue(MessageIdProperty.class);
+            candidateEdge.getPropertyValue(MessageIdEdgeProperty.class);
           return candidateMCId.isPresent() && candidateMCId.get().equals(messageId);
         })
         .collect(Collectors.toSet());

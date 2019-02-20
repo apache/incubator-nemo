@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  */
 public final class Util {
   // Assume that this tag is never used in user application
-  private static final String CONTROL_EDGE_TAG = "CONTROL_EDGE";
+  public static final String CONTROL_EDGE_TAG = "CONTROL_EDGE";
 
   /**
    * Private constructor for utility class.

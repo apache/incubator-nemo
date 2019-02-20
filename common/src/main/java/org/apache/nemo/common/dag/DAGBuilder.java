@@ -21,6 +21,7 @@ package org.apache.nemo.common.dag;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
+import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 
@@ -260,7 +261,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     final long numOfMAV = vertices.stream().filter(v -> v instanceof MessageAggregatorVertex).count();
     final long numOfDistinctMessageIds = vertices.stream()
       .filter(v -> v instanceof MessageAggregatorVertex)
-      .map(v -> ((MessageAggregatorVertex) v).getMessageId())
+      .map(v -> ((MessageAggregatorVertex) v).getPropertyValue(MessageIdVertexProperty.class).get())
       .distinct()
       .count();
     if (numOfMAV != numOfDistinctMessageIds) {
