@@ -33,7 +33,7 @@ import org.apache.reef.tang.Injector;
 public final class DisaggregationPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
       new PolicyBuilder()
-          .registerCompileTimePass(new DisaggregationEdgeDataStorePass()) //***확인
+          .registerCompileTimePass(new DisaggregationEdgeDataStorePass())
           .registerCompileTimePass(new LoopOptimizationCompositePass())
           .registerCompileTimePass(new DefaultCompositePass());
   private final Policy policy;

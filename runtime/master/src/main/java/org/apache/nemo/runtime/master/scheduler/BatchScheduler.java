@@ -81,13 +81,8 @@ public final class BatchScheduler implements Scheduler {
   /**
    * The below variables depend on the submitted plan to execute.
    */
-  private List<List<Stage>> sortedScheduleGroups; //스케줄러 그룹이 리스트로 이어져있고, 하나의 그룹 안에서 여러 스테이지가 있을 수 있으므로?
+  private List<List<Stage>> sortedScheduleGroups;
   private List<DynOptDataHandler> dynOptDataHandlers;
-
-  /**
-  *  Variable for logging the time consumed for each stage
-  * */
-  long stageStartNano;
 
   @Inject
   private BatchScheduler(final TaskDispatcher taskDispatcher,
@@ -184,7 +179,7 @@ public final class BatchScheduler implements Scheduler {
                                             @Nullable final String vertexPutOnHold,
                                             final TaskState.RecoverableTaskFailureCause failureCause) {
     // Do change state, as this notification is for the current task attempt.
-    planStateManager.onTaskStateChanged(taskId, newState, stageStartNano);
+    planStateManager.onTaskStateChanged(taskId, newState);
     switch (newState) {
       case COMPLETE:
         onTaskExecutionComplete(executorId, taskId);
@@ -342,9 +337,6 @@ public final class BatchScheduler implements Scheduler {
         .flatMap(stage -> selectSchedulableTasks(stage).stream())
         .collect(Collectors.toList());
       if (!tasksToSchedule.isEmpty()) {
-        //ScheduleGroup에 stage가 하나만 있을 때는 이 시점이 stage들을 시작하는 시점이라고 할 수 있음
-        if(tasksToSchedule.size()==1) stageStartNano = System.nanoTime(); //**
-
         LOG.info("Scheduling some tasks in {}, which are in the same ScheduleGroup", tasksToSchedule.stream()
           .map(Task::getTaskId)
           .map(RuntimeIdManager::getStageIdFromTaskId)
@@ -378,8 +370,8 @@ public final class BatchScheduler implements Scheduler {
     if (stageToSchedule.getPropertyValue(IgnoreSchedulingTempDataReceiverProperty.class).orElse(false)) {
       // Ignore ghost stage.
       for (final String taskId : planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId())) {
-        planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING, stageStartNano);
-        planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE, stageStartNano);
+        planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
+        planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
       }
 
       return Collections.emptyList();
@@ -538,7 +530,7 @@ public final class BatchScheduler implements Scheduler {
     final Set<String> tasksToRetry = Sets.union(tasks, requiredParents);
     LOG.info("Will be retried: {}", tasksToRetry);
     tasksToRetry.forEach(
-      taskToReExecute -> planStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY, stageStartNano));
+      taskToReExecute -> planStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY));
   }
 
   private Set<String> recursivelyGetParentTasksForLostBlocks(final Set<String> children) {
