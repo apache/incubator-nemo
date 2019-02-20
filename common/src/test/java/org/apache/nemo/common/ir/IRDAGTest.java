@@ -120,7 +120,9 @@ public class IRDAGTest {
       HashRange.of(0, 1),
       HashRange.of(1, 2)
     ))));
+  }
 
+  @Test
   public void testPartitionSetNonShuffle() {
     oneToOneEdge.setProperty(PartitionSetProperty.of(new ArrayList<>())); // non-shuffle
     mustFail();
