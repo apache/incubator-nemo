@@ -49,7 +49,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * An IRDAG object captures a high-level data processing application (e.g., Spark/Beam application).
@@ -168,7 +167,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       }
     });
 
-    modifiedDAG = buildDAG(builder); // update the DAG.
+    modifiedDAG = builder.build(); // update the DAG.
   }
 
   /**
@@ -255,7 +254,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       });
     });
 
-    modifiedDAG = buildDAG(builder); // update the DAG.
+    modifiedDAG = builder.build(); // update the DAG.
   }
 
   /**
@@ -342,7 +341,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       }
     }
 
-    modifiedDAG = buildDAG(builder); // update the DAG.
+    modifiedDAG = builder.build(); // update the DAG.
   }
 
   /**
@@ -373,79 +372,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     return existingVertexToConnectWith instanceof SamplingVertex
       ? new SamplingVertex(newVertex, ((SamplingVertex) existingVertexToConnectWith).getDesiredSampleRate())
       : newVertex;
-  }
-
-  private Set<IRVertex> getSamplingVertexPartition(final DAG<IRVertex, IREdge> dag,
-                                                   final Set<IRVertex> visited,
-                                                   final IRVertex curVertex) {
-    if (!visited.contains(curVertex)
-      // If the aggregator vertex is connected with a sampling vertex, then we include it in the partition.
-      && (curVertex instanceof SamplingVertex || curVertex instanceof MessageAggregatorVertex)) {
-      visited.add(curVertex);
-
-      final Set<IRVertex> srcSet = dag.getIncomingEdgesOf(curVertex)
-        .stream()
-        // only non control edges
-        .filter(e -> !e.getPropertyValue(AdditionalOutputTagProperty.class).equals(Optional.of(Util.CONTROL_EDGE_TAG)))
-        .map(IREdge::getSrc)
-        .collect(Collectors.toSet());
-      final Set<IRVertex> dstSet = dag.getOutgoingEdgesOf(curVertex)
-        .stream()
-        // only non control edges
-        .filter(e -> !e.getPropertyValue(AdditionalOutputTagProperty.class).equals(Optional.of(Util.CONTROL_EDGE_TAG)))
-        .map(IREdge::getDst)
-        .collect(Collectors.toSet());
-
-      final Set<IRVertex> recursiveNeighbors = Stream.concat(
-        srcSet.stream().flatMap(src -> getSamplingVertexPartition(dag, visited, src).stream()),
-        dstSet.stream().flatMap(dst -> getSamplingVertexPartition(dag, visited, dst).stream()))
-        .collect(Collectors.toSet());
-      return Sets.union(recursiveNeighbors, Sets.newHashSet(curVertex));
-    } else {
-      visited.add(curVertex);
-
-      return Collections.emptySet();
-    }
-  }
-
-  private DAG<IRVertex, IREdge> buildDAG(final DAGBuilder<IRVertex, IREdge> builder) {
-    // See if we need to insert new control edges to extend the ordering of sampling vertices and
-    // executeAfterSamplingVertices.
-    final DAG<IRVertex, IREdge> currentDAG = builder.build();
-
-    final Set<IRVertex> visited = new HashSet<>();
-    for (final IRVertex v : getTopologicalSort()) {
-      final Set<IRVertex> samplingVertexPartition = getSamplingVertexPartition(currentDAG, visited, v);
-      LOG.info("{} is a Sampling vertex partition for {}",
-        Util.stringifyIRVertexIds(samplingVertexPartition), v.getId());
-
-      if (!samplingVertexPartition.isEmpty()) {
-        final Set<IREdge> outgoingControlEdges = samplingVertexPartition.stream()
-          .flatMap(sv -> currentDAG.getOutgoingEdgesOf(sv).stream())
-          .filter(e -> e.getPropertyValue(AdditionalOutputTagProperty.class).equals(Optional.of(Util.CONTROL_EDGE_TAG)))
-          .collect(Collectors.toSet());
-        final Set<IRVertex> outgoingControlEdgeSources = outgoingControlEdges.stream()
-          .map(IREdge::getSrc)
-          .collect(Collectors.toSet());
-
-        final Set<IRVertex> sinksOfPartition = getSinksWithinVertexSet(currentDAG, samplingVertexPartition);
-
-        LOG.info("sinks of partition {} / outgoingControlEdgeSources {} / outgoingControlEdges {}",
-          Util.stringifyIRVertexIds(sinksOfPartition),
-          Util.stringifyIRVertexIds(outgoingControlEdgeSources),
-          Util.stringifyIREdgeIds(outgoingControlEdges));
-
-        for (final IRVertex sinkWithoutControlEdge : Sets.difference(sinksOfPartition, outgoingControlEdgeSources)) {
-          for (final IRVertex outgoingControlEdgeDst :
-            outgoingControlEdges.stream().map(IREdge::getDst).collect(Collectors.toSet())) {
-            // Control edge that enforces execution ordering
-            builder.connectVertices(Util.createControlEdge(sinkWithoutControlEdge, outgoingControlEdgeDst));
-          }
-        }
-      }
-    }
-
-    return builder.build();
   }
 
   private void assertNonExistence(final IRVertex v) {
