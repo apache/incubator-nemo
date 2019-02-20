@@ -276,7 +276,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * This preserves semantics as the original IRDAG remains unchanged and unaffected.
    *
    * (Future calls to insert() can add new vertices that connect to sampling vertices. Such new vertices will also be
-   * wrapped with sampling vertices, and will be also executed before executeAfterSamplingVertices)
+   * wrapped with sampling vertices, as new vertices that consume outputs from sampling vertices will process
+   * a subset of data anyways, and no such new vertex will reach the original DAG except via control edges)
    *
    * @param samplingVertices to insert.
    * @param executeAfterSamplingVertices that must be executed after samplingVertices.
