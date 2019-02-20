@@ -133,26 +133,6 @@ public final class WordCountITCase {
   }
 
   @Test (timeout = ExampleTestArgs.TIMEOUT)
-  public void testDisaggregationPolicy() throws Exception{
-    JobLauncher.main(builder
-      .addResourceJson(executorResourceFileName)
-      .addJobId(WordCountITCase.class.getSimpleName() + " DisaggregationPolicy")
-      .addMaxTaskAttempt(Integer.MAX_VALUE)
-      .addOptimizationPolicy(DisaggregationPolicy.class.getCanonicalName())
-      .build());
-  }
-
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
-  public void testDefaultPolicy() throws Exception{
-    JobLauncher.main(builder
-      .addResourceJson(executorResourceFileName)
-      .addJobId(WordCountITCase.class.getSimpleName() + " DefaultPolicy")
-      .addMaxTaskAttempt(Integer.MAX_VALUE)
-      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
-      .build());
-  }
-
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
   public void testCrailPolicy() throws Exception{
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)
