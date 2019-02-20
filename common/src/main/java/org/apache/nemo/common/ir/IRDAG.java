@@ -104,7 +104,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     if (!(irVertex instanceof StreamVertex || irVertex instanceof StreamVertex)) {
       // unsupported vertex
     }
-
   }
 
   /**

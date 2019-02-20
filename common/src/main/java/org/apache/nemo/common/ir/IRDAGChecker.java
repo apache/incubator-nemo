@@ -473,7 +473,8 @@ public class IRDAGChecker {
                         final Class... eps) {
     final List<Optional> epsList = Arrays.stream(eps)
       .map(ep -> (Class<VertexExecutionProperty<Serializable>>)ep)
-      .map(ep -> v.getPropertyValue(ep)).collect(Collectors.toList());
+      .map(ep -> v.getPropertyValue(ep))
+      .collect(Collectors.toList());
     final boolean isMissingValue = epsList.stream().anyMatch(optional -> !((Optional) optional).isPresent());
     if (isMissingValue) {
       throw new IllegalArgumentException(epsList.toString());

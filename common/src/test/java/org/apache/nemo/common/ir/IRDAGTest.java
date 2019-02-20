@@ -19,6 +19,8 @@
 package org.apache.nemo.common.ir;
 
 import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
@@ -26,7 +28,6 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
@@ -60,6 +61,11 @@ public class IRDAGTest {
     oneToOneEdge = new IREdge(CommunicationPatternProperty.Value.OneToOne, sourceVertex, firstOperatorVertex);
     shuffleEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, firstOperatorVertex, secondOperatorVertex);
 
+    // To pass the key-related checkers
+    shuffleEdge.setProperty(KeyDecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
+    shuffleEdge.setProperty(KeyEncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));
+    shuffleEdge.setProperty(KeyExtractorProperty.of(element -> null));
+
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<IRVertex, IREdge>()
       .addVertex(sourceVertex)
       .addVertex(firstOperatorVertex)
@@ -86,8 +92,8 @@ public class IRDAGTest {
     firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
     secondOperatorVertex.setProperty(ParallelismProperty.of(2));
     shuffleEdge.setProperty(PartitionSetProperty.of(new ArrayList<>(Arrays.asList(
-      HashRange.of(0, 2),
-      HashRange.of(2, MIN_THREE_SOURCE_READABLES)))));
+      HashRange.of(0, 1),
+      HashRange.of(1, 2)))));
     mustPass();
   }
 
@@ -151,7 +157,7 @@ public class IRDAGTest {
     final HashMap<String, Integer> badSite = new HashMap<>();
     badSite.put("SiteA", 1);
     badSite.put("SiteB", MIN_THREE_SOURCE_READABLES - 2);
-    firstOperatorVertex.setProperty(ResourceSiteProperty.of(goodSite));
+    firstOperatorVertex.setProperty(ResourceSiteProperty.of(badSite));
     mustFail();
   }
 
@@ -203,11 +209,6 @@ public class IRDAGTest {
   }
 
   @Test
-  public void testPartitioner() {
-    // simple test case
-  }
-
-  @Test
   public void testStreamVertex() {
     final StreamVertex svOne = new StreamVertex();
     final StreamVertex svTwo = new StreamVertex();
@@ -231,17 +232,9 @@ public class IRDAGTest {
 
     irdag.delete(svOne);
     mustPass();
-
-    /*
-    // simple test case
-    // insert
-    // delete
-    MessageBarrierVertex;
-    StreamVertex;
-    SamplingVertex;
-    */
   }
 
+  /*
   @Test
   public void testMessageBarrierVertex() {
     final MessageBarrierVertex mbOne = new MessageBarrierVertex();
@@ -266,26 +259,18 @@ public class IRDAGTest {
 
     irdag.delete(mbOne);
     mustPass();
-
-    /*
-    // simple test case
-    // insert
-    // delete
-    MessageBarrierVertex;
-    StreamVertex;
-    SamplingVertex;
-    */
   }
+  */
 
   private Random random = new Random(0); // deterministic seed for reproducibility
 
   @Test
-  public void testTenThousandRandomConfigurations() {
-    // 10 thousand random configurations (some duplicate configurations possible)
-    final int tenThousandConfigs = 10000;
+  public void testThousandRandomConfigurations() {
+    // Thousand random configurations (some duplicate configurations possible)
+    final int thousandConfigs = 1000;
 
     final List<IRVertex> insertedVertices = new ArrayList<>();
-    for (int i = 0; i < tenThousandConfigs; i++) {
+    for (int i = 0; i < thousandConfigs; i++) {
       final int numOfTotalMethods = 10;
       final int methodIndex = random.nextInt(numOfTotalMethods);
       switch (methodIndex) {
@@ -306,9 +291,9 @@ public class IRDAGTest {
           insertedVertices.add(sv);
           break;
         case 8:
-          final MessageBarrierVertex mbv = new MessageBarrierVertex();
-          irdag.insert(mbv, selectRandomEdge());
-          insertedVertices.add(mbv);
+          // final MessageBarrierVertex mbv = new MessageBarrierVertex();
+          // irdag.insert(mbv, selectRandomEdge());
+          // insertedVertices.add(mbv);
           break;
         case 9: // the last index must be (numOfTotalMethods - 1)
           if (!insertedVertices.isEmpty()) {
@@ -316,6 +301,11 @@ public class IRDAGTest {
           }
           break;
         default: throw new IllegalStateException(String.valueOf(methodIndex));
+      }
+
+      if (i % (thousandConfigs / 10) == 0) {
+        // Uncomment to visualize 10 DAG snapshots
+        // irdag.storeJSON("test", String.valueOf(i), "test");
       }
 
       // Must pass
