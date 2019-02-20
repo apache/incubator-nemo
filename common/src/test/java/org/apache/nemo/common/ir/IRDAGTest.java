@@ -32,10 +32,7 @@ import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertFalse;
@@ -44,7 +41,7 @@ import static org.junit.Assert.assertFalse;
  * Tests for {@link IRDAG}.
  */
 public class IRDAGTest {
-  private final static int MIN_NUM_SOURCE_READABLES = 5;
+  private final static int MIN_THREE_SOURCE_READABLES = 3;
 
   private SourceVertex sourceVertex;
   private IREdge oneToOneEdge;
@@ -56,7 +53,7 @@ public class IRDAGTest {
 
   @Before
   public void setUp() throws Exception {
-    sourceVertex = new EmptyComponents.EmptySourceVertex("source", MIN_NUM_SOURCE_READABLES);
+    sourceVertex = new EmptyComponents.EmptySourceVertex("source", MIN_THREE_SOURCE_READABLES);
     firstOperatorVertex = new OperatorVertex(new EmptyComponents.EmptyTransform("first"));
     secondOperatorVertex = new OperatorVertex(new EmptyComponents.EmptyTransform("second"));
 
@@ -85,32 +82,45 @@ public class IRDAGTest {
 
   @Test
   public void testParallelismSuccess() {
-    sourceVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES));
-    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES));
+    sourceVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
+    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
     secondOperatorVertex.setProperty(ParallelismProperty.of(2));
     shuffleEdge.setProperty(PartitionSetProperty.of(new ArrayList<>(Arrays.asList(
-      HashRange.of(0, 1),
-      HashRange.of(1, 2)))));
+      HashRange.of(0, 2),
+      HashRange.of(2, MIN_THREE_SOURCE_READABLES)))));
     mustPass();
   }
 
   @Test
   public void testParallelismSource() {
-    sourceVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES - 1)); // this causes failure
-    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES - 1));
-    secondOperatorVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES - 1));
+    sourceVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES - 1)); // this causes failure
+    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES - 1));
+    secondOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES - 1));
+
     mustFail();
   }
 
   @Test
   public void testParallelismCommPattern() {
-    sourceVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES));
-    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES - 1)); // this causes failure
-    secondOperatorVertex.setProperty(ParallelismProperty.of(MIN_NUM_SOURCE_READABLES - 2));
+    sourceVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
+    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES - 1)); // this causes failure
+    secondOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES - 2));
+
     mustFail();
   }
 
   @Test
+  public void testParallelismPartitionSet() {
+    sourceVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
+    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
+    secondOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
+
+    // this causes failure (only 2 KeyRanges < 3 parallelism)
+    shuffleEdge.setProperty(PartitionSetProperty.of(new ArrayList<>(Arrays.asList(
+      HashRange.of(0, 1),
+      HashRange.of(1, 2)
+    ))));
+
   public void testPartitionSetNonShuffle() {
     oneToOneEdge.setProperty(PartitionSetProperty.of(new ArrayList<>())); // non-shuffle
     mustFail();
@@ -119,6 +129,47 @@ public class IRDAGTest {
   @Test
   public void testPartitionerNonShuffle() {
     oneToOneEdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.Hash, 2)); // non-shuffle
+    mustFail();
+  }
+
+  @Test
+  public void testParallelismResourceSite() {
+    sourceVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
+    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
+    secondOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
+
+    // must pass
+    final HashMap<String, Integer> goodSite = new HashMap<>();
+    goodSite.put("SiteA", 1);
+    goodSite.put("SiteB", MIN_THREE_SOURCE_READABLES - 1);
+    firstOperatorVertex.setProperty(ResourceSiteProperty.of(goodSite));
+    mustPass();
+
+    // must fail
+    final HashMap<String, Integer> badSite = new HashMap<>();
+    badSite.put("SiteA", 1);
+    badSite.put("SiteB", MIN_THREE_SOURCE_READABLES - 2);
+    firstOperatorVertex.setProperty(ResourceSiteProperty.of(goodSite));
+    mustFail();
+  }
+
+  @Test
+  public void testParallelismResourceAntiAffinity() {
+    sourceVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
+    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
+    secondOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
+
+    // must pass
+    final HashSet<Integer> goodSet = new HashSet<>();
+    goodSet.add(0);
+    goodSet.add(MIN_THREE_SOURCE_READABLES - 1);
+    firstOperatorVertex.setProperty(ResourceAntiAffinityProperty.of(goodSet));
+    mustPass();
+
+    // must fail
+    final HashSet<Integer> badSet = new HashSet<>();
+    badSet.add(MIN_THREE_SOURCE_READABLES + 1);
+    firstOperatorVertex.setProperty(ResourceAntiAffinityProperty.of(badSet));
     mustFail();
   }
 
