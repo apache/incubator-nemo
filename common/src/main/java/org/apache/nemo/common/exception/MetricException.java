@@ -16,28 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master;
 
-import org.apache.reef.tang.annotations.DefaultImplementation;
+package org.apache.nemo.common.exception;
 
 /**
- * Metric message handler.
+ * MetricException.
+ * Thrown when the cause is related to the metrics.
  */
-@DefaultImplementation(MetricManagerMaster.class)
-public interface MetricMessageHandler {
+public class MetricException extends RuntimeException {
 
   /**
-   * Handle the received metric message.
-   * @param metricType a given type for the metric (ex. TaskMetric).
-   * @param metricId  id of the metric.
-   * @param metricField field name of the metric.
-   * @param metricValue serialized metric data value.
+   * MetricException.
+   * @param cause the cause of the exception.
    */
-  void onMetricMessageReceived(final String metricType, final String metricId,
-                               final String metricField, final byte[] metricValue);
+  public MetricException(final Throwable cause) {
+    super(cause);
+  }
 
   /**
-   * Cleans up and terminates this handler.
+   * MetricException.
+   * @param cause the cause of the exception.
    */
-  void terminate();
+  public MetricException(final String cause) {
+    super(cause);
+  }
 }

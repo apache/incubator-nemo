@@ -93,6 +93,12 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     return canAdvance;
   }
 
+  public String irDAGSummary() {
+    return "RV" + getRootVertices().size() + "_V" + getVertices().size() + "_E" + getVertices().stream()
+      .mapToInt(v -> getIncomingEdgesOf(v).size())
+      .sum();
+  }
+
   ////////////////////////////////////////////////// Methods for reshaping the DAG topology.
 
   /**
@@ -533,5 +539,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   @Override
   public List<IRVertex> filterVertices(final Predicate<IRVertex> condition) {
     return modifiedDAG.filterVertices(condition);
+  }
+
+  @Override
+  public String toString() {
+    return asJsonNode().toString();
   }
 }

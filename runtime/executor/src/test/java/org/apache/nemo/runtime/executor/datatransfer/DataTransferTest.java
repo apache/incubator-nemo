@@ -50,6 +50,8 @@ import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.master.*;
 import org.apache.commons.io.FileUtils;
+import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
@@ -145,6 +147,7 @@ public final class DataTransferTest {
     injector.bindVolatileInstance(MetricManagerMaster.class, mock(MetricManagerMaster.class));
     injector.bindVolatileInstance(MetricMessageHandler.class, mock(MetricMessageHandler.class));
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, EMPTY_DAG_DIRECTORY);
+    injector.bindVolatileParameter(JobConf.JobId.class, "jobId");
 
     // Necessary for wiring up the message environments
     injector.bindVolatileInstance(Scheduler.class, injector.getInstance(BatchScheduler.class));

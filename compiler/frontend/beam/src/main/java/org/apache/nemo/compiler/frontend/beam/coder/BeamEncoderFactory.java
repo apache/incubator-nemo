@@ -55,6 +55,11 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
     }
   }
 
+  @Override
+  public String toString() {
+    return beamCoder.getClass().getName();
+  }
+
   /**
    * Beam Encoder for non void objects.
    *
@@ -109,10 +114,5 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
     public void encode(final T2 element) throws IOException {
       outputStream.write(0); // emit 0 instead of null to enable to count emitted elements.
     }
-  }
-
-  @Override
-  public String toString() {
-    return beamCoder.toString();
   }
 }

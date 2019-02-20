@@ -49,6 +49,11 @@ public final class LongDecoderFactory implements DecoderFactory<Long> {
     return new LongDecoder(inputStream);
   }
 
+  @Override
+  public String toString() {
+    return "LongDecoderFactory{}";
+  }
+
   /**
    * LongDecoder.
    */

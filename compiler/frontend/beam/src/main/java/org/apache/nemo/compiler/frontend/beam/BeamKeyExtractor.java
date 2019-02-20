@@ -19,6 +19,7 @@
 package org.apache.nemo.compiler.frontend.beam;
 
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.beam.sdk.values.KV;
 
@@ -37,5 +38,23 @@ final class BeamKeyExtractor implements KeyExtractor {
     } else {
       return element;
     }
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder(2117, 37).toHashCode();
   }
 }

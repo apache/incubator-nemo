@@ -76,6 +76,28 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class GlusterVolumeDirectory implements Name<String> {
   }
 
+  /**
+   * Address pointing to the DB for saving metrics.
+   */
+  @NamedParameter(doc = "DB address", short_name = "db_dir", default_value =
+    "jdbc:postgresql://nemo-optimization.cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization")
+  public final class DBAddress implements Name<String> {
+  }
+
+  /**
+   * ID for the pointed DB address for saving metrics.
+   */
+  @NamedParameter(doc = "DB ID", short_name = "db_id", default_value = "postgres")
+  public final class DBId implements Name<String> {
+  }
+
+  /**
+   * Password for the pointed DB address for saving metrics.
+   */
+  @NamedParameter(doc = "DB Password", short_name = "db_password", default_value = "fake_password")
+  public final class DBPasswd implements Name<String> {
+  }
+
   //////////////////////////////// Client-Driver RPC
 
   /**
