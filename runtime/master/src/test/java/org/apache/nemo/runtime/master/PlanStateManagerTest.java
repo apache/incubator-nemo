@@ -80,8 +80,8 @@ public final class PlanStateManagerTest {
       final Stage stage = stageList.get(stageIdx);
       final List<String> taskIds = planStateManager.getTaskAttemptsToSchedule(stage.getId());
       taskIds.forEach(taskId -> {
-        planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING, 0);
-        planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE, 0);
+        planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
+        planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
         if (RuntimeIdManager.getIndexFromTaskId(taskId) == taskIds.size() - 1) {
           assertEquals(StageState.State.COMPLETE, planStateManager.getStageState(stage.getId()));
         }
@@ -115,8 +115,8 @@ public final class PlanStateManagerTest {
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
         .flatMap(stage -> planStateManager.getTaskAttemptsToSchedule(stage.getId()).stream())
         .collect(Collectors.toList());
-    tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING, 0));
-    tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE, 0));
+    tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
+    tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));
     final PlanState.State completedState = planStateManager.waitUntilFinish();
     assertEquals(PlanState.State.COMPLETE, completedState);
   }

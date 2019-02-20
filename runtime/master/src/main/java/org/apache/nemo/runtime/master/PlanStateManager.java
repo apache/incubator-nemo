@@ -301,8 +301,6 @@ public final class PlanStateManager {
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
     // Change task state
     final StateMachine taskState = getTaskStateHelper(taskId).getStateMachine();
-
-
     LOG.debug("Task State Transition: id {}, from {} to {}",
       new Object[]{taskId, taskState.getCurrentState(), newTaskState});
     metricStore.getOrCreateMetric(TaskMetric.class, taskId)

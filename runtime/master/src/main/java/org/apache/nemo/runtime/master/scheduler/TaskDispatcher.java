@@ -130,7 +130,7 @@ final class TaskDispatcher {
           final ExecutorRepresenter selectedExecutor
               = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
           // update metadata first
-          planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING, 0);
+          planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
           LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
           // send the task
