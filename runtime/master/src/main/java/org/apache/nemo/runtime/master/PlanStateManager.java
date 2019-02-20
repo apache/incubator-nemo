@@ -44,7 +44,6 @@ import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.common.metric.JobMetric;
 import org.apache.nemo.runtime.common.metric.StageMetric;
 import org.apache.nemo.runtime.common.metric.TaskMetric;
-import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.Parameter;
