@@ -60,6 +60,8 @@ import java.util.stream.Collectors;
  * All of these methods preserve application semantics.
  * - Annotation: setProperty(), getPropertyValue() on each IRVertex/IREdge
  * - Reshaping: insert(), delete() on the IRDAG
+ *
+ * TODO #341: Rethink IRDAG insert() signatures
  */
 @NotThreadSafe
 public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
@@ -107,6 +109,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * @param edgeToStreamize to modify.
    */
   public void insert(final StreamVertex streamVertex, final IREdge edgeToStreamize) {
+    assertNonExistence(streamVertex);
+
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
@@ -191,6 +195,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
                      final DecoderProperty mbvOutputDecoder,
                      final Set<IREdge> edgesToGetStatisticsOf,
                      final Set<IREdge> edgesToOptimize) {
+    assertNonExistence(messageBarrierVertex);
+    assertNonExistence(messageAggregatorVertex);
+
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
@@ -262,7 +269,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    */
   public void insert(final Set<SamplingVertex> samplingVertices,
                      final Set<IRVertex> executeAfterSamplingVertices) {
-    LOG.info("samplingVertices {} / executeAfterSamplingVertices {}", samplingVertices, executeAfterSamplingVertices);
+    samplingVertices.forEach(this::assertNonExistence);
 
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
@@ -336,6 +343,12 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   }
 
   ////////////////////////////////////////////////// Private helper methods.
+
+  private void assertNonExistence(final IRVertex v) {
+    if (getVertices().contains(v)) {
+      throw new IllegalArgumentException(v.getId());
+    }
+  }
 
   /**
    * @param mbv src.
@@ -423,6 +436,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   @Override
   public List<IRVertex> getVertices() {
     return modifiedDAG.getVertices();
+  }
+
+  @Override
+  public List<IREdge> getEdges() {
+    return modifiedDAG.getEdges();
   }
 
   @Override

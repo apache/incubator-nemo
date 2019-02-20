@@ -40,13 +40,15 @@ import java.util.stream.Collectors;
  * This pass effectively partitions the IRDAG by non-oneToOne edges, clones each subDAG partition using SamplingVertex
  * to process sampled data, and executes each cloned partition prior to executing the corresponding original partition.
  *
- * Suppose the IRDAG is partitioned into two sub-DAGs as follows:
- * P1 - P2
+ * Suppose the IRDAG is partitioned into three sub-DAGs as follows:
+ * P1 - P2 - P3
  *
  * Then, this pass will produce something like:
  * P1' - P1 - P2
- *          - P2' - P2
+ *          - P2' - P2 - P3
  * where Px' consists of SamplingVertex objects that clone the execution of Px.
+ * (P3 is not cloned here because it is a sink partition, and none of the outgoing edges of its vertices needs to be
+ * optimized)
  *
  * For each Px' this pass also inserts a MessageBarrierVertex, to use its data statistics for dynamically optimizing
  * the execution behaviors of Px.
@@ -77,6 +79,15 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
               .map(Edge::getSrc)
               .anyMatch(partitionAll::contains)
           ).collect(Collectors.toSet());
+
+          // Check if the partition is a sink, in which case we do not create sampling vertices
+          final boolean isSinkPartition = partitionAll.stream()
+            .flatMap(vertexInPartition -> dag.getOutgoingEdgesOf(vertexInPartition).stream())
+            .map(Edge::getDst)
+            .allMatch(partitionAll::contains);
+          if (isSinkPartition) {
+            break;
+          }
 
           // Insert sampling vertices.
           final Set<SamplingVertex> samplingVertices = partitionAll

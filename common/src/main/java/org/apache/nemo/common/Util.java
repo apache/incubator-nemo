@@ -91,13 +91,15 @@ public final class Util {
     if (edgeToClone.getPropertySnapshot().containsKey(EncoderProperty.class)) {
       clone.setProperty(edgeToClone.getPropertySnapshot().get(EncoderProperty.class));
     } else {
-      clone.setProperty(EncoderProperty.of(edgeToClone.getPropertyValue(EncoderProperty.class).get()));
+      clone.setProperty(EncoderProperty.of(edgeToClone.getPropertyValue(EncoderProperty.class)
+        .orElseThrow(IllegalStateException::new)));
     }
 
     if (edgeToClone.getPropertySnapshot().containsKey(DecoderProperty.class)) {
       clone.setProperty(edgeToClone.getPropertySnapshot().get(DecoderProperty.class));
     } else {
-      clone.setProperty(DecoderProperty.of(edgeToClone.getPropertyValue(DecoderProperty.class).get()));
+      clone.setProperty(DecoderProperty.of(edgeToClone.getPropertyValue(DecoderProperty.class)
+        .orElseThrow(IllegalStateException::new)));
     }
 
     edgeToClone.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag -> {
@@ -120,6 +122,10 @@ public final class Util {
   }
 
   /**
+   * A control edge enforces an execution ordering between the source vertex and the destination vertex.
+   * The additional output tag property of control edges is set such that no actual data element is transferred
+   * via the edges. This minimizes the run-time overhead of executing control edges.
+   *
    * @param src vertex.
    * @param dst vertex.
    * @return the control edge.

@@ -103,6 +103,11 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
   }
 
   @Override
+  public List<E> getEdges() {
+    return incomingEdges.values().stream().flatMap(List::stream).collect(Collectors.toList());
+  }
+
+  @Override
   public List<V> getRootVertices() {
     return rootVertices;
   }

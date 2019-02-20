@@ -44,21 +44,27 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
 
   /**
    * Retrieves the vertices of this DAG.
-   * @return the set of vertices.
+   * @return the list of vertices.
    * Note that the result is never null, ensured by {@link DAGBuilder}.
    */
   List<V> getVertices();
 
   /**
+   * Retrieves the edges of this DAG.
+   * @return the list of edges.
+   */
+  List<E> getEdges();
+
+  /**
    * Retrieves the root vertices of this DAG.
-   * @return the set of root vertices.
+   * @return the list of root vertices.
    */
   List<V> getRootVertices();
 
   /**
    * Retrieves the incoming edges of the given vertex.
    * @param v the subject vertex.
-   * @return the set of incoming edges to the vertex.
+   * @return the list of incoming edges to the vertex.
    * Note that the result is never null, ensured by {@link DAGBuilder}.
    */
   List<E> getIncomingEdgesOf(final V v);
@@ -66,7 +72,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
   /**
    * Retrieves the incoming edges of the given vertex.
    * @param vertexId the ID of the subject vertex.
-   * @return the set of incoming edges to the vertex.
+   * @return the list of incoming edges to the vertex.
    * Note that the result is never null, ensured by {@link DAGBuilder}.
    */
   List<E> getIncomingEdgesOf(final String vertexId);
@@ -74,7 +80,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
   /**
    * Retrieves the outgoing edges of the given vertex.
    * @param v the subject vertex.
-   * @return the set of outgoing edges to the vertex.
+   * @return the list of outgoing edges to the vertex.
    * Note that the result is never null, ensured by {@link DAGBuilder}.
    */
   List<E> getOutgoingEdgesOf(final V v);
@@ -82,7 +88,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
   /**
    * Retrieves the outgoing edges of the given vertex.
    * @param vertexId the ID of the subject vertex.
-   * @return the set of outgoing edges to the vertex.
+   * @return the list of outgoing edges to the vertex.
    * Note that the result is never null, ensured by {@link DAGBuilder}.
    */
   List<E> getOutgoingEdgesOf(final String vertexId);
