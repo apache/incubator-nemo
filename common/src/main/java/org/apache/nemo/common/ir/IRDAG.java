@@ -366,8 +366,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
   private Set<IRVertex> getSinksWithinVertexSet(final DAG<IRVertex, IREdge> dag,
                                                 final Set<IRVertex> vertexSet) {
-    LOG.info("Trying to get sinks within {}", Util.stringifyIRVertexIds(vertexSet));
-
     final Set<IRVertex> parentsOfAnotherVertex = vertexSet.stream()
       .flatMap(v -> dag.getOutgoingEdgesOf(v).stream())
       .filter(e -> vertexSet.contains(e.getDst()))
