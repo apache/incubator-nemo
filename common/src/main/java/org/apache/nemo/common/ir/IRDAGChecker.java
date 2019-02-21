@@ -29,7 +29,6 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
-import org.apache.nemo.common.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,6 +68,56 @@ public class IRDAGChecker {
     addStreamVertexCheckers();
   }
 
+  /**
+   * Applies all of the checkers on the DAG.
+   *
+   * @param underlyingDAG to check
+   * @return the result.
+   */
+  public CheckerResult doCheck(final DAG<IRVertex, IREdge> underlyingDAG) {
+    // Traverse the DAG once to run all local checkers
+    for (final IRVertex v : underlyingDAG.getTopologicalSort()) {
+      // Run per-vertex checkers
+      for (final SingleVertexChecker checker : singleVertexCheckerList) {
+        final CheckerResult result = checker.check(v);
+        if (!result.isPassed()) {
+          return result;
+        }
+      }
+
+      final List<IREdge> inEdges = underlyingDAG.getIncomingEdgesOf(v);
+      final List<IREdge> outEdges = underlyingDAG.getOutgoingEdgesOf(v);
+
+      // Run per-edge checkers
+      for (final IREdge inEdge : inEdges) {
+        for (final SingleEdgeChecker checker : singleEdgeCheckerList) {
+          final CheckerResult result = checker.check(inEdge);
+          if (!result.isPassed()) {
+            return result;
+          }
+        }
+      }
+
+      // Run neighbor checkers
+      for (final NeighborChecker checker : neighborCheckerList) {
+        final CheckerResult result = checker.check(v, inEdges, outEdges);
+        if (!result.isPassed()) {
+          return result;
+        }
+      }
+    }
+
+    // Run global checkers
+    for (final GlobalDAGChecker checker : globalDAGCheckerList) {
+      final CheckerResult result = checker.check(underlyingDAG);
+      if (!result.isPassed()) {
+        return result;
+      }
+    }
+
+    return success();
+  }
+
   ///////////////////////////// Checker interfaces
 
   /**
@@ -101,13 +150,7 @@ public class IRDAGChecker {
     CheckerResult check(final DAG<IRVertex, IREdge> irdag);
   }
 
-  ///////////////////////////// Set up
-
-  private Set<Integer> getZeroToNSet(final int n) {
-    return IntStream.range(0, n)
-      .boxed()
-      .collect(Collectors.toSet());
-  }
+  ///////////////////////////// Checker implementations
 
   /**
    * Parallelism-related checkers.
@@ -257,17 +300,28 @@ public class IRDAGChecker {
     neighborCheckerList.add(shuffleChecker);
   }
 
-  /**
-   * Parallelism-related checkers.
-   */
   void addMessageBarrierCheckers() {
     // Check vertices to optimize
     // Message Ids and same additional-output
-    //
+    // MessageIdProperty;
   }
 
   void addStreamVertexCheckers() {
+    // Encoder, decoder?
+  }
 
+  void addLoopVertexCheckers() {
+    // check groupId, for same-additional output
+    // DuplicateEdgeGroupProperty;
+  }
+
+  void addCacheCheckers() {
+    // IgnoreSchedulingTempDataReceiverProperty;
+    // CacheIDProperty;
+  }
+
+  void addScheduleGroupCheckers() {
+    // ScheduleGroupProperty;
   }
 
   void addEncodingCompressionCheckers() {
@@ -289,7 +343,7 @@ public class IRDAGChecker {
     });
     neighborCheckerList.add(additionalOutputEncoder);
 
-    // TODO: check single-edge encoder/decoder symmetry
+    // TODO #342: Check Encoder/Decoder symmetry
 
     final SingleEdgeChecker compressAndDecompress = (edge -> {
       if (!(edge.getDst() instanceof StreamVertex)) {
@@ -301,129 +355,16 @@ public class IRDAGChecker {
       return success();
     });
     singleEdgeCheckerList.add(compressAndDecompress);
-
-    // How to check symmetry?
-    // encoder and decoder must be symmetric
-    // compressor and decompressor must be asymmetric
-    // key encoder and decoder must be symmetric
   }
 
-  /**
-   * Applies all of the checkers on the DAG.
-   *
-   * @param underlyingDAG to check
-   * @return the result.
-   */
-  public CheckerResult doCheck(final DAG<IRVertex, IREdge> underlyingDAG) {
-    for (final IRVertex v : underlyingDAG.getTopologicalSort()) {
-      // Run per-vertex checkers
-      for (final SingleVertexChecker checker : singleVertexCheckerList) {
-        final CheckerResult result = checker.check(v);
-        if (!result.isPassed()) {
-          return result;
-        }
-      }
 
-      final List<IREdge> inEdges = underlyingDAG.getIncomingEdgesOf(v);
-      final List<IREdge> outEdges = underlyingDAG.getOutgoingEdgesOf(v);
+  ///////////////////////////// Private helper methods
 
-      // Run per-edge checkers
-      for (final IREdge inEdge : inEdges) {
-        for (final SingleEdgeChecker checker : singleEdgeCheckerList) {
-          final CheckerResult result = checker.check(inEdge);
-          if (!result.isPassed()) {
-            return result;
-          }
-        }
-      }
-
-      // Run neighbor edges
-      for (final NeighborChecker checker : neighborCheckerList) {
-        final CheckerResult result = checker.check(v, inEdges, outEdges);
-        if (!result.isPassed()) {
-          return result;
-        }
-      }
-    }
-
-    // Run global checkers
-    for (final GlobalDAGChecker checker : globalDAGCheckerList) {
-      final CheckerResult result = checker.check(underlyingDAG);
-      if (!result.isPassed()) {
-        return result;
-      }
-    }
-
-    return success();
+  private Set<Integer> getZeroToNSet(final int n) {
+    return IntStream.range(0, n)
+      .boxed()
+      .collect(Collectors.toSet());
   }
-
-  /*
-
-  ////////////////////////////////////////// Execution properties
-
-  public void testVertexEPs() {
-
-    //////////////// User-configurable
-
-    // Uses task indices
-    ParallelismProperty;
-    ResourceSiteProperty;
-    ResourceAntiAffinityProperty;
-
-    // Okay?
-    ClonedSchedulingProperty;
-    ResourceLocalityProperty;
-    ResourcePriorityProperty;
-    ResourceSlotProperty;
-
-    //////////////// Configured by Nemo
-
-    // Ordering
-    ScheduleGroupProperty;
-
-    // Unknown
-    IgnoreSchedulingTempDataReceiverProperty;
-
-    // Dyn Opt
-    MessageIdProperty;
-  }
-
-  public void testEdgeEPs() {
-
-    //////////////// User-configurable
-
-    // Okay?
-    DataFlowProperty;
-    DataPersistenceProperty;
-    DataStoreProperty;
-
-    // Uses task indices
-    PartitionerProperty;
-    PartitionSetProperty;
-
-    //////////////// Configured by Nemo
-
-    // Duplicate (should be merged into one)
-    DuplicateEdgeGroupProperty;
-
-    // Semantics: Encoder/decoders, compressors, commpattern
-    CommunicationPatternProperty;
-    DecoderProperty;
-    DecompressionProperty;
-    EncoderProperty;
-    CompressionProperty;
-    AdditionalOutputTagProperty;
-
-    // Cache
-    CacheIDProperty;
-
-    // Key related (probably should be just one property)
-    KeyDecoderProperty;
-    KeyEncoderProperty;
-    KeyExtractorProperty;
-  }
-
-  */
 
   ///////////////////////////// Successes and Failures
 
@@ -472,7 +413,7 @@ public class IRDAGChecker {
                         final IRVertex v,
                         final Class... eps) {
     final List<Optional> epsList = Arrays.stream(eps)
-      .map(ep -> (Class<VertexExecutionProperty<Serializable>>)ep)
+      .map(ep -> (Class<VertexExecutionProperty<Serializable>>) ep)
       .map(ep -> v.getPropertyValue(ep))
       .collect(Collectors.toList());
     final boolean isMissingValue = epsList.stream().anyMatch(optional -> !((Optional) optional).isPresent());
@@ -487,7 +428,7 @@ public class IRDAGChecker {
                         final IREdge e,
                         final Class... eps) {
     final List<Optional> epsList = Arrays.stream(eps)
-      .map(ep -> (Class<EdgeExecutionProperty<Serializable>>)ep)
+      .map(ep -> (Class<EdgeExecutionProperty<Serializable>>) ep)
       .map(ep -> e.getPropertyValue(ep)).collect(Collectors.toList());
     final boolean isMissingValue = epsList.stream().anyMatch(optional -> !((Optional) optional).isPresent());
     if (isMissingValue) {
