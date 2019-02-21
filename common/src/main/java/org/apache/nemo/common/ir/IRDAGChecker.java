@@ -28,6 +28,7 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -268,8 +269,6 @@ public class IRDAGChecker {
       return success();
     });
     neighborCheckerList.add(partitionerAndPartitionSet);
-
-    // partition set
   }
 
   void addShuffleEdgeCheckers() {
@@ -304,9 +303,26 @@ public class IRDAGChecker {
   }
 
   void addMessageBarrierVertexCheckers() {
-    // Check vertices to optimize
-    // Message Ids and same additional-output
-    // MessageIdProperty;
+    final GlobalDAGChecker messageIds = (dag -> {
+      final long numMessageAggregatorVertices = dag.getVertices()
+        .stream()
+        .filter(v -> v instanceof MessageAggregatorVertex)
+        .count();
+      final List<Integer> vIds = dag.getVertices().stream().map(v -> v.getPropertyValue(MessageIdProperty.class));
+      final Set<Integer> eIds = dag.getEdges().stream().map(e -> e.getPropertyValue(MessageIdProperty.class));
+
+      if (numMessageAggregatorVertices != vIds.size()) {
+        return failure("Num vertex-messageId mismatch: " + numMessageAggregatorVertices + " != " + vIds.size());
+      }
+      if (vIds.stream().distinct().count() != vIds.size()) {
+        return failure("Duplicate vertex message ids: " + vIds.toString());
+      }
+      if (!new HashSet<>(vIds).equals(eIds)) {
+        return failure("Vertex and edge message id mismatch: " + vIds.toString() + " / " + eIds.toString());
+      }
+
+      return success();
+    });
   }
 
   void addStreamVertexCheckers() {

@@ -101,8 +101,18 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   ////////////////////////////////////////////////// Methods for reshaping the DAG topology.
 
   public void delete(final IRVertex irVertex) {
-    if (!(irVertex instanceof StreamVertex || irVertex instanceof StreamVertex)) {
-      // unsupported vertex
+    // TODO assertExistence()
+    if (irVertex instanceof StreamVertex) {
+      // Base case: can be deleted immediately
+
+      // Create a completely new DAG with the vertex deleted.
+      final DAGBuilder builder = new DAGBuilder();
+
+    } else if (irVertex instanceof MessageAggregatorVertex) {
+      // recursively call delete()
+
+    } else {
+      throw new IllegalArgumentException(irVertex.getId());
     }
   }
 

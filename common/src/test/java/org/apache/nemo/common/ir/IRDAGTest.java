@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.common.ir;
 
+import com.google.common.collect.Sets;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
@@ -28,6 +29,8 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
@@ -226,11 +229,10 @@ public class IRDAGTest {
   @Test
   public void testStreamVertex() {
     final StreamVertex svOne = new StreamVertex();
-    final StreamVertex svTwo = new StreamVertex();
-
     irdag.insert(svOne, oneToOneEdge);
     mustPass();
 
+    final StreamVertex svTwo = new StreamVertex();
     irdag.insert(svTwo, shuffleEdge);
     mustPass();
 
@@ -241,33 +243,20 @@ public class IRDAGTest {
     mustPass();
   }
 
-  /*
   @Test
   public void testMessageBarrierVertex() {
-    final MessageBarrierVertex mbOne = new MessageBarrierVertex();
-    final MessageBarrierVertex mbTwo = new MessageBarrierVertex();
-    final MessageBarrierVertex mbThree = new MessageBarrierVertex();
-
-    irdag.insert(mbOne, oneToOneEdge);
+    final MessageAggregatorVertex maOne = insertNewMessageBarrierVertex(irdag, oneToOneEdge);
     mustPass();
 
-    irdag.insert(mbTwo, shuffleEdge);
+    final MessageAggregatorVertex maTwo = insertNewMessageBarrierVertex(irdag, shuffleEdge);
     mustPass();
 
-    // stream again with the new edge
-    irdag.insert(mbThree, shuffleEdge);
+    irdag.delete(maTwo);
     mustPass();
 
-    irdag.delete(mbTwo);
-    mustPass();
-
-    irdag.delete(mbThree);
-    mustPass();
-
-    irdag.delete(mbOne);
+    irdag.delete(maOne);
     mustPass();
   }
-  */
 
   private Random random = new Random(0); // deterministic seed for reproducibility
 
@@ -321,6 +310,18 @@ public class IRDAGTest {
   }
 
   /////////////////////////// Random property generation
+
+  private MessageAggregatorVertex insertNewMessageBarrierVertex(final IRDAG dag, final IREdge edgeToGetStatisticsOf) {
+    final MessageBarrierVertex mb = new MessageBarrierVertex<>((l, r) -> null);
+    final MessageAggregatorVertex ma = new MessageAggregatorVertex<>(new Object(), (l, r) -> null);
+    dag.insert(
+      mb,
+      ma,
+      EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY),
+      DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY),
+      Sets.newHashSet(edgeToGetStatisticsOf));
+    return ma;
+  }
 
 
   private IREdge selectRandomEdge() {
