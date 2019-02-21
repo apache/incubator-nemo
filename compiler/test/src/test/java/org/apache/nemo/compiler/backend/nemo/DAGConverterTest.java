@@ -102,8 +102,8 @@ public final class DAGConverterTest {
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage1).size(), 1);
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage2).size(), 0);
 
-    assertEquals(3, physicalStage1.getParallelism());
-    assertEquals(2, physicalStage2.getParallelism());
+    assertEquals(3, physicalStage1.getTaskIndices().size());
+    assertEquals(2, physicalStage2.getTaskIndices().size());
   }
 
   @Test

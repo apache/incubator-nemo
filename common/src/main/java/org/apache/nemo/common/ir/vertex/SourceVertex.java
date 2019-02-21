@@ -28,7 +28,6 @@ import java.util.List;
  * @param <O> output type.
  */
 public abstract class SourceVertex<O> extends IRVertex {
-
   /**
    * Constructor for SourceVertex.
    */
@@ -49,6 +48,7 @@ public abstract class SourceVertex<O> extends IRVertex {
   public SourceVertex(final SourceVertex that) {
     super(that);
   }
+
   /**
    * Gets parallel readables.
    *

@@ -30,7 +30,6 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
-import org.junit.Test;
 
 import java.util.Iterator;
 
@@ -45,8 +44,10 @@ public final class PhysicalPlanGeneratorTest {
   /**
    * Test splitting ScheduleGroups by Pull StageEdges.
    * @throws Exception exceptions on the way
+   *
+   * TODO #337: IRDAG Unit Tests
+   * Move this test to IRDAG unit tests.
    */
-  @Test
   public void testSplitScheduleGroupByPullStageEdges() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
     final PhysicalPlanGenerator physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
