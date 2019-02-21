@@ -306,7 +306,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
     // Get the original vertices
     final Map<IRVertex, IRVertex> originalToSampling = samplingVertices.stream()
-      .collect(Collectors.toMap(SamplingVertex::getOriginalVertex, Function.identity()));
+      .collect(Collectors.toMap(sv -> modifiedDAG.getVertexById(sv.getOriginalVertexId()), Function.identity()));
     final Set<IREdge> inEdgesOfOriginals = originalToSampling.keySet()
       .stream()
       .flatMap(ov -> modifiedDAG.getIncomingEdgesOf(ov).stream())

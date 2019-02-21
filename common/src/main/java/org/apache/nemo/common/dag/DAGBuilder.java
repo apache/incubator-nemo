@@ -227,7 +227,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
         .filter(v -> v instanceof IRVertex);
     // They should all match SourceVertex
     if (!(verticesToObserve.get().allMatch(v -> (v instanceof SourceVertex)
-      || (v instanceof SamplingVertex && ((SamplingVertex) v).getOriginalVertex() instanceof SourceVertex)))) {
+      || (v instanceof SamplingVertex && ((SamplingVertex) v).getCloneOfOriginalVertex() instanceof SourceVertex)))) {
       final String problematicVertices = verticesToObserve.get()
           .filter(v -> !(v instanceof SourceVertex))
           .map(V::getId)

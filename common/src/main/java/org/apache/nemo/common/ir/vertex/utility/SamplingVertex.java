@@ -47,18 +47,31 @@ public final class SamplingVertex extends IRVertex {
     this.originalVertex = originalVertex;
     this.cloneOfOriginalVertex = originalVertex.getClone();
     this.desiredSampleRate = desiredSampleRate;
+
+    // Copy execution properties.
+    originalVertex.copyExecutionPropertiesTo(cloneOfOriginalVertex);
     originalVertex.copyExecutionPropertiesTo(this);
   }
 
-  public IRVertex getOriginalVertex() {
-    return originalVertex;
+  /**
+   * @return the id of the original vertex for reference.
+   */
+  public String getOriginalVertexId() {
+    return originalVertex.getId();
   }
 
+  /**
+   * @return the clone of the original vertex.
+   * This clone is intended to be used during the actual execution, as the sampling vertex itself is not executable
+   * and the original vertex should not be executed again.
+   */
   public IRVertex getCloneOfOriginalVertex() {
-    this.copyExecutionPropertiesTo(cloneOfOriginalVertex);
     return cloneOfOriginalVertex;
   }
 
+  /**
+   * @return the desired sample rate.
+   */
   public float getDesiredSampleRate() {
     return desiredSampleRate;
   }
@@ -89,7 +102,7 @@ public final class SamplingVertex extends IRVertex {
     sb.append("SamplingVertex(desiredSampleRate:");
     sb.append(String.valueOf(desiredSampleRate));
     sb.append(")[");
-    sb.append(originalVertex.toString());
+    sb.append(originalVertex);
     sb.append("]");
     return sb.toString();
   }

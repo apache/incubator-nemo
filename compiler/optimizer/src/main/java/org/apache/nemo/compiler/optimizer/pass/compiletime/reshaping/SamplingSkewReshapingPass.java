@@ -40,12 +40,12 @@ import java.util.stream.Collectors;
  * This pass effectively partitions the IRDAG by non-oneToOne edges, clones each subDAG partition using SamplingVertex
  * to process sampled data, and executes each cloned partition prior to executing the corresponding original partition.
  *
- * Suppose the IRDAG is partitioned into three sub-DAGs as follows:
+ * Suppose the IRDAG is partitioned into three sub-DAG partitions with shuffle dependencies as follows:
  * P1 - P2 - P3
  *
  * Then, this pass will produce something like:
- * P1' - P1 - P2
- *          - P2' - P2 - P3
+ * P1' - P1
+ *     - P2' - P2 - P3
  * where Px' consists of SamplingVertex objects that clone the execution of Px.
  * (P3 is not cloned here because it is a sink partition, and none of the outgoing edges of its vertices needs to be
  * optimized)
@@ -100,7 +100,7 @@ public final class SamplingSkewReshapingPass extends ReshapingPass {
           // We first obtain a clonedShuffleEdge to analyze the data statistics of the shuffle outputs of
           // the sampling vertex right before shuffle.
           final SamplingVertex rightBeforeShuffle = samplingVertices.stream()
-            .filter(sv -> sv.getOriginalVertex().equals(e.getSrc()))
+            .filter(sv -> sv.getOriginalVertexId().equals(e.getSrc().getId()))
             .findFirst()
             .orElseThrow(() -> new IllegalStateException());
           final IREdge clonedShuffleEdge = rightBeforeShuffle.getCloneOfOriginalEdge(e);
