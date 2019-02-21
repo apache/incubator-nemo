@@ -66,6 +66,9 @@ public class IRDAGChecker {
     addEncodingCompressionCheckers();
     addMessageBarrierCheckers();
     addStreamVertexCheckers();
+    addLoopVertexCheckers();
+    addScheduleGroupCheckers();
+    addCacheCheckers();
   }
 
   /**
@@ -311,8 +314,19 @@ public class IRDAGChecker {
   }
 
   void addLoopVertexCheckers() {
-    // check groupId, for same-additional output
-    // DuplicateEdgeGroupProperty;
+    final NeighborChecker duplicateEdgeGroupId = ((v, inEdges, outEdges) -> {
+      final Map<Optional<String>, List<IREdge>> tagToOutEdges = groupOutEdgesByAdditionalOutputTag(outEdges);
+      for (final List<IREdge> sameTagOutEdges : tagToOutEdges.values()) {
+        if (sameTagOutEdges.stream()
+          .map(e -> e.getPropertyValue(DuplicateEdgeGroupProperty.class)
+            .map(DuplicateEdgeGroupPropertyValue::getGroupId))
+          .distinct().count() > 1) {
+          return failure("Different duplicate edge group ids in: " + sameTagOutEdges.toString());
+        }
+      }
+      return success();
+    });
+    neighborCheckerList.add(duplicateEdgeGroupId);
   }
 
   void addCacheCheckers() {
@@ -321,15 +335,26 @@ public class IRDAGChecker {
   }
 
   void addScheduleGroupCheckers() {
-    // ScheduleGroupProperty;
+    final GlobalDAGChecker scheduleGroupTopoOrdering = (irdag -> {
+      int lastSeenScheduleGroup = Integer.MIN_VALUE;
+      for (final IRVertex v : irdag.getTopologicalSort()) {
+        if (v.getPropertyValue(ScheduleGroupProperty.class).isPresent()) {
+          final int currentScheduleGroup = v.getPropertyValue(ScheduleGroupProperty.class).get();
+          if (currentScheduleGroup < lastSeenScheduleGroup) {
+            return failure("Smaller than the last seen ScheduleGroup", v, ScheduleGroupProperty.class);
+          } else {
+            lastSeenScheduleGroup = currentScheduleGroup;
+          }
+        }
+      }
+      return success();
+    });
+    globalDAGCheckerList.add(scheduleGroupTopoOrdering);
   }
 
   void addEncodingCompressionCheckers() {
     final NeighborChecker additionalOutputEncoder = ((irVertex, inEdges, outEdges) -> {
-      final Map<Optional<String>, List<IREdge>> tagToOutEdges = outEdges.stream().collect(Collectors.groupingBy(
-        (outEdge -> outEdge.getPropertyValue(AdditionalOutputTagProperty.class)),
-        Collectors.toList()));
-      for (final List<IREdge> sameTagOutEdges : tagToOutEdges.values()) {
+      for (final List<IREdge> sameTagOutEdges : groupOutEdgesByAdditionalOutputTag(outEdges).values()) {
         if (1 != sameTagOutEdges.stream()
           .map(e -> e.getPropertyValue(EncoderProperty.class).get().getClass()).distinct().count()) {
           return failure("Incompatible encoders in " + sameTagOutEdges.toString());
@@ -359,6 +384,12 @@ public class IRDAGChecker {
 
 
   ///////////////////////////// Private helper methods
+
+  private Map<Optional<String>, List<IREdge>> groupOutEdgesByAdditionalOutputTag(final List<IREdge> outEdges) {
+    return outEdges.stream().collect(Collectors.groupingBy(
+      (outEdge -> outEdge.getPropertyValue(AdditionalOutputTagProperty.class)),
+      Collectors.toList()));
+  }
 
   private Set<Integer> getZeroToNSet(final int n) {
     return IntStream.range(0, n)
