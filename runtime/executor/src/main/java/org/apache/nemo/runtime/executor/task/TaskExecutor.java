@@ -558,8 +558,6 @@ public final class TaskExecutor {
             final Object element = dataFetcher.fetchDataElement();
 
             if (element.equals(NoElement.INSTANCE)) {
-              availableIterator.remove();
-              pendingFetchers.add(dataFetcher);
               continue;
             }
 
