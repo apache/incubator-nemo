@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ServerlessExecutorProvider;
+import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;

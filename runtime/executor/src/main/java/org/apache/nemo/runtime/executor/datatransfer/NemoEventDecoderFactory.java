@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * A factory for NemoEventDecoder.
+ * A factory for OffloadingEventDecoder.
  */
 public final class NemoEventDecoderFactory implements DecoderFactory {
   private static final Logger LOG = LoggerFactory.getLogger(NemoEventDecoderFactory.class.getName());

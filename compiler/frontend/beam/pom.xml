@@ -41,11 +41,11 @@ under the License.
             <artifactId>nemo-common</artifactId>
             <version>${project.version}</version>
         </dependency>
-      <dependency>
-            <groupId>org.apache.nemo</groupId>
-            <artifactId>offloading-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
+      <!--<dependency>-->
+            <!--<groupId>org.apache.nemo</groupId>-->
+            <!--<artifactId>offloading-common</artifactId>-->
+            <!--<version>${project.version}</version>-->
+        <!--</dependency>-->
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-sdks-java-core</artifactId>
@@ -53,17 +53,7 @@ under the License.
         </dependency>
 
       <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk -->
-      <dependency>
-        <groupId>org.apache.beam</groupId>
-        <artifactId>beam-sdks-java-io-hadoop-input-format</artifactId>
-        <version>${beam.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.hadoop</groupId>
-        <artifactId>hadoop-mapreduce-client-core</artifactId>
-        <version>${hadoop.version}</version>
-        <scope>provided</scope>
-      </dependency>
+
 
     </dependencies>
 </project>

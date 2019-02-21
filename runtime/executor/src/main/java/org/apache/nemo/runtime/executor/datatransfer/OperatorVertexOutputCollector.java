@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 /**
- * OutputCollector implementation.
+ * OffloadingOutputCollector implementation.
  * This emits four types of outputs
  * 1) internal main outputs: this output becomes the input of internal Transforms
  * 2) internal additional outputs: this additional output becomes the input of internal Transforms

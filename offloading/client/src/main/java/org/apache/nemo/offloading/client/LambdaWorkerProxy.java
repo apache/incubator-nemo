@@ -2,40 +2,33 @@ package org.apache.nemo.offloading.client;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import org.apache.nemo.common.EventHandler;
-import org.apache.nemo.common.NemoEvent;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.coder.DecoderFactory;
-import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.common.Constants;
+import org.apache.nemo.offloading.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.util.Optional;
 import java.util.concurrent.*;
 
 public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaWorkerProxy.class.getName());
   private volatile Channel channel;
+  private volatile int dataProcessingCnt = 0;
   private volatile boolean finished = false;
-  private final BlockingQueue<NemoEvent> endQueue;
-  private final ConcurrentMap<Channel, EventHandler<NemoEvent>> channelEventHandlerMap;
+  private final BlockingQueue<OffloadingEvent> endQueue;
+  private final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap;
 
-  //private final EncoderFactory inputEncoderFactory;
-  //private final DecoderFactory outputDecoderFactory;
+  //private final OffloadingEncoder inputEncoderFactory;
+  //private final OffloadingDecoder outputDecoderFactory;
 
 
-  //private EncoderFactory.Encoder encoder;
+  //private OffloadingEncoder.Encoder encoder;
 
   private final OffloadingWorkerFactory offloadingWorkerFactory;
 
-  private final Future<Channel> channelFuture;
+  private final Future<Pair<Channel, OffloadingEvent>> channelFuture;
 
   // two data stream: when channel is null, we buffer byte in byte array output
   // otherwise, we use byteBufOutputStream directly.
@@ -50,11 +43,11 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   private Pair<ByteBuf, Integer> currentProcessingInput = null;
 
 
-  public LambdaWorkerProxy(final Future<Channel> channelFuture,
+  public LambdaWorkerProxy(final Future<Pair<Channel, OffloadingEvent>> channelFuture,
                            final OffloadingWorkerFactory offloadingWorkerFactory,
-                           final ConcurrentMap<Channel, EventHandler<NemoEvent>> channelEventHandlerMap,
-                           final EncoderFactory inputEncoderFactory,
-                           final DecoderFactory outputDecoderFactory) {
+                           final ConcurrentMap<Channel, EventHandler<OffloadingEvent>> channelEventHandlerMap,
+                           final OffloadingEncoder offloadingEncoder,
+                           final OffloadingDecoder<O> outputDecoder) {
     this.channelFuture = channelFuture;
     this.offloadingWorkerFactory = offloadingWorkerFactory;
 
@@ -68,7 +61,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
     final ByteBuf byteBuffer = Unpooled.directBuffer();
     this.byteBufOutputStream = new ByteBufOutputStream(byteBuffer);
     try {
-      byteBufOutputStream.writeInt(NemoEvent.Type.DATA.ordinal());
+      byteBufOutputStream.writeInt(OffloadingEvent.Type.DATA.ordinal());
       this.encoder = inputEncoderFactory.create(byteBufOutputStream);
     } catch (IOException e) {
       e.printStackTrace();
@@ -78,37 +71,53 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
     channelThread.execute(() -> {
       try {
-        channel = channelFuture.get();
-        channelEventHandlerMap.put(channel, new EventHandler<NemoEvent>() {
+        final Pair<Channel, OffloadingEvent> pair = channelFuture.get();
+        channel = pair.left();
+        final ByteBuf byteBuf = pair.right().getByteBuf();
+        final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+        final int cnt;
+        try {
+          cnt = bis.readInt();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+        dataProcessingCnt = cnt;
+        byteBuf.release();
+
+        channelEventHandlerMap.put(channel, new EventHandler<OffloadingEvent>() {
           @Override
-          public void onNext(NemoEvent msg) {
+          public void onNext(OffloadingEvent msg) {
             switch (msg.getType()) {
               case RESULT:
                 final ByteBufInputStream bis = new ByteBufInputStream(msg.getByteBuf());
                 try {
                   final int hasInstance = bis.readByte();
                   final ByteBuf curInputBuf = currentProcessingInput.left();
-                  currentProcessingInput = null;
-                  curInputBuf.release();
-
+                    currentProcessingInput = null;
+                    curInputBuf.release();
 
                   if (hasInstance == 0) {
                     final int resultId = bis.readInt();
-                    LOG.info("Receive data id {}", resultId);
+                    dataProcessingCnt = bis.readInt();
                     //LOG.info("Receive result of data {}, {}", resultId, null);
                     resultMap.put(resultId, Optional.empty());
                     pendingData.remove(resultId);
-                    msg.getByteBuf().release();
+                    LOG.info("Receive data id {}, processing cnt: {}, pendingData: {}", resultId, dataProcessingCnt,
+                      pendingData);
                   } else {
-                    final DecoderFactory.Decoder<O> decoder = outputDecoderFactory.create(bis);
-                    final O data = decoder.decode();
+                    final O data = outputDecoder.decode(bis);
                     final int resultId = bis.readInt();
-                    LOG.info("Receive data id {}", resultId);
+                    dataProcessingCnt = bis.readInt();
                     //LOG.info("Receive result of data {}, {}", resultId, data);
                     resultMap.put(resultId, Optional.of(data));
                     pendingData.remove(resultId);
-                    msg.getByteBuf().release();
+                    LOG.info("Receive data id {}, processing cnt: {}, pendingData: {}", resultId, dataProcessingCnt,
+                      pendingData);
                   }
+
+
+                  msg.getByteBuf().release();
                 } catch (IOException e) {
                   e.printStackTrace();
                   throw new RuntimeException();
@@ -191,12 +200,24 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   }
 
   @Override
-  public Future<Optional<O>> execute(final ByteBuf input, final int dataId) {
-    input.writeInt(dataId);
-    pendingData.put(dataId, true);
+  public int getDataProcessingCnt() {
+    return dataProcessingCnt;
+  }
 
+  @Override
+  public Future<Optional<O>> execute(final ByteBuf input, final int dataId,
+                                     final boolean speculative) {
     // for future use (speculative execution)
     input.retain();
+
+    if (!speculative) {
+      input.writeInt(dataId);
+    } else {
+      input.retain();
+    }
+
+    pendingData.put(dataId, true);
+
 
     if (currentProcessingInput != null) {
       throw new RuntimeException("Current processing input should be null");
@@ -206,7 +227,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
     if (channel != null) {
       LOG.info("Write data id: {}", dataId);
-      final ChannelFuture channelFuture = channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, input));
+      final ChannelFuture channelFuture = channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, input));
       return new Future<Optional<O>>() {
 
         private Optional<O> result = null;
@@ -223,15 +244,6 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
         @Override
         public boolean isDone() {
-
-          if (channelFuture.isDone()) {
-            if (!channelFuture.isSuccess()) {
-              // retry output emission
-              LOG.warn("Data sending exception of dataid {}", dataId);
-              throw new RuntimeException("Data sending exception of dataid " + dataId);
-            }
-          }
-
           if (result == null) {
             result = resultMap.get(dataId);
             if (result == null) {
@@ -276,9 +288,9 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
     try {
       if (channel != null) {
         byteBufOutputStream.close();
-        channel.write(new NemoEvent(NemoEvent.Type.DATA, byteBufOutputStream.buffer()));
+        channel.write(new OffloadingEvent(OffloadingEvent.Type.DATA, byteBufOutputStream.buffer()));
         byteBufOutputStream = new ByteBufOutputStream(channel.alloc().ioBuffer());
-        byteBufOutputStream.writeInt(NemoEvent.Type.DATA.ordinal());
+        byteBufOutputStream.writeInt(OffloadingEvent.Type.DATA.ordinal());
         encoder = inputEncoderFactory.create(byteBufOutputStream);
       }
     } catch (IOException e) {
@@ -300,7 +312,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
     if (channel != null) {
       //byteBufOutputStream.buffer().release();
-      channel.writeAndFlush(new NemoEvent(NemoEvent.Type.END, new byte[0], 0));
+      channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
     } else {
       throw new RuntimeException("Channel cannot be null when finishOffloading");
       /*
@@ -314,8 +326,8 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
       }
 
       // send buffered data
-      channel.writeAndFlush(new NemoEvent(NemoEvent.Type.DATA, byteBufOutputStream.buffer()));
-      channel.writeAndFlush(new NemoEvent(NemoEvent.Type.END, new byte[0], 0));
+      channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, byteBufOutputStream.buffer()));
+      channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
       */
     }
 

@@ -35,7 +35,6 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.beam.sdk.values.KV;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -121,6 +120,8 @@ public final class EmptyComponents {
   static class DummyBeamKeyExtractor implements KeyExtractor {
     @Override
     public Object extractKey(final Object element) {
+      return null;
+      /*
       if (element instanceof KV) {
         // Handle null keys, since Beam allows KV with null keys.
         final Object key = ((KV) element).getKey();
@@ -128,6 +129,7 @@ public final class EmptyComponents {
       } else {
         return element;
       }
+      */
     }
   }
 

@@ -28,7 +28,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * EncoderFactory for side inputs.
+ * OffloadingEncoder for side inputs.
  * @param <T> type of the side input value.
  */
 public final class SideInputCoder<T> extends StructuredCoder<SideInputElement<T>> {

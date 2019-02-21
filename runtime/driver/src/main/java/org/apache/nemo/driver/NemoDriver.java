@@ -19,7 +19,7 @@
 package org.apache.nemo.driver;
 
 import org.apache.nemo.offloading.client.OffloadingWorkerFactory;
-import org.apache.nemo.common.ServerlessExecutorProvider;
+import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.conf.JobConf;

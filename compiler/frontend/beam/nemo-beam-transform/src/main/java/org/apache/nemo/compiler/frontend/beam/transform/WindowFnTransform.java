@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
-import com.google.common.collect.Iterables;
+import org.apache.beam.repackaged.beam_runners_core_construction_java.com.google.common.collect.Iterables;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;

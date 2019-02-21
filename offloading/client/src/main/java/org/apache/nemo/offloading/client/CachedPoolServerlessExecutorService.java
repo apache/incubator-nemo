@@ -3,15 +3,13 @@ package org.apache.nemo.offloading.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
-import org.apache.nemo.common.*;
-import org.apache.nemo.common.coder.EncoderFactory;
+import io.netty.util.IllegalReferenceCountException;
+import org.apache.nemo.offloading.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.lang.ref.Reference;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -21,7 +19,6 @@ import java.util.concurrent.atomic.AtomicLong;
  * @param <I>
  * @param <O>
  */
-@NotThreadSafe
 final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecutorService<I> {
   private static final Logger LOG = LoggerFactory.getLogger(CachedPoolServerlessExecutorService.class.getName());
   private final OffloadingWorkerFactory workerFactory;
@@ -40,14 +37,12 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   private final EventHandler<O> eventHandler;
 
-  private final BlockingQueue<ByteBuf> dataBufferQueue;
+  private final BlockingQueue<Pair<ByteBuf, Integer>> dataBufferQueue;
 
   //private final PriorityBlockingQueue<Pair<Long, OffloadingWorker>> readyWorkers;
 
   private final BlockingQueue<PendingOutput<O>> outputQueue;
 
-  // key: data id, val: # of speculative executions
-  private final Map<Integer, Integer> speculativeDataCounterMap;
   // key: data id, val: true (if the data is already processed by a worker)
   private final Map<Integer, Boolean> speculativeDataProcessedMap;
 
@@ -61,6 +56,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   private long totalProcessingTime = 0;
   private int processingCnt = 0;
 
+  private int bufferedCnt = 0;
+  private int addedOutput = 0;
+
+  final AtomicLong st = new AtomicLong(System.currentTimeMillis());
+
   CachedPoolServerlessExecutorService(
     final OffloadingWorkerFactory workerFactory,
     final OffloadingTransform offloadingTransform,
@@ -70,7 +70,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     LOG.info("Start cached pool serverless executor service");
 
     this.workerFactory = workerFactory;
-    this.speculativeDataCounterMap = new HashMap<>();
     this.speculativeDataProcessedMap = new HashMap<>();
     this.initializingWorkers = new LinkedList<>();
     this.runningWorkers = new LinkedList<>();
@@ -86,7 +85,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     this.outputQueue = new LinkedBlockingQueue<>();
 
 
-    final AtomicLong st = new AtomicLong(System.currentTimeMillis());
+
     // schedule init/active worker
     this.scheduler.scheduleAtFixedRate(() -> {
 
@@ -116,6 +115,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
       try {
         // initializing worker -> running workers
+
         synchronized (initializingWorkers) {
           final Iterator<Pair<Long, OffloadingWorker>> iterator = initializingWorkers.iterator();
           while (iterator.hasNext()) {
@@ -130,7 +130,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           }
         }
 
-        // Reschedule running worker if it becomes ready
+        outputEmittion();
+
+        long curTime = System.currentTimeMillis();
         final List<OffloadingWorker> readyWorkers = new ArrayList<>(runningWorkers.size());
         final Iterator<Pair<Long, OffloadingWorker>> iterator = runningWorkers.iterator();
         while (iterator.hasNext()) {
@@ -138,26 +140,82 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           if (pair.right().isReady()) {
             iterator.remove();
             readyWorkers.add(pair.right());
+
+            totalProcessingTime += (curTime - pair.left());
+            processingCnt += 1;
+
+          } else if (isOutputEmitted(pair.right())) {
+            // the output is already emitted
+            // just finish this worker
+            iterator.remove();
+            final Pair<ByteBuf, Integer> data = pair.right().getCurrentProcessingInput();
+
+            if (data == null) {
+              // this is end
+              readyWorkers.add(pair.right());
+
+              totalProcessingTime += (curTime - pair.left());
+              processingCnt += 1;
+
+            } else {
+              final int dataId = data.right();
+              LOG.info("Reject execution for data: {}", dataId);
+              finishedWorkers += 1;
+              pair.right().finishOffloading();
+            }
           }
         }
 
-        // Reschedule ready workers
         readyWorkers.forEach(readyWorker -> {
           executeData(readyWorker);
         });
 
-
-        outputEmittion();
         //speculativeExecution();
+        if (initializingWorkers.isEmpty() &&
+          (finishedWorkers / (double) createdWorkers) > 0.6) {
+          curTime = System.currentTimeMillis();
+          final long avgTime = totalProcessingTime / processingCnt;
+          for (final Pair<Long, OffloadingWorker> pair : runningWorkers) {
+            if (!hasBeenPerformedSpeculativeExecution(pair.right()) &&
+              curTime - pair.left() > avgTime * 2) {
+              // speculative execution1!
+              final OffloadingWorker runningWorker = pair.right();
+              final Pair<ByteBuf, Integer> data = runningWorker.getCurrentProcessingInput();
+              if (data != null) {
+                final int dataId = data.right();
+
+                LOG.info("Create new worker for speculatve execution of data {}, elapsed time: {}, avg time: {}"
+                  , dataId, (curTime - pair.left()), avgTime);
+
+                createdWorkers += 1;
+                // create new worker
+                //LOG.info("Create worker");
+                workerInitBuffer.retain();
+                dataBufferQueue.add(data);
+                bufferedCnt += 1;
+
+                final OffloadingWorker<I, O> worker =
+                  workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
+
+                speculativeDataProcessedMap.put(dataId, false);
+
+                synchronized (initializingWorkers) {
+                  initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+                }
+              }
+            }
+          }
+        }
 
 
       } catch (final Exception e) {
+        e.printStackTrace();
         throw new RuntimeException(e);
       }
     }, 300, 300, TimeUnit.MILLISECONDS);
 
     final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
-    this.workerInitBuffer.writeInt(NemoEvent.Type.WORKER_INIT.ordinal());
+    this.workerInitBuffer.writeInt(OffloadingEvent.Type.WORKER_INIT.ordinal());
     ObjectOutputStream oos = null;
     try {
       oos = new ObjectOutputStream(bos);
@@ -182,13 +240,13 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     // state serialize
     /*
     if (statePartitioner != null) {
-      final EncoderFactory<S> stateEncoderFactory = statePartitioner.getStateEncoderFactory();
+      final OffloadingEncoder<S> stateEncoderFactory = statePartitioner.getStateEncoderFactory();
       this.states = new ArrayList<>(statePartitioner.getStatePartition().size());
       for (final S state : statePartitioner.getStatePartition()) {
         final ByteBuf byteBuf = Unpooled.directBuffer();
         final ByteBufOutputStream bbos = new ByteBufOutputStream(byteBuf);
         try {
-          final EncoderFactory.Encoder<S> encoder = stateEncoderFactory.create(bbos);
+          final OffloadingEncoder.Encoder<S> encoder = stateEncoderFactory.create(bbos);
           encoder.encode(state);
           bbos.close();
           states.add(byteBuf);
@@ -202,68 +260,114 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     */
   }
 
-  private void executeData(final OffloadingWorker worker) {
-    final ByteBuf dataBuf = dataBufferQueue.poll();
-    if (dataBuf != null) {
-      final int dataId = workerFactory.getAndIncreaseDataId();
-      outputQueue.add(new PendingOutput(worker.execute(dataBuf, dataId), dataId));
-      runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+  private boolean isOutputEmitted(final OffloadingWorker runningWorker) {
+    final Pair<ByteBuf, Integer> curInput = runningWorker.getCurrentProcessingInput();
+    if (curInput != null) {
+      return speculativeDataProcessedMap.getOrDefault(curInput.right(), false);
     } else {
-      // just end the worker
-      worker.finishOffloading();
-      finishedWorkers += 1;
-
-      // speculative execution
-      //speculativeExecution(worker);
+      return true;
     }
   }
 
-  /*
-  private void speculativeExecution(final OffloadingWorker readyWorker) {
-    // speculative execution when there are ready workers
-    if (!runningWorkers.isEmpty()) {
-      synchronized (runningWorkers) {
-        final List<OffloadingWorker> readyToRunningWorkers = new ArrayList<>(runningWorkers.size());
+  private boolean hasBeenPerformedSpeculativeExecution(final OffloadingWorker runningWorker) {
+    final Pair<ByteBuf, Integer> curInput = runningWorker.getCurrentProcessingInput();
+    if (curInput != null) {
+      return speculativeDataProcessedMap.containsKey(curInput.right());
+    } else {
+      return true;
+    }
+  }
 
-        for (final OffloadingWorker runningWorker : runningWorkers) {
-          final Pair<Long, OffloadingWorker> readyWorkerPair = readyWorkers.poll();
-          if (readyWorkerPair == null) {
-            // exit speculative execution if there are no ready workers
-            break;
-          } else {
-            final Pair<Integer, ByteBuf> data = runningWorker.getCurrentProcessingInput();
-            if (data != null) {
+  private OffloadingWorker selectRunningWorkerForSpeculativeExecution(final OffloadingWorker readyWorker) {
+    int cnt = Integer.MAX_VALUE;
+    OffloadingWorker target = null;
+    int cnt2 = Integer.MAX_VALUE;
+    OffloadingWorker target2 = null;
+    // first find a worker that does not perform speculative execution
+    for (final Pair<Long, OffloadingWorker> runningWorkerPair : runningWorkers) {
+      final OffloadingWorker runningWorker = runningWorkerPair.right();
+      final int runningWorkerCnt = runningWorker.getDataProcessingCnt();
+      if (cnt > runningWorkerCnt && !hasBeenPerformedSpeculativeExecution(runningWorker)
+        && runningWorkerCnt + 1 < readyWorker.getDataProcessingCnt()) {
+        target = runningWorker;
+      }
 
-              // TODO: consideration
-              // 여기서 ByteBuf가 release 될수도 있음 (기존의 running worker에서 execution을 끝냈을 경우)
-              final int cnt = speculativeDataCounterMap.getOrDefault(data.left(), 0);
-              speculativeDataCounterMap.put(data.left(), cnt + 1);
+      if (cnt2 > runningWorkerCnt && !isOutputEmitted(runningWorker)
+        && runningWorkerCnt + 1 < readyWorker.getDataProcessingCnt()) {
+        target2 = runningWorker;
+      }
+    }
 
-              LOG.info("Speculative execution for data {}, cnt: {}", data.left(),
-                speculativeDataCounterMap.get(data.left()));
+    if (target == null) {
+      return target2;
+    } else {
+      return target;
+    }
+  }
 
-              if (!speculativeDataProcessedMap.containsKey(data.left())) {
-                speculativeDataProcessedMap.put(data.left(), false);
-              }
+  private void executeData(final OffloadingWorker worker) {
+    final Pair<ByteBuf, Integer> pair = dataBufferQueue.poll();
+    if (pair != null) {
+      final int dataId = pair.right();
+      final ByteBuf dataBuf = pair.left();
+      final boolean speculative = speculativeDataProcessedMap.containsKey(dataId);
 
-              final OffloadingWorker readyWorker = readyWorkerPair.right();
-              outputQueue.add(Pair.of(data.left(), readyWorker.execute(data.right(), data.left())));
-              readyToRunningWorkers.add(readyWorker);
-            }
-          }
-        }
-
-        if (!readyToRunningWorkers.isEmpty()) {
-          runningWorkers.addAll(readyToRunningWorkers);
-        }
+      try {
+        final PendingOutput po = new PendingOutput(worker.execute(dataBuf, dataId, speculative), dataId);
+        outputQueue.add(po);
+        addedOutput += 1;
+        runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+      } catch (final IllegalReferenceCountException e) {
+        // the input becomes null ... this means that we don't have to do speculative execution
+        // just finish the worker!
+        LOG.info("Illegal reference count exception for executing data {}... just finis worker", dataId);
+        worker.finishOffloading();
+        finishedWorkers += 1;
       }
     } else {
+      // speculative execution
+      //speculativeExecution(worker);
+      worker.finishOffloading();
+      finishedWorkers += 1;
+    }
+  }
+
+  private void speculativeExecution(final OffloadingWorker readyWorker) {
+    // speculative execution when there are ready workers
+    final OffloadingWorker runningWorker = selectRunningWorkerForSpeculativeExecution(readyWorker);
+    if (runningWorker == null) {
       // just end the worker
       readyWorker.finishOffloading();
       finishedWorkers += 1;
+    } else {
+      final Pair<ByteBuf, Integer> data = runningWorker.getCurrentProcessingInput();
+      if (data != null) {
+        final int dataId = data.right();
+
+
+        try {
+          outputQueue.add(new PendingOutput<>(readyWorker.execute(data.left(), dataId, true), dataId));
+          addedOutput += 1;
+
+          // TODO: consideration
+          LOG.info("Speculative execution for data {}, runningWorkerCnt: {}, readyWorkerCnt: {}", dataId,
+            runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
+
+          if (!speculativeDataProcessedMap.containsKey(dataId)) {
+            speculativeDataProcessedMap.put(dataId, false);
+          }
+
+          runningWorkers.add(Pair.of(System.currentTimeMillis(), readyWorker));
+        } catch (final IllegalReferenceCountException e) {
+          // the input becomes null ... this means that we don't have to do speculative execution
+          // just finish the worker!
+          LOG.info("Illegal reference count exception for executing data {}... just finis worker", dataId);
+          readyWorker.finishOffloading();
+          finishedWorkers += 1;
+        }
+      }
     }
   }
-  */
 
   private void outputEmittion() {
     // emit output
@@ -271,43 +375,26 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     while (iterator.hasNext()) {
       try {
         final PendingOutput<O> output = iterator.next();
-        boolean isEmittable = true;
         final int dataId = output.dataId;
         final Future<Optional<O>> data = output.output;
 
-        if (speculativeDataCounterMap.containsKey(dataId)) {
-          // speculative execution result
-          if (!speculativeDataProcessedMap.get(dataId)) {
-            // if the output is the first output among speculative execution
-            // set true
-            speculativeDataProcessedMap.put(dataId, true);
-          } else {
-            // this result is already emitted
-            // TODO: reject execution
-            isEmittable = false;
-            iterator.remove();
-          }
+        if (speculativeDataProcessedMap.getOrDefault(dataId, false)) {
+          // this is already emitted. just remove
+          iterator.remove();
+        } else if (data.isDone()) {
 
-          final int count = speculativeDataCounterMap.get(dataId) - 1;
+          boolean isEmittable = !speculativeDataProcessedMap.getOrDefault(dataId, false);
 
-          LOG.info("Speculative execution output emittion, data: {}, cnt: {}", dataId,
-            count);
+          speculativeDataProcessedMap.put(dataId, true);
+          LOG.info("Speculative execution output emittion, data: {}, emittable: {}", dataId,
+            isEmittable);
 
-          if (count <= 0) {
-            speculativeDataCounterMap.remove(dataId);
-            speculativeDataProcessedMap.remove(dataId);
-          }
-        }
-
-        if (isEmittable) {
-          if (data.isDone()) {
-            LOG.info("Output latency {}, id {} done", System.currentTimeMillis() - output.startTime, dataId);
-            iterator.remove();
-            final Optional<O> optional = data.get();
-            if (optional.isPresent()) {
-              LOG.info("Output receive: {}", optional.get());
-              eventHandler.onNext(optional.get());
-            }
+          LOG.info("Output latency {}, id {} done", System.currentTimeMillis() - output.startTime, dataId);
+          iterator.remove();
+          final Optional<O> optional = data.get();
+          if (isEmittable && optional.isPresent()) {
+            LOG.info("Output receive: {}", optional.get());
+            eventHandler.onNext(optional.get());
           }
         }
 
@@ -321,13 +408,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   }
 
   private ByteBuf encodeData(final I data, final ByteBuf byteBuf) {
-    byteBuf.writeInt(NemoEvent.Type.DATA.ordinal());
+    byteBuf.writeInt(OffloadingEvent.Type.DATA.ordinal());
 
     final ByteBufOutputStream dataBos = new ByteBufOutputStream(byteBuf);
     try {
-      final EncoderFactory.Encoder<I> encoder =
-        offloadingSerializer.getInputEncoder().create(dataBos);
-      encoder.encode(data);
+      offloadingSerializer.getInputEncoder().encode(data, dataBos);
       dataBos.close();
     } catch (IOException e) {
       e.printStackTrace();
@@ -344,7 +429,27 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     //LOG.info("Create worker");
     workerInitBuffer.retain();
 
-    dataBufferQueue.add(encodeData(data, Unpooled.directBuffer()));
+    dataBufferQueue.add(Pair.of(encodeData(data, Unpooled.directBuffer()),
+      workerFactory.getAndIncreaseDataId()));
+    bufferedCnt += 1;
+
+    final OffloadingWorker<I, O> worker =
+      workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
+
+    synchronized (initializingWorkers) {
+      initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+    }
+  }
+
+
+  // init worker
+  private void createNewWorker(final ByteBuf data) {
+    createdWorkers += 1;
+    // create new worker
+    //LOG.info("Create worker");
+    workerInitBuffer.retain();
+    dataBufferQueue.add(Pair.of(data, workerFactory.getAndIncreaseDataId()));
+    bufferedCnt += 1;
 
     final OffloadingWorker<I, O> worker =
       workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
@@ -360,16 +465,23 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   }
 
   @Override
+  public void execute(ByteBuf data) {
+    createNewWorker(data);
+  }
+
+  @Override
   public void shutdown() {
     // shutdown all workers
     long prevTime = System.currentTimeMillis();
-    LOG.info("Shutting down workers {}/{}...", finishedWorkers, createdWorkers);
+    LOG.info("Shutting down workers {}/{}..., init: {}, running: {}", finishedWorkers, createdWorkers);
 
     while (finishedWorkers < createdWorkers) {
       // logging
       if (System.currentTimeMillis() - prevTime > 2000) {
         prevTime = System.currentTimeMillis();
-        LOG.info("Shutting down workers {}/{}...", finishedWorkers, createdWorkers);
+        LOG.info("Shutting down workers {}/{}... scheduler is shutdown: {}, is terminated: {}, triggerTime: {}",
+          finishedWorkers, createdWorkers, scheduler.isShutdown(), scheduler.isTerminated(),
+          st.get());
       }
 
       try {
@@ -380,12 +492,13 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     }
 
     // waiting for all outputs
-    LOG.info("Waiting {} outputs...", outputQueue.size());
+    LOG.info("Waiting {} outputs... {}", outputQueue.size(), outputQueue);
     while (!outputQueue.isEmpty()) {
       // logging
       if (System.currentTimeMillis() - prevTime > 2000) {
         prevTime = System.currentTimeMillis();
-        LOG.info("Waiting {} outputs...", outputQueue.size());
+        LOG.info("Waiting {} outputs... {}", outputQueue.size(), outputQueue);
+        LOG.info("Created worker: {}, Finished worker: {}, added output: {}", createdWorkers, finishedWorkers);
       }
       try {
         Thread.sleep(200);

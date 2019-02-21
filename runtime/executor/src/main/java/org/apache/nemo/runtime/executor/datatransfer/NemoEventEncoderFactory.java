@@ -28,7 +28,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 
 /**
- * A factory for NemoEventEncoder.
+ * A factory for OffloadingEventEncoder.
  */
 public final class NemoEventEncoderFactory implements EncoderFactory {
   private static final Logger LOG = LoggerFactory.getLogger(NemoEventEncoderFactory.class.getName());

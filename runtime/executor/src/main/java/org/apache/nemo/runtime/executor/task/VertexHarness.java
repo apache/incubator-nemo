@@ -67,7 +67,7 @@ final class VertexHarness {
   }
 
   /**
-   * @return OutputCollector of this irVertex.
+   * @return OffloadingOutputCollector of this irVertex.
    */
   OutputCollector getOutputCollector() {
     return outputCollector;

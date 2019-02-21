@@ -30,7 +30,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * EncoderFactory for side inputs.
+ * OffloadingEncoder for side inputs.
  */
 
 public final class PushBackCoder extends Coder<Pair<WindowedValue<SideInputElement>, List<WindowedValue>>> {

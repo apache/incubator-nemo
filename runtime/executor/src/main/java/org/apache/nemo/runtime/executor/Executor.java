@@ -19,7 +19,7 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
-import org.apache.nemo.common.ServerlessExecutorProvider;
+import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.coder.DecoderFactory;
@@ -213,7 +213,7 @@ public final class Executor {
   }
 
   /**
-   * This wraps the encoder with NemoEventEncoder.
+   * This wraps the encoder with OffloadingEventEncoder.
    * If the encoder is BytesEncoderFactory, we do not wrap the encoder.
    * TODO #276: Add NoCoder property value in Encoder/DecoderProperty
    * @param encoderFactory encoder factory
@@ -228,7 +228,7 @@ public final class Executor {
   }
 
   /**
-   * This wraps the encoder with NemoEventDecoder.
+   * This wraps the encoder with OffloadingEventDecoder.
    * If the decoder is BytesDecoderFactory, we do not wrap the decoder.
    * TODO #276: Add NoCoder property value in Encoder/DecoderProperty
    * @param decoderFactory decoder factory
