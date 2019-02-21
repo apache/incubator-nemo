@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.function.IntPredicate;
 
+import org.apache.nemo.common.Util;
 import org.junit.Test;
 
 public class UtilTest {

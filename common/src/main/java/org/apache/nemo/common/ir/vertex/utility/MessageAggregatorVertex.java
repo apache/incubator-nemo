@@ -20,8 +20,12 @@ package org.apache.nemo.common.ir.vertex.utility;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 
 /**
@@ -30,12 +34,17 @@ import java.util.function.BiFunction;
  * @param <V> of the input pair.
  * @param <O> of the output aggregated message.
  */
-public class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
+public final class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
+  private static final Logger LOG = LoggerFactory.getLogger(MessageAggregatorVertex.class.getName());
+
+  private static final AtomicInteger MESSAGE_ID_GENERATOR = new AtomicInteger(0);
+
   /**
    * @param initialState to use.
    * @param userFunction for aggregating the messages.
    */
   public MessageAggregatorVertex(final O initialState, final BiFunction<Pair<K, V>, O, O> userFunction) {
     super(new MessageAggregatorTransform<>(initialState, userFunction));
+    this.setPropertyPermanently(MessageIdVertexProperty.of(MESSAGE_ID_GENERATOR.incrementAndGet()));
   }
 }

@@ -181,7 +181,7 @@ public final class JobLauncher {
           LOG.info("Wait for the driver to finish");
           driverLauncher.wait();
         } catch (final InterruptedException e) {
-          LOG.warn("Interrupted: " + e);
+          LOG.warn("Interrupted: ", e);
           // clean up state...
           Thread.currentThread().interrupt();
         }

@@ -28,7 +28,6 @@ import java.util.List;
  * @param <O> output type.
  */
 public abstract class SourceVertex<O> extends IRVertex {
-
   /**
    * Constructor for SourceVertex.
    */

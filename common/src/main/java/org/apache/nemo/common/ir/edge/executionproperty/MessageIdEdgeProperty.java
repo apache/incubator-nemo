@@ -16,21 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor;
+package org.apache.nemo.common.ir.edge.executionproperty;
 
-import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
-import java.util.ArrayList;
-import java.util.List;
+/**
+ * Vertices and edges with the same MessageId are subject to the same run-time optimization.
+ */
+public final class MessageIdEdgeProperty extends EdgeExecutionProperty<Integer> {
+  /**
+   * Constructor.
+   * @param value value of the execution property.
+   */
+  private MessageIdEdgeProperty(final Integer value) {
+    super(value);
+  }
 
-public final class TestUtil {
-  public static List<String> generateTaskIds(final Stage stage) {
-    final List<String> result = new ArrayList<>();
-    final int first_attempt = 0;
-    for (final int taskIndex : stage.getTaskIndices()) {
-      result.add(RuntimeIdManager.generateTaskId(stage.getId(), taskIndex, first_attempt));
-    }
-    return result;
+  /**
+   * Static method exposing the constructor.
+   * @param value value of the new execution property.
+   * @return the newly created execution property.
+   */
+  public static MessageIdEdgeProperty of(final Integer value) {
+    return new MessageIdEdgeProperty(value);
   }
 }

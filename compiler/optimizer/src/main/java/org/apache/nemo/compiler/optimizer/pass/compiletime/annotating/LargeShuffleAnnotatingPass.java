@@ -18,8 +18,6 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import org.apache.nemo.common.coder.BytesDecoderFactory;
-import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
@@ -42,9 +40,7 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
  * Do not encode/compress the byte[]
  * Perform a pull-based and on-disk data transfer with the DedicatedKeyPerElement.
  */
-@Annotates({CompressionProperty.class, DataFlowProperty.class, CompressionProperty.class,
-  DataPersistenceProperty.class, DataStoreProperty.class, DecoderProperty.class, DecompressionProperty.class,
-  EncoderProperty.class, PartitionerProperty.class, ResourceSlotProperty.class})
+@Annotates({DataFlowProperty.class, DataPersistenceProperty.class, DataStoreProperty.class, ResourceSlotProperty.class})
 @Requires(CommunicationPatternProperty.class)
 public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
   /**
@@ -61,11 +57,6 @@ public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
         if (edge.getDst().getClass().equals(StreamVertex.class)) {
           // CASE #1: To a stream vertex
 
-          // Coder and Compression
-          edge.setPropertyPermanently(DecoderProperty.of(BytesDecoderFactory.of()));
-          edge.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.LZ4));
-          edge.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.None));
-
           // Data transfers
           edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Push));
           edge.setPropertyPermanently(DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard));
@@ -76,16 +67,9 @@ public final class LargeShuffleAnnotatingPass extends AnnotatingPass {
         } else if (edge.getSrc().getClass().equals(StreamVertex.class)) {
           // CASE #2: From a stream vertex
 
-          // Coder and Compression
-          edge.setPropertyPermanently(EncoderProperty.of(BytesEncoderFactory.of()));
-          edge.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.None));
-          edge.setPropertyPermanently(DecompressionProperty.of(CompressionProperty.Value.LZ4));
-
           // Data transfers
           edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Pull));
           edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
-          edge.setPropertyPermanently(
-            PartitionerProperty.of(PartitionerProperty.Type.DedicatedKeyPerElement));
         } else {
           // CASE #3: Unrelated to any stream vertices
           edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Pull));

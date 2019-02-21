@@ -28,6 +28,7 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
+import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
@@ -42,7 +43,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * A function that converts an IR DAG to physical DAG.
@@ -80,7 +84,11 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
     handleDuplicateEdgeGroupProperty(dagOfStages);
 
     // Split StageGroup by Pull StageEdges
-    splitScheduleGroupByPullStageEdges(dagOfStages);
+    //
+    // TODO #337: IRDAG Unit Tests
+    // Move this test to IRDAG unit tests.
+    //
+    // splitScheduleGroupByPullStageEdges(dagOfStages);
 
     // for debugging purposes.
     dagOfStages.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
@@ -136,6 +144,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
     final Map<Integer, Stage> stageIdToStageMap = new HashMap<>();
     final Map<IRVertex, Integer> vertexToStageIdMap = stagePartitioner.apply(irDAG);
     final HashSet<IRVertex> isStagePartitioned = new HashSet<>();
+    final Random random = new Random(hashCode()); // to produce same results for same input IRDAGs
 
     final Map<Integer, Set<IRVertex>> vertexSetForEachStage = new LinkedHashMap<>();
     irDAG.topologicalDo(irVertex -> {
@@ -151,10 +160,9 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
       final String stageIdentifier = RuntimeIdManager.generateStageId(stageId);
       final ExecutionPropertyMap<VertexExecutionProperty> stageProperties = new ExecutionPropertyMap<>(stageIdentifier);
       stagePartitioner.getStageProperties(stageVertices.iterator().next()).forEach(stageProperties::put);
-
       final int stageParallelism = stageProperties.get(ParallelismProperty.class)
         .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
-
+      final List<Integer> taskIndices = getTaskIndicesToExecute(stageVertices, stageParallelism, random);
       final DAGBuilder<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAGBuilder = new DAGBuilder<>();
 
       // Prepare vertexIdToReadables
@@ -164,14 +172,16 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
       }
 
       // For each IRVertex,
-      for (final IRVertex irVertex : stageVertices) {
+      for (final IRVertex v : stageVertices) {
+        final IRVertex vertexToPutIntoStage = getActualVertexToPutIntoStage(v);
+
         // Take care of the readables of a source vertex.
-        if (irVertex instanceof SourceVertex && !isStagePartitioned.contains(irVertex)) {
-          final SourceVertex sourceVertex = (SourceVertex) irVertex;
+        if (vertexToPutIntoStage instanceof SourceVertex && !isStagePartitioned.contains(vertexToPutIntoStage)) {
+          final SourceVertex sourceVertex = (SourceVertex) vertexToPutIntoStage;
           try {
             final List<Readable> readables = sourceVertex.getReadables(stageParallelism);
             for (int i = 0; i < stageParallelism; i++) {
-              vertexIdToReadables.get(i).put(irVertex.getId(), readables.get(i));
+              vertexIdToReadables.get(i).put(vertexToPutIntoStage.getId(), readables.get(i));
             }
           } catch (final Exception e) {
             throw new PhysicalPlanGenerationException(e);
@@ -181,7 +191,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
         }
 
         // Add vertex to the stage.
-        stageInternalDAGBuilder.addVertex(irVertex);
+        stageInternalDAGBuilder.addVertex(vertexToPutIntoStage);
       }
 
       for (final IRVertex dstVertex : stageVertices) {
@@ -194,8 +204,8 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
             stageInternalDAGBuilder.connectVertices(new RuntimeEdge<>(
               irEdge.getId(),
               irEdge.getExecutionProperties(),
-              irEdge.getSrc(),
-              irEdge.getDst()));
+              getActualVertexToPutIntoStage(irEdge.getSrc()),
+              getActualVertexToPutIntoStage(irEdge.getDst())));
           } else { // edge comes from another stage
             interStageEdges.add(irEdge);
           }
@@ -205,7 +215,12 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
       if (!stageInternalDAGBuilder.isEmpty()) {
         final DAG<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAG
           = stageInternalDAGBuilder.buildWithoutSourceSinkCheck();
-        final Stage stage = new Stage(stageIdentifier, stageInternalDAG, stageProperties, vertexIdToReadables);
+        final Stage stage = new Stage(
+          stageIdentifier,
+          taskIndices,
+          stageInternalDAG,
+          stageProperties,
+          vertexIdToReadables);
         dagOfStagesBuilder.addVertex(stage);
         stageIdToStageMap.put(stageId, stage);
       }
@@ -225,10 +240,49 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
           dstStage == null ? String.format(" destination stage for %s", interStageEdge.getDst()) : ""));
       }
       dagOfStagesBuilder.connectVertices(new StageEdge(interStageEdge.getId(), interStageEdge.getExecutionProperties(),
-        interStageEdge.getSrc(), interStageEdge.getDst(), srcStage, dstStage));
+        getActualVertexToPutIntoStage(interStageEdge.getSrc()), getActualVertexToPutIntoStage(interStageEdge.getDst()),
+        srcStage, dstStage));
     }
 
     return dagOfStagesBuilder.build();
+  }
+
+  /**
+   * This method is needed, because we do not want to put Sampling vertices into a stage.
+   * The underlying runtime only understands Source and Operator vertices.
+   */
+  private IRVertex getActualVertexToPutIntoStage(final IRVertex irVertex) {
+    return irVertex instanceof SamplingVertex
+      ? ((SamplingVertex) irVertex).getCloneOfOriginalVertex()
+      : irVertex;
+  }
+
+  /**
+   * Randomly select task indices for Sampling vertices.
+   * Select all task indices for non-Sampling vertices.
+   */
+  private List<Integer> getTaskIndicesToExecute(final Set<IRVertex> vertices,
+                                                final int stageParallelism,
+                                                final Random random) {
+    if (vertices.stream().map(v -> v instanceof SamplingVertex).collect(Collectors.toSet()).size() != 1) {
+      throw new IllegalArgumentException("Must be either all sampling vertices, or none: " + vertices.toString());
+    }
+
+    if (vertices.iterator().next() instanceof SamplingVertex) {
+      // Use min of the desired sample rates
+      final float minSampleRate = vertices.stream()
+        .map(v -> ((SamplingVertex) v).getDesiredSampleRate())
+        .reduce(BinaryOperator.minBy(Float::compareTo))
+        .orElseThrow(() -> new IllegalArgumentException(vertices.toString()));
+
+      // Compute and return indices
+      final int numOfTaskIndices = (int) Math.ceil(stageParallelism * minSampleRate);
+      final List<Integer> randomIndices = IntStream.range(0, stageParallelism).boxed().collect(Collectors.toList());
+      Collections.shuffle(randomIndices, random);
+      return new ArrayList<>(randomIndices.subList(0, numOfTaskIndices)); // subList is not serializable.
+    } else {
+      return IntStream.range(0, stageParallelism).boxed().collect(Collectors.toList());
+    }
   }
 
   /**
@@ -243,7 +297,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
 
     stage.getIRDAG().getVertices().forEach(irVertex -> {
       // Check vertex type.
-      if (!(irVertex instanceof  SourceVertex
+      if (!(irVertex instanceof SourceVertex
         || irVertex instanceof OperatorVertex)) {
         throw new UnsupportedOperationException(irVertex.toString());
       }

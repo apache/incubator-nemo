@@ -19,12 +19,11 @@
 package org.apache.nemo.common.dag;
 
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.MessageIdProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
+import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 
 import java.io.Serializable;
 import java.util.*;
@@ -227,7 +226,8 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     final Supplier<Stream<V>> verticesToObserve = () -> vertices.stream().filter(v -> incomingEdges.get(v).isEmpty())
         .filter(v -> v instanceof IRVertex);
     // They should all match SourceVertex
-    if (verticesToObserve.get().anyMatch(v -> !(v instanceof SourceVertex))) {
+    if (!(verticesToObserve.get().allMatch(v -> (v instanceof SourceVertex)
+      || (v instanceof SamplingVertex && ((SamplingVertex) v).getCloneOfOriginalVertex() instanceof SourceVertex)))) {
       final String problematicVertices = verticesToObserve.get()
           .filter(v -> !(v instanceof SourceVertex))
           .map(V::getId)
@@ -258,16 +258,15 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
    * Helper method to check that all execution properties are correct and makes sense.
    */
   private void executionPropertyCheck() {
-    // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
-    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> e.getPropertyValue(MessageIdProperty.class).isPresent())
-        .filter(e -> !(e.getDst() instanceof OperatorVertex
-          && e.getDst() instanceof MessageAggregatorVertex))
-        .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
-        .forEach(e -> {
-          throw new CompileTimeOptimizationException("DAG execution property check: "
-              + "DataSizeMetricCollection edge is not compatible with push" + e.getId());
-        }));
+    final long numOfMAV = vertices.stream().filter(v -> v instanceof MessageAggregatorVertex).count();
+    final long numOfDistinctMessageIds = vertices.stream()
+      .filter(v -> v instanceof MessageAggregatorVertex)
+      .map(v -> ((MessageAggregatorVertex) v).getPropertyValue(MessageIdVertexProperty.class).get())
+      .distinct()
+      .count();
+    if (numOfMAV != numOfDistinctMessageIds) {
+      throw getException("A unique message id must exist for each MessageAggregator", "");
+    }
   }
 
   /**
