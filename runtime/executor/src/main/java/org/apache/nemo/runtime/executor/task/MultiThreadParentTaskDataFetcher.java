@@ -22,7 +22,6 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.runtime.common.NoElement;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.slf4j.Logger;
@@ -85,8 +84,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     while (true) {
       final Object element = elementQueue.poll();
       if (element == null) {
-        return NoElement.INSTANCE;
-        //throw new NoSuchElementException();
+        throw new NoSuchElementException();
       } else if (element instanceof Finishmark) {
         numOfFinishMarks++;
         if (numOfFinishMarks == numOfIterators) {
