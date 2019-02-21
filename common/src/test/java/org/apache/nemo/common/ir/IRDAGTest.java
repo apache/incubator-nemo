@@ -222,7 +222,7 @@ public class IRDAGTest {
 
   @Test
   public void testCache() {
-    oneToOneEdge.setProperty(CacheIDProperty.of(UUID.fromString("Dummy")));
+    oneToOneEdge.setProperty(CacheIDProperty.of(UUID.randomUUID()));
     mustFail(); // need a cache marker vertex - failure
   }
 
@@ -319,6 +319,7 @@ public class IRDAGTest {
       ma,
       EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY),
       DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY),
+      Sets.newHashSet(edgeToGetStatisticsOf),
       Sets.newHashSet(edgeToGetStatisticsOf));
     return ma;
   }

@@ -308,21 +308,36 @@ public class IRDAGChecker {
         .stream()
         .filter(v -> v instanceof MessageAggregatorVertex)
         .count();
-      final List<Integer> vIds = dag.getVertices().stream().map(v -> v.getPropertyValue(MessageIdProperty.class));
-      final Set<Integer> eIds = dag.getEdges().stream().map(e -> e.getPropertyValue(MessageIdProperty.class));
 
-      if (numMessageAggregatorVertices != vIds.size()) {
-        return failure("Num vertex-messageId mismatch: " + numMessageAggregatorVertices + " != " + vIds.size());
+      // Triggering ids, must be unique
+      final List<Integer> vertexMessageIds = dag.getVertices()
+        .stream()
+        .filter(v -> v.getPropertyValue(MessageIdVertexProperty.class).isPresent())
+        .map(v -> v.getPropertyValue(MessageIdVertexProperty.class).get())
+        .collect(Collectors.toList());
+
+      // Target ids
+      final Set<Integer> edgeMessageIds = dag.getEdges()
+        .stream()
+        .filter(e -> e.getPropertyValue(MessageIdEdgeProperty.class).isPresent())
+        .map(e -> e.getPropertyValue(MessageIdEdgeProperty.class).get())
+        .collect(Collectors.toSet());
+
+      if (numMessageAggregatorVertices != vertexMessageIds.size()) {
+        return failure("Num vertex-messageId mismatch: "
+          + numMessageAggregatorVertices + " != " + vertexMessageIds.size());
       }
-      if (vIds.stream().distinct().count() != vIds.size()) {
-        return failure("Duplicate vertex message ids: " + vIds.toString());
+      if (vertexMessageIds.stream().distinct().count() != vertexMessageIds.size()) {
+        return failure("Duplicate vertex message ids: " + vertexMessageIds.toString());
       }
-      if (!new HashSet<>(vIds).equals(eIds)) {
-        return failure("Vertex and edge message id mismatch: " + vIds.toString() + " / " + eIds.toString());
+      if (!new HashSet<>(vertexMessageIds).equals(edgeMessageIds)) {
+        return failure("Vertex and edge message id mismatch: "
+          + vertexMessageIds.toString() + " / " + edgeMessageIds.toString());
       }
 
       return success();
     });
+    globalDAGCheckerList.add(messageIds);
   }
 
   void addStreamVertexCheckers() {
@@ -394,7 +409,7 @@ public class IRDAGChecker {
     // TODO #342: Check Encoder/Decoder symmetry
 
     final SingleEdgeChecker compressAndDecompress = (edge -> {
-      if (!(edge.getDst() instanceof StreamVertex)) {
+      if (!(edge.getDst() instanceof StreamVertex || edge.getSrc() instanceof StreamVertex)) {
         if (edge.getPropertyValue(CompressionProperty.class) != edge.getPropertyValue(DecompressionProperty.class)) {
           return failure("Compression and decompression must be symmetric",
             edge, CompressionProperty.class, DecompressionProperty.class);
