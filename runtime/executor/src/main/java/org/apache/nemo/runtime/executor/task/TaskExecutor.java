@@ -29,6 +29,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagPrope
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.runtime.common.NoElement;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.MultiInputWatermarkManager;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -491,7 +492,6 @@ public final class TaskExecutor {
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
 
-
       // We first fetch data from available data fetchers
       final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
 
@@ -506,6 +506,13 @@ public final class TaskExecutor {
         try {
           final long a = System.currentTimeMillis();
           final Object element = dataFetcher.fetchDataElement();
+
+          if (element.equals(NoElement.INSTANCE)) {
+            availableIterator.remove();
+            pendingFetchers.add(dataFetcher);
+            continue;
+          }
+
           fetchTime += (System.currentTimeMillis() - a);
 
           final long b = System.currentTimeMillis();
@@ -520,6 +527,7 @@ public final class TaskExecutor {
           // move current data fetcher to pending.
           availableIterator.remove();
           pendingFetchers.add(dataFetcher);
+          throw new RuntimeException("No!!!!");
         } catch (final IOException e) {
           // IOException means that this task should be retried.
           taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
@@ -548,6 +556,13 @@ public final class TaskExecutor {
           try {
             final long a = System.currentTimeMillis();
             final Object element = dataFetcher.fetchDataElement();
+
+            if (element.equals(NoElement.INSTANCE)) {
+              availableIterator.remove();
+              pendingFetchers.add(dataFetcher);
+              continue;
+            }
+
             fetchTime += (System.currentTimeMillis() - a);
 
             final long b = System.currentTimeMillis();
@@ -562,6 +577,7 @@ public final class TaskExecutor {
             }
 
           } catch (final NoSuchElementException e) {
+            throw new RuntimeException("No22222");
             // The current data fetcher is still pending.. try next data fetcher
           } catch (final IOException e) {
             // IOException means that this task should be retried.

@@ -26,6 +26,7 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.runtime.common.NoElement;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -137,7 +138,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
         final O elem = reader.getCurrent();
         return WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp());
       } else {
-        throw new NoSuchElementException();
+        return NoElement.INSTANCE;
       }
     }
 
