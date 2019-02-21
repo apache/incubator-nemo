@@ -285,6 +285,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * wrapped with sampling vertices, as new vertices that consume outputs from sampling vertices will process
    * a subset of data anyways, and no such new vertex will reach the original DAG except via control edges)
    *
+   * TODO #343: Extend SamplingVertex control edges
+   *
    * @param samplingVertices to insert.
    * @param executeAfterSamplingVertices that must be executed after samplingVertices.
    */
