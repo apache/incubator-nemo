@@ -59,7 +59,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   private long curInputWatermark;
   private long curOutputWatermark;
 
-  private boolean offloading = true; // TODO: fix
+  private boolean offloading = false; // TODO: fix
 
   private PushBackOffloadingTransform offloadingTransform;
 
