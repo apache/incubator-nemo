@@ -117,7 +117,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       eventHandler = new EventHandler<WindowedValue<OutputT>>() {
         @Override
         public void onNext(WindowedValue<OutputT> msg) {
-          LOG.info("Result {}", msg);
+
           getOutputCollector().emit(msg);
         }
       };
@@ -184,6 +184,8 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       //LOG.info("{}, On watermark at {}: {}", System.currentTimeMillis() - st, this.hashCode(), data);
       System.out.println("Pushback latency: " + (System.currentTimeMillis() - st));
     } else {
+      //LOG.info("Main element: {}", data);
+
       // This element is the Main Input
       checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
@@ -290,7 +292,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     long pushedBackAgainWatermark = Long.MAX_VALUE;
     int cnt = 0;
     for (final WindowedValue<InputT> curPushedBack : curPushedBacks) {
-	checkAndInvokeBundle();
+      checkAndInvokeBundle();
       final Iterable<WindowedValue<InputT>> pushedBack =
         getPushBackRunner().processElementInReadyWindows(curPushedBack);
       cnt += 1;
@@ -335,6 +337,22 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
   @Override
   OutputCollector wrapOutputCollector(final OutputCollector oc) {
-    return oc;
+    return new OutputCollector() {
+      @Override
+      public void emit(Object output) {
+        LOG.info("Result {}", output);
+        oc.emit(output);
+      }
+
+      @Override
+      public void emitWatermark(Watermark watermark) {
+        oc.emitWatermark(watermark);
+      }
+
+      @Override
+      public void emit(String dstVertexId, Object output) {
+        oc.emit(dstVertexId, output);
+      }
+    };
   }
 }
