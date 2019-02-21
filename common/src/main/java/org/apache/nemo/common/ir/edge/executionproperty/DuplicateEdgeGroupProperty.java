@@ -20,11 +20,9 @@ package org.apache.nemo.common.ir.edge.executionproperty;
 
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
-import java.io.Serializable;
-
 /**
  * Invariant data ExecutionProperty. Use to indicate same data edge when unrolling loop vertex.
- * See Conf
+ * See DuplicateEdgeGroupPropertyValue
  */
 public final class DuplicateEdgeGroupProperty extends EdgeExecutionProperty<DuplicateEdgeGroupPropertyValue> {
   /**
