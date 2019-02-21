@@ -99,7 +99,7 @@ public class IRDAGTest {
 
   @Test
   public void testParallelismSource() {
-    sourceVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES - 1)); // this causes failure
+    sourceVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES - 1)); // smaller than min - fail
     firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES - 1));
     secondOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES - 1));
 
@@ -109,7 +109,7 @@ public class IRDAGTest {
   @Test
   public void testParallelismCommPattern() {
     sourceVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES));
-    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES - 1)); // this causes failure
+    firstOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES - 1)); // smaller than o2o - fail
     secondOperatorVertex.setProperty(ParallelismProperty.of(MIN_THREE_SOURCE_READABLES - 2));
 
     mustFail();
@@ -130,13 +130,14 @@ public class IRDAGTest {
 
   @Test
   public void testPartitionSetNonShuffle() {
-    oneToOneEdge.setProperty(PartitionSetProperty.of(new ArrayList<>())); // non-shuffle
+    oneToOneEdge.setProperty(PartitionSetProperty.of(new ArrayList<>())); // non-shuffle - fail
     mustFail();
   }
 
   @Test
   public void testPartitionerNonShuffle() {
-    oneToOneEdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.Hash, 2)); // non-shuffle
+    // non-shuffle - fail
+    oneToOneEdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.Hash, 2));
     mustFail();
   }
 
@@ -156,7 +157,7 @@ public class IRDAGTest {
     // must fail
     final HashMap<String, Integer> badSite = new HashMap<>();
     badSite.put("SiteA", 1);
-    badSite.put("SiteB", MIN_THREE_SOURCE_READABLES - 2);
+    badSite.put("SiteB", MIN_THREE_SOURCE_READABLES - 2); // sum is smaller than parallelism
     firstOperatorVertex.setProperty(ResourceSiteProperty.of(badSite));
     mustFail();
   }
@@ -176,7 +177,7 @@ public class IRDAGTest {
 
     // must fail
     final HashSet<Integer> badSet = new HashSet<>();
-    badSet.add(MIN_THREE_SOURCE_READABLES + 1);
+    badSet.add(MIN_THREE_SOURCE_READABLES + 1); // ofset out of range - fail
     firstOperatorVertex.setProperty(ResourceAntiAffinityProperty.of(badSet));
     mustFail();
   }
@@ -204,15 +205,28 @@ public class IRDAGTest {
   @Test
   public void testCompressionSymmetry() {
     oneToOneEdge.setProperty(CompressionProperty.of(CompressionProperty.Value.Gzip));
-    oneToOneEdge.setProperty(DecompressionProperty.of(CompressionProperty.Value.LZ4));
+    oneToOneEdge.setProperty(DecompressionProperty.of(CompressionProperty.Value.LZ4)); // not symmetric - failure
     mustFail();
+  }
+
+  @Test
+  public void testScheduleGroup() {
+    sourceVertex.setProperty(ScheduleGroupProperty.of(1));
+    firstOperatorVertex.setProperty(ScheduleGroupProperty.of(2));
+    secondOperatorVertex.setProperty(ScheduleGroupProperty.of(1)); // decreases - failure
+    mustFail();
+  }
+
+  @Test
+  public void testCache() {
+    oneToOneEdge.setProperty(CacheIDProperty.of(UUID.fromString("Dummy")));
+    mustFail(); // need a cache marker vertex - failure
   }
 
   @Test
   public void testStreamVertex() {
     final StreamVertex svOne = new StreamVertex();
     final StreamVertex svTwo = new StreamVertex();
-    final StreamVertex svThree = new StreamVertex();
 
     irdag.insert(svOne, oneToOneEdge);
     mustPass();
@@ -220,14 +234,7 @@ public class IRDAGTest {
     irdag.insert(svTwo, shuffleEdge);
     mustPass();
 
-    // stream again with the new edge
-    irdag.insert(svThree, shuffleEdge);
-    mustPass();
-
     irdag.delete(svTwo);
-    mustPass();
-
-    irdag.delete(svThree);
     mustPass();
 
     irdag.delete(svOne);

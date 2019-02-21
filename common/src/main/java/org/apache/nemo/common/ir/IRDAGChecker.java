@@ -64,7 +64,7 @@ public class IRDAGChecker {
     addShuffleEdgeCheckers();
     addPartitioningCheckers();
     addEncodingCompressionCheckers();
-    addMessageBarrierCheckers();
+    addMessageBarrierVertexCheckers();
     addStreamVertexCheckers();
     addLoopVertexCheckers();
     addScheduleGroupCheckers();
@@ -303,14 +303,14 @@ public class IRDAGChecker {
     neighborCheckerList.add(shuffleChecker);
   }
 
-  void addMessageBarrierCheckers() {
+  void addMessageBarrierVertexCheckers() {
     // Check vertices to optimize
     // Message Ids and same additional-output
     // MessageIdProperty;
   }
 
   void addStreamVertexCheckers() {
-    // Encoder, decoder?
+    // TODO #342: Check Encoder/Decoder symmetry
   }
 
   void addLoopVertexCheckers() {
@@ -330,8 +330,15 @@ public class IRDAGChecker {
   }
 
   void addCacheCheckers() {
-    // IgnoreSchedulingTempDataReceiverProperty;
-    // CacheIDProperty;
+    final SingleEdgeChecker cachedEdge = (edge -> {
+      if (edge.getPropertyValue(CacheIDProperty.class).isPresent()) {
+        if (!edge.getDst().getPropertyValue(IgnoreSchedulingTempDataReceiverProperty.class).isPresent()) {
+          return failure("Cache edge should point to a IgnoreSchedulingTempDataReceiver",
+            edge, CacheIDProperty.class, edge.getDst(), IgnoreSchedulingTempDataReceiverProperty.class);
+        }
+      }
+      return success();
+    });
   }
 
   void addScheduleGroupCheckers() {
