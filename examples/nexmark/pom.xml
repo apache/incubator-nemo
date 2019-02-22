@@ -19,11 +19,11 @@
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/org.apache.beam/beam-sdks-java-io-google-cloud-platform -->
-    <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
-      <version>2.7.0</version>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.apache.beam</groupId>-->
+      <!--<artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>-->
+      <!--<version>2.7.0</version>-->
+    <!--</dependency>-->
 
     <dependency>
       <groupId>org.apache.nemo</groupId>
