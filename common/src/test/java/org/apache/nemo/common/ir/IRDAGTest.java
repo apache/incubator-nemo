@@ -84,7 +84,8 @@ public class IRDAGTest {
     final IRDAGChecker.CheckerResult checkerResult = irdag.checkIntegrity();
     if (!checkerResult.isPassed()) {
       irdag.storeJSON("integrity", "failure", "integrity failure");
-      throw new RuntimeException("Expected pass, but failed due to ==> " + checkerResult.getFailReason());
+      throw new RuntimeException("(See [integrity] folder for visualization) " +
+        "Expected pass, but failed due to ==> " + checkerResult.getFailReason());
     }
   }
 

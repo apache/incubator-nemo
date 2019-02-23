@@ -222,7 +222,13 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       }
     });
 
-    streamVertexToOriginalEdge.put(streamVertex, edgeToStreamize);
+    if (edgeToStreamize.getSrc() instanceof StreamVertex) {
+      streamVertexToOriginalEdge.put(streamVertex, streamVertexToOriginalEdge.get(edgeToStreamize.getSrc()));
+    } else if (edgeToStreamize.getDst() instanceof StreamVertex) {
+      streamVertexToOriginalEdge.put(streamVertex, streamVertexToOriginalEdge.get(edgeToStreamize.getDst()));
+    } else {
+      streamVertexToOriginalEdge.put(streamVertex, edgeToStreamize);
+    }
     modifiedDAG = builder.build(); // update the DAG.
   }
 
