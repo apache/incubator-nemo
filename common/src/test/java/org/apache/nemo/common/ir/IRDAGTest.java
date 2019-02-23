@@ -31,6 +31,7 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
@@ -258,6 +259,38 @@ public class IRDAGTest {
     mustPass();
   }
 
+  /*
+  @Test
+  public void testSamplingVertex() {
+    final SamplingVertex svOne;
+    mustPass();
+
+    final SamplingVertex svTwo;
+    mustPass();
+
+    irdag.delete(svTwo);
+    mustPass();
+
+    irdag.delete(svOne);
+    mustPass();
+  }
+  */
+
+  private MessageAggregatorVertex insertNewMessageBarrierVertex(final IRDAG dag, final IREdge edgeToGetStatisticsOf) {
+    final MessageBarrierVertex mb = new MessageBarrierVertex<>((l, r) -> null);
+    final MessageAggregatorVertex ma = new MessageAggregatorVertex<>(new Object(), (l, r) -> null);
+    dag.insert(
+      mb,
+      ma,
+      EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY),
+      DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY),
+      Sets.newHashSet(edgeToGetStatisticsOf),
+      Sets.newHashSet(edgeToGetStatisticsOf));
+    return ma;
+  }
+
+  ////////////////////////////////////////////////////// Random generative tests
+
   private Random random = new Random(0); // deterministic seed for reproducibility
 
   @Test
@@ -267,7 +300,7 @@ public class IRDAGTest {
 
     final List<IRVertex> insertedVertices = new ArrayList<>();
     for (int i = 0; i < thousandConfigs; i++) {
-      final int numOfTotalMethods = 10;
+      final int numOfTotalMethods = 11;
       final int methodIndex = random.nextInt(numOfTotalMethods);
       switch (methodIndex) {
         // Annotation methods
@@ -290,8 +323,10 @@ public class IRDAGTest {
           // final MessageBarrierVertex mbv = new MessageBarrierVertex();
           // irdag.insert(mbv, selectRandomEdge());
           // insertedVertices.add(mbv);
+        case 9:
+          // final SamplingVertex
           break;
-        case 9: // the last index must be (numOfTotalMethods - 1)
+        case 10: // the last index must be (numOfTotalMethods - 1)
           if (!insertedVertices.isEmpty()) {
             irdag.delete(insertedVertices.remove(random.nextInt(insertedVertices.size())));
           }
@@ -304,26 +339,10 @@ public class IRDAGTest {
         // irdag.storeJSON("test", String.valueOf(i), "test");
       }
 
-      // Must pass
+      // Must always pass
       mustPass();
     }
   }
-
-  /////////////////////////// Random property generation
-
-  private MessageAggregatorVertex insertNewMessageBarrierVertex(final IRDAG dag, final IREdge edgeToGetStatisticsOf) {
-    final MessageBarrierVertex mb = new MessageBarrierVertex<>((l, r) -> null);
-    final MessageAggregatorVertex ma = new MessageAggregatorVertex<>(new Object(), (l, r) -> null);
-    dag.insert(
-      mb,
-      ma,
-      EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY),
-      DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY),
-      Sets.newHashSet(edgeToGetStatisticsOf),
-      Sets.newHashSet(edgeToGetStatisticsOf));
-    return ma;
-  }
-
 
   private IREdge selectRandomEdge() {
     final List<IREdge> edges = irdag.getVertices().stream()

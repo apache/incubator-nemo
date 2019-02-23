@@ -106,16 +106,24 @@ public final class Util {
       clone.setProperty(AdditionalOutputTagProperty.of(tag));
     });
 
-    edgeToClone.getPropertyValue(PartitionerProperty.class).ifPresent(p -> {
-      if (p.right() == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM) {
-        clone.setProperty(PartitionerProperty.of(p.left()));
-      } else {
-        clone.setProperty(PartitionerProperty.of(p.left(), p.right()));
-      }
-    });
+    if (commPattern.equals(CommunicationPatternProperty.Value.Shuffle)) {
+      edgeToClone.getPropertyValue(PartitionerProperty.class).ifPresent(p -> {
+        if (p.right() == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM) {
+          clone.setProperty(PartitionerProperty.of(p.left()));
+        } else {
+          clone.setProperty(PartitionerProperty.of(p.left(), p.right()));
+        }
+      });
+    }
 
     edgeToClone.getPropertyValue(KeyExtractorProperty.class).ifPresent(ke -> {
       clone.setProperty(KeyExtractorProperty.of(ke));
+    });
+    edgeToClone.getPropertyValue(KeyEncoderProperty.class).ifPresent(keyEncoder -> {
+      clone.setProperty(KeyEncoderProperty.of(keyEncoder));
+    });
+    edgeToClone.getPropertyValue(KeyDecoderProperty.class).ifPresent(keyDecoder -> {
+      clone.setProperty(KeyDecoderProperty.of(keyDecoder));
     });
 
     return clone;

@@ -365,11 +365,12 @@ public class IRDAGChecker {
       if (edge.getPropertyValue(CacheIDProperty.class).isPresent()) {
         if (!edge.getDst().getPropertyValue(IgnoreSchedulingTempDataReceiverProperty.class).isPresent()) {
           return failure("Cache edge should point to a IgnoreSchedulingTempDataReceiver",
-            edge, CacheIDProperty.class, edge.getDst(), IgnoreSchedulingTempDataReceiverProperty.class);
+            edge, CacheIDProperty.class);
         }
       }
       return success();
     });
+    singleEdgeCheckerList.add(cachedEdge);
   }
 
   void addScheduleGroupCheckers() {

@@ -208,6 +208,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    *
    * This preserves semantics as the results of the inserted message vertices are never consumed by the original IRDAG.
    *
+   * TODO #345: Simplify insert(MessageBarrierVertex)
+   *
    * @param messageBarrierVertex to insert.
    * @param messageAggregatorVertex to insert.
    * @param mbvOutputEncoder to use.
@@ -259,7 +261,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
     // From mbv to mav
     for (final IRVertex mbv : mbvList) {
-      final IREdge edgeToMav = edgeBetweenMessageVertices(
+      final IREdge edgeToMav = edgeToMessageAggregator(
         mbv, messageAggregatorVertex, mbvOutputEncoder, mbvOutputDecoder);
       builder.connectVertices(edgeToMav);
     }
@@ -414,10 +416,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    * @param decoder src-dst decoder.
    * @return the edge.
    */
-  private IREdge edgeBetweenMessageVertices(final IRVertex mbv,
-                                            final IRVertex mav,
-                                            final EncoderProperty encoder,
-                                            final DecoderProperty decoder) {
+  private IREdge edgeToMessageAggregator(final IRVertex mbv,
+                                         final IRVertex mav,
+                                         final EncoderProperty encoder,
+                                         final DecoderProperty decoder) {
     final IREdge newEdge = new IREdge(CommunicationPatternProperty.Value.Shuffle, mbv, mav);
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
@@ -429,9 +431,15 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         throw new IllegalStateException(element.toString());
       }
     };
-    newEdge.setProperty(KeyExtractorProperty.of(pairKeyExtractor));
     newEdge.setPropertyPermanently(encoder);
     newEdge.setPropertyPermanently(decoder);
+    newEdge.setPropertyPermanently(KeyExtractorProperty.of(pairKeyExtractor));
+
+    // TODO #345: Simplify insert(MessageBarrierVertex)
+    // these are obviously wrong, but hacks for now...
+    newEdge.setPropertyPermanently(KeyEncoderProperty.of(encoder.getValue()));
+    newEdge.setPropertyPermanently(KeyDecoderProperty.of(decoder.getValue()));
+
     return newEdge;
   }
 
