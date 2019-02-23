@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
-import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
@@ -62,6 +61,7 @@ import java.util.Base64;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

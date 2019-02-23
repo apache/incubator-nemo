@@ -1,10 +1,10 @@
 package org.apache.nemo.runtime.executor;
 
-import org.apache.nemo.common.EventHandler;
 import org.apache.nemo.common.Pair;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
