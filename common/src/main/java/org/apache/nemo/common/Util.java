@@ -21,8 +21,13 @@ package org.apache.nemo.common;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
+import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 
 import java.util.Collection;
+import java.util.Optional;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 
@@ -87,20 +92,10 @@ public final class Util {
                                  final IRVertex newSrc,
                                  final IRVertex newDst) {
     final IREdge clone = new IREdge(commPattern, newSrc, newDst);
-
-    if (edgeToClone.getPropertySnapshot().containsKey(EncoderProperty.class)) {
-      clone.setProperty(edgeToClone.getPropertySnapshot().get(EncoderProperty.class));
-    } else {
-      clone.setProperty(EncoderProperty.of(edgeToClone.getPropertyValue(EncoderProperty.class)
-        .orElseThrow(IllegalStateException::new)));
-    }
-
-    if (edgeToClone.getPropertySnapshot().containsKey(DecoderProperty.class)) {
-      clone.setProperty(edgeToClone.getPropertySnapshot().get(DecoderProperty.class));
-    } else {
-      clone.setProperty(DecoderProperty.of(edgeToClone.getPropertyValue(DecoderProperty.class)
-        .orElseThrow(IllegalStateException::new)));
-    }
+    clone.setProperty(EncoderProperty.of(edgeToClone.getPropertyValue(EncoderProperty.class)
+      .orElseThrow(IllegalStateException::new)));
+    clone.setProperty(DecoderProperty.of(edgeToClone.getPropertyValue(DecoderProperty.class)
+      .orElseThrow(IllegalStateException::new)));
 
     edgeToClone.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag -> {
       clone.setProperty(AdditionalOutputTagProperty.of(tag));
@@ -142,6 +137,17 @@ public final class Util {
     final IREdge controlEdge = new IREdge(CommunicationPatternProperty.Value.BroadCast, src, dst);
     controlEdge.setPropertyPermanently(AdditionalOutputTagProperty.of(CONTROL_EDGE_TAG));
     return controlEdge;
+  }
+
+  public static boolean isControlEdge(final IREdge edge) {
+    return edge.getPropertyValue(AdditionalOutputTagProperty.class).equals(Optional.of(Util.CONTROL_EDGE_TAG));
+  }
+
+  public static boolean isUtilityVertex(final IRVertex v) {
+    return v instanceof SamplingVertex
+      || v instanceof MessageAggregatorVertex
+      || v instanceof MessageBarrierVertex
+      || v instanceof StreamVertex;
   }
 
   /**

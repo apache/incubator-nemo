@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.common.test;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
@@ -220,6 +221,13 @@ public final class EmptyComponents {
       sb.append(", name: ");
       sb.append(name);
       return sb.toString();
+    }
+
+    @Override
+    public ObjectNode getPropertiesAsJsonNode() {
+      final ObjectNode node = getIRVertexPropertiesAsJsonNode();
+      node.put("source", "EmptySourceVertex(" + name + " / minNumReadables: " + minNumReadables + ")");
+      return node;
     }
 
     @Override

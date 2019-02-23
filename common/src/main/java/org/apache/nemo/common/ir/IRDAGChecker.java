@@ -20,6 +20,7 @@ package org.apache.nemo.common.ir;
 
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
@@ -29,6 +30,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -352,7 +354,7 @@ public class IRDAGChecker {
           .map(e -> e.getPropertyValue(DuplicateEdgeGroupProperty.class)
             .map(DuplicateEdgeGroupPropertyValue::getGroupId))
           .distinct().count() > 1) {
-          return failure("Different duplicate edge group ids in: " + sameTagOutEdges.toString());
+          return failure("Different duplicate edge group ids in: " + Util.stringifyIREdgeIds(sameTagOutEdges));
         }
       }
       return success();
@@ -394,13 +396,19 @@ public class IRDAGChecker {
   void addEncodingCompressionCheckers() {
     final NeighborChecker additionalOutputEncoder = ((irVertex, inEdges, outEdges) -> {
       for (final List<IREdge> sameTagOutEdges : groupOutEdgesByAdditionalOutputTag(outEdges).values()) {
-        if (1 != sameTagOutEdges.stream()
-          .map(e -> e.getPropertyValue(EncoderProperty.class).get().getClass()).distinct().count()) {
-          return failure("Incompatible encoders in " + sameTagOutEdges.toString());
-        }
-        if (1 != sameTagOutEdges.stream()
-          .map(e -> e.getPropertyValue(DecoderProperty.class).get().getClass()).distinct().count()) {
-          return failure("Incompatible decoders in " + sameTagOutEdges.toString());
+        final List<IREdge> nonStreamVertexEdge = sameTagOutEdges.stream()
+          .filter(stoe -> !isConnectedToStreamVertex(stoe))
+          .collect(Collectors.toList());
+
+        if (!nonStreamVertexEdge.isEmpty()) {
+          if (1 != nonStreamVertexEdge.stream()
+            .map(e -> e.getPropertyValue(EncoderProperty.class).get().getClass()).distinct().count()) {
+            return failure("Incompatible encoders in " + Util.stringifyIREdgeIds(nonStreamVertexEdge));
+          }
+          if (1 != nonStreamVertexEdge.stream()
+            .map(e -> e.getPropertyValue(DecoderProperty.class).get().getClass()).distinct().count()) {
+            return failure("Incompatible decoders in " + Util.stringifyIREdgeIds(nonStreamVertexEdge));
+          }
         }
       }
       return success();
@@ -410,7 +418,7 @@ public class IRDAGChecker {
     // TODO #342: Check Encoder/Decoder symmetry
 
     final SingleEdgeChecker compressAndDecompress = (edge -> {
-      if (!(edge.getDst() instanceof StreamVertex || edge.getSrc() instanceof StreamVertex)) {
+      if (!isConnectedToStreamVertex(edge)) {
         if (edge.getPropertyValue(CompressionProperty.class) != edge.getPropertyValue(DecompressionProperty.class)) {
           return failure("Compression and decompression must be symmetric",
             edge, CompressionProperty.class, DecompressionProperty.class);
@@ -423,6 +431,10 @@ public class IRDAGChecker {
 
 
   ///////////////////////////// Private helper methods
+
+  private boolean isConnectedToStreamVertex(final IREdge irEdge) {
+    return irEdge.getDst() instanceof StreamVertex || irEdge.getSrc() instanceof StreamVertex;
+  }
 
   private Map<Optional<String>, List<IREdge>> groupOutEdgesByAdditionalOutputTag(final List<IREdge> outEdges) {
     return outEdges.stream().collect(Collectors.groupingBy(

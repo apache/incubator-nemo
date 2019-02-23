@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.common.ir.vertex.utility;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -38,8 +38,8 @@ public final class SamplingVertex extends IRVertex {
    */
   public SamplingVertex(final IRVertex originalVertex, final float desiredSampleRate) {
     super();
-    if (originalVertex instanceof SamplingVertex) {
-      throw new IllegalArgumentException("Cannot sample again: " + originalVertex.toString());
+    if (Util.isUtilityVertex(originalVertex)) {
+      throw new IllegalArgumentException("Cannot sample utility vertices: " + originalVertex.toString());
     }
     if (desiredSampleRate > 1 || desiredSampleRate <= 0) {
       throw new IllegalArgumentException(String.valueOf(desiredSampleRate));
@@ -101,9 +101,9 @@ public final class SamplingVertex extends IRVertex {
     final StringBuilder sb = new StringBuilder();
     sb.append("SamplingVertex(desiredSampleRate:");
     sb.append(String.valueOf(desiredSampleRate));
-    sb.append(")[");
-    sb.append(originalVertex);
-    sb.append("]");
+    sb.append(", ");
+    sb.append(getOriginalVertexId());
+    sb.append(")");
     return sb.toString();
   }
 
@@ -113,7 +113,9 @@ public final class SamplingVertex extends IRVertex {
   }
 
   @Override
-  public JsonNode getPropertiesAsJsonNode() {
-    return getCloneOfOriginalVertex().getPropertiesAsJsonNode();
+  public final ObjectNode getPropertiesAsJsonNode() {
+    final ObjectNode node = getIRVertexPropertiesAsJsonNode();
+    node.put("transform", toString());
+    return node;
   }
 }

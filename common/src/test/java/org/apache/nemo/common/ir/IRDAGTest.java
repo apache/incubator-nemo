@@ -20,6 +20,7 @@ package org.apache.nemo.common.ir;
 
 import com.google.common.collect.Sets;
 import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAGBuilder;
@@ -82,6 +83,7 @@ public class IRDAGTest {
   private void mustPass() {
     final IRDAGChecker.CheckerResult checkerResult = irdag.checkIntegrity();
     if (!checkerResult.isPassed()) {
+      irdag.storeJSON("integrity", "failure", "integrity failure");
       throw new RuntimeException("Expected pass, but failed due to ==> " + checkerResult.getFailReason());
     }
   }
@@ -259,13 +261,14 @@ public class IRDAGTest {
     mustPass();
   }
 
-  /*
   @Test
   public void testSamplingVertex() {
-    final SamplingVertex svOne;
+    final SamplingVertex svOne = new SamplingVertex(sourceVertex, 0.1f);
+    irdag.insert(Sets.newHashSet(svOne), Sets.newHashSet(sourceVertex));
     mustPass();
 
-    final SamplingVertex svTwo;
+    final SamplingVertex svTwo = new SamplingVertex(firstOperatorVertex, 0.1f);;
+    irdag.insert(Sets.newHashSet(svTwo), Sets.newHashSet(firstOperatorVertex));
     mustPass();
 
     irdag.delete(svTwo);
@@ -274,7 +277,6 @@ public class IRDAGTest {
     irdag.delete(svOne);
     mustPass();
   }
-  */
 
   private MessageAggregatorVertex insertNewMessageBarrierVertex(final IRDAG dag, final IREdge edgeToGetStatisticsOf) {
     final MessageBarrierVertex mb = new MessageBarrierVertex<>((l, r) -> null);
@@ -298,6 +300,7 @@ public class IRDAGTest {
     // Thousand random configurations (some duplicate configurations possible)
     final int thousandConfigs = 1000;
 
+    final Set<String> sampledVertexIds = new HashSet<>();
     final List<IRVertex> insertedVertices = new ArrayList<>();
     for (int i = 0; i < thousandConfigs; i++) {
       final int numOfTotalMethods = 11;
@@ -315,18 +318,23 @@ public class IRDAGTest {
 
         // Reshaping methods
         case 7:
-          final StreamVertex sv = new StreamVertex();
-          irdag.insert(sv, selectRandomEdge());
-          insertedVertices.add(sv);
+          final StreamVertex streamVertex = new StreamVertex();
+          irdag.insert(streamVertex, selectRandomEdge());
+          insertedVertices.add(streamVertex);
           break;
         case 8:
           // final MessageBarrierVertex mbv = new MessageBarrierVertex();
           // irdag.insert(mbv, selectRandomEdge());
           // insertedVertices.add(mbv);
         case 9:
-          // final SamplingVertex
+          final IRVertex vertexToSample = selectRandomVertex();
+          if (!(Util.isUtilityVertex(vertexToSample))) {
+            final SamplingVertex samplingVertex = new SamplingVertex(vertexToSample, 0.1f);
+            irdag.insert(Sets.newHashSet(samplingVertex), Sets.newHashSet(vertexToSample));
+          }
           break;
-        case 10: // the last index must be (numOfTotalMethods - 1)
+        case 10:
+          // the last index must be (numOfTotalMethods - 1)
           if (!insertedVertices.isEmpty()) {
             irdag.delete(insertedVertices.remove(random.nextInt(insertedVertices.size())));
           }
@@ -336,7 +344,13 @@ public class IRDAGTest {
 
       if (i % (thousandConfigs / 10) == 0) {
         // Uncomment to visualize 10 DAG snapshots
-        // irdag.storeJSON("test", String.valueOf(i), "test");
+        // irdag.storeJSON("test_10_snapshots", String.valueOf(i), "test");
+      }
+
+      if (methodIndex >= 7) {
+        // Uncomment to visualize DAG snapshots after reshaping (insert, delete)
+        irdag.storeJSON(
+          "test_reshaping_snapshots", i + "(methodIndex_" + methodIndex + ")", "test");
       }
 
       // Must always pass
@@ -347,7 +361,12 @@ public class IRDAGTest {
   private IREdge selectRandomEdge() {
     final List<IREdge> edges = irdag.getVertices().stream()
       .flatMap(v -> irdag.getIncomingEdgesOf(v).stream()).collect(Collectors.toList());
-    return edges.get(random.nextInt(edges.size()));
+    while (true) {
+      final IREdge selectedEdge = edges.get(random.nextInt(edges.size()));
+      if (!Util.isControlEdge(selectedEdge)) {
+        return selectedEdge;
+      }
+    }
   }
 
   private IRVertex selectRandomVertex() {

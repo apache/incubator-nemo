@@ -69,12 +69,16 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   private DAG<IRVertex, IREdge> dagSnapshot; // the DAG that was saved most recently.
   private DAG<IRVertex, IREdge> modifiedDAG; // the DAG that is being updated.
 
+  // To remember original encoders/decoders, and etc
+  private final Map<StreamVertex, IREdge> streamVertexToOriginalEdge;
+
   /**
    * @param originalUserApplicationDAG the initial DAG.
    */
   public IRDAG(final DAG<IRVertex, IREdge> originalUserApplicationDAG) {
     this.modifiedDAG = originalUserApplicationDAG;
     this.dagSnapshot = originalUserApplicationDAG;
+    this.streamVertexToOriginalEdge = new HashMap<>();
   }
 
   public IRDAGChecker.CheckerResult checkIntegrity() {
@@ -105,19 +109,47 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
   ////////////////////////////////////////////////// Methods for reshaping the DAG topology.
 
-  public void delete(final IRVertex irVertex) {
-    // TODO assertExistence()
-    if (irVertex instanceof StreamVertex) {
-      // Base case: can be deleted immediately
+  /**
+   * Deletes a previously inserted utility vertex.
+   * (e.g., MessageBarrierVertex, StreamVertex, SamplingVertex)
+   *
+   * Notice that the actual number of vertices that will be deleted after this call returns can be more than one.
+   * We roll back the changes made with the previous insert(), while preserving application semantics.
+   *
+   * @param vertexToDelete to delete.
+   */
+  public void delete(final IRVertex vertexToDelete) {
+    assertExistence(vertexToDelete);
 
-      // Create a completely new DAG with the vertex deleted.
-      final DAGBuilder builder = new DAGBuilder();
+    if (vertexToDelete instanceof StreamVertex) {
+      // Base case: this vertex can be deleted immediately (no dependency to other vertices)
 
-    } else if (irVertex instanceof MessageAggregatorVertex) {
+      // Create a completely new DAG with the vertex deleted
+      final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+      // Add vertices/edges not related with the stream vertex
+      modifiedDAG.getVertices().stream().filter(v -> !v.equals(vertexToDelete)).forEach(builder::addVertex);
+      modifiedDAG.getEdges().stream()
+        .filter(e -> !e.getSrc().equals(vertexToDelete) && !e.getDst().equals(vertexToDelete))
+        .forEach(builder::connectVertices);
+
+      // Add a new edge that directly connects the src of the stream vertex to its dst
+      modifiedDAG.getOutgoingEdgesOf(vertexToDelete).stream().map(IREdge::getDst).forEach(dstVertex -> {
+        builder.connectVertices(Util.cloneEdge(
+          streamVertexToOriginalEdge.get(vertexToDelete),
+          modifiedDAG.getIncomingEdgesOf(vertexToDelete).get(0).getSrc(),
+          dstVertex));
+      });
+
+      modifiedDAG = builder.build();
+    } else if (vertexToDelete instanceof MessageAggregatorVertex) {
+      // recursively call delete()
+
+    } else if (vertexToDelete instanceof SamplingVertex) {
       // recursively call delete()
 
     } else {
-      throw new IllegalArgumentException(irVertex.getId());
+      throw new IllegalArgumentException(vertexToDelete.getId());
     }
   }
 
@@ -135,6 +167,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    */
   public void insert(final StreamVertex streamVertex, final IREdge edgeToStreamize) {
     assertNonExistence(streamVertex);
+    assertNonControlEdge(edgeToStreamize);
 
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
@@ -168,10 +201,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           fromSV.setProperty(EncoderProperty.of(edgeToStreamize.getPropertyValue(EncoderProperty.class).get()));
           fromSV.setProperty(DecoderProperty.of(edgeToStreamize.getPropertyValue(DecoderProperty.class).get()));
 
-          // Future optimizations may want to use the original encoders/compressions.
-          toSV.setPropertySnapshot();
-          fromSV.setPropertySnapshot();
-
           // Annotations for efficient data transfers - toSV
           toSV.setPropertyPermanently(DecoderProperty.of(BytesDecoderFactory.of()));
           toSV.setPropertyPermanently(CompressionProperty.of(CompressionProperty.Value.LZ4));
@@ -193,6 +222,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       }
     });
 
+    streamVertexToOriginalEdge.put(streamVertex, edgeToStreamize);
     modifiedDAG = builder.build(); // update the DAG.
   }
 
@@ -225,6 +255,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
                      final Set<IREdge> edgesToOptimize) {
     assertNonExistence(messageBarrierVertex);
     assertNonExistence(messageAggregatorVertex);
+    edgesToGetStatisticsOf.forEach(this::assertNonControlEdge);
+    edgesToOptimize.forEach(this::assertNonControlEdge);
 
     if (edgesToGetStatisticsOf.stream().map(edge -> edge.getDst().getId()).collect(Collectors.toSet()).size() != 1) {
       throw new IllegalArgumentException("Not destined to the same vertex: " + edgesToOptimize.toString());
@@ -315,6 +347,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   public void insert(final Set<SamplingVertex> samplingVertices,
                      final Set<IRVertex> executeAfterSamplingVertices) {
     samplingVertices.forEach(this::assertNonExistence);
+    executeAfterSamplingVertices.forEach(this::assertExistence);
 
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
@@ -401,6 +434,18 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     return existingVertexToConnectWith instanceof SamplingVertex
       ? new SamplingVertex(newVertex, ((SamplingVertex) existingVertexToConnectWith).getDesiredSampleRate())
       : newVertex;
+  }
+
+  private void assertNonControlEdge(final IREdge e) {
+    if (Util.isControlEdge(e)) {
+      throw new IllegalArgumentException(e.getId());
+    }
+  }
+
+  private void assertExistence(final IRVertex v) {
+    if (!getVertices().contains(v)) {
+      throw new IllegalArgumentException(v.getId());
+    }
   }
 
   private void assertNonExistence(final IRVertex v) {
