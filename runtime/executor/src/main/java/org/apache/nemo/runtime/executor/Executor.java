@@ -19,6 +19,8 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
+import org.apache.nemo.common.EventHandler;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
@@ -94,6 +96,10 @@ public final class Executor {
 
   private final ServerlessExecutorProvider serverlessExecutorProvider;
 
+  private final CpuBottleneckDetector bottleneckDetector;
+
+  private volatile boolean started = false;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -102,7 +108,8 @@ public final class Executor {
                    final IntermediateDataIOFactory intermediateDataIOFactory,
                    final BroadcastManagerWorker broadcastManagerWorker,
                    final MetricManagerWorker metricMessageSender,
-                   final ServerlessExecutorProvider serverlessExecutorProvider) {
+                   final ServerlessExecutorProvider serverlessExecutorProvider,
+                   final CpuBottleneckDetector bottleneckDetector) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
         .namingPattern("TaskExecutor thread-%d")
@@ -113,6 +120,7 @@ public final class Executor {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
     this.serverlessExecutorProvider = serverlessExecutorProvider;
+    this.bottleneckDetector = bottleneckDetector;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
 
@@ -173,6 +181,12 @@ public final class Executor {
   private void launchTask(final Task task,
                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
     LOG.info("Launch task: {}", task.getTaskId());
+
+    if (!started) {
+      bottleneckDetector.setBottleneckHandler(new BottleneckHandler());
+      bottleneckDetector.start();
+      started = true;
+    }
     try {
       final TaskStateManager taskStateManager =
           new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
@@ -281,6 +295,14 @@ public final class Executor {
         throw new IllegalMessageException(
             new Exception("This message should not be requested to an executor :" + message.getType()));
       }
+    }
+  }
+
+  final class BottleneckHandler implements EventHandler<Pair<Long, Double>> {
+
+    @Override
+    public void onNext(Pair<Long, Double> o) {
+      LOG.info("Bottleneck event: {}", o);
     }
   }
 }
