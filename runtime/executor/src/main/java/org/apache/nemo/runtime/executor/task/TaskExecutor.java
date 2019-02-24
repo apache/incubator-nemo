@@ -544,8 +544,11 @@ public final class TaskExecutor {
 
         while (pendingIterator.hasNext()) {
 
-          if (System.currentTimeMillis() - prevLogTime >= pd) {
-            //LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
+          final long currTime = System.currentTimeMillis();
+          if (currTime - prevLogTime >= pd) {
+            LOG.info("# of processed events (during {} ms) in TaskExecutor {}: {}",
+              (currTime - prevLogTime), numProcessedEvents, taskId);
+            numProcessedEvents = 0;
             prevLogTime = System.currentTimeMillis();
           }
 
@@ -557,6 +560,7 @@ public final class TaskExecutor {
 
             //final long b = System.currentTimeMillis();
             onEventFromDataFetcher(element, dataFetcher);
+            numProcessedEvents += 1;
            // processingTime += (System.currentTimeMillis() - b);
 
             // We processed data. This means the data fetcher is now available.
@@ -578,10 +582,6 @@ public final class TaskExecutor {
         }
       }
 
-      if (System.currentTimeMillis() - prevLogTime >= pd) {
-        //LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
-        prevLogTime = System.currentTimeMillis();
-      }
       // If there are no available fetchers,
       // Sleep and retry fetching element from pending fetchers every polling interval
       if (availableFetchers.isEmpty() && !pendingFetchers.isEmpty()) {
