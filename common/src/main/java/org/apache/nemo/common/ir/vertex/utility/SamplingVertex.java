@@ -99,7 +99,9 @@ public final class SamplingVertex extends IRVertex {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("SamplingVertex(desiredSampleRate:");
+    sb.append("SamplingVertex ");
+    sb.append(getId());
+    sb.append("(desiredSampleRate:");
     sb.append(String.valueOf(desiredSampleRate));
     sb.append(", ");
     sb.append(getOriginalVertexId());

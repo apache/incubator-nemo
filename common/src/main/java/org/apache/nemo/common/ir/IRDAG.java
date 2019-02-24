@@ -72,6 +72,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   // To remember original encoders/decoders, and etc
   private final Map<StreamVertex, IREdge> streamVertexToOriginalEdge;
 
+  // To remember sampling vertex groups
+  private final List<Set<SamplingVertex>> samplingVertexGroups;
+
   /**
    * @param originalUserApplicationDAG the initial DAG.
    */
@@ -79,6 +82,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     this.modifiedDAG = originalUserApplicationDAG;
     this.dagSnapshot = originalUserApplicationDAG;
     this.streamVertexToOriginalEdge = new HashMap<>();
+    this.samplingVertexGroups = new ArrayList<>();
   }
 
   public IRDAGChecker.CheckerResult checkIntegrity() {
@@ -120,7 +124,67 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    */
   public void delete(final IRVertex vertexToDelete) {
     assertExistence(vertexToDelete);
+    deletePrivate(vertexToDelete);
+  }
 
+  private Set<IRVertex> getVertexGroupToDelete(final IRVertex vertexToDelete) {
+    if (vertexToDelete instanceof StreamVertex) {
+      return Sets.newHashSet(vertexToDelete);
+    } else if (vertexToDelete instanceof SamplingVertex) {
+      final List<Set<SamplingVertex>> samplingVertexGroupList = samplingVertexGroups.stream()
+        .filter(group -> group.contains(vertexToDelete))
+        .collect(Collectors.toList());
+      if (samplingVertexGroupList.size() != 1) {
+        throw new IllegalStateException(vertexToDelete.getId());
+      }
+      final Set<SamplingVertex> samplingVertexGroup = samplingVertexGroupList.get(0);
+      final Set<IRVertex> converted = new HashSet<>(samplingVertexGroup.size());
+      for (final IRVertex sv : samplingVertexGroup) {
+        converted.add(sv); // explicit conversion to IRVertex is needed here.. otherwise the compiler complains :(
+      }
+      return converted;
+    } else {
+      return Collections.emptySet();
+    }
+  }
+
+  private void deletePrivate(final IRVertex vertexToDelete) {
+    // vertexToDelete may have already been deleted during recursive calls, in which case we simply return
+    if (!modifiedDAG.getVertices().contains(vertexToDelete)) {
+      return;
+    }
+
+    // Three data structures
+    final Set<IRVertex> vertexGroupToDelete = getVertexGroupToDelete(vertexToDelete);
+    final Set<IRVertex> utilityParents = vertexGroupToDelete.stream()
+      .map(modifiedDAG::getIncomingEdgesOf)
+      .flatMap(inEdgeList -> inEdgeList.stream().map(IREdge::getSrc))
+      .filter(Util::isUtilityVertex)
+      .collect(Collectors.toSet());
+    final Set<IRVertex> utilityChildren = vertexGroupToDelete.stream()
+      .map(modifiedDAG::getOutgoingEdgesOf)
+      .flatMap(outEdgeList -> outEdgeList.stream().map(IREdge::getDst))
+      .filter(Util::isUtilityVertex)
+      .collect(Collectors.toSet());
+    LOG.info("vertexGroupToDelete {} / parents {} / children {}",
+      Util.stringifyIRVertexIds(vertexGroupToDelete),
+      Util.stringifyIRVertexIds(utilityParents),
+      Util.stringifyIRVertexIds(utilityChildren));
+
+    // STEP 1: Delete parent utility vertices
+    // Vertices that are 'in between' the group are also deleted here
+    Sets.difference(utilityParents, vertexGroupToDelete).stream()
+      .map(parent -> parent instanceof MessageBarrierVertex
+        ? modifiedDAG.getOutgoingEdgesOf(parent).iterator().next().getDst()
+        : parent)
+      .forEach(this::deletePrivate);
+
+    // STEP 2: Delete the specified vertex(vertices)
+    if (!modifiedDAG.getVertices().contains(vertexToDelete)) {
+      // vertexToDelete may have already been deleted during recursive calls, in which case we simply return
+      // This checker probably can be removed if we delete() in a topological order.
+      return;
+    }
     if (vertexToDelete instanceof StreamVertex) {
       // Base case: this vertex can be deleted immediately (no dependency to other vertices)
 
@@ -134,23 +198,35 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         .forEach(builder::connectVertices);
 
       // Add a new edge that directly connects the src of the stream vertex to its dst
-      modifiedDAG.getOutgoingEdgesOf(vertexToDelete).stream().map(IREdge::getDst).forEach(dstVertex -> {
-        builder.connectVertices(Util.cloneEdge(
-          streamVertexToOriginalEdge.get(vertexToDelete),
-          modifiedDAG.getIncomingEdgesOf(vertexToDelete).get(0).getSrc(),
-          dstVertex));
-      });
+      modifiedDAG.getOutgoingEdgesOf(vertexToDelete).stream()
+        .filter(e -> !Util.isControlEdge(e))
+        .map(IREdge::getDst)
+        .forEach(dstVertex -> { builder.connectVertices(
+          Util.cloneEdge(streamVertexToOriginalEdge.get(vertexToDelete),
+            modifiedDAG.getIncomingEdgesOf(vertexToDelete).get(0).getSrc(),
+            dstVertex));
+        });
 
       modifiedDAG = builder.build();
-    } else if (vertexToDelete instanceof MessageAggregatorVertex) {
+    } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof MessageBarrierVertex) {
       // recursively call delete()
 
     } else if (vertexToDelete instanceof SamplingVertex) {
-      // recursively call delete()
+      // Update the modified DAG
+      // Build a new DAG excluding the sampling vertices and all their in/out edges
+      final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
+      modifiedDAG.getVertices().stream().filter(v -> !vertexGroupToDelete.contains(v)).forEach(builder::addVertex);
+      modifiedDAG.getEdges().stream()
+        .filter(e -> !vertexGroupToDelete.contains(e.getSrc()) && !vertexGroupToDelete.contains(e.getDst()))
+        .forEach(builder::connectVertices);
+      modifiedDAG = builder.build();
     } else {
       throw new IllegalArgumentException(vertexToDelete.getId());
     }
+
+    // STEP 3: Delete children utility vertices
+    Sets.difference(utilityChildren, vertexGroupToDelete).forEach(this::deletePrivate);
   }
 
   /**
@@ -347,13 +423,13 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    *
    * TODO #343: Extend SamplingVertex control edges
    *
-   * @param samplingVertices to insert.
-   * @param executeAfterSamplingVertices that must be executed after samplingVertices.
+   * @param toInsert sampling vertices.
+   * @param executeAfter that must be executed after toInsert.
    */
-  public void insert(final Set<SamplingVertex> samplingVertices,
-                     final Set<IRVertex> executeAfterSamplingVertices) {
-    samplingVertices.forEach(this::assertNonExistence);
-    executeAfterSamplingVertices.forEach(this::assertExistence);
+  public void insert(final Set<SamplingVertex> toInsert,
+                     final Set<IRVertex> executeAfter) {
+    toInsert.forEach(this::assertNonExistence);
+    executeAfter.forEach(this::assertExistence);
 
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
@@ -365,10 +441,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     });
 
     // Add the sampling vertices
-    samplingVertices.forEach(builder::addVertex);
+    toInsert.forEach(builder::addVertex);
 
     // Get the original vertices
-    final Map<IRVertex, IRVertex> originalToSampling = samplingVertices.stream()
+    final Map<IRVertex, IRVertex> originalToSampling = toInsert.stream()
       .collect(Collectors.toMap(sv -> modifiedDAG.getVertexById(sv.getOriginalVertexId()), Function.identity()));
     final Set<IREdge> inEdgesOfOriginals = originalToSampling.keySet()
       .stream()
@@ -404,13 +480,14 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       .stream()
       .map(originalToSampling::get)
       .collect(Collectors.toSet());
-    for (final IRVertex executeAfter : executeAfterSamplingVertices) {
+    for (final IRVertex ea : executeAfter) {
       for (final IRVertex sink : sinks) {
         // Control edge that enforces execution ordering
-        builder.connectVertices(Util.createControlEdge(sink, executeAfter));
+        builder.connectVertices(Util.createControlEdge(sink, ea));
       }
     }
 
+    samplingVertexGroups.add(toInsert);
     modifiedDAG = builder.build(); // update the DAG.
   }
 

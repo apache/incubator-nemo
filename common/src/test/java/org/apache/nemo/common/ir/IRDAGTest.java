@@ -37,6 +37,8 @@ import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -47,6 +49,8 @@ import static org.junit.Assert.assertFalse;
  * Tests for {@link IRDAG}.
  */
 public class IRDAGTest {
+  private static final Logger LOG = LoggerFactory.getLogger(IRDAG.class.getName());
+
   private final static int MIN_THREE_SOURCE_READABLES = 3;
 
   private SourceVertex sourceVertex;
@@ -300,10 +304,8 @@ public class IRDAGTest {
   public void testThousandRandomConfigurations() {
     // Thousand random configurations (some duplicate configurations possible)
     final int thousandConfigs = 1000;
-
-    final Set<String> sampledVertexIds = new HashSet<>();
-    final List<IRVertex> insertedVertices = new ArrayList<>();
     for (int i = 0; i < thousandConfigs; i++) {
+      LOG.info("Doing {}", i);
       final int numOfTotalMethods = 11;
       final int methodIndex = random.nextInt(numOfTotalMethods);
       switch (methodIndex) {
@@ -321,24 +323,19 @@ public class IRDAGTest {
         case 7:
           final StreamVertex streamVertex = new StreamVertex();
           irdag.insert(streamVertex, selectRandomEdge());
-          insertedVertices.add(streamVertex);
           break;
         case 8:
           // final MessageBarrierVertex mbv = new MessageBarrierVertex();
           // irdag.insert(mbv, selectRandomEdge());
           // insertedVertices.add(mbv);
         case 9:
-          final IRVertex vertexToSample = selectRandomVertex();
-          if (!(Util.isUtilityVertex(vertexToSample))) {
-            final SamplingVertex samplingVertex = new SamplingVertex(vertexToSample, 0.1f);
-            irdag.insert(Sets.newHashSet(samplingVertex), Sets.newHashSet(vertexToSample));
-          }
+          final IRVertex vertexToSample = selectRandomNonUtilityVertex();
+          final SamplingVertex samplingVertex = new SamplingVertex(vertexToSample, 0.1f);
+          irdag.insert(Sets.newHashSet(samplingVertex), Sets.newHashSet(vertexToSample));
           break;
         case 10:
           // the last index must be (numOfTotalMethods - 1)
-          if (!insertedVertices.isEmpty()) {
-            irdag.delete(insertedVertices.remove(random.nextInt(insertedVertices.size())));
-          }
+          selectRandomUtilityVertex().ifPresent(irdag::delete);
           break;
         default: throw new IllegalStateException(String.valueOf(methodIndex));
       }
@@ -372,6 +369,20 @@ public class IRDAGTest {
 
   private IRVertex selectRandomVertex() {
     return irdag.getVertices().get(random.nextInt(irdag.getVertices().size()));
+  }
+
+  private IRVertex selectRandomNonUtilityVertex() {
+    final List<IRVertex> nonUtilityVertices =
+      irdag.getVertices().stream().filter(v -> !Util.isUtilityVertex(v)).collect(Collectors.toList());
+    return nonUtilityVertices.get(random.nextInt(nonUtilityVertices.size()));
+  }
+
+  private Optional<IRVertex> selectRandomUtilityVertex() {
+    final List<IRVertex> utilityVertices =
+      irdag.getVertices().stream().filter(Util::isUtilityVertex).collect(Collectors.toList());
+    return utilityVertices.isEmpty()
+      ? Optional.empty()
+      : Optional.of(utilityVertices.get(random.nextInt(utilityVertices.size())));
   }
 
   ///////////////// Random vertex EP
