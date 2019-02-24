@@ -391,6 +391,21 @@ public class IRDAGChecker {
       return success();
     });
     globalDAGCheckerList.add(scheduleGroupTopoOrdering);
+
+    final SingleEdgeChecker splitByPull = (edge -> {
+      if (Optional.of(DataFlowProperty.Value.Pull).equals(edge.getPropertyValue(DataFlowProperty.class))) {
+        final Optional<Integer> srcSG = edge.getSrc().getPropertyValue(ScheduleGroupProperty.class);
+        final Optional<Integer> dstSG = edge.getDst().getPropertyValue(ScheduleGroupProperty.class);
+        if (srcSG.isPresent() && dstSG.isPresent()) {
+          if (srcSG.get().equals(dstSG.get())) {
+            failure("Schedule group must split by PULL",
+              edge.getSrc(), ScheduleGroupProperty.class, edge.getDst(), ScheduleGroupProperty.class);
+          }
+        }
+      }
+      return success();
+    });
+    singleEdgeCheckerList.add(splitByPull);
   }
 
   void addEncodingCompressionCheckers() {

@@ -197,7 +197,13 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       modifiedDAG = builder.build();
     } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof MessageBarrierVertex) {
       modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).build();
-      vertexGroupToDelete.stream().filter(vtd -> vtd instanceof MessageAggregatorVertex).findAny().get()
+      final int deletedMessageId = vertexGroupToDelete.stream()
+        .filter(vtd -> vtd instanceof MessageAggregatorVertex)
+        .map(vtd -> ((MessageAggregatorVertex) vtd).getPropertyValue(MessageIdVertexProperty.class).get())
+        .findAny().get();
+      modifiedDAG.getEdges().stream()
+        .filter(e -> e.getPropertyValue(MessageIdEdgeProperty.class).isPresent())
+        .forEach(e -> e.getPropertyValue(MessageIdEdgeProperty.class).get().remove(deletedMessageId));
     } else if (vertexToDelete instanceof SamplingVertex) {
       modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).build();
     } else {
@@ -320,7 +326,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
                      final MessageAggregatorVertex messageAggregatorVertex,
                      final EncoderProperty mbvOutputEncoder,
                      final DecoderProperty mbvOutputDecoder,
-                     final Set<IREdge> edgesToGetStatisticsOf) {
+                     final Set<IREdge> edgesToGetStatisticsOf,
+                     final Set<IREdge> edgesToOptimize) {
     assertNonExistence(messageBarrierVertex);
     assertNonExistence(messageAggregatorVertex);
     edgesToGetStatisticsOf.forEach(this::assertNonControlEdge);
@@ -391,7 +398,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     messageVertexToGroup.put(messageAggregatorVertex, insertedVertices);
 
     modifiedDAG = builder.build(); // update the DAG.
-
   }
 
   /**

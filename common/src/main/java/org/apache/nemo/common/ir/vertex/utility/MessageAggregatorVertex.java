@@ -40,22 +40,13 @@ public final class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
   private static final Logger LOG = LoggerFactory.getLogger(MessageAggregatorVertex.class.getName());
   private static final AtomicInteger MESSAGE_ID_GENERATOR = new AtomicInteger(0);
 
-  private final Set<IREdge> edgesToOptimize;
-
   /**
    * @param initialState to use.
    * @param userFunction for aggregating the messages.
-   * @param edgesToOptimize to optimize.
    */
   public MessageAggregatorVertex(final O initialState,
-                                 final BiFunction<Pair<K, V>, O, O> userFunction,
-                                 final Set<IREdge> edgesToOptimize) {
+                                 final BiFunction<Pair<K, V>, O, O> userFunction) {
     super(new MessageAggregatorTransform<>(initialState, userFunction));
     this.setPropertyPermanently(MessageIdVertexProperty.of(MESSAGE_ID_GENERATOR.incrementAndGet()));
-    this.edgesToOptimize = edgesToOptimize;
-  }
-
-  public Set<IREdge> getEdgesToOptimize() {
-    return edgesToOptimize;
   }
 }
