@@ -10,11 +10,12 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class CpuBottleneckDetector {
   private static final Logger LOG = LoggerFactory.getLogger(CpuBottleneckDetector.class.getName());
 
-  private final ConcurrentMap<EventHandler<Pair<Long, Double>>, Boolean> eventHandlers;
+  private final ConcurrentMap<EventHandler<BottleneckEvent>, Boolean> eventHandlers;
   private final ScheduledExecutorService monitorThread;
   private final SystemLoadProfiler profiler;
 
@@ -33,6 +34,7 @@ public final class CpuBottleneckDetector {
   private final double r;
   private final int k;
   private final double threshold;
+  private int currBottleneckId = 0;
 
   private int currConsecutive = 0;
 
@@ -59,26 +61,64 @@ public final class CpuBottleneckDetector {
 
       if (curCpuLoad > threshold) {
         currConsecutive += 1;
-      }
-
-      if (currConsecutive >= k) {
-        // bottleneck!
-        final Pair<Long, Double> event = Pair.of(System.currentTimeMillis(), curCpuLoad);
+      } else {
+        if (currConsecutive >= k) {
+         final BottleneckEvent event =
+          new BottleneckEvent(currBottleneckId,
+            curCpuLoad, BottleneckEvent.Type.END);
         eventHandlers.keySet().forEach((eventHandler) -> {
           eventHandler.onNext(event);
         });
-
-        // reset
+        }
         currConsecutive = 0;
+      }
+
+      if (currConsecutive == k) {
+        // bottleneck!
+        currBottleneckId++;
+        final BottleneckEvent event =
+          new BottleneckEvent(currBottleneckId,
+            curCpuLoad, BottleneckEvent.Type.START);
+        eventHandlers.keySet().forEach((eventHandler) -> {
+          eventHandler.onNext(event);
+        });
       }
     }, (long) (r * 1000), (long) (r * 1000), TimeUnit.MILLISECONDS);
   }
 
-  public void setBottleneckHandler(final EventHandler<Pair<Long, Double>> bottleneckHandler) {
+  public void setBottleneckHandler(final EventHandler<BottleneckEvent> bottleneckHandler) {
     eventHandlers.put(bottleneckHandler, true);
   }
+
 
   public void close() {
     monitorThread.shutdown();
   }
+
+  public static final class BottleneckEvent {
+    public enum Type {
+      START,
+      END
+    }
+
+    public final int id;
+    public final long startTime;
+    public final double cpuLoad;
+    public final Type type;
+
+    public BottleneckEvent(final int id,
+                           final double cpuLoad,
+                           final Type type) {
+      this.id = id;
+      this.cpuLoad = cpuLoad;
+      this.type = type;
+      this.startTime = System.currentTimeMillis();
+    }
+
+    @Override
+    public String toString() {
+      return "[BottleneckEvent: " + type.name() + ", " + "id: " + id + ", st: " + startTime + ", load: " + cpuLoad  + "]";
+    }
+  }
+
 }

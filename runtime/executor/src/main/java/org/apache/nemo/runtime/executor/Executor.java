@@ -298,11 +298,23 @@ public final class Executor {
     }
   }
 
-  final class BottleneckHandler implements EventHandler<Pair<Long, Double>> {
+  final class BottleneckHandler implements EventHandler<CpuBottleneckDetector.BottleneckEvent> {
 
     @Override
-    public void onNext(Pair<Long, Double> o) {
-      LOG.info("Bottleneck event: {}", o);
+    public void onNext(final CpuBottleneckDetector.BottleneckEvent event) {
+      LOG.info("Bottleneck event: {}", event);
+      switch (event.type) {
+        case START: {
+
+          break;
+        }
+        case END: {
+
+          break;
+        }
+        default:
+          throw new RuntimeException("Invalid state");
+      }
     }
   }
 }

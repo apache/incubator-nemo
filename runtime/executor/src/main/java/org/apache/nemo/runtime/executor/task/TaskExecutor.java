@@ -547,7 +547,7 @@ public final class TaskExecutor {
           final long currTime = System.currentTimeMillis();
           if (currTime - prevLogTime >= pd) {
             LOG.info("# of processed events (during {} ms) in TaskExecutor {}: {}",
-              (currTime - prevLogTime), numProcessedEvents, taskId);
+              (currTime - prevLogTime), taskId, numProcessedEvents);
             numProcessedEvents = 0;
             prevLogTime = System.currentTimeMillis();
           }
