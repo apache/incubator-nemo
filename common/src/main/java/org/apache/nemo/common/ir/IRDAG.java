@@ -128,7 +128,10 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
    */
   public void delete(final IRVertex vertexToDelete) {
     assertExistence(vertexToDelete);
-    deletePrivate(vertexToDelete);
+    deleteRecursively(vertexToDelete, new HashSet<>());
+
+    // Build again, with source/sink checks on
+    modifiedDAG = rebuildExcluding(modifiedDAG, Collections.emptySet()).build();
   }
 
   private Set<IRVertex> getVertexGroupToDelete(final IRVertex vertexToDelete) {
@@ -148,9 +151,12 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     }
   }
 
-  private void deletePrivate(final IRVertex vertexToDelete) {
-    // vertexToDelete may have already been deleted during recursive calls, in which case we simply return
-    if (!modifiedDAG.getVertices().contains(vertexToDelete)) {
+  /**
+   * @param vertexToDelete to delete
+   * @param visited vertex groups (because cyclic dependencies between vertex groups are possible)
+   */
+  private void deleteRecursively(final IRVertex vertexToDelete, final Set<IRVertex> visited) {
+    if (visited.contains(vertexToDelete)) {
       return;
     }
 
@@ -171,16 +177,15 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       Util.stringifyIRVertexIds(utilityParents),
       Util.stringifyIRVertexIds(utilityChildren));
 
+    // We have 'visited' this group
+    visited.addAll(vertexGroupToDelete);
+
     // STEP 1: Delete parent utility vertices
     // Vertices that are 'in between' the group are also deleted here
-    Sets.difference(utilityParents, vertexGroupToDelete).forEach(this::deletePrivate);
+    Sets.difference(utilityParents, vertexGroupToDelete).forEach(ptd -> deleteRecursively(ptd, visited));
 
     // STEP 2: Delete the specified vertex(vertices)
-    if (!modifiedDAG.getVertices().contains(vertexToDelete)) {
-      // vertexToDelete may have already been deleted during recursive calls, in which case we simply return
-      // This checker probably can be removed if we delete() in a topological order.
-      return;
-    }
+    LOG.info("Now actually deleting {}", Util.stringifyIRVertexIds(vertexGroupToDelete));
     if (vertexToDelete instanceof StreamVertex) {
       final DAGBuilder<IRVertex, IREdge> builder = rebuildExcluding(modifiedDAG, vertexGroupToDelete);
 
@@ -194,9 +199,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
             dstVertex));
         });
 
-      modifiedDAG = builder.build();
+      modifiedDAG = builder.buildWithoutSourceSinkCheck();
     } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof MessageBarrierVertex) {
-      modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).build();
+      modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
       final int deletedMessageId = vertexGroupToDelete.stream()
         .filter(vtd -> vtd instanceof MessageAggregatorVertex)
         .map(vtd -> ((MessageAggregatorVertex) vtd).getPropertyValue(MessageIdVertexProperty.class).get())
@@ -205,13 +210,13 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         .filter(e -> e.getPropertyValue(MessageIdEdgeProperty.class).isPresent())
         .forEach(e -> e.getPropertyValue(MessageIdEdgeProperty.class).get().remove(deletedMessageId));
     } else if (vertexToDelete instanceof SamplingVertex) {
-      modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).build();
+      modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
     } else {
       throw new IllegalArgumentException(vertexToDelete.getId());
     }
 
     // STEP 3: Delete children utility vertices
-    Sets.difference(utilityChildren, vertexGroupToDelete).forEach(this::deletePrivate);
+    Sets.difference(utilityChildren, vertexGroupToDelete).forEach(ctd -> deleteRecursively(ctd, visited));
   }
 
   private DAGBuilder<IRVertex, IREdge> rebuildExcluding(final DAG<IRVertex, IREdge> dag, final Set<IRVertex> excluded) {
@@ -242,7 +247,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     // Integrity check
-    if (edgeToStreamize.getPropertyValue(MessageIdEdgeProperty.class).isPresent()) {
+    if (edgeToStreamize.getPropertyValue(MessageIdEdgeProperty.class).isPresent()
+      && !edgeToStreamize.getPropertyValue(MessageIdEdgeProperty.class).get().isEmpty()) {
       throw new CompileTimeOptimizationException(edgeToStreamize.getId() + " has a MessageId, and cannot be removed");
     }
 
@@ -359,7 +365,17 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       builder.addVertex(mbvToAdd);
       mbvList.add(mbvToAdd);
 
-      final IREdge clone = Util.cloneEdge(CommunicationPatternProperty.Value.OneToOne, edge, edge.getSrc(), mbvToAdd);
+      final IREdge edgeToClone;
+      if (edge.getSrc() instanceof StreamVertex) {
+        edgeToClone = streamVertexToOriginalEdge.get(edge.getSrc());
+      } else if (edge.getDst() instanceof StreamVertex) {
+        edgeToClone = streamVertexToOriginalEdge.get(edge.getDst());
+      } else {
+        edgeToClone = edge;
+      }
+
+      final IREdge clone = Util.cloneEdge(
+        CommunicationPatternProperty.Value.OneToOne, edgeToClone, edge.getSrc(), mbvToAdd);
       builder.connectVertices(clone);
     }
 

@@ -322,7 +322,11 @@ public class IRDAGTest {
         // Reshaping methods
         case 7:
           final StreamVertex streamVertex = new StreamVertex();
-          irdag.insert(streamVertex, selectRandomEdge());
+          final IREdge edgeToStreamize = selectRandomEdge();
+          if (!(edgeToStreamize.getPropertyValue(MessageIdEdgeProperty.class).isPresent()
+            && !edgeToStreamize.getPropertyValue(MessageIdEdgeProperty.class).get().isEmpty())) {
+            irdag.insert(streamVertex, edgeToStreamize);
+          }
           break;
         case 8:
           insertNewMessageBarrierVertex(irdag, selectRandomEdge());
