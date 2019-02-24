@@ -325,9 +325,8 @@ public class IRDAGTest {
           irdag.insert(streamVertex, selectRandomEdge());
           break;
         case 8:
-          // final MessageBarrierVertex mbv = new MessageBarrierVertex();
-          // irdag.insert(mbv, selectRandomEdge());
-          // insertedVertices.add(mbv);
+          insertNewMessageBarrierVertex(irdag, selectRandomEdge());
+          break;
         case 9:
           final IRVertex vertexToSample = selectRandomNonUtilityVertex();
           final SamplingVertex samplingVertex = new SamplingVertex(vertexToSample, 0.1f);
@@ -337,7 +336,8 @@ public class IRDAGTest {
           // the last index must be (numOfTotalMethods - 1)
           selectRandomUtilityVertex().ifPresent(irdag::delete);
           break;
-        default: throw new IllegalStateException(String.valueOf(methodIndex));
+        default:
+          throw new IllegalStateException(String.valueOf(methodIndex));
       }
 
       if (i % (thousandConfigs / 10) == 0) {

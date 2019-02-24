@@ -322,7 +322,7 @@ public class IRDAGChecker {
       final Set<Integer> edgeMessageIds = dag.getEdges()
         .stream()
         .filter(e -> e.getPropertyValue(MessageIdEdgeProperty.class).isPresent())
-        .map(e -> e.getPropertyValue(MessageIdEdgeProperty.class).get())
+        .flatMap(e -> e.getPropertyValue(MessageIdEdgeProperty.class).get().stream())
         .collect(Collectors.toSet());
 
       if (numMessageAggregatorVertices != vertexMessageIds.size()) {
