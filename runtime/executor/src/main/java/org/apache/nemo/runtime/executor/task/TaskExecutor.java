@@ -487,6 +487,7 @@ public final class TaskExecutor {
     long processingTime = 0;
     long fetchTime = 0;
     final long pd = 3000;
+    long numProcessedEvents = 0;
 
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
@@ -497,20 +498,24 @@ public final class TaskExecutor {
 
       while (availableIterator.hasNext()) {
 
-        if (System.currentTimeMillis() - prevLogTime >= pd) {
-          //LOG.info("{} Fetch time: {}, Processing time: {}", taskId, fetchTime, processingTime);
+        final long currTime = System.currentTimeMillis();
+        if (currTime - prevLogTime >= pd) {
+          LOG.info("# of processed events (during {} ms) in TaskExecutor {}: {}",
+            (currTime - prevLogTime), numProcessedEvents, taskId);
+          numProcessedEvents = 0;
           prevLogTime = System.currentTimeMillis();
         }
 
         final DataFetcher dataFetcher = availableIterator.next();
         try {
-          final long a = System.currentTimeMillis();
+          //final long a = System.currentTimeMillis();
           final Object element = dataFetcher.fetchDataElement();
-          fetchTime += (System.currentTimeMillis() - a);
+          //fetchTime += (System.currentTimeMillis() - a);
 
-          final long b = System.currentTimeMillis();
+          //final long b = System.currentTimeMillis();
           onEventFromDataFetcher(element, dataFetcher);
-          processingTime += (System.currentTimeMillis() - b);
+          numProcessedEvents += 1;
+          //processingTime += (System.currentTimeMillis() - b);
 
           if (element instanceof Finishmark) {
             availableIterator.remove();
@@ -546,13 +551,13 @@ public final class TaskExecutor {
 
           final DataFetcher dataFetcher = pendingIterator.next();
           try {
-            final long a = System.currentTimeMillis();
+            //final long a = System.currentTimeMillis();
             final Object element = dataFetcher.fetchDataElement();
-            fetchTime += (System.currentTimeMillis() - a);
+            //fetchTime += (System.currentTimeMillis() - a);
 
-            final long b = System.currentTimeMillis();
+            //final long b = System.currentTimeMillis();
             onEventFromDataFetcher(element, dataFetcher);
-            processingTime += (System.currentTimeMillis() - b);
+           // processingTime += (System.currentTimeMillis() - b);
 
             // We processed data. This means the data fetcher is now available.
             // Add current data fetcher to available
