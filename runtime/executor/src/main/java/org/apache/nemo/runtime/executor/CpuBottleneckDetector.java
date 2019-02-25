@@ -50,7 +50,6 @@ public final class CpuBottleneckDetector {
     this.profiler = profiler;
     this.eventHandlers = new ConcurrentHashMap<>();
     this.monitorThread = Executors.newSingleThreadScheduledExecutor();
-
   }
 
   public void start() {

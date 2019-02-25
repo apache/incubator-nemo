@@ -58,6 +58,8 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Base64;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -100,6 +102,8 @@ public final class Executor {
 
   private volatile boolean started = false;
 
+  private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -121,6 +125,7 @@ public final class Executor {
     this.metricMessageSender = metricMessageSender;
     this.serverlessExecutorProvider = serverlessExecutorProvider;
     this.bottleneckDetector = bottleneckDetector;
+    this.taskExecutorMap = new ConcurrentHashMap<>();
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
 
@@ -134,22 +139,6 @@ public final class Executor {
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
       SerializationUtils.deserialize(task.getSerializedIRDag());
-
-    // TODO: remove
-    /*
-    // query 7
-    final List<String> serializedVertices =
-      irDag.getTopologicalSort().stream()
-        .filter(irVertex -> irVertex.getId().equals("vertex14"))
-        .map(irVertex ->  serializeToString(irVertex))
-        .collect(Collectors.toList());
-
-    if (serializedVertices.size() > 0) {
-      LOG.info("Launch task: {}, setSerializedVertices: {}", task.getTaskId(), serializedVertices);
-      storageObjectFactory.setSerializedVertices(serializedVertices);
-    }
-    */
-    // TODO: remove
 
     executorService.execute(() -> launchTask(task, irDag));
   }
@@ -209,8 +198,13 @@ public final class Executor {
             e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       });
 
+      final TaskExecutor taskExecutor =
       new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-          metricMessageSender, persistentConnectionToMasterMap, serializerManager, serverlessExecutorProvider).execute();
+          metricMessageSender, persistentConnectionToMasterMap, serializerManager, serverlessExecutorProvider);
+
+      taskExecutorMap.put(taskExecutor, true);
+      taskExecutor.execute();
+
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
@@ -305,11 +299,18 @@ public final class Executor {
       LOG.info("Bottleneck event: {}", event);
       switch (event.type) {
         case START: {
-
+          // do sth
+          // 1) bottleneck 원인 파악 (input 때문인지 operator 때문인지)
+          // 2) case 나눠서 처리
+          for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+            taskExecutor.startOffloading();
+          }
           break;
         }
         case END: {
-
+          for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+            taskExecutor.endOffloading();
+          }
           break;
         }
         default:
