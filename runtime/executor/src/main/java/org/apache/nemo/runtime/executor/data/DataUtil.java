@@ -177,8 +177,7 @@ public final class DataUtil {
    */
   public static String blockIdToMetaFilePath(final String blockId,
                                              final String fileDirectory) {
-    //return fileDirectory + "/" + blockId + "_meta";
-    return "../crail_meta_dir" + blockId;
+    return fileDirectory + "/" + blockId + "_meta";
   }
 
   /**
