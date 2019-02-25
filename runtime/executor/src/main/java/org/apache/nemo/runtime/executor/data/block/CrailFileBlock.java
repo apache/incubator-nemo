@@ -45,7 +45,7 @@ import java.util.*;
  * @param <K> the key type of its partitions.
  */
 @NotThreadSafe
-public final class CrailFileBlock<K extends Serializable> implements Block<K> {
+public final class CrailFileBlock<K extends Serializable> implements Block<K>{
   private static final Logger LOG = LoggerFactory.getLogger(CrailFileBlock.class.getName());
   private final String id;
   private final Map<K, SerializedPartition<K>> nonCommittedPartitionsMap;
@@ -249,7 +249,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K> {
       // Deserialize the data
       final List<SerializedPartition<K>> partitionsInRange = new ArrayList<>();
       try {
-        try (final FileInputStream fileStream = new FileInputStream(filePath)) {
+        try (final CrailBufferedInputStream fileStream = file.getBufferedInputStream(0)) {
           for (final PartitionMetadata<K> partitionmetadata : metadata.getPartitionMetadataList()) {
             final K key = partitionmetadata.getKey();
             if (keyRange.includes(key)) {
@@ -269,6 +269,8 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K> {
         }
       } catch (final IOException e) {
         throw new BlockFetchException(e);
+      } catch (final Exception e2){
+        e2.printStackTrace();
       }
 
       return partitionsInRange;
