@@ -27,7 +27,6 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.builder.HashCodeBuilder;

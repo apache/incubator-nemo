@@ -19,14 +19,12 @@
 package org.apache.nemo.common.ir.vertex.utility;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 

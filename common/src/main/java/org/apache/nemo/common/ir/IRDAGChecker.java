@@ -30,7 +30,6 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
-import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +42,7 @@ import java.util.stream.IntStream;
 /**
  * Checks the integrity of an IR DAG.
  */
-public class IRDAGChecker {
+public final class IRDAGChecker {
   private static final Logger LOG = LoggerFactory.getLogger(IRDAGChecker.class.getName());
 
   private static final IRDAGChecker SINGLETON = new IRDAGChecker();
@@ -254,8 +253,8 @@ public class IRDAGChecker {
             .collect(Collectors.toSet());
           if (partitioner.get().right() == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM) {
             final Optional<Integer> parallelism = v.getPropertyValue(ParallelismProperty.class);
-            if (parallelism.isPresent() &&
-              !getZeroToNSet(parallelism.get()).equals(flattenedPartitionOffsets)) {
+            if (parallelism.isPresent()
+              && !getZeroToNSet(parallelism.get()).equals(flattenedPartitionOffsets)) {
               return failure("PartitionSet must contain all partition offsets required for dst parallelism",
                 v, ParallelismProperty.class, inEdge, PartitionSetProperty.class);
             }
@@ -465,8 +464,11 @@ public class IRDAGChecker {
 
   ///////////////////////////// Successes and Failures
 
-  private final CheckerResult SUCCESS = new CheckerResult(true, "");
+  private final CheckerResult success = new CheckerResult(true, "");
 
+  /**
+   * Result of a checker.
+   */
   public class CheckerResult {
     private final boolean pass;
     private final String failReason; // empty string if pass = true
@@ -486,7 +488,7 @@ public class IRDAGChecker {
   }
 
   CheckerResult success() {
-    return SUCCESS;
+    return success;
   }
 
   CheckerResult failure(final String failReason) {

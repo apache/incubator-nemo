@@ -115,7 +115,7 @@ public final class SamplingVertex extends IRVertex {
   }
 
   @Override
-  public final ObjectNode getPropertiesAsJsonNode() {
+  public ObjectNode getPropertiesAsJsonNode() {
     final ObjectNode node = getIRVertexPropertiesAsJsonNode();
     node.put("transform", toString());
     return node;
