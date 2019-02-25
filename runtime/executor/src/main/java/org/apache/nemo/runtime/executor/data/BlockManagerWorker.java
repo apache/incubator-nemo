@@ -36,6 +36,7 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.data.block.Block;
+import org.apache.nemo.runtime.executor.data.block.CrailFileBlock;
 import org.apache.nemo.runtime.executor.data.block.FileBlock;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
@@ -341,11 +342,17 @@ public final class BlockManagerWorker {
           final Optional<Block> optionalBlock = getBlockStore(blockStore).readBlock(blockId);
           if (optionalBlock.isPresent()) {
             if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)
-                || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)
-                || DataStoreProperty.Value.CrailFileStore.equals(blockStore)) {
+                || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
+                  os.writeFileArea(fileArea);
+                }
+              }
+            } else if(DataStoreProperty.Value.CrailFileStore.equals(blockStore)){
+              final List<FileArea> fileAreas = ((CrailFileBlock) optionalBlock.get()).asFileAreas(keyRange);
+              for (final FileArea fileArea : fileAreas) {
+                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()){
                   os.writeFileArea(fileArea);
                 }
               }
