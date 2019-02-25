@@ -182,10 +182,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       .flatMap(outEdgeList -> outEdgeList.stream().map(IREdge::getDst))
       .filter(Util::isUtilityVertex)
       .collect(Collectors.toSet());
-    LOG.info("vertexGroupToDelete {} / parents {} / children {}",
-      Util.stringifyIRVertexIds(vertexGroupToDelete),
-      Util.stringifyIRVertexIds(utilityParents),
-      Util.stringifyIRVertexIds(utilityChildren));
 
     // We have 'visited' this group
     visited.addAll(vertexGroupToDelete);
@@ -195,7 +191,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     Sets.difference(utilityParents, vertexGroupToDelete).forEach(ptd -> deleteRecursively(ptd, visited));
 
     // STEP 2: Delete the specified vertex(vertices)
-    LOG.info("Now actually deleting {}", Util.stringifyIRVertexIds(vertexGroupToDelete));
     if (vertexToDelete instanceof StreamVertex) {
       final DAGBuilder<IRVertex, IREdge> builder = rebuildExcluding(modifiedDAG, vertexGroupToDelete);
 

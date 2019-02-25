@@ -221,10 +221,18 @@ public class IRDAGTest {
   }
 
   @Test
-  public void testScheduleGroup() {
+  public void testScheduleGroupOrdering() {
     sourceVertex.setProperty(ScheduleGroupProperty.of(1));
     firstOperatorVertex.setProperty(ScheduleGroupProperty.of(2));
     secondOperatorVertex.setProperty(ScheduleGroupProperty.of(1)); // decreases - failure
+    mustFail();
+  }
+
+  @Test
+  public void testScheduleGroupPull() {
+    sourceVertex.setProperty(ScheduleGroupProperty.of(1));
+    oneToOneEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    firstOperatorVertex.setProperty(ScheduleGroupProperty.of(1)); // not split by PULL - failure
     mustFail();
   }
 
@@ -305,7 +313,7 @@ public class IRDAGTest {
     // Thousand random configurations (some duplicate configurations possible)
     final int thousandConfigs = 1000;
     for (int i = 0; i < thousandConfigs; i++) {
-      LOG.info("Doing {}", i);
+      // LOG.info("Doing {}", i);
       final int numOfTotalMethods = 11;
       final int methodIndex = random.nextInt(numOfTotalMethods);
       switch (methodIndex) {
@@ -351,8 +359,7 @@ public class IRDAGTest {
 
       if (methodIndex >= 7) {
         // Uncomment to visualize DAG snapshots after reshaping (insert, delete)
-        irdag.storeJSON(
-          "test_reshaping_snapshots", i + "(methodIndex_" + methodIndex + ")", "test");
+        // irdag.storeJSON("test_reshaping_snapshots", i + "(methodIndex_" + methodIndex + ")", "test");
       }
 
       // Must always pass

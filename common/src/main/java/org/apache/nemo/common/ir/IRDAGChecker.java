@@ -397,7 +397,7 @@ public final class IRDAGChecker {
         final Optional<Integer> dstSG = edge.getDst().getPropertyValue(ScheduleGroupProperty.class);
         if (srcSG.isPresent() && dstSG.isPresent()) {
           if (srcSG.get().equals(dstSG.get())) {
-            failure("Schedule group must split by PULL",
+            return failure("Schedule group must split by PULL",
               edge.getSrc(), ScheduleGroupProperty.class, edge.getDst(), ScheduleGroupProperty.class);
           }
         }

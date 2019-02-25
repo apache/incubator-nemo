@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.common.plan;
 
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
@@ -36,7 +35,6 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
 import org.apache.nemo.common.exception.PhysicalPlanGenerationException;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
