@@ -548,6 +548,7 @@ public final class TaskExecutor {
 
   /**
    * Return a map of Internal Outputs associated with their output tag.
+   * If an edge has no output tag, its info are added to the main key.
    *
    * @param irVertex source irVertex
    * @param irVertexDag DAG of IRVertex and RuntimeEdge
