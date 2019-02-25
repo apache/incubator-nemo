@@ -35,6 +35,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
@@ -262,6 +263,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     // Insert the vertex.
     final IRVertex vertexToInsert = wrapSamplingVertexIfNeeded(streamVertex, edgeToStreamize.getSrc());
     builder.addVertex(vertexToInsert);
+    edgeToStreamize.getSrc().getPropertyValue(ParallelismProperty.class)
+      .ifPresent(p -> vertexToInsert.setProperty(ParallelismProperty.of(p)));
 
     // Build the new DAG to reflect the new topology.
     modifiedDAG.topologicalDo(v -> {
@@ -371,6 +374,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
         new MessageBarrierVertex<>(messageBarrierVertex.getMessageFunction()), edge.getSrc());
       builder.addVertex(mbvToAdd);
       mbvList.add(mbvToAdd);
+      edge.getSrc().getPropertyValue(ParallelismProperty.class)
+        .ifPresent(p -> mbvToAdd.setProperty(ParallelismProperty.of(p)));
 
       final IREdge edgeToClone;
       if (edge.getSrc() instanceof StreamVertex) {

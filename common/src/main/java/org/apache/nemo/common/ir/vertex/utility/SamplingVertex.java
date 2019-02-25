@@ -38,8 +38,9 @@ public final class SamplingVertex extends IRVertex {
    */
   public SamplingVertex(final IRVertex originalVertex, final float desiredSampleRate) {
     super();
-    if (Util.isUtilityVertex(originalVertex)) {
-      throw new IllegalArgumentException("Cannot sample utility vertices: " + originalVertex.toString());
+    if (!(originalVertex instanceof MessageBarrierVertex) && (Util.isUtilityVertex(originalVertex))) {
+      throw new IllegalArgumentException(
+        "Cannot sample non-MessageBarrier utility vertices: " + originalVertex.toString());
     }
     if (desiredSampleRate > 1 || desiredSampleRate <= 0) {
       throw new IllegalArgumentException(String.valueOf(desiredSampleRate));
@@ -66,6 +67,7 @@ public final class SamplingVertex extends IRVertex {
    * and the original vertex should not be executed again.
    */
   public IRVertex getCloneOfOriginalVertex() {
+    copyExecutionPropertiesTo(cloneOfOriginalVertex); // reflect the updated EPs
     return cloneOfOriginalVertex;
   }
 

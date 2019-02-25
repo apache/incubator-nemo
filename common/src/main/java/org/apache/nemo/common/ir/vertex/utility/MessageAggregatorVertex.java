@@ -21,6 +21,7 @@ package org.apache.nemo.common.ir.vertex.utility;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,5 +47,6 @@ public final class MessageAggregatorVertex<K, V, O> extends OperatorVertex {
                                  final BiFunction<Pair<K, V>, O, O> userFunction) {
     super(new MessageAggregatorTransform<>(initialState, userFunction));
     this.setPropertyPermanently(MessageIdVertexProperty.of(MESSAGE_ID_GENERATOR.incrementAndGet()));
+    this.setProperty(ParallelismProperty.of(1));
   }
 }
