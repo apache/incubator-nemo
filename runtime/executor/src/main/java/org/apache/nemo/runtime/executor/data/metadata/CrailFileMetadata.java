@@ -55,7 +55,6 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
   private CrailFileMetadata(final String metaFilePath) {
     super();
     this.metaFilePath = metaFilePath;
-    /*
     try {
       conf = new CrailConfiguration();
       fs = CrailStore.newInstance(conf);
@@ -72,7 +71,6 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
       LOG.info("HY: CrailConfiguration failed");
       e.printStackTrace();
     }
-    */
   }
 
   /**
@@ -85,7 +83,6 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
                             final List<PartitionMetadata<K>> partitionMetadataList) {
     super(partitionMetadataList);
     this.metaFilePath = metaFilePath;
-    /*
     try {
       try {
         conf = new CrailConfiguration();
@@ -101,7 +98,6 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
       LOG.info("HY: CrailConfiguration failed");
       e.printStackTrace();
     }
-    */
   }
 
   /**
