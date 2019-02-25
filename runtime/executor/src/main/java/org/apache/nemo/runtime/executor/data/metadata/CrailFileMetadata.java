@@ -55,13 +55,14 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
   private CrailFileMetadata(final String metaFilePath) {
     super();
     this.metaFilePath = metaFilePath;
+    /*
     try {
       conf = new CrailConfiguration();
       fs = CrailStore.newInstance(conf);
       try {
         this.file = fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
         file.syncDir();
-      }catch (Exception e){
+      } catch (Exception e){
         //when it already exists
         this.file = fs.lookup(metaFilePath).get().asFile();
         file.syncDir();
@@ -71,6 +72,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
       LOG.info("HY: CrailConfiguration failed");
       e.printStackTrace();
     }
+    */
   }
 
   /**
@@ -83,16 +85,23 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
                             final List<PartitionMetadata<K>> partitionMetadataList) {
     super(partitionMetadataList);
     this.metaFilePath = metaFilePath;
+    /*
     try {
-      conf = new CrailConfiguration();
-      fs = CrailStore.newInstance(conf);
-      this.file = fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
-      file.syncDir();
-    }
-    catch(Exception e){
+      try {
+        conf = new CrailConfiguration();
+        fs = CrailStore.newInstance(conf);
+        this.file = fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
+        file.syncDir();
+      } catch (Exception e) {
+        //when it already exists
+        this.file = fs.lookup(metaFilePath).get().asFile();
+        file.syncDir();
+      }
+    } catch(Exception e){
       LOG.info("HY: CrailConfiguration failed");
       e.printStackTrace();
     }
+    */
   }
 
   /**
@@ -153,11 +162,11 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    */
   public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath) throws Exception{
     LOG.info("HY: metafilePath {}", metaFilePath);
-    CrailFile file=null;
+    CrailFile file;
     try {
       file = fs.lookup(metaFilePath).get().asFile();
       file.syncDir();
-    }catch (Exception e){
+    } catch (Exception e) {
       throw new IOException("HY: File "+metaFilePath+ " does not exist!");
     }
     final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();

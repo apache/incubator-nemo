@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
  * Helper class for handling source/sink in a generic way.
  * Assumes String-type PCollections.
  */
-final class GenericSourceSink {
+public final class GenericSourceSink {
   /**
    * Default Constructor.
    */
