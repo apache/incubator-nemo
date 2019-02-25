@@ -25,6 +25,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.runtime.executor.data.*;
 import org.apache.nemo.runtime.executor.data.block.Block;
+import org.apache.nemo.runtime.executor.data.block.CrailFileBlock;
 import org.apache.nemo.runtime.executor.data.metadata.CrailFileMetadata;
 import org.apache.nemo.runtime.executor.data.metadata.FileMetadata;
 import org.apache.nemo.runtime.executor.data.metadata.LocalFileMetadata;
@@ -82,7 +83,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final String metaPath = DataUtil.blockIdToMetaFilePath(blockId, fileDirectory);
     final CrailFileMetadata metadata = CrailFileMetadata.create(metaPath);
-    return new FileBlock<>(blockId, serializer, filePath, metadata, fs);
+    return new CrailFileBlock<>(blockId, serializer, filePath, metadata, fs);
   }
 
   /**
@@ -94,9 +95,9 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
 
   @Override
   public void writeBlock(final Block block) throws BlockWriteException {
-    if (!(block instanceof FileBlock)) {
+    if (!(block instanceof CrailFileBlock)) {
       throw new BlockWriteException(new Throwable(
-        this.toString() + " only accept " + FileBlock.class.getName()));
+        this.toString() + " only accept " + CrailFileBlock.class.getName()));
     } else if (!block.isCommitted()) {
       throw new BlockWriteException(new Throwable("The block " + block.getId() + "is not committed yet."));
     }
@@ -120,7 +121,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
         return Optional.empty();
       } else {
         try {
-          final FileBlock block = getBlockFromFile(blockId);
+          final CrailFileBlock block = getBlockFromFile(blockId);
           return Optional.of(block);
         } catch (final IOException e) {
           throw new BlockFetchException(e);
@@ -147,7 +148,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
 
     try {
       if (fs.lookup(filePath).get()!=null) {
-        final FileBlock block = getBlockFromFile(blockId);
+        final CrailFileBlock block = getBlockFromFile(blockId);
         block.deleteFile();
         return true;
       } else {
@@ -172,11 +173,11 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
    * @return the {@link FileBlock} gotten.
    * @throws IOException if fail to get.
    */
-  private <K extends Serializable> FileBlock<K> getBlockFromFile(final String blockId) throws Exception {
+  private <K extends Serializable> CrailFileBlock<K> getBlockFromFile(final String blockId) throws Exception {
     final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final CrailFileMetadata<K> metadata =
       CrailFileMetadata.open(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-    return new FileBlock<>(blockId, serializer, filePath, metadata, fs);
+    return new CrailFileBlock<>(blockId, serializer, filePath, metadata, fs);
   }
 }
