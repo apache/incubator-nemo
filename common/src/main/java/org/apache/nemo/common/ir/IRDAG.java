@@ -152,10 +152,20 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   }
 
   /**
+   * Delete a group of vertex that corresponds to the specified vertex.
+   * And then recursively delete neighboring utility vertices.
+   *
+   * (WARNING) Only call this method inside delete(), or inside this method itself.
+   * This method uses buildWithoutSourceSinkCheck() for intermediate DAGs,
+   * which will be finally checked in delete().
+   *
    * @param vertexToDelete to delete
    * @param visited vertex groups (because cyclic dependencies between vertex groups are possible)
    */
   private void deleteRecursively(final IRVertex vertexToDelete, final Set<IRVertex> visited) {
+    if (!Util.isUtilityVertex(vertexToDelete)) {
+      throw new IllegalArgumentException(vertexToDelete.getId());
+    }
     if (visited.contains(vertexToDelete)) {
       return;
     }
@@ -193,12 +203,14 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       modifiedDAG.getOutgoingEdgesOf(vertexToDelete).stream()
         .filter(e -> !Util.isControlEdge(e))
         .map(IREdge::getDst)
-        .forEach(dstVertex -> { builder.connectVertices(
-          Util.cloneEdge(streamVertexToOriginalEdge.get(vertexToDelete),
-            modifiedDAG.getIncomingEdgesOf(vertexToDelete).get(0).getSrc(),
-            dstVertex));
+        .forEach(dstVertex -> {
+          modifiedDAG.getIncomingEdgesOf(vertexToDelete).stream()
+            .filter(e -> !Util.isControlEdge(e))
+            .map(IREdge::getSrc)
+            .forEach(srcVertex-> { builder.connectVertices(
+              Util.cloneEdge(streamVertexToOriginalEdge.get(vertexToDelete), srcVertex, dstVertex));
+            });
         });
-
       modifiedDAG = builder.buildWithoutSourceSinkCheck();
     } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof MessageBarrierVertex) {
       modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
