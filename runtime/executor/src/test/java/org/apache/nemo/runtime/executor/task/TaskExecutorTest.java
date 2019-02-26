@@ -194,56 +194,12 @@ public final class TaskExecutorTest {
    */
   @Test()
   public void testInvalidInputData() throws Exception {
-    final IRVertex sourceIRVertex = new InMemorySourceVertex<>(elements);
-
-    final Readable readable = new BoundedIteratorReadable() {
-      @Override
-      protected Iterator initializeIterator() {
-        return elements.iterator();
-      }
-
-      @Override
-      public long readWatermark() {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public List<String> getLocations() {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public void close() throws IOException {
-
-      }
-    };
-
-    final Map<String, Readable> vertexIdToReadable = new HashMap<>();
-    vertexIdToReadable.put(sourceIRVertex.getId(), readable);
-
-    final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
-        new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
-            .addVertex(sourceIRVertex)
-            .buildWithoutSourceSinkCheck();
-
-    final StageEdge taskOutEdge = mockStageEdgeFrom(sourceIRVertex);
-    final Task task =
-        new Task(
-            "testSourceVertexDataFetching",
-            generateTaskId(),
-            TASK_EXECUTION_PROPERTY_MAP,
-            new byte[0],
-            Collections.emptyList(),
-            Collections.singletonList(taskOutEdge),
-            vertexIdToReadable);
-
     try{
       // Execute the task.
       final TaskExecutor taskExecutor = getTaskExecutor(null, null);
       taskExecutor.execute();
 
       // Check the output.
-      assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
       fail();
     }
     catch(NullPointerException e){
