@@ -567,7 +567,7 @@ public final class TaskExecutor {
             prevProcessedEvents = currProcessedEvents;
             currProcessedEvents = 0;
             prevProcessedTime = System.currentTimeMillis();
-            detector.collect(prevProcessedEvents, prevProcessedTime);
+            detector.collect(prevProcessedTime, prevProcessedEvents);
           }
 
           final DataFetcher dataFetcher = pendingIterator.next();
