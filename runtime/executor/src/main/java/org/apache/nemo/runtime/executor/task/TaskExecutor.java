@@ -220,9 +220,8 @@ public final class TaskExecutor {
       // Main outputs
       final List<NextIntraTaskOperatorInfo> internalMainOutputs;
       final String key = "main";
-      final List<NextIntraTaskOperatorInfo> internalmainOutputs = internalAdditionalOutputMap.remove(key);
-      if (internalmainOutputs != null) {
-        internalMainOutputs = internalmainOutputs;
+      if (internalAdditionalOutputMap.containsKey(key)) {
+        internalMainOutputs = internalAdditionalOutputMap.remove(key);
       } else {
         internalMainOutputs = new ArrayList<>();
       }
