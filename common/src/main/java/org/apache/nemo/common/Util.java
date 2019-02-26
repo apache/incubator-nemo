@@ -155,7 +155,7 @@ public final class Util {
    * @return the string of ids.
    */
   public static String stringifyIRVertexIds(final Collection<IRVertex> vertices) {
-    return vertices.stream().map(IRVertex::getId).collect(Collectors.toSet()).toString();
+    return vertices.stream().map(IRVertex::getId).sorted().collect(Collectors.toList()).toString();
   }
 
   /**
@@ -163,6 +163,6 @@ public final class Util {
    * @return the string of ids.
    */
   public static String stringifyIREdgeIds(final Collection<IREdge> edges) {
-    return edges.stream().map(IREdge::getId).collect(Collectors.toSet()).toString();
+    return edges.stream().map(IREdge::getId).sorted().collect(Collectors.toList()).toString();
   }
 }

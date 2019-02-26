@@ -408,6 +408,10 @@ public final class IRDAGChecker {
     globalDAGCheckerList.add(scheduleGroupTopoOrdering);
 
     final SingleEdgeChecker splitByPull = (edge -> {
+      if (Util.isControlEdge(edge)) {
+        return success();
+      }
+
       if (Optional.of(DataFlowProperty.Value.Pull).equals(edge.getPropertyValue(DataFlowProperty.class))) {
         final Optional<Integer> srcSG = edge.getSrc().getPropertyValue(ScheduleGroupProperty.class);
         final Optional<Integer> dstSG = edge.getDst().getPropertyValue(ScheduleGroupProperty.class);
