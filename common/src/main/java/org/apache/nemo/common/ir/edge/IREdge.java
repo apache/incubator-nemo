@@ -30,7 +30,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.io.Serializable;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Physical execution plan of intermediate data movement.
@@ -138,5 +138,18 @@ public final class IREdge extends Edge<IRVertex> {
     node.put("id", getId());
     node.set("executionProperties", executionProperties.asJsonNode());
     return node;
+  }
+
+  /////////// For saving original EPs (e.g., save original encoders/decoders of StreamVertex edges)
+
+  private final Map<Class, EdgeExecutionProperty> snapshot = new HashMap<>();
+
+  public void setPropertySnapshot() {
+    snapshot.clear();
+    executionProperties.forEachProperties(p -> snapshot.put(p.getClass(), p));
+  }
+
+  public Map<Class, EdgeExecutionProperty> getPropertySnapshot() {
+    return snapshot;
   }
 }

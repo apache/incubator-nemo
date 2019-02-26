@@ -520,7 +520,12 @@ public final class DataTransferTest {
     final ExecutionPropertyMap<VertexExecutionProperty> stageExecutionProperty = new ExecutionPropertyMap<>(stageId);
     stageExecutionProperty.put(ParallelismProperty.of(PARALLELISM_TEN));
     stageExecutionProperty.put(ScheduleGroupProperty.of(0));
-    return new Stage(stageId, emptyDag, stageExecutionProperty, Collections.emptyList());
+    return new Stage(
+      stageId,
+      IntStream.range(0, PARALLELISM_TEN).boxed().collect(Collectors.toList()),
+      emptyDag,
+      stageExecutionProperty,
+      Collections.emptyList());
   }
 
   /**

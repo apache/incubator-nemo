@@ -16,19 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.ir.edge.executionproperty;
+package org.apache.nemo.common.ir.vertex.executionproperty;
 
-import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
+import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * Edges with the same MessageId are subject to the same run-time optimization.
+ * Vertices and edges with the same MessageId belong to the same run-time optimization.
  */
-public final class MessageIdProperty extends EdgeExecutionProperty<Integer> {
+public final class MessageIdVertexProperty extends VertexExecutionProperty<Integer> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private MessageIdProperty(final Integer value) {
+  private MessageIdVertexProperty(final Integer value) {
     super(value);
   }
 
@@ -37,7 +37,7 @@ public final class MessageIdProperty extends EdgeExecutionProperty<Integer> {
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static MessageIdProperty of(final Integer value) {
-    return new MessageIdProperty(value);
+  public static MessageIdVertexProperty of(final Integer value) {
+    return new MessageIdVertexProperty(value);
   }
 }
