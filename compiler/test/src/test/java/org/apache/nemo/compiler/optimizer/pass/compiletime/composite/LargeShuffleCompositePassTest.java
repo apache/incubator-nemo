@@ -21,11 +21,8 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -92,11 +89,6 @@ public class LargeShuffleCompositePassTest {
               edgeFromMerger.getPropertyValue(CompressionProperty.class).get());
           assertEquals(CompressionProperty.Value.LZ4,
               edgeFromMerger.getPropertyValue(DecompressionProperty.class).get());
-        });
-      } else {
-        // Non merger vertex.
-        processedDAG.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          assertEquals(DataFlowProperty.Value.Pull, irEdge.getPropertyValue(DataFlowProperty.class).get());
         });
       }
     });

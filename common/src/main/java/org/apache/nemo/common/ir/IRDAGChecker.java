@@ -18,8 +18,6 @@
  */
 package org.apache.nemo.common.ir;
 
-import org.apache.commons.lang.mutable.MutableBoolean;
-import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.commons.lang.mutable.MutableObject;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.Pair;
