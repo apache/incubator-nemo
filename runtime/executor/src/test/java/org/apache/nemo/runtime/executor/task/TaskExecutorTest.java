@@ -70,6 +70,7 @@ import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.any;
@@ -186,6 +187,24 @@ public final class TaskExecutorTest {
 
     // Check the output.
     assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
+  }
+
+    /**
+   * Test invalid parameter failure.
+   */
+  @Test()
+  public void testInvalidInputData() throws Exception {
+    try{
+      // Execute the task.
+      final TaskExecutor taskExecutor = getTaskExecutor(null, null);
+      taskExecutor.execute();
+
+      // Check the output.
+      fail();
+    }
+    catch(NullPointerException e){
+      assertEquals(true, true);
+    }
   }
 
   /**
