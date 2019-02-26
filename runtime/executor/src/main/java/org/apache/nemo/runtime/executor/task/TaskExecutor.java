@@ -161,12 +161,11 @@ public final class TaskExecutor {
     } else {
       LOG.info("Operator bursty!!");
     }
-
-    detector.clear();
   }
 
   public void endOffloading() {
     LOG.info("End offloading!");
+    detector.clear();
   }
   /**
    * Converts the DAG of vertices into pointer-based DAG of vertex harnesses.
@@ -514,7 +513,7 @@ public final class TaskExecutor {
         if (currTime - prevProcessedTime >= elapsedTimeForProcessedEvents) {
           synchronized (lock) {
             LOG.info("# of processed events (during {} ms) in TaskExecutor {}: {}",
-              (currTime - prevProcessedTime), currProcessedEvents, taskId);
+              (currTime - prevProcessedTime), taskId, currProcessedEvents);
             prevProcessedEvents = currProcessedEvents;
             prevProcessedTime = System.currentTimeMillis();
             currProcessedEvents = 0;
