@@ -190,7 +190,7 @@ public final class TaskExecutorTest {
   }
 
     /**
-   * Test source vertex data fetching.
+   * Test invalid parameter failure.
    */
   @Test()
   public void testInvalidInputData() throws Exception {
