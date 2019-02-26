@@ -56,7 +56,6 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
   private final String fileDirectory;
   private CrailConfiguration conf = null;
   private CrailStore fs = null;
-  //CrailFile file = null;
 
   /**
    * Constructor.
@@ -72,7 +71,6 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     super(serializerManager);
     this.conf = new CrailConfiguration();
     this.fs = CrailStore.newInstance(conf);
-    //int host = fs.getLocationClass().value();
     this.fileDirectory = volumeDirectory + "/files";
   }
 
