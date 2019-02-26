@@ -299,7 +299,6 @@ public final class TaskExecutor {
    * Process a data element down the DAG dependency.
    */
   private void processElement(final OutputCollector outputCollector, final Object dataElement) {
-    LOG.info("HY: dataElement {}",dataElement);
     outputCollector.emit(dataElement);
   }
 
