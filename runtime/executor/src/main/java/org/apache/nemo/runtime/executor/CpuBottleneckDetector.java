@@ -1,6 +1,5 @@
 package org.apache.nemo.runtime.executor;
 
-import org.apache.nemo.common.Pair;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;
@@ -10,7 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public final class CpuBottleneckDetector {
   private static final Logger LOG = LoggerFactory.getLogger(CpuBottleneckDetector.class.getName());
@@ -19,29 +17,28 @@ public final class CpuBottleneckDetector {
   private final ScheduledExecutorService monitorThread;
   private final SystemLoadProfiler profiler;
 
-  @NamedParameter(default_value = "2.0") // sec
-  public static final class BottleneckDetectionPeriod implements Name<Double> {
+  @NamedParameter(default_value = "2000") // msec
+  public static final class BottleneckDetectionPeriod implements Name<Long> {
   }
 
-  @NamedParameter(default_value = "2") // sec
+  @NamedParameter(default_value = "2")
   public static final class BottleneckDetectionConsecutive implements Name<Integer> {
   }
 
-  @NamedParameter(default_value = "0.7") // sec
+  @NamedParameter(default_value = "0.7")
   public static final class BottleneckDetectionCpuThreshold implements Name<Double> {
   }
 
-  private final double r;
+  private final long r;
   private final int k;
   private final double threshold;
   private int currBottleneckId = 0;
-
   private int currConsecutive = 0;
 
   @Inject
   private CpuBottleneckDetector(
     final SystemLoadProfiler profiler,
-    @Parameter(BottleneckDetectionPeriod.class) final double r,
+    @Parameter(BottleneckDetectionPeriod.class) final long r,
     @Parameter(BottleneckDetectionConsecutive.class) final int k,
     @Parameter(BottleneckDetectionCpuThreshold.class) final double threshold) {
     this.r = r;
@@ -64,6 +61,7 @@ public final class CpuBottleneckDetector {
         if (currConsecutive >= k) {
          final BottleneckEvent event =
           new BottleneckEvent(currBottleneckId,
+           System.currentTimeMillis(),
             curCpuLoad, BottleneckEvent.Type.END);
         eventHandlers.keySet().forEach((eventHandler) -> {
           eventHandler.onNext(event);
@@ -77,12 +75,13 @@ public final class CpuBottleneckDetector {
         currBottleneckId++;
         final BottleneckEvent event =
           new BottleneckEvent(currBottleneckId,
+            System.currentTimeMillis() - (k * r),
             curCpuLoad, BottleneckEvent.Type.START);
         eventHandlers.keySet().forEach((eventHandler) -> {
           eventHandler.onNext(event);
         });
       }
-    }, (long) (r * 1000), (long) (r * 1000), TimeUnit.MILLISECONDS);
+    }, r, r, TimeUnit.MILLISECONDS);
   }
 
   public void setBottleneckHandler(final EventHandler<BottleneckEvent> bottleneckHandler) {
@@ -101,22 +100,25 @@ public final class CpuBottleneckDetector {
     }
 
     public final int id;
+    public final long endTime;
     public final long startTime;
     public final double cpuLoad;
     public final Type type;
 
     public BottleneckEvent(final int id,
+                           final long startTime,
                            final double cpuLoad,
                            final Type type) {
       this.id = id;
+      this.startTime = startTime;
       this.cpuLoad = cpuLoad;
       this.type = type;
-      this.startTime = System.currentTimeMillis();
+      this.endTime = System.currentTimeMillis();
     }
 
     @Override
     public String toString() {
-      return "[BottleneckEvent: " + type.name() + ", " + "id: " + id + ", st: " + startTime + ", load: " + cpuLoad  + "]";
+      return "[BottleneckEvent: " + type.name() + ", " + "id: " + id + ", [" + startTime + "-" + endTime + ")" + ", load: " + cpuLoad  + "]";
     }
   }
 

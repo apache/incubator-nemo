@@ -95,8 +95,10 @@ public final class TaskExecutor {
   private long currProcessedEvents = 0;
   private long prevProcessedEvents = 0;
   private Object lock = new Object();
-  private long elapsedTimeForProcessedEvents = 3000;
+  private long elapsedTimeForProcessedEvents = 1000;
   private long prevProcessedTime = System.currentTimeMillis();
+
+  private final InputFluctuationDetector detector;
 
   //private static final StorageObjectFactory SOFACTORY = MemoryStorageObjectFactory.INSTACE;
   //private static final StorageObjectFactory SOFACTORY = S3StorageObjectFactory.INSTACE;
@@ -120,12 +122,14 @@ public final class TaskExecutor {
                       final MetricMessageSender metricMessageSender,
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                       final SerializerManager serializerManager,
-                      final ServerlessExecutorProvider serverlessExecutorProvider) {
+                      final ServerlessExecutorProvider serverlessExecutorProvider,
+                      final InputFluctuationDetector detector) {
     // Essential information
     this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
+    this.detector = detector;
 
     this.serverlessExecutorProvider = serverlessExecutorProvider;
 
@@ -146,36 +150,19 @@ public final class TaskExecutor {
     this.sortedHarnesses = pair.right();
   }
 
-  private boolean isInputFluctuate() {
-    synchronized (lock) {
-      final long currTime = System.currentTimeMillis();
-      final long curEvent = currProcessedEvents;
-      final long adjustedPrevProcessedEvent = (prevProcessedEvents / elapsedTimeForProcessedEvents) * (
-        currTime - prevProcessedTime);
-      LOG.info("IsInputFluctuation] adjustedPrevProcessedEvent: {}, curEvent: {}, ratio: {}",
-        adjustedPrevProcessedEvent, curEvent, curEvent / adjustedPrevProcessedEvent);
-
-      if (curEvent > adjustedPrevProcessedEvent * 2) {
-        // bursty input!
-        return true;
-      }
-    }
-    return false;
-  }
-
   private boolean isOperatorFluctuate() {
     return false;
   }
 
-  public void startOffloading() {
+  public void startOffloading(final long baseTime) {
     LOG.info("Start offloading!");
-    if (isInputFluctuate()) {
+    if (detector.isInputFluctuation(baseTime)) {
       LOG.info("Input fluctuate!!");
+    } else {
+      LOG.info("Operator bursty!!");
     }
 
-    if (isOperatorFluctuate()) {
-
-    }
+    detector.clear();
   }
 
   public void endOffloading() {
@@ -529,8 +516,9 @@ public final class TaskExecutor {
             LOG.info("# of processed events (during {} ms) in TaskExecutor {}: {}",
               (currTime - prevProcessedTime), currProcessedEvents, taskId);
             prevProcessedEvents = currProcessedEvents;
-            currProcessedEvents = 0;
             prevProcessedTime = System.currentTimeMillis();
+            currProcessedEvents = 0;
+            detector.collect(prevProcessedTime, prevProcessedEvents);
           }
         }
 
@@ -576,8 +564,10 @@ public final class TaskExecutor {
           if (currTime - prevProcessedTime >= elapsedTimeForProcessedEvents) {
             LOG.info("# of processed events (during {} ms) in TaskExecutor {}: {}",
               (currTime - prevProcessedTime), taskId, currProcessedEvents);
+            prevProcessedEvents = currProcessedEvents;
             currProcessedEvents = 0;
             prevProcessedTime = System.currentTimeMillis();
+            detector.collect(prevProcessedEvents, prevProcessedTime);
           }
 
           final DataFetcher dataFetcher = pendingIterator.next();

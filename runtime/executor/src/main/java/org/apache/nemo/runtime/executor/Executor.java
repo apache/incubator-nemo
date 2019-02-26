@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
@@ -47,6 +46,7 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
+import org.apache.nemo.runtime.executor.task.InputFluctuationDetector;
 import org.apache.nemo.runtime.executor.task.TaskExecutor;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
@@ -58,10 +58,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Base64;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
@@ -74,11 +71,6 @@ public final class Executor {
   private static final Logger LOG = LoggerFactory.getLogger(Executor.class.getName());
 
   private final String executorId;
-
-  /**
-   * To be used for a thread pool to execute tasks.
-   */
-  private final ExecutorService executorService;
 
   /**
    * In charge of this executor's intermediate data transfer.
@@ -103,6 +95,8 @@ public final class Executor {
   private volatile boolean started = false;
 
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
+  private final ExecutorService executorService;
+
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -116,8 +110,8 @@ public final class Executor {
                    final CpuBottleneckDetector bottleneckDetector) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
-        .namingPattern("TaskExecutor thread-%d")
-        .build());
+              .namingPattern("TaskExecutor thread-%d")
+              .build());
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.serializerManager = serializerManager;
     this.intermediateDataIOFactory = intermediateDataIOFactory;
@@ -139,6 +133,12 @@ public final class Executor {
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
       SerializationUtils.deserialize(task.getSerializedIRDag());
+
+    if (!started) {
+      bottleneckDetector.setBottleneckHandler(new BottleneckHandler());
+      bottleneckDetector.start();
+      started = true;
+    }
 
     executorService.execute(() -> launchTask(task, irDag));
   }
@@ -171,11 +171,6 @@ public final class Executor {
                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
     LOG.info("Launch task: {}", task.getTaskId());
 
-    if (!started) {
-      bottleneckDetector.setBottleneckHandler(new BottleneckHandler());
-      bottleneckDetector.start();
-      started = true;
-    }
     try {
       final TaskStateManager taskStateManager =
           new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
@@ -198,9 +193,11 @@ public final class Executor {
             e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       });
 
+      final InputFluctuationDetector detector = new InputFluctuationDetector();
       final TaskExecutor taskExecutor =
       new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-          metricMessageSender, persistentConnectionToMasterMap, serializerManager, serverlessExecutorProvider);
+          metricMessageSender, persistentConnectionToMasterMap, serializerManager, serverlessExecutorProvider,
+        detector);
 
       taskExecutorMap.put(taskExecutor, true);
       taskExecutor.execute();
@@ -303,7 +300,7 @@ public final class Executor {
           // 1) bottleneck 원인 파악 (input 때문인지 operator 때문인지)
           // 2) case 나눠서 처리
           for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-            taskExecutor.startOffloading();
+            taskExecutor.startOffloading(event.startTime);
           }
           break;
         }
