@@ -68,19 +68,21 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
       final CommunicationPatternProperty.Value commPattern) {
     final ExecutionPropertyMap<EdgeExecutionProperty> map = new ExecutionPropertyMap<>(irEdge.getId());
     map.put(CommunicationPatternProperty.of(commPattern));
-    map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     map.put(EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));
     map.put(DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
     switch (commPattern) {
       case Shuffle:
+        map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
         map.put(PartitionerProperty.of(PartitionerProperty.Type.Hash));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
         break;
       case BroadCast:
+        map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
         map.put(PartitionerProperty.of(PartitionerProperty.Type.Intact));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
         break;
       case OneToOne:
+        map.put(DataFlowProperty.of(DataFlowProperty.Value.Push));
         map.put(PartitionerProperty.of(PartitionerProperty.Type.Intact));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
         break;

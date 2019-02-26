@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.optimizer.policy;
 
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.IRDAGChecker;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
@@ -88,6 +89,14 @@ public final class PolicyImpl implements Policy {
           throw new CompileTimeOptimizationException(passToApply.getClass().getSimpleName()
             + " is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
             + "Modify it or use a general CompileTimePass");
+        }
+
+        final IRDAGChecker.CheckerResult integrity = processedDAG.checkIntegrity();
+        if (!integrity.isPassed()) {
+          final long curTime = System.currentTimeMillis();
+          processedDAG.storeJSON("integrity", String.valueOf(curTime), "integrity failure");
+          throw new CompileTimeOptimizationException(integrity.getFailReason()
+            + " / For DAG visualization, check out integrity/" + curTime + ".json");
         }
 
         // Save the processed JSON DAG.
@@ -179,7 +188,13 @@ public final class PolicyImpl implements Policy {
 
   @Override
   public IRDAG runRunTimeOptimizations(final IRDAG irdag, final Message message) {
-    runTimePasses.forEach(p -> p.apply(irdag, message));
+    runTimePasses.forEach(p -> {
+      final IRDAG processedDAG = p.apply(irdag, message);
+      final IRDAGChecker.CheckerResult integrity = processedDAG.checkIntegrity();
+      if (!integrity.isPassed()) {
+        throw new CompileTimeOptimizationException(integrity.getFailReason());
+      }
+    });
     return irdag;
   }
 }

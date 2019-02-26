@@ -29,6 +29,8 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -54,6 +56,7 @@ import java.util.*;
 @Annotates(ScheduleGroupProperty.class)
 @Requires({CommunicationPatternProperty.class, DataFlowProperty.class})
 public final class DefaultScheduleGroupPass extends AnnotatingPass {
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultScheduleGroupPass.class.getName());
 
   private final boolean allowBroadcastWithinScheduleGroup;
   private final boolean allowShuffleWithinScheduleGroup;
@@ -153,6 +156,11 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
             }
             if (!allowShuffleWithinScheduleGroup
                 && communicationPattern == CommunicationPatternProperty.Value.Shuffle) {
+              mergability = false;
+            }
+            if (DataFlowProperty.Value.Pull
+              .equals(edgeToConnectedIRVertex.getPropertyValue(DataFlowProperty.class).get())) {
+              LOG.info("DO NOT MERGE {}", edgeToConnectedIRVertex.getId());
               mergability = false;
             }
           }

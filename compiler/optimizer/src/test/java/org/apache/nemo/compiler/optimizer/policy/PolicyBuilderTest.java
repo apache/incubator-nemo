@@ -29,19 +29,19 @@ import static org.junit.Assert.assertTrue;
 public final class PolicyBuilderTest {
   @Test
   public void testDisaggregationPolicy() {
-    assertEquals(17, DisaggregationPolicy.BUILDER.getCompileTimePasses().size());
+    assertEquals(15, DisaggregationPolicy.BUILDER.getCompileTimePasses().size());
     assertEquals(0, DisaggregationPolicy.BUILDER.getRunTimePasses().size());
   }
 
   @Test
   public void testTransientResourcePolicy() {
-    assertEquals(19, TransientResourcePolicy.BUILDER.getCompileTimePasses().size());
+    assertEquals(17, TransientResourcePolicy.BUILDER.getCompileTimePasses().size());
     assertEquals(0, TransientResourcePolicy.BUILDER.getRunTimePasses().size());
   }
 
   @Test
   public void testDataSkewPolicy() {
-    assertEquals(19, DataSkewPolicy.BUILDER.getCompileTimePasses().size());
+    assertEquals(17, DataSkewPolicy.BUILDER.getCompileTimePasses().size());
     assertEquals(1, DataSkewPolicy.BUILDER.getRunTimePasses().size());
   }
 

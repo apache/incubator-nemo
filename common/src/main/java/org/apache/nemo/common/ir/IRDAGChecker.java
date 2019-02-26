@@ -18,10 +18,14 @@
  */
 package org.apache.nemo.common.ir;
 
+import org.apache.commons.lang.mutable.MutableBoolean;
+import org.apache.commons.lang.mutable.MutableInt;
+import org.apache.commons.lang.mutable.MutableObject;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.DAGInterface;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
@@ -377,14 +381,28 @@ public final class IRDAGChecker {
   void addScheduleGroupCheckers() {
     final GlobalDAGChecker scheduleGroupTopoOrdering = (irdag -> {
       int lastSeenScheduleGroup = Integer.MIN_VALUE;
-      for (final IRVertex v : irdag.getTopologicalSort()) {
-        if (v.getPropertyValue(ScheduleGroupProperty.class).isPresent()) {
-          final int currentScheduleGroup = v.getPropertyValue(ScheduleGroupProperty.class).get();
-          if (currentScheduleGroup < lastSeenScheduleGroup) {
-            return failure("Smaller than the last seen ScheduleGroup", v, ScheduleGroupProperty.class);
-          } else {
-            lastSeenScheduleGroup = currentScheduleGroup;
-          }
+
+      for (final IRVertex v : irdag.getVertices()) {
+        final MutableObject violatingReachableVertex = new MutableObject();
+        v.getPropertyValue(ScheduleGroupProperty.class).ifPresent(startingScheduleGroup -> {
+          irdag.dfsDo(
+            v,
+            visited -> {
+              if (visited.getPropertyValue(ScheduleGroupProperty.class).isPresent()
+                && visited.getPropertyValue(ScheduleGroupProperty.class).get() < startingScheduleGroup) {
+                violatingReachableVertex.setValue(visited);
+              }
+            },
+            DAGInterface.TraversalOrder.PreOrder,
+            new HashSet<>());
+        });
+        if (violatingReachableVertex.getValue() != null) {
+          return failure(
+            "A reachable vertex with a smaller schedule group ",
+            v,
+            ScheduleGroupProperty.class,
+            violatingReachableVertex.getValue(),
+            ScheduleGroupProperty.class);
         }
       }
       return success();
@@ -433,7 +451,8 @@ public final class IRDAGChecker {
 
     final SingleEdgeChecker compressAndDecompress = (edge -> {
       if (!isConnectedToStreamVertex(edge)) {
-        if (edge.getPropertyValue(CompressionProperty.class) != edge.getPropertyValue(DecompressionProperty.class)) {
+        if (!edge.getPropertyValue(CompressionProperty.class)
+          .equals(edge.getPropertyValue(DecompressionProperty.class))) {
           return failure("Compression and decompression must be symmetric",
             edge, CompressionProperty.class, DecompressionProperty.class);
         }
@@ -478,11 +497,11 @@ public final class IRDAGChecker {
       this.failReason = failReason;
     }
 
-    final boolean isPassed() {
+    public final boolean isPassed() {
       return pass;
     }
 
-    final String getFailReason() {
+    public final String getFailReason() {
       return failReason;
     }
   }
@@ -515,12 +534,7 @@ public final class IRDAGChecker {
       .map(ep -> (Class<VertexExecutionProperty<Serializable>>) ep)
       .map(ep -> v.getPropertyValue(ep))
       .collect(Collectors.toList());
-    final boolean isMissingValue = epsList.stream().anyMatch(optional -> !((Optional) optional).isPresent());
-    if (isMissingValue) {
-      throw new IllegalArgumentException(epsList.toString());
-    } else {
-      return failure(String.format("%s - [IRVertex %s: %s]", description, v.getId(), epsList.toString()));
-    }
+    return failure(String.format("%s - [IRVertex %s: %s]", description, v.getId(), epsList.toString()));
   }
 
   CheckerResult failure(final String description,
@@ -529,12 +543,7 @@ public final class IRDAGChecker {
     final List<Optional> epsList = Arrays.stream(eps)
       .map(ep -> (Class<EdgeExecutionProperty<Serializable>>) ep)
       .map(ep -> e.getPropertyValue(ep)).collect(Collectors.toList());
-    final boolean isMissingValue = epsList.stream().anyMatch(optional -> !((Optional) optional).isPresent());
-    if (isMissingValue) {
-      throw new IllegalArgumentException(epsList.toString());
-    } else {
-      return failure(String.format("%s - [IREdge(%s->%s) %s: %s]",
-        description, e.getSrc().getId(), e.getDst().getId(), e.getId(), epsList.toString()));
-    }
+    return failure(String.format("%s - [IREdge(%s->%s) %s: %s]",
+      description, e.getSrc().getId(), e.getDst().getId(), e.getId(), epsList.toString()));
   }
 }

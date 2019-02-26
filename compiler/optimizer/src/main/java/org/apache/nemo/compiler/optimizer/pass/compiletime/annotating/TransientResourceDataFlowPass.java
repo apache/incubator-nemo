@@ -49,8 +49,6 @@ public final class TransientResourceDataFlowPass extends AnnotatingPass {
         inEdges.forEach(edge -> {
           if (fromTransientToReserved(edge)) {
             edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Push));
-          } else {
-            edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.Pull));
           }
         });
       }

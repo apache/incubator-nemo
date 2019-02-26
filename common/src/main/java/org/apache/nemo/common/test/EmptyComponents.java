@@ -51,6 +51,18 @@ public final class EmptyComponents {
   private EmptyComponents() {
   }
 
+  public static IREdge newDummyShuffleEdge(final IRVertex src, final IRVertex dst) {
+    final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, src, dst);
+    edge.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor()));
+    edge.setProperty(KeyEncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
+    edge.setProperty(KeyDecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
+    edge.setProperty(EncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
+    edge.setProperty(DecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
+    edge.setProperty(KeyEncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
+    edge.setProperty(KeyDecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
+    return edge;
+  }
+
   /**
    * Builds dummy IR DAG for testing.
    * @return the dummy IR DAG.
@@ -70,9 +82,9 @@ public final class EmptyComponents {
     dagBuilder.addVertex(t4);
     dagBuilder.addVertex(t5);
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, s, t1));
-    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, t1, t2));
+    dagBuilder.connectVertices(newDummyShuffleEdge(t1, t2));
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t3));
-    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, t3, t4));
+    dagBuilder.connectVertices(newDummyShuffleEdge(t3, t4));
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t5));
     return new IRDAG(dagBuilder.build());
   }
@@ -92,19 +104,8 @@ public final class EmptyComponents {
     final IRVertex t4 = new OperatorVertex(new EmptyComponents.EmptyTransform("t4"));
     final IRVertex t5 = new OperatorVertex(new EmptyComponents.EmptyTransform("t5"));
 
-    final IREdge shuffleEdgeBetweenT1AndT2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, t1, t2);
-    shuffleEdgeBetweenT1AndT2.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor()));
-    shuffleEdgeBetweenT1AndT2.setProperty(EncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
-    shuffleEdgeBetweenT1AndT2.setProperty(DecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
-    shuffleEdgeBetweenT1AndT2.setProperty(KeyEncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
-    shuffleEdgeBetweenT1AndT2.setProperty(KeyDecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
-
-    final IREdge shuffleEdgeBetweenT3AndT4 = new IREdge(CommunicationPatternProperty.Value.Shuffle, t3, t4);
-    shuffleEdgeBetweenT3AndT4.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor()));
-    shuffleEdgeBetweenT3AndT4.setProperty(EncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
-    shuffleEdgeBetweenT3AndT4.setProperty(DecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
-    shuffleEdgeBetweenT3AndT4.setProperty(KeyEncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
-    shuffleEdgeBetweenT3AndT4.setProperty(KeyDecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
+    final IREdge shuffleEdgeBetweenT1AndT2 = newDummyShuffleEdge(t1, t2);
+    final IREdge shuffleEdgeBetweenT3AndT4 = newDummyShuffleEdge(t3, t4);
 
     dagBuilder.addVertex(s);
     dagBuilder.addVertex(t1);
