@@ -23,7 +23,7 @@ public final class InputFluctuationDetector {
     processedEvents.add(Pair.of(timestamp, currProcessedEvent));
   }
 
-  // 어느 시점을 기준으로 fluctuation 하였는가?
+  // 어느 시점 (baseTime) 을 기준으로 fluctuation 하였는가?
   public synchronized boolean isInputFluctuation(final long baseTime) {
     final List<Long> beforeBaseTime = new ArrayList<>();
     final List<Long> afterBaseTime = new ArrayList<>();
