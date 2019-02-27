@@ -41,4 +41,12 @@ public final class AdditionalOutputTagProperty extends EdgeExecutionProperty<Str
   public static AdditionalOutputTagProperty of(final String value) {
     return new AdditionalOutputTagProperty(value);
   }
+
+  // TODO #348: Consider OutputTagProperty
+  private static String mainOutputTag = "main";
+
+  public static String getMainOutputTag() {
+    return mainOutputTag;
+  }
+
 }

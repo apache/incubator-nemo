@@ -219,9 +219,8 @@ public final class TaskExecutor {
 
       // Main outputs
       final List<NextIntraTaskOperatorInfo> internalMainOutputs;
-      final String key = "main";
-      if (internalAdditionalOutputMap.containsKey(key)) {
-        internalMainOutputs = internalAdditionalOutputMap.remove(key);
+      if (internalAdditionalOutputMap.containsKey(AdditionalOutputTagProperty.getMainOutputTag())) {
+        internalMainOutputs = internalAdditionalOutputMap.remove(AdditionalOutputTagProperty.getMainOutputTag());
       } else {
         internalMainOutputs = new ArrayList<>();
       }
@@ -547,7 +546,7 @@ public final class TaskExecutor {
 
   /**
    * Return a map of Internal Outputs associated with their output tag.
-   * If an edge has no output tag, its info are added to the main key.
+   * If an edge has no output tag, its info are added to the mainOutputTag.
    *
    * @param irVertex source irVertex
    * @param irVertexDag DAG of IRVertex and RuntimeEdge
@@ -571,7 +570,7 @@ public final class TaskExecutor {
           if (isPresent) {
             outputTag = edge.getPropertyValue(AdditionalOutputTagProperty.class).get();
           } else {
-            outputTag = "main";
+            outputTag = AdditionalOutputTagProperty.getMainOutputTag();
           }
           final int index = edgeIndexMap.get(edge);
           final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();

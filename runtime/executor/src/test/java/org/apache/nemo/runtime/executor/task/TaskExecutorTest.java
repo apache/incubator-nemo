@@ -199,7 +199,7 @@ public final class TaskExecutorTest {
       final TaskExecutor taskExecutor = getTaskExecutor(null, null);
       taskExecutor.execute();
 
-      // Check the output.
+      // This should not be reached.
       fail();
     }
     catch(NullPointerException e){
