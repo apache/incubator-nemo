@@ -46,7 +46,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
   private final String metaFilePath;
   private static CrailConfiguration conf;
   private static CrailStore fs;
-  private static CrailFile file;
+  private static CrailFile file=null;
   /**
    * Constructor for creating a non-committed new file metadata.
    *
@@ -55,6 +55,12 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
   private CrailFileMetadata(final String metaFilePath) {
     super();
     this.metaFilePath = metaFilePath;
+    try {
+      conf = new CrailConfiguration();
+      fs = CrailStore.newInstance(conf);
+    }catch(Exception e){
+      LOG.info("HY: CrailConfiguration failed");
+    }
 //    try {
 //      conf = new CrailConfiguration();
 //      fs = CrailStore.newInstance(conf);
@@ -83,6 +89,12 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
                             final List<PartitionMetadata<K>> partitionMetadataList) {
     super(partitionMetadataList);
     this.metaFilePath = metaFilePath;
+    try {
+      conf = new CrailConfiguration();
+      fs = CrailStore.newInstance(conf);
+    }catch(Exception e){
+      LOG.info("HY: CrailConfiguration failed");
+    }
 //    try {
 //      try {
 //        conf = new CrailConfiguration();
