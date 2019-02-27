@@ -27,7 +27,7 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;

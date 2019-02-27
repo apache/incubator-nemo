@@ -29,6 +29,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 
 import java.io.Serializable;
 import java.util.List;

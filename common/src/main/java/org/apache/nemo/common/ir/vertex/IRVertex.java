@@ -27,6 +27,8 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.Cloneable;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -36,6 +38,9 @@ import java.util.Optional;
 public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   private boolean stagePartitioned;
+  public boolean isRoot = false;
+  public boolean isSink = false;
+  public List<Integer> ids = new ArrayList<>();
 
   /**
    * Constructor of IRVertex.

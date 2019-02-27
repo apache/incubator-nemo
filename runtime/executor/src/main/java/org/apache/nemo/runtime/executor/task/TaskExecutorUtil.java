@@ -8,12 +8,12 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.executor.datatransfer.InputWatermarkManager;
+import org.apache.nemo.common.InputWatermarkManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
-import org.apache.nemo.runtime.executor.datatransfer.NextIntraTaskOperatorInfo;
+import org.apache.nemo.common.NextIntraTaskOperatorInfo;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.common.ir.Readable;
 
@@ -60,6 +60,17 @@ public final class TaskExecutorUtil {
     }
   }
 
+  public static boolean hasExternalOutput(final IRVertex irVertex,
+                                          final List<StageEdge> outEdgesToChildrenTasks) {
+    final List<StageEdge> out =
+    outEdgesToChildrenTasks
+      .stream()
+      .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
+      .collect(Collectors.toList());
+
+    return !out.isEmpty();
+  }
+
   /**
    * Return inter-task OutputWriters, for single output or output associated with main tag.
    *
@@ -69,9 +80,9 @@ public final class TaskExecutorUtil {
    * @return OutputWriters for main children tasks
    */
   public static List<OutputWriter> getExternalMainOutputs(final IRVertex irVertex,
-                                                    final List<StageEdge> outEdgesToChildrenTasks,
-                                                    final IntermediateDataIOFactory intermediateDataIOFactory,
-                                                    final String taskId) {
+                                                          final List<StageEdge> outEdgesToChildrenTasks,
+                                                          final IntermediateDataIOFactory intermediateDataIOFactory,
+                                                          final String taskId) {
     return outEdgesToChildrenTasks
       .stream()
       .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))

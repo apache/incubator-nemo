@@ -19,18 +19,16 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
-import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.*;
 import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
-import org.apache.nemo.runtime.executor.datatransfer.MultiInputWatermarkManager;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -39,7 +37,7 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.TaskStateManager;
@@ -100,6 +98,10 @@ public final class TaskExecutor {
 
   private final InputFluctuationDetector detector;
 
+  private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
+
+  private transient boolean offloading = false;
+
   //private static final StorageObjectFactory SOFACTORY = MemoryStorageObjectFactory.INSTACE;
   //private static final StorageObjectFactory SOFACTORY = S3StorageObjectFactory.INSTACE;
 
@@ -126,6 +128,7 @@ public final class TaskExecutor {
                       final InputFluctuationDetector detector) {
     // Essential information
     this.isExecuted = false;
+    this.irVertexDag = irVertexDag;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
@@ -158,6 +161,8 @@ public final class TaskExecutor {
     LOG.info("Start offloading!");
     if (detector.isInputFluctuation(baseTime)) {
       LOG.info("Input fluctuate!!");
+      // do offloading();
+      doOffloading();
     } else {
       LOG.info("Operator bursty!!");
     }
@@ -165,8 +170,14 @@ public final class TaskExecutor {
 
   public void endOffloading() {
     LOG.info("End offloading!");
+    // Do sth for offloading end
+    offloading = false;
     detector.clear();
   }
+
+  private void doOffloading() {
+  }
+
   /**
    * Converts the DAG of vertices into pointer-based DAG of vertex harnesses.
    * This conversion is necessary for constructing concrete data channels for each vertex's inputs and outputs.
@@ -259,44 +270,10 @@ public final class TaskExecutor {
         outputCollector = new DynOptDataOutputCollector(
           irVertex, persistentConnectionToMasterMap, this);
       } else {
-        /*
-        final List<RuntimeEdge<IRVertex>> internalEdges =
-          irVertexDag.getOutgoingEdgesOf(irVertex.getId())
-          .stream()
-          .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-          .collect(Collectors.toList());
-
-        final List<StageEdge> outgoingEdges = task.getTaskOutgoingEdges();
-        final List<StageEdge> oedges =
-          outgoingEdges.stream().filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
-          .collect(Collectors.toList());
-          */
-
         outputCollector = new OperatorVertexOutputCollector(
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap);
 
-        /*
-        // query 7
-        if (irVertex.getId().equals("vertex15")) {
-          outputCollector = new SideInputLambdaCollector(
-            internalMainOutputs, irVertex, storageObjectFactory.sideInputProcessor(serializerManager,
-            oedges.get(0).getId()));
-        } else if (irVertex.getId().equals("vertex6")) {
-          outputCollector =
-            new MainInputLambdaCollector(irVertex, internalMainOutputs, internalAdditionalOutputMap,
-              oedges, serializerManager, storageObjectFactory);
-        }
-        */
-
-        // query 8
-        /*
-        if (irVertex.getId().equals("vertex15")) {
-          outputCollector = new GBKLambdaEmitter(
-            irVertex, internalMainOutputs, internalAdditionalOutputMap,
-            externalMainOutputs, externalAdditionalOutputMap, internalEdges);
-        }
-        */
       }
 
       // Create VERTEX HARNESS
@@ -452,10 +429,18 @@ public final class TaskExecutor {
       }
     } else if (event instanceof Watermark) {
       // Watermark
-      processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
+      if (offloading) {
+        // TODO
+      } else {
+        processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
+      }
     } else {
       // Process data element
-      processElement(dataFetcher.getOutputCollector(), event);
+      if (offloading) {
+        // TODO
+      } else {
+        processElement(dataFetcher.getOutputCollector(), event);
+      }
     }
   }
 
@@ -525,6 +510,7 @@ public final class TaskExecutor {
         try {
           //final long a = System.currentTimeMillis();
           final Object element = dataFetcher.fetchDataElement();
+
           //fetchTime += (System.currentTimeMillis() - a);
 
           //final long b = System.currentTimeMillis();

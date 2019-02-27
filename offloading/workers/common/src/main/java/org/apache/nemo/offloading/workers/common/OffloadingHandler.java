@@ -93,7 +93,6 @@ public final class OffloadingHandler {
                            final List<ChannelFuture> futures,
                            final Pair<Object, Integer> data) {
     final ByteBuf byteBuf = opendChannel.alloc().ioBuffer();
-    byteBuf.writeInt(OffloadingEvent.Type.RESULT.ordinal());
 
     if (data.left() == NoResult.INSTANCE) {
       // bit 0 1

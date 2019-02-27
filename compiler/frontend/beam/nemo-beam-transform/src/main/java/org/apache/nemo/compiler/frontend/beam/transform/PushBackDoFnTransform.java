@@ -199,14 +199,12 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
         if (offloading) {
           if (byteBufList.isEmpty()) {
             final ByteBuf byteBuf = Unpooled.buffer();
-            byteBuf.writeInt(OffloadingEvent.Type.DATA.ordinal());
             byteBufList.add(new ByteBufOutputStream(byteBuf));
           }
 
           final int lastIndex = byteBufList.size() - 1;
           if (byteBufList.get(lastIndex).buffer().readableBytes() > Constants.FLUSH_BYTES) {
             final ByteBuf byteBuf = Unpooled.buffer();
-            byteBuf.writeInt(OffloadingEvent.Type.DATA.ordinal());
             byteBufList.add(new ByteBufOutputStream(byteBuf));
           }
 

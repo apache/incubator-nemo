@@ -28,7 +28,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProper
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;

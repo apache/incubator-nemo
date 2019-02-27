@@ -16,34 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.common;
 
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-
 /**
- * This is a special implementation for single input data stream for optimization.
+ * This class is used for collecting watermarks for an OperatorVertex.
+ * InputWatermarkManager emits watermarks to this class.
  */
-public final class SingleInputWatermarkManager implements InputWatermarkManager {
-  private static final Logger LOG = LoggerFactory.getLogger(SingleInputWatermarkManager.class.getName());
+public final class OperatorWatermarkCollector implements OutputCollector {
+  private static final Logger LOG = LoggerFactory.getLogger(OperatorWatermarkCollector.class.getName());
 
-  private final OutputCollector watermarkCollector;
+  private final OperatorVertex operatorVertex;
 
-  public SingleInputWatermarkManager(final OutputCollector watermarkCollector) {
-    this.watermarkCollector = watermarkCollector;
+  public OperatorWatermarkCollector(final OperatorVertex operatorVertex) {
+    this.operatorVertex = operatorVertex;
   }
 
-  /**
-   * This just forwards watermarks to the next operator because it has one data stream.
-   * @param edgeIndex edge index
-   * @param watermark watermark
-   */
   @Override
-  public void trackAndEmitWatermarks(final int edgeIndex,
-                                     final Watermark watermark) {
-    watermarkCollector.emitWatermark(watermark);
+  public void emit(final Object output) {
+    throw new IllegalStateException("Should not be called");
+  }
+
+  @Override
+  public void emitWatermark(final Watermark watermark) {
+    operatorVertex.getTransform().onWatermark(watermark);
+  }
+
+  @Override
+  public void emit(final String dstVertexId, final Object output) {
+    throw new IllegalStateException("Should not be called");
   }
 }

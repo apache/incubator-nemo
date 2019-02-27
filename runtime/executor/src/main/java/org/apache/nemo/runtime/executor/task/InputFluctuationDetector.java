@@ -39,7 +39,6 @@ public final class InputFluctuationDetector {
     final long avgEventBeforeBaseTime = beforeBaseTime.stream()
       .reduce(0L, (x, y) -> x + y) / (Math.max(1, beforeBaseTime.size()));
 
-
     final long avgEventAfterBaseTime = afterBaseTime.stream()
       .reduce(0L, (x, y) -> x + y) / (Math.max(1, afterBaseTime.size()));
 

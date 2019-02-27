@@ -14,6 +14,7 @@ public final class OffloadingEventCoder {
     @Override
     protected void encode(ChannelHandlerContext ctx, OffloadingEvent msg, List<Object> out) throws Exception {
       if (msg.getByteBuf() != null) {
+        out.add(msg.getType().ordinal());
         out.add(msg.getByteBuf());
       } else {
         final ByteBuf buf = ctx.alloc().buffer(4 + msg.getLen());

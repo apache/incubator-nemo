@@ -39,7 +39,7 @@ import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;

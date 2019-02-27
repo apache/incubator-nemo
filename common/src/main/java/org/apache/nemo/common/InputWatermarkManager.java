@@ -16,9 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.common;
 
 import org.apache.nemo.common.punctuation.Watermark;
+
+import java.io.Serializable;
 
 
 /**
@@ -27,7 +29,7 @@ import org.apache.nemo.common.punctuation.Watermark;
  * --edge 2--&gt;  watermarkManager --(emitWatermark)--&gt; nextOperator
  * --edge 3--&gt;
  */
-public interface InputWatermarkManager {
+public interface InputWatermarkManager extends Serializable {
 
   /**
    * This tracks the minimum input watermark among multiple input streams.

@@ -29,6 +29,7 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 
 import java.util.HashMap;
 import java.util.Map;

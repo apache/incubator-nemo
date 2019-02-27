@@ -28,6 +28,7 @@ import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;

@@ -43,7 +43,7 @@ import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.runtime.common.plan.RuntimeEdge;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.TaskStateManager;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
@@ -858,6 +858,7 @@ public final class TaskExecutorTest {
 
   private TaskExecutor getTaskExecutor(final Task task, final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag) {
     return new TaskExecutor(task, taskDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-      metricMessageSender, persistentConnectionToMasterMap, /*TODO: remove*/null, null);
+      metricMessageSender, persistentConnectionToMasterMap, /*TODO: remove*/null, null,
+      null);
   }
 }

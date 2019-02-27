@@ -215,7 +215,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     }, 300, 300, TimeUnit.MILLISECONDS);
 
     final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
-    this.workerInitBuffer.writeInt(OffloadingEvent.Type.WORKER_INIT.ordinal());
     ObjectOutputStream oos = null;
     try {
       oos = new ObjectOutputStream(bos);
@@ -408,7 +407,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   }
 
   private ByteBuf encodeData(final I data, final ByteBuf byteBuf) {
-    byteBuf.writeInt(OffloadingEvent.Type.DATA.ordinal());
 
     final ByteBufOutputStream dataBos = new ByteBufOutputStream(byteBuf);
     try {

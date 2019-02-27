@@ -24,7 +24,6 @@ import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.BlockInputReader;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
-import org.apache.nemo.runtime.executor.datatransfer.InputWatermarkManager;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;

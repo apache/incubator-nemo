@@ -16,38 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.common;
 
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+
 /**
- * This class is used for collecting watermarks for an OperatorVertex.
- * InputWatermarkManager emits watermarks to this class.
+ * This is a special implementation for single input data stream for optimization.
  */
-public final class OperatorWatermarkCollector implements OutputCollector {
-  private static final Logger LOG = LoggerFactory.getLogger(OperatorWatermarkCollector.class.getName());
+public final class SingleInputWatermarkManager implements InputWatermarkManager {
+  private static final Logger LOG = LoggerFactory.getLogger(SingleInputWatermarkManager.class.getName());
 
-  private final OperatorVertex operatorVertex;
+  private final OutputCollector watermarkCollector;
 
-  public OperatorWatermarkCollector(final OperatorVertex operatorVertex) {
-    this.operatorVertex = operatorVertex;
+  public SingleInputWatermarkManager(final OutputCollector watermarkCollector) {
+    this.watermarkCollector = watermarkCollector;
   }
 
+  /**
+   * This just forwards watermarks to the next operator because it has one data stream.
+   * @param edgeIndex edge index
+   * @param watermark watermark
+   */
   @Override
-  public void emit(final Object output) {
-    throw new IllegalStateException("Should not be called");
-  }
-
-  @Override
-  public void emitWatermark(final Watermark watermark) {
-    operatorVertex.getTransform().onWatermark(watermark);
-  }
-
-  @Override
-  public void emit(final String dstVertexId, final Object output) {
-    throw new IllegalStateException("Should not be called");
+  public void trackAndEmitWatermarks(final int edgeIndex,
+                                     final Watermark watermark) {
+    watermarkCollector.emitWatermark(watermark);
   }
 }
