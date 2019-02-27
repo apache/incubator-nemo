@@ -119,6 +119,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    */
   @Override
   public synchronized void commitBlock() throws IOException {
+    LOG.info("HY: metadata commit for block {}", metaFilePath);
     final Iterable<PartitionMetadata<K>> partitionMetadataItr = getPartitionMetadataList();
     try{
       CrailBufferedOutputStream metaFileOutputstream =file.getBufferedOutputStream(0);
@@ -133,6 +134,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
     }
     catch(Exception e){
       LOG.info("HY: CrailBufferedOutputStream exception occurred");
+      e.printStackTrace();
     }
     setCommitted(true);
   }
