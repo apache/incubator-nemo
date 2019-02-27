@@ -20,7 +20,11 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.lang.mutable.MutableInt;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.IRDAG;
@@ -71,7 +75,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
    * Default constructor.
    */
   public DefaultScheduleGroupPass() {
-    this(false, false, false);
+    this(true, true, true);
   }
 
   /**
@@ -91,152 +95,80 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
 
   @Override
   public IRDAG apply(final IRDAG dag) {
-    final Map<IRVertex, ScheduleGroup> irVertexToScheduleGroupMap = new HashMap<>();
-    dag.topologicalDo(irVertex -> {
-      // Base case: for root vertices
-      if (!irVertexToScheduleGroupMap.containsKey(irVertex)) {
-        final ScheduleGroup newScheduleGroup = new ScheduleGroup();
-        newScheduleGroup.vertices.add(irVertex);
-        irVertexToScheduleGroupMap.put(irVertex, newScheduleGroup);
-      }
-      // Get scheduleGroup
-      final ScheduleGroup scheduleGroup = irVertexToScheduleGroupMap.get(irVertex);
-      if (scheduleGroup == null) {
-        throw new RuntimeException(String.format("ScheduleGroup must be set for %s", irVertex));
-      }
+    final Map<IRVertex, Integer> irVertexToGroupIdMap = new HashMap<>();
+    final Map<Integer, List<IRVertex>> groupIdToVertices = new HashMap<>();
 
-      // Step case: inductively assign ScheduleGroup
-      final List<IREdge> outgoingEdges = dag.getOutgoingEdgesOf(irVertex);
-      final List<IREdge> noCycleOutEdges = outgoingEdges.stream().filter(curEdge -> {
-        final List<IREdge> outgoingEdgesWithoutCurEdge = new ArrayList<>(outgoingEdges);
+    // Step 1: Compute schedule groups
+    final MutableInt lastGroupId = new MutableInt(0);
+    dag.topologicalDo(irVertex -> {
+      final int curId;
+      if (!irVertexToGroupIdMap.containsKey(irVertex)) {
+        lastGroupId.increment();
+        irVertexToGroupIdMap.put(irVertex, lastGroupId.intValue());
+        curId = lastGroupId.intValue();
+      } else {
+        curId = irVertexToGroupIdMap.get(irVertex);
+      }
+      groupIdToVertices.putIfAbsent(curId, new ArrayList<>());
+      groupIdToVertices.get(curId).add(irVertex);
+
+      final List<IREdge> allOutEdges = dag.getOutgoingEdgesOf(irVertex);
+      final List<IREdge> noCycleOutEdges = allOutEdges.stream().filter(curEdge -> {
+        final List<IREdge> outgoingEdgesWithoutCurEdge = new ArrayList<>(allOutEdges);
         outgoingEdgesWithoutCurEdge.remove(curEdge);
         return outgoingEdgesWithoutCurEdge.stream()
           .map(IREdge::getDst)
           .flatMap(dst -> dag.getDescendants(dst.getId()).stream())
           .noneMatch(descendant -> descendant.equals(curEdge.getDst()));
       }).collect(Collectors.toList());
-      for (final IREdge outEdge : noCycleOutEdges) {
-        final IRVertex connectedIRVertex = outEdge.getDst();
-        // Skip if some vertices that connectedIRVertex depends on do not have assigned a ScheduleGroup
-        boolean skip = false;
-        for (final IREdge edgeToConnectedIRVertex : dag.getIncomingEdgesOf(connectedIRVertex)) {
-          if (!irVertexToScheduleGroupMap.containsKey(edgeToConnectedIRVertex.getSrc())) {
-            // connectedIRVertex will be covered when edgeToConnectedIRVertex.getSrc() is visited
-            skip = true;
-            break;
-          }
-        }
-        if (skip) {
-          continue;
-        }
-        if (irVertexToScheduleGroupMap.containsKey(connectedIRVertex)) {
-          continue;
-        }
-        // Now we can assure that all vertices that connectedIRVertex depends on have assigned a ScheduleGroup
 
-        // Get ScheduleGroup(s) that push data to the connectedIRVertex
-        final Set<ScheduleGroup> pushScheduleGroups = new HashSet<>();
-        for (final IREdge edgeToConnectedIRVertex : dag.getIncomingEdgesOf(connectedIRVertex)) {
-          if (edgeToConnectedIRVertex.getPropertyValue(DataFlowProperty.class)
-              .orElseThrow(() -> new RuntimeException(String.format("DataFlowProperty for %s must be set",
-                  edgeToConnectedIRVertex.getId()))) == DataFlowProperty.Value.Push) {
-            pushScheduleGroups.add(irVertexToScheduleGroupMap.get(edgeToConnectedIRVertex.getSrc()));
-          }
-        }
+      final List<IRVertex> pushNoCycleOutEdgeDsts = noCycleOutEdges.stream()
+        .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
+        .map(IREdge::getDst)
+        .collect(Collectors.toList());
 
-        // If allowMultipleInEdgesWithinScheduleGroup is false and connectedIRVertex depends on multiple vertices,
-        // it should be a member of new ScheduleGroup
-        boolean mergability = allowMultipleInEdgesWithinScheduleGroup
-          || dag.getIncomingEdgesOf(connectedIRVertex).size() <= 1;
-        if (!mergability) {
-          // Create a new ScheduleGroup
-          final ScheduleGroup newScheduleGroup = new ScheduleGroup();
-          newScheduleGroup.vertices.add(connectedIRVertex);
-          irVertexToScheduleGroupMap.put(connectedIRVertex, newScheduleGroup);
-          for (final IREdge edgeToConnectedIRVertex : dag.getIncomingEdgesOf(connectedIRVertex)) {
-            final ScheduleGroup src = irVertexToScheduleGroupMap.get(edgeToConnectedIRVertex.getSrc());
-            final ScheduleGroup dst = newScheduleGroup;
-            src.scheduleGroupsTo.add(dst);
-            dst.scheduleGroupsFrom.add(src);
-          }
-          return;
-        }
-
-        if (pushScheduleGroups.isEmpty()) {
-          for (final IREdge edgeToConnectedIRVertex : dag.getIncomingEdgesOf(connectedIRVertex)) {
-            final ScheduleGroup anotherDependency = irVertexToScheduleGroupMap.get(edgeToConnectedIRVertex.getSrc());
-            if (!scheduleGroup.equals(anotherDependency)) {
-              // Since connectedIRVertex depends on multiple ScheduleGroups, connectedIRVertex must be a member of
-              // new ScheduleGroup
-              mergability = false;
-            }
-            final CommunicationPatternProperty.Value communicationPattern = edgeToConnectedIRVertex
-                .getPropertyValue(CommunicationPatternProperty.class).orElseThrow(
-                    () -> new RuntimeException(String.format("CommunicationPatternProperty for %s must be set",
-                        edgeToConnectedIRVertex.getId())));
-            if (!allowBroadcastWithinScheduleGroup
-                && communicationPattern == CommunicationPatternProperty.Value.BroadCast) {
-              mergability = false;
-            }
-            if (!allowShuffleWithinScheduleGroup
-                && communicationPattern == CommunicationPatternProperty.Value.Shuffle) {
-              mergability = false;
-            }
-
-            // TODO #347: IRDAG#partitionAcyclically
-            // This probably is aways true....
-            if (DataFlowProperty.Value.Pull
-              .equals(edgeToConnectedIRVertex.getPropertyValue(DataFlowProperty.class).get())) {
-              mergability = false;
-            }
-          }
-
-          if (mergability) {
-            // Merge into the existing scheduleGroup
-            scheduleGroup.vertices.add(connectedIRVertex);
-            irVertexToScheduleGroupMap.put(connectedIRVertex, scheduleGroup);
-          } else {
-            // Create a new ScheduleGroup
-            final ScheduleGroup newScheduleGroup = new ScheduleGroup();
-            newScheduleGroup.vertices.add(connectedIRVertex);
-            irVertexToScheduleGroupMap.put(connectedIRVertex, newScheduleGroup);
-            for (final IREdge edgeToConnectedIRVertex : dag.getIncomingEdgesOf(connectedIRVertex)) {
-              final ScheduleGroup src = irVertexToScheduleGroupMap.get(edgeToConnectedIRVertex.getSrc());
-              final ScheduleGroup dst = newScheduleGroup;
-              src.scheduleGroupsTo.add(dst);
-              dst.scheduleGroupsFrom.add(src);
-            }
-          }
-        } else {
-          // If there are multiple ScheduleGroups that push data to connectedIRVertex, merge them
-          final Iterator<ScheduleGroup> pushScheduleGroupIterator = pushScheduleGroups.iterator();
-          final ScheduleGroup pushScheduleGroup = pushScheduleGroupIterator.next();
-          while (pushScheduleGroupIterator.hasNext()) {
-            final ScheduleGroup anotherPushScheduleGroup = pushScheduleGroupIterator.next();
-            anotherPushScheduleGroup.vertices.forEach(pushScheduleGroup.vertices::add);
-            for (final ScheduleGroup src : anotherPushScheduleGroup.scheduleGroupsFrom) {
-              final ScheduleGroup dst = anotherPushScheduleGroup;
-              final ScheduleGroup newDst = pushScheduleGroup;
-              src.scheduleGroupsTo.remove(dst);
-              src.scheduleGroupsTo.add(newDst);
-              newDst.scheduleGroupsFrom.add(src);
-            }
-            for (final ScheduleGroup dst : anotherPushScheduleGroup.scheduleGroupsTo) {
-              final ScheduleGroup src = anotherPushScheduleGroup;
-              final ScheduleGroup newSrc = pushScheduleGroup;
-              dst.scheduleGroupsFrom.remove(src);
-              dst.scheduleGroupsFrom.add(newSrc);
-              newSrc.scheduleGroupsTo.add(dst);
-            }
-          }
-          // Add connectedIRVertex into the merged pushScheduleGroup
-          pushScheduleGroup.vertices.add(connectedIRVertex);
-          irVertexToScheduleGroupMap.put(connectedIRVertex, pushScheduleGroup);
-        }
-      }
+      pushNoCycleOutEdgeDsts.forEach(dst -> irVertexToGroupIdMap.put(dst, curId));
     });
-    dag.getVertices().forEach(v ->
-      v.setProperty(ScheduleGroupProperty.of(irVertexToScheduleGroupMap.get(v).getScheduleGroupId())));
+
+    // Step 2: Topologically sort schedule groups
+    final Map<Integer, List<Pair>> vIdTogId = irVertexToGroupIdMap.entrySet().stream()
+      .map(entry -> Pair.of(entry.getKey().getId(), entry.getValue()))
+      .collect(Collectors.groupingBy(p -> (Integer) ((Pair) p).right()));
+
+    final DAGBuilder<ScheduleGroup, ScheduleGroupEdge> builder = new DAGBuilder<>();
+    final Map<Integer, ScheduleGroup> idToGroup = new HashMap<>();
+
+    // ScheduleGroups
+    groupIdToVertices.forEach((groupId, vertices) -> {
+      final ScheduleGroup sg = new ScheduleGroup(groupId);
+      idToGroup.put(groupId, sg);
+      sg.vertices.addAll(vertices);
+      builder.addVertex(sg);
+    });
+
+    // ScheduleGroupEdges
+    irVertexToGroupIdMap.forEach((vertex, groupId) -> {
+      dag.getIncomingEdgesOf(vertex).stream()
+        .filter(inEdge -> !groupIdToVertices.get(groupId).contains(inEdge.getSrc()))
+        .map(inEdge -> new ScheduleGroupEdge(
+          idToGroup.get(irVertexToGroupIdMap.get(inEdge.getSrc())),
+          idToGroup.get(irVertexToGroupIdMap.get(inEdge.getDst()))))
+        .forEach(builder::connectVertices);
+    });
+
+    // Step 3: Actually set new schedule group properties based on topological ordering
+    final MutableInt actualScheduleGroup = new MutableInt(0);
+    final DAG<ScheduleGroup, ScheduleGroupEdge> sgDAG = builder.buildWithoutSourceSinkCheck();
+    final List<ScheduleGroup> sorted = sgDAG.getTopologicalSort();
+    sorted.stream()
+      .map(sg -> groupIdToVertices.get(sg.getScheduleGroupId()))
+      .forEach(vertices -> {
+        vertices.forEach(vertex -> {
+          vertex.setPropertyPermanently(ScheduleGroupProperty.of(actualScheduleGroup.intValue()));
+        });
+        actualScheduleGroup.increment();
+      });
+
     return dag;
   }
 
@@ -244,8 +176,6 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
    * Vertex in ScheduleGroup DAG.
    */
   private static final class ScheduleGroup extends Vertex {
-    private static int nextScheduleGroupId = 0;
-
     private final Set<IRVertex> vertices = new HashSet<>();
     private final Set<ScheduleGroup> scheduleGroupsTo = new HashSet<>();
     private final Set<ScheduleGroup> scheduleGroupsFrom = new HashSet<>();
@@ -254,9 +184,9 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
     /**
      * Constructor.
      */
-    ScheduleGroup() {
-      super(String.format("ScheduleGroup%d", ++nextScheduleGroupId));
-      this.scheduleGroupId = nextScheduleGroupId - 1;
+    ScheduleGroup(final int groupId) {
+      super(String.format("ScheduleGroup%d", groupId));
+      this.scheduleGroupId = groupId;
     }
 
     public int getScheduleGroupId() {
