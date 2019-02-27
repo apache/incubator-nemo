@@ -158,7 +158,6 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    */
   public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath) throws Exception{
     LOG.info("HY: metafilePath {}", metaFilePath);
-    CrailFile file;
     try {
       file = fs.lookup(metaFilePath).get().asFile();
       file.syncDir();
