@@ -1,6 +1,7 @@
 # Nemo
 
 [![Build Status](https://travis-ci.org/apache/incubator-nemo.svg?branch=master)](https://travis-ci.org/apache/incubator-nemo)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=apache_incubator-nemo&metric=alert_status)](https://sonarcloud.io/dashboard?id=apache_incubator-nemo)
 
 A Data Processing System for Flexible Employment With Different Deployment Characteristics.
 
