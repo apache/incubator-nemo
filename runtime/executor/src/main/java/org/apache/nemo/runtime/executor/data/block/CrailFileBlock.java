@@ -349,6 +349,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
       if (!metadata.isCommitted()) {
         commitPartitions();
         metadata.commitBlock();
+        LOG.info("HY: block and metadata commit for {}", id);
       }
       final List<PartitionMetadata<K>> partitionMetadataList = metadata.getPartitionMetadataList();
       final Map<K, Long> partitionSizes = new HashMap<>(partitionMetadataList.size());
