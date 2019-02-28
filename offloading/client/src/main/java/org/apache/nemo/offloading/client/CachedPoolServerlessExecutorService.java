@@ -63,7 +63,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   CachedPoolServerlessExecutorService(
     final OffloadingWorkerFactory workerFactory,
-    final OffloadingTransform offloadingTransform,
+    final ByteBuf workerInitBuffer,
     final OffloadingSerializer<I, O> offloadingSerializer,
     final EventHandler<O> eventHandler) {
 
@@ -74,7 +74,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     this.initializingWorkers = new LinkedList<>();
     this.runningWorkers = new LinkedList<>();
 
-    this.workerInitBuffer = Unpooled.directBuffer();
+    this.workerInitBuffer = workerInitBuffer;
     this.offloadingSerializer = offloadingSerializer;
     this.scheduler = Executors.newScheduledThreadPool(1);
     this.eventHandler = eventHandler;
@@ -220,8 +220,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     try {
       LOG.info("WorkerInitBuffer - start: {}", workerInitBuffer.readableBytes());
       oos = new ObjectOutputStream(bos);
-      oos.writeObject(offloadingTransform);
-      LOG.info("WorkerInitBuffer - encode offloadingTransform: {}", workerInitBuffer.readableBytes());
+      //oos.writeObject(offloadingTransform);
+      //LOG.info("WorkerInitBuffer - encode offloadingTransform: {}", workerInitBuffer.readableBytes());
       oos.writeObject(offloadingSerializer.getInputDecoder());
       LOG.info("WorkerInitBuffer - encode offloadingSerializer.decoder: {}", workerInitBuffer.readableBytes());
       oos.writeObject(offloadingSerializer.getOutputEncoder());

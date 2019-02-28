@@ -21,7 +21,6 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
-import org.apache.beam.runners.core.construction.SerializablePipelineOptions;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -42,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.*;
 
 /**
@@ -62,7 +62,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
   private boolean offloading = false; // TODO: fix
 
-  //private PushBackOffloadingTransform offloadingTransform;
+  private PushBackOffloadingTransform offloadingTransform;
 
   private final Coder mainCoder;
   private final Coder sideCoder;
@@ -73,16 +73,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>, WindowedValue<OutputT>> offloadingSerializer;
 
   private ServerlessExecutorProvider slsProvider;
-
-  final DoFn<InputT, OutputT> doFn;
-  final Coder<InputT> inputCoder;
-  final Map<TupleTag<?>, Coder<?>> outputCoders;
-  final TupleTag<OutputT> mainOutputTag;
-  final List<TupleTag<?>> additionalOutputTags;
-  final WindowingStrategy<?, ?> windowingStrategy;
-  final Map<Integer, PCollectionView<?>> sideInputs;
-  final SerializablePipelineOptions options;
-  final DisplayData displayData;
+  private transient ByteBuf byteBuf;
 
   /**
    * PushBackDoFnTransform Constructor.
@@ -100,19 +91,12 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
                                final Coder sideCoder) {
     super(doFn, inputCoder, outputCoders, mainOutputTag,
       additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
-    this.doFn = doFn;
-    this.inputCoder = inputCoder;
-    this.outputCoders = outputCoders;
-    this.mainOutputTag = mainOutputTag;
-    this.additionalOutputTags = additionalOutputTags;
-    this.windowingStrategy = windowingStrategy;
-    this.sideInputs = sideInputs;
-    this.options = new SerializablePipelineOptions(options);
-    this.displayData = displayData;
-
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;
     this.curOutputWatermark = Long.MIN_VALUE;
+    this.offloadingTransform = new PushBackOffloadingTransform(
+      doFn, inputCoder, outputCoders, mainOutputTag,
+      additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
     this.mainCoder = mainCoder;
     this.sideCoder = sideCoder;
   }
@@ -129,6 +113,19 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   @Override
   public void onData(final WindowedValue data) {
     if (!initialized) {
+      byteBuf = Unpooled.buffer();
+      final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
+      final ObjectOutputStream oos;
+      try {
+        oos = new ObjectOutputStream(bos);
+        oos.writeObject(offloadingTransform);
+        oos.close();
+        bos.close();
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
       byteBufList = new ArrayList<>();
       curPushedBacks = new ArrayList<>();
 
@@ -255,13 +252,8 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     LOG.info("Start to offloading");
     final long st = System.currentTimeMillis();
 
-
-    final PushBackOffloadingTransform offloadingTransform = new PushBackOffloadingTransform(
-      doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
-
     final ServerlessExecutorService<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>> slsExecutor =
-      slsProvider.newCachedPool(offloadingTransform, offloadingSerializer, eventHandler);
+      slsProvider.newCachedPool(byteBuf, offloadingSerializer, eventHandler);
 
     // encode side input
     for (final ByteBufOutputStream bos : byteBufList) {
