@@ -61,22 +61,6 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
     }catch(Exception e){
       LOG.info("HY: CrailConfiguration failed");
     }
-//    try {
-//      conf = new CrailConfiguration();
-//      fs = CrailStore.newInstance(conf);
-//      try {
-//        this.file = fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
-//        file.syncDir();
-//      } catch (Exception e){
-//        //when it already exists
-//        this.file = fs.lookup(metaFilePath).get().asFile();
-//        file.syncDir();
-//      }
-//    }
-//    catch(Exception e){
-//      LOG.info("HY: CrailConfiguration failed");
-//      e.printStackTrace();
-//    }
   }
 
   /**
@@ -95,21 +79,6 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
     }catch(Exception e){
       LOG.info("HY: CrailConfiguration failed");
     }
-//    try {
-//      try {
-//        conf = new CrailConfiguration();
-//        fs = CrailStore.newInstance(conf);
-//        this.file = fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
-//        file.syncDir();
-//      } catch (Exception e) {
-//        //when it already exists
-//        this.file = fs.lookup(metaFilePath).get().asFile();
-//        file.syncDir();
-//      }
-//    } catch(Exception e){
-//      LOG.info("HY: CrailConfiguration failed");
-//      e.printStackTrace();
-//    }
   }
 
   /**
@@ -136,10 +105,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
     try{
       conf = new CrailConfiguration();
       fs = CrailStore.newInstance(conf);
-      this.file = fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
-      file.syncDir();
-      LOG.info("HY: metadata Crail file getting complete");
-      CrailBufferedOutputStream metaFileOutputstream =file.getBufferedOutputStream(0);
+      CrailBufferedOutputStream metaFileOutputstream =fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile().getBufferedOutputStream(0);
       for (PartitionMetadata<K> partitionMetadata : partitionMetadataItr) {
         final byte[] key = SerializationUtils.serialize(partitionMetadata.getKey());
         metaFileOutputstream.writeInt(key.length);
@@ -177,16 +143,9 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    */
   public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath) throws Exception{
     LOG.info("HY: metafilePath {}", metaFilePath);
-    try {
-      file = fs.lookup(metaFilePath).get().asFile();
-      file.syncDir();
-    } catch (Exception e) {
-      throw new IOException("HY: File "+metaFilePath+ " does not exist!");
-    }
     final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();
-    try (
-      final CrailBufferedInputStream dataInputStream = file.getBufferedInputStream(0);
-    ) {
+    try {
+      CrailBufferedInputStream dataInputStream = fs.lookup(metaFilePath).get().asFile().getBufferedInputStream(0);
       while (dataInputStream.available() > 0) {
         final int keyLength = dataInputStream.readInt();
         final byte[] desKey = new byte[keyLength];
@@ -201,6 +160,8 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
         );
         partitionMetadataList.add(partitionMetadata);
       }
+    } catch (Exception e) {
+      throw new IOException("HY: File "+metaFilePath+ " does not exist!");
     }
     return new CrailFileMetadata<>(metaFilePath, partitionMetadataList);
   }
