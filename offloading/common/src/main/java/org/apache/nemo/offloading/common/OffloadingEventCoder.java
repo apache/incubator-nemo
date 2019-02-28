@@ -29,10 +29,31 @@ public final class OffloadingEventCoder {
   }
 
   public static final class OffloadingEventDecoder extends MessageToMessageDecoder<ByteBuf> {
+    private boolean isControlMessage = true;
+    private int typeOrdinal;
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) throws Exception {
 
+      if (isControlMessage) {
+        typeOrdinal = msg.readInt();
+        if (msg.readableBytes() > 0) {
+          throw new RuntimeException("Readbale byte is larger than 0 for control msg: " + typeOrdinal + ", " + msg.readableBytes());
+        }
+        msg.release();
+        isControlMessage = false;
+      } else {
+        isControlMessage = true;
+        try {
+          out.add(new OffloadingEvent(OffloadingEvent.Type.values()[typeOrdinal], msg.retain(1)));
+        } catch (final ArrayIndexOutOfBoundsException e) {
+          e.printStackTrace();
+          System.out.println("Type ordinal: " + typeOrdinal);
+          throw e;
+        }
+      }
+
+      /*
       //System.out.println("Decoded bytes: " + msg.readableBytes());
       final int typeOrdinal = msg.readInt();
 
@@ -48,6 +69,7 @@ public final class OffloadingEventCoder {
         System.out.println("Type ordinal: " + typeOrdinal);
         throw e;
       }
+      */
     }
   }
 
