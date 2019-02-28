@@ -216,6 +216,8 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
     pushBackRunner = sideInputs.isEmpty()
       ? null
       : SimplePushbackSideInputDoFnRunner.<InputT, OutputT>create(doFnRunner, sideInputs.values(), sideInputReader);
+
+    System.out.println("Preparing pushBackOffloadingTransform");
   }
 
   @Override
