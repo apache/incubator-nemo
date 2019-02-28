@@ -28,6 +28,7 @@ public final class OffloadingEvent implements Serializable {
                          final int len) {
     this.type = type;
     this.bytes = bytes;
+    this.byteBuf = null;
     this.len = len;
   }
 

@@ -14,13 +14,13 @@ public final class OffloadingEventCoder {
     @Override
     protected void encode(ChannelHandlerContext ctx, OffloadingEvent msg, List<Object> out) throws Exception {
       if (msg.getByteBuf() != null) {
-        final ByteBuf buf = ctx.alloc().buffer(4);
+        final ByteBuf buf = ctx.alloc().buffer(8);
         buf.writeInt(msg.getType().ordinal());
         buf.writeBoolean(false); // no data
         out.add(buf);
         out.add(msg.getByteBuf());
       } else {
-        final ByteBuf buf = ctx.alloc().buffer(4 + msg.getLen());
+        final ByteBuf buf = ctx.alloc().buffer(8 + msg.getLen());
         //System.out.println("Encoded bytes: " + msg.getLen() + 8);
         buf.writeInt(msg.getType().ordinal());
         buf.writeBoolean(true); // no data
@@ -49,8 +49,8 @@ public final class OffloadingEventCoder {
             throw new RuntimeException("Readbale byte is larger than 0 for control msg: " + type.name() + ", " + msg.readableBytes());
           }
           isControlMessage = false;
+          msg.release();
         }
-        msg.release();
       } else {
         System.out.println("Data message of " + type.name());
         isControlMessage = true;
