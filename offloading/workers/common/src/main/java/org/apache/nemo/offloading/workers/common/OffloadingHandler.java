@@ -166,6 +166,15 @@ public final class OffloadingHandler {
       LOG.info("Create class loader: {}");
     }
 
+    try {
+      final Class clazz1 = classLoader.loadClass("org.apache.beam.sdk.schemas.FieldValueSetter");
+      final Class clazz2 = classLoader.loadClass("org.apache.nemo.compiler.frontend.beam.transform.PushBackOffloadingTransform");
+      System.out.println("Load classes");
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
     // write handshake
     System.out.println("Data processing cnt: " + dataProcessingCnt
       + ", Write handshake: " + (System.currentTimeMillis() - st));
@@ -271,6 +280,8 @@ public final class OffloadingHandler {
             decoder = (OffloadingDecoder) ois.readObject();
             outputEncoder = (OffloadingEncoder) ois.readObject();
 
+            System.out.println("OffloadingTransform: " + offloadingTransform + ", decoder: " + decoder);
+
             ois.close();
             bis.close();
             byteBuf.release();
@@ -292,7 +303,13 @@ public final class OffloadingHandler {
         }
         case DATA: {
           final long st = System.currentTimeMillis();
-          System.out.println("Worker init -> data time: " + (st - workerFinishTime));
+          System.out.println("Worker init -> data time: " + (st - workerFinishTime) + ", decoder: " + decoder);
+          try {
+            classLoader.loadClass("org.apache.beam.sdk.schemas.FieldValueSetter");
+          } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
 
           final ByteBufInputStream bis = new ByteBufInputStream(nemoEvent.getByteBuf());
           try {
