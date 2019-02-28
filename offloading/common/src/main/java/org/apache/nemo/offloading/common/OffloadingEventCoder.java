@@ -14,13 +14,16 @@ public final class OffloadingEventCoder {
     @Override
     protected void encode(ChannelHandlerContext ctx, OffloadingEvent msg, List<Object> out) throws Exception {
       if (msg.getByteBuf() != null) {
+        System.out.println("Encode " + msg.getType().name() + " byteBuf");
         final ByteBuf buf = ctx.alloc().buffer(8);
         buf.writeInt(msg.getType().ordinal());
         buf.writeBoolean(false); // no data
         out.add(buf);
         out.add(msg.getByteBuf());
       } else {
+        System.out.println("Encode " + msg.getType().name() + " bytes[]");
         final ByteBuf buf = ctx.alloc().buffer(8 + msg.getLen());
+        System.out.println("Encode " + msg.getType().name());
         //System.out.println("Encoded bytes: " + msg.getLen() + 8);
         buf.writeInt(msg.getType().ordinal());
         buf.writeBoolean(true); // no data
