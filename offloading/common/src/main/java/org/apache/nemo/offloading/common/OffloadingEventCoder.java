@@ -16,12 +16,14 @@ public final class OffloadingEventCoder {
       if (msg.getByteBuf() != null) {
         final ByteBuf buf = ctx.alloc().buffer(4);
         buf.writeInt(msg.getType().ordinal());
+        buf.writeBoolean(false); // no data
         out.add(buf);
         out.add(msg.getByteBuf());
       } else {
         final ByteBuf buf = ctx.alloc().buffer(4 + msg.getLen());
         //System.out.println("Encoded bytes: " + msg.getLen() + 8);
         buf.writeInt(msg.getType().ordinal());
+        buf.writeBoolean(true); // no data
         buf.writeBytes(msg.getBytes(), 0, msg.getLen());
         out.add(buf);
       }
@@ -37,12 +39,18 @@ public final class OffloadingEventCoder {
 
       if (isControlMessage) {
         type = OffloadingEvent.Type.values()[msg.readInt()];
-        System.out.println("Decode control message; " + type.name());
-        if (msg.readableBytes() > 0) {
-          throw new RuntimeException("Readbale byte is larger than 0 for control msg: " + type.name() + ", " + msg.readableBytes());
+        final boolean hasDataInThisBuffer = msg.readBoolean();
+        System.out.println("Decode control message; " + type.name() +" hasData: " + hasDataInThisBuffer);
+        if (hasDataInThisBuffer) {
+          System.out.println("Data for " + type.name());
+          out.add(new OffloadingEvent(type, msg.retain(1)));
+        } else {
+          if (msg.readableBytes() > 0) {
+            throw new RuntimeException("Readbale byte is larger than 0 for control msg: " + type.name() + ", " + msg.readableBytes());
+          }
+          isControlMessage = false;
         }
         msg.release();
-        isControlMessage = false;
       } else {
         System.out.println("Data message of " + type.name());
         isControlMessage = true;
