@@ -190,12 +190,13 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
                 createdWorkers += 1;
                 // create new worker
                 //LOG.info("Create worker");
-                workerInitBuffer.retain();
+                final ByteBuf copiedBuf = workerInitBuffer.retainedDuplicate();
+
                 dataBufferQueue.add(data);
                 bufferedCnt += 1;
 
                 final OffloadingWorker<I, O> worker =
-                  workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
+                  workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
 
                 speculativeDataProcessedMap.put(dataId, false);
 
@@ -425,14 +426,14 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     createdWorkers += 1;
     // create new worker
     //LOG.info("Create worker");
-    workerInitBuffer.retain();
+    final ByteBuf copiedBuf = workerInitBuffer.retainedDuplicate();
 
     dataBufferQueue.add(Pair.of(encodeData(data, Unpooled.directBuffer()),
       workerFactory.getAndIncreaseDataId()));
     bufferedCnt += 1;
 
     final OffloadingWorker<I, O> worker =
-      workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
+      workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
 
     synchronized (initializingWorkers) {
       initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
@@ -445,12 +446,12 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     createdWorkers += 1;
     // create new worker
     //LOG.info("Create worker");
-    workerInitBuffer.retain();
+    final ByteBuf copiedBuf = workerInitBuffer.retainedDuplicate();
     dataBufferQueue.add(Pair.of(data, workerFactory.getAndIncreaseDataId()));
     bufferedCnt += 1;
 
     final OffloadingWorker<I, O> worker =
-      workerFactory.createOffloadingWorker(workerInitBuffer, offloadingSerializer);
+      workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
 
     synchronized (initializingWorkers) {
       initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
