@@ -154,6 +154,7 @@ public final class OffloadingHandler {
     System.out.println("Open channel: " + opendChannel);
 
     // load class loader
+
     if (classLoader == null) {
       System.out.println("Loading jar: " + opendChannel);
       try {
@@ -165,16 +166,6 @@ public final class OffloadingHandler {
       status = LambdaStatus.READY;
       LOG.info("Create class loader: {}");
     }
-
-    try {
-      final Class clazz1 = classLoader.loadClass("org.apache.beam.sdk.schemas.FieldValueSetter");
-      final Class clazz2 = classLoader.loadClass("org.apache.nemo.compiler.frontend.beam.transform.PushBackOffloadingTransform");
-      System.out.println("Load classes");
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-
 
     Thread.currentThread().setContextClassLoader(classLoader);
 
@@ -270,7 +261,7 @@ public final class OffloadingHandler {
     public synchronized void onNext(final OffloadingEvent nemoEvent) {
       switch (nemoEvent.getType()) {
         case WORKER_INIT: {
-          System.out.println("Worker init...");
+          System.out.println("Worker init... bytes: " + nemoEvent.getByteBuf().readableBytes());
           final long st = System.currentTimeMillis();
           // load transforms
           final ByteBuf byteBuf = nemoEvent.getByteBuf();
@@ -308,7 +299,8 @@ public final class OffloadingHandler {
         case DATA: {
           final long st = System.currentTimeMillis();
           Thread.currentThread().setContextClassLoader(classLoader);
-          System.out.println("Worker init -> data time: " + (st - workerFinishTime) + "... setContextClassLoader");
+          System.out.println("Worker init -> data time: " + (st - workerFinishTime) +
+            " databytes: " + nemoEvent.getByteBuf().readableBytes());
 
 
           final ByteBufInputStream bis = new ByteBufInputStream(nemoEvent.getByteBuf());

@@ -33,10 +33,10 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
 
 	private ClassLoader createClassLoader() {
 		// read jar file
-		final S3Object result = s3Client.getObject(BUCKET_NAME, "jars/nexmark-0.2-SNAPSHOT-shaded.jar");
 		//final S3Object result = s3Client.getObject(BUCKET_NAME, "jars/shaded.jar");
 		if (!Files.exists(Paths.get(PATH))) {
 			LOG.info("Copying file...");
+      final S3Object result = s3Client.getObject(BUCKET_NAME, "jars/nexmark-0.2-SNAPSHOT-shaded.jar");
 			final InputStream in = result.getObjectContent();
 			try {
 				Files.copy(in, Paths.get(PATH));
