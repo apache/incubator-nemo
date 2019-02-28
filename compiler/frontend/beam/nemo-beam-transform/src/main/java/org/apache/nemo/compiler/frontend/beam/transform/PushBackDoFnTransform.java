@@ -61,7 +61,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
   private boolean offloading = false; // TODO: fix
 
-  private PushBackOffloadingTransform offloadingTransform;
+  //private PushBackOffloadingTransform offloadingTransform;
 
   private final Coder mainCoder;
   private final Coder sideCoder;
@@ -72,6 +72,16 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>, WindowedValue<OutputT>> offloadingSerializer;
 
   private ServerlessExecutorProvider slsProvider;
+
+  final DoFn<InputT, OutputT> doFn;
+  final Coder<InputT> inputCoder;
+  final Map<TupleTag<?>, Coder<?>> outputCoders;
+  final TupleTag<OutputT> mainOutputTag;
+  final List<TupleTag<?>> additionalOutputTags;
+  final WindowingStrategy<?, ?> windowingStrategy;
+  final Map<Integer, PCollectionView<?>> sideInputs;
+  final PipelineOptions options;
+  final DisplayData displayData;
 
   /**
    * PushBackDoFnTransform Constructor.
@@ -89,12 +99,19 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
                                final Coder sideCoder) {
     super(doFn, inputCoder, outputCoders, mainOutputTag,
       additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
+    this.doFn = doFn;
+    this.inputCoder = inputCoder;
+    this.outputCoders = outputCoders;
+    this.mainOutputTag = mainOutputTag;
+    this.additionalOutputTags = additionalOutputTags;
+    this.windowingStrategy = windowingStrategy;
+    this.sideInputs = sideInputs;
+    this.options = options;
+    this.displayData = displayData;
+
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;
     this.curOutputWatermark = Long.MIN_VALUE;
-    this.offloadingTransform = new PushBackOffloadingTransform(
-      doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
     this.mainCoder = mainCoder;
     this.sideCoder = sideCoder;
   }
@@ -236,6 +253,11 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
     LOG.info("Start to offloading");
     final long st = System.currentTimeMillis();
+
+
+    final PushBackOffloadingTransform offloadingTransform = new PushBackOffloadingTransform(
+      doFn, inputCoder, outputCoders, mainOutputTag,
+      additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
 
     final ServerlessExecutorService<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>> slsExecutor =
       slsProvider.newCachedPool(offloadingTransform, offloadingSerializer, eventHandler);
