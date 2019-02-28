@@ -30,25 +30,27 @@ public final class OffloadingEventCoder {
 
   public static final class OffloadingEventDecoder extends MessageToMessageDecoder<ByteBuf> {
     private boolean isControlMessage = true;
-    private int typeOrdinal;
+    private OffloadingEvent.Type type;
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) throws Exception {
 
       if (isControlMessage) {
-        typeOrdinal = msg.readInt();
+        type = OffloadingEvent.Type.values()[msg.readInt()];
+        System.out.println("Decode control message; " + type.name());
         if (msg.readableBytes() > 0) {
-          throw new RuntimeException("Readbale byte is larger than 0 for control msg: " + typeOrdinal + ", " + msg.readableBytes());
+          throw new RuntimeException("Readbale byte is larger than 0 for control msg: " + type.name() + ", " + msg.readableBytes());
         }
         msg.release();
         isControlMessage = false;
       } else {
+        System.out.println("Data message of " + type.name());
         isControlMessage = true;
         try {
-          out.add(new OffloadingEvent(OffloadingEvent.Type.values()[typeOrdinal], msg.retain(1)));
+          out.add(new OffloadingEvent(type, msg.retain(1)));
         } catch (final ArrayIndexOutOfBoundsException e) {
           e.printStackTrace();
-          System.out.println("Type ordinal: " + typeOrdinal);
+          System.out.println("Type ordinal: " + type.name());
           throw e;
         }
       }
