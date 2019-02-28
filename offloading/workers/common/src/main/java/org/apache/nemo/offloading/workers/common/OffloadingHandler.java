@@ -175,6 +175,9 @@ public final class OffloadingHandler {
       throw new RuntimeException(e);
     }
 
+
+    Thread.currentThread().setContextClassLoader(classLoader);
+
     // write handshake
     System.out.println("Data processing cnt: " + dataProcessingCnt
       + ", Write handshake: " + (System.currentTimeMillis() - st));
@@ -275,6 +278,7 @@ public final class OffloadingHandler {
           //System.out.println("Serialized transforms size: " + bytes.length);
           //ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
           try {
+            Thread.currentThread().setContextClassLoader(classLoader);
             ObjectInputStream ois = new ExternalJarObjectInputStream(classLoader, bis);
             offloadingTransform = (OffloadingTransform) ois.readObject();
             decoder = (OffloadingDecoder) ois.readObject();

@@ -1,6 +1,7 @@
 package org.apache.nemo.offloading.common;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.handler.codec.MessageToMessageEncoder;
@@ -15,18 +16,17 @@ public final class OffloadingEventCoder {
     protected void encode(ChannelHandlerContext ctx, OffloadingEvent msg, List<Object> out) throws Exception {
       if (msg.getByteBuf() != null) {
         System.out.println("Encode " + msg.getType().name() + " byteBuf");
-        final ByteBuf buf = ctx.alloc().buffer(8);
+        final ByteBuf buf = ctx.alloc().buffer(4);
         buf.writeInt(msg.getType().ordinal());
-        buf.writeBoolean(false); // no data
-        out.add(buf);
-        out.add(msg.getByteBuf());
+        final CompositeByteBuf compositeByteBuf =
+          ctx.alloc().compositeBuffer(2).addComponents(buf, msg.getByteBuf());
+        out.add(compositeByteBuf);
       } else {
         System.out.println("Encode " + msg.getType().name() + " bytes[]");
         final ByteBuf buf = ctx.alloc().buffer(8 + msg.getLen());
         System.out.println("Encode " + msg.getType().name());
         //System.out.println("Encoded bytes: " + msg.getLen() + 8);
         buf.writeInt(msg.getType().ordinal());
-        buf.writeBoolean(true); // no data
         buf.writeBytes(msg.getBytes(), 0, msg.getLen());
         out.add(buf);
       }
@@ -34,35 +34,17 @@ public final class OffloadingEventCoder {
   }
 
   public static final class OffloadingEventDecoder extends MessageToMessageDecoder<ByteBuf> {
-    private boolean isControlMessage = true;
-    private OffloadingEvent.Type type;
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) throws Exception {
 
-      if (isControlMessage) {
-        type = OffloadingEvent.Type.values()[msg.readInt()];
-        final boolean hasDataInThisBuffer = msg.readBoolean();
-        System.out.println("Decode control message; " + type.name() +" hasData: " + hasDataInThisBuffer);
-        if (hasDataInThisBuffer) {
-          System.out.println("Data for " + type.name());
-          out.add(new OffloadingEvent(type, msg.retain(1)));
-        } else {
-          if (msg.readableBytes() > 0) {
-            throw new RuntimeException("Readbale byte is larger than 0 for control msg: " + type.name() + ", " + msg.readableBytes());
-          }
-          isControlMessage = false;
-        }
-      } else {
-        System.out.println("Data message of " + type.name());
-        isControlMessage = true;
-        try {
-          out.add(new OffloadingEvent(type, msg.retain(1)));
-        } catch (final ArrayIndexOutOfBoundsException e) {
-          e.printStackTrace();
-          System.out.println("Type ordinal: " + type.name());
-          throw e;
-        }
+      try {
+        final OffloadingEvent.Type type = OffloadingEvent.Type.values()[msg.readInt()];
+        System.out.println("Decode control message; " + type.name());
+        out.add(new OffloadingEvent(type, msg.retain(1)));
+      } catch (final ArrayIndexOutOfBoundsException e) {
+        e.printStackTrace();
+        throw e;
       }
 
       /*
