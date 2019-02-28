@@ -52,7 +52,6 @@ public final class OffloadingEventCoder {
             throw new RuntimeException("Readbale byte is larger than 0 for control msg: " + type.name() + ", " + msg.readableBytes());
           }
           isControlMessage = false;
-          msg.release();
         }
       } else {
         System.out.println("Data message of " + type.name());
