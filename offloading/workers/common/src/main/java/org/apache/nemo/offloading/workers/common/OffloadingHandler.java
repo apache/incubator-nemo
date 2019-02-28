@@ -280,7 +280,7 @@ public final class OffloadingHandler {
             decoder = (OffloadingDecoder) ois.readObject();
             outputEncoder = (OffloadingEncoder) ois.readObject();
 
-            System.out.println("OffloadingTransform: " + offloadingTransform + ", decoder: " + decoder);
+            System.out.println("OffloadingTransform: " + offloadingTransform);
 
             ois.close();
             bis.close();
@@ -303,13 +303,9 @@ public final class OffloadingHandler {
         }
         case DATA: {
           final long st = System.currentTimeMillis();
-          System.out.println("Worker init -> data time: " + (st - workerFinishTime) + ", decoder: " + decoder);
-          try {
-            classLoader.loadClass("org.apache.beam.sdk.schemas.FieldValueSetter");
-          } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          }
+          Thread.currentThread().setContextClassLoader(classLoader);
+          System.out.println("Worker init -> data time: " + (st - workerFinishTime) + "... setContextClassLoader");
+
 
           final ByteBufInputStream bis = new ByteBufInputStream(nemoEvent.getByteBuf());
           try {
