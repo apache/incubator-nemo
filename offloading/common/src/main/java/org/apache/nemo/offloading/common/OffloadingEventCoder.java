@@ -19,7 +19,7 @@ public final class OffloadingEventCoder {
         final ByteBuf buf = ctx.alloc().buffer(4);
         buf.writeInt(msg.getType().ordinal());
         final CompositeByteBuf compositeByteBuf =
-          ctx.alloc().compositeBuffer(2).addComponents(buf, msg.getByteBuf());
+          ctx.alloc().compositeBuffer(2).addComponents(true, buf, msg.getByteBuf());
         out.add(compositeByteBuf);
       } else {
         System.out.println("Encode " + msg.getType().name() + " bytes[]");
