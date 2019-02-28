@@ -218,6 +218,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
     ObjectOutputStream oos = null;
     try {
+      LOG.info("WorkerInitBuffer - start: {}", workerInitBuffer.readableBytes());
       oos = new ObjectOutputStream(bos);
       oos.writeObject(offloadingTransform);
       LOG.info("WorkerInitBuffer - encode offloadingTransform: {}", workerInitBuffer.readableBytes());
