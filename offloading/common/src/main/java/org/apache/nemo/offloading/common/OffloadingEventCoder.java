@@ -14,17 +14,15 @@ public final class OffloadingEventCoder {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, OffloadingEvent msg, List<Object> out) throws Exception {
+      System.out.println("Encode " + msg.getType().name());
       if (msg.getByteBuf() != null) {
-        System.out.println("Encode " + msg.getType().name() + " byteBuf");
         final ByteBuf buf = ctx.alloc().buffer(4);
         buf.writeInt(msg.getType().ordinal());
         final CompositeByteBuf compositeByteBuf =
           ctx.alloc().compositeBuffer(2).addComponents(true, buf, msg.getByteBuf());
         out.add(compositeByteBuf);
       } else {
-        System.out.println("Encode " + msg.getType().name() + " bytes[]");
-        final ByteBuf buf = ctx.alloc().buffer(8 + msg.getLen());
-        System.out.println("Encode " + msg.getType().name());
+        final ByteBuf buf = ctx.alloc().buffer(4 + msg.getLen());
         //System.out.println("Encoded bytes: " + msg.getLen() + 8);
         buf.writeInt(msg.getType().ordinal());
         buf.writeBytes(msg.getBytes(), 0, msg.getLen());
@@ -40,7 +38,7 @@ public final class OffloadingEventCoder {
 
       try {
         final OffloadingEvent.Type type = OffloadingEvent.Type.values()[msg.readInt()];
-        System.out.println("Decode control message; " + type.name());
+        System.out.println("Decode message; " + type.name());
         out.add(new OffloadingEvent(type, msg.retain(1)));
       } catch (final ArrayIndexOutOfBoundsException e) {
         e.printStackTrace();
