@@ -97,7 +97,7 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
                                      final List<TupleTag<?>> additionalOutputTags,
                                      final WindowingStrategy<?, ?> windowingStrategy,
                                      final Map<Integer, PCollectionView<?>> sideInputs,
-                                     final PipelineOptions options,
+                                     final SerializablePipelineOptions options,
                                      final DisplayData displayData) {
     this.doFn = doFn;
     this.inputCoder = inputCoder;
@@ -105,7 +105,7 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
     this.mainOutputTag = mainOutputTag;
     this.additionalOutputTags = additionalOutputTags;
     this.sideInputs = sideInputs;
-    this.serializedOptions = new SerializablePipelineOptions(options);
+    this.serializedOptions = options;
     this.windowingStrategy = windowingStrategy;
     this.displayData = displayData;
     this.curPushedBacks = new ArrayList<>();

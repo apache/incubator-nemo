@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
+import org.apache.beam.runners.core.construction.SerializablePipelineOptions;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -80,7 +81,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   final List<TupleTag<?>> additionalOutputTags;
   final WindowingStrategy<?, ?> windowingStrategy;
   final Map<Integer, PCollectionView<?>> sideInputs;
-  final PipelineOptions options;
+  final SerializablePipelineOptions options;
   final DisplayData displayData;
 
   /**
@@ -106,7 +107,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     this.additionalOutputTags = additionalOutputTags;
     this.windowingStrategy = windowingStrategy;
     this.sideInputs = sideInputs;
-    this.options = options;
+    this.options = new SerializablePipelineOptions(options);
     this.displayData = displayData;
 
     this.curPushedBackWatermark = Long.MAX_VALUE;
