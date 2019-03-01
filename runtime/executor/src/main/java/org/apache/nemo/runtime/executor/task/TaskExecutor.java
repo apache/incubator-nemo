@@ -166,6 +166,8 @@ public final class TaskExecutor {
     final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, intermediateDataIOFactory);
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
+
+    offloadingRequestQueue.add(true);
   }
 
   private boolean isOperatorFluctuate() {
