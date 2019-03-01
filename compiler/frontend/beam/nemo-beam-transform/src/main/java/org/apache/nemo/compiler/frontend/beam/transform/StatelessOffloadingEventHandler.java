@@ -7,6 +7,8 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.offloading.common.OffloadingEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,7 +16,7 @@ import java.io.OutputStream;
 import java.util.Map;
 
 public final class StatelessOffloadingEventHandler implements EventHandler<OffloadingResultEvent> {
-
+  private static final Logger LOG = LoggerFactory.getLogger(StatelessOffloadingEventHandler.class.getName());
   private final Map<String, OutputCollector> vertexAndCollectorMap;
 
   public StatelessOffloadingEventHandler(final Map<String, OutputCollector> vertexAndCollectorMap) {
@@ -24,6 +26,7 @@ public final class StatelessOffloadingEventHandler implements EventHandler<Offlo
   @Override
   public void onNext(OffloadingResultEvent msg) {
     for (final Triple<String, String, Object> triple : msg.data) {
+      LOG.info("Result received from serverless: vertexId: {}, edge: {}, data: {}", triple.first, triple.second, triple.third);
       final Object elem = triple.third;
       final OutputCollector collector = vertexAndCollectorMap.get(triple.first);
 
