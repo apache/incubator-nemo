@@ -36,6 +36,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
   @Override
   public void prepare(final OffloadingContext context,
                       final OffloadingOutputCollector oc) {
+    System.out.println("Stateless offloading transform prepare");
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irDag.getTopologicalSort());
     resultCollector = new OffloadingResultCollector(oc);
