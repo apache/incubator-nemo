@@ -16,10 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.common;
 
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,6 +67,9 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
     public void encode(final T element) throws IOException {
       if (element instanceof WatermarkWithIndex) {
         outputStream.write(0x01); // this is watermark
+        outputStream.write(SerializationUtils.serialize((Serializable) element));
+      } else if (element instanceof Watermark) {
+        outputStream.write(0x02);
         outputStream.write(SerializationUtils.serialize((Serializable) element));
       } else {
         outputStream.write(0x00); // this is a data element
