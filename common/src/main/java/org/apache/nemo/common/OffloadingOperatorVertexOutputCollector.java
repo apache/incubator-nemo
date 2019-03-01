@@ -52,7 +52,6 @@ public final class OffloadingOperatorVertexOutputCollector<O> implements OutputC
   private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
 
-  private final boolean isSink;
   private final OffloadingResultCollector resultCollector;
   private final Edge edge;
 
@@ -67,13 +66,11 @@ public final class OffloadingOperatorVertexOutputCollector<O> implements OutputC
     final Edge edge,
     final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
-    final boolean isSink,
     final OffloadingResultCollector resultCollector) {
     this.irVertex = irVertex;
     this.edge = edge;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
-    this.isSink = isSink;
     this.resultCollector = resultCollector;
   }
 
@@ -83,21 +80,20 @@ public final class OffloadingOperatorVertexOutputCollector<O> implements OutputC
 
   @Override
   public void emit(final O output) {
-
-    if (isSink) {
-      System.out.println("Sink emit " + output);
-      resultCollector.result.add(new Triple<>(
-        irVertex.getId(),
-        edge.getId(),
-        output));
-    } else {
-      System.out.print("Operator " + irVertex.getId() + " emit " + output + " to ");
-      for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+    System.out.print("Operator " + irVertex.getId() + " emit " + output + " to ");
+    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      if (internalVertex.getNextOperator().isSink) {
+        System.out.println("Emit to resultCollector in " + irVertex.getId());
+        resultCollector.result.add(new Triple<>(
+          irVertex.getId(),
+          edge.getId(),
+          output));
+      } else {
         System.out.print(internalVertex.getNextOperator().getId() + ", ");
         emit(internalVertex.getNextOperator(), output);
       }
-      System.out.println("");
     }
+    System.out.println("");
   }
 
   @Override
@@ -121,24 +117,23 @@ public final class OffloadingOperatorVertexOutputCollector<O> implements OutputC
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
     }
 
-    if (isSink) {
-      // TODO: do sth here !! this should be sent to the vm
-      System.out.println("Sink Emit watermark " + watermark);
-      resultCollector.result.add(new Triple<>(
-        irVertex.getId(),
-        edge.getId(),
-        watermark));
-    } else {
-      System.out.println("Operator " + irVertex.getId() + " emits watermark " + watermark);
-      // Emit watermarks to internal vertices
-      for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+    System.out.println("Operator " + irVertex.getId() + " emits watermark " + watermark);
+    // Emit watermarks to internal vertices
+    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      if (internalVertex.getNextOperator().isSink) {
+        System.out.println("Sink Emit watermark " + watermark);
+        resultCollector.result.add(new Triple<>(
+          irVertex.getId(),
+          edge.getId(),
+          watermark));
+      } else {
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
+    }
 
-      for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
-        for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
-          internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
-        }
+    for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
+      for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
+        internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
   }

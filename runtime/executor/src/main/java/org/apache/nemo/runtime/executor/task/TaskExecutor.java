@@ -230,6 +230,10 @@ public final class TaskExecutor {
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
     final Map<Edge, Integer> edgeIndexMap = new HashMap<>();
     reverseTopologicallySorted.forEach(childVertex -> {
+      if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {
+        childVertex.isSink = true;
+      }
+
       final List<Edge> edges = TaskExecutorUtil.getAllIncomingEdges(task, irVertexDag, childVertex);
       for (int edgeIndex = 0; edgeIndex < edges.size(); edgeIndex++) {
         final Edge edge = edges.get(edgeIndex);

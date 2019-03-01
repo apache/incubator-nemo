@@ -84,19 +84,22 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         getInternalMainOutputs(irVertex, irDag, edgeIndexMap, operatorWatermarkManagerMap);
 
       final boolean isSink = (!internalMainOutputs.isEmpty() || !internalAdditionalOutputMap.isEmpty());
-      OffloadingOperatorVertexOutputCollector outputCollector = new OffloadingOperatorVertexOutputCollector(
+      // skip sink
+      if (!isSink) {
+        OffloadingOperatorVertexOutputCollector outputCollector = new OffloadingOperatorVertexOutputCollector(
           irVertex, irDag.getOutgoingEdgesOf(irVertex).get(0), /* just use first edge for encoding */
-        internalMainOutputs, internalAdditionalOutputMap, isSink, resultCollector);
+          internalMainOutputs, internalAdditionalOutputMap, resultCollector);
 
-      // add source
-      if (irDag.getRootVertices().contains(irVertex)) {
-        srcOutputCollectorMap.put(irVertex.getId(), outputCollector);
-      }
+        // add source
+        if (irDag.getRootVertices().contains(irVertex)) {
+          srcOutputCollectorMap.put(irVertex.getId(), outputCollector);
+        }
 
-      final Transform transform;
-      if (irVertex instanceof OperatorVertex) {
-        transform = ((OperatorVertex) irVertex).getTransform();
-        transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
+        final Transform transform;
+        if (irVertex instanceof OperatorVertex) {
+          transform = ((OperatorVertex) irVertex).getTransform();
+          transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
+        }
       }
     });
   }
