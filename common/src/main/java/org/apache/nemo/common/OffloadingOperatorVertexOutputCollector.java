@@ -18,7 +18,9 @@
  */
 package org.apache.nemo.common;
 
+import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.eventhandler.OffloadingDataEvent;
+import org.apache.nemo.common.eventhandler.OffloadingResultEvent;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
@@ -27,6 +29,7 @@ import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -48,9 +51,10 @@ public final class OffloadingOperatorVertexOutputCollector<O> implements OutputC
   private final IRVertex irVertex;
   private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
-  private final OffloadingOutputCollector externalOutputCollector;
 
   private final boolean isSink;
+  private final OffloadingResultCollector resultCollector;
+  private final Edge edge;
 
   /**
    * Constructor of the output collector.
@@ -60,14 +64,17 @@ public final class OffloadingOperatorVertexOutputCollector<O> implements OutputC
    */
   public OffloadingOperatorVertexOutputCollector(
     final IRVertex irVertex,
+    final Edge edge,
     final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
-    final OffloadingOutputCollector externalOutputCollector) {
+    final boolean isSink,
+    final OffloadingResultCollector resultCollector) {
     this.irVertex = irVertex;
+    this.edge = edge;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
-    this.externalOutputCollector = externalOutputCollector;
-    this.isSink = (!internalMainOutputs.isEmpty() || !internalAdditionalOutputs.isEmpty());
+    this.isSink = isSink;
+    this.resultCollector = resultCollector;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -78,9 +85,11 @@ public final class OffloadingOperatorVertexOutputCollector<O> implements OutputC
   public void emit(final O output) {
 
     if (isSink) {
-      // TODO: do sth here !! this should be sent to the vm
       System.out.println("Sink emit " + output);
-      externalOutputCollector.emit(new OffloadingDataEvent(irVertex.getId(), output, false));
+      resultCollector.result.add(new Triple<>(
+        irVertex.getId(),
+        edge.getId(),
+        output));
     } else {
       System.out.print("Operator " + irVertex.getId() + " emit " + output + " to ");
       for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
@@ -101,7 +110,8 @@ public final class OffloadingOperatorVertexOutputCollector<O> implements OutputC
       }
     } else {
       // TODO: do sth here !! this should be sent to the vm
-      externalOutputCollector.emit(new OffloadingDataEvent(irVertex.getId(), output, false));
+      throw new RuntimeException("Not support multi output in serverless: " + dstVertexId + ", vertex: " + irVertex);
+      //resultCollector.result.add(Pair.of(output, dstVertexId));
     }
   }
 
@@ -114,7 +124,10 @@ public final class OffloadingOperatorVertexOutputCollector<O> implements OutputC
     if (isSink) {
       // TODO: do sth here !! this should be sent to the vm
       System.out.println("Sink Emit watermark " + watermark);
-      externalOutputCollector.emit(new OffloadingDataEvent(irVertex.getId(), watermark, true));
+      resultCollector.result.add(new Triple<>(
+        irVertex.getId(),
+        edge.getId(),
+        watermark));
     } else {
       System.out.println("Operator " + irVertex.getId() + " emits watermark " + watermark);
       // Emit watermarks to internal vertices

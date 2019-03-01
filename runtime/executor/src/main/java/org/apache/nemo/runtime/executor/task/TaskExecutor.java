@@ -19,7 +19,11 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
+import io.netty.buffer.*;
 import org.apache.nemo.common.*;
+import org.apache.nemo.compiler.frontend.beam.transform.StatelessOffloadingSerializer;
+import org.apache.nemo.compiler.frontend.beam.transform.StatelessOffloadingEventHandler;
+import org.apache.nemo.compiler.frontend.beam.transform.StatelessOffloadingTransform;
 import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
@@ -28,6 +32,8 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.offloading.client.ServerlessExecutorService;
+import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.Finishmark;
@@ -43,10 +49,12 @@ import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.TaskStateManager;
 import org.apache.nemo.runtime.executor.TransformContextImpl;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
+import org.apache.nemo.common.Serializer;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
@@ -88,22 +96,27 @@ public final class TaskExecutor {
 
   private final SerializerManager serializerManager;
 
-  private final ServerlessExecutorProvider serverlessExecutorProvider;
 
+
+  private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
+
+  // Variables for offloading - start
   private long currProcessedEvents = 0;
   private long prevProcessedEvents = 0;
   private Object lock = new Object();
   private long elapsedTimeForProcessedEvents = 1000;
   private long prevProcessedTime = System.currentTimeMillis();
-
+  private final ServerlessExecutorProvider serverlessExecutorProvider;
   private final InputFluctuationDetector detector;
-
-  private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
-
-  private transient boolean offloading = false;
-
-  //private static final StorageObjectFactory SOFACTORY = MemoryStorageObjectFactory.INSTACE;
-  //private static final StorageObjectFactory SOFACTORY = S3StorageObjectFactory.INSTACE;
+  private final Map<IRVertex, Serializer> srcVertexSerializerMap;
+  private volatile boolean offloading = false;
+  private transient ServerlessExecutorService serverlessExecutorService;
+  private ByteBuf inputBuffer;
+  private int serializedCnt = 0;
+  private ByteBufOutputStream bos;
+  private final Map<String, OutputCollector> vertexIdAndOutputCollectorMap;
+  private final Queue<Boolean> offloadingRequestQueue = new LinkedBlockingQueue<>();
+  // Variables for offloading - end
 
   /**
    * Constructor.
@@ -130,8 +143,10 @@ public final class TaskExecutor {
     this.isExecuted = false;
     this.irVertexDag = irVertexDag;
     this.taskId = task.getTaskId();
+    this.srcVertexSerializerMap = new HashMap<>();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
+    this.vertexIdAndOutputCollectorMap = new HashMap<>();
     this.detector = detector;
 
     this.serverlessExecutorProvider = serverlessExecutorProvider;
@@ -157,25 +172,24 @@ public final class TaskExecutor {
     return false;
   }
 
-  public void startOffloading(final long baseTime) {
+  public synchronized void startOffloading(final long baseTime) {
     LOG.info("Start offloading!");
     if (detector.isInputFluctuation(baseTime)) {
       LOG.info("Input fluctuate!!");
       // do offloading();
-      doOffloading();
+      offloadingRequestQueue.add(true);
+
     } else {
       LOG.info("Operator bursty!!");
     }
   }
 
-  public void endOffloading() {
+  public synchronized void endOffloading() {
     LOG.info("End offloading!");
     // Do sth for offloading end
-    offloading = false;
-    detector.clear();
-  }
+    offloadingRequestQueue.add(false);
 
-  private void doOffloading() {
+    detector.clear();
   }
 
   /**
@@ -274,6 +288,7 @@ public final class TaskExecutor {
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap);
 
+        vertexIdAndOutputCollectorMap.put(irVertex.getId(), outputCollector);
       }
 
       // Create VERTEX HARNESS
@@ -287,10 +302,16 @@ public final class TaskExecutor {
 
       // Prepare data READ
       // Source read
+      // TODO[SLS]: should consider multiple outgoing edges
+      // All edges will have the same encoder/decoder!
       if (irVertex instanceof SourceVertex) {
+        final RuntimeEdge edge = irVertexDag.getOutgoingEdgesOf(irVertex).get(0);
+        LOG.info("SourceVertex: {}, edge: {}", irVertex.getId(), edge.getId());
+
         // Source vertex read
         dataFetcherList.add(new SourceVertexDataFetcher(
           (SourceVertex) irVertex,
+          edge,
           sourceReader.get(),
           outputCollector));
       }
@@ -300,11 +321,14 @@ public final class TaskExecutor {
       task.getTaskIncomingEdges()
         .stream()
         .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId())) // edge to this vertex
-        .map(incomingEdge ->
-          Pair.of(incomingEdge, intermediateDataIOFactory
-            .createReader(taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge)))
+        .map(incomingEdge -> {
+
+          return Pair.of(incomingEdge, intermediateDataIOFactory
+            .createReader(taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge));
+        })
         .forEach(pair -> {
           if (irVertex instanceof OperatorVertex) {
+
             final StageEdge edge = pair.left();
             final int edgeIndex = edgeIndexMap.get(edge);
             final InputWatermarkManager watermarkManager = operatorWatermarkManagerMap.get(irVertex);
@@ -316,12 +340,14 @@ public final class TaskExecutor {
               dataFetcherList.add(
                 new MultiThreadParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
+                  edge,
                   parentTaskReader,
                   dataFetcherOutputCollector));
             } else {
               dataFetcherList.add(
                 new ParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
+                  edge,
                   parentTaskReader,
                   dataFetcherOutputCollector));
             }
@@ -408,6 +434,37 @@ public final class TaskExecutor {
     finalizeOutputWriters(vertexHarness);
   }
 
+  private void sendToServerless(final Object event,
+                                final DataFetcher dataFetcher) {
+    final String id = dataFetcher.getDataSource().getId();
+    final Serializer serializer = serializerManager.getSerializer(dataFetcher.edge.getId());
+    try {
+      bos.writeUTF(id);
+      serializer.getEncoderFactory().create(bos).encode(event);
+      serializedCnt += 1;
+
+      //if (inputBuffer.readableBytes() > Constants.FLUSH_BYTES) {
+      if (serializedCnt > 10) {
+        // flush
+        final CompositeByteBuf compositeByteBuf = PooledByteBufAllocator.DEFAULT.compositeBuffer(2);
+        final ByteBuf lengthBuf = PooledByteBufAllocator.DEFAULT.buffer(4);
+        lengthBuf.writeInt(serializedCnt);
+        compositeByteBuf.addComponents(true, lengthBuf, inputBuffer);
+
+        // execute
+        serverlessExecutorService.execute(compositeByteBuf);
+
+        // reset
+        inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
+        bos = new ByteBufOutputStream(inputBuffer);
+        serializedCnt = 0;
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
   /**
    * Process an event generated from the dataFetcher.
    * If the event is an instance of Finishmark, we remove the dataFetcher from the current list.
@@ -416,6 +473,34 @@ public final class TaskExecutor {
    */
   private void onEventFromDataFetcher(final Object event,
                                       final DataFetcher dataFetcher) {
+
+    if (!offloadingRequestQueue.isEmpty()) {
+      offloading = offloadingRequestQueue.poll();
+      if (offloading) {
+        // start offloading
+        inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
+        bos = new ByteBufOutputStream(inputBuffer);
+        serverlessExecutorService = serverlessExecutorProvider.
+          newCachedPool(new StatelessOffloadingTransform(irVertexDag),
+            new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
+            new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap));
+      } else {
+        // stop offloading
+        serverlessExecutorService.shutdown();
+        if (inputBuffer.readableBytes() > 0) {
+          // TODO: re-decode inputs and process them in VMs
+        }
+        inputBuffer.release();
+        serializedCnt = 0;
+        try {
+          bos.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }
+    }
+
     if (event instanceof Finishmark) {
       // We've consumed all the data from this data fetcher.
       if (dataFetcher instanceof SourceVertexDataFetcher) {
@@ -430,14 +515,14 @@ public final class TaskExecutor {
     } else if (event instanceof Watermark) {
       // Watermark
       if (offloading) {
-        // TODO
+        sendToServerless(event, dataFetcher);
       } else {
         processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
       }
     } else {
       // Process data element
       if (offloading) {
-        // TODO
+        sendToServerless(event, dataFetcher);
       } else {
         processElement(dataFetcher.getOutputCollector(), event);
       }

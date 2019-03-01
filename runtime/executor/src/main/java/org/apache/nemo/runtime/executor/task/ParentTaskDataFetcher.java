@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
@@ -51,9 +52,10 @@ class ParentTaskDataFetcher extends DataFetcher {
   private long encodedBytes = 0;
 
   ParentTaskDataFetcher(final IRVertex dataSource,
+                        final RuntimeEdge edge,
                         final InputReader readerForParentTask,
                         final OutputCollector outputCollector) {
-    super(dataSource, outputCollector);
+    super(dataSource, edge, outputCollector);
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
     this.currentIteratorIndex = 0;

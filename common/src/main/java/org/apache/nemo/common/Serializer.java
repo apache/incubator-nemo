@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.data.streamchainer;
+package org.apache.nemo.common;
 
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -28,7 +29,7 @@ import java.util.List;
  * @param <E> encoderFactory element type.
  * @param <D> decoderFactory element type.
  */
-public final class Serializer<E, D> {
+public final class Serializer<E, D> implements Serializable {
   private final EncoderFactory<E> encoderFactory;
   private final DecoderFactory<D> decoderFactory;
   private final List<EncodeStreamChainer> encodeStreamChainers;

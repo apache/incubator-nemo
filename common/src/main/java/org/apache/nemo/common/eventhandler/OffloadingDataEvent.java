@@ -1,15 +1,14 @@
 package org.apache.nemo.common.eventhandler;
 
-public final class OffloadingDataEvent {
-  public final String srcId;
-  public final Object data;
-  public final boolean isWatermark;
+import org.apache.nemo.common.Pair;
 
-  public OffloadingDataEvent(final String srcId,
-                             final Object data,
-                             final boolean isWatermark) {
-    this.srcId = srcId;
+import java.util.List;
+
+public final class OffloadingDataEvent {
+  // key: srcId, value: data
+  public final List<Pair<String, Object>> data;
+
+  public OffloadingDataEvent(final List<Pair<String, Object>> data) {
     this.data = data;
-    this.isWatermark = isWatermark;
   }
 }

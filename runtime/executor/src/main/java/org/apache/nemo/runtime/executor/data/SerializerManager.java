@@ -18,6 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import org.apache.nemo.common.DecodeStreamChainer;
+import org.apache.nemo.common.EncodeStreamChainer;
+import org.apache.nemo.common.Serializer;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.streamchainer.*;
@@ -27,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,9 +39,9 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * Mapping from RuntimeEdgeId to {@link Serializer}.
  */
-public final class SerializerManager {
+public final class SerializerManager implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(SerializerManager.class.getName());
-  private final ConcurrentMap<String, Serializer> runtimeEdgeIdToSerializer = new ConcurrentHashMap<>();
+  public final ConcurrentMap<String, Serializer> runtimeEdgeIdToSerializer = new ConcurrentHashMap<>();
 
   /**
    * Constructor.

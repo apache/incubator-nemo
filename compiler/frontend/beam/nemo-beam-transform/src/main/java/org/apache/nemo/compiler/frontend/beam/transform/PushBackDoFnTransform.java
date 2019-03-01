@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -198,7 +199,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
         if (offloading) {
           if (byteBufList.isEmpty()) {
-            final ByteBuf byteBuf = Unpooled.buffer();
+            final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
             byteBufList.add(new ByteBufOutputStream(byteBuf));
           }
 

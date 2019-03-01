@@ -25,7 +25,7 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.partitioner.Partitioner;
-import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.common.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -26,7 +26,7 @@ import org.apache.nemo.runtime.executor.data.*;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.Partition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
-import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.common.Serializer;
 import org.apache.nemo.runtime.executor.data.metadata.PartitionMetadata;
 import org.apache.nemo.runtime.executor.data.metadata.FileMetadata;
 import org.slf4j.Logger;

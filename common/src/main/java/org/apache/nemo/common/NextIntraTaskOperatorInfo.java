@@ -19,6 +19,7 @@
 package org.apache.nemo.common;
 
 import org.apache.nemo.common.InputWatermarkManager;
+import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 
 /**
@@ -35,15 +36,22 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 public final class NextIntraTaskOperatorInfo {
 
   private final int edgeIndex;
+  private final Edge edgeInfo;
   private final OperatorVertex nextOperator;
   private final InputWatermarkManager watermarkManager;
 
   public NextIntraTaskOperatorInfo(final int edgeIndex,
+                                   final Edge edgeInfo,
                                    final OperatorVertex nextOperator,
                                    final InputWatermarkManager watermarkManager) {
     this.edgeIndex = edgeIndex;
+    this.edgeInfo = edgeInfo;
     this.nextOperator = nextOperator;
     this.watermarkManager = watermarkManager;
+  }
+
+  public Edge getEdge() {
+    return edgeInfo;
   }
 
   public int getEdgeIndex() {

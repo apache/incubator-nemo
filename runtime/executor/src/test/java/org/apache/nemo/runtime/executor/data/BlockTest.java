@@ -27,7 +27,7 @@ import org.apache.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
 import org.apache.nemo.runtime.executor.data.block.SerializedMemoryBlock;
 import org.apache.nemo.runtime.executor.data.metadata.LocalFileMetadata;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
-import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.common.Serializer;
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Before;

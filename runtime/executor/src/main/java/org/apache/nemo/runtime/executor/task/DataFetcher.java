@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import java.io.IOException;
@@ -30,14 +31,17 @@ import java.util.NoSuchElementException;
 abstract class DataFetcher implements AutoCloseable {
   private final IRVertex dataSource;
   private final OutputCollector outputCollector;
+  public final RuntimeEdge edge;
 
   /**
    * @param dataSource to fetch from.
    * @param outputCollector for the data fetched.
    */
   DataFetcher(final IRVertex dataSource,
+              final RuntimeEdge edge,
               final OutputCollector outputCollector) {
     this.dataSource = dataSource;
+    this.edge = edge;
     this.outputCollector = outputCollector;
   }
 

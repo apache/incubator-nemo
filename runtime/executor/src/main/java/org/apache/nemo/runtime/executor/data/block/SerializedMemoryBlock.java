@@ -24,7 +24,7 @@ import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
-import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.common.Serializer;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;

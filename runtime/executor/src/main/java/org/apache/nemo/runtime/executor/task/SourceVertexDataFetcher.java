@@ -20,6 +20,8 @@ package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.Finishmark;
@@ -46,9 +48,10 @@ class SourceVertexDataFetcher extends DataFetcher {
   private final boolean bounded;
 
   SourceVertexDataFetcher(final SourceVertex dataSource,
+                          final RuntimeEdge edge,
                           final Readable readable,
                           final OutputCollector outputCollector) {
-    super(dataSource, outputCollector);
+    super(dataSource, edge, outputCollector);
     this.readable = readable;
     this.readable.prepare();
     this.bounded = dataSource.isBounded();

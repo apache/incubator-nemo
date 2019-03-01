@@ -23,24 +23,22 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
 
   // key: data fetcher id, value: head operator
-  private final Map<String, OutputCollector> srcOutputCollectorMap;
+  private final Map<String, OffloadingOperatorVertexOutputCollector> srcOutputCollectorMap;
+
+  private transient OffloadingResultCollector resultCollector;
 
 
   public StatelessOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
     this.irDag = irDag;
     this.srcOutputCollectorMap = new HashMap<>();
-
   }
 
   @Override
   public void prepare(final OffloadingContext context,
                       final OffloadingOutputCollector oc) {
-    // 1) 마지막 operator에서 무조건 output emit한거 받아오도록 만들기
-    // 2) input 받는 경우 어디로 보내야할지 결정하기 (input이 여러개일 수도 있으니)
-    // 3)
-
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irDag.getTopologicalSort());
+    resultCollector = new OffloadingResultCollector(oc);
 
     // Build a map for edge as a key and edge index as a value
     // This variable is used for creating NextIntraTaskOperatorInfo
@@ -84,8 +82,10 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
       final List<NextIntraTaskOperatorInfo> internalMainOutputs =
         getInternalMainOutputs(irVertex, irDag, edgeIndexMap, operatorWatermarkManagerMap);
 
-      OutputCollector outputCollector = new OffloadingOperatorVertexOutputCollector(
-          irVertex, internalMainOutputs, internalAdditionalOutputMap, oc);
+      final boolean isSink = (!internalMainOutputs.isEmpty() || !internalAdditionalOutputMap.isEmpty());
+      OffloadingOperatorVertexOutputCollector outputCollector = new OffloadingOperatorVertexOutputCollector(
+          irVertex, irDag.getOutgoingEdgesOf(irVertex).get(0), /* just use first edge for encoding */
+        internalMainOutputs, internalAdditionalOutputMap, isSink, resultCollector);
 
       // add source
       if (irDag.getRootVertices().contains(irVertex)) {
@@ -100,14 +100,21 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
     });
   }
 
+  // receive batch (list) data
   @Override
   public void onData(final OffloadingDataEvent element) {
-    final OutputCollector outputCollector = srcOutputCollectorMap.get(element.srcId);
-    if (element.isWatermark) {
-      outputCollector.emitWatermark((Watermark) element.data);
-    } else {
-      outputCollector.emit(element.data);
+    for (final Pair<String, Object> input : element.data) {
+      final String srcId = input.left();
+      final Object d = input.right();
+      final OffloadingOperatorVertexOutputCollector outputCollector = srcOutputCollectorMap.get(srcId);
+      if (d instanceof Watermark) {
+        outputCollector.emitWatermark((Watermark) d);
+      } else {
+        outputCollector.emit(d);
+      }
     }
+
+    resultCollector.flush();
   }
 
   @Override
@@ -140,7 +147,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         final int index = edgeIndexMap.get(edge);
         final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
         final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
-        return new NextIntraTaskOperatorInfo(index, nextOperator, inputWatermarkManager);
+        return new NextIntraTaskOperatorInfo(index, edge, nextOperator, inputWatermarkManager);
       })
       .collect(Collectors.toList());
   }
@@ -162,7 +169,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         final int index = edgeIndexMap.get(edge);
         final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
         final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
-        return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, nextOperator, inputWatermarkManager));
+        return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, edge, nextOperator, inputWatermarkManager));
       })
       .forEach(pair -> {
         map.putIfAbsent(pair.left(), new ArrayList<>());

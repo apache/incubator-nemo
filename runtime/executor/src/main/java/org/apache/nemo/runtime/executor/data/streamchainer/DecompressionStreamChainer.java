@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data.streamchainer;
 
+import org.apache.nemo.common.DecodeStreamChainer;
 import org.apache.nemo.common.exception.UnsupportedCompressionException;
 import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import net.jpountz.lz4.LZ4BlockInputStream;

@@ -23,7 +23,7 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
-import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.apache.nemo.common.Serializer;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;

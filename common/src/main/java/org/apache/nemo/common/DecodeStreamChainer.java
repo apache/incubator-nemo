@@ -16,16 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.data.streamchainer;
+package org.apache.nemo.common;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 
 /**
  * A {@link DecodeStreamChainer} object indicates each stream manipulation strategy.
  * Stream can be chained by {@link DecodeStreamChainer} multiple times.
  */
-public interface DecodeStreamChainer {
+public interface DecodeStreamChainer extends Serializable {
 
   /**
    * Chain {@link InputStream} and returns chained {@link InputStream}.

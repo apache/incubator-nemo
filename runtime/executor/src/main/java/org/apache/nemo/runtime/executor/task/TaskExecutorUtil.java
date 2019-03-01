@@ -135,7 +135,7 @@ public final class TaskExecutorUtil {
         final int index = edgeIndexMap.get(edge);
         final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
         final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
-        return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, nextOperator, inputWatermarkManager));
+        return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, edge, nextOperator, inputWatermarkManager));
       })
       .forEach(pair -> {
         map.putIfAbsent(pair.left(), new ArrayList<>());
@@ -160,7 +160,7 @@ public final class TaskExecutorUtil {
         final int index = edgeIndexMap.get(edge);
         final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
         final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
-        return new NextIntraTaskOperatorInfo(index, nextOperator, inputWatermarkManager);
+        return new NextIntraTaskOperatorInfo(index, edge, nextOperator, inputWatermarkManager);
       })
       .collect(Collectors.toList());
   }
