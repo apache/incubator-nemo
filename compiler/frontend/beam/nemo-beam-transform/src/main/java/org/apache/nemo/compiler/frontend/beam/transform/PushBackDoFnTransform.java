@@ -41,7 +41,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.util.*;
 
 /**
@@ -73,7 +72,6 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>, WindowedValue<OutputT>> offloadingSerializer;
 
   private ServerlessExecutorProvider slsProvider;
-  private transient ByteBuf byteBuf;
 
   /**
    * PushBackDoFnTransform Constructor.
@@ -113,19 +111,6 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
   @Override
   public void onData(final WindowedValue data) {
     if (!initialized) {
-      byteBuf = Unpooled.buffer();
-      final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
-      final ObjectOutputStream oos;
-      try {
-        oos = new ObjectOutputStream(bos);
-        oos.writeObject(offloadingTransform);
-        oos.close();
-        bos.close();
-      } catch (final IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-
       byteBufList = new ArrayList<>();
       curPushedBacks = new ArrayList<>();
 
@@ -253,7 +238,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     final long st = System.currentTimeMillis();
 
     final ServerlessExecutorService<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>> slsExecutor =
-      slsProvider.newCachedPool(byteBuf, offloadingSerializer, eventHandler);
+      slsProvider.newCachedPool(offloadingTransform, offloadingSerializer, eventHandler);
 
     // encode side input
     for (final ByteBufOutputStream bos : byteBufList) {
