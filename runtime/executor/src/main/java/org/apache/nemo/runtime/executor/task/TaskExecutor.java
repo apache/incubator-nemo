@@ -440,6 +440,8 @@ public final class TaskExecutor {
                                 final DataFetcher dataFetcher) {
     final String id = dataFetcher.getDataSource().getId();
     final Serializer serializer = serializerManager.getSerializer(dataFetcher.edge.getId());
+
+    LOG.info("Send from {} data {} to serverless, cnt: {}", id, event, serializedCnt);
     try {
       bos.writeUTF(id);
       serializer.getEncoderFactory().create(bos).encode(event);
@@ -479,6 +481,7 @@ public final class TaskExecutor {
     if (!offloadingRequestQueue.isEmpty()) {
       offloading = offloadingRequestQueue.poll();
       if (offloading) {
+        LOG.info("Initialize offloading");
         // start offloading
         inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
         bos = new ByteBufOutputStream(inputBuffer);
