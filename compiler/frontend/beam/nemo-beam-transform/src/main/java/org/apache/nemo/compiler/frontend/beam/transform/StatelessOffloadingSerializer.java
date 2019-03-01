@@ -60,6 +60,7 @@ public class StatelessOffloadingSerializer implements OffloadingSerializer {
         final String edgeId = dis.readUTF();
         final Serializer serializer = serializerMap.get(edgeId);
         final Object object = serializer.getDecoderFactory().create(dis).decode();
+        System.out.println("Decoded data " + vertexId + "/" + edgeId + " cnt: " + i);
         data.add(Pair.of(vertexId, object));
       }
       return new OffloadingDataEvent(data);

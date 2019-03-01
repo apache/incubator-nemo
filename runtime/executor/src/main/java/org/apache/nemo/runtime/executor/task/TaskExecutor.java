@@ -445,11 +445,12 @@ public final class TaskExecutor {
     final String id = dataFetcher.getDataSource().getId();
     final Serializer serializer = serializerManager.getSerializer(dataFetcher.edge.getId());
 
-    LOG.info("Send from {} data {} to serverless, cnt: {}, encoderFactory: {}", id, event,
-      serializedCnt, serializer.getEncoderFactory());
+    LOG.info("Send from {}/{} to serverless, cnt: {}", id, dataFetcher.edge.getId(),
+      serializedCnt);
 
     try {
       bos.writeUTF(id);
+      bos.writeUTF(dataFetcher.edge.getId());
       serializer.getEncoderFactory().create(bos).encode(event);
       serializedCnt += 1;
 
