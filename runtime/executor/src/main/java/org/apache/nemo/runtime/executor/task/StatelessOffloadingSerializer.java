@@ -1,6 +1,5 @@
-package org.apache.nemo.compiler.frontend.beam.transform;
+package org.apache.nemo.runtime.executor.task;
 
-import org.apache.nemo.common.OffloadingOperatorVertexOutputCollector;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Serializer;
 import org.apache.nemo.common.Triple;

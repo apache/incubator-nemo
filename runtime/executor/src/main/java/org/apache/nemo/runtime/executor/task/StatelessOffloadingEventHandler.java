@@ -1,18 +1,13 @@
-package org.apache.nemo.compiler.frontend.beam.transform;
+package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.Triple;
 import org.apache.nemo.common.eventhandler.OffloadingResultEvent;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.offloading.common.OffloadingDecoder;
-import org.apache.nemo.offloading.common.OffloadingEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Map;
 
 public final class StatelessOffloadingEventHandler implements EventHandler<OffloadingResultEvent> {
