@@ -214,7 +214,6 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 skipBytes(fileStream, partitionMetadata.getPartitionSize());
               }
             }
-          LOG.info("HY: partition size: {}",partitionKeyBytesPairs.size());
         }catch(Exception e){
             e.printStackTrace();
           }
