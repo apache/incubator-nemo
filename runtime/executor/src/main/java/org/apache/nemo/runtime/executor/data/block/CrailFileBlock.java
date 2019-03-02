@@ -204,6 +204,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
         try (final CrailBufferedInputStream fileStream = file.getBufferedInputStream(16807680)){
             for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
               final K key = partitionMetadata.getKey();
+              LOG.info("HY: key fetched this time: {}", key.toString());
               if (keyRange.includes(key)) {
                 // The key value of this partition is in the range.
                 final byte[] partitionBytes = new byte[partitionMetadata.getPartitionSize()];
@@ -214,7 +215,6 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 skipBytes(fileStream, partitionMetadata.getPartitionSize());
               }
             }
-            fileStream.close();
           }catch(Exception e){
             e.printStackTrace();
           }
