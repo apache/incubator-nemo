@@ -207,7 +207,9 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
               if (keyRange.includes(key)) {
                 // The key value of this partition is in the range.
                 final byte[] partitionBytes = new byte[partitionMetadata.getPartitionSize()];
-                fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
+                int test;
+                test = fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
+                LOG.info("HY: test value {}",test);
                 partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
               } else {
                 // Have to skip this partition.
