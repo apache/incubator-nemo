@@ -204,13 +204,11 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
         try (final CrailBufferedInputStream fileStream = file.getBufferedInputStream(16807680)){
             for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
               final K key = partitionMetadata.getKey();
-              //HY: key fetch and range okay
               if (keyRange.includes(key)) {
                 // The key value of this partition is in the range.
                 final byte[] partitionBytes = new byte[partitionMetadata.getPartitionSize()];
                 fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
                 partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
-                LOG.info("HY: key bytes pairs from file: {}",partitionKeyBytesPairs.toString());
               } else {
                 // Have to skip this partition.
                 skipBytes(fileStream, partitionMetadata.getPartitionSize());
@@ -224,6 +222,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
               DataUtil.deserializePartition(
                   partitionKeyBytes.right().length, serializer, partitionKeyBytes.left(),
                   new ByteArrayInputStream(partitionKeyBytes.right()));
+          LOG.info("HY: deserializedPartition {}", deserializedPartitions.toString());
           deserializedPartitions.add(deserializePartition);
         }
       } catch (final IOException e) {
