@@ -201,8 +201,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
       final List<NonSerializedPartition<K>> deserializedPartitions = new ArrayList<>();
       try {
         final List<Pair<K, byte[]>> partitionKeyBytesPairs = new ArrayList<>();
-          try{
-            final CrailBufferedInputStream fileStream = file.getBufferedInputStream(16807680);
+        try (final CrailBufferedInputStream fileStream = file.getBufferedInputStream(16807680)){
             for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
               final K key = partitionMetadata.getKey();
               if (keyRange.includes(key)) {
@@ -215,7 +214,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 skipBytes(fileStream, partitionMetadata.getPartitionSize());
               }
             }
-            fileStream.close();
+            fileStream.skip(0);
           }catch(Exception e){
             e.printStackTrace();
           }
@@ -267,7 +266,9 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
               skipBytes(fileStream, partitionmetadata.getPartitionSize());
             }
           }
+          fileStream.skip(0);
         }
+
       } catch (final IOException e) {
         throw new BlockFetchException(e);
       } catch (final Exception e2){
