@@ -224,6 +224,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                   new ByteArrayInputStream(partitionKeyBytes.right()));
           deserializedPartitions.add(deserializePartition);
         }
+        LOG.info("HY: deserializedPartitions size: {}",deserializedPartitions.size());
       } catch (final IOException e) {
         throw new BlockFetchException(e);
       }
