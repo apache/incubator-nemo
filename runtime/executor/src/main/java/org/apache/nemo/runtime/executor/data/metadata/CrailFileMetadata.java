@@ -160,6 +160,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
         );
         partitionMetadataList.add(partitionMetadata);
       }
+      dataInputStream.skip(0);
     } catch (Exception e) {
       throw new IOException("HY: File "+metaFilePath+ " does not exist!");
     }
