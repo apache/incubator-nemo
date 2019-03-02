@@ -215,6 +215,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 skipBytes(fileStream, partitionMetadata.getPartitionSize());
               }
             }
+            fileStream.close();
           }catch(Exception e){
             e.printStackTrace();
           }
@@ -260,7 +261,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 throw new IOException("The read data size does not match with the partition size.");
               }
               partitionsInRange.add(new SerializedPartition<>(
-                  key, serializedData, serializedData.length));
+                key, serializedData, serializedData.length));
             } else {
               // Have to skip this partition.
               skipBytes(fileStream, partitionmetadata.getPartitionSize());
