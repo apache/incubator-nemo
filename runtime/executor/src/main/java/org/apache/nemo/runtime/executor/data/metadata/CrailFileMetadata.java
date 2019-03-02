@@ -147,6 +147,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
     try {
       CrailBufferedInputStream dataInputStream = fs.lookup(metaFilePath).get().asFile().getBufferedInputStream(0);
       while (dataInputStream.available() > 0) {
+        LOG.info("HY: metadata available");
         final int keyLength = dataInputStream.readInt();
         final byte[] desKey = new byte[keyLength];
         if (keyLength != dataInputStream.read(desKey)) {
