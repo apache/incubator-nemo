@@ -225,7 +225,6 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
               DataUtil.deserializePartition(
                   partitionKeyBytes.right().length, serializer, partitionKeyBytes.left(),
                   new ByteArrayInputStream(partitionKeyBytes.right()));
-          LOG.info("HY: deserializePartition {}", deserializePartition.getData().iterator().next());
           deserializedPartitions.add(deserializePartition);
         }
         LOG.info("HY: deserializedPartitions size: {}",deserializedPartitions.size());
