@@ -210,7 +210,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 int test;
                 test = fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
                 LOG.info("HY: test value {}",test);
-                LOG.info("HY: partition length: {}", partitionBytes.length);
+                LOG.info("HY: partition length: {}", partitionBytes.length); //checked
                 partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
               } else {
                 // Have to skip this partition.
@@ -225,6 +225,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
               DataUtil.deserializePartition(
                   partitionKeyBytes.right().length, serializer, partitionKeyBytes.left(),
                   new ByteArrayInputStream(partitionKeyBytes.right()));
+          LOG.info("HY: deserializePartition {}", deserializePartition.getData().iterator().next());
           deserializedPartitions.add(deserializePartition);
         }
         LOG.info("HY: deserializedPartitions size: {}",deserializedPartitions.size());
