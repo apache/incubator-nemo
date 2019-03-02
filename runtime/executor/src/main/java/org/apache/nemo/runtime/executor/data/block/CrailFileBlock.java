@@ -214,7 +214,6 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 skipBytes(fileStream, partitionMetadata.getPartitionSize());
               }
             }
-            fileStream.skip(0);
           }catch(Exception e){
             e.printStackTrace();
           }
@@ -266,7 +265,6 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
               skipBytes(fileStream, partitionmetadata.getPartitionSize());
             }
           }
-          fileStream.skip(0);
         }
 
       } catch (final IOException e) {
