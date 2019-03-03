@@ -89,11 +89,10 @@ public final class OffloadingOperatorVertexOutputCollector<O> implements OutputC
           edge.getId(),
           output));
       } else {
-        System.out.print(internalVertex.getNextOperator().getId() + ", ");
+        //System.out.print(internalVertex.getNextOperator().getId() + ", ");
         emit(internalVertex.getNextOperator(), output);
       }
     }
-    System.out.println("");
   }
 
   @Override

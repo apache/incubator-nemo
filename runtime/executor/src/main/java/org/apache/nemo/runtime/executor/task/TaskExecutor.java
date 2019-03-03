@@ -511,7 +511,6 @@ public final class TaskExecutor {
 
         // reset
         serverlessExecutorService.shutdown();
-        inputBuffer.release();
         serializedCnt = 0;
         try {
           bos.close();
