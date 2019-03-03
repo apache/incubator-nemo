@@ -114,6 +114,7 @@ public final class TaskExecutor {
   private ByteBufOutputStream bos;
   private final Map<String, OutputCollector> vertexIdAndOutputCollectorMap;
   private final Queue<Boolean> offloadingRequestQueue = new LinkedBlockingQueue<>();
+  private long prevFlushTime = System.currentTimeMillis();
   // Variables for offloading - end
 
   /**
@@ -461,11 +462,13 @@ public final class TaskExecutor {
       serializer.getEncoderFactory().create(bos).encode(event);
       serializedCnt += 1;
 
-      if (inputBuffer.readableBytes() > Constants.FLUSH_BYTES) {
+      if (inputBuffer.readableBytes() > Constants.FLUSH_BYTES ||
+        System.currentTimeMillis() - prevFlushTime > 1000) {
       //if (serializedCnt > 10) {
 
         // flush
         flushToServerless();
+        prevFlushTime = System.currentTimeMillis();
 
         // reset
         inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
@@ -492,6 +495,7 @@ public final class TaskExecutor {
       if (offloading) {
         LOG.info("Initialize offloading");
         // start offloading
+        prevFlushTime = System.currentTimeMillis();
         inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
         bos = new ByteBufOutputStream(inputBuffer);
         serverlessExecutorService = serverlessExecutorProvider.
