@@ -31,6 +31,7 @@ import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.offloading.client.ServerlessExecutorService;
+import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.Finishmark;
@@ -164,7 +165,7 @@ public final class TaskExecutor {
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
-    offloadingRequestQueue.add(true);
+    //offloadingRequestQueue.add(true);
   }
 
   private boolean isOperatorFluctuate() {
@@ -187,7 +188,6 @@ public final class TaskExecutor {
     LOG.info("End offloading!");
     // Do sth for offloading end
     offloadingRequestQueue.add(false);
-
     detector.clear();
   }
 
@@ -437,6 +437,16 @@ public final class TaskExecutor {
     finalizeOutputWriters(vertexHarness);
   }
 
+  private void flushToServerless() {
+    LOG.info("Flush to serverless: {}", serializedCnt);
+    final CompositeByteBuf compositeByteBuf = PooledByteBufAllocator.DEFAULT.compositeBuffer(2);
+    final ByteBuf lengthBuf = PooledByteBufAllocator.DEFAULT.buffer(4);
+    lengthBuf.writeInt(serializedCnt);
+    compositeByteBuf.addComponents(true, lengthBuf, inputBuffer);
+    // execute
+    serverlessExecutorService.execute(compositeByteBuf);
+  }
+
   private void sendToServerless(final Object event,
                                 final DataFetcher dataFetcher) {
     final String id = dataFetcher.getDataSource().getId();
@@ -451,16 +461,11 @@ public final class TaskExecutor {
       serializer.getEncoderFactory().create(bos).encode(event);
       serializedCnt += 1;
 
-      //if (inputBuffer.readableBytes() > Constants.FLUSH_BYTES) {
-      if (serializedCnt > 10) {
-        // flush
-        final CompositeByteBuf compositeByteBuf = PooledByteBufAllocator.DEFAULT.compositeBuffer(2);
-        final ByteBuf lengthBuf = PooledByteBufAllocator.DEFAULT.buffer(4);
-        lengthBuf.writeInt(serializedCnt);
-        compositeByteBuf.addComponents(true, lengthBuf, inputBuffer);
+      if (inputBuffer.readableBytes() > Constants.FLUSH_BYTES) {
+      //if (serializedCnt > 10) {
 
-        // execute
-        serverlessExecutorService.execute(compositeByteBuf);
+        // flush
+        flushToServerless();
 
         // reset
         inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
@@ -495,10 +500,13 @@ public final class TaskExecutor {
             new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap));
       } else {
         // stop offloading
-        serverlessExecutorService.shutdown();
         if (inputBuffer.readableBytes() > 0) {
-          // TODO: re-decode inputs and process them in VMs
+          // TODO: send remaining data to serverless
+          flushToServerless();
         }
+
+        // reset
+        serverlessExecutorService.shutdown();
         inputBuffer.release();
         serializedCnt = 0;
         try {
