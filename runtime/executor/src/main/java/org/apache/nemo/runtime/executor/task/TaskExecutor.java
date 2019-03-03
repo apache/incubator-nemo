@@ -52,6 +52,8 @@ import org.apache.nemo.runtime.executor.datatransfer.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
@@ -97,6 +99,8 @@ public final class TaskExecutor {
 
 
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
+
+  private final ExecutorService shutdownExecutor = Executors.newCachedThreadPool();
 
   // Variables for offloading - start
   private long currProcessedEvents = 0;
@@ -510,7 +514,10 @@ public final class TaskExecutor {
         }
 
         // reset
-        serverlessExecutorService.shutdown();
+        shutdownExecutor.execute(() -> {
+          serverlessExecutorService.shutdown();
+        });
+
         serializedCnt = 0;
         try {
           bos.close();
