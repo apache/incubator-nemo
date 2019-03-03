@@ -17,8 +17,8 @@ public final class OffloadingEventCoder {
       if (msg.getByteBuf() != null) {
         final ByteBuf buf = ctx.alloc().buffer(4);
         buf.writeInt(msg.getType().ordinal());
-        System.out.println("Encode " + msg.getType().name() + ", size: " +
-          (buf.readableBytes() + msg.getByteBuf().readableBytes()));
+        //System.out.println("Encode " + msg.getType().name() + ", size: " +
+        //  (buf.readableBytes() + msg.getByteBuf().readableBytes()));
         final CompositeByteBuf compositeByteBuf =
           ctx.alloc().compositeBuffer(2).addComponents(true, buf, msg.getByteBuf());
         out.add(compositeByteBuf);
@@ -28,7 +28,7 @@ public final class OffloadingEventCoder {
         buf.writeInt(msg.getType().ordinal());
         buf.writeBytes(msg.getBytes(), 0, msg.getLen());
 
-        System.out.println("Encode " + msg.getType().name() + ", size: " + buf.readableBytes());
+        //System.out.println("Encode " + msg.getType().name() + ", size: " + buf.readableBytes());
         out.add(buf);
       }
     }
@@ -41,7 +41,7 @@ public final class OffloadingEventCoder {
 
       try {
         final OffloadingEvent.Type type = OffloadingEvent.Type.values()[msg.readInt()];
-        System.out.println("Decode message; " + type.name() + ", size: " + msg.readableBytes());
+        //System.out.println("Decode message; " + type.name() + ", size: " + msg.readableBytes());
         out.add(new OffloadingEvent(type, msg.retain(1)));
       } catch (final ArrayIndexOutOfBoundsException e) {
         e.printStackTrace();

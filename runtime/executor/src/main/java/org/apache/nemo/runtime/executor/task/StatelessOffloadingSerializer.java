@@ -53,13 +53,14 @@ public class StatelessOffloadingSerializer implements OffloadingSerializer {
     public OffloadingDataEvent decode(InputStream inputStream) throws IOException {
       final DataInputStream dis = new DataInputStream(inputStream);
       final int length = dis.readInt();
+      System.out.println("Decoding " + length + " inputs");
       final List<Pair<String, Object>> data = new ArrayList<>(length);
       for (int i = 0; i < length; i++) {
         final String vertexId = dis.readUTF();
         final String edgeId = dis.readUTF();
         final Serializer serializer = serializerMap.get(edgeId);
         final Object object = serializer.getDecoderFactory().create(dis).decode();
-        System.out.println("Decoded data " + vertexId + "/" + edgeId + " cnt: " + i);
+        //System.out.println("Decoded data " + vertexId + "/" + edgeId + " cnt: " + i);
         data.add(Pair.of(vertexId, object));
       }
       return new OffloadingDataEvent(data);

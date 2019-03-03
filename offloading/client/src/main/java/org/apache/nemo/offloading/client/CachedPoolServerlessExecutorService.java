@@ -220,11 +220,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     try {
       oos = new ObjectOutputStream(bos);
       oos.writeObject(offloadingTransform);
-      LOG.info("WorkerInitBuffer - encode offloadingTransform: {}", workerInitBuffer.readableBytes());
+      //LOG.info("WorkerInitBuffer - encode offloadingTransform: {}", workerInitBuffer.readableBytes());
       oos.writeObject(offloadingSerializer.getInputDecoder());
-      LOG.info("WorkerInitBuffer - encode offloadingSerializer.decoder: {}", workerInitBuffer.readableBytes());
+      //LOG.info("WorkerInitBuffer - encode offloadingSerializer.decoder: {}", workerInitBuffer.readableBytes());
       oos.writeObject(offloadingSerializer.getOutputEncoder());
-      LOG.info("WorkerInitBuffer - encode offloadingSerializer.encoder: {}", workerInitBuffer.readableBytes());
+      //LOG.info("WorkerInitBuffer - encode offloadingSerializer.encoder: {}", workerInitBuffer.readableBytes());
 
       /*
       if (statePartitioner != null) {

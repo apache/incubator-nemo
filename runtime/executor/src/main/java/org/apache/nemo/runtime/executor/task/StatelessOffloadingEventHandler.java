@@ -20,8 +20,10 @@ public final class StatelessOffloadingEventHandler implements EventHandler<Offlo
 
   @Override
   public void onNext(OffloadingResultEvent msg) {
+    LOG.info("Result received: cnt {}", msg.data.size());
+
     for (final Triple<String, String, Object> triple : msg.data) {
-      LOG.info("Result received from serverless: vertexId: {}, edge: {}, data: {}", triple.first, triple.second, triple.third);
+      //LOG.info("Result received from serverless: vertexId: {}, edge: {}, data: {}", triple.first, triple.second, triple.third);
       final Object elem = triple.third;
       final OutputCollector collector = vertexAndCollectorMap.get(triple.first);
 

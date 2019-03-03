@@ -442,8 +442,8 @@ public final class TaskExecutor {
     final String id = dataFetcher.getDataSource().getId();
     final Serializer serializer = serializerManager.getSerializer(dataFetcher.edge.getId());
 
-    LOG.info("Send from {}/{} to serverless, cnt: {}", id, dataFetcher.edge.getId(),
-      serializedCnt);
+    //LOG.info("Send from {}/{} to serverless, cnt: {}", id, dataFetcher.edge.getId(),
+    // serializedCnt);
 
     try {
       bos.writeUTF(id);

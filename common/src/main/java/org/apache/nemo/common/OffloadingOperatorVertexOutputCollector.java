@@ -80,10 +80,10 @@ public final class OffloadingOperatorVertexOutputCollector<O> implements OutputC
 
   @Override
   public void emit(final O output) {
-    System.out.print("Operator " + irVertex.getId() + " emit " + output + " to ");
+    //System.out.print("Operator " + irVertex.getId() + " emit " + output + " to ");
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       if (internalVertex.getNextOperator().isSink) {
-        System.out.println("Emit to resultCollector in " + irVertex.getId());
+        //System.out.println("Emit to resultCollector in " + irVertex.getId());
         resultCollector.result.add(new Triple<>(
           irVertex.getId(),
           edge.getId(),
@@ -117,11 +117,11 @@ public final class OffloadingOperatorVertexOutputCollector<O> implements OutputC
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
     }
 
-    System.out.println("Operator " + irVertex.getId() + " emits watermark " + watermark);
+    //System.out.println("Operator " + irVertex.getId() + " emits watermark " + watermark);
     // Emit watermarks to internal vertices
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       if (internalVertex.getNextOperator().isSink) {
-        System.out.println("Sink Emit watermark " + watermark);
+        //System.out.println("Sink Emit watermark " + watermark);
         resultCollector.result.add(new Triple<>(
           irVertex.getId(),
           edge.getId(),
