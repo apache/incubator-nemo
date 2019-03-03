@@ -316,6 +316,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       final boolean speculative = speculativeDataProcessedMap.containsKey(dataId);
 
       try {
+        LOG.info("Write data to serverless: {}", dataId);
         final PendingOutput po = new PendingOutput(worker.execute(dataBuf, dataId, speculative), dataId);
         outputQueue.add(po);
         addedOutput += 1;

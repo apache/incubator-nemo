@@ -218,7 +218,7 @@ public final class OffloadingHandler {
       System.out.println("Wait end flag");
       final Integer endFlag = handler.endBlockingQueue.take();
       if (endFlag == 0) {
-        System.out.println("end");
+        System.out.println("end elapsed time: " + (System.currentTimeMillis() - sst));
         try {
           opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
         } catch (InterruptedException e) {
