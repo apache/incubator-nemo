@@ -97,6 +97,8 @@ public final class Executor {
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private final ExecutorService executorService;
 
+  private final boolean enableOffloading;
+
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -107,7 +109,8 @@ public final class Executor {
                    final BroadcastManagerWorker broadcastManagerWorker,
                    final MetricManagerWorker metricMessageSender,
                    final ServerlessExecutorProvider serverlessExecutorProvider,
-                   final CpuBottleneckDetector bottleneckDetector) {
+                   final CpuBottleneckDetector bottleneckDetector,
+                   @Parameter(JobConf.EnableOffloading.class) final boolean enableOffloading) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
               .namingPattern("TaskExecutor thread-%d")
@@ -117,8 +120,9 @@ public final class Executor {
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
-    this.serverlessExecutorProvider = serverlessExecutorProvider;
-    this.bottleneckDetector = bottleneckDetector;
+    this.enableOffloading = enableOffloading;
+    LOG.info("Enable offloading: {}", enableOffloading);
+    this.serverlessExecutorProvider = serverlessExecutorProvider; this.bottleneckDetector = bottleneckDetector;
     this.taskExecutorMap = new ConcurrentHashMap<>();
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
@@ -294,24 +298,23 @@ public final class Executor {
     @Override
     public void onNext(final CpuBottleneckDetector.BottleneckEvent event) {
       LOG.info("Bottleneck event: {}", event);
-      switch (event.type) {
-        case START: {
-          // do sth
-          // 1) bottleneck 원인 파악 (input 때문인지 operator 때문인지)
-          // 2) case 나눠서 처리
-          for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-            taskExecutor.startOffloading(event.startTime);
+      if (enableOffloading) {
+        switch (event.type) {
+          case START: {
+            for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+              taskExecutor.startOffloading(event.startTime);
+            }
+            break;
           }
-          break;
-        }
-        case END: {
-          for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-            taskExecutor.endOffloading();
+          case END: {
+            for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+              taskExecutor.endOffloading();
+            }
+            break;
           }
-          break;
+          default:
+            throw new RuntimeException("Invalid state");
         }
-        default:
-          throw new RuntimeException("Invalid state");
       }
     }
   }

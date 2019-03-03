@@ -264,6 +264,10 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class PartitionTransportClientNumThreads implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "enable offloading or not", short_name = "enable_offloading", default_value = "false")
+  public final class EnableOffloading implements Name<Boolean> {
+  }
+
   //////////////////////////////// Intermediate Configurations
 
   /**
