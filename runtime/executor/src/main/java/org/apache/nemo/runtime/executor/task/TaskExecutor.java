@@ -121,6 +121,8 @@ public final class TaskExecutor {
   private long prevFlushTime = System.currentTimeMillis();
   // Variables for offloading - end
 
+  private boolean inputBursty = false;
+
   /**
    * Constructor.
    *
@@ -182,9 +184,11 @@ public final class TaskExecutor {
     if (detector.isInputFluctuation(baseTime)) {
       LOG.info("Input fluctuate!!");
       // do offloading();
+      inputBursty = true;
       offloadingRequestQueue.add(true);
 
     } else {
+      inputBursty = false;
       LOG.info("Operator bursty!!");
     }
   }
@@ -192,7 +196,10 @@ public final class TaskExecutor {
   public synchronized void endOffloading() {
     LOG.info("End offloading!");
     // Do sth for offloading end
-    offloadingRequestQueue.add(false);
+    // TODO: handle operator bursty
+    if (inputBursty) {
+      offloadingRequestQueue.add(false);
+    }
     detector.clear();
   }
 
