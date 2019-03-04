@@ -103,8 +103,11 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                     //LOG.info("Receive result of data {}, {}", resultId, null);
                     resultMap.put(resultId, Optional.empty());
                     pendingData.remove(resultId);
-                    LOG.info("Receive data id {}, processing cnt: {}, pendingData: {}", resultId, dataProcessingCnt,
-                      pendingData);
+
+                    if (Constants.enableLambdaLogging) {
+                      LOG.info("Receive data id {}, processing cnt: {}, pendingData: {}", resultId, dataProcessingCnt,
+                        pendingData);
+                    }
                   } else {
                     final O data = outputDecoder.decode(bis);
                     final int resultId = bis.readInt();
@@ -112,8 +115,11 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                     //LOG.info("Receive result of data {}, {}", resultId, data);
                     resultMap.put(resultId, Optional.of(data));
                     pendingData.remove(resultId);
-                    LOG.info("Receive data id {}, processing cnt: {}, pendingData: {}", resultId, dataProcessingCnt,
-                      pendingData);
+
+                    if (Constants.enableLambdaLogging) {
+                      LOG.info("Receive data id {}, processing cnt: {}, pendingData: {}", resultId, dataProcessingCnt,
+                        pendingData);
+                    }
                   }
 
 
@@ -124,7 +130,9 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                 }
                 break;
               case END:
-                LOG.info("Receive end");
+                if (Constants.enableLambdaLogging) {
+                  LOG.info("Receive end");
+                }
                 msg.getByteBuf().release();
                 endQueue.add(msg);
                 break;
@@ -226,7 +234,10 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
     currentProcessingInput = Pair.of(input.duplicate(), dataId);
 
     if (channel != null) {
-      LOG.info("Write data id: {}", dataId);
+      if (Constants.enableLambdaLogging) {
+        LOG.info("Write data id: {}", dataId);
+      }
+
       final ChannelFuture channelFuture = channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, input));
       return new Future<Optional<O>>() {
 

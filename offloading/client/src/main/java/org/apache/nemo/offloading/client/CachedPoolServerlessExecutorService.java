@@ -93,22 +93,29 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       if (System.currentTimeMillis() - st.get() > 5000) {
         logging = true;
         st.set(System.currentTimeMillis());
-        LOG.info("Init workers: {}, Running workers: {}, Output: {} ",
-          initializingWorkers.size(), runningWorkers.size(), outputQueue.size());
+
+        if (Constants.enableLambdaLogging) {
+          LOG.info("Init workers: {}, Running workers: {}, Output: {} ",
+            initializingWorkers.size(), runningWorkers.size(), outputQueue.size());
+        }
 
 
         for (final Pair<Long, OffloadingWorker> pair : runningWorkers) {
           if (st.get() - pair.left() > 7000) {
             final Pair<ByteBuf, Integer> input = pair.right().getCurrentProcessingInput();
             if (input != null) {
-              LOG.info("Running worker for data {}, time: {}", input.right(), (st.get() - pair.left()));
+              if (Constants.enableLambdaLogging) {
+                LOG.info("Running worker for data {}, time: {}", input.right(), (st.get() - pair.left()));
+              }
             }
           }
         }
 
         for (final PendingOutput output : outputQueue) {
           if (st.get() - output.startTime > 7000) {
-            LOG.info("Pending output:  data {}, time: {}", output.dataId, (st.get() - output.startTime));
+            if (Constants.enableLambdaLogging) {
+              LOG.info("Pending output:  data {}, time: {}", output.dataId, (st.get() - output.startTime));
+            }
           }
         }
       }
@@ -121,7 +128,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           while (iterator.hasNext()) {
             final Pair<Long, OffloadingWorker> pair = iterator.next();
             if (pair.right().isReady()) {
-              LOG.info("Init worker latency: {}", System.currentTimeMillis() - pair.left());
+              if (Constants.enableLambdaLogging) {
+                LOG.info("Init worker latency: {}", System.currentTimeMillis() - pair.left());
+              }
               iterator.remove();
               // do not add it to ready workers
               // instead, just execute data
@@ -159,7 +168,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
             } else {
               final int dataId = data.right();
-              LOG.info("Reject execution for data: {}", dataId);
+              if (Constants.enableLambdaLogging) {
+                LOG.info("Reject execution for data: {}", dataId);
+              }
               finishedWorkers += 1;
               pair.right().finishOffloading();
             }
@@ -184,8 +195,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
               if (data != null) {
                 final int dataId = data.right();
 
-                LOG.info("Create new worker for speculatve execution of data {}, elapsed time: {}, avg time: {}"
-                  , dataId, (curTime - pair.left()), avgTime);
+                if (Constants.enableLambdaLogging) {
+                  LOG.info("Create new worker for speculatve execution of data {}, elapsed time: {}, avg time: {}"
+                    , dataId, (curTime - pair.left()), avgTime);
+                }
 
                 createdWorkers += 1;
                 // create new worker
@@ -316,7 +329,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       final boolean speculative = speculativeDataProcessedMap.containsKey(dataId);
 
       try {
-        LOG.info("Write data to serverless: {}", dataId);
+        if (Constants.enableLambdaLogging) {
+          LOG.info("Write data to serverless: {}", dataId);
+        }
         final PendingOutput po = new PendingOutput(worker.execute(dataBuf, dataId, speculative), dataId);
         outputQueue.add(po);
         addedOutput += 1;
@@ -324,7 +339,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       } catch (final IllegalReferenceCountException e) {
         // the input becomes null ... this means that we don't have to do speculative execution
         // just finish the worker!
-        LOG.info("Illegal reference count exception for executing data {}... just finis worker", dataId);
+        if (Constants.enableLambdaLogging) {
+          LOG.info("Illegal reference count exception for executing data {}... just finis worker", dataId);
+        }
         worker.finishOffloading();
         finishedWorkers += 1;
       }
@@ -354,8 +371,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           addedOutput += 1;
 
           // TODO: consideration
-          LOG.info("Speculative execution for data {}, runningWorkerCnt: {}, readyWorkerCnt: {}", dataId,
-            runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
+          if (Constants.enableLambdaLogging) {
+            LOG.info("Speculative execution for data {}, runningWorkerCnt: {}, readyWorkerCnt: {}", dataId,
+              runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
+          }
 
           if (!speculativeDataProcessedMap.containsKey(dataId)) {
             speculativeDataProcessedMap.put(dataId, false);
@@ -365,7 +384,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         } catch (final IllegalReferenceCountException e) {
           // the input becomes null ... this means that we don't have to do speculative execution
           // just finish the worker!
-          LOG.info("Illegal reference count exception for executing data {}... just finis worker", dataId);
+          if (Constants.enableLambdaLogging) {
+            LOG.info("Illegal reference count exception for executing data {}... just finis worker", dataId);
+          }
           readyWorker.finishOffloading();
           finishedWorkers += 1;
         }
@@ -390,14 +411,18 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           boolean isEmittable = !speculativeDataProcessedMap.getOrDefault(dataId, false);
 
           speculativeDataProcessedMap.put(dataId, true);
-          LOG.info("Speculative execution output emittion, data: {}, emittable: {}", dataId,
-            isEmittable);
+          if (Constants.enableLambdaLogging) {
+            LOG.info("Speculative execution output emittion, data: {}, emittable: {}", dataId,
+              isEmittable);
 
           LOG.info("Output latency {}, id {} done", System.currentTimeMillis() - output.startTime, dataId);
+          }
           iterator.remove();
           final Optional<O> optional = data.get();
           if (isEmittable && optional.isPresent()) {
-            LOG.info("Output receive: {}", optional.get());
+            if (Constants.enableLambdaLogging) {
+              LOG.info("Output receive: {}", optional.get());
+            }
             eventHandler.onNext(optional.get());
           }
         }
@@ -482,9 +507,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       // logging
       if (System.currentTimeMillis() - prevTime > 2000) {
         prevTime = System.currentTimeMillis();
-        LOG.info("Shutting down workers {}/{}... scheduler is shutdown: {}, is terminated: {}, triggerTime: {}",
-          finishedWorkers, createdWorkers, scheduler.isShutdown(), scheduler.isTerminated(),
-          st.get());
+        if (Constants.enableLambdaLogging) {
+          LOG.info("Shutting down workers {}/{}... scheduler is shutdown: {}, is terminated: {}, triggerTime: {}",
+            finishedWorkers, createdWorkers, scheduler.isShutdown(), scheduler.isTerminated(),
+            st.get());
+        }
       }
 
       try {
@@ -500,8 +527,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       // logging
       if (System.currentTimeMillis() - prevTime > 2000) {
         prevTime = System.currentTimeMillis();
-        LOG.info("Waiting {} outputs... {}", outputQueue.size(), outputQueue);
-        LOG.info("Created worker: {}, Finished worker: {}, added output: {}", createdWorkers, finishedWorkers);
+        if (Constants.enableLambdaLogging) {
+          LOG.info("Waiting {} outputs... {}", outputQueue.size(), outputQueue);
+          LOG.info("Created worker: {}, Finished worker: {}, added output: {}", createdWorkers, finishedWorkers);
+        }
       }
       try {
         Thread.sleep(200);
