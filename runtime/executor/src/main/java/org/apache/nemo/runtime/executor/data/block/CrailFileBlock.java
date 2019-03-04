@@ -213,7 +213,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 //LOG.info("HY: partition length: {}", partitionBytes.length); //no use. size is fixed when created
                 partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
                 for(int i=0;i<10;i++){
-                  LOG.info("HY: partitionBytes[",i,"] : {}", partitionBytes[i]);
+                  LOG.info("HY: partitionBytes : {}", partitionBytes[i]);
                 }
               } else {
                 // Have to skip this partition.
