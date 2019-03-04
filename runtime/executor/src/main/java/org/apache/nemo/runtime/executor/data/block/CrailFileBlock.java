@@ -228,6 +228,17 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
           deserializedPartitions.add(deserializePartition);
         }
         LOG.info("HY: deserializedPartitions size: {}",deserializedPartitions.size());
+        long numSerializedBytes=0;
+        long numEncodedBytes=0;
+        for (final NonSerializedPartition partition : deserializedPartitions) {
+          try {
+            numSerializedBytes += partition.getNumSerializedBytes();
+            numEncodedBytes += partition.getNumEncodedBytes();
+          }catch(Exception e1){
+            e1.printStackTrace();
+          }
+        }
+        LOG.info("HY: numSerializedBytes: {}, numEncodedBytes: {}", numSerializedBytes, numEncodedBytes);
       } catch (final IOException e) {
         throw new BlockFetchException(e);
       }
