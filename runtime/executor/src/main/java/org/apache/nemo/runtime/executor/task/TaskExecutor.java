@@ -175,7 +175,9 @@ public final class TaskExecutor {
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
-    //offloadingRequestQueue.add(true);
+    if (evalConf.offloadingdebug) {
+      offloadingRequestQueue.add(true);
+    }
   }
 
   private boolean isOperatorFluctuate() {
