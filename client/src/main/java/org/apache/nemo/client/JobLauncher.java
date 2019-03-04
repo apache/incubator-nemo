@@ -22,6 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.driver.NemoDriver;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -420,7 +421,9 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.PartitionTransportClientNumThreads.class);
     cl.registerShortNameOfClass(JobConf.MaxNumDownloadsForARuntimeEdge.class);
     cl.registerShortNameOfClass(JobConf.SchedulerImplClassName.class);
-    cl.registerShortNameOfClass(JobConf.EnableOffloading.class);
+
+    EvalConf.registerCommandLineArgument(cl);
+
     cl.processCommandLine(args);
     return confBuilder.build();
   }

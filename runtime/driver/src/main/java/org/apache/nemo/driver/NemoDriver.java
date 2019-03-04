@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.driver;
 
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.OffloadingWorkerFactory;
 import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
 import org.apache.nemo.common.ir.IdManager;
@@ -93,6 +94,8 @@ public final class NemoDriver {
 
   private final JVMProcessFactory jvmProcessFactory;
 
+  private final EvalConf evalConf;
+
   @Inject
   private NemoDriver(final UserApplicationRunner userApplicationRunner,
                      final RuntimeMaster runtimeMaster,
@@ -100,6 +103,7 @@ public final class NemoDriver {
                      final LocalAddressProvider localAddressProvider,
                      final JobMessageObserver client,
                      final ClientRPC clientRPC,
+                     final EvalConf evalConf,
                      @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.BandwidthJSONContents.class) final String bandwidthString,
                      @Parameter(JobConf.JobId.class) final String jobId,
@@ -110,6 +114,7 @@ public final class NemoDriver {
     this.userApplicationRunner = userApplicationRunner;
     this.runtimeMaster = runtimeMaster;
     this.nameServer = nameServer;
+    this.evalConf = evalConf;
     this.localAddressProvider = localAddressProvider;
     this.resourceSpecificationString = resourceSpecificationString;
     this.jobId = jobId;
@@ -252,15 +257,16 @@ public final class NemoDriver {
 
     final Configuration ncsConfiguration =  getExecutorNcsConfiguration();
     final Configuration messageConfiguration = getExecutorMessageConfiguration(executorId);
+    final Configuration evalConfiguration = evalConf.getConfiguration();
 
-    return Configurations.merge(executorConfiguration, contextConfiguration, ncsConfiguration, messageConfiguration);
+    return Configurations.merge(executorConfiguration, contextConfiguration, ncsConfiguration, messageConfiguration, evalConfiguration);
   }
 
   private Configuration getExecutorNcsConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
         .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
-        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+      .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
       .bindImplementation(OffloadingWorkerFactory.class, LambdaOffloadingWorkerFactory.class) // TODO: fix
       .bindImplementation(ServerlessExecutorProvider.class, ServerlessExecutorProviderImpl.class) // TODO: fix
         .build();

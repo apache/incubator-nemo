@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
@@ -97,7 +98,7 @@ public final class Executor {
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private final ExecutorService executorService;
 
-  private final boolean enableOffloading;
+  private final EvalConf evalConf;
 
 
   @Inject
@@ -110,7 +111,7 @@ public final class Executor {
                    final MetricManagerWorker metricMessageSender,
                    final ServerlessExecutorProvider serverlessExecutorProvider,
                    final CpuBottleneckDetector bottleneckDetector,
-                   @Parameter(JobConf.EnableOffloading.class) final boolean enableOffloading) {
+                   final EvalConf evalConf) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
               .namingPattern("TaskExecutor thread-%d")
@@ -120,8 +121,8 @@ public final class Executor {
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
-    this.enableOffloading = enableOffloading;
-    LOG.info("Enable offloading: {}", enableOffloading);
+    this.evalConf = evalConf;
+    LOG.info("{}", evalConf);
     this.serverlessExecutorProvider = serverlessExecutorProvider; this.bottleneckDetector = bottleneckDetector;
     this.taskExecutorMap = new ConcurrentHashMap<>();
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
