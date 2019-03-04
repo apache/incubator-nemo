@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor;
 
+import org.apache.nemo.conf.EvalConf;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.annotations.Parameter;
@@ -17,18 +18,6 @@ public final class CpuBottleneckDetector {
   private final ScheduledExecutorService monitorThread;
   private final SystemLoadProfiler profiler;
 
-  @NamedParameter(default_value = "2000") // msec
-  public static final class BottleneckDetectionPeriod implements Name<Long> {
-  }
-
-  @NamedParameter(default_value = "2")
-  public static final class BottleneckDetectionConsecutive implements Name<Integer> {
-  }
-
-  @NamedParameter(default_value = "0.7")
-  public static final class BottleneckDetectionCpuThreshold implements Name<Double> {
-  }
-
   private final long r;
   private final int k;
   private final double threshold;
@@ -38,9 +27,9 @@ public final class CpuBottleneckDetector {
   @Inject
   private CpuBottleneckDetector(
     final SystemLoadProfiler profiler,
-    @Parameter(BottleneckDetectionPeriod.class) final long r,
-    @Parameter(BottleneckDetectionConsecutive.class) final int k,
-    @Parameter(BottleneckDetectionCpuThreshold.class) final double threshold) {
+    @Parameter(EvalConf.BottleneckDetectionPeriod.class) final long r,
+    @Parameter(EvalConf.BottleneckDetectionConsecutive.class) final int k,
+    @Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold) {
     this.r = r;
     this.k = k;
     this.threshold = threshold;
