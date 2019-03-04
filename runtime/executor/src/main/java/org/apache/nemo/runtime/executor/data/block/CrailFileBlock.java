@@ -201,7 +201,8 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
       try {
         final List<Pair<K, byte[]>> partitionKeyBytesPairs = new ArrayList<>();
         try (final CrailBufferedInputStream fileStream = file.getBufferedInputStream(0)){
-            for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
+          fileStream.seek(0);
+          for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
               final K key = partitionMetadata.getKey();
               if (keyRange.includes(key)) {
                 // The key value of this partition is in the range.
@@ -216,7 +217,6 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 skipBytes(fileStream, partitionMetadata.getPartitionSize());
               }
             }
-            fileStream.seek(0);
         }catch(Exception e){
             e.printStackTrace();
           }
@@ -253,6 +253,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
       final List<SerializedPartition<K>> partitionsInRange = new ArrayList<>();
         try (final CrailBufferedInputStream fileStream = file.getBufferedInputStream(0)) {
           for (final PartitionMetadata<K> partitionmetadata : metadata.getPartitionMetadataList()) {
+            fileStream.seek(0);
             final K key = partitionmetadata.getKey();
             if (keyRange.includes(key)) {
               // The hash value of this partition is in the range.
@@ -268,7 +269,6 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
               skipBytes(fileStream, partitionmetadata.getPartitionSize());
             }
           }
-          fileStream.seek(0);
         }catch (final IOException e) {
         throw new BlockFetchException(e);
       } catch (final Exception e2){
