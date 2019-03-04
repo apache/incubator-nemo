@@ -17,6 +17,10 @@ public final class EvalConf {
   public final class EnableOffloading implements Name<Boolean> {
   }
 
+  @NamedParameter(doc = "enable offloading or not", short_name = "enable_offloading_debug", default_value = "false")
+  public final class EnableOffloadingDebug implements Name<Boolean> {
+  }
+
   @NamedParameter(doc = "lambda pool size", short_name = "lambda_warmup_pool", default_value = "100")
   public final class LambdaWarmupPool implements Name<Integer> {
   }
@@ -43,6 +47,7 @@ public final class EvalConf {
   }
 
   public final boolean enableOffloading;
+  public final boolean offloadingdebug;
   public final int poolSize;
   public final int flushBytes;
   public final int flushCount;
@@ -57,10 +62,12 @@ public final class EvalConf {
                    @Parameter(LambdaWarmupPool.class) final int poolSize,
                    @Parameter(FlushBytes.class) final int flushBytes,
                    @Parameter(FlushCount.class) final int flushCount,
+                   @Parameter(EnableOffloadingDebug.class) final boolean offloadingdebug,
                    @Parameter(BottleneckDetectionPeriod.class) final long bottleneckDetectionPeriod,
                    @Parameter(BottleneckDetectionConsecutive.class) final int bottleneckDetectionConsecutive,
                    @Parameter(BottleneckDetectionCpuThreshold.class) final double bottleneckDetectionThreshold) {
     this.enableOffloading = enableOffloading;
+    this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
     this.flushBytes = flushBytes;
     this.flushCount = flushCount;
@@ -72,6 +79,7 @@ public final class EvalConf {
   public Configuration getConfiguration() {
     final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
     jcb.bindNamedParameter(EnableOffloading.class, Boolean.toString(enableOffloading));
+    jcb.bindNamedParameter(EnableOffloadingDebug.class, Boolean.toString(offloadingdebug));
     jcb.bindNamedParameter(LambdaWarmupPool.class, Integer.toString(poolSize));
     jcb.bindNamedParameter(FlushBytes.class, Integer.toString(flushBytes));
     jcb.bindNamedParameter(FlushCount.class, Integer.toString(flushCount));
@@ -84,6 +92,7 @@ public final class EvalConf {
 
   public static void registerCommandLineArgument(final CommandLine cl) {
     cl.registerShortNameOfClass(EnableOffloading.class);
+    cl.registerShortNameOfClass(EnableOffloadingDebug.class);
     cl.registerShortNameOfClass(LambdaWarmupPool.class);
     cl.registerShortNameOfClass(FlushBytes.class);
     cl.registerShortNameOfClass(FlushCount.class);
@@ -97,6 +106,7 @@ public final class EvalConf {
     final StringBuilder sb = new StringBuilder();
     sb.append("----------EvalConf start---------\n");
     sb.append("enableOffloading: "); sb.append(enableOffloading); sb.append("\n");
+    sb.append("enableOffloadingDebug: "); sb.append(offloadingdebug); sb.append("\n");
     sb.append("poolSize: "); sb.append(poolSize); sb.append("\n");
     sb.append("flushBytes: "); sb.append(flushBytes); sb.append("\n");
     sb.append("flushCount: "); sb.append(flushCount); sb.append("\n");
