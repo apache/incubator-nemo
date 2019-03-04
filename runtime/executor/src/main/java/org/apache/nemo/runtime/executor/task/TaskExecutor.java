@@ -668,8 +668,8 @@ public final class TaskExecutor {
 
           final long currTime = System.currentTimeMillis();
           if (currTime - prevProcessedTime >= elapsedTimeForProcessedEvents) {
-            LOG.info("# of processed events (during {} ms) in TaskExecutor {}: {}",
-              (currTime - prevProcessedTime), taskId, currProcessedEvents);
+            //LOG.info("# of processed events (during {} ms) in TaskExecutor {}: {}",
+            //  (currTime - prevProcessedTime), taskId, currProcessedEvents);
             prevProcessedEvents = currProcessedEvents;
             currProcessedEvents = 0;
             prevProcessedTime = System.currentTimeMillis();
