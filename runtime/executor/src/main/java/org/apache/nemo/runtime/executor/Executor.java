@@ -299,7 +299,7 @@ public final class Executor {
     @Override
     public void onNext(final CpuBottleneckDetector.BottleneckEvent event) {
       LOG.info("Bottleneck event: {}", event);
-      if (enableOffloading) {
+      if (evalConf.enableOffloading) {
         switch (event.type) {
           case START: {
             for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
