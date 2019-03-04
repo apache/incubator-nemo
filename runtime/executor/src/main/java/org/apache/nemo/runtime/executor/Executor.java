@@ -122,7 +122,7 @@ public final class Executor {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
     this.evalConf = evalConf;
-    LOG.info("{}", evalConf);
+    LOG.info("\n{}", evalConf);
     this.serverlessExecutorProvider = serverlessExecutorProvider; this.bottleneckDetector = bottleneckDetector;
     this.taskExecutorMap = new ConcurrentHashMap<>();
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());

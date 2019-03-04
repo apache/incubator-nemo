@@ -22,6 +22,7 @@ import com.google.common.collect.Lists;
 import io.netty.buffer.*;
 import org.apache.nemo.common.*;
 import org.apache.nemo.compiler.frontend.beam.transform.StatelessOffloadingTransform;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
@@ -31,7 +32,6 @@ import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.offloading.client.ServerlessExecutorService;
-import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.Finishmark;
@@ -119,6 +119,7 @@ public final class TaskExecutor {
   private final Map<String, OutputCollector> vertexIdAndOutputCollectorMap;
   private final Queue<Boolean> offloadingRequestQueue = new LinkedBlockingQueue<>();
   private long prevFlushTime = System.currentTimeMillis();
+  private final EvalConf evalConf;
   // Variables for offloading - end
 
   private boolean inputBursty = false;
@@ -143,7 +144,8 @@ public final class TaskExecutor {
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                       final SerializerManager serializerManager,
                       final ServerlessExecutorProvider serverlessExecutorProvider,
-                      final InputFluctuationDetector detector) {
+                      final InputFluctuationDetector detector,
+                      final EvalConf evalConf) {
     // Essential information
     this.isExecuted = false;
     this.irVertexDag = irVertexDag;
@@ -153,6 +155,7 @@ public final class TaskExecutor {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.vertexIdAndOutputCollectorMap = new HashMap<>();
     this.detector = detector;
+    this.evalConf = evalConf;
 
     this.serverlessExecutorProvider = serverlessExecutorProvider;
 
@@ -473,8 +476,7 @@ public final class TaskExecutor {
       serializer.getEncoderFactory().create(bos).encode(event);
       serializedCnt += 1;
 
-      if (inputBuffer.readableBytes() > Constants.FLUSH_BYTES ||
-        System.currentTimeMillis() - prevFlushTime > 1000) {
+      if (inputBuffer.readableBytes() > evalConf.flushBytes || serializedCnt > evalConf.flushCount) {
       //if (serializedCnt > 10) {
 
         // flush

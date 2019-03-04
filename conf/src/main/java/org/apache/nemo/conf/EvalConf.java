@@ -66,12 +66,12 @@ public final class EvalConf {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("----------EvalConf---------\n");
+    sb.append("----------EvalConf start---------\n");
     sb.append("enableOffloading: "); sb.append(enableOffloading); sb.append("\n");
     sb.append("poolSize: "); sb.append(poolSize); sb.append("\n");
     sb.append("flushBytes: "); sb.append(flushBytes); sb.append("\n");
     sb.append("flushCount: "); sb.append(flushCount); sb.append("\n");
-    sb.append("--------------------------\n");
+    sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();
   }

@@ -22,6 +22,7 @@ import com.google.protobuf.ByteString;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.ServerlessContainerWarmer;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -109,7 +110,8 @@ public final class RuntimeMaster {
                         final ClientRPC clientRPC,
                         final MetricManagerMaster metricManagerMaster,
                         final ServerlessContainerWarmer warmer,
-                        final PlanStateManager planStateManager) {
+                        final PlanStateManager planStateManager,
+                        final EvalConf evalConf) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
@@ -140,7 +142,7 @@ public final class RuntimeMaster {
     this.metricServer = startRestMetricServer();
     this.planStateManager = planStateManager;
     this.warmer = warmer;
-    this.warmer.start();
+    this.warmer.start(evalConf.poolSize);
   }
 
   private Server startRestMetricServer() {

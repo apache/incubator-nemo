@@ -19,8 +19,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.nemo.offloading.common.Constants.POOL_SIZE;
-
 public final class ServerlessContainerWarmer {
   private static final Logger LOG = LoggerFactory.getLogger(ServerlessContainerWarmer.class.getName());
 
@@ -44,9 +42,9 @@ public final class ServerlessContainerWarmer {
       new ClientConfiguration().withMaxConnections(500)).build();
   }
 
-  public void start() {
-    LOG.info("Warm up start: {}", POOL_SIZE);
-    for (int i = 0; i < POOL_SIZE; i++) {
+  public void start(final int poolSize) {
+    LOG.info("Warm up start: {}", poolSize);
+    for (int i = 0; i < poolSize; i++) {
       executorService.submit(() -> {
         // Trigger lambdas
         final InvokeRequest request = new InvokeRequest()
@@ -59,7 +57,7 @@ public final class ServerlessContainerWarmer {
 
     LOG.info("Waiting handshake queue");
     // take
-    for (int i = 0; i < POOL_SIZE; i++) {
+    for (int i = 0; i < poolSize; i++) {
       try {
         //channelPool.add(nemoEventHandler.getHandshakeQueue().take().left());
         final Channel channel = nemoEventHandler.getHandshakeQueue().take().left();
