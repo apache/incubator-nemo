@@ -82,7 +82,6 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
         file.syncDir();
         LOG.info("HY: crail file block created");
       } catch (Exception e1) {
-        LOG.info("HY: crail file block creation might have failed");
         try{
           this.fs = fs;
           this.file = fs.lookup(filePath).get().asFile();
