@@ -202,7 +202,7 @@ public final class Executor {
       final TaskExecutor taskExecutor =
       new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
           metricMessageSender, persistentConnectionToMasterMap, serializerManager, serverlessExecutorProvider,
-        detector);
+        detector, evalConf);
 
       taskExecutorMap.put(taskExecutor, true);
       taskExecutor.execute();
