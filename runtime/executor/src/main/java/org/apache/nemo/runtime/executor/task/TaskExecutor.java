@@ -52,9 +52,7 @@ import org.apache.nemo.runtime.executor.datatransfer.*;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
@@ -124,6 +122,8 @@ public final class TaskExecutor {
 
   private boolean inputBursty = false;
 
+  private final ScheduledExecutorService se = Executors.newSingleThreadScheduledExecutor();
+
   /**
    * Constructor.
    *
@@ -176,7 +176,9 @@ public final class TaskExecutor {
     this.sortedHarnesses = pair.right();
 
     if (evalConf.offloadingdebug) {
-      offloadingRequestQueue.add(true);
+      se.schedule(() -> {
+        offloadingRequestQueue.add(true);
+      }, 10, TimeUnit.SECONDS);
     }
   }
 
