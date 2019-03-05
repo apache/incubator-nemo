@@ -24,6 +24,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.executor.task.MetricCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +54,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   // for logging
   private long inputTimestamp;
+  private final MetricCollector metricCollector;
 
   /**
    * Constructor of the output collector.
@@ -68,18 +70,25 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
-    final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
+    final Map<String, List<OutputWriter>> externalAdditionalOutputs,
+    final MetricCollector metricCollector) {
     this.outputCollectorMap = outputCollectorMap;
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.externalMainOutputs = externalMainOutputs;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
+    this.metricCollector = metricCollector;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
     final String vertexId = irVertex.getId();
+
     vertex.getTransform().onData(output);
+
+    if (vertex.isSink) {
+      metricCollector.processDone(vertex.getId(), inputTimestamp);
+    }
   }
 
   private void emit(final OutputWriter writer, final TimestampAndValue<O> output) {
@@ -103,10 +112,6 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   @Override
   public void emit(final O output) {
     //LOG.info("{} emits {} / timestamp: {}", irVertex.getId(), output, inputTimestamp);
-
-    if (irVertex.isSink) {
-      // metric collection
-    }
 
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       final OperatorVertexOutputCollector oc = outputCollectorMap.get(internalVertex.getNextOperator().getId());

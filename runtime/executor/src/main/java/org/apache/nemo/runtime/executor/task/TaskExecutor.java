@@ -128,6 +128,8 @@ public final class TaskExecutor {
 
   private boolean isFirstEvent = true;
 
+  private final MetricCollector metricCollector;
+
   /**
    * Constructor.
    *
@@ -160,6 +162,7 @@ public final class TaskExecutor {
     this.vertexIdAndOutputCollectorMap = new HashMap<>();
     this.detector = detector;
     this.evalConf = evalConf;
+    this.metricCollector = new MetricCollector();
 
     this.serverlessExecutorProvider = serverlessExecutorProvider;
 
@@ -313,7 +316,7 @@ public final class TaskExecutor {
         outputCollector = new OperatorVertexOutputCollector(
           vertexIdAndOutputCollectorMap,
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
-          externalMainOutputs, externalAdditionalOutputMap);
+          externalMainOutputs, externalAdditionalOutputMap, metricCollector);
 
         vertexIdAndOutputCollectorMap.put(irVertex.getId(), outputCollector);
       }
@@ -429,6 +432,7 @@ public final class TaskExecutor {
     }
     LOG.info("{} started", taskId);
     taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
+
 
     // Phase 1: Consume task-external input data.
     if (!handleDataFetchers(dataFetchers)) {
@@ -572,7 +576,9 @@ public final class TaskExecutor {
       if (isFirstEvent) {
         isFirstEvent = false;
         adjustTime = System.currentTimeMillis() - ((TimestampAndValue) event).timestamp;
+        metricCollector.setAdjustTime(adjustTime);
       }
+
       // Process data element
       if (offloading) {
         // TODO
