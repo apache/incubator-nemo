@@ -25,6 +25,7 @@ public final class MetricCollector {
     final LatencyAndCnt latencyAndCnt = vertexAndLatencySumMap.getOrDefault(vertexId, new LatencyAndCnt());
     latencyAndCnt.latencySum += latency;
     latencyAndCnt.count += 1;
+    vertexAndLatencySumMap.putIfAbsent(vertexId, latencyAndCnt);
 
 
     if (currTime - prevWindowTime >= windowsize) {
