@@ -33,7 +33,7 @@ public final class MetricCollector {
         // logging!
         final LatencyAndCnt lac = vertexAndLatencySumMap.get(vid);
         LOG.info("Avg Latency {}, from vertex {}, processCnt {}",
-          lac.latencySum / lac.count, currTime - prevWindowTime, lac.count);
+          lac.latencySum / lac.count, vid, lac.count);
         lac.latencySum= 0;
         lac.count = 0;
         prevWindowTime = currTime;
