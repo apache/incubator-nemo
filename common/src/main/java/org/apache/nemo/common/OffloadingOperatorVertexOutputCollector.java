@@ -84,8 +84,9 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
   @Override
   public void emit(final O output) {
-    //System.out.print("Operator " + irVertex.getId() + " emit " + output + " to ");
+    LOG.info("Operator " + irVertex.getId() + " emit " + output + " to ");
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      LOG.info(internalVertex.getNextOperator().getId());
       if (internalVertex.getNextOperator().isSink) {
         //System.out.println("Emit to resultCollector in " + irVertex.getId());
         resultCollector.result.add(new Triple<>(

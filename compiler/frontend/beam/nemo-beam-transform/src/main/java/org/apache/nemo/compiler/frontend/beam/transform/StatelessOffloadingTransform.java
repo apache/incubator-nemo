@@ -106,6 +106,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
   // receive batch (list) data
   @Override
   public void onData(final OffloadingDataEvent element) {
+    System.out.println("Received data size: " + element.data.size());
     for (final Pair<String, Object> input : element.data) {
       final String srcId = input.left();
       final Object d = input.right();
