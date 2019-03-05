@@ -33,7 +33,6 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProper
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.plan.PhysicalPlanGenerator;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.compiler.optimizer.policy.TestPolicy;

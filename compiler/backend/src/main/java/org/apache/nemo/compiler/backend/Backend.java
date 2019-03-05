@@ -22,6 +22,9 @@ import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.backend.nemo.NemoBackend;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import java.util.Optional;
+import java.util.function.Function;
+
 /**
  * Interface for backend components.
  * @param <Plan> the physical execution plan to compile the DAG into.
@@ -33,8 +36,9 @@ public interface Backend<Plan> {
    * The method should not modify the IRDAG in any way (i.e., should be idempotent).
    *
    * @param dag the DAG to compile.
+   * @param existingIdFetcher to use when assigning ids.
    * @return the execution plan generated.
    * @throws Exception Exception on the way.
    */
-  Plan compile(IRDAG dag) throws Exception;
+  Plan compile(final IRDAG dag, final Function<Object, Optional<String>> existingIdFetcher ) throws Exception;
 }
