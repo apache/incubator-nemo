@@ -216,7 +216,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
         final OutputStream wrapped =
           DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
         final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
-        LOG.info("Element encoder: {}", encoder);
+        //LOG.info("Element encoder: {}", encoder);
         encoder.encode(element);
         wrapped.close();
 
