@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.compiler.backend.nemo;
 
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -28,19 +27,18 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 
 import java.util.Iterator;
+import java.util.Optional;
 
 import static org.apache.nemo.common.test.EmptyComponents.EMPTY_TRANSFORM;
 import static org.junit.Assert.assertNotEquals;
 
-/**
- * Tests {@link PhysicalPlanGenerator}.
- */
 public final class PhysicalPlanGeneratorTest {
-
   /**
    * Test splitting ScheduleGroups by Pull StageEdges.
    * @throws Exception exceptions on the way
@@ -50,7 +48,7 @@ public final class PhysicalPlanGeneratorTest {
    */
   public void testSplitScheduleGroupByPullStageEdges() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
-    final PhysicalPlanGenerator physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
+    final NemoBackend backend = injector.getInstance(NemoBackend.class);
 
     final IRVertex v0 = newIRVertex(0, 5);
     final IRVertex v1 = newIRVertex(0, 3);
@@ -61,8 +59,8 @@ public final class PhysicalPlanGeneratorTest {
             DataFlowProperty.Value.Pull))
         .buildWithoutSourceSinkCheck());
 
-    final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(irDAG);
-    final Iterator<Stage> stages = stageDAG.getVertices().iterator();
+    final PhysicalPlan physicalPlan = backend.compile(irDAG, (element) -> Optional.empty());
+    final Iterator<Stage> stages = physicalPlan.getStageDAG().getVertices().iterator();
     final Stage s0 = stages.next();
     final Stage s1 = stages.next();
 

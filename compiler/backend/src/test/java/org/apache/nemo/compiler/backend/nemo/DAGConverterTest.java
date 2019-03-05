@@ -35,30 +35,30 @@ import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.compiler.optimizer.policy.TestPolicy;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 
 /**
- * Tests {@link PhysicalPlanGenerator}.
+ * Tests {@link NemoBackend}.
  */
 public final class DAGConverterTest {
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
-  private PhysicalPlanGenerator physicalPlanGenerator;
+  private NemoBackend backend;
 
   @Before
   public void setUp() throws Exception {
     irDAGBuilder = new DAGBuilder<>();
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
-    physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
+    backend = injector.getInstance(NemoBackend.class);
   }
 
   @Test
@@ -77,8 +77,8 @@ public final class DAGConverterTest {
 
     final IRDAG irDAG = new TestPolicy().runCompileTimeOptimization(
         new IRDAG(irDAGBuilder.buildWithoutSourceSinkCheck()), DAG.EMPTY_DAG_DIRECTORY);
-    final DAG<Stage, StageEdge> DAGOfStages = physicalPlanGenerator.stagePartitionIrDAG(irDAG);
-    final DAG<Stage, StageEdge> physicalDAG = physicalPlanGenerator.apply(irDAG);
+    final DAG<Stage, StageEdge> DAGOfStages = backend.stagePartitionIrDAG(irDAG);
+    final DAG<Stage, StageEdge> physicalDAG = backend.compile(irDAG, element -> Optional.empty()).getStageDAG();
 
     // Test DAG of stages
     final List<Stage> sortedDAGOfStages = DAGOfStages.getTopologicalSort();

@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.common.plan;
 
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -29,6 +28,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.test.EmptyComponents;
+import org.apache.nemo.compiler.backend.nemo.NemoBackend;
 import org.apache.nemo.compiler.optimizer.policy.BasicPullPolicy;
 import org.apache.nemo.compiler.optimizer.policy.BasicPushPolicy;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
@@ -37,18 +37,20 @@ import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 
+import java.util.Optional;
+
 /**
  * Generates physical plans for testing purposes.
  */
 public final class TestPlanGenerator {
-  private static final PhysicalPlanGenerator PLAN_GENERATOR;
+  private static final NemoBackend PLAN_GENERATOR;
   private static final String EMPTY_DAG_DIRECTORY = "";
 
   static {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, EMPTY_DAG_DIRECTORY);
     try {
-      PLAN_GENERATOR = injector.getInstance(PhysicalPlanGenerator.class);
+      PLAN_GENERATOR = injector.getInstance(NemoBackend.class);
     } catch (InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -98,8 +100,7 @@ public final class TestPlanGenerator {
   private static PhysicalPlan convertIRToPhysical(final IRDAG irDAG,
                                                   final Policy policy) throws Exception {
     final IRDAG optimized = policy.runCompileTimeOptimization(irDAG, EMPTY_DAG_DIRECTORY);
-    final DAG<Stage, StageEdge> physicalDAG = PLAN_GENERATOR.apply(optimized);
-    return new PhysicalPlan("TestPlan", physicalDAG);
+    return PLAN_GENERATOR.compile(optimized, element -> Optional.empty());
   }
 
   /**

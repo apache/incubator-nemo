@@ -100,7 +100,7 @@ public final class NemoPlanRewriter implements PlanRewriter {
     final IRDAG newIRDAG = nemoOptimizer.optimizeAtRunTime(currentIRDAG, message);
 
     // Re-compile the IRDAG into a physical plan
-    final PhysicalPlan newPhysicalPlan = nemoBackend.compile(newIRDAG);
+    final PhysicalPlan newPhysicalPlan = nemoBackend.compile(newIRDAG, element -> Optional.empty());
 
     // Update the physical plan and return
     final List<Stage> currentStages = currentPhysicalPlan.getStageDAG().getTopologicalSort();

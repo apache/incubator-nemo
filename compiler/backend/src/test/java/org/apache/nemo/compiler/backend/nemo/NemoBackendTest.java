@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.compiler.backend.nemo;
 
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -33,6 +32,8 @@ import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.Optional;
 
 import static org.apache.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 import static org.junit.Assert.assertEquals;
@@ -72,7 +73,7 @@ public final class NemoBackendTest<I, O> {
    */
   @Test
   public void testExecutionPlanGeneration() {
-    final PhysicalPlan executionPlan = nemoBackend.compile(dag);
+    final PhysicalPlan executionPlan = nemoBackend.compile(dag, element -> Optional.empty());
 
     assertEquals(2, executionPlan.getStageDAG().getVertices().size());
     assertEquals(2, executionPlan.getStageDAG().getTopologicalSort().get(0).getIRDAG().getVertices().size());
