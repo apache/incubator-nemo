@@ -22,6 +22,7 @@ import org.apache.nemo.common.InputWatermarkManager;
 import org.apache.nemo.common.MultiInputWatermarkManager;
 import org.apache.nemo.common.SingleInputWatermarkManager;
 import org.apache.nemo.common.WatermarkWithIndex;
+import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -181,7 +182,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
    * Just adds the emitted watermark to the element queue.
    * It receives the watermark from InputWatermarkManager.
    */
-  private final class WatermarkCollector implements OutputCollector {
+  private final class WatermarkCollector extends AbstractOutputCollector {
     @Override
     public void emit(final Object output) {
       throw new IllegalStateException("Should not be called");

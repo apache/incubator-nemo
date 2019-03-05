@@ -24,6 +24,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -71,9 +72,15 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
       } else if (element instanceof Watermark) {
         outputStream.write(0x02);
         outputStream.write(SerializationUtils.serialize((Serializable) element));
-      } else {
+      } else if (element instanceof TimestampAndValue) {
+        final TimestampAndValue tsv = (TimestampAndValue) element;
         outputStream.write(0x00); // this is a data element
-        valueEncoder.encode(element);
+        final DataOutputStream dis = new DataOutputStream(outputStream);
+        dis.writeLong(tsv.timestamp);
+        //LOG.info("Encode {}", tsv.value);
+        valueEncoder.encode((T) tsv.value);
+      } else {
+        throw new RuntimeException("Unknown event type: " + element);
       }
     }
   }

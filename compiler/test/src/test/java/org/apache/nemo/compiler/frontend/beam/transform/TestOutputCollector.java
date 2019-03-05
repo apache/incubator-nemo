@@ -19,6 +19,7 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.reef.io.Tuple;
@@ -30,7 +31,7 @@ import java.util.List;
  * Test output collector that collects data and watermarks.
  * @param <T>
  */
-final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> {
+final class TestOutputCollector<T> extends AbstractOutputCollector<WindowedValue<T>> {
   public final List<WindowedValue<T>> outputs;
   public final List<Tuple<String, WindowedValue<T>>> taggedOutputs;
   public final List<Watermark> watermarks;

@@ -21,6 +21,7 @@ package org.apache.nemo.common;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.eventhandler.OffloadingDataEvent;
 import org.apache.nemo.common.eventhandler.OffloadingResultEvent;
+import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
@@ -43,7 +44,7 @@ import java.util.Map;
  *
  * @param <O> output type.
  */
-public final class OffloadingOperatorVertexOutputCollector<O> implements OutputCollector<O> {
+public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingOperatorVertexOutputCollector.class.getName());
 
   private static final String BUCKET_NAME = "nemo-serverless";

@@ -336,7 +336,18 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
   @Override
   OutputCollector wrapOutputCollector(final OutputCollector oc) {
-    return new OutputCollector() {
+    return new OutputCollector(){
+      long timestamp;
+      @Override
+      public void setTimestamp(long ts) {
+        timestamp = ts;
+      }
+
+      @Override
+      public long getTimestamp() {
+        return timestamp;
+      }
+
       @Override
       public void emit(Object output) {
         LOG.info("Result {}", output);

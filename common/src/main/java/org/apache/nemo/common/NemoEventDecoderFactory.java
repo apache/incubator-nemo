@@ -24,6 +24,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -76,7 +77,12 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
 
       if (isWatermark == 0x00) {
         // this is not a watermark
-        return valueDecoder.decode();
+        final DataInputStream dis = new DataInputStream(inputStream);
+        final long timestamp = dis.readLong();
+        final Object value = valueDecoder.decode();
+        //LOG.info("Decode {}", value);
+        return new TimestampAndValue<>(timestamp, value);
+
       } else if (isWatermark == 0x01) {
         // this is a watermark
         final WatermarkWithIndex watermarkWithIndex =

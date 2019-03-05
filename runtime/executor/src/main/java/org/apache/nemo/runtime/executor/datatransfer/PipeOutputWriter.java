@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.TimestampAndValue;
 import org.apache.nemo.common.WatermarkWithIndex;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -95,7 +96,10 @@ public final class PipeOutputWriter implements OutputWriter {
       doInitialize();
     }
 
-    writeData(element, getPipeToWrite(element), false);
+
+    final TimestampAndValue tis = (TimestampAndValue) element;
+
+    writeData(tis, getPipeToWrite(tis), false);
   }
 
   @Override
@@ -121,6 +125,7 @@ public final class PipeOutputWriter implements OutputWriter {
       doInitialize();
     }
 
+
     pipes.forEach(pipe -> {
       try {
         pipeAndStreamMap.get(pipe).close();
@@ -141,7 +146,8 @@ public final class PipeOutputWriter implements OutputWriter {
     LOG.info("Finish - doInitialize() {}", runtimeEdge);
     pipes.forEach(pipe -> {
       try {
-        pipeAndStreamMap.put(pipe, pipe.newOutputStream());
+        final ByteOutputContext.ByteOutputStream bis = pipe.newOutputStream();
+        pipeAndStreamMap.put(pipe, bis);
       } catch (final IOException e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -149,7 +155,7 @@ public final class PipeOutputWriter implements OutputWriter {
     });
   }
 
-  private List<ByteOutputContext> getPipeToWrite(final Object element) {
+  private List<ByteOutputContext> getPipeToWrite(final TimestampAndValue element) {
     final CommunicationPatternProperty.Value comm =
       (CommunicationPatternProperty.Value) runtimeEdge.getPropertyValue(CommunicationPatternProperty.class).get();
     if (comm.equals(CommunicationPatternProperty.Value.OneToOne)) {
@@ -157,7 +163,7 @@ public final class PipeOutputWriter implements OutputWriter {
     } else if (comm.equals(CommunicationPatternProperty.Value.BroadCast)) {
       return pipes;
     } else {
-      return Collections.singletonList(pipes.get((int) partitioner.partition(element)));
+      return Collections.singletonList(pipes.get((int) partitioner.partition(element.value)));
     }
   }
 }

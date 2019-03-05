@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.NextIntraTaskOperatorInfo;
+import org.apache.nemo.common.TimestampAndValue;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
@@ -43,11 +44,15 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   private static final String BUCKET_NAME = "nemo-serverless";
 
+  private final Map<String, OperatorVertexOutputCollector> outputCollectorMap;
   private final IRVertex irVertex;
   private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
   private final List<OutputWriter> externalMainOutputs;
   private final Map<String, List<OutputWriter>> externalAdditionalOutputs;
+
+  // for logging
+  private long inputTimestamp;
 
   /**
    * Constructor of the output collector.
@@ -58,70 +63,59 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
    * @param externalAdditionalOutputs external additional outputs
    */
   public OperatorVertexOutputCollector(
+    final Map<String, OperatorVertexOutputCollector> outputCollectorMap,
     final IRVertex irVertex,
     final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
     final Map<String, List<OutputWriter>> externalAdditionalOutputs) {
+    this.outputCollectorMap = outputCollectorMap;
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.externalMainOutputs = externalMainOutputs;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
-
-    // TODO: remove
-    // query 7
-    /*
-    if (irVertex.getId().equals("vertex15")) {
-      sideInputOutputCollector = new SideInputLambdaCollector(
-        irVertex, storageObjectFactory.sideInputProcessor(serializerManager,
-        outgoingEdges.get(0).getId()));
-    }
-
-    if (irVertex.getId().equals("vertex6")) {
-      mainInputLambdaCollector =
-        new MainInputLambdaCollector(irVertex, outgoingEdges,
-          serializerManager, storageObjectFactory);
-    }
-    */
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
-
     final String vertexId = irVertex.getId();
     vertex.getTransform().onData(output);
   }
 
-  private void emit(final OutputWriter writer, final O output) {
+  private void emit(final OutputWriter writer, final TimestampAndValue<O> output) {
+    // metric collection
+    //LOG.info("Write {} to writer {}", output, writer);
 
     final String vertexId = irVertex.getId();
-//    // TODO: remove
-    /*
-    // QUERY7
-    if (vertexId.equals("vertex15")) {
-      System.out.println("Start to send side input!: " + System.currentTimeMillis() + ", output: " +
-        ((WindowedValue) output).getWindows().toString());
-      sideInputOutputCollector.emit(output);
-      return;
-    } else if (vertexId.equals("vertex6")) {
-      mainInputLambdaCollector.emit(output);
-      return;
-    }
-    */
-
     writer.write(output);
   }
 
   @Override
+  public void setTimestamp(long ts) {
+    inputTimestamp = ts;
+  }
+
+  @Override
+  public long getTimestamp() {
+    return inputTimestamp;
+  }
+
+  @Override
   public void emit(final O output) {
-    //LOG.info("{} emits {}", irVertex.getId(), output);
+    //LOG.info("{} emits {} / timestamp: {}", irVertex.getId(), output, inputTimestamp);
+
+    if (irVertex.isSink) {
+      // metric collection
+    }
 
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      final OperatorVertexOutputCollector oc = outputCollectorMap.get(internalVertex.getNextOperator().getId());
+      oc.inputTimestamp = inputTimestamp;
       emit(internalVertex.getNextOperator(), output);
     }
 
     for (final OutputWriter externalWriter : externalMainOutputs) {
-      emit(externalWriter, output);
+      emit(externalWriter, new TimestampAndValue<>(inputTimestamp, output));
     }
   }
 
@@ -131,6 +125,8 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
+        final OperatorVertexOutputCollector oc = outputCollectorMap.get(internalVertex.getNextOperator().getId());
+        oc.inputTimestamp = inputTimestamp;
         emit(internalVertex.getNextOperator(), (O) output);
       }
     }
@@ -138,7 +134,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
     if (externalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
-        emit(externalWriter, (O) output);
+        emit(externalWriter, new TimestampAndValue<>(inputTimestamp, (O) output));
       }
     }
   }

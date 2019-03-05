@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -38,7 +39,7 @@ import java.util.Map;
  *
  * @param <O> output type.
  */
-public final class DynOptDataOutputCollector<O> implements OutputCollector<O> {
+public final class DynOptDataOutputCollector<O> extends AbstractOutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(DynOptDataOutputCollector.class.getName());
   private static final String NULL_KEY = "NULL";
 

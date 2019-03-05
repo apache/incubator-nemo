@@ -23,6 +23,7 @@ import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.nemo.common.TimestampAndValue;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
@@ -135,7 +136,9 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
       if (isCurrentAvailable) {
         final O elem = reader.getCurrent();
-        return WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp());
+        final Instant currTs = reader.getCurrentTimestamp();
+        return new TimestampAndValue<>(currTs.getMillis(),
+          WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp()));
       } else {
         throw new NoSuchElementException();
       }

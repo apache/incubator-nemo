@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.InputWatermarkManager;
+import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -29,11 +30,12 @@ import org.slf4j.LoggerFactory;
  * This collector receives data from DataFetcher and forwards it to the next operator.
  * @param <O> output type.
  */
-public final class DataFetcherOutputCollector<O> implements OutputCollector<O> {
+public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(DataFetcherOutputCollector.class.getName());
   private final OperatorVertex nextOperatorVertex;
   private final int edgeIndex;
   private final InputWatermarkManager watermarkManager;
+  private final OutputCollector nextOutputCollector;
 
   /**
    * It forwards output to the next operator.
@@ -42,15 +44,18 @@ public final class DataFetcherOutputCollector<O> implements OutputCollector<O> {
    * @param watermarkManager watermark manager
    */
   public DataFetcherOutputCollector(final OperatorVertex nextOperatorVertex,
+                                    final OutputCollector nextOutputCollector,
                                     final int edgeIndex,
                                     final InputWatermarkManager watermarkManager) {
     this.nextOperatorVertex = nextOperatorVertex;
+    this.nextOutputCollector = nextOutputCollector;
     this.edgeIndex = edgeIndex;
     this.watermarkManager = watermarkManager;
   }
 
   @Override
   public void emit(final O output) {
+    nextOutputCollector.setTimestamp(inputTimestamp);
     nextOperatorVertex.getTransform().onData(output);
   }
 

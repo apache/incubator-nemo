@@ -124,6 +124,10 @@ public final class TaskExecutor {
 
   private final ScheduledExecutorService se = Executors.newSingleThreadScheduledExecutor();
 
+  private long adjustTime;
+
+  private boolean isFirstEvent = true;
+
   /**
    * Constructor.
    *
@@ -307,6 +311,7 @@ public final class TaskExecutor {
           irVertex, persistentConnectionToMasterMap, this);
       } else {
         outputCollector = new OperatorVertexOutputCollector(
+          vertexIdAndOutputCollectorMap,
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
           externalMainOutputs, externalAdditionalOutputMap);
 
@@ -356,7 +361,8 @@ public final class TaskExecutor {
             final InputWatermarkManager watermarkManager = operatorWatermarkManagerMap.get(irVertex);
             final InputReader parentTaskReader = pair.right();
             final OutputCollector dataFetcherOutputCollector =
-              new DataFetcherOutputCollector((OperatorVertex) irVertex, edgeIndex, watermarkManager);
+              new DataFetcherOutputCollector((OperatorVertex) irVertex,
+                outputCollector, edgeIndex, watermarkManager);
 
             if (parentTaskReader instanceof PipeInputReader) {
               dataFetcherList.add(
@@ -388,8 +394,9 @@ public final class TaskExecutor {
   /**
    * Process a data element down the DAG dependency.
    */
-  private void processElement(final OutputCollector outputCollector, final Object dataElement) {
-    outputCollector.emit(dataElement);
+  private void processElement(final OutputCollector outputCollector, final TimestampAndValue dataElement) {
+    outputCollector.setTimestamp(dataElement.timestamp);
+    outputCollector.emit(dataElement.value);
   }
 
   private void processWatermark(final OutputCollector outputCollector,
@@ -507,6 +514,7 @@ public final class TaskExecutor {
   private void onEventFromDataFetcher(final Object event,
                                       final DataFetcher dataFetcher) {
 
+
     if (!offloadingRequestQueue.isEmpty()) {
       offloading = offloadingRequestQueue.poll();
       if (offloading) {
@@ -559,13 +567,21 @@ public final class TaskExecutor {
       } else {
         processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
       }
-    } else {
+    } else if (event instanceof TimestampAndValue) {
+
+      if (isFirstEvent) {
+        isFirstEvent = false;
+        adjustTime = System.currentTimeMillis() - ((TimestampAndValue) event).timestamp;
+      }
       // Process data element
       if (offloading) {
+        // TODO
         sendToServerless(event, dataFetcher);
       } else {
-        processElement(dataFetcher.getOutputCollector(), event);
+        processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
       }
+    } else {
+      throw new RuntimeException("Invalid type of event: " + event);
     }
   }
 
