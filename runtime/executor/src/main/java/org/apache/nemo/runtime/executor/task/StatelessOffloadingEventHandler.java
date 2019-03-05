@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.nemo.common.TimestampAndValue;
 import org.apache.nemo.common.Triple;
 import org.apache.nemo.common.eventhandler.OffloadingResultEvent;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -29,8 +30,10 @@ public final class StatelessOffloadingEventHandler implements EventHandler<Offlo
 
       if (elem instanceof Watermark) {
         collector.emitWatermark((Watermark) elem);
-      } else {
-        collector.emit(elem);
+      } else if (elem instanceof TimestampAndValue) {
+        final TimestampAndValue tsv = (TimestampAndValue) elem;
+        collector.setTimestamp(tsv.timestamp);
+        collector.emit(tsv.value);
       }
     }
   }

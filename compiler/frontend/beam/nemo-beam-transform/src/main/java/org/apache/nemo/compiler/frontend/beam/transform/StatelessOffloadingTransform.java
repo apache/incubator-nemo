@@ -23,14 +23,14 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
 
   // key: data fetcher id, value: head operator
-  private final Map<String, OffloadingOperatorVertexOutputCollector> srcOutputCollectorMap;
+  private final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
 
   private transient OffloadingResultCollector resultCollector;
 
 
   public StatelessOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
     this.irDag = irDag;
-    this.srcOutputCollectorMap = new HashMap<>();
+    this.outputCollectorMap = new HashMap<>();
   }
 
   @Override
@@ -90,12 +90,9 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
           + ", isSink: " + isSink);
         OffloadingOperatorVertexOutputCollector outputCollector = new OffloadingOperatorVertexOutputCollector(
           irVertex, irDag.getOutgoingEdgesOf(irVertex).get(0), /* just use first edge for encoding */
-          internalMainOutputs, internalAdditionalOutputMap, resultCollector);
+          internalMainOutputs, internalAdditionalOutputMap, resultCollector, outputCollectorMap);
 
-        // add source
-        if (irDag.getRootVertices().contains(irVertex)) {
-          srcOutputCollectorMap.put(irVertex.getId(), outputCollector);
-        }
+        outputCollectorMap.put(irVertex.getId(), outputCollector);
 
         final Transform transform;
         if (irVertex instanceof OperatorVertex) {
@@ -112,11 +109,13 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
     for (final Pair<String, Object> input : element.data) {
       final String srcId = input.left();
       final Object d = input.right();
-      final OffloadingOperatorVertexOutputCollector outputCollector = srcOutputCollectorMap.get(srcId);
+      final OffloadingOperatorVertexOutputCollector outputCollector = outputCollectorMap.get(srcId);
       if (d instanceof Watermark) {
         outputCollector.emitWatermark((Watermark) d);
       } else {
-        outputCollector.emit(d);
+        final TimestampAndValue tsv = (TimestampAndValue) d;
+        outputCollector.setTimestamp(tsv.timestamp);
+        outputCollector.emit(tsv.value);
       }
     }
 

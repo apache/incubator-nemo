@@ -55,6 +55,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
   private final OffloadingResultCollector resultCollector;
   private final Edge edge;
+  private final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
 
   /**
    * Constructor of the output collector.
@@ -67,12 +68,14 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
     final Edge edge,
     final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
-    final OffloadingResultCollector resultCollector) {
+    final OffloadingResultCollector resultCollector,
+    final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap) {
     this.irVertex = irVertex;
     this.edge = edge;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.resultCollector = resultCollector;
+    this.outputCollectorMap = outputCollectorMap;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -88,9 +91,12 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
         resultCollector.result.add(new Triple<>(
           irVertex.getId(),
           edge.getId(),
-          output));
+          new TimestampAndValue(inputTimestamp, output)));
       } else {
         //System.out.print(internalVertex.getNextOperator().getId() + ", ");
+        final OffloadingOperatorVertexOutputCollector oc =
+          outputCollectorMap.get(internalVertex.getNextOperator().getId());
+        oc.inputTimestamp = inputTimestamp;
         emit(internalVertex.getNextOperator(), output);
       }
     }
@@ -102,7 +108,17 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-        emit(internalVertex.getNextOperator(), (O) output);
+        if (internalVertex.getNextOperator().isSink) {
+          //System.out.println("Emit to resultCollector in " + irVertex.getId());
+          resultCollector.result.add(new Triple<>(
+            irVertex.getId(),
+            edge.getId(),
+            new TimestampAndValue(inputTimestamp, output)));
+        } else {
+          //System.out.print(internalVertex.getNextOperator().getId() + ", ");
+          outputCollectorMap.get(internalVertex.getNextOperator().getId()).inputTimestamp = inputTimestamp;
+          emit(internalVertex.getNextOperator(), (O) output);
+        }
       }
     } else {
       // TODO: do sth here !! this should be sent to the vm
