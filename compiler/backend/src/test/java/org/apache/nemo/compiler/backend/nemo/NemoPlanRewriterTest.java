@@ -20,19 +20,21 @@ package org.apache.nemo.compiler.backend.nemo;
 
 import com.google.common.collect.Sets;
 import org.apache.nemo.common.Util;
+import org.apache.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.MessageIdEdgeProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.common.test.EmptyComponents;
@@ -53,10 +55,12 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -154,15 +158,34 @@ public final class NemoPlanRewriterTest {
         .forEach(e -> irdag.insert(new StreamVertex(), e)));
       return irdag;
     });
-
     final PhysicalPlan newPlan = planRewriter.rewrite(oldPlan, MESSAGE_ID);
     assertSameIdsForNonUtilityStages(oldPlan, newPlan);
   }
 
   @Test
   public void testMessageBarrierVertex() {
-    // The ids must be exactly the same
-    // except the newly inserted vertices
+    final MessageBarrierVertex mb = new MessageBarrierVertex((BiFunction & Serializable) (l, r) -> null);
+    final MessageAggregatorVertex ma =
+      new MessageAggregatorVertex(new ArrayList<>(), (BiFunction & Serializable)(l, r) -> null);
+
+    final PlanRewriter planRewriter = getPlanRewriter(irdag -> {
+      irdag.topologicalDo(v -> irdag
+        .getIncomingEdgesOf(v)
+        .stream()
+        .filter(e -> !CommunicationPatternProperty.Value.OneToOne
+          .equals(e.getPropertyValue(CommunicationPatternProperty.class).get()))
+        .forEach(e -> irdag.insert(
+          mb,
+          ma,
+          EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY),
+          DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY),
+          Sets.newHashSet(e),
+          Sets.newHashSet(e))));
+      return irdag;
+    });
+
+    final PhysicalPlan newPlan = planRewriter.rewrite(oldPlan, MESSAGE_ID);
+    assertSameIdsForNonUtilityStages(oldPlan, newPlan);
   }
 
   @Test
@@ -186,12 +209,6 @@ public final class NemoPlanRewriterTest {
       .filter(this::isStageWithoutUtilityIRVertex)
       .map(Vertex::getId)
       .collect(Collectors.toSet());
-
-    /*
-    LOG.info("ref {}", referencePlan.getStageDAG().getVertices());
-    LOG.info("without {}", newPlan.getStageDAG().getVertices());
-    */
-
     assertTrue(getOrderedStageIds(referencePlan).containsAll(stagesIdsWithoutStreamVertex));
 
     // The ids of stage edges unrelated to the StreamVertex should remain the same
@@ -199,12 +216,6 @@ public final class NemoPlanRewriterTest {
       .filter(this::isStageEdgeWithoutUtilityIRVertex)
       .map(Edge::getId)
       .collect(Collectors.toSet());
-
-    /*
-    LOG.info("edge ref {}", getOrderedStageEdgeIds(referencePlan));
-    LOG.info("edge without {}", stageEdgeIdsWithoutStreamVertex);
-    */
-
     assertTrue(getOrderedStageEdgeIds(referencePlan).containsAll(stageEdgeIdsWithoutStreamVertex));
   }
 

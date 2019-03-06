@@ -40,5 +40,5 @@ public interface Backend<Plan> {
    * @return the execution plan generated.
    * @throws Exception Exception on the way.
    */
-  Plan compile(final IRDAG dag, final Function<Object, Optional<String>> existingIdFetcher ) throws Exception;
+  Plan compile(final IRDAG dag, final Function<Object, Optional<String>> existingIdFetcher) throws Exception;
 }
