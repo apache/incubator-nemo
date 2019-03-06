@@ -206,15 +206,6 @@ public final class EmptyComponents {
       this.minNumReadables = minNumReadables;
     }
 
-    /**
-     * Copy Constructor for EmptySourceVertex.
-     *
-     * @param that the source object for copying
-     */
-    public EmptySourceVertex(final EmptySourceVertex that) {
-      this.name = new String(that.name);
-    }
-
     @Override
     public String toString() {
       final StringBuilder sb = new StringBuilder();
@@ -251,7 +242,7 @@ public final class EmptyComponents {
 
     @Override
     public EmptySourceVertex<T> getClone() {
-      return new EmptySourceVertex<>(this);
+      return new EmptySourceVertex<>(this.name, this.minNumReadables);
     }
   }
 

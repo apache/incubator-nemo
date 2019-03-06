@@ -30,8 +30,10 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.MessageIdEdgeProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.compiler.optimizer.NemoOptimizer;
@@ -66,6 +68,12 @@ import static org.mockito.Mockito.when;
 
 /**
  * Test NemoPlanRewriter.
+ *
+ * Specifically, check that re-written physical plans maintain Stage/StageEdge ids of the original physical plans
+ * appropriately.
+ *
+ * i.e., We want to ensure that as much ids are unchanged as possible, so that in the distributed runtime we reuse
+ * existing intermediate results and minimize re-executing computations.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({NemoBackend.class, NemoOptimizer.class})
@@ -147,46 +155,66 @@ public final class NemoPlanRewriterTest {
       return irdag;
     });
 
-    // The ids of stages unrelated to the StreamVertex should remain the same
     final PhysicalPlan newPlan = planRewriter.rewrite(oldPlan, MESSAGE_ID);
-    final Set<String> stagesIdsWithoutStreamVertex = newPlan.getStageDAG().getVertices().stream()
-      .filter(this::isStageWithoutUtilityIRVertex)
-      .map(Vertex::getId)
-      .collect(Collectors.toSet());
-    assertTrue(getOrderedStageIds(oldPlan).containsAll(stagesIdsWithoutStreamVertex));
-
-    // The ids of stage edges unrelated to the StreamVertex should remain the same
-    final Set<String> stageEdgeIdsWithoutStreamVertex = newPlan.getStageDAG().getEdges().stream()
-      .filter(this::isStageEdgeWithoutUtilityIRVertex)
-      .map(Edge::getId)
-      .collect(Collectors.toSet());
-    assertTrue(getOrderedStageEdgeIds(oldPlan).containsAll(stageEdgeIdsWithoutStreamVertex));
+    assertSameIdsForNonUtilityStages(oldPlan, newPlan);
   }
 
-  /*
   @Test
   public void testMessageBarrierVertex() {
-    final PlanRewriter planRewriter = getPlanRewriter(irdag -> )
     // The ids must be exactly the same
     // except the newly inserted vertices
   }
 
   @Test
   public void testSamplingVertex() {
-    final PlanRewriter planRewriter = getPlanRewriter(irdag -> )
-    // The ids must be exactly the same
-    // except the newly inserted vertices
+    final PlanRewriter planRewriter = getPlanRewriter(irdag -> {
+      irdag.getVertices().stream()
+        .filter(v -> v instanceof SourceVertex)
+        .forEach(v -> irdag.insert(Sets.newHashSet(new SamplingVertex(v, 0.1f)), Sets.newHashSet(v)));
+      return irdag;
+    });
+
+    final PhysicalPlan newPlan = planRewriter.rewrite(oldPlan, MESSAGE_ID);
+    assertSameIdsForNonUtilityStages(oldPlan, newPlan);
   }
-  */
 
   //////////////////////////////////////////// PRIVATE HELPER METHODS
 
+  private void assertSameIdsForNonUtilityStages(final PhysicalPlan referencePlan, final PhysicalPlan newPlan) {
+    // The ids of stages unrelated to the StreamVertex should remain the same
+    final Set<String> stagesIdsWithoutStreamVertex = newPlan.getStageDAG().getVertices().stream()
+      .filter(this::isStageWithoutUtilityIRVertex)
+      .map(Vertex::getId)
+      .collect(Collectors.toSet());
+
+    /*
+    LOG.info("ref {}", referencePlan.getStageDAG().getVertices());
+    LOG.info("without {}", newPlan.getStageDAG().getVertices());
+    */
+
+    assertTrue(getOrderedStageIds(referencePlan).containsAll(stagesIdsWithoutStreamVertex));
+
+    // The ids of stage edges unrelated to the StreamVertex should remain the same
+    final Set<String> stageEdgeIdsWithoutStreamVertex = newPlan.getStageDAG().getEdges().stream()
+      .filter(this::isStageEdgeWithoutUtilityIRVertex)
+      .map(Edge::getId)
+      .collect(Collectors.toSet());
+
+    /*
+    LOG.info("edge ref {}", getOrderedStageEdgeIds(referencePlan));
+    LOG.info("edge without {}", stageEdgeIdsWithoutStreamVertex);
+    */
+
+    assertTrue(getOrderedStageEdgeIds(referencePlan).containsAll(stageEdgeIdsWithoutStreamVertex));
+  }
+
   private boolean isStageWithoutUtilityIRVertex(final Stage stage) {
-    return stage.getIRDAG().getVertices().stream().noneMatch(Util::isUtilityVertex);
+    return stage.getTaskIndices().size() == stage.getParallelism() // no explicit SamplingVertex in a Stage
+      && stage.getIRDAG().getVertices().stream().noneMatch(Util::isUtilityVertex);
   }
 
   private boolean isStageEdgeWithoutUtilityIRVertex(final StageEdge stageEdge) {
-    return !Util.isUtilityVertex(stageEdge.getSrcIRVertex()) && !Util.isUtilityVertex(stageEdge.getDstIRVertex());
+    return isStageWithoutUtilityIRVertex(stageEdge.getSrc()) && isStageWithoutUtilityIRVertex(stageEdge.getDst());
   }
 
   private PlanRewriter getPlanRewriter(final Function<IRDAG, IRDAG> irRewriteFunction) {
