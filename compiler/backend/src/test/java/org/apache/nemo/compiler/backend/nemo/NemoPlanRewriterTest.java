@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.compiler.backend.nemo;
 
+import com.google.common.collect.Sets;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.Edge;
@@ -94,9 +95,10 @@ public final class NemoPlanRewriterTest {
     final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v2, v3);
 
     v1.setProperty(ParallelismProperty.of(2));
-    v2.setProperty(ParallelismProperty.of(3));
-    e1.setProperty(MessageIdEdgeProperty.of(MESSAGE_ID));
-    e1.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    v2.setProperty(ParallelismProperty.of(2));
+    v3.setProperty(ParallelismProperty.of(3));
+    e1.setProperty(MessageIdEdgeProperty.of(Sets.newHashSet(MESSAGE_ID)));
+    e1.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
     e2.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
 
     dagBuilder.addVertex(v1);

@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
 
 /**
@@ -77,7 +78,7 @@ public final class UserApplicationRunner {
       final IRDAG dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
       final IRDAG optimizedDAG = optimizer.optimizeAtCompileTime(dag);
       ((NemoPlanRewriter) planRewriter).setIRDAG(optimizedDAG);
-      final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
+      final PhysicalPlan physicalPlan = backend.compile(optimizedDAG, element -> Optional.empty());
       LOG.info("##### Nemo Compiler Finish #####");
 
       // Execute!

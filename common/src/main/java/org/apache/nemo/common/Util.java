@@ -165,11 +165,4 @@ public final class Util {
   public static String stringifyIREdgeIds(final Collection<IREdge> edges) {
     return edges.stream().map(IREdge::getId).sorted().collect(Collectors.toList()).toString();
   }
-
-  public static boolean isUtilityVertex(final IRVertex v) {
-    return v instanceof SamplingVertex
-      || v instanceof MessageAggregatorVertex
-      || v instanceof MessageBarrierVertex
-      || v instanceof StreamVertex;
-  }
 }
