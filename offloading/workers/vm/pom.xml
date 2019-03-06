@@ -46,6 +46,7 @@
       <version>4.1.25.Final</version>
     </dependency>
 
+    <!--
     <dependency>
       <groupId>org.apache.nemo</groupId>
       <artifactId>nemo-common</artifactId>
@@ -57,6 +58,7 @@
       <artifactId>nemo-compiler-frontend-beam</artifactId>
       <version>0.2-SNAPSHOT</version>
     </dependency>
+    !-->
 
     <dependency>
       <groupId>org.apache.beam</groupId>
