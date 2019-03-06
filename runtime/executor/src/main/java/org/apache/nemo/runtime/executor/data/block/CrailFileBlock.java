@@ -204,13 +204,13 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
           fileStream.seek(0);
           for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
               final K key = partitionMetadata.getKey();
+              LOG.info("HY: metadata: {}", partitionMetadata.toString());
+              LOG.info("HY: keyrange: {}", keyRange.toString());
+              LOG.info("HY: key: {}", key.toString());
               if (keyRange.includes(key)) {
                 // The key value of this partition is in the range.
                 final byte[] partitionBytes = new byte[partitionMetadata.getPartitionSize()];
-                int test;
-                test = fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
-                LOG.info("HY: test value {}",test);
-                //LOG.info("HY: partition length: {}", partitionBytes.length); //no use. size is fixed when created
+                fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
                 partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
               } else {
                 // Have to skip this partition.
@@ -227,18 +227,6 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                   new ByteArrayInputStream(partitionKeyBytes.right()));
           deserializedPartitions.add(deserializePartition);
         }
-        LOG.info("HY: deserializedPartitions size: {}",deserializedPartitions.size());
-        long numSerializedBytes=0;
-        long numEncodedBytes=0;
-        for (final NonSerializedPartition partition : deserializedPartitions) {
-          try {
-            numSerializedBytes += partition.getNumSerializedBytes();
-            numEncodedBytes += partition.getNumEncodedBytes();
-          }catch(Exception e1){
-            e1.printStackTrace();
-          }
-        }
-        LOG.info("HY: numSerializedBytes: {}, numEncodedBytes: {}", numSerializedBytes, numEncodedBytes);
       } catch (final IOException e) {
         throw new BlockFetchException(e);
       }
