@@ -48,9 +48,9 @@ public final class MRJava {
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testSparkWordCount() throws Exception {
-    final String inputFileName = "/inputs/test_input_wordcount_spark";
-    final String outputFileName = "test_output_wordcount_spark";
-    final String expectedOutputFilename = "/outputs/expected_output_wordcount_spark";
+    final String inputFileName = "/inputs/test_input_spark_wordcount";
+    final String outputFileName = "test_output_spark_wordcount";
+    final String expectedOutputFilename = "/outputs/expected_output_spark_wordcount";
     final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
     final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
@@ -70,7 +70,7 @@ public final class MRJava {
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testSparkWordAndLineCount() throws Exception {
-    final String inputFileName = "/inputs/test_input_wordcount_spark";
+    final String inputFileName = "/inputs/test_input_spark_wordcount";
     final String outputFileName = "test_output_word_and_line_count";
     final String expectedOutputFilename = "/outputs/expected_output_word_and_line_count";
     final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;

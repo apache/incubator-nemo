@@ -29,6 +29,7 @@ import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.MessageBarrierTransform;
 import org.apache.nemo.compiler.CompilerTestUtil;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -89,7 +90,7 @@ public class SkewCompositePassTest {
             .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get())))
       .count();
 
-    final IRDAG processedDAG = new SkewCompositePass().apply(mrDAG);
+    final IRDAG processedDAG = new SkewCompositePass().apply(new DefaultParallelismPass().apply(mrDAG));
     assertEquals(originalVerticesNum + numOfShuffleEdges * 2, processedDAG.getVertices().size());
 
     processedDAG.filterVertices(v -> v instanceof OperatorVertex

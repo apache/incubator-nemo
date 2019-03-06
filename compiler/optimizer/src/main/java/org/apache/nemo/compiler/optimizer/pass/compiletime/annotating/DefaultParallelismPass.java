@@ -27,6 +27,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Optimization pass for tagging parallelism execution property.
@@ -69,9 +70,9 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           // After that, we set the parallelism as the number of split readers.
           // (It can be more/less than the desired value.)
           final SourceVertex sourceVertex = (SourceVertex) vertex;
-          final Integer originalParallelism = vertex.getPropertyValue(ParallelismProperty.class).get();
+          final Optional<Integer> originalParallelism = vertex.getPropertyValue(ParallelismProperty.class);
           // We manipulate them if it is set as default value of 1.
-          if (originalParallelism.equals(1)) {
+          if (!originalParallelism.isPresent()) {
             vertex.setProperty(ParallelismProperty.of(
                 sourceVertex.getReadables(desiredSourceParallelism).size()));
           }

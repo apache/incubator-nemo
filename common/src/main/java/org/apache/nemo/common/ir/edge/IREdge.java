@@ -139,17 +139,4 @@ public final class IREdge extends Edge<IRVertex> {
     node.set("executionProperties", executionProperties.asJsonNode());
     return node;
   }
-
-  /////////// For saving original EPs (e.g., save original encoders/decoders of StreamVertex edges)
-
-  private final Map<Class, EdgeExecutionProperty> snapshot = new HashMap<>();
-
-  public void setPropertySnapshot() {
-    snapshot.clear();
-    executionProperties.forEachProperties(p -> snapshot.put(p.getClass(), p));
-  }
-
-  public Map<Class, EdgeExecutionProperty> getPropertySnapshot() {
-    return snapshot;
-  }
 }

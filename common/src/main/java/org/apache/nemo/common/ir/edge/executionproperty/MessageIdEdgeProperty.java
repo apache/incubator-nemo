@@ -20,15 +20,17 @@ package org.apache.nemo.common.ir.edge.executionproperty;
 
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
+import java.util.HashSet;
+
 /**
  * Vertices and edges with the same MessageId are subject to the same run-time optimization.
  */
-public final class MessageIdEdgeProperty extends EdgeExecutionProperty<Integer> {
+public final class MessageIdEdgeProperty extends EdgeExecutionProperty<HashSet<Integer>> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private MessageIdEdgeProperty(final Integer value) {
+  private MessageIdEdgeProperty(final HashSet<Integer> value) {
     super(value);
   }
 
@@ -37,7 +39,7 @@ public final class MessageIdEdgeProperty extends EdgeExecutionProperty<Integer> 
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static MessageIdEdgeProperty of(final Integer value) {
+  public static MessageIdEdgeProperty of(final HashSet<Integer> value) {
     return new MessageIdEdgeProperty(value);
   }
 }

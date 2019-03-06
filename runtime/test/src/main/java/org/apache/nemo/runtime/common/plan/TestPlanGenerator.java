@@ -134,16 +134,16 @@ public final class TestPlanGenerator {
     v5.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
     dagBuilder.addVertex(v5);
 
-    final IREdge e1 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v1, v2);
+    final IREdge e1 = EmptyComponents.newDummyShuffleEdge(v1, v2);
     dagBuilder.connectVertices(e1);
 
-    final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v3, v2);
+    final IREdge e2 = EmptyComponents.newDummyShuffleEdge(v3, v2);
     dagBuilder.connectVertices(e2);
 
-    final IREdge e3 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v2, v4);
+    final IREdge e3 = EmptyComponents.newDummyShuffleEdge(v2, v4);
     dagBuilder.connectVertices(e3);
 
-    final IREdge e4 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v4, v5);
+    final IREdge e4 = EmptyComponents.newDummyShuffleEdge(v4, v5);
     dagBuilder.connectVertices(e4);
 
     return new IRDAG(dagBuilder.buildWithoutSourceSinkCheck());
@@ -180,7 +180,7 @@ public final class TestPlanGenerator {
     }
     dagBuilder.addVertex(v3);
 
-    final IREdge e1 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v1, v2);
+    final IREdge e1 = EmptyComponents.newDummyShuffleEdge(v1, v2);
     dagBuilder.connectVertices(e1);
 
     final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v2, v3);

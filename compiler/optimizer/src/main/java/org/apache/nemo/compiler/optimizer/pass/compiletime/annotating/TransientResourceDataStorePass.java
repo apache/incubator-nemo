@@ -20,12 +20,12 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Transient resource pass for tagging edges with DataStore ExecutionProperty.
@@ -46,12 +46,12 @@ public final class TransientResourceDataStorePass extends AnnotatingPass {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
-          if (fromTransientToReserved(edge) || fromReservedToTransient(edge)) {
-            edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
-          } else if (CommunicationPatternProperty.Value.OneToOne
-              .equals(edge.getPropertyValue(CommunicationPatternProperty.class).get())) {
-            edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
-          } else {
+          if (fromTransientToReserved(edge)) {
+            if (!Optional.of(DataStoreProperty.Value.SerializedMemoryStore)
+              .equals(edge.getPropertyValue(DataStoreProperty.class))) {
+              edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+            }
+          } else if (fromReservedToTransient(edge)) {
             edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           }
         });

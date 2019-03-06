@@ -40,9 +40,7 @@ public final class DefaultCompositePass extends CompositePass {
         new DefaultDataPersistencePass(),
         new DefaultScheduleGroupPass(),
         new CompressionPass(),
-        new DecompressionPass(),
         new ResourceLocalityPass(),
-        new ResourceSitePass(),
         new ResourceSlotPass()
     ));
   }

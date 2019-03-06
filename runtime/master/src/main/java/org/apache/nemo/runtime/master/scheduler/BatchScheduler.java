@@ -165,10 +165,9 @@ public final class BatchScheduler implements Scheduler {
   private int getMessageId(final Set<StageEdge> stageEdges) {
     final Set<Integer> messageIds = stageEdges.stream()
       .map(edge -> edge.getExecutionProperties().get(MessageIdEdgeProperty.class).get())
-      .collect(Collectors.toSet());
-    if (messageIds.size() != 1) {
-      throw new IllegalArgumentException(stageEdges.toString());
-    }
+      .findFirst().get();
+    // Here we simply use findFirst() for now...
+    // TODO #345: Simplify insert(MessageBarrierVertex)
     return messageIds.iterator().next();
   }
 
@@ -501,9 +500,9 @@ public final class BatchScheduler implements Scheduler {
     for (final Stage stage : stageDag.getVertices()) {
       final Set<StageEdge> targetEdgesFound = stageDag.getOutgoingEdgesOf(stage).stream()
         .filter(candidateEdge -> {
-          final Optional<Integer> candidateMCId =
+          final Optional<HashSet<Integer>> candidateMCId =
             candidateEdge.getPropertyValue(MessageIdEdgeProperty.class);
-          return candidateMCId.isPresent() && candidateMCId.get().equals(messageId);
+          return candidateMCId.isPresent() && candidateMCId.get().contains(messageId);
         })
         .collect(Collectors.toSet());
       targetEdges.addAll(targetEdgesFound);

@@ -23,10 +23,20 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 /**
  * This property decides the number of parallel tasks to use for executing the corresponding IRVertex.
  *
- * IRDAG integrity checks by Nemo include:
- * - A larger number of parallelism of a parent IRVertex connected with an one-to-one IREdge.
- * - A larger number of source (e.g., HDFS) input data partitions.
- * - A larger size of the PartitionSet property of the input edge.
+ * Changing the parallelism requires also changing other execution properties that refer to task offsets.
+ * Such execution properties include:
+ * {@link ResourceSiteProperty}
+ * {@link ResourceAntiAffinityProperty}
+ * {@link org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty}
+ * {@link org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty}
+ *
+ * Moreover, vertices with one-to-one relationships must have the same parallelism.
+ * {@link org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty}
+ *
+ * Finally, the parallelism cannot be larger than the number of source (e.g., HDFS) input data partitions.
+ * {@link org.apache.nemo.common.ir.vertex.SourceVertex}
+ *
+ * A violation of any of the above criteria will be caught by Nemo, to ensure correct application semantics.
  */
 public final class ParallelismProperty extends VertexExecutionProperty<Integer> {
   /**

@@ -75,10 +75,10 @@ public final class PolicyImplTest {
   public void testTransientAndLargeShuffleCombination() throws Exception {
     final List<CompileTimePass> compileTimePasses = new ArrayList<>();
     final Set<RunTimePass<?>> runTimePasses = new HashSet<>();
-    compileTimePasses.addAll(TransientResourcePolicy.BUILDER.getCompileTimePasses());
-    runTimePasses.addAll(TransientResourcePolicy.BUILDER.getRunTimePasses());
     compileTimePasses.addAll(LargeShufflePolicy.BUILDER.getCompileTimePasses());
     runTimePasses.addAll(LargeShufflePolicy.BUILDER.getRunTimePasses());
+    compileTimePasses.addAll(TransientResourcePolicy.BUILDER.getCompileTimePasses());
+    runTimePasses.addAll(TransientResourcePolicy.BUILDER.getRunTimePasses());
 
     final Policy combinedPolicy = new PolicyImpl(compileTimePasses, runTimePasses);
 
