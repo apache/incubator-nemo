@@ -30,9 +30,9 @@ import java.io.Serializable;
  */
 public interface OutputCollector<O> extends Serializable {
 
-  void setTimestamp(long timestamp);
+  void setInputTimestamp(long timestamp);
 
-  long getTimestamp();
+  long getInputTimestamp();
 
   /**
    * Single-destination emit.
@@ -44,6 +44,10 @@ public interface OutputCollector<O> extends Serializable {
    * Emit watermark to downstream vertices.
    */
   void emitWatermark(Watermark watermark);
+
+  void enableOffloading();
+
+  void disableOffloading();
 
   /**
    * Multi-destination emit.

@@ -36,6 +36,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   private final AWSLambdaAsync awsLambda;
 
   private final AtomicInteger dataId = new AtomicInteger(0);
+  private final AtomicInteger workerId = new AtomicInteger(0);
 
   /*
   private final AtomicInteger pendingRequest = new AtomicInteger(0);
@@ -134,7 +135,7 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
       }
     };
 
-    return new LambdaWorkerProxy(channelFuture, this, channelEventHandlerMap,
+    return new LambdaWorkerProxy(workerId.getAndIncrement(), channelFuture, this, channelEventHandlerMap,
       offloadingSerializer.getInputEncoder(), offloadingSerializer.getOutputDecoder());
   }
 

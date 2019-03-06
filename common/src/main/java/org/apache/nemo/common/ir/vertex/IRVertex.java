@@ -40,6 +40,7 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
   private boolean stagePartitioned;
   public boolean isRoot = false;
   public boolean isSink = false;
+  public boolean isOffloading = false;
   public List<Integer> ids = new ArrayList<>();
 
   /**

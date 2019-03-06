@@ -19,16 +19,21 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.NextIntraTaskOperatorInfo;
+import org.apache.nemo.common.Serializer;
 import org.apache.nemo.common.TimestampAndValue;
-import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.dag.Edge;
+import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.runtime.executor.task.MetricCollector;
+import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.offloading.client.ServerlessExecutorService;
+import org.apache.nemo.runtime.executor.task.OperatorMetricCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * OffloadingOutputCollector implementation.
@@ -40,7 +45,7 @@ import java.util.*;
  *
  * @param <O> output type.
  */
-public final class OperatorVertexOutputCollector<O> implements OutputCollector<O> {
+public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(OperatorVertexOutputCollector.class.getName());
 
   private static final String BUCKET_NAME = "nemo-serverless";
@@ -54,7 +59,17 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   // for logging
   private long inputTimestamp;
-  private final MetricCollector metricCollector;
+  private final OperatorMetricCollector operatorMetricCollector;
+
+
+  enum OffloadingStatus {
+    NORMAL,
+    START,
+    END
+  }
+
+  private volatile OffloadingStatus offloadingStatus = OffloadingStatus.NORMAL;
+  private final AtomicBoolean isOffloaded;
 
   /**
    * Constructor of the output collector.
@@ -71,14 +86,16 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
     final Map<String, List<OutputWriter>> externalAdditionalOutputs,
-    final MetricCollector metricCollector) {
+    final OperatorMetricCollector operatorMetricCollector,
+    final AtomicBoolean isOffloaded) {
     this.outputCollectorMap = outputCollectorMap;
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.externalMainOutputs = externalMainOutputs;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
-    this.metricCollector = metricCollector;
+    this.operatorMetricCollector = operatorMetricCollector;
+    this.isOffloaded = isOffloaded;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -87,7 +104,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     vertex.getTransform().onData(output);
 
     if (vertex.isSink) {
-      metricCollector.processDone(vertex.getId(), inputTimestamp);
+      operatorMetricCollector.processDone(inputTimestamp);
     }
   }
 
@@ -100,42 +117,95 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   }
 
   @Override
-  public void setTimestamp(long ts) {
+  public void setInputTimestamp(long ts) {
     inputTimestamp = ts;
   }
 
   @Override
-  public long getTimestamp() {
+  public long getInputTimestamp() {
     return inputTimestamp;
   }
 
   @Override
   public void emit(final O output) {
-    //LOG.info("{} emits {} / timestamp: {}", irVertex.getId(), output, inputTimestamp);
+    operatorMetricCollector.emittedCnt += 1;
+
+    if (irVertex.isSink) {
+      operatorMetricCollector.processDone(inputTimestamp);
+    }
+
+    // startOffloading should be called first!
+    if (startOffloading) {
+      operatorMetricCollector.startOffloading();
+      startOffloading = false;
+    }
+
+
+    // For offloading
+    List<String> offloadingIds = null;
 
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
-      final OperatorVertexOutputCollector oc = outputCollectorMap.get(internalVertex.getNextOperator().getId());
-      oc.inputTimestamp = inputTimestamp;
-      emit(internalVertex.getNextOperator(), output);
+      final OperatorVertex nextOperator = internalVertex.getNextOperator();
+
+      //LOG.info("NexOp: {}, isOffloading: {}, isOffloaded: {}",
+      //  nextOperator.getId(), nextOperator.isOffloading, isOffloaded.get());
+
+      if (offloading) {
+        if (offloadingIds == null) {
+          offloadingIds = new LinkedList<>();
+        }
+        offloadingIds.add(nextOperator.getId());
+      } else {
+        final OperatorVertexOutputCollector oc = outputCollectorMap.get(nextOperator.getId());
+        oc.inputTimestamp = inputTimestamp;
+        emit(nextOperator, output);
+      }
+    }
+
+    // For offloading
+    if (offloadingIds != null) {
+      operatorMetricCollector.sendToServerless(
+        new TimestampAndValue<>(inputTimestamp, output), offloadingIds);
     }
 
     for (final OutputWriter externalWriter : externalMainOutputs) {
       emit(externalWriter, new TimestampAndValue<>(inputTimestamp, output));
+    }
+
+    // this should be called at last!
+    if (endOffloading) {
+      operatorMetricCollector.endOffloading();
+      endOffloading = false;
     }
   }
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
     //LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
+    operatorMetricCollector.emittedCnt += 1;
+
+    List<String> offloadingIds = null;
 
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-        final OperatorVertexOutputCollector oc = outputCollectorMap.get(internalVertex.getNextOperator().getId());
-        oc.inputTimestamp = inputTimestamp;
-        emit(internalVertex.getNextOperator(), (O) output);
+        if (offloading) {
+          if (offloadingIds == null) {
+            offloadingIds = new LinkedList<>();
+          }
+          offloadingIds.add(internalVertex.getNextOperator().getId());
+        } else {
+          final OperatorVertexOutputCollector oc = outputCollectorMap.get(internalVertex.getNextOperator().getId());
+          oc.inputTimestamp = inputTimestamp;
+          emit(internalVertex.getNextOperator(), (O) output);
+        }
       }
     }
 
+    // For offloading
+    if (offloadingIds != null) {
+      operatorMetricCollector.sendToServerless(
+        new TimestampAndValue<>(inputTimestamp, output), offloadingIds);
+    }
 
     if (externalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final OutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
@@ -150,36 +220,38 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
     }
 
+    List<String> offloadingIds = null;
+
     // Emit watermarks to internal vertices
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
-      internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
-    }
-
-    for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
-      for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
+      if (offloading) {
+        if (offloadingIds == null) {
+          offloadingIds = new LinkedList<>();
+        }
+        offloadingIds.add(internalVertex.getNextOperator().getId());
+      } else {
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
 
-    // QUERY7
-    /*
-    if (irVertex.getId().equals("vertex15")) {
-      sideInputOutputCollector.emitWatermark(watermark);
-    } else if (irVertex.getId().equals("vertex6")) {
-      mainInputLambdaCollector.emitWatermark(watermark);
-    } else {
-      // Emit watermarks to output writer
-      for (final OutputWriter outputWriter : externalMainOutputs) {
-        outputWriter.writeWatermark(watermark);
-      }
-
-      for (final List<OutputWriter> externalVertices : externalAdditionalOutputs.values()) {
-        for (final OutputWriter externalVertex : externalVertices) {
-          externalVertex.writeWatermark(watermark);
+    for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
+      for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
+        if (offloading) {
+          if (offloadingIds == null) {
+            offloadingIds = new LinkedList<>();
+          }
+          offloadingIds.add(internalVertex.getNextOperator().getId());
+        } else {
+          internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
         }
       }
     }
-    */
+
+    // For offloading
+    if (offloadingIds != null) {
+      operatorMetricCollector.sendToServerless(watermark, offloadingIds);
+    }
+
 
     // Emit watermarks to output writer
     for (final OutputWriter outputWriter : externalMainOutputs) {

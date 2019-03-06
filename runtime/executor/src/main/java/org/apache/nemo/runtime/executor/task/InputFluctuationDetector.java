@@ -1,30 +1,57 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 
 public final class InputFluctuationDetector {
   private static final Logger LOG = LoggerFactory.getLogger(InputFluctuationDetector.class.getName());
 
   // key: timestamp, value: processed event
-  private final List<Pair<Long, Long>> processedEvents;
+  //private final List<Pair<Long, Long>> processedEvents;
+  private final List<Pair<OperatorMetricCollector, OutputCollector>> metricCollectors;
+  private int length = 20;
 
   // timescale: sec
-  public InputFluctuationDetector() {
-    this.processedEvents = new LinkedList<>();
+  public InputFluctuationDetector(
+    final List<Pair<OperatorMetricCollector, OutputCollector>> metricCollectors) {
+    //this.processedEvents = new LinkedList<>();
+    this.metricCollectors = metricCollectors;
   }
 
-  public synchronized void collect(final long timestamp, final long currProcessedEvent) {
+  public synchronized void collect(final OperatorMetricCollector oc,
+                      final long timestamp,
+                      final long currProcessedEvent) {
+    final List<Pair<Long, Long>> processedEvents = oc.processedEvents;
+    if (processedEvents.size() >= length) {
+      processedEvents.remove(0);
+    }
     processedEvents.add(Pair.of(timestamp, currProcessedEvent));
+    //processedEvents.add(Pair.of(timestamp, currProcessedEvent));
+  }
+
+  public synchronized List<Pair<OperatorMetricCollector, OutputCollector>> retrieveBurstyOutputCollectors(final long baseTime) {
+    final List<Pair<OperatorMetricCollector, OutputCollector>> burstyCollectors = new ArrayList<>(metricCollectors.size());
+    for (final Pair<OperatorMetricCollector, OutputCollector> pair : metricCollectors) {
+      if (isInputFluctuation(baseTime, pair.left().processedEvents)) {
+        burstyCollectors.add(pair);
+      }
+    }
+
+    return burstyCollectors;
   }
 
   // 어느 시점 (baseTime) 을 기준으로 fluctuation 하였는가?
-  public synchronized boolean isInputFluctuation(final long baseTime) {
+  private boolean isInputFluctuation(final long baseTime,
+                                    final List<Pair<Long, Long>> processedEvents) {
     final List<Long> beforeBaseTime = new ArrayList<>();
     final List<Long> afterBaseTime = new ArrayList<>();
 
@@ -45,14 +72,12 @@ public final class InputFluctuationDetector {
     LOG.info("avgEventBeforeBaseTime: {} (size: {}), avgEventAfterBaseTime: {} (size: {}), baseTime: {}",
       avgEventBeforeBaseTime, beforeBaseTime.size(), avgEventAfterBaseTime, afterBaseTime.size(), baseTime);
 
+    processedEvents.clear();
+
     if (avgEventBeforeBaseTime * 2 < avgEventAfterBaseTime) {
       return true;
     } else {
       return false;
     }
-  }
-
-  public void clear() {
-    processedEvents.clear();
   }
 }

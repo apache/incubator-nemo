@@ -12,7 +12,9 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * This should be called by one thread.
@@ -46,7 +48,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   // key: data id, val: true (if the data is already processed by a worker)
   private final Map<Integer, Boolean> speculativeDataProcessedMap;
 
-  private int createdWorkers = 0;
+  private final AtomicInteger createdWorkers = new AtomicInteger(0);
   private int finishedWorkers = 0;
 
   //private final StatePartitioner<I, S> statePartitioner;
@@ -54,12 +56,19 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   //private final Map<Integer, OffloadingWorker<I, O>> stateIndexAndWorkerMap;
 
   private long totalProcessingTime = 0;
+  private long totalWorkerInitTime = 0;
+  private long workerInitCnt = 0;
   private int processingCnt = 0;
 
   private int bufferedCnt = 0;
   private int addedOutput = 0;
 
+  private volatile boolean shutdown = false;
+
+  private final Map<OffloadingWorker, Boolean> initWorkerSpeculative = new HashMap<>();
+
   final AtomicLong st = new AtomicLong(System.currentTimeMillis());
+  final AtomicLong speculativePrevTime = new AtomicLong(System.currentTimeMillis());
 
   CachedPoolServerlessExecutorService(
     final OffloadingWorkerFactory workerFactory,
@@ -95,8 +104,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         st.set(System.currentTimeMillis());
 
         if (Constants.enableLambdaLogging) {
-          LOG.info("Init workers: {}, Running workers: {}, Output: {} ",
-            initializingWorkers.size(), runningWorkers.size(), outputQueue.size());
+          LOG.info("Init workers: {}, Running workers: {}, Output: {}, Finished Workers: {}, Created Workers: {}",
+            initializingWorkers.size(), runningWorkers.size(), outputQueue.size(), finishedWorkers, createdWorkers.get());
         }
 
 
@@ -128,9 +137,15 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           while (iterator.hasNext()) {
             final Pair<Long, OffloadingWorker> pair = iterator.next();
             if (pair.right().isReady()) {
+              final long ct = System.currentTimeMillis();
+              totalWorkerInitTime += (ct - pair.left());
+              workerInitCnt += 1;
+              initWorkerSpeculative.remove(pair.right());
+
               if (Constants.enableLambdaLogging) {
-                LOG.info("Init worker latency: {}", System.currentTimeMillis() - pair.left());
+                LOG.info("Init worker latency: {}", ct - pair.left());
               }
+
               iterator.remove();
               // do not add it to ready workers
               // instead, just execute data
@@ -160,6 +175,9 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             final Pair<ByteBuf, Integer> data = pair.right().getCurrentProcessingInput();
 
             if (data == null) {
+              if (Constants.enableLambdaLogging) {
+                LOG.info("Input data is null but worker {} is ready? {}", pair.right().getId(), pair.right().isReady());
+              }
               // this is end
               readyWorkers.add(pair.right());
 
@@ -181,45 +199,6 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
           executeData(readyWorker);
         });
 
-        //speculativeExecution();
-        if (initializingWorkers.isEmpty() &&
-          (finishedWorkers / (double) createdWorkers) > 0.6) {
-          curTime = System.currentTimeMillis();
-          final long avgTime = totalProcessingTime / processingCnt;
-          for (final Pair<Long, OffloadingWorker> pair : runningWorkers) {
-            if (!hasBeenPerformedSpeculativeExecution(pair.right()) &&
-              curTime - pair.left() > avgTime * 2) {
-              // speculative execution1!
-              final OffloadingWorker runningWorker = pair.right();
-              final Pair<ByteBuf, Integer> data = runningWorker.getCurrentProcessingInput();
-              if (data != null) {
-                final int dataId = data.right();
-
-                if (Constants.enableLambdaLogging) {
-                  LOG.info("Create new worker for speculatve execution of data {}, elapsed time: {}, avg time: {}"
-                    , dataId, (curTime - pair.left()), avgTime);
-                }
-
-                createdWorkers += 1;
-                // create new worker
-                //LOG.info("Create worker");
-                final ByteBuf copiedBuf = workerInitBuffer.retainedDuplicate();
-
-                dataBufferQueue.add(data);
-                bufferedCnt += 1;
-
-                final OffloadingWorker<I, O> worker =
-                  workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
-
-                speculativeDataProcessedMap.put(dataId, false);
-
-                synchronized (initializingWorkers) {
-                  initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
-                }
-              }
-            }
-          }
-        }
 
 
       } catch (final Exception e) {
@@ -348,51 +327,19 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     } else {
       // speculative execution
       //speculativeExecution(worker);
+      if (Constants.enableLambdaLogging) {
+        LOG.info("Finish worker {}: isReady: {}, isFinished: {}", worker.getId(), worker.isReady(), worker.isFinished());
+      }
+
+      if (!worker.isReady()) {
+        throw new RuntimeException("Worker is not ready..." +
+          "Finish worker " + worker.getId());
+      }
       worker.finishOffloading();
       finishedWorkers += 1;
     }
   }
 
-  private void speculativeExecution(final OffloadingWorker readyWorker) {
-    // speculative execution when there are ready workers
-    final OffloadingWorker runningWorker = selectRunningWorkerForSpeculativeExecution(readyWorker);
-    if (runningWorker == null) {
-      // just end the worker
-      readyWorker.finishOffloading();
-      finishedWorkers += 1;
-    } else {
-      final Pair<ByteBuf, Integer> data = runningWorker.getCurrentProcessingInput();
-      if (data != null) {
-        final int dataId = data.right();
-
-
-        try {
-          outputQueue.add(new PendingOutput<>(readyWorker.execute(data.left(), dataId, true), dataId));
-          addedOutput += 1;
-
-          // TODO: consideration
-          if (Constants.enableLambdaLogging) {
-            LOG.info("Speculative execution for data {}, runningWorkerCnt: {}, readyWorkerCnt: {}", dataId,
-              runningWorker.getDataProcessingCnt(), readyWorker.getDataProcessingCnt());
-          }
-
-          if (!speculativeDataProcessedMap.containsKey(dataId)) {
-            speculativeDataProcessedMap.put(dataId, false);
-          }
-
-          runningWorkers.add(Pair.of(System.currentTimeMillis(), readyWorker));
-        } catch (final IllegalReferenceCountException e) {
-          // the input becomes null ... this means that we don't have to do speculative execution
-          // just finish the worker!
-          if (Constants.enableLambdaLogging) {
-            LOG.info("Illegal reference count exception for executing data {}... just finis worker", dataId);
-          }
-          readyWorker.finishOffloading();
-          finishedWorkers += 1;
-        }
-      }
-    }
-  }
 
   private void outputEmittion() {
     // emit output
@@ -452,10 +399,13 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   // init worker
   private void createNewWorker(final I data) {
-    createdWorkers += 1;
+    createdWorkers.getAndIncrement();
     // create new worker
     //LOG.info("Create worker");
-    final ByteBuf copiedBuf = workerInitBuffer.retainedDuplicate();
+    final ByteBuf copiedBuf;
+    synchronized (workerInitBuffer) {
+      copiedBuf = workerInitBuffer.retainedDuplicate();
+    }
 
     dataBufferQueue.add(Pair.of(encodeData(data, Unpooled.directBuffer()),
       workerFactory.getAndIncreaseDataId()));
@@ -466,16 +416,21 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
     synchronized (initializingWorkers) {
       initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+      initWorkerSpeculative.put(worker, false);
     }
   }
 
 
   // init worker
   private void createNewWorker(final ByteBuf data) {
-    createdWorkers += 1;
+    createdWorkers.getAndIncrement();
     // create new worker
     //LOG.info("Create worker");
-    final ByteBuf copiedBuf = workerInitBuffer.retainedDuplicate();
+    final ByteBuf copiedBuf;
+    synchronized (workerInitBuffer) {
+      copiedBuf = workerInitBuffer.retainedDuplicate();
+    }
+
     dataBufferQueue.add(Pair.of(data, workerFactory.getAndIncreaseDataId()));
     bufferedCnt += 1;
 
@@ -484,6 +439,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
     synchronized (initializingWorkers) {
       initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+      initWorkerSpeculative.put(worker, false);
     }
   }
 
@@ -499,11 +455,15 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
   @Override
   public void shutdown() {
+
+    shutdown = true;
     // shutdown all workers
     long prevTime = System.currentTimeMillis();
-    LOG.info("Shutting down workers {}/{}..., init: {}, running: {}", finishedWorkers, createdWorkers);
+    LOG.info("Shutting down workers {}/{}..., init: {}, running: {}", finishedWorkers, createdWorkers,
+      initializingWorkers, runningWorkers);
 
-    while (finishedWorkers < createdWorkers) {
+    /*
+    while (finishedWorkers < createdWorkers.get()) {
       // logging
       if (System.currentTimeMillis() - prevTime > 2000) {
         prevTime = System.currentTimeMillis();
@@ -520,20 +480,114 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         e.printStackTrace();
       }
     }
+    */
 
     // waiting for all outputs
     LOG.info("Waiting {} outputs... {}", outputQueue.size(), outputQueue);
     while (!outputQueue.isEmpty()) {
       // logging
-      if (System.currentTimeMillis() - prevTime > 2000) {
-        prevTime = System.currentTimeMillis();
+      final long cTime = System.currentTimeMillis();
+      if (cTime - prevTime > 2000) {
+        prevTime = cTime;
         if (Constants.enableLambdaLogging) {
           LOG.info("Waiting {} outputs... {}", outputQueue.size(), outputQueue);
-          LOG.info("Created worker: {}, Finished worker: {}, added output: {}", createdWorkers, finishedWorkers);
+          LOG.info("Created worker: {}, Finished worker: {}", createdWorkers, finishedWorkers);
         }
+
+        // SPECULATIVE EXECUTION!!
+        if (finishedWorkers / (double) createdWorkers.get() > 0.6) {
+
+          final long avgTime = totalProcessingTime / processingCnt;
+          final long avgInitTime = totalWorkerInitTime / workerInitCnt;
+
+          // Check initializing workers that take long time
+          final List<Pair<Long, OffloadingWorker>> longWorkers =
+            initializingWorkers.stream().filter(pair -> cTime - pair.left() > avgInitTime * 1.5 && !initWorkerSpeculative.get(pair.right()))
+              .collect(Collectors.toList());
+
+          longWorkers.forEach(pair -> {
+            final ByteBuf copiedBuf;
+            synchronized (workerInitBuffer) {
+              copiedBuf = workerInitBuffer.retainedDuplicate();
+            }
+
+            final OffloadingWorker<I, O> worker =
+              workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
+
+
+            if (Constants.enableLambdaLogging) {
+              LOG.info("INIT] Create new worker for speculative execution of {}, elapsed time: {}, avg time: {}"
+                , worker, (cTime - pair.left()), avgInitTime);
+            }
+
+            synchronized (initializingWorkers) {
+              initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+              initWorkerSpeculative.put(worker, false);
+              initWorkerSpeculative.put(pair.right(), true);
+            }
+          });
+
+          // Check running workers that take long time
+          for (final Pair<Long, OffloadingWorker> pair : runningWorkers) {
+            if (!hasBeenPerformedSpeculativeExecution(pair.right()) &&
+              cTime - pair.left() > avgTime * 1.5) {
+              // speculative execution1!
+              final OffloadingWorker runningWorker = pair.right();
+              final Pair<ByteBuf, Integer> data = runningWorker.getCurrentProcessingInput();
+              if (data != null) {
+                final int dataId = data.right();
+
+                if (Constants.enableLambdaLogging) {
+                  LOG.info("RUNNING] Create new worker for speculative execution of data {}, elapsed time: {}, avg time: {}"
+                    , dataId, (cTime - pair.left()), avgTime);
+                }
+
+                createdWorkers.getAndIncrement();
+                // create new worker
+                //LOG.info("Create worker");
+                final ByteBuf copiedBuf;
+                synchronized (workerInitBuffer) {
+                  copiedBuf = workerInitBuffer.retainedDuplicate();
+                }
+
+                dataBufferQueue.add(data);
+                bufferedCnt += 1;
+
+                final OffloadingWorker<I, O> worker =
+                  workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
+
+                speculativeDataProcessedMap.put(dataId, false);
+
+                synchronized (initializingWorkers) {
+                  initializingWorkers.add(Pair.of(System.currentTimeMillis(), worker));
+                  initWorkerSpeculative.put(worker, false);
+                }
+              }
+            }
+          }
+        }
+
       }
       try {
         Thread.sleep(200);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+
+
+    // Check init and running workers
+    while (!(initWorkerSpeculative.isEmpty() && runningWorkers.isEmpty())) {
+      // logging
+      if (System.currentTimeMillis() - prevTime > 2000) {
+        prevTime = System.currentTimeMillis();
+        if (Constants.enableLambdaLogging) {
+          LOG.info("Waiting for init workers: {}, running workers: {}", initializingWorkers.size(), runningWorkers.size());
+        }
+      }
+
+      try {
+        Thread.sleep(300);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -547,6 +601,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     workerInitBuffer.release();
   }
 
+  @Override
+  public boolean isShutdown() {
+    return shutdown;
+  }
+
   final class PendingOutput<O> {
     private final Future<Optional<O>> output;
     private final int dataId;
@@ -557,6 +616,11 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
       this.output = output;
       this.dataId = dataId;
       this.startTime = System.currentTimeMillis();
+    }
+
+    @Override
+    public String toString() {
+      return "Output: " + output + ", dataId: " + dataId + ", starTTime: " + startTime;
     }
   }
 }

@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.InputWatermarkManager;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(DataFetcherOutputCollector.class.getName());
+  private final IRVertex srcVertex;
   private final OperatorVertex nextOperatorVertex;
   private final int edgeIndex;
   private final InputWatermarkManager watermarkManager;
@@ -43,10 +45,12 @@ public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector
    * @param edgeIndex edge index
    * @param watermarkManager watermark manager
    */
-  public DataFetcherOutputCollector(final OperatorVertex nextOperatorVertex,
+  public DataFetcherOutputCollector(final IRVertex srcVertex,
+                                    final OperatorVertex nextOperatorVertex,
                                     final OutputCollector nextOutputCollector,
                                     final int edgeIndex,
                                     final InputWatermarkManager watermarkManager) {
+    this.srcVertex = srcVertex;
     this.nextOperatorVertex = nextOperatorVertex;
     this.nextOutputCollector = nextOutputCollector;
     this.edgeIndex = edgeIndex;
@@ -55,7 +59,7 @@ public final class DataFetcherOutputCollector<O> extends AbstractOutputCollector
 
   @Override
   public void emit(final O output) {
-    nextOutputCollector.setTimestamp(inputTimestamp);
+    nextOutputCollector.setInputTimestamp(inputTimestamp);
     nextOperatorVertex.getTransform().onData(output);
   }
 

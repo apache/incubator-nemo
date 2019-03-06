@@ -33,6 +33,10 @@ public final class EvalConf {
   public final class FlushCount implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "flush period (ms)", short_name = "flush_period", default_value = "1000")
+  public final class FlushPeriod implements Name<Integer> {
+  }
+
 
   @NamedParameter(short_name = "bottleneck_detection_period", default_value = "1000")
   public static final class BottleneckDetectionPeriod implements Name<Long> {
@@ -51,6 +55,7 @@ public final class EvalConf {
   public final int poolSize;
   public final int flushBytes;
   public final int flushCount;
+  public final int flushPeriod;
 
   public final long bottleneckDetectionPeriod;
   public final int bottleneckDetectionConsecutive;
@@ -62,6 +67,7 @@ public final class EvalConf {
                    @Parameter(LambdaWarmupPool.class) final int poolSize,
                    @Parameter(FlushBytes.class) final int flushBytes,
                    @Parameter(FlushCount.class) final int flushCount,
+                   @Parameter(FlushPeriod.class) final int flushPeriod,
                    @Parameter(EnableOffloadingDebug.class) final boolean offloadingdebug,
                    @Parameter(BottleneckDetectionPeriod.class) final long bottleneckDetectionPeriod,
                    @Parameter(BottleneckDetectionConsecutive.class) final int bottleneckDetectionConsecutive,
@@ -71,6 +77,7 @@ public final class EvalConf {
     this.poolSize = poolSize;
     this.flushBytes = flushBytes;
     this.flushCount = flushCount;
+    this.flushPeriod = flushPeriod;
     this.bottleneckDetectionPeriod = bottleneckDetectionPeriod;
     this.bottleneckDetectionConsecutive = bottleneckDetectionConsecutive;
     this.bottleneckDetectionThreshold = bottleneckDetectionThreshold;
@@ -83,6 +90,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(LambdaWarmupPool.class, Integer.toString(poolSize));
     jcb.bindNamedParameter(FlushBytes.class, Integer.toString(flushBytes));
     jcb.bindNamedParameter(FlushCount.class, Integer.toString(flushCount));
+    jcb.bindNamedParameter(FlushPeriod.class, Integer.toString(flushPeriod));
     jcb.bindNamedParameter(BottleneckDetectionPeriod.class, Long.toString(bottleneckDetectionPeriod));
     jcb.bindNamedParameter(BottleneckDetectionConsecutive.class, Integer.toString(bottleneckDetectionConsecutive));
     jcb.bindNamedParameter(BottleneckDetectionCpuThreshold.class, Double.toString(bottleneckDetectionThreshold));
@@ -96,6 +104,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(LambdaWarmupPool.class);
     cl.registerShortNameOfClass(FlushBytes.class);
     cl.registerShortNameOfClass(FlushCount.class);
+    cl.registerShortNameOfClass(FlushPeriod.class);
     cl.registerShortNameOfClass(BottleneckDetectionCpuThreshold.class);
     cl.registerShortNameOfClass(BottleneckDetectionConsecutive.class);
     cl.registerShortNameOfClass(BottleneckDetectionPeriod.class);
@@ -110,6 +119,7 @@ public final class EvalConf {
     sb.append("poolSize: "); sb.append(poolSize); sb.append("\n");
     sb.append("flushBytes: "); sb.append(flushBytes); sb.append("\n");
     sb.append("flushCount: "); sb.append(flushCount); sb.append("\n");
+    sb.append("flushPeriod: "); sb.append(flushPeriod); sb.append("\n");
     sb.append("bottleneckDetectionPeriod: "); sb.append(bottleneckDetectionPeriod); sb.append("\n");
     sb.append("bottleneckDectionConsectutive: "); sb.append(bottleneckDetectionConsecutive); sb.append("\n");
     sb.append("bottleneckDetectionThreshold: "); sb.append(bottleneckDetectionThreshold); sb.append("\n");

@@ -5,6 +5,7 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.group.ChannelGroup;
+import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.offloading.common.Pair;
@@ -31,13 +32,17 @@ public final class NettyServerSideChannelHandler extends ChannelInboundHandlerAd
    */
   @Override
   public void channelActive(final ChannelHandlerContext ctx) throws Exception {
-    LOG.info("Channel activate: {}", ctx.channel());
+    if (Constants.enableLambdaLogging) {
+      LOG.info("Channel activate: {}", ctx.channel());
+    }
     channelGroup.add(ctx.channel());
   }
 
   @Override
   public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
-    LOG.info("Channel read from {}, {}", ctx.channel(), msg);
+    if (Constants.enableLambdaLogging) {
+      LOG.info("Channel read from {}, {}", ctx.channel(), msg);
+    }
     eventHandler.onNext(Pair.of(ctx.channel(), (OffloadingEvent)msg));
   }
 

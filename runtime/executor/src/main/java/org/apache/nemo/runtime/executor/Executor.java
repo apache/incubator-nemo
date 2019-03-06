@@ -47,7 +47,6 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.common.NemoEventDecoderFactory;
 import org.apache.nemo.common.NemoEventEncoderFactory;
-import org.apache.nemo.runtime.executor.task.InputFluctuationDetector;
 import org.apache.nemo.runtime.executor.task.TaskExecutor;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
@@ -99,7 +98,6 @@ public final class Executor {
   private final ExecutorService executorService;
 
   private final EvalConf evalConf;
-
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -198,11 +196,11 @@ public final class Executor {
             e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       });
 
-      final InputFluctuationDetector detector = new InputFluctuationDetector();
+
       final TaskExecutor taskExecutor =
       new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
           metricMessageSender, persistentConnectionToMasterMap, serializerManager, serverlessExecutorProvider,
-        detector, evalConf);
+        evalConf);
 
       taskExecutorMap.put(taskExecutor, true);
       taskExecutor.execute();

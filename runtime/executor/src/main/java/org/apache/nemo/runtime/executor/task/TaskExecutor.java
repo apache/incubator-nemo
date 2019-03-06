@@ -53,6 +53,7 @@ import org.apache.nemo.runtime.executor.datatransfer.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
@@ -101,26 +102,17 @@ public final class TaskExecutor {
   private final ExecutorService shutdownExecutor = Executors.newCachedThreadPool();
 
   // Variables for offloading - start
-  private long currProcessedEvents = 0;
-  private long prevProcessedEvents = 0;
-  private Object lock = new Object();
-  private long elapsedTimeForProcessedEvents = 1000;
-  private long prevProcessedTime = System.currentTimeMillis();
   private final ServerlessExecutorProvider serverlessExecutorProvider;
   private final InputFluctuationDetector detector;
-  private final Map<IRVertex, Serializer> srcVertexSerializerMap;
-  private volatile boolean offloading = false;
   private transient ServerlessExecutorService serverlessExecutorService;
   private ByteBuf inputBuffer;
   private int serializedCnt = 0;
   private ByteBufOutputStream bos;
   private final Map<String, OutputCollector> vertexIdAndOutputCollectorMap;
-  private final Queue<Boolean> offloadingRequestQueue = new LinkedBlockingQueue<>();
+  private final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap = new HashMap<>();
   private long prevFlushTime = System.currentTimeMillis();
   private final EvalConf evalConf;
   // Variables for offloading - end
-
-  private boolean inputBursty = false;
 
   private final ScheduledExecutorService se = Executors.newSingleThreadScheduledExecutor();
 
@@ -128,7 +120,13 @@ public final class TaskExecutor {
 
   private boolean isFirstEvent = true;
 
-  private final MetricCollector metricCollector;
+  private final ScheduledExecutorService processedEventCollector;
+
+  private final List<Pair<OperatorMetricCollector, OutputCollector>> metricCollectors = new ArrayList<>();
+
+  private final AtomicBoolean isOffloaded = new AtomicBoolean(false);
+
+  private List<Pair<OperatorMetricCollector, OutputCollector>> prevHeader;
 
   /**
    * Constructor.
@@ -150,19 +148,19 @@ public final class TaskExecutor {
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                       final SerializerManager serializerManager,
                       final ServerlessExecutorProvider serverlessExecutorProvider,
-                      final InputFluctuationDetector detector,
                       final EvalConf evalConf) {
     // Essential information
     this.isExecuted = false;
     this.irVertexDag = irVertexDag;
     this.taskId = task.getTaskId();
-    this.srcVertexSerializerMap = new HashMap<>();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.vertexIdAndOutputCollectorMap = new HashMap<>();
-    this.detector = detector;
+    this.processedEventCollector = Executors.newSingleThreadScheduledExecutor();
+    this.detector = new InputFluctuationDetector(metricCollectors);
+
+
     this.evalConf = evalConf;
-    this.metricCollector = new MetricCollector();
 
     this.serverlessExecutorProvider = serverlessExecutorProvider;
 
@@ -183,38 +181,132 @@ public final class TaskExecutor {
     this.sortedHarnesses = pair.right();
 
     if (evalConf.offloadingdebug) {
-      se.schedule(() -> {
-        offloadingRequestQueue.add(true);
-      }, 10, TimeUnit.SECONDS);
+      se.scheduleAtFixedRate(() -> {
+        LOG.info("Start offloading!");
+        triggerOffloading(metricCollectors);
+      }, 10, 50, TimeUnit.SECONDS);
+
+      se.scheduleAtFixedRate(() -> {
+        endOffloading();
+      }, 30, 50, TimeUnit.SECONDS);
     }
   }
 
-  private boolean isOperatorFluctuate() {
-    return false;
+  private List<Pair<OperatorMetricCollector, OutputCollector>> findHeader(
+    final List<Pair<OperatorMetricCollector, OutputCollector>> ocs) {
+
+    final List<Boolean> headers = new ArrayList<>(ocs.size());
+    for (int i = 0; i < ocs.size(); i++) {
+      headers.add(true);
+    }
+
+    final List<IRVertex> irVertices = ocs.stream()
+      .map(oc -> oc.left().irVertex)
+      .collect(Collectors.toList());
+
+    for (final Pair<OperatorMetricCollector, OutputCollector> oc : ocs) {
+      final IRVertex irVertex = oc.left().irVertex;
+      final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getOutgoingEdgesOf(irVertex);
+      edges.stream().forEach((edge) -> {
+        final int index = irVertices.indexOf(edge.getDst());
+        if (index >= 0) {
+          // dst is not a header
+          headers.set(index, false);
+        }
+      });
+    }
+
+    final List<Pair<OperatorMetricCollector, OutputCollector>> l = new ArrayList<>(ocs.size());
+    for (int i = 0; i < ocs.size(); i++) {
+      if (headers.get(i)) {
+        l.add(ocs.get(i));
+      }
+    }
+
+    return l;
   }
 
-  public synchronized void startOffloading(final long baseTime) {
+  private void triggerOffloading(final List<Pair<OperatorMetricCollector, OutputCollector>> ocs) {
+    if (!ocs.isEmpty()) {
+      // TODO: offloading operators!
+      // 1) offload transform
+
+      LOG.info("Offloading operators: {}", ocs);
+      for (final Pair<OperatorMetricCollector, OutputCollector> pair : ocs) {
+
+        for (final IRVertex dstVertex : pair.left().dstVertices) {
+          if (!dstVertex.isSink) {
+            dstVertex.isOffloading = true;
+          }
+        }
+      }
+
+      serverlessExecutorService = serverlessExecutorProvider.
+        newCachedPool(new StatelessOffloadingTransform(irVertexDag),
+          new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
+          new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap, operatorInfoMap));
+
+
+      final List<Pair<OperatorMetricCollector, OutputCollector>> header = findHeader(ocs);
+
+      for (final Pair<OperatorMetricCollector, OutputCollector> pair : header) {
+        LOG.info("Header operator: {}", pair.left().irVertex.getId());
+        final OperatorMetricCollector omc = pair.left();
+        if (!omc.irVertex.isSink) {
+          final OutputCollector oc = pair.right();
+          omc.setServerlessExecutorService(serverlessExecutorService);
+          oc.enableOffloading();
+        }
+      }
+
+      isOffloaded.set(true);
+      prevHeader = header;
+    }
+  }
+
+  public void startOffloading(final long baseTime) {
     LOG.info("Start offloading!");
-    if (detector.isInputFluctuation(baseTime)) {
-      LOG.info("Input fluctuate!!");
-      // do offloading();
-      inputBursty = true;
-      offloadingRequestQueue.add(true);
-
-    } else {
-      inputBursty = false;
-      LOG.info("Operator bursty!!");
-    }
+    final List<Pair<OperatorMetricCollector, OutputCollector>> ocs = detector.retrieveBurstyOutputCollectors(baseTime);
+    triggerOffloading(ocs);
   }
 
-  public synchronized void endOffloading() {
+  public void endOffloading() {
     LOG.info("End offloading!");
     // Do sth for offloading end
-    // TODO: handle operator bursty
-    if (inputBursty) {
-      offloadingRequestQueue.add(false);
+    isOffloaded.set(false);
+
+    for (final Pair<OperatorMetricCollector, OutputCollector> pair : metricCollectors) {
+      final OperatorMetricCollector omc = pair.left();
+      final OutputCollector oc = pair.right();
+
+      for (final IRVertex dstVertex : omc.dstVertices) {
+        dstVertex.isOffloading = false;
+      }
     }
-    detector.clear();
+
+    for (final Pair<OperatorMetricCollector, OutputCollector> pair : prevHeader) {
+      if (!pair.left().irVertex.isSink) {
+        LOG.info("Disable offloading {}", pair.left().irVertex.getId());
+        pair.right().disableOffloading();
+      }
+    }
+
+    // waiting for disable offloading
+    for (final Pair<OperatorMetricCollector, OutputCollector> pair : prevHeader) {
+      if (!pair.left().irVertex.isSink) {
+        while (pair.left().isOffloading) {
+          try {
+            Thread.sleep(100);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+    }
+
+    shutdownExecutor.execute(() -> {
+      serverlessExecutorService.shutdown();
+    });
   }
 
   /**
@@ -300,9 +392,20 @@ public final class TaskExecutor {
       final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         TaskExecutorUtil.getExternalAdditionalOutputMap(irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId);
 
+      for (final List<NextIntraTaskOperatorInfo> interOps : internalAdditionalOutputMap.values()) {
+        for (final NextIntraTaskOperatorInfo interOp : interOps) {
+          operatorInfoMap.put(interOp.getNextOperator().getId(), interOp);
+        }
+      }
+
       // Main outputs
       final List<NextIntraTaskOperatorInfo> internalMainOutputs =
         TaskExecutorUtil. getInternalMainOutputs(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
+
+      for (final NextIntraTaskOperatorInfo interOp : internalMainOutputs) {
+        operatorInfoMap.put(interOp.getNextOperator().getId(), interOp);
+      }
+
       final List<OutputWriter> externalMainOutputs =
         TaskExecutorUtil.getExternalMainOutputs(irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId);
 
@@ -313,10 +416,36 @@ public final class TaskExecutor {
         outputCollector = new DynOptDataOutputCollector(
           irVertex, persistentConnectionToMasterMap, this);
       } else {
+
+        final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getOutgoingEdgesOf(irVertex);
+        final List<IRVertex> dstVertices = irVertexDag.getOutgoingEdgesOf(irVertex).
+          stream().map(edge -> edge.getDst()).collect(Collectors.toList());
+
+        OperatorMetricCollector omc;
+
+        if (!dstVertices.isEmpty()) {
+           omc = new OperatorMetricCollector(irVertex,
+            dstVertices,
+            serializerManager.getSerializer(edges.get(0).getId()),
+            edges.get(0),
+            evalConf,
+            shutdownExecutor);
+        } else {
+          omc = new OperatorMetricCollector(irVertex,
+            dstVertices,
+            null,
+            null,
+            evalConf,
+            shutdownExecutor);
+        }
+
+
         outputCollector = new OperatorVertexOutputCollector(
           vertexIdAndOutputCollectorMap,
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
-          externalMainOutputs, externalAdditionalOutputMap, metricCollector);
+          externalMainOutputs, externalAdditionalOutputMap, omc, isOffloaded);
+
+        metricCollectors.add(Pair.of(omc, outputCollector));
 
         vertexIdAndOutputCollectorMap.put(irVertex.getId(), outputCollector);
       }
@@ -364,8 +493,15 @@ public final class TaskExecutor {
             final InputWatermarkManager watermarkManager = operatorWatermarkManagerMap.get(irVertex);
             final InputReader parentTaskReader = pair.right();
             final OutputCollector dataFetcherOutputCollector =
-              new DataFetcherOutputCollector((OperatorVertex) irVertex,
+              new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
                 outputCollector, edgeIndex, watermarkManager);
+
+
+            //final OperatorMetricCollector omc = new OperatorMetricCollector(edge.getSrcIRVertex(),
+            //  Arrays.asList(edge.getDstIRVertex()),
+            //  serializerManager.getSerializer(edge.getId()), edge, evalConf, shutdownExecutor);
+
+            //metricCollectors.add(Pair.of(omc, outputCollector));
 
             if (parentTaskReader instanceof PipeInputReader) {
               dataFetcherList.add(
@@ -386,6 +522,15 @@ public final class TaskExecutor {
         });
     });
 
+    processedEventCollector.scheduleAtFixedRate(() -> {
+      for (final Pair<OperatorMetricCollector, OutputCollector> ocPair : metricCollectors) {
+        final OperatorMetricCollector oc = ocPair.left();
+        final int cnt = oc.emittedCnt;
+        oc.emittedCnt -= cnt;
+        detector.collect(oc, System.currentTimeMillis(), cnt);
+      }
+    }, 1, 1, TimeUnit.SECONDS);
+
     final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
       .stream()
       .map(vertex -> vertexIdToHarness.get(vertex.getId()))
@@ -398,7 +543,7 @@ public final class TaskExecutor {
    * Process a data element down the DAG dependency.
    */
   private void processElement(final OutputCollector outputCollector, final TimestampAndValue dataElement) {
-    outputCollector.setTimestamp(dataElement.timestamp);
+    outputCollector.setInputTimestamp(dataElement.timestamp);
     outputCollector.emit(dataElement.value);
   }
 
@@ -467,48 +612,6 @@ public final class TaskExecutor {
     finalizeOutputWriters(vertexHarness);
   }
 
-  private void flushToServerless() {
-    LOG.info("Flush to serverless: {}", serializedCnt);
-    final CompositeByteBuf compositeByteBuf = PooledByteBufAllocator.DEFAULT.compositeBuffer(2);
-    final ByteBuf lengthBuf = PooledByteBufAllocator.DEFAULT.buffer(4);
-    lengthBuf.writeInt(serializedCnt);
-    compositeByteBuf.addComponents(true, lengthBuf, inputBuffer);
-    // execute
-    serverlessExecutorService.execute(compositeByteBuf);
-  }
-
-  private void sendToServerless(final Object event,
-                                final DataFetcher dataFetcher) {
-    final String id = dataFetcher.getDataSource().getId();
-    final Serializer serializer = serializerManager.getSerializer(dataFetcher.edge.getId());
-
-    //LOG.info("Send from {}/{} to serverless, cnt: {}", id, dataFetcher.edge.getId(),
-    // serializedCnt);
-
-    try {
-      bos.writeUTF(id);
-      bos.writeUTF(dataFetcher.edge.getId());
-      serializer.getEncoderFactory().create(bos).encode(event);
-      serializedCnt += 1;
-
-      if (inputBuffer.readableBytes() > evalConf.flushBytes || serializedCnt > evalConf.flushCount) {
-      //if (serializedCnt > 10) {
-
-        // flush
-        flushToServerless();
-        prevFlushTime = System.currentTimeMillis();
-
-        // reset
-        inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
-        bos = new ByteBufOutputStream(inputBuffer);
-        serializedCnt = 0;
-      }
-    } catch (IOException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
-  }
-
   /**
    * Process an event generated from the dataFetcher.
    * If the event is an instance of Finishmark, we remove the dataFetcher from the current list.
@@ -517,41 +620,6 @@ public final class TaskExecutor {
    */
   private void onEventFromDataFetcher(final Object event,
                                       final DataFetcher dataFetcher) {
-
-
-    if (!offloadingRequestQueue.isEmpty()) {
-      offloading = offloadingRequestQueue.poll();
-      if (offloading) {
-        LOG.info("Initialize offloading");
-        // start offloading
-        prevFlushTime = System.currentTimeMillis();
-        inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
-        bos = new ByteBufOutputStream(inputBuffer);
-        serverlessExecutorService = serverlessExecutorProvider.
-          newCachedPool(new StatelessOffloadingTransform(irVertexDag),
-            new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
-            new StatelessOffloadingEventHandler(vertexIdAndOutputCollectorMap));
-      } else {
-        // stop offloading
-        if (inputBuffer.readableBytes() > 0) {
-          // TODO: send remaining data to serverless
-          flushToServerless();
-        }
-
-        // reset
-        shutdownExecutor.execute(() -> {
-          serverlessExecutorService.shutdown();
-        });
-
-        serializedCnt = 0;
-        try {
-          bos.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }
-    }
 
     if (event instanceof Finishmark) {
       // We've consumed all the data from this data fetcher.
@@ -566,26 +634,20 @@ public final class TaskExecutor {
       }
     } else if (event instanceof Watermark) {
       // Watermark
-      if (offloading) {
-        sendToServerless(event, dataFetcher);
-      } else {
-        processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
-      }
+      processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
 
       if (isFirstEvent) {
         isFirstEvent = false;
         adjustTime = System.currentTimeMillis() - ((TimestampAndValue) event).timestamp;
-        metricCollector.setAdjustTime(adjustTime);
+        for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector : metricCollectors) {
+          metricCollector.left().setAdjustTime(adjustTime);
+        }
       }
 
       // Process data element
-      if (offloading) {
-        // TODO
-        sendToServerless(event, dataFetcher);
-      } else {
-        processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
-      }
+      processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
+
     } else {
       throw new RuntimeException("Invalid type of event: " + event);
     }
@@ -628,9 +690,6 @@ public final class TaskExecutor {
 
     // Previous polling time
     long prevPollingTime = System.currentTimeMillis();
-    long processingTime = 0;
-    long fetchTime = 0;
-
 
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
@@ -641,18 +700,6 @@ public final class TaskExecutor {
 
       while (availableIterator.hasNext()) {
 
-        final long currTime = System.currentTimeMillis();
-        if (currTime - prevProcessedTime >= elapsedTimeForProcessedEvents) {
-          synchronized (lock) {
-            //LOG.info("# of processed events (during {} ms) in TaskExecutor {}: {}",
-            //  (currTime - prevProcessedTime), taskId, currProcessedEvents);
-            prevProcessedEvents = currProcessedEvents;
-            prevProcessedTime = System.currentTimeMillis();
-            currProcessedEvents = 0;
-            detector.collect(prevProcessedTime, prevProcessedEvents);
-          }
-        }
-
         final DataFetcher dataFetcher = availableIterator.next();
         try {
           //final long a = System.currentTimeMillis();
@@ -662,7 +709,6 @@ public final class TaskExecutor {
 
           //final long b = System.currentTimeMillis();
           onEventFromDataFetcher(element, dataFetcher);
-          currProcessedEvents += 1;
           //processingTime += (System.currentTimeMillis() - b);
 
           if (element instanceof Finishmark) {
@@ -692,16 +738,6 @@ public final class TaskExecutor {
 
         while (pendingIterator.hasNext()) {
 
-          final long currTime = System.currentTimeMillis();
-          if (currTime - prevProcessedTime >= elapsedTimeForProcessedEvents) {
-            //LOG.info("# of processed events (during {} ms) in TaskExecutor {}: {}",
-            //  (currTime - prevProcessedTime), taskId, currProcessedEvents);
-            prevProcessedEvents = currProcessedEvents;
-            currProcessedEvents = 0;
-            prevProcessedTime = System.currentTimeMillis();
-            detector.collect(prevProcessedTime, prevProcessedEvents);
-          }
-
           final DataFetcher dataFetcher = pendingIterator.next();
           try {
             //final long a = System.currentTimeMillis();
@@ -710,7 +746,6 @@ public final class TaskExecutor {
 
             //final long b = System.currentTimeMillis();
             onEventFromDataFetcher(element, dataFetcher);
-            currProcessedEvents += 1;
            // processingTime += (System.currentTimeMillis() - b);
 
             // We processed data. This means the data fetcher is now available.

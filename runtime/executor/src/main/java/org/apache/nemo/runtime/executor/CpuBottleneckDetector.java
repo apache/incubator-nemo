@@ -23,6 +23,7 @@ public final class CpuBottleneckDetector {
   private final double threshold;
   private int currBottleneckId = 0;
   private int currConsecutive = 0;
+  private int endConsecutive = 0;
 
   @Inject
   private CpuBottleneckDetector(
@@ -48,15 +49,21 @@ public final class CpuBottleneckDetector {
         currConsecutive += 1;
       } else {
         if (currConsecutive >= k) {
-         final BottleneckEvent event =
-          new BottleneckEvent(currBottleneckId,
-           System.currentTimeMillis(),
-            curCpuLoad, BottleneckEvent.Type.END);
-        eventHandlers.keySet().forEach((eventHandler) -> {
-          eventHandler.onNext(event);
-        });
+          if (endConsecutive == k) {
+            final BottleneckEvent event =
+              new BottleneckEvent(currBottleneckId,
+                System.currentTimeMillis(),
+                curCpuLoad, BottleneckEvent.Type.END);
+            eventHandlers.keySet().forEach((eventHandler) -> {
+              eventHandler.onNext(event);
+            });
+
+            currConsecutive = 0;
+            endConsecutive = 0;
+          } else {
+            endConsecutive += 1;
+          }
         }
-        currConsecutive = 0;
       }
 
       if (currConsecutive == k) {

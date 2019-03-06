@@ -35,6 +35,7 @@ ENABLE_OFFLOADING_DEBUG=false
 POOL_SIZE=0
 FLUSH_BYTES=$((10 * 1024 * 1024)) 
 FLUSH_COUNT=10
+FLUSH_PERIOD=1000
 
 echo run query $1 
 
@@ -49,5 +50,6 @@ echo run query $1
         -lambda_warmup_pool $POOL_SIZE \
         -flush_bytes $FLUSH_BYTES \
         -flush_count $FLUSH_COUNT \
+        -flush_period $FLUSH_PERIOD \
         -user_args "--runner=org.apache.nemo.compiler.frontend.beam.runner.NemoRunner --streaming=true --query=$1 --manageResources=false --monitorJobs=true --streamTimeout=$TIMEOUT --numEventGenerators=$PARALLELISM --numEvents=$EVENTS --isRateLimited=true --firstEventRate=$NORMAL --nextEventRate=$BURSTY --windowSizeSec=$WINDOW --windowPeriodSec=$INTERVAL --fanout=1 --rateShape=BURSTY --ratePeriodSec=$PERIOD --auctionSkip=1 --cpuDelayMs=$CPU_DELAY --samplingRate=$SAMPLING"
 

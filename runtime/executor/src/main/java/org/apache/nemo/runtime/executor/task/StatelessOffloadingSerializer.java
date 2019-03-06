@@ -54,14 +54,19 @@ public class StatelessOffloadingSerializer implements OffloadingSerializer {
       final DataInputStream dis = new DataInputStream(inputStream);
       final int length = dis.readInt();
       System.out.println("Decoding " + length + " inputs");
-      final List<Pair<String, Object>> data = new ArrayList<>(length);
+      final List<Pair<List<String>, Object>> data = new ArrayList<>(length);
       for (int i = 0; i < length; i++) {
-        final String vertexId = dis.readUTF();
+        final int nextVertices = dis.readInt();
+        final List<String> nextVerticeIds = new ArrayList<>(nextVertices);
+        for (int j = 0; j < nextVertices; j++) {
+          final String nextVertexId = dis.readUTF();
+          nextVerticeIds.add(nextVertexId);
+        }
         final String edgeId = dis.readUTF();
         final Serializer serializer = serializerMap.get(edgeId);
         final Object object = serializer.getDecoderFactory().create(dis).decode();
         //System.out.println("Decoded data " + vertexId + "/" + edgeId + " cnt: " + i);
-        data.add(Pair.of(vertexId, object));
+        data.add(Pair.of(nextVerticeIds, object));
       }
       return new OffloadingDataEvent(data);
     }
@@ -75,9 +80,12 @@ public class StatelessOffloadingSerializer implements OffloadingSerializer {
       dos.writeInt(element.data.size());
       System.out.println("Encoding " + element.data.size() + " events");
 
-      for (final Triple<String, String, Object> triple : element.data) {
+      for (final Triple<List<String>, String, Object> triple : element.data) {
         // vertex id
-        dos.writeUTF(triple.first);
+        dos.writeInt(triple.first.size());
+        for (final String nextVertexId : triple.first) {
+          dos.writeUTF(nextVertexId);
+        }
         // edge id
         dos.writeUTF(triple.second);
         final Serializer serializer = serializerMap.get(triple.second);
@@ -93,13 +101,17 @@ public class StatelessOffloadingSerializer implements OffloadingSerializer {
       final DataInputStream dis = new DataInputStream(inputStream);
       final int length = dis.readInt();
       System.out.println("Decoding " + length + " events");
-      final List<Triple<String, String, Object>> data = new ArrayList<>(length);
+      final List<Triple<List<String>, String, Object>> data = new ArrayList<>(length);
       for (int i = 0; i < length; i++) {
-        final String vertexId = dis.readUTF();
+        final int numOfNextVertices = dis.readInt();
+        final List<String> nextVertices = new ArrayList<>(numOfNextVertices);
+        for (int j = 0; j < numOfNextVertices; j++) {
+          nextVertices.add(dis.readUTF());
+        }
         final String edgeId = dis.readUTF();
         final Serializer serializer = serializerMap.get(edgeId);
         final Object object = serializer.getDecoderFactory().create(dis).decode();
-        data.add(new Triple<>(vertexId, edgeId, object));
+        data.add(new Triple<>(nextVertices, edgeId, object));
       }
       return new OffloadingResultEvent(data);
     }

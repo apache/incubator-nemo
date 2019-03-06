@@ -242,7 +242,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final long et = System.currentTimeMillis();
 //    LOG.info("{}/{} latency {}, watermark: {}, emitOutputWatermarkTime: {}",
 //      getContext().getIRVertex().getId(), Thread.currentThread().getId(), (et-st),
-//      new Instant(watermark.getTimestamp()), (et - et1));
+//      new Instant(watermark.getInputTimestamp()), (et - et1));
   }
 
   /**

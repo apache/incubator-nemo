@@ -36,7 +36,7 @@ import java.util.Map;
 public final class OffloadingResultCollector{
 
   // vertexId, edgeId, data
-  public final List<Triple<String, String, Object>> result;
+  public final List<Triple<List<String>, String, Object>> result;
   public final OffloadingOutputCollector collector;
 
   public OffloadingResultCollector(final OffloadingOutputCollector collector) {

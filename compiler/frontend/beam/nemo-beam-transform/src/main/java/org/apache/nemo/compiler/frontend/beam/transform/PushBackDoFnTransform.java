@@ -339,12 +339,12 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     return new OutputCollector(){
       long timestamp;
       @Override
-      public void setTimestamp(long ts) {
+      public void setInputTimestamp(long ts) {
         timestamp = ts;
       }
 
       @Override
-      public long getTimestamp() {
+      public long getInputTimestamp() {
         return timestamp;
       }
 
@@ -357,6 +357,16 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
       @Override
       public void emitWatermark(Watermark watermark) {
         oc.emitWatermark(watermark);
+      }
+
+      @Override
+      public void enableOffloading() {
+
+      }
+
+      @Override
+      public void disableOffloading() {
+
       }
 
       @Override

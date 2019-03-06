@@ -11,4 +11,6 @@ public interface ServerlessExecutorService<I> {
   void execute(final ByteBuf data);
 
   void shutdown();
+
+  boolean isShutdown();
 }

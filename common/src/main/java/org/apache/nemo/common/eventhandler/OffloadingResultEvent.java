@@ -7,10 +7,10 @@ import java.util.List;
 
 
 public final class OffloadingResultEvent {
-  // vertexId, edgeId, data
-  public final List<Triple<String, String, Object>> data;
+  // nextVertexIds, edgeId, data
+  public final List<Triple<List<String>, String, Object>> data;
 
-  public OffloadingResultEvent(final List<Triple<String, String, Object>> data) {
+  public OffloadingResultEvent(final List<Triple<List<String>, String, Object>> data) {
     this.data = data;
   }
 }
