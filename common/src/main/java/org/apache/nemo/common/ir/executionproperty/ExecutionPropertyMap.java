@@ -27,7 +27,6 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -66,19 +65,21 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
       final CommunicationPatternProperty.Value commPattern) {
     final ExecutionPropertyMap<EdgeExecutionProperty> map = new ExecutionPropertyMap<>();
     map.put(CommunicationPatternProperty.of(commPattern));
-    map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     map.put(EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));
     map.put(DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
     switch (commPattern) {
       case Shuffle:
+        map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
         map.put(PartitionerProperty.of(PartitionerProperty.Type.Hash));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
         break;
       case BroadCast:
+        map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
         map.put(PartitionerProperty.of(PartitionerProperty.Type.Intact));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
         break;
       case OneToOne:
+        map.put(DataFlowProperty.of(DataFlowProperty.Value.Push));
         map.put(PartitionerProperty.of(PartitionerProperty.Type.Intact));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
         break;
@@ -95,7 +96,6 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
    */
   public static ExecutionPropertyMap<VertexExecutionProperty> of(final IRVertex irVertex) {
     final ExecutionPropertyMap<VertexExecutionProperty> map = new ExecutionPropertyMap<>();
-    map.put(ParallelismProperty.of(1));
     map.put(ResourcePriorityProperty.of(ResourcePriorityProperty.NONE));
     return map;
   }

@@ -61,7 +61,7 @@ public class TransientResourceCompositePassTest {
     assertEquals(ResourcePriorityProperty.TRANSIENT, vertexY.getPropertyValue(ResourcePriorityProperty.class).get());
     processedDAG.getIncomingEdgesOf(vertexY).forEach(irEdge -> {
       assertEquals(DataStoreProperty.Value.MemoryStore, irEdge.getPropertyValue(DataStoreProperty.class).get());
-      assertEquals(DataFlowProperty.Value.Pull, irEdge.getPropertyValue(DataFlowProperty.class).get());
+      assertEquals(DataFlowProperty.Value.Push, irEdge.getPropertyValue(DataFlowProperty.class).get());
     });
   }
 }

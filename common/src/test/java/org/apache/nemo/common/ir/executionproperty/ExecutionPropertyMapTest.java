@@ -57,7 +57,6 @@ public class ExecutionPropertyMapTest {
   @Test
   public void testDefaultValues() {
     assertEquals(comPattern, edgeMap.get(CommunicationPatternProperty.class).get());
-    assertEquals(1, vertexMap.get(ParallelismProperty.class).get().longValue());
   }
 
   @Test

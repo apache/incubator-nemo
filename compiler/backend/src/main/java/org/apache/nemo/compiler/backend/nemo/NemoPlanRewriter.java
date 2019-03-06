@@ -88,7 +88,7 @@ public final class NemoPlanRewriter implements PlanRewriter {
       .stream()
       .flatMap(v -> currentIRDAG.getIncomingEdgesOf(v).stream())
       .filter(e -> e.getPropertyValue(MessageIdEdgeProperty.class).isPresent()
-        && e.getPropertyValue(MessageIdEdgeProperty.class).get() == messageId
+        && e.getPropertyValue(MessageIdEdgeProperty.class).get().contains(messageId)
         && !(e.getDst() instanceof MessageAggregatorVertex))
       .collect(Collectors.toSet());
     if (examiningEdges.isEmpty()) {

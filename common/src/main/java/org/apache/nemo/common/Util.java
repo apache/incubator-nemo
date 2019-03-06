@@ -27,6 +27,7 @@ import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 
 import java.util.Collection;
+import java.util.Optional;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 
@@ -91,35 +92,33 @@ public final class Util {
                                  final IRVertex newSrc,
                                  final IRVertex newDst) {
     final IREdge clone = new IREdge(commPattern, newSrc, newDst);
-
-    if (edgeToClone.getPropertySnapshot().containsKey(EncoderProperty.class)) {
-      clone.setProperty(edgeToClone.getPropertySnapshot().get(EncoderProperty.class));
-    } else {
-      clone.setProperty(EncoderProperty.of(edgeToClone.getPropertyValue(EncoderProperty.class)
-        .orElseThrow(IllegalStateException::new)));
-    }
-
-    if (edgeToClone.getPropertySnapshot().containsKey(DecoderProperty.class)) {
-      clone.setProperty(edgeToClone.getPropertySnapshot().get(DecoderProperty.class));
-    } else {
-      clone.setProperty(DecoderProperty.of(edgeToClone.getPropertyValue(DecoderProperty.class)
-        .orElseThrow(IllegalStateException::new)));
-    }
+    clone.setProperty(EncoderProperty.of(edgeToClone.getPropertyValue(EncoderProperty.class)
+      .orElseThrow(IllegalStateException::new)));
+    clone.setProperty(DecoderProperty.of(edgeToClone.getPropertyValue(DecoderProperty.class)
+      .orElseThrow(IllegalStateException::new)));
 
     edgeToClone.getPropertyValue(AdditionalOutputTagProperty.class).ifPresent(tag -> {
       clone.setProperty(AdditionalOutputTagProperty.of(tag));
     });
 
-    edgeToClone.getPropertyValue(PartitionerProperty.class).ifPresent(p -> {
-      if (p.right() == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM) {
-        clone.setProperty(PartitionerProperty.of(p.left()));
-      } else {
-        clone.setProperty(PartitionerProperty.of(p.left(), p.right()));
-      }
-    });
+    if (commPattern.equals(CommunicationPatternProperty.Value.Shuffle)) {
+      edgeToClone.getPropertyValue(PartitionerProperty.class).ifPresent(p -> {
+        if (p.right() == PartitionerProperty.NUM_EQUAL_TO_DST_PARALLELISM) {
+          clone.setProperty(PartitionerProperty.of(p.left()));
+        } else {
+          clone.setProperty(PartitionerProperty.of(p.left(), p.right()));
+        }
+      });
+    }
 
     edgeToClone.getPropertyValue(KeyExtractorProperty.class).ifPresent(ke -> {
       clone.setProperty(KeyExtractorProperty.of(ke));
+    });
+    edgeToClone.getPropertyValue(KeyEncoderProperty.class).ifPresent(keyEncoder -> {
+      clone.setProperty(KeyEncoderProperty.of(keyEncoder));
+    });
+    edgeToClone.getPropertyValue(KeyDecoderProperty.class).ifPresent(keyDecoder -> {
+      clone.setProperty(KeyDecoderProperty.of(keyDecoder));
     });
 
     return clone;
@@ -140,12 +139,23 @@ public final class Util {
     return controlEdge;
   }
 
+  public static boolean isControlEdge(final IREdge edge) {
+    return edge.getPropertyValue(AdditionalOutputTagProperty.class).equals(Optional.of(Util.CONTROL_EDGE_TAG));
+  }
+
+  public static boolean isUtilityVertex(final IRVertex v) {
+    return v instanceof SamplingVertex
+      || v instanceof MessageAggregatorVertex
+      || v instanceof MessageBarrierVertex
+      || v instanceof StreamVertex;
+  }
+
   /**
    * @param vertices to stringify ids of.
    * @return the string of ids.
    */
   public static String stringifyIRVertexIds(final Collection<IRVertex> vertices) {
-    return vertices.stream().map(IRVertex::getId).collect(Collectors.toSet()).toString();
+    return vertices.stream().map(IRVertex::getId).sorted().collect(Collectors.toList()).toString();
   }
 
   /**
@@ -153,7 +163,7 @@ public final class Util {
    * @return the string of ids.
    */
   public static String stringifyIREdgeIds(final Collection<IREdge> edges) {
-    return edges.stream().map(IREdge::getId).collect(Collectors.toSet()).toString();
+    return edges.stream().map(IREdge::getId).sorted().collect(Collectors.toList()).toString();
   }
 
   public static boolean isUtilityVertex(final IRVertex v) {

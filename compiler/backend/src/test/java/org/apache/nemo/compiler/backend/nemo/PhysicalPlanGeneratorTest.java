@@ -31,22 +31,16 @@ import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
+import org.junit.Test;
 
 import java.util.Iterator;
 import java.util.Optional;
 
 import static org.apache.nemo.common.test.EmptyComponents.EMPTY_TRANSFORM;
-import static org.junit.Assert.assertNotEquals;
 
 public final class PhysicalPlanGeneratorTest {
-  /**
-   * Test splitting ScheduleGroups by Pull StageEdges.
-   * @throws Exception exceptions on the way
-   *
-   * TODO #337: IRDAG Unit Tests
-   * Move this test to IRDAG unit tests.
-   */
-  public void testSplitScheduleGroupByPullStageEdges() throws Exception {
+  @Test
+  public void testBasic() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
     final NemoBackend backend = injector.getInstance(NemoBackend.class);
 
@@ -63,8 +57,6 @@ public final class PhysicalPlanGeneratorTest {
     final Iterator<Stage> stages = physicalPlan.getStageDAG().getVertices().iterator();
     final Stage s0 = stages.next();
     final Stage s1 = stages.next();
-
-    assertNotEquals(s0.getScheduleGroup(), s1.getScheduleGroup());
   }
 
   private static final IRVertex newIRVertex(final int scheduleGroup, final int parallelism) {

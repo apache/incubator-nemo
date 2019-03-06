@@ -72,7 +72,7 @@ public final class DAGConverterTest {
     v2.setProperty(ParallelismProperty.of(2));
     irDAGBuilder.addVertex(v2);
 
-    final IREdge e = new IREdge(CommunicationPatternProperty.Value.Shuffle, v1, v2);
+    final IREdge e = EmptyComponents.newDummyShuffleEdge(v1, v2);
     irDAGBuilder.connectVertices(e);
 
     final IRDAG irDAG = new TestPolicy().runCompileTimeOptimization(
@@ -144,11 +144,11 @@ public final class DAGConverterTest {
     e2.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
     e2.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
 
-    final IREdge e3 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v2, v4);
+    final IREdge e3 = EmptyComponents.newDummyShuffleEdge(v2, v4);
     e3.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
     e3.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
 
-    final IREdge e4 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v3, v5);
+    final IREdge e4 = EmptyComponents.newDummyShuffleEdge(v3, v5);
     e4.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
     e4.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
 
