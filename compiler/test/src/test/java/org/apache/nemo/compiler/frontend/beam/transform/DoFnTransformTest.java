@@ -269,7 +269,7 @@ public final class DoFnTransformTest {
         WindowingStrategy.globalDefault(),
         sideInputMap, /* side inputs */
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
-        DisplayData.none());
+        DisplayData.none(), null, null);
 
     final TestOutputCollector<String> oc = new TestOutputCollector<>();
     doFnTransform.prepare(context, oc);
