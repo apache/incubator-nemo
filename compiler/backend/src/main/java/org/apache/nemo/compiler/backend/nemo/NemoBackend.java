@@ -146,11 +146,7 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
     final HashSet<IRVertex> isStagePartitioned = new HashSet<>();
     for (final Map.Entry<Integer, Set<IRVertex>> partitionIdAndVertices : vertexSetForEachPartition.entrySet()) {
       final Set<IRVertex> partitionVertices = partitionIdAndVertices.getValue();
-
-      // ID MANAGEMENT: PREFER USING THE EXISTING ID
-      final String stageId = existingIdFetcher.apply(partitionVertices).orElse(RuntimeIdManager.generateStageId());
-
-      final ExecutionPropertyMap<VertexExecutionProperty> stageProperties = new ExecutionPropertyMap<>(stageId);
+      final ExecutionPropertyMap<VertexExecutionProperty> stageProperties = new ExecutionPropertyMap<>();
       stagePartitioner.getStageProperties(partitionVertices.iterator().next()).forEach(stageProperties::put);
       final int stageParallelism = stageProperties.get(ParallelismProperty.class)
         .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
@@ -207,6 +203,10 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
       if (!stageInternalDAGBuilder.isEmpty()) {
         final DAG<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAG
           = stageInternalDAGBuilder.buildWithoutSourceSinkCheck();
+
+        // ID MANAGEMENT: PREFER USING THE EXISTING ID
+        final String stageId = existingIdFetcher.apply(partitionVertices).orElse(RuntimeIdManager.generateStageId());
+
         final Stage stage = new Stage(
           stageId,
           taskIndices,

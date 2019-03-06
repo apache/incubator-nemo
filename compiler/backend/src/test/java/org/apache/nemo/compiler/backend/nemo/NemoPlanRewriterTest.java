@@ -18,8 +18,10 @@
  */
 package org.apache.nemo.compiler.backend.nemo;
 
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.dag.Edge;
+import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -45,14 +47,18 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -63,6 +69,8 @@ import static org.mockito.Mockito.when;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({NemoBackend.class, NemoOptimizer.class})
 public final class NemoPlanRewriterTest {
+  private static final Logger LOG = LoggerFactory.getLogger(NemoPlanRewriterTest.class.getName());
+
   private static final String DEBUG_DAG_DIRECTORY = "debug";
   private static final int MESSAGE_ID = 1;
 
@@ -79,18 +87,23 @@ public final class NemoPlanRewriterTest {
 
     // Old plan
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
-    final IRVertex v1 = new EmptyComponents.EmptySourceVertex("empty source");
-    final IRVertex v2 = new OperatorVertex(new EmptyComponents.EmptyTransform("empty transform"));
-    final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, v1, v2);
+    final IRVertex v1 = new EmptyComponents.EmptySourceVertex("empty source one");
+    final IRVertex v2 = new OperatorVertex(new EmptyComponents.EmptyTransform("empty transform two"));
+    final IRVertex v3 = new OperatorVertex(new EmptyComponents.EmptyTransform("empty transform three"));
+    final IREdge e1 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v1, v2);
+    final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v2, v3);
 
     v1.setProperty(ParallelismProperty.of(2));
     v2.setProperty(ParallelismProperty.of(3));
-    edge.setProperty(MessageIdEdgeProperty.of(MESSAGE_ID));
-    edge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    e1.setProperty(MessageIdEdgeProperty.of(MESSAGE_ID));
+    e1.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
+    e2.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
 
     dagBuilder.addVertex(v1);
     dagBuilder.addVertex(v2);
-    dagBuilder.connectVertices(edge);
+    dagBuilder.addVertex(v3);
+    dagBuilder.connectVertices(e1);
+    dagBuilder.connectVertices(e2);
 
     this.oldIR = new IRDAG(dagBuilder.build());
     this.oldPlan = backend.compile(
@@ -120,20 +133,58 @@ public final class NemoPlanRewriterTest {
     assertEqualTopology(oldPlan, newPlan);
   }
 
-  // @Test
+  @Test
   public void testStreamVertex() {
     final PlanRewriter planRewriter = getPlanRewriter(irdag -> {
       irdag.topologicalDo(v -> irdag
         .getIncomingEdgesOf(v)
+        .stream()
+        .filter(e -> !CommunicationPatternProperty.Value.OneToOne
+          .equals(e.getPropertyValue(CommunicationPatternProperty.class).get()))
         .forEach(e -> irdag.insert(new StreamVertex(), e)));
       return irdag;
     });
 
+    // The ids of stages unrelated to the StreamVertex should remain the same
     final PhysicalPlan newPlan = planRewriter.rewrite(oldPlan, MESSAGE_ID);
+    final Set<String> stagesIdsWithoutStreamVertex = newPlan.getStageDAG().getVertices().stream()
+      .filter(this::isStageWithoutUtilityIRVertex)
+      .map(Vertex::getId)
+      .collect(Collectors.toSet());
+    assertTrue(getOrderedStageIds(oldPlan).containsAll(stagesIdsWithoutStreamVertex));
 
+    // The ids of stage edges unrelated to the StreamVertex should remain the same
+    final Set<String> stageEdgeIdsWithoutStreamVertex = newPlan.getStageDAG().getEdges().stream()
+      .filter(this::isStageEdgeWithoutUtilityIRVertex)
+      .map(Edge::getId)
+      .collect(Collectors.toSet());
+    assertTrue(getOrderedStageEdgeIds(oldPlan).containsAll(stageEdgeIdsWithoutStreamVertex));
+  }
+
+  /*
+  @Test
+  public void testMessageBarrierVertex() {
+    final PlanRewriter planRewriter = getPlanRewriter(irdag -> )
     // The ids must be exactly the same
-    // except the stream vertex neighbors
+    // except the newly inserted vertices
+  }
 
+  @Test
+  public void testSamplingVertex() {
+    final PlanRewriter planRewriter = getPlanRewriter(irdag -> )
+    // The ids must be exactly the same
+    // except the newly inserted vertices
+  }
+  */
+
+  //////////////////////////////////////////// PRIVATE HELPER METHODS
+
+  private boolean isStageWithoutUtilityIRVertex(final Stage stage) {
+    return stage.getIRDAG().getVertices().stream().noneMatch(Util::isUtilityVertex);
+  }
+
+  private boolean isStageEdgeWithoutUtilityIRVertex(final StageEdge stageEdge) {
+    return !Util.isUtilityVertex(stageEdge.getSrcIRVertex()) && !Util.isUtilityVertex(stageEdge.getDstIRVertex());
   }
 
   private PlanRewriter getPlanRewriter(final Function<IRDAG, IRDAG> irRewriteFunction) {
@@ -180,20 +231,4 @@ public final class NemoPlanRewriterTest {
     assertEquals(getOrderedMemberIRVertexIds(left), getOrderedMemberIRVertexIds(right));
     assertEquals(getOrderedMemberIREdgeIds(left), getOrderedMemberIREdgeIds(right));
   }
-
-  /*
-  @Test
-  public void testMessageBarrierVertex() {
-    final PlanRewriter planRewriter = getPlanRewriter(irdag -> )
-    // The ids must be exactly the same
-    // except the newly inserted vertices
-  }
-
-  @Test
-  public void testSamplingVertex() {
-    final PlanRewriter planRewriter = getPlanRewriter(irdag -> )
-    // The ids must be exactly the same
-    // except the newly inserted vertices
-  }
-  */
 }

@@ -58,8 +58,6 @@ public class ExecutionPropertyMapTest {
   public void testDefaultValues() {
     assertEquals(comPattern, edgeMap.get(CommunicationPatternProperty.class).get());
     assertEquals(1, vertexMap.get(ParallelismProperty.class).get().longValue());
-    assertEquals(edge.getId(), edgeMap.getId());
-    assertEquals(source.getId(), vertexMap.getId());
   }
 
   @Test
@@ -82,8 +80,8 @@ public class ExecutionPropertyMapTest {
 
   @Test
   public void testEquality() {
-    final ExecutionPropertyMap<ExecutionProperty> map0 = new ExecutionPropertyMap<>("map0");
-    final ExecutionPropertyMap<ExecutionProperty> map1 = new ExecutionPropertyMap<>("map1");
+    final ExecutionPropertyMap<ExecutionProperty> map0 = new ExecutionPropertyMap<>();
+    final ExecutionPropertyMap<ExecutionProperty> map1 = new ExecutionPropertyMap<>();
     assertTrue(map0.equals(map1));
     assertTrue(map1.equals(map0));
     map0.put(ParallelismProperty.of(1));
@@ -115,7 +113,7 @@ public class ExecutionPropertyMapTest {
   @Test
   public void testFinalizedProperty() {
     // this should work without a problem..
-    final ExecutionPropertyMap<ExecutionProperty> map = new ExecutionPropertyMap<>("map");
+    final ExecutionPropertyMap<ExecutionProperty> map = new ExecutionPropertyMap<>();
     map.put(ParallelismProperty.of(1), false);
     assertEquals(ParallelismProperty.of(1), map.put(ParallelismProperty.of(2)));
     assertEquals(ParallelismProperty.of(2), map.put(ParallelismProperty.of(3), true));

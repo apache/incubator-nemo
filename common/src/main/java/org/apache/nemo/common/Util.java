@@ -21,6 +21,10 @@ package org.apache.nemo.common;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
+import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
+import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 
 import java.util.Collection;
 import java.util.function.IntPredicate;
@@ -150,5 +154,12 @@ public final class Util {
    */
   public static String stringifyIREdgeIds(final Collection<IREdge> edges) {
     return edges.stream().map(IREdge::getId).collect(Collectors.toSet()).toString();
+  }
+
+  public static boolean isUtilityVertex(final IRVertex v) {
+    return v instanceof SamplingVertex
+      || v instanceof MessageAggregatorVertex
+      || v instanceof MessageBarrierVertex
+      || v instanceof StreamVertex;
   }
 }

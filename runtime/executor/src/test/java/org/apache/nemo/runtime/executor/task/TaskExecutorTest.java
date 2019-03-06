@@ -86,7 +86,7 @@ public final class TaskExecutorTest {
   private static final AtomicInteger RUNTIME_EDGE_ID = new AtomicInteger(0);
   private static final int DATA_SIZE = 100;
   private static final ExecutionPropertyMap<VertexExecutionProperty> TASK_EXECUTION_PROPERTY_MAP
-      = new ExecutionPropertyMap<>("TASK_EXECUTION_PROPERTY_MAP");
+      = new ExecutionPropertyMap<>();
   private static final int SOURCE_PARALLELISM = 5;
   private static final int FIRST_ATTEMPT = 0;
 
@@ -97,17 +97,14 @@ public final class TaskExecutorTest {
   private TaskStateManager taskStateManager;
   private MetricMessageSender metricMessageSender;
   private PersistentConnectionToMasterMap persistentConnectionToMasterMap;
-  private AtomicInteger stageId;
 
   private String generateTaskId() {
-    return RuntimeIdManager.generateTaskId(
-        RuntimeIdManager.generateStageId(stageId.getAndIncrement()), 0, FIRST_ATTEMPT);
+    return RuntimeIdManager.generateTaskId(RuntimeIdManager.generateStageId(), 0, FIRST_ATTEMPT);
   }
 
   @Before
   public void setUp() throws Exception {
     elements = getRangedNumList(0, DATA_SIZE);
-    stageId = new AtomicInteger(1);
 
     // Mock a TaskStateManager. It accumulates the state change into a list.
     taskStateManager = mock(TaskStateManager.class);
@@ -532,7 +529,7 @@ public final class TaskExecutorTest {
   private RuntimeEdge<IRVertex> createEdge(final IRVertex src,
                                            final IRVertex dst,
                                            final String runtimeIREdgeId) {
-    ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties = new ExecutionPropertyMap<>(runtimeIREdgeId);
+    ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties = new ExecutionPropertyMap<>();
     edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
     return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst);
 

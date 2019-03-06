@@ -43,7 +43,6 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({ExecutorRepresenter.class, Task.class, Stage.class, IRVertex.class})
 public final class AntiAffinitySchedulingConstraintTest {
   private final static int FIRST_ATTEMPT = 0;
-  private final static String EXEc_MAP_ID = "ID";
 
   private static Task mockTask(final int taskIdx, final ExecutionPropertyMap executionPropertyMap) {
     final Task task = mock(Task.class);
@@ -69,7 +68,7 @@ public final class AntiAffinitySchedulingConstraintTest {
 
     // Create a StageEdge where two out of three are skewed hash ranges.
     final HashSet<Integer> antiAffinityGroup = new HashSet<>(Arrays.asList(0, 1));
-    final ExecutionPropertyMap emap = new ExecutionPropertyMap(EXEc_MAP_ID);
+    final ExecutionPropertyMap emap = new ExecutionPropertyMap();
     emap.put(ResourceAntiAffinityProperty.of(antiAffinityGroup));
 
 

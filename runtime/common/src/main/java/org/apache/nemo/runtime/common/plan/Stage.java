@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.common.plan;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.Readable;
@@ -149,5 +150,15 @@ public final class Stage extends Vertex {
     node.put("num of task indices", getTaskIndices().size());
     node.set("executionProperties", executionProperties.asJsonNode());
     return node;
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(getId());
+    sb.append("<");
+    sb.append(Util.stringifyIRVertexIds(irDag.getVertices()));
+    sb.append(">");
+    return sb.toString();
   }
 }

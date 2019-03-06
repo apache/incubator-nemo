@@ -45,17 +45,14 @@ import java.util.stream.Stream;
  */
 @NotThreadSafe
 public final class ExecutionPropertyMap<T extends ExecutionProperty> implements Serializable {
-  private final String id;
   private final Map<Class<? extends ExecutionProperty>, T> properties = new HashMap<>();
   private final Set<Class<? extends ExecutionProperty>> finalizedProperties = new HashSet<>();
 
   /**
    * Constructor for ExecutionPropertyMap class.
-   * @param id ID of the vertex / edge to keep the execution property of.
    */
   @VisibleForTesting
-  public ExecutionPropertyMap(final String id) {
-    this.id = id;
+  public ExecutionPropertyMap() {
   }
 
   /**
@@ -67,7 +64,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
   public static ExecutionPropertyMap<EdgeExecutionProperty> of(
       final IREdge irEdge,
       final CommunicationPatternProperty.Value commPattern) {
-    final ExecutionPropertyMap<EdgeExecutionProperty> map = new ExecutionPropertyMap<>(irEdge.getId());
+    final ExecutionPropertyMap<EdgeExecutionProperty> map = new ExecutionPropertyMap<>();
     map.put(CommunicationPatternProperty.of(commPattern));
     map.put(DataFlowProperty.of(DataFlowProperty.Value.Pull));
     map.put(EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));
@@ -97,18 +94,10 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
    * @return The corresponding ExecutionPropertyMap.
    */
   public static ExecutionPropertyMap<VertexExecutionProperty> of(final IRVertex irVertex) {
-    final ExecutionPropertyMap<VertexExecutionProperty> map = new ExecutionPropertyMap<>(irVertex.getId());
+    final ExecutionPropertyMap<VertexExecutionProperty> map = new ExecutionPropertyMap<>();
     map.put(ParallelismProperty.of(1));
     map.put(ResourcePriorityProperty.of(ResourcePriorityProperty.NONE));
     return map;
-  }
-
-  /**
-   * ID of the item this ExecutionPropertyMap class is keeping track of.
-   * @return the ID of the item this ExecutionPropertyMap class is keeping track of.
-   */
-  public String getId() {
-    return id;
   }
 
   /**
