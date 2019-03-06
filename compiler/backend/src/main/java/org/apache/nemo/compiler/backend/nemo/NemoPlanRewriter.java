@@ -18,23 +18,23 @@
  */
 package org.apache.nemo.compiler.backend.nemo;
 
+import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.MessageIdEdgeProperty;
-import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.compiler.optimizer.NemoOptimizer;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
-import org.apache.nemo.runtime.common.plan.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -97,19 +97,21 @@ public final class NemoPlanRewriter implements PlanRewriter {
 
     // Optimize using the Message
     final Message message = new Message(messageId, examiningEdges, aggregatedData);
-    final IRDAG newIRDAG = nemoOptimizer.optimizeAtRunTime(currentIRDAG, message);
+    currentIRDAG = nemoOptimizer.optimizeAtRunTime(currentIRDAG, message);
 
-    // Re-compile the IRDAG into a physical plan
-    final PhysicalPlan newPhysicalPlan = nemoBackend.compile(newIRDAG, element -> Optional.empty());
+    // If a new IR DAG partition (set of ir vertices) matches an old stage, inherit the stage id
+    final Function<Object, Optional<String>> existingIdFetcher = (element -> {
+      final Set<IRVertex> vertexSet = (Set<IRVertex>) element;
+      return currentPhysicalPlan.getStageDAG().getVertices().stream().filter(existingStage -> {
+        final Set<String> oldIdSet = existingStage.getIRDAG().getVertices().stream().map(IRVertex::getId)
+          .collect(Collectors.toSet());
+        final Set<String> newIdSet = vertexSet.stream().map(IRVertex::getId).collect(Collectors.toSet());
+        return oldIdSet.equals(newIdSet);
+      }).map(Vertex::getId).findAny();
+    });
 
-    // Update the physical plan and return
-    final List<Stage> currentStages = currentPhysicalPlan.getStageDAG().getTopologicalSort();
-    final List<Stage> newStages = newPhysicalPlan.getStageDAG().getTopologicalSort();
-    for (int i = 0; i < currentStages.size(); i++) {
-      final ExecutionPropertyMap<VertexExecutionProperty> newProperties = newStages.get(i).getExecutionProperties();
-      currentStages.get(i).setExecutionProperties(newProperties);
-    }
-    return currentPhysicalPlan;
+    // Re-compile the IRDAG into a new physical plan, and return the new plan
+    return nemoBackend.compile(currentIRDAG, existingIdFetcher);
   }
 
   @Override

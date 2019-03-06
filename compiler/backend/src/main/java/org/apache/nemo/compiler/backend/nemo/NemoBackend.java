@@ -66,7 +66,7 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
   @Override
   public PhysicalPlan compile(final IRDAG irDAG, final Function<Object, Optional<String>> existingIdFetcher) {
     // first, stage-partition the IR DAG.
-    final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG);
+    final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG, existingIdFetcher);
 
     // Sanity check
     dagOfStages.getVertices().forEach(this::integrityCheck);
@@ -116,37 +116,45 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
   }
 
   /**
-   * We take the stage-partitioned DAG and create actual stage and stage edge objects to create a DAG of stages.
+   * Translates an ir DAG into a stage DAG.
    *
-   * @param irDAG stage-partitioned IR DAG.
+   * ID MANAGEMENT for handling run-time optimizations (re-compilations)
+   * - Stage: If there is an existing id then use it, if not then generate a new id
+   * - StageEdge: Always inherits the corresponding IREdge id
+   *
+   * @param irDAG to translate.
+   * @param existingIdFetcher for looking up existing ids.
    * @return the DAG composed of stages and stage edges.
    */
-  public DAG<Stage, StageEdge> stagePartitionIrDAG(final IRDAG irDAG) {
+  private DAG<Stage, StageEdge> stagePartitionIrDAG(final IRDAG irDAG,
+                                                    final Function<Object, Optional<String>> existingIdFetcher) {
     final StagePartitioner stagePartitioner = new StagePartitioner();
-    final DAGBuilder<Stage, StageEdge> dagOfStagesBuilder = new DAGBuilder<>();
-    final Set<IREdge> interStageEdges = new HashSet<>();
-    final Map<Integer, Stage> stageIdToStageMap = new HashMap<>();
-    final Map<IRVertex, Integer> vertexToStageIdMap = stagePartitioner.apply(irDAG);
-    final HashSet<IRVertex> isStagePartitioned = new HashSet<>();
-    final Random random = new Random(hashCode()); // to produce same results for same input IRDAGs
-
-    final Map<Integer, Set<IRVertex>> vertexSetForEachStage = new LinkedHashMap<>();
+    final Map<IRVertex, Integer> vertexToPartitionIdMap = stagePartitioner.apply(irDAG);
+    final Map<Integer, Set<IRVertex>> vertexSetForEachPartition = new LinkedHashMap<>();
     irDAG.topologicalDo(irVertex -> {
-      final int stageId = vertexToStageIdMap.get(irVertex);
-      if (!vertexSetForEachStage.containsKey(stageId)) {
-        vertexSetForEachStage.put(stageId, new HashSet<>());
+      final int stageId = vertexToPartitionIdMap.get(irVertex);
+      if (!vertexSetForEachPartition.containsKey(stageId)) {
+        vertexSetForEachPartition.put(stageId, new HashSet<>());
       }
-      vertexSetForEachStage.get(stageId).add(irVertex);
+      vertexSetForEachPartition.get(stageId).add(irVertex);
     });
 
-    for (final int stageId : vertexSetForEachStage.keySet()) {
-      final Set<IRVertex> stageVertices = vertexSetForEachStage.get(stageId);
-      final String stageIdentifier = RuntimeIdManager.generateStageId(stageId);
-      final ExecutionPropertyMap<VertexExecutionProperty> stageProperties = new ExecutionPropertyMap<>(stageIdentifier);
-      stagePartitioner.getStageProperties(stageVertices.iterator().next()).forEach(stageProperties::put);
+    final Random random = new Random(hashCode()); // to produce same results for same input IRDAGs
+    final Set<IREdge> interStageEdges = new HashSet<>();
+    final DAGBuilder<Stage, StageEdge> dagOfStagesBuilder = new DAGBuilder<>();
+    final Map<Integer, Stage> partitionIdToStageMap = new HashMap<>();
+    final HashSet<IRVertex> isStagePartitioned = new HashSet<>();
+    for (final Map.Entry<Integer, Set<IRVertex>> partitionIdAndVertices : vertexSetForEachPartition.entrySet()) {
+      final Set<IRVertex> partitionVertices = partitionIdAndVertices.getValue();
+
+      // ID MANAGEMENT: PREFER USING THE EXISTING ID
+      final String stageId = existingIdFetcher.apply(partitionVertices).orElse(RuntimeIdManager.generateStageId());
+
+      final ExecutionPropertyMap<VertexExecutionProperty> stageProperties = new ExecutionPropertyMap<>(stageId);
+      stagePartitioner.getStageProperties(partitionVertices.iterator().next()).forEach(stageProperties::put);
       final int stageParallelism = stageProperties.get(ParallelismProperty.class)
         .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
-      final List<Integer> taskIndices = getTaskIndicesToExecute(stageVertices, stageParallelism, random);
+      final List<Integer> taskIndices = getTaskIndicesToExecute(partitionVertices, stageParallelism, random);
       final DAGBuilder<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAGBuilder = new DAGBuilder<>();
 
       // Prepare vertexIdToReadables
@@ -156,7 +164,7 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
       }
 
       // For each IRVertex,
-      for (final IRVertex v : stageVertices) {
+      for (final IRVertex v : partitionVertices) {
         final IRVertex vertexToPutIntoStage = getActualVertexToPutIntoStage(v);
 
         // Take care of the readables of a source vertex.
@@ -178,15 +186,15 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
         stageInternalDAGBuilder.addVertex(vertexToPutIntoStage);
       }
 
-      for (final IRVertex dstVertex : stageVertices) {
+      for (final IRVertex dstVertex : partitionVertices) {
         // Connect all the incoming edges for the vertex.
         irDAG.getIncomingEdgesOf(dstVertex).forEach(irEdge -> {
           final IRVertex srcVertex = irEdge.getSrc();
 
           // both vertices are in the same stage.
-          if (vertexToStageIdMap.get(srcVertex).equals(vertexToStageIdMap.get(dstVertex))) {
+          if (vertexToPartitionIdMap.get(srcVertex).equals(vertexToPartitionIdMap.get(dstVertex))) {
             stageInternalDAGBuilder.connectVertices(new RuntimeEdge<>(
-              irEdge.getId(),
+              irEdge.getId(), // ID MANAGEMENT: INHERIT THE IREDGE ID
               irEdge.getExecutionProperties(),
               getActualVertexToPutIntoStage(irEdge.getSrc()),
               getActualVertexToPutIntoStage(irEdge.getDst())));
@@ -200,24 +208,24 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
         final DAG<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAG
           = stageInternalDAGBuilder.buildWithoutSourceSinkCheck();
         final Stage stage = new Stage(
-          stageIdentifier,
+          stageId,
           taskIndices,
           stageInternalDAG,
           stageProperties,
           vertexIdToReadables);
         dagOfStagesBuilder.addVertex(stage);
-        stageIdToStageMap.put(stageId, stage);
+        partitionIdToStageMap.put(partitionIdAndVertices.getKey(), stage);
       }
 
       // To prevent re-fetching readables in source vertex
       // during re-generation of physical plan for dynamic optimization.
-      isStagePartitioned.addAll(stageVertices);
+      isStagePartitioned.addAll(partitionVertices);
     }
 
     // Add StageEdges
     for (final IREdge interStageEdge : interStageEdges) {
-      final Stage srcStage = stageIdToStageMap.get(vertexToStageIdMap.get(interStageEdge.getSrc()));
-      final Stage dstStage = stageIdToStageMap.get(vertexToStageIdMap.get(interStageEdge.getDst()));
+      final Stage srcStage = partitionIdToStageMap.get(vertexToPartitionIdMap.get(interStageEdge.getSrc()));
+      final Stage dstStage = partitionIdToStageMap.get(vertexToPartitionIdMap.get(interStageEdge.getDst()));
       if (srcStage == null || dstStage == null) {
         throw new IllegalVertexOperationException(String.format("Stage not added to the builder:%s%s",
           srcStage == null ? String.format(" source stage for %s", interStageEdge.getSrc()) : "",

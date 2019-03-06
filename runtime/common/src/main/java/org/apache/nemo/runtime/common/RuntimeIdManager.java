@@ -26,6 +26,8 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class RuntimeIdManager {
   private static AtomicInteger physicalPlanIdGenerator = new AtomicInteger(0);
+  private static AtomicInteger stageIdGenerator = new AtomicInteger(0);
+
   private static AtomicInteger executorIdGenerator = new AtomicInteger(0);
   private static AtomicLong messageIdGenerator = new AtomicLong(1L);
   private static AtomicLong resourceSpecIdGenerator = new AtomicLong(0);
@@ -53,11 +55,10 @@ public final class RuntimeIdManager {
   /**
    * Generates the ID for {@link org.apache.nemo.runtime.common.plan.Stage}.
    *
-   * @param stageId stage ID in numeric form.
    * @return the generated ID
    */
-  public static String generateStageId(final Integer stageId) {
-    return "Stage" + stageId;
+  public static String generateStageId() {
+    return "Stage" + stageIdGenerator.getAndIncrement();
   }
 
   /**

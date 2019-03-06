@@ -77,19 +77,7 @@ public final class DAGConverterTest {
 
     final IRDAG irDAG = new TestPolicy().runCompileTimeOptimization(
         new IRDAG(irDAGBuilder.buildWithoutSourceSinkCheck()), DAG.EMPTY_DAG_DIRECTORY);
-    final DAG<Stage, StageEdge> DAGOfStages = backend.stagePartitionIrDAG(irDAG);
     final DAG<Stage, StageEdge> physicalDAG = backend.compile(irDAG, element -> Optional.empty()).getStageDAG();
-
-    // Test DAG of stages
-    final List<Stage> sortedDAGOfStages = DAGOfStages.getTopologicalSort();
-    final Stage stage1 = sortedDAGOfStages.get(0);
-    final Stage stage2 = sortedDAGOfStages.get(1);
-
-    assertEquals(DAGOfStages.getVertices().size(), 2);
-    assertEquals(DAGOfStages.getIncomingEdgesOf(stage1).size(), 0);
-    assertEquals(DAGOfStages.getIncomingEdgesOf(stage2).size(), 1);
-    assertEquals(DAGOfStages.getOutgoingEdgesOf(stage1).size(), 1);
-    assertEquals(DAGOfStages.getOutgoingEdgesOf(stage2).size(), 0);
 
     // Test Physical DAG
     final List<Stage> sortedPhysicalDAG = physicalDAG.getTopologicalSort();

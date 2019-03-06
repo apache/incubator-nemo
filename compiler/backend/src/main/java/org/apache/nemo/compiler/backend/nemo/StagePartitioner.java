@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 @ThreadSafe
 public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Integer>> {
   private final Set<Class<? extends VertexExecutionProperty>> ignoredPropertyKeys = ConcurrentHashMap.newKeySet();
-  private final MutableInt nextStageIndex = new MutableInt(0);
+  private final MutableInt nextPartitionIndex = new MutableInt(0);
 
   /**
    * By default, the stage partitioner merges two vertices into one stage if and only if the two vertices have
@@ -60,36 +60,36 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
 
   /**
    * @param irDAG IR DAG to perform stage partition on.
-   * @return a map between IR vertex and the corresponding stage id
+   * @return a map between IR vertex and the corresponding partition id
    */
   @Override
   public Map<IRVertex, Integer> apply(final IRDAG irDAG) {
-    final Map<IRVertex, Integer> vertexToStageIdMap = new HashMap<>();
+    final Map<IRVertex, Integer> vertexToPartitionIdMap = new HashMap<>();
     irDAG.topologicalDo(irVertex -> {
       // Base case: for root vertices
-      if (vertexToStageIdMap.get(irVertex) == null) {
-        vertexToStageIdMap.put(irVertex, nextStageIndex.getValue());
-        nextStageIndex.increment();
+      if (vertexToPartitionIdMap.get(irVertex) == null) {
+        vertexToPartitionIdMap.put(irVertex, nextPartitionIndex.getValue());
+        nextPartitionIndex.increment();
       }
-      // Get stage id of irVertex
-      final int stageId = vertexToStageIdMap.get(irVertex);
-      // Step case: inductively assign stage ids based on mergeability with irVertex
+      // Get partition id of irVertex
+      final int partitionId = vertexToPartitionIdMap.get(irVertex);
+      // Step case: inductively assign partition ids based on mergeability with irVertex
       for (final IREdge edge : irDAG.getOutgoingEdgesOf(irVertex)) {
         final IRVertex connectedIRVertex = edge.getDst();
-        // Skip if it already has been assigned stageId
-        if (vertexToStageIdMap.containsKey(connectedIRVertex)) {
+        // Skip if it already has been assigned a partition id
+        if (vertexToPartitionIdMap.containsKey(connectedIRVertex)) {
           continue;
         }
-        // Assign stageId
+        // Assign a partition id
         if (testMergeability(edge, irDAG)) {
-          vertexToStageIdMap.put(connectedIRVertex, stageId);
+          vertexToPartitionIdMap.put(connectedIRVertex, partitionId);
         } else {
-          vertexToStageIdMap.put(connectedIRVertex, nextStageIndex.getValue());
-          nextStageIndex.increment();
+          vertexToPartitionIdMap.put(connectedIRVertex, nextPartitionIndex.getValue());
+          nextPartitionIndex.increment();
         }
       }
     });
-    return vertexToStageIdMap;
+    return vertexToPartitionIdMap;
   }
 
   /**
