@@ -18,11 +18,13 @@
  */
 package org.apache.nemo.runtime.executor.data.partitioner;
 
+import org.apache.nemo.runtime.executor.data.partition.Partition;
+
 import java.io.Serializable;
 
 /**
  * This interface represents the way of partitioning output data from a source task.
- * It takes an element and designates key of {@link org.apache.nemo.runtime.executor.data.partition.Partition}
+ * It takes an element and designates key of {@link Partition}
  * to write the element, according to the number of destination tasks, the key of each element, etc.
  * @param <K> the key type of the partition to write.
  */

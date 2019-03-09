@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.channel.*;
+import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * Manages channels and exposes interface for {@link org.apache.nemo.runtime.executor.data.BlockManagerWorker}.
+ * Manages channels and exposes interface for {@link BlockManagerWorker}.
  */
 @ThreadSafe
 public final class ByteTransfer {

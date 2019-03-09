@@ -20,9 +20,9 @@ package org.apache.nemo.runtime.executor.data.stores;
 
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
-import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.common.Serializer;
 
 import javax.annotation.concurrent.ThreadSafe;

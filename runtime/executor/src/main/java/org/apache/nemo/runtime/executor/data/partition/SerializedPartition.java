@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.data.partition;
 import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.Serializer;
+import org.apache.nemo.runtime.executor.data.block.Block;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +33,7 @@ import static org.apache.nemo.runtime.executor.data.DataUtil.buildOutputStream;
 
 /**
  * A collection of data elements. The data is stored as an array of bytes.
- * This is a unit of read / write towards {@link org.apache.nemo.runtime.executor.data.block.Block}s.
+ * This is a unit of read / write towards {@link Block}s.
  * @param <K> the key type of its partitions.
  */
 public final class SerializedPartition<K> implements Partition<byte[], K> {

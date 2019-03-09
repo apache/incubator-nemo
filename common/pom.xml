@@ -31,21 +31,16 @@ under the License.
     <name>Nemo Common</name>
 
     <dependencies>
-      <dependency>
-        <groupId>org.apache.nemo</groupId>
-        <artifactId>offloading-client</artifactId>
-        <version>0.2-SNAPSHOT</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.reef</groupId>
-        <artifactId>reef-io</artifactId>
-        <version>${reef.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.reef</groupId>
-        <artifactId>reef-common</artifactId>
-        <version>${reef.version}</version>
-      </dependency>
+      <!--<dependency>-->
+        <!--<groupId>org.apache.reef</groupId>-->
+        <!--<artifactId>reef-io</artifactId>-->
+        <!--<version>${reef.version}</version>-->
+      <!--</dependency>-->
+      <!--<dependency>-->
+        <!--<groupId>org.apache.reef</groupId>-->
+        <!--<artifactId>reef-common</artifactId>-->
+        <!--<version>${reef.version}</version>-->
+      <!--</dependency>-->
       <dependency>
         <groupId>org.apache.hadoop</groupId>
         <artifactId>hadoop-mapreduce-client-core</artifactId>
@@ -57,6 +52,31 @@ under the License.
         <artifactId>beam-sdks-java-core</artifactId>
         <version>${beam.version}</version>
         <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.5</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.code.findbugs</groupId>
+        <artifactId>annotations</artifactId>
+        <version>2.0.3</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>2.8.5</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.nemo</groupId>
+        <artifactId>offloading-common</artifactId>
+        <version>0.2-SNAPSHOT</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.reef</groupId>
+        <artifactId>wake</artifactId>
+        <version>0.16.0</version>
       </dependency>
 
     </dependencies>

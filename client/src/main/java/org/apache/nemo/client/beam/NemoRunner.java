@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.frontend.beam.runner;
+package org.apache.nemo.client.beam;
 
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.nemo.client.JobLauncher;
@@ -25,6 +25,7 @@ import org.apache.beam.sdk.PipelineRunner;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsValidator;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
+import org.apache.nemo.compiler.frontend.beam.runner.PipelineVisitor;
 
 /**
  * Runner class for BEAM programs.

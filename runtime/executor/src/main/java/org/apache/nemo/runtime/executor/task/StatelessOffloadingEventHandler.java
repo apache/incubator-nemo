@@ -3,12 +3,10 @@ package org.apache.nemo.runtime.executor.task;
 import org.apache.nemo.common.NextIntraTaskOperatorInfo;
 import org.apache.nemo.common.TimestampAndValue;
 import org.apache.nemo.common.Triple;
-import org.apache.nemo.common.eventhandler.OffloadingResultEvent;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.executor.bytetransfer;
 
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferDataDirection;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteTransferContext.ContextId;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
@@ -109,8 +108,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     final ByteTransferDataDirection dataDirection = message.getDataDirection();
     final int transferIndex = message.getTransferIndex();
     final boolean isPipe = message.getIsPipe();
-    final ContextId contextId =
-      new ContextId(remoteExecutorId, localExecutorId, dataDirection, transferIndex, isPipe);
+    final ByteTransferContext.ContextId contextId =
+      new ByteTransferContext.ContextId(remoteExecutorId, localExecutorId, dataDirection, transferIndex, isPipe);
     final byte[] contextDescriptor = message.getContextDescriptor().toByteArray();
 
     if (dataDirection == ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
@@ -146,7 +145,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * @param context the {@link ByteTransferContext} to remove.
    */
   void onContextExpired(final ByteTransferContext context) {
-    final ContextId contextId = context.getContextId();
+    final ByteTransferContext.ContextId contextId = context.getContextId();
     final ConcurrentMap<Integer, ? extends ByteTransferContext> contexts = context instanceof ByteInputContext
         ? (contextId.getDataDirection() == ByteTransferDataDirection.INITIATOR_SENDS_DATA
             ? inputContextsInitiatedByRemote : inputContextsInitiatedByLocal)
@@ -169,12 +168,12 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
   <T extends ByteTransferContext> T newContext(final ConcurrentMap<Integer, T> contexts,
                                                final AtomicInteger transferIndexCounter,
                                                final ByteTransferDataDirection dataDirection,
-                                               final Function<ContextId, T> contextGenerator,
+                                               final Function<ByteTransferContext.ContextId, T> contextGenerator,
                                                final String executorId,
                                                final boolean isPipe) {
     setRemoteExecutorId(executorId);
     final int transferIndex = transferIndexCounter.getAndIncrement();
-    final ContextId contextId = new ContextId(localExecutorId, executorId, dataDirection, transferIndex, isPipe);
+    final ByteTransferContext.ContextId contextId = new ByteTransferContext.ContextId(localExecutorId, executorId, dataDirection, transferIndex, isPipe);
     final T context = contexts.compute(transferIndex, (index, existingContext) -> {
       if (existingContext != null) {
         throw new RuntimeException(String.format("Duplicate ContextId: %s", contextId));

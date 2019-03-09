@@ -33,9 +33,10 @@ under the License.
   <modules>
     <module>common</module>
     <module>driver</module>
-    <module>executor</module>
     <module>master</module>
     <module>test</module>
+    <module>executor</module>
+    <module>lambda-executor</module>
   </modules>
 
 </project>

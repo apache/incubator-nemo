@@ -1,8 +1,4 @@
-package org.apache.nemo.offloading.client;
-
-import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.offloading.common.OffloadingSerializer;
-import org.apache.nemo.offloading.common.OffloadingTransform;
+package org.apache.nemo.offloading.common;
 
 public interface ServerlessExecutorProvider {
 

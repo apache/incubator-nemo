@@ -31,7 +31,6 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.beam.sdk.values.KV;
-import org.apache.nemo.common.GBKLambdaEvent;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -276,6 +275,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 //      Thread.currentThread().getId(), (System.currentTimeMillis() - st));
 
     // TODO: send start event
+    /*
     if (!timers.isEmpty()) {
       final WindowedValue<KV<K, Iterable<InputT>>> startEvent =
         WindowedValue.valueInGlobalWindow(
@@ -283,6 +283,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
             Collections.emptyList()));
       getOutputCollector().emit(startEvent);
     }
+    */
     // TODO: end
 
     for (final Pair<K, TimerInternals.TimerData> timer : timers) {
@@ -301,6 +302,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     }
 
     // TODO: send end event
+    /*
     if (!timers.isEmpty()) {
       final WindowedValue<KV<K, Iterable<InputT>>> endEvent =
         WindowedValue.valueInGlobalWindow(
@@ -308,6 +310,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
             Collections.emptyList()));
       getOutputCollector().emit(endEvent);
     }
+    */
 
     return timers.size();
   }
@@ -519,14 +522,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
     @Override
     public void emit(final WindowedValue<KV<K, Iterable<InputT>>> output) {
-
-      // TODO: remove
-      if (output.getValue().getKey() instanceof  GBKLambdaEvent) {
-        //outputCollector.emit(output); // this commnet should be remove for query 8
-        return;
-      }
-      // TODO: remove
-
 
       // The watermark advances only in ON_TIME
       if (output.getPane().getTiming().equals(PaneInfo.Timing.ON_TIME)) {

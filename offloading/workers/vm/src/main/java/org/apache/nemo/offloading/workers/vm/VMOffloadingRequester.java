@@ -19,9 +19,6 @@ public final class VMOffloadingRequester {
 //  private Channel acceptor;
 //  private Map<Channel, org.apache.nemo.offloading.common.EventHandler> channelEventHandlerMap;
 //
-//  private final List<String> vmAddresses = Arrays.asList("172.31.37.143");
-//  private final List<String> instanceIds = Arrays.asList("i-0148d7ea6eae4cc80");
-//
 //  private final String serverAddress;
 //  private final int serverPort;
 //

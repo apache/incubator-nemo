@@ -2,15 +2,11 @@ package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentMap;
 
 public final class InputFluctuationDetector {
   private static final Logger LOG = LoggerFactory.getLogger(InputFluctuationDetector.class.getName());

@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common;
+package org.apache.nemo.runtime.lambdaexecutor;
 
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.offloading.client.ServerlessExecutorProvider;
+import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 
 import java.io.Serializable;
 import java.util.Optional;

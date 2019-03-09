@@ -21,9 +21,9 @@ package org.apache.nemo.runtime.executor.data.block;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.common.KeyRange;
-import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
+import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.common.Serializer;
 
 import javax.annotation.concurrent.NotThreadSafe;

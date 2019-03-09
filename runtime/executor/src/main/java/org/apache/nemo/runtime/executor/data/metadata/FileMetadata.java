@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.data.metadata;
 
+import org.apache.nemo.runtime.executor.data.block.Block;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -26,7 +28,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * This class represents a metadata for a {@link org.apache.nemo.runtime.executor.data.block.Block}.
+ * This class represents a metadata for a {@link Block}.
  * The writer and reader determine the status of a file block
  * (such as accessibility, how many bytes are written, etc.) by using this metadata.
  * @param <K> the key type of its partitions.

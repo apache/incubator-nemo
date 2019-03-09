@@ -1,4 +1,4 @@
-package org.apache.nemo.common.eventhandler;
+package org.apache.nemo.runtime.lambdaexecutor;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Triple;

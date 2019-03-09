@@ -70,7 +70,7 @@ public final class BlockTest {
   }
 
   /**
-   * Test {@link org.apache.nemo.runtime.executor.data.block.SerializedMemoryBlock}.
+   * Test {@link SerializedMemoryBlock}.
    */
   @Test(timeout = 10000)
   public void testSerializedMemoryBlock() throws Exception {

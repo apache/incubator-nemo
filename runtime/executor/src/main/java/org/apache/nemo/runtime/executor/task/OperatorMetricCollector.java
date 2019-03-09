@@ -9,15 +9,13 @@ import org.apache.nemo.common.Serializer;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.client.ServerlessExecutorService;
+import org.apache.nemo.offloading.common.ServerlessExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 public final class OperatorMetricCollector {

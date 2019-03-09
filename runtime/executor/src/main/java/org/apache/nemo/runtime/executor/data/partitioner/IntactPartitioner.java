@@ -18,9 +18,11 @@
  */
 package org.apache.nemo.runtime.executor.data.partitioner;
 
+import org.apache.nemo.runtime.executor.data.partition.Partition;
+
 /**
  * An implementation of {@link Partitioner} which makes an output data
- * from a source task to a single {@link org.apache.nemo.runtime.executor.data.partition.Partition}.
+ * from a source task to a single {@link Partition}.
  */
 public final class IntactPartitioner implements Partitioner<Integer> {
 

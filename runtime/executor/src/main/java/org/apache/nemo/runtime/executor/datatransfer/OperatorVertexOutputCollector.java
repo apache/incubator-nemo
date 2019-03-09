@@ -19,15 +19,11 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.NextIntraTaskOperatorInfo;
-import org.apache.nemo.common.Serializer;
 import org.apache.nemo.common.TimestampAndValue;
-import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.client.ServerlessExecutorService;
 import org.apache.nemo.runtime.executor.task.OperatorMetricCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

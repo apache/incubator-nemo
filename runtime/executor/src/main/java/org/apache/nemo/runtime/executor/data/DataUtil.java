@@ -23,6 +23,7 @@ import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import org.apache.nemo.runtime.executor.data.partition.Partition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
 import org.apache.nemo.common.DecodeStreamChainer;
 import org.apache.nemo.common.EncodeStreamChainer;
@@ -97,7 +98,7 @@ public final class DataUtil {
   }
 
   /**
-   * Converts the non-serialized {@link org.apache.nemo.runtime.executor.data.partition.Partition}s
+   * Converts the non-serialized {@link Partition}s
    * in an iterable to serialized partitions.
    *
    * @param serializer          the serializer for serialization.
@@ -129,7 +130,7 @@ public final class DataUtil {
   }
 
   /**
-   * Converts the serialized {@link org.apache.nemo.runtime.executor.data.partition.Partition}s
+   * Converts the serialized {@link Partition}s
    * in an iterable to non-serialized partitions.
    *
    * @param serializer          the serializer for deserialization.
@@ -181,7 +182,7 @@ public final class DataUtil {
   }
 
   /**
-   * Concatenates an iterable of non-serialized {@link org.apache.nemo.runtime.executor.data.partition.Partition}s
+   * Concatenates an iterable of non-serialized {@link Partition}s
    * into a single iterable of elements.
    *
    * @param partitionsToConcat the partitions to concatenate.

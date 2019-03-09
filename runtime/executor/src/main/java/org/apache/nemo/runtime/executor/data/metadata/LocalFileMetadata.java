@@ -18,11 +18,13 @@
  */
 package org.apache.nemo.runtime.executor.data.metadata;
 
+import org.apache.nemo.runtime.executor.data.block.Block;
+
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.Serializable;
 
 /**
- * This class represents a metadata for a local file {@link org.apache.nemo.runtime.executor.data.block.Block}.
+ * This class represents a metadata for a local file {@link Block}.
  * It resides in local only, and does not synchronize globally.
  * @param <K> the key type of its partitions.
  */

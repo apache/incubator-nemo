@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.compiler.frontend.beam.runner;
+package org.apache.nemo.client.beam;
 
 import org.apache.nemo.client.StateTranslator;
 import org.apache.nemo.runtime.common.state.PlanState;

@@ -34,7 +34,7 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   private static PipelineTranslator pipelineTranslator = PipelineTranslator.INSTANCE;
   private final PipelineTranslationContext context;
 
-  PipelineVisitor(final Pipeline pipeline, final NemoPipelineOptions pipelineOptions) {
+  public PipelineVisitor(final Pipeline pipeline, final NemoPipelineOptions pipelineOptions) {
     this.context = new PipelineTranslationContext(pipeline, pipelineOptions);
   }
 
@@ -57,7 +57,7 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
     context.leaveCompositeTransform(node);
   }
 
-  DAG<IRVertex, IREdge> getConvertedPipeline() {
+  public DAG<IRVertex, IREdge> getConvertedPipeline() {
     return context.getBuilder().build();
   }
 }

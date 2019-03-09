@@ -29,6 +29,7 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.runtime.executor.Executor;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.Identifier;
@@ -235,7 +236,7 @@ final class ByteTransport implements AutoCloseable {
     /**
      * Creates a {@link ByteTransportIdentifier}.
      *
-     * @param executorId id of the {@link org.apache.nemo.runtime.executor.Executor}
+     * @param executorId id of the {@link Executor}
      */
     private ByteTransportIdentifier(final String executorId) {
       this.executorId = executorId;

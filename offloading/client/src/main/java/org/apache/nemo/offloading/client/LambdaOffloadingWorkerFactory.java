@@ -13,6 +13,8 @@ import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.offloading.common.OffloadingSerializer;
 import org.apache.nemo.offloading.common.Pair;
+import org.apache.nemo.offloading.common.OffloadingWorker;
+import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.reef.wake.remote.ports.TcpPortProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

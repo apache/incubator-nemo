@@ -12,9 +12,9 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.common.InputWatermarkManager;
+import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.common.NextIntraTaskOperatorInfo;
-import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.common.ir.Readable;
 
 import java.util.*;

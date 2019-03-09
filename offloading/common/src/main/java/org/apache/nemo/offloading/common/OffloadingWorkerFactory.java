@@ -1,4 +1,4 @@
-package org.apache.nemo.offloading.client;
+package org.apache.nemo.offloading.common;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.offloading.common.OffloadingSerializer;

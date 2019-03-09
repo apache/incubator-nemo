@@ -36,6 +36,12 @@
       <artifactId>nemo-beam-runner</artifactId>
       <version>0.2-SNAPSHOT</version>
     </dependency>
+
+    <dependency>
+      <groupId>org.apache.nemo</groupId>
+      <artifactId>nemo-lambda-executor</artifactId>
+      <version>0.2-SNAPSHOT</version>
+    </dependency>
   </dependencies>
 
       <build>
