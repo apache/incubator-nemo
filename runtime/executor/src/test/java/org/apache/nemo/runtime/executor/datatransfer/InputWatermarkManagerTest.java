@@ -17,9 +17,9 @@
  * under the License.
  */
 package org.apache.nemo.runtime.executor.datatransfer;
-import org.apache.nemo.common.InputWatermarkManager;
-import org.apache.nemo.common.MultiInputWatermarkManager;
-import org.apache.nemo.common.OperatorWatermarkCollector;
+import org.apache.nemo.runtime.executor.common.InputWatermarkManager;
+import org.apache.nemo.runtime.executor.common.MultiInputWatermarkManager;
+import org.apache.nemo.runtime.executor.common.OperatorWatermarkCollector;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;

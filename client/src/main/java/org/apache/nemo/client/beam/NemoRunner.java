@@ -25,7 +25,7 @@ import org.apache.beam.sdk.PipelineRunner;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsValidator;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.runner.PipelineVisitor;
+import org.apache.nemo.compiler.frontend.beam.PipelineVisitor;
 
 /**
  * Runner class for BEAM programs.

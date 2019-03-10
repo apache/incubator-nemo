@@ -9,9 +9,11 @@ import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagPrope
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
+import org.apache.nemo.runtime.executor.common.*;
 
 import java.util.*;
 import java.util.stream.Collectors;

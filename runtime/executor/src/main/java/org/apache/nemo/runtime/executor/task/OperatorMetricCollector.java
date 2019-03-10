@@ -5,7 +5,7 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.Serializer;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.EvalConf;

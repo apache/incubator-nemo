@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor.data;
 
 import org.apache.nemo.common.HashRange;
-import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.runtime.executor.data.block.Block;
@@ -28,7 +27,7 @@ import org.apache.nemo.runtime.executor.data.block.NonSerializedMemoryBlock;
 import org.apache.nemo.runtime.executor.data.block.SerializedMemoryBlock;
 import org.apache.nemo.runtime.executor.data.metadata.LocalFileMetadata;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
-import org.apache.nemo.common.Serializer;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Before;

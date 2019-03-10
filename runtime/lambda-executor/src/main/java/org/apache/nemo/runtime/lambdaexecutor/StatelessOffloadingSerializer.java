@@ -1,7 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.Serializer;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.Triple;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.offloading.common.OffloadingEncoder;

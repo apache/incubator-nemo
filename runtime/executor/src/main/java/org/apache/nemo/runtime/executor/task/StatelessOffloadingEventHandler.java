@@ -1,7 +1,7 @@
 package org.apache.nemo.runtime.executor.task;
 
-import org.apache.nemo.common.NextIntraTaskOperatorInfo;
-import org.apache.nemo.common.TimestampAndValue;
+import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
+import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.Triple;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.common.ir.OutputCollector;

@@ -18,10 +18,10 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
-import org.apache.nemo.common.InputWatermarkManager;
-import org.apache.nemo.common.MultiInputWatermarkManager;
-import org.apache.nemo.common.SingleInputWatermarkManager;
-import org.apache.nemo.common.WatermarkWithIndex;
+import org.apache.nemo.runtime.executor.common.InputWatermarkManager;
+import org.apache.nemo.runtime.executor.common.MultiInputWatermarkManager;
+import org.apache.nemo.runtime.executor.common.SingleInputWatermarkManager;
+import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;

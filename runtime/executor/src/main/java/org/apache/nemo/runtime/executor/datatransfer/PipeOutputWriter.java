@@ -18,15 +18,15 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.TimestampAndValue;
-import org.apache.nemo.common.WatermarkWithIndex;
+import org.apache.nemo.common.punctuation.TimestampAndValue;
+import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.nemo.common.Serializer;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.common.partitioner.Partitioner;
 import org.slf4j.Logger;

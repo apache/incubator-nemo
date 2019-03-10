@@ -37,6 +37,7 @@ under the License.
     <module>test</module>
     <module>executor</module>
     <module>lambda-executor</module>
+    <module>executor-common</module>
   </modules>
 
 </project>

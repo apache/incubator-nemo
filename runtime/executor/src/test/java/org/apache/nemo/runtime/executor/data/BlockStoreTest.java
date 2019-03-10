@@ -34,7 +34,7 @@ import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer;
 import org.apache.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
-import org.apache.nemo.common.Serializer;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.data.stores.*;
 import org.apache.nemo.runtime.executors.main.data.stores.*;
 import org.apache.nemo.runtime.master.BlockManagerMaster;

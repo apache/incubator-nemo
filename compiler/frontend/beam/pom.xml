@@ -18,42 +18,51 @@ specific language governing permissions and limitations
 under the License.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-  <modules>
-    <module>nemo-beam-transform</module>
-    <module>nemo-beam-runner</module>
-  </modules>
+  <modelVersion>4.0.0</modelVersion>
 
   <parent>
-        <groupId>org.apache.nemo</groupId>
-        <artifactId>nemo-compiler</artifactId>
-        <version>0.2-SNAPSHOT</version>
-        <relativePath>../../</relativePath>
-    </parent>
+    <groupId>org.apache.nemo</groupId>
+    <artifactId>nemo-compiler</artifactId>
+    <version>0.2-SNAPSHOT</version>
+    <relativePath>../../</relativePath>
+  </parent>
 
-    <artifactId>nemo-compiler-frontend-beam</artifactId>
-    <name>Nemo Compiler Frontend: Beam</name>
-    <packaging>pom</packaging>
+  <artifactId>nemo-compiler-frontend-beam</artifactId>
+  <name>Nemo Compiler Frontend: Beam</name>
 
-    <dependencies>
-	      <dependency>
-            <groupId>org.apache.nemo</groupId>
-            <artifactId>nemo-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-      <!--<dependency>-->
-            <!--<groupId>org.apache.nemo</groupId>-->
-            <!--<artifactId>offloading-common</artifactId>-->
-            <!--<version>${project.version}</version>-->
-        <!--</dependency>-->
-        <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-sdks-java-core</artifactId>
-            <version>${beam.version}</version>
-        </dependency>
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.nemo</groupId>
+      <artifactId>nemo-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
 
-      <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-core</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-runners-core-java</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-hadoop-input-format</artifactId>
+      <version>${beam.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
+      <version>${hadoop.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk -->
 
 
-    </dependencies>
+  </dependencies>
 </project>

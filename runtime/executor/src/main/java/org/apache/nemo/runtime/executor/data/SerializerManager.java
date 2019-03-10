@@ -18,9 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
-import org.apache.nemo.common.DecodeStreamChainer;
-import org.apache.nemo.common.EncodeStreamChainer;
-import org.apache.nemo.common.Serializer;
+import org.apache.nemo.runtime.executor.common.DecodeStreamChainer;
+import org.apache.nemo.runtime.executor.common.EncodeStreamChainer;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;

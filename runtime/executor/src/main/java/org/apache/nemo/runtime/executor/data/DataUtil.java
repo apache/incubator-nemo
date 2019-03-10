@@ -25,9 +25,9 @@ import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.Partition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
-import org.apache.nemo.common.DecodeStreamChainer;
-import org.apache.nemo.common.EncodeStreamChainer;
-import org.apache.nemo.common.Serializer;
+import org.apache.nemo.runtime.executor.common.DecodeStreamChainer;
+import org.apache.nemo.runtime.executor.common.EncodeStreamChainer;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

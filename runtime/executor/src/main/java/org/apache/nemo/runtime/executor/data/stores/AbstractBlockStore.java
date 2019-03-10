@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.data.stores;
 
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
-import org.apache.nemo.common.Serializer;
+import org.apache.nemo.runtime.executor.common.Serializer;
 
 /**
  * This abstract class represents a default {@link BlockStore},

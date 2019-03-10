@@ -85,7 +85,7 @@ under the License.
       </dependency>
       <dependency>
         <groupId>org.apache.nemo</groupId>
-        <artifactId>nemo-beam-transform</artifactId>
+        <artifactId>nemo-compiler-frontend-beam</artifactId>
         <version>0.2-SNAPSHOT</version>
         <scope>test</scope>
       </dependency>
