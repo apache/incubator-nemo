@@ -97,13 +97,10 @@ public final class TaskExecutor {
 
   private final SerializerManager serializerManager;
 
-
-
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
 
-  private final ExecutorService shutdownExecutor = Executors.newCachedThreadPool();
-
   // Variables for offloading - start
+  private final ExecutorService shutdownExecutor = Executors.newCachedThreadPool();
   private final ServerlessExecutorProvider serverlessExecutorProvider;
   private final InputFluctuationDetector detector;
   private transient ServerlessExecutorService serverlessExecutorService;
@@ -125,8 +122,6 @@ public final class TaskExecutor {
   private final ScheduledExecutorService processedEventCollector;
 
   private final List<Pair<OperatorMetricCollector, OutputCollector>> metricCollectors = new ArrayList<>();
-
-  private final AtomicBoolean isOffloaded = new AtomicBoolean(false);
 
   private List<Pair<OperatorMetricCollector, OutputCollector>> prevHeader;
 
@@ -261,7 +256,6 @@ public final class TaskExecutor {
         }
       }
 
-      isOffloaded.set(true);
       prevHeader = header;
     }
   }
@@ -275,7 +269,6 @@ public final class TaskExecutor {
   public void endOffloading() {
     LOG.info("End offloading!");
     // Do sth for offloading end
-    isOffloaded.set(false);
 
     for (final Pair<OperatorMetricCollector, OutputCollector> pair : metricCollectors) {
       final OperatorMetricCollector omc = pair.left();
@@ -349,6 +342,7 @@ public final class TaskExecutor {
     reverseTopologicallySorted.forEach(childVertex -> {
       if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {
         childVertex.isSink = true;
+        LOG.info("Sink vertex: {}", childVertex.getId());
       }
 
       final List<Edge> edges = TaskExecutorUtil.getAllIncomingEdges(task, irVertexDag, childVertex);
@@ -446,7 +440,7 @@ public final class TaskExecutor {
         outputCollector = new OperatorVertexOutputCollector(
           vertexIdAndOutputCollectorMap,
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
-          externalMainOutputs, externalAdditionalOutputMap, omc, isOffloaded);
+          externalMainOutputs, externalAdditionalOutputMap, omc);
 
         metricCollectors.add(Pair.of(omc, outputCollector));
 

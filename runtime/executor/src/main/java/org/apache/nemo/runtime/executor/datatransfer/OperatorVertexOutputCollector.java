@@ -44,8 +44,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(OperatorVertexOutputCollector.class.getName());
 
-  private static final String BUCKET_NAME = "nemo-serverless";
-
   private final Map<String, OperatorVertexOutputCollector> outputCollectorMap;
   private final IRVertex irVertex;
   private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
@@ -56,16 +54,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   // for logging
   private long inputTimestamp;
   private final OperatorMetricCollector operatorMetricCollector;
-
-
-  enum OffloadingStatus {
-    NORMAL,
-    START,
-    END
-  }
-
-  private volatile OffloadingStatus offloadingStatus = OffloadingStatus.NORMAL;
-  private final AtomicBoolean isOffloaded;
 
   /**
    * Constructor of the output collector.
@@ -82,8 +70,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
     final Map<String, List<OutputWriter>> externalAdditionalOutputs,
-    final OperatorMetricCollector operatorMetricCollector,
-    final AtomicBoolean isOffloaded) {
+    final OperatorMetricCollector operatorMetricCollector) {
     this.outputCollectorMap = outputCollectorMap;
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
@@ -91,17 +78,12 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     this.externalMainOutputs = externalMainOutputs;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
     this.operatorMetricCollector = operatorMetricCollector;
-    this.isOffloaded = isOffloaded;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
     final String vertexId = irVertex.getId();
 
     vertex.getTransform().onData(output);
-
-    if (vertex.isSink) {
-      operatorMetricCollector.processDone(inputTimestamp);
-    }
   }
 
   private void emit(final OutputWriter writer, final TimestampAndValue<O> output) {
