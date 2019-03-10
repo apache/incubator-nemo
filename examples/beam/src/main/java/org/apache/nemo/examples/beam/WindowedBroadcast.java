@@ -28,7 +28,7 @@ import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.NemoRunner;
+import org.apache.nemo.client.beam.NemoRunner;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 

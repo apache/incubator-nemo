@@ -26,7 +26,7 @@ import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.*;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.NemoRunner;
+import org.apache.nemo.client.beam.NemoRunner;
 
 import java.util.List;
 import java.util.stream.Collectors;
