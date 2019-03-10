@@ -196,7 +196,7 @@ public final class OperatorMetricCollector {
   public void processDone(final long startTimestamp) {
    final long currTime = System.currentTimeMillis();
     final long latency = (currTime - startTimestamp) - adjustTime;
-    LOG.info("Event Latency {}", latency);
+    LOG.info("Event Latency {} from {}", latency, irVertex.getId());
   }
 
   class LatencyAndCnt {
