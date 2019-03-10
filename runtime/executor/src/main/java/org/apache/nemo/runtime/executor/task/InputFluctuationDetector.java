@@ -6,21 +6,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public final class InputFluctuationDetector {
   private static final Logger LOG = LoggerFactory.getLogger(InputFluctuationDetector.class.getName());
 
   // key: timestamp, value: processed event
   //private final List<Pair<Long, Long>> processedEvents;
-  private final List<Pair<OperatorMetricCollector, OutputCollector>> metricCollectors;
+  private final Collection<Pair<OperatorMetricCollector, OutputCollector>> metricCollectors;
   private int length = 20;
 
   // timescale: sec
   public InputFluctuationDetector(
-    final List<Pair<OperatorMetricCollector, OutputCollector>> metricCollectors) {
+    final Map<String, Pair<OperatorMetricCollector, OutputCollector>> metricCollectors) {
     //this.processedEvents = new LinkedList<>();
-    this.metricCollectors = metricCollectors;
+    this.metricCollectors = metricCollectors.values();
   }
 
   public synchronized void collect(final OperatorMetricCollector oc,

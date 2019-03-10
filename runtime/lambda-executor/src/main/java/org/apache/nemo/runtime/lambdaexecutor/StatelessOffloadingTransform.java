@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor;
 
 import avro.shaded.com.google.common.collect.Lists;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
@@ -21,23 +22,25 @@ import java.util.stream.Collectors;
 public final class StatelessOffloadingTransform<O> implements OffloadingTransform<OffloadingDataEvent, O> {
 
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
+  private final Map<String, List<String>> taskOutgoingEdges;
 
   // key: data fetcher id, value: head operator
-  private final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
-  private final Map<String, NextIntraTaskOperatorInfo> operatorVertexMap;
-
+  private transient Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
+  private transient Map<String, NextIntraTaskOperatorInfo> operatorVertexMap;
   private transient OffloadingResultCollector resultCollector;
 
 
-  public StatelessOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
+  public StatelessOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
+                                      final Map<String, List<String>> taskOutgoingEdges) {
     this.irDag = irDag;
-    this.outputCollectorMap = new HashMap<>();
-    this.operatorVertexMap = new HashMap<>();
+    this.taskOutgoingEdges = taskOutgoingEdges;
   }
 
   @Override
   public void prepare(final OffloadingContext context,
                       final OffloadingOutputCollector oc) {
+    this.outputCollectorMap = new HashMap<>();
+    this.operatorVertexMap = new HashMap<>();
     System.out.println("Stateless offloading transform prepare");
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irDag.getTopologicalSort());
@@ -102,7 +105,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
           + ", isSink: " + isSink);
         OffloadingOperatorVertexOutputCollector outputCollector = new OffloadingOperatorVertexOutputCollector(
           irVertex, irDag.getOutgoingEdgesOf(irVertex).get(0), /* just use first edge for encoding */
-          internalMainOutputs, internalAdditionalOutputMap, resultCollector, outputCollectorMap);
+          internalMainOutputs, internalAdditionalOutputMap, resultCollector, outputCollectorMap, taskOutgoingEdges);
 
         outputCollectorMap.put(irVertex.getId(), outputCollector);
 

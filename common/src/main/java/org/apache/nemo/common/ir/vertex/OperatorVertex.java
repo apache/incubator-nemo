@@ -64,4 +64,9 @@ public class OperatorVertex extends IRVertex {
     node.put("transform", transform.toString());
     return node;
   }
+
+  @Override
+  public String toString() {
+    return getId();
+  }
 }

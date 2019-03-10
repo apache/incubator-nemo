@@ -108,6 +108,11 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     return node;
   }
 
+  @Override
+  public String toString() {
+    return getId();
+  }
+
   /**
    * UnboundedSourceReadable class.
    * @param <O> output type.

@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
@@ -44,7 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollector<O> {
   private static final Logger LOG = LoggerFactory.getLogger(OperatorVertexOutputCollector.class.getName());
 
-  private final Map<String, OperatorVertexOutputCollector> outputCollectorMap;
+  private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> outputCollectorMap;
   private final IRVertex irVertex;
   private final List<NextIntraTaskOperatorInfo> internalMainOutputs;
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
@@ -64,7 +66,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
    * @param externalAdditionalOutputs external additional outputs
    */
   public OperatorVertexOutputCollector(
-    final Map<String, OperatorVertexOutputCollector> outputCollectorMap,
+    final Map<String, Pair<OperatorMetricCollector, OutputCollector>> outputCollectorMap,
     final IRVertex irVertex,
     final List<NextIntraTaskOperatorInfo> internalMainOutputs,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
@@ -134,8 +136,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         }
         offloadingIds.add(nextOperator.getId());
       } else {
-        final OperatorVertexOutputCollector oc = outputCollectorMap.get(nextOperator.getId());
-        oc.inputTimestamp = inputTimestamp;
+        final Pair<OperatorMetricCollector, OutputCollector> pair =
+          outputCollectorMap.get(nextOperator.getId());
+        ((OperatorVertexOutputCollector) pair.right()).inputTimestamp = inputTimestamp;
         emit(nextOperator, output);
       }
     }
@@ -172,8 +175,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
           }
           offloadingIds.add(internalVertex.getNextOperator().getId());
         } else {
-          final OperatorVertexOutputCollector oc = outputCollectorMap.get(internalVertex.getNextOperator().getId());
-          oc.inputTimestamp = inputTimestamp;
+          final Pair<OperatorMetricCollector, OutputCollector> pair =
+            outputCollectorMap.get(internalVertex.getNextOperator().getId());
+          ((OperatorVertexOutputCollector) pair.right()).inputTimestamp = inputTimestamp;
           emit(internalVertex.getNextOperator(), (O) output);
         }
       }

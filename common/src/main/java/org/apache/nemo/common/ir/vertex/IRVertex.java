@@ -39,6 +39,7 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   public boolean isSink = false;
   public boolean isOffloading = false;
+  public boolean isStateful = false;
 
   /**
    * Constructor of IRVertex.

@@ -85,6 +85,11 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
     return executionProperties;
   }
 
+  @Override
+  public String toString() {
+    return "[" + getId() + ": " + getSrc() + "->" + getDst() + "]";
+  }
+
   /**
    * @return JSON representation of additional properties
    */

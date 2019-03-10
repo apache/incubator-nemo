@@ -219,6 +219,10 @@ final class PipelineTranslator {
     final AbstractDoFnTransform doFnTransform = createDoFnTransform(ctx, beamNode, sideInputMap);
     final IRVertex vertex = new OperatorVertex(doFnTransform);
 
+    if (doFnTransform instanceof PushBackDoFnTransform) {
+      vertex.isStateful = true;
+    }
+
     ctx.addVertex(vertex);
     beamNode.getInputs().values().stream()
       .filter(input -> !transform.getAdditionalInputs().values().contains(input))
@@ -263,6 +267,7 @@ final class PipelineTranslator {
                                            final TransformHierarchy.Node beamNode,
                                            final GroupByKey<?, ?> transform) {
     final IRVertex vertex = new OperatorVertex(createGBKTransform(ctx, beamNode));
+    vertex.isStateful = true;
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
@@ -302,6 +307,7 @@ final class PipelineTranslator {
                                                       final TransformHierarchy.Node beamNode,
                                                       final View.CreatePCollectionView<?, ?> transform) {
     final IRVertex vertex = new OperatorVertex(new CreateViewTransform(transform.getView().getViewFn()));
+    vertex.isStateful = true;
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     ctx.registerMainOutputFrom(beamNode, vertex, transform.getView());
