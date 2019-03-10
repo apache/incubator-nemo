@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.common.plan;
 
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
@@ -34,37 +35,30 @@ import org.junit.Test;
 import java.util.Iterator;
 
 import static org.apache.nemo.common.test.EmptyComponents.EMPTY_TRANSFORM;
-import static org.junit.Assert.assertNotEquals;
 
 /**
  * Tests {@link PhysicalPlanGenerator}.
  */
 public final class PhysicalPlanGeneratorTest {
 
-  /**
-   * Test splitting ScheduleGroups by Pull StageEdges.
-   * @throws Exception exceptions on the way
-   */
   @Test
-  public void testSplitScheduleGroupByPullStageEdges() throws Exception {
+  public void testBasic() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
     final PhysicalPlanGenerator physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
 
     final IRVertex v0 = newIRVertex(0, 5);
     final IRVertex v1 = newIRVertex(0, 3);
-    final DAG<IRVertex, IREdge> irDAG = new DAGBuilder<IRVertex, IREdge>()
+    final IRDAG irDAG = new IRDAG(new DAGBuilder<IRVertex, IREdge>()
         .addVertex(v0)
         .addVertex(v1)
         .connectVertices(newIREdge(v0, v1, CommunicationPatternProperty.Value.OneToOne,
             DataFlowProperty.Value.Pull))
-        .buildWithoutSourceSinkCheck();
+        .buildWithoutSourceSinkCheck());
 
     final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(irDAG);
     final Iterator<Stage> stages = stageDAG.getVertices().iterator();
     final Stage s0 = stages.next();
     final Stage s1 = stages.next();
-
-    assertNotEquals(s0.getScheduleGroup(), s1.getScheduleGroup());
   }
 
   private static final IRVertex newIRVertex(final int scheduleGroup, final int parallelism) {

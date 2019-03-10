@@ -40,6 +40,7 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
 
   /**
    * Static initializer of the encoder.
+   * @return the initializer.
    */
   public static BytesEncoderFactory of() {
     return BYTES_ENCODER_FACTORY;
@@ -48,6 +49,11 @@ public final class BytesEncoderFactory implements EncoderFactory<byte[]> {
   @Override
   public Encoder<byte[]> create(final OutputStream outputStream) {
     return new BytesEncoder(outputStream);
+  }
+
+  @Override
+  public String toString() {
+    return "BytesEncoderFactory{}";
   }
 
   /**

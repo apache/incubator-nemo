@@ -22,6 +22,7 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
+import org.apache.nemo.compiler.optimizer.policy.SamplingLargeShuffleSkewPolicy;
 import org.apache.nemo.examples.beam.policy.DataSkewPolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
@@ -72,5 +73,17 @@ public final class PerKeyMedianITCase {
         .addJobId(PerKeyMedianITCase.class.getSimpleName())
         .addOptimizationPolicy(DataSkewPolicyParallelismFive.class.getCanonicalName())
         .build());
+  }
+
+  /**
+   * Testing large shuffle and data skew dynamic optimization.
+   * @throws Exception exception on the way.
+   */
+  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  public void testLargeShuffleSamplingSkew() throws Exception {
+    JobLauncher.main(builder
+      .addJobId(PerKeyMedianITCase.class.getSimpleName() + "_LargeShuffleSamplingSkew")
+      .addOptimizationPolicy(SamplingLargeShuffleSkewPolicy.class.getCanonicalName())
+      .build());
   }
 }

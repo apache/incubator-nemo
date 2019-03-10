@@ -33,6 +33,7 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.io.hadoop.inputformat.HadoopInputFormatIO;
 import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.nemo.common.test.EmptyComponents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,11 +82,18 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
   @Override
   public List<Readable<WindowedValue<O>>> getReadables(final int desiredNumOfSplits) throws Exception {
     final List<Readable<WindowedValue<O>>> readables = new ArrayList<>();
-    LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
-    LOG.info("desired: {}", desiredNumOfSplits);
-    source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null)
+
+    if (source != null) {
+      LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
+      LOG.info("desired: {}", desiredNumOfSplits);
+      source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null)
         .forEach(boundedSource -> readables.add(new BoundedSourceReadable<>(boundedSource)));
-    return readables;
+      return readables;
+    } else {
+      // TODO #333: Remove SourceVertex#clearInternalStates
+      final SourceVertex emptySourceVertex = new EmptyComponents.EmptySourceVertex("EMPTY");
+      return emptySourceVertex.getReadables(desiredNumOfSplits);
+    }
   }
 
   @Override

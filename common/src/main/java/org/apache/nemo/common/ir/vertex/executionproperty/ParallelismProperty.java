@@ -21,7 +21,22 @@ package org.apache.nemo.common.ir.vertex.executionproperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * Parallelism ExecutionProperty.
+ * This property decides the number of parallel tasks to use for executing the corresponding IRVertex.
+ *
+ * Changing the parallelism requires also changing other execution properties that refer to task offsets.
+ * Such execution properties include:
+ * {@link ResourceSiteProperty}
+ * {@link ResourceAntiAffinityProperty}
+ * {@link org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty}
+ * {@link org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty}
+ *
+ * Moreover, vertices with one-to-one relationships must have the same parallelism.
+ * {@link org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty}
+ *
+ * Finally, the parallelism cannot be larger than the number of source (e.g., HDFS) input data partitions.
+ * {@link org.apache.nemo.common.ir.vertex.SourceVertex}
+ *
+ * A violation of any of the above criteria will be caught by Nemo, to ensure correct application semantics.
  */
 public final class ParallelismProperty extends VertexExecutionProperty<Integer> {
   /**

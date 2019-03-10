@@ -27,5 +27,8 @@ import java.lang.annotation.*;
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 public @interface AssociatedProperty {
+  /**
+   * @return the associated {@link ExecutionProperty}.
+   */
   Class<? extends ExecutionProperty> value();
 }

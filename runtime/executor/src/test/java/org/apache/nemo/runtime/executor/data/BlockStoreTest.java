@@ -18,13 +18,13 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.*;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
@@ -187,11 +187,10 @@ public final class BlockStoreTest {
 
     // Generates the range of hash value to read for each read task.
     final int smallDataRangeEnd = 1 + NUM_READ_HASH_TASKS - NUM_WRITE_HASH_TASKS;
-    readKeyRangeList.add(HashRange.of(0, smallDataRangeEnd, false));
+    readKeyRangeList.add(HashRange.of(0, smallDataRangeEnd));
     IntStream.range(0, NUM_READ_HASH_TASKS - 1).forEach(readTaskIdx -> {
       readKeyRangeList.add(HashRange.of(smallDataRangeEnd + readTaskIdx,
-          smallDataRangeEnd + readTaskIdx + 1,
-          false));
+          smallDataRangeEnd + readTaskIdx + 1));
     });
 
     // Generates the expected result of hash range retrieval for each read task.
@@ -346,7 +345,7 @@ public final class BlockStoreTest {
             try {
               for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_VERTICES; writeTaskIdx++) {
                 readResultCheck(blockIdList.get(writeTaskIdx),
-                    HashRange.of(readTaskIdx, readTaskIdx + 1, false),
+                    HashRange.of(readTaskIdx, readTaskIdx + 1),
                     readerSideStore, partitionsPerBlock.get(writeTaskIdx).get(readTaskIdx).getData());
               }
               return true;

@@ -21,7 +21,7 @@ package org.apache.nemo.client;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.nemo.runtime.master.MetricMessageHandler;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.reef.tang.Injector;

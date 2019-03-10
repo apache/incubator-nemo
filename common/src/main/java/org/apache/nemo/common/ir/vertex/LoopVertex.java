@@ -21,6 +21,7 @@ package org.apache.nemo.common.ir.vertex;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -307,6 +308,20 @@ public final class LoopVertex extends IRVertex {
    */
   private void decreaseMaxNumberOfIterations() {
     this.maxNumberOfIterations--;
+  }
+
+  /**
+   * Check termination condition.
+   * @param that another vertex.
+   * @return true if equals.
+   */
+  public boolean terminationConditionEquals(final LoopVertex that) {
+    if (this.maxNumberOfIterations.equals(that.getMaxNumberOfIterations()) && Util
+        .checkEqualityOfIntPredicates(this.terminationCondition, that.getTerminationCondition(),
+            this.maxNumberOfIterations)) {
+      return true;
+    }
+    return false;
   }
 
   /**

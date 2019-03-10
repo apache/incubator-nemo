@@ -22,7 +22,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.*;
 import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
-import org.apache.nemo.runtime.master.MetricManagerMaster;
+import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.reef.tang.Injector;

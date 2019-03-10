@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.backend.nemo;
 
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
@@ -27,8 +28,8 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.conf.JobConf;
@@ -72,11 +73,11 @@ public final class DAGConverterTest {
     v2.setProperty(ParallelismProperty.of(2));
     irDAGBuilder.addVertex(v2);
 
-    final IREdge e = new IREdge(CommunicationPatternProperty.Value.Shuffle, v1, v2);
+    final IREdge e = EmptyComponents.newDummyShuffleEdge(v1, v2);
     irDAGBuilder.connectVertices(e);
 
-    final DAG<IRVertex, IREdge> irDAG = new TestPolicy().runCompileTimeOptimization(
-        irDAGBuilder.buildWithoutSourceSinkCheck(), DAG.EMPTY_DAG_DIRECTORY);
+    final IRDAG irDAG = new TestPolicy().runCompileTimeOptimization(
+        new IRDAG(irDAGBuilder.buildWithoutSourceSinkCheck()), DAG.EMPTY_DAG_DIRECTORY);
     final DAG<Stage, StageEdge> DAGOfStages = physicalPlanGenerator.stagePartitionIrDAG(irDAG);
     final DAG<Stage, StageEdge> physicalDAG = physicalPlanGenerator.apply(irDAG);
 
@@ -101,8 +102,8 @@ public final class DAGConverterTest {
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage1).size(), 1);
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage2).size(), 0);
 
-    assertEquals(3, physicalStage1.getParallelism());
-    assertEquals(2, physicalStage2.getParallelism());
+    assertEquals(3, physicalStage1.getTaskIndices().size());
+    assertEquals(2, physicalStage2.getTaskIndices().size());
   }
 
   @Test
@@ -156,11 +157,11 @@ public final class DAGConverterTest {
     e2.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
     e2.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Pull));
 
-    final IREdge e3 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v2, v4);
+    final IREdge e3 = EmptyComponents.newDummyShuffleEdge(v2, v4);
     e3.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
     e3.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
 
-    final IREdge e4 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v3, v5);
+    final IREdge e4 = EmptyComponents.newDummyShuffleEdge(v3, v5);
     e4.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
     e4.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
 

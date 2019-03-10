@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.data;
 
 import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.runtime.executor.data.block.Block;

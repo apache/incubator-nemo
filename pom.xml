@@ -61,6 +61,8 @@ under the License.
         <jetty-server.version>9.4.10.v20180503</jetty-server.version>
         <jetty-servlet.version>9.4.10.v20180503</jetty-servlet.version>
         <commons-math.version>3.6.1</commons-math.version>
+        <sqlite-jdbc.version>3.25.2</sqlite-jdbc.version>
+        <postgresql.version>42.2.5</postgresql.version>
         <slf4j.version>1.7.20</slf4j.version>
         <!-- Tests -->
         <mockito.version>2.13.0</mockito.version>
@@ -141,6 +143,16 @@ under the License.
                 <artifactId>slf4j-log4j12</artifactId>
                 <version>${slf4j.version}</version>
             </dependency>
+            <dependency>
+                <!--
+                This is needed to view the logs when running unit tests.
+                See https://dzone.com/articles/how-configure-slf4j-different for details.
+                -->
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-simple</artifactId>
+                <version>1.6.2</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -163,6 +175,10 @@ under the License.
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${surefire.version}</version>
+                  <configuration>
+                    <!-- Useful for debugging: See https://stackoverflow.com/a/16941432 -->
+                    <trimStackTrace>false</trimStackTrace>
+                  </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -298,6 +314,12 @@ under the License.
                         <exclude>**/resources/**</exclude>
                         <!-- Logs -->
                         <exclude>**/*.log</exclude>
+                        <!-- Web UI -->
+                        <exclude>webui/.nuxt/**</exclude>
+                        <exclude>webui/node_modules/**</exclude>
+                        <exclude>**/*.json</exclude>
+                        <exclude>**/.editorconfig</exclude>
+                        <exclude>**/config.gypi</exclude>
                         <!-- EditorConfig -->
                         <exclude>.editorconfig</exclude>
                         <!-- formatter.xml -->

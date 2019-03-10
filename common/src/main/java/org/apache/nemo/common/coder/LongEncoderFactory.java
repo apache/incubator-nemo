@@ -38,6 +38,7 @@ public final class LongEncoderFactory implements EncoderFactory<Long> {
 
   /**
    * Static initializer of the coder.
+   * @return the initializer.
    */
   public static LongEncoderFactory of() {
     return LONG_ENCODER_FACTORY;
@@ -46,6 +47,11 @@ public final class LongEncoderFactory implements EncoderFactory<Long> {
   @Override
   public Encoder<Long> create(final OutputStream outputStream) {
     return new LongEncoder(outputStream);
+  }
+
+  @Override
+  public String toString() {
+    return "LongEncoderFactory{}";
   }
 
   /**

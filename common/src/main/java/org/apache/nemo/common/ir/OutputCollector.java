@@ -42,6 +42,7 @@ public interface OutputCollector<O> extends Serializable {
 
   /**
    * Emit watermark to downstream vertices.
+   * @param watermark watermark
    */
   void emitWatermark(Watermark watermark);
 
@@ -55,6 +56,7 @@ public interface OutputCollector<O> extends Serializable {
    * for operations like multi-output map.
    * @param dstVertexId destination vertex id.
    * @param output value.
+   * @param <T> output type.
    */
   <T> void emit(String dstVertexId, T output);
 }

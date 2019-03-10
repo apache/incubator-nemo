@@ -50,6 +50,13 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
     return new NemoEventEncoder(valueEncoderFactory.create(outputStream), outputStream);
   }
 
+  @Override
+  public String toString() {
+    return "NemoEventEncoderFactory{"
+      + "valueEncoderFactory=" + valueEncoderFactory
+      + '}';
+  }
+
   /**
    * This encodes normal data and WatermarkWithIndex.
    * @param <T>

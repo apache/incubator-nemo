@@ -46,7 +46,9 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
   private final Collection<PCollectionView<?>> sideInputsToRead;
   private final Map<Pair<PCollectionView<?>, BoundedWindow>, Object> inMemorySideInputs;
 
-
+  /**
+   * @param sideInputsToRead side inputs to read.
+   */
   public InMemorySideInputReader(final Collection<PCollectionView<?>> sideInputsToRead) {
     this.sideInputsToRead = sideInputsToRead;
     this.inMemorySideInputs = new HashMap<>();
@@ -81,7 +83,7 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
   }
 
   /**
-   * Stores the side input in memory to be used with main inputs.
+   * Stores the side input in memory to be used with main inputsGroupByKeyAndWindowDoFnTransform.java.
    * @param view of the side input.
    * @param sideInputElement to add.
    */

@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.task;
 import com.google.common.collect.Lists;
 import io.netty.buffer.*;
 import org.apache.nemo.common.*;
+import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.dag.DAG;
@@ -28,7 +29,7 @@ import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.*;
-import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
+import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.offloading.common.ServerlessExecutorService;
 import org.apache.nemo.runtime.executor.datatransfer.*;
@@ -58,6 +59,8 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingTransform;
+import org.apache.nemo.runtime.executor.datatransfer.RunTimeMessageOutputCollector;
+import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -385,7 +388,8 @@ public final class TaskExecutor {
 
       // Additional outputs
       final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputMap =
-        TaskExecutorUtil.getInternalAdditionalOutputMap(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
+        getInternalOutputMap(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
+
       final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         TaskExecutorUtil.getExternalAdditionalOutputMap(irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory, taskId);
 
@@ -396,11 +400,11 @@ public final class TaskExecutor {
       }
 
       // Main outputs
-      final List<NextIntraTaskOperatorInfo> internalMainOutputs =
-        TaskExecutorUtil. getInternalMainOutputs(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
-
-      for (final NextIntraTaskOperatorInfo interOp : internalMainOutputs) {
-        operatorInfoMap.put(interOp.getNextOperator().getId(), interOp);
+      final List<NextIntraTaskOperatorInfo> internalMainOutputs;
+      if (internalAdditionalOutputMap.containsKey(AdditionalOutputTagProperty.getMainOutputTag())) {
+        internalMainOutputs = internalAdditionalOutputMap.remove(AdditionalOutputTagProperty.getMainOutputTag());
+      } else {
+        internalMainOutputs = new ArrayList<>();
       }
 
       final List<OutputWriter> externalMainOutputs =
@@ -409,9 +413,9 @@ public final class TaskExecutor {
       OutputCollector outputCollector;
 
       if (irVertex instanceof OperatorVertex
-        && ((OperatorVertex) irVertex).getTransform() instanceof AggregateMetricTransform) {
-        outputCollector = new DynOptDataOutputCollector(
-          irVertex, persistentConnectionToMasterMap, this);
+        && ((OperatorVertex) irVertex).getTransform() instanceof MessageAggregatorTransform) {
+        outputCollector = new RunTimeMessageOutputCollector(
+          taskId, irVertex, persistentConnectionToMasterMap, this);
       } else {
 
         final List<RuntimeEdge<IRVertex>> edges = irVertexDag.getOutgoingEdgesOf(irVertex);
@@ -790,6 +794,103 @@ public final class TaskExecutor {
     return true;
   }
 
+  ////////////////////////////////////////////// Helper methods for setting up initial data structures
+  private Map<String, List<OutputWriter>> getExternalAdditionalOutputMap(
+    final IRVertex irVertex,
+    final List<StageEdge> outEdgesToChildrenTasks,
+    final IntermediateDataIOFactory intermediateDataIOFactory) {
+    // Add all inter-task additional tags to additional output map.
+    final Map<String, List<OutputWriter>> map = new HashMap<>();
+
+    outEdgesToChildrenTasks
+      .stream()
+      .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
+      .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+      .map(edge ->
+        Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(),
+          intermediateDataIOFactory.createWriter(taskId, edge)))
+      .forEach(pair -> {
+        map.putIfAbsent(pair.left(), new ArrayList<>());
+        map.get(pair.left()).add(pair.right());
+      });
+
+    return map;
+  }
+
+  /**
+   * Return a map of Internal Outputs associated with their output tag.
+   * If an edge has no output tag, its info are added to the mainOutputTag.
+   *
+   * @param irVertex source irVertex
+   * @param irVertexDag DAG of IRVertex and RuntimeEdge
+   * @param edgeIndexMap Map of edge and index
+   * @param operatorWatermarkManagerMap Map of irVertex and InputWatermarkManager
+   * @return Map<OutputTag, List<NextIntraTaskOperatorInfo>>
+   */
+  private Map<String, List<NextIntraTaskOperatorInfo>> getInternalOutputMap(
+    final IRVertex irVertex,
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+    final Map<Edge, Integer> edgeIndexMap,
+    final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap) {
+    // Add all intra-task tags to additional output map.
+    final Map<String, List<NextIntraTaskOperatorInfo>> map = new HashMap<>();
+
+    irVertexDag.getOutgoingEdgesOf(irVertex.getId())
+      .stream()
+      .map(edge -> {
+          final boolean isPresent = edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent();
+          final String outputTag;
+          if (isPresent) {
+            outputTag = edge.getPropertyValue(AdditionalOutputTagProperty.class).get();
+          } else {
+            outputTag = AdditionalOutputTagProperty.getMainOutputTag();
+          }
+          final int index = edgeIndexMap.get(edge);
+          final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
+          final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
+          return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, edge, nextOperator, inputWatermarkManager));
+        })
+      .forEach(pair -> {
+        map.putIfAbsent(pair.left(), new ArrayList<>());
+        map.get(pair.left()).add(pair.right());
+      });
+
+    return map;
+  }
+
+  /**
+   * Return inter-task OutputWriters, for single output or output associated with main tag.
+   *
+   * @param irVertex                source irVertex
+   * @param outEdgesToChildrenTasks outgoing edges to child tasks
+   * @param intermediateDataIOFactory     intermediateDataIOFactory
+   * @return OutputWriters for main children tasks
+   */
+  private List<OutputWriter> getExternalMainOutputs(final IRVertex irVertex,
+                                                    final List<StageEdge> outEdgesToChildrenTasks,
+                                                    final IntermediateDataIOFactory intermediateDataIOFactory) {
+    return outEdgesToChildrenTasks
+      .stream()
+      .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
+      .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+      .map(outEdgeForThisVertex -> intermediateDataIOFactory
+        .createWriter(taskId, outEdgeForThisVertex))
+      .collect(Collectors.toList());
+  }
+
+
+  private Optional<Readable> getSourceVertexReader(final IRVertex irVertex,
+                                                   final Map<String, Readable> irVertexIdToReadable) {
+    if (irVertex instanceof SourceVertex) {
+      final Readable readable = irVertexIdToReadable.get(irVertex.getId());
+      if (readable == null) {
+        throw new IllegalStateException(irVertex.toString());
+      }
+      return Optional.of(readable);
+    } else {
+      return Optional.empty();
+    }
+  }
 
   private List<InputReader> getParentTaskReaders(final int taskIndex,
                                                  final List<StageEdge> inEdgesFromParentTasks,

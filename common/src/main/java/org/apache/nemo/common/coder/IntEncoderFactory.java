@@ -36,6 +36,7 @@ public final class IntEncoderFactory implements EncoderFactory<Integer> {
 
   /**
    * Static initializer of the coder.
+   * @return the initializer.
    */
   public static IntEncoderFactory of() {
     return INT_ENCODER_FACTORY;
@@ -44,6 +45,11 @@ public final class IntEncoderFactory implements EncoderFactory<Integer> {
   @Override
   public Encoder<Integer> create(final OutputStream outputStream) {
     return new IntEncoder(outputStream);
+  }
+
+  @Override
+  public String toString() {
+    return "IntEncoderFactory{}";
   }
 
   /**

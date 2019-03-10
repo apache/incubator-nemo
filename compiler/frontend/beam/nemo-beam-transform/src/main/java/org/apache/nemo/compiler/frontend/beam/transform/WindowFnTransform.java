@@ -49,6 +49,7 @@ public final class WindowFnTransform<T, W extends BoundedWindow>
   /**
    * Default Constructor.
    * @param windowFn windowFn for the Transform.
+   * @param displayData display data.
    */
   public WindowFnTransform(final WindowFn windowFn, final DisplayData displayData) {
     this.windowFn = windowFn;

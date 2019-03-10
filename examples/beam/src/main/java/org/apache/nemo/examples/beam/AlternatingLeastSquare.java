@@ -311,6 +311,10 @@ public final class AlternatingLeastSquare {
     private final int numFeatures;
     private final boolean isDeterministic;
 
+    /**
+     * @param numFeatures number of the features.
+     * @param isDeterministic whether or not to initialize the matrix in deterministic mode.
+     */
     CreateInitialMatrix(final int numFeatures,
                         final boolean isDeterministic) {
       this.numFeatures = numFeatures;

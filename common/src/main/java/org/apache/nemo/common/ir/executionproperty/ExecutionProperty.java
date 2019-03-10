@@ -58,4 +58,14 @@ public abstract class ExecutionProperty<T extends Serializable> implements Seria
   public final int hashCode() {
     return value != null ? value.hashCode() : 0;
   }
+
+  @Override
+  public final String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(this.getClass().getSimpleName());
+    sb.append("(");
+    sb.append(value.toString());
+    sb.append(")");
+    return sb.toString();
+  }
 }

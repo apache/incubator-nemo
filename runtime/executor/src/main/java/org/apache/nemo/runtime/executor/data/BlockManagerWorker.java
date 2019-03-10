@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.data;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.common.exception.UnsupportedBlockStoreException;
@@ -29,7 +30,6 @@ import org.apache.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;

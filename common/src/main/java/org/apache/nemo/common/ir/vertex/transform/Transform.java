@@ -68,6 +68,7 @@ public interface Transform<I, O> extends Serializable {
     ServerlessExecutorProvider getServerlessExecutorProvider();
 
     /**
+     * @param id of the variable to get.
      * @return the broadcast variable.
      */
     Object getBroadcastVariable(Serializable id);

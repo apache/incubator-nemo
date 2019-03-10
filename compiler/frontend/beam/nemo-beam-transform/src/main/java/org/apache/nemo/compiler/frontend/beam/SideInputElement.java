@@ -27,15 +27,25 @@ public final class SideInputElement<T> {
   private final int sideInputIndex;
   private final T sideInputValue;
 
+  /**
+   * @param sideInputIndex index of the side input.
+   * @param sideInputValue value of the side input.
+   */
   public SideInputElement(final int sideInputIndex, final T sideInputValue) {
     this.sideInputIndex = sideInputIndex;
     this.sideInputValue = sideInputValue;
   }
 
+  /**
+   * @return index of the side input.
+   */
   public int getSideInputIndex() {
     return sideInputIndex;
   }
 
+  /**
+   * @return value of the side input.
+   */
   public T getSideInputValue() {
     return sideInputValue;
   }

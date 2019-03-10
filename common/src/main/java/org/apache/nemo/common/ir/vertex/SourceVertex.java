@@ -28,7 +28,6 @@ import java.util.List;
  * @param <O> output type.
  */
 public abstract class SourceVertex<O> extends IRVertex {
-
   /**
    * Constructor for SourceVertex.
    */
@@ -36,6 +35,9 @@ public abstract class SourceVertex<O> extends IRVertex {
     super();
   }
 
+  /**
+   * @return true if it is bounded source
+   */
   public abstract boolean isBounded();
 
   /**
@@ -46,6 +48,7 @@ public abstract class SourceVertex<O> extends IRVertex {
   public SourceVertex(final SourceVertex that) {
     super(that);
   }
+
   /**
    * Gets parallel readables.
    *

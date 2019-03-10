@@ -22,6 +22,7 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
@@ -42,7 +43,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class DefaultEdgeCoderPassTest {
-  private DAG<IRVertex, IREdge> compiledDAG;
+  private IRDAG compiledDAG;
 
   @Before
   public void setUp() throws Exception {
@@ -63,7 +64,7 @@ public class DefaultEdgeCoderPassTest {
     final IREdge irEdge = compiledDAG.getOutgoingEdgesOf(compiledDAG.getTopologicalSort().get(0)).get(0);
     final EncoderFactory compiledEncoderFactory = irEdge.getPropertyValue(EncoderProperty.class).get();
     final DecoderFactory compiledDecoderFactory = irEdge.getPropertyValue(DecoderProperty.class).get();
-    DAG<IRVertex, IREdge> processedDAG = new DefaultEdgeEncoderPass().apply(compiledDAG);
+    IRDAG processedDAG = new DefaultEdgeEncoderPass().apply(compiledDAG);
     processedDAG = new DefaultEdgeDecoderPass().apply(processedDAG);
 
     // Get the first coder from the processed DAG
@@ -80,7 +81,7 @@ public class DefaultEdgeCoderPassTest {
     final IREdge irEdge = compiledDAG.getOutgoingEdgesOf(compiledDAG.getTopologicalSort().get(0)).get(0);
     irEdge.getExecutionProperties().remove(EncoderProperty.class);
     irEdge.getExecutionProperties().remove(DecoderProperty.class);
-    DAG<IRVertex, IREdge> processedDAG = new DefaultEdgeEncoderPass().apply(compiledDAG);
+    IRDAG processedDAG = new DefaultEdgeEncoderPass().apply(compiledDAG);
     processedDAG = new DefaultEdgeDecoderPass().apply(processedDAG);
 
     // Check whether the pass set the empty coder to our default encoder & decoder.
