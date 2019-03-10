@@ -634,6 +634,7 @@ public final class TaskExecutor {
       processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
 
+      // This is for latency logging
       if (isFirstEvent) {
         isFirstEvent = false;
         adjustTime = System.currentTimeMillis() - ((TimestampAndValue) event).timestamp;
