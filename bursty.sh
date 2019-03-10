@@ -19,22 +19,23 @@
 #
 # run this by ./bin/generate_javadocs.sh
 
-TIMEOUT=840
+TIMEOUT=450
 WINDOW=30
 INTERVAL=30
 EVENTS=0
-PARALLELISM=1
+PARALLELISM=8
 PERIOD=50
-NORMAL=10
-BURSTY=10
+NORMAL=100000
+BURSTY=1000000
 CPU_DELAY=0
-SAMPLING=0.9
+SAMPLING=0.0002
 
-ENABLE_OFFLOADING=false
+ENABLE_OFFLOADING=true
 ENABLE_OFFLOADING_DEBUG=false
-POOL_SIZE=0
-FLUSH_BYTES=$((10 * 1024 * 1024))
-FLUSH_COUNT=10
+#POOL_SIZE=0
+POOL_SIZE=170
+FLUSH_BYTES=$((10 * 1024 * 1024)) 
+FLUSH_COUNT=10000
 FLUSH_PERIOD=1000
 
 echo run query $1
@@ -52,4 +53,3 @@ echo run query $1
         -flush_count $FLUSH_COUNT \
         -flush_period $FLUSH_PERIOD \
         -user_args "--runner=org.apache.nemo.client.beam.NemoRunner --streaming=true --query=$1 --manageResources=false --monitorJobs=true --streamTimeout=$TIMEOUT --numEventGenerators=$PARALLELISM --numEvents=$EVENTS --isRateLimited=true --firstEventRate=$NORMAL --nextEventRate=$BURSTY --windowSizeSec=$WINDOW --windowPeriodSec=$INTERVAL --fanout=1 --rateShape=BURSTY --ratePeriodSec=$PERIOD --auctionSkip=1 --cpuDelayMs=$CPU_DELAY --samplingRate=$SAMPLING"
-
