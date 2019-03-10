@@ -51,7 +51,7 @@ public class StatelessOffloadingSerializer implements OffloadingSerializer {
     public OffloadingDataEvent decode(InputStream inputStream) throws IOException {
       final DataInputStream dis = new DataInputStream(inputStream);
       final int length = dis.readInt();
-      System.out.println("Decoding " + length + " inputs");
+      //System.out.println("Decoding " + length + " inputs");
       final List<Pair<List<String>, Object>> data = new ArrayList<>(length);
       for (int i = 0; i < length; i++) {
         final int nextVertices = dis.readInt();
@@ -76,7 +76,7 @@ public class StatelessOffloadingSerializer implements OffloadingSerializer {
     public void encode(OffloadingResultEvent element, OutputStream outputStream) throws IOException {
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeInt(element.data.size());
-      System.out.println("Encoding " + element.data.size() + " events");
+      //System.out.println("Encoding " + element.data.size() + " events");
 
       for (final Triple<List<String>, String, Object> triple : element.data) {
         // vertex id
@@ -98,7 +98,7 @@ public class StatelessOffloadingSerializer implements OffloadingSerializer {
     public OffloadingResultEvent decode(InputStream inputStream) throws IOException {
       final DataInputStream dis = new DataInputStream(inputStream);
       final int length = dis.readInt();
-      System.out.println("Decoding " + length + " events");
+      //System.out.println("Decoding " + length + " events");
       final List<Triple<List<String>, String, Object>> data = new ArrayList<>(length);
       for (int i = 0; i < length; i++) {
         final int numOfNextVertices = dis.readInt();
