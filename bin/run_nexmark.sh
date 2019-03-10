@@ -17,6 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp client/target/nemo-client-$(mvn -q \
+VERSION=$(mvn -q \
   -Dexec.executable=echo -Dexec.args='${project.version}' \
-  --non-recursive exec:exec)-shaded.jar:`yarn classpath`:examples/nexmark/target/nexmark-0.2-SNAPSHOT-shaded.jar org.apache.nemo.client.JobLauncher "$@"
+  --non-recursive exec:exec)
+
+java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp client/target/nemo-client-$VERSION-shaded.jar:`yarn classpath`:examples/nexmark/target/nexmark-$VERSION-shaded.jar org.apache.nemo.client.JobLauncher "$@"

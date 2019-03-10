@@ -19,12 +19,9 @@
 package org.apache.nemo.examples.beam;
 
 import com.google.common.collect.Lists;
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.client.beam.NemoRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -51,8 +48,7 @@ public final class PerPercentileAverage {
   public static void main(final String[] args) {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];
-    final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
-    options.setRunner(NemoRunner.class);
+    final PipelineOptions options = NemoPipelineOptionsFactory.create();
     options.setJobName("PerPercentileAverage");
 
     final Pipeline p = Pipeline.create(options);

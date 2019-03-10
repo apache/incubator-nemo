@@ -18,10 +18,8 @@
  */
 package org.apache.nemo.examples.beam;
 
-import org.apache.nemo.client.beam.NemoRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.View;
@@ -48,8 +46,7 @@ public final class Broadcast {
   public static void main(final String[] args) {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];
-    final PipelineOptions options = PipelineOptionsFactory.create();
-    options.setRunner(NemoRunner.class);
+    final PipelineOptions options = NemoPipelineOptionsFactory.create();
 
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> elemCollection = GenericSourceSink.read(p, inputFilePath);
