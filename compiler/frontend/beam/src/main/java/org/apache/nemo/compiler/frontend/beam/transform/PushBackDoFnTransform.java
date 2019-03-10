@@ -35,7 +35,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
-import org.apache.nemo.compiler.frontend.beam.coder.PushBackCoder2;
+import org.apache.nemo.compiler.frontend.beam.coder.PushBackCoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,7 +123,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
 
       final OffloadingCoderWrapper<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>>
-        inputCoder = new OffloadingCoderWrapper(new PushBackCoder2(sideCoder ,mainCoder));
+        inputCoder = new OffloadingCoderWrapper(new PushBackCoder(sideCoder ,mainCoder));
       final OffloadingCoderWrapper outputCoder = new OffloadingCoderWrapper(mainCoder);
 
       offloadingSerializer =

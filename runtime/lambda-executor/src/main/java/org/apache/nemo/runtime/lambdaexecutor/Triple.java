@@ -1,4 +1,4 @@
-package org.apache.nemo.common;
+package org.apache.nemo.runtime.lambdaexecutor;
 
 public final class Triple<A, B, C> {
   public A first;

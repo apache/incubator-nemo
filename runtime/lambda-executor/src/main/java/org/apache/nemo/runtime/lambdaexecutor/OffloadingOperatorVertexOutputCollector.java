@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.lambdaexecutor;
 
 import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
-import org.apache.nemo.common.Triple;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;

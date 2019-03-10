@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor;
 
-import org.apache.nemo.common.Triple;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 
 import java.util.LinkedList;

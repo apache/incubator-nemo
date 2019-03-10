@@ -27,7 +27,7 @@ import scala.reflect.ClassTag$;
 import java.io.OutputStream;
 
 /**
- * Spark OffloadingEncoder for serialization.
+ * Spark EncoderFactory for serialization.
  * @param <T> type of the object to serialize.
  */
 public final class SparkEncoderFactory<T> implements EncoderFactory<T> {

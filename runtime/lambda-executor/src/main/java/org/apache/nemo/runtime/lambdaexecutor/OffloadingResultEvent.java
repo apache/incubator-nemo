@@ -1,8 +1,5 @@
 package org.apache.nemo.runtime.lambdaexecutor;
 
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.Triple;
-
 import java.util.List;
 
 

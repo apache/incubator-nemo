@@ -19,12 +19,15 @@
 package org.apache.nemo.compiler.frontend.beam.coder;
 
 import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 
-import java.io.*;
-import java.nio.ByteBuffer;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -45,29 +48,28 @@ public final class PushBackCoder extends Coder<Pair<WindowedValue<SideInputEleme
   }
 
   @Override
-  public void encode(Pair<WindowedValue<SideInputElement>,
-    List<WindowedValue>> value, OutputStream outStream) throws IOException {
-    sideInputCoder.encode(value.left(), outStream);
-    final byte[] lenByte = ByteBuffer.allocate(4).putInt(value.right().size()).array();
-    outStream.write(lenByte);
-    for (WindowedValue mainData : value.right()) {
-      mainInputCoder.encode(mainData, outStream);
-    }
+  public void encode(Pair<WindowedValue<SideInputElement>, List<WindowedValue>> value, OutputStream outStream) throws CoderException, IOException {
+    // do nothing
+    throw new RuntimeException("Unsupport!");
   }
 
   @Override
-  public Pair<WindowedValue<SideInputElement>, List<WindowedValue>> decode(
-    final InputStream inStream) throws IOException {
-    final WindowedValue<SideInputElement> side = sideInputCoder.decode(inStream);
-    final DataInputStream din = new DataInputStream(inStream);
-    final int len = din.readInt();
-    final List<WindowedValue> main = new ArrayList<>(len);
+  public Pair<WindowedValue<SideInputElement>, List<WindowedValue>> decode(InputStream inStream) throws CoderException, IOException {
 
-    for (int i = 0; i < len; i++) {
-      main.add(mainInputCoder.decode(inStream));
+    final List<WindowedValue> mainInputs = new ArrayList<>();
+
+    while (true) {
+      final DataInputStream dis = new DataInputStream(inStream);
+      final boolean isMain = dis.readBoolean();
+
+      if (isMain) {
+        final WindowedValue mainData = mainInputCoder.decode(inStream);
+        mainInputs.add(mainData);
+      } else {
+        final WindowedValue<SideInputElement> sideData = sideInputCoder.decode(inStream);
+        return Pair.of(sideData, mainInputs);
+      }
     }
-
-    return Pair.of(side, main);
   }
 
   @Override

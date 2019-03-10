@@ -83,7 +83,7 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
   }
 
   /**
-   * Stores the side input in memory to be used with main inputsGroupByKeyAndWindowDoFnTransform.java.
+   * Stores the side input in memory to be used with main inputs.
    * @param view of the side input.
    * @param sideInputElement to add.
    */
