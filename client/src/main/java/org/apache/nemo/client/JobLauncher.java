@@ -250,7 +250,7 @@ public final class JobLauncher {
       Thread.currentThread().interrupt();
     }
 
-    LOG.info("Launching DAG...");
+    LOG.info("Launching DAG...: {}", dag);
     serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
     jobDoneLatch = new CountDownLatch(1);
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
