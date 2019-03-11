@@ -61,9 +61,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.nemo.runtime.lambdaexecutor.EmptyOffloadingTransform;
-import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingSerializer;
-import org.apache.nemo.runtime.lambdaexecutor.StatelessOffloadingTransform;
+import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.executor.datatransfer.RunTimeMessageOutputCollector;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.slf4j.Logger;
@@ -130,6 +128,8 @@ public final class TaskExecutor {
   private List<Pair<OperatorMetricCollector, OutputCollector>> prevOffloadingHead;
 
   private byte[] serializedDag;
+
+  private final ConcurrentLinkedQueue<OffloadingResultEvent> offloadingEventQueue = new ConcurrentLinkedQueue<>();
 
   /**
    * Constructor.
@@ -320,7 +320,7 @@ public final class TaskExecutor {
       serverlessExecutorService = serverlessExecutorProvider.
         newCachedPool(new StatelessOffloadingTransform(copyDag, taskOutgoingEdges),
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
-          new StatelessOffloadingEventHandler(vertexIdAndCollectorMap, operatorInfoMap, outputWriterMap));
+          new StatelessOffloadingEventHandler(offloadingEventQueue, vertexIdAndCollectorMap, operatorInfoMap, outputWriterMap));
 
       LOG.info("ServerlesEexecutorService at {}", taskId);
 
@@ -748,6 +748,43 @@ public final class TaskExecutor {
     return (currentTime - prevTime) >= pollingPeriod;
   }
 
+
+  // For offloading!
+  private void handleOffloadingEvent(final Triple<List<String>, String, Object> triple) {
+    //LOG.info("Result handle {} / {} / {}", triple.first, triple.second, triple.third);
+    final Object elem = triple.third;
+
+    for (final String nextOpId : triple.first) {
+      if (operatorInfoMap.containsKey(nextOpId)) {
+        final NextIntraTaskOperatorInfo interOp = operatorInfoMap.get(nextOpId);
+        final OutputCollector collector = vertexIdAndCollectorMap.get(nextOpId).right();
+
+        //LOG.info("Emit data to {}, {}, {}, {}", nextOpId, interOp, collector, elem);
+
+        if (elem instanceof Watermark) {
+          interOp.getWatermarkManager().trackAndEmitWatermarks(interOp.getEdgeIndex(), (Watermark) elem);
+        } else if (elem instanceof TimestampAndValue) {
+          final TimestampAndValue tsv = (TimestampAndValue) elem;
+          collector.setInputTimestamp(tsv.timestamp);
+          interOp.getNextOperator().getTransform().onData(tsv.value);
+        } else {
+          throw new RuntimeException("Unknown type: " + elem);
+        }
+      } else {
+        LOG.info("Emit to output writer {}", nextOpId);
+        // this is for output writer
+        final OutputWriter outputWriter = outputWriterMap.get(nextOpId);
+        if (elem instanceof Watermark) {
+          outputWriter.writeWatermark((Watermark) elem);
+        } else if (elem instanceof TimestampAndValue) {
+          outputWriter.write(elem);
+        } else {
+          throw new RuntimeException("Unknown type: " + elem);
+        }
+      }
+    }
+  }
+
   /**
    * This retrieves data from data fetchers and process them.
    * It maintains two lists:
@@ -776,6 +813,18 @@ public final class TaskExecutor {
 
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
+
+      if (evalConf.enableOffloading || evalConf.offloadingdebug) {
+        // check offloading queue to process events
+        while (!offloadingEventQueue.isEmpty()) {
+          // fetch events
+          final OffloadingResultEvent msg = offloadingEventQueue.poll();
+          LOG.info("Result processed in executor: cnt {}", msg.data.size());
+          for (final Triple<List<String>, String, Object> triple : msg.data) {
+            handleOffloadingEvent(triple);
+          }
+        }
+      }
 
 
       // We first fetch data from available data fetchers
