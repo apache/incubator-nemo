@@ -19,11 +19,9 @@
 package org.apache.nemo.examples.beam;
 
 import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
-import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 import org.apache.nemo.common.Pair;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.join.CoGbkResult;
 import org.apache.beam.sdk.transforms.join.CoGroupByKey;
@@ -419,8 +417,7 @@ public final class MultinomialLogisticRegression {
       initialModelKeys.add(i);
     }
 
-    final PipelineOptions options = PipelineOptionsFactory.create();
-    options.setRunner(NemoRunner.class);
+    final PipelineOptions options = NemoPipelineOptionsFactory.create();
     options.setJobName("MLR");
     options.setStableUniqueNames(PipelineOptions.CheckEnabled.OFF);
 

@@ -21,12 +21,9 @@ package org.apache.nemo.examples.beam;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.extensions.sql.SqlTransform;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.*;
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -49,8 +46,7 @@ public final class SimpleSumSQL {
   public static void main(final String[] args) {
     final String outputFilePath = args[0];
 
-    final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
-    options.setRunner(NemoRunner.class);
+    final PipelineOptions options = NemoPipelineOptionsFactory.create();
     options.setJobName("SimpleSumSQL");
     final Pipeline p = Pipeline.create(options);
 

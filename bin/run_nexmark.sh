@@ -21,4 +21,4 @@ VERSION=$(mvn -q \
   -Dexec.executable=echo -Dexec.args='${project.version}' \
   --non-recursive exec:exec)
 
-java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp client/target/nemo-client-$VERSION-shaded.jar:examples/beam/target/nemo-examples-beam-$VERSION-shaded.jar:`yarn classpath` org.apache.nemo.client.JobLauncher "$@"
+java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp client/target/nemo-client-$VERSION-shaded.jar:`yarn classpath`:examples/nexmark/target/nexmark-$VERSION-shaded.jar org.apache.nemo.client.JobLauncher "$@"

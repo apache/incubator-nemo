@@ -35,7 +35,7 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
    * @param pipeline to visit.
    * @param pipelineOptions pipeline options.
    */
-  PipelineVisitor(final Pipeline pipeline, final NemoPipelineOptions pipelineOptions) {
+  public PipelineVisitor(final Pipeline pipeline, final NemoPipelineOptions pipelineOptions) {
     this.context = new PipelineTranslationContext(pipeline, pipelineOptions);
   }
 
@@ -61,7 +61,7 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   /**
    * @return the converted pipeline.
    */
-  IRDAG getConvertedPipeline() {
+  public IRDAG getConvertedPipeline() {
     return new IRDAG(context.getBuilder().build());
   }
 }
