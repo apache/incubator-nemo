@@ -201,7 +201,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
       try {
         final List<Pair<K, byte[]>> partitionKeyBytesPairs = new ArrayList<>();
         try (final CrailBufferedInputStream fileStream = file.getBufferedInputStream(0)){
-          fileStream.seek(40176);
+          fileStream.seek(100);
           for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
               final K key = partitionMetadata.getKey();
               if (keyRange.includes(key)) {
