@@ -214,7 +214,9 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
               } else {
                 // Have to skip this partition.
-                skipBytes(fileStream, partitionMetadata.getPartitionSize());
+                byte[] dummyBytes = new byte[partitionMetadata.getPartitionSize()];
+                fileStream.read(dummyBytes, 0, partitionMetadata.getPartitionSize());
+                //skipBytes(fileStream, partitionMetadata.getPartitionSize());
                 LOG.info("HY: partition skipped");
               }
             }
