@@ -207,13 +207,12 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 // The key value of this partition is in the range.
                 final byte[] partitionBytes = new byte[partitionMetadata.getPartitionSize()];
                 LOG.info("HY: partition length of the block to read {}", partitionMetadata.getPartitionSize());
-                LOG.info("HY: inputstream position before read {}", fileStream.position());
                 fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
-                LOG.info("HY: inputstream position after read {}", fileStream.position());
                 partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
               } else {
                 // Have to skip this partition.
-                skipBytes(fileStream, partitionMetadata.getPartitionSize());
+                fileStream.seek(partitionMetadata.getPartitionSize());
+                //skipBytes(fileStream, partitionMetadata.getPartitionSize());
                 LOG.info("HY: partition skipped");
               }
             }
