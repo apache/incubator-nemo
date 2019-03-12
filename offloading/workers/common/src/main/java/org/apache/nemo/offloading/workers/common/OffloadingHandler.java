@@ -158,7 +158,8 @@ public final class OffloadingHandler {
     if (classLoader == null) {
       System.out.println("Loading jar: " + opendChannel);
       try {
-        classLoader = classLoaderCallable.call();
+        //classLoader = classLoaderCallable.call();
+        classLoader = Thread.currentThread().getContextClassLoader();
       } catch (Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);

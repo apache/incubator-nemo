@@ -24,45 +24,34 @@
       <artifactId>beam-sdks-java-io-google-cloud-platform</artifactId>
       <version>2.6.0</version>
     </dependency>
-
-    <dependency>
-      <groupId>org.apache.nemo</groupId>
-      <artifactId>nemo-compiler-frontend-beam</artifactId>
-      <version>0.2-SNAPSHOT</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.nemo</groupId>
-      <artifactId>nemo-lambda-executor</artifactId>
-      <version>0.2-SNAPSHOT</version>
-    </dependency>
   </dependencies>
 
-      <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <outputFile>
-                                ${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar
-                            </outputFile>
-                            <transformers>
-                                <!-- Required for using beam-hadoop: See https://stackoverflow.com/questions/44365545
-                                -->
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
-                            </transformers>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
+
+      <!--<build>-->
+        <!--<plugins>-->
+            <!--<plugin>-->
+                <!--<groupId>org.apache.maven.plugins</groupId>-->
+                <!--<artifactId>maven-shade-plugin</artifactId>-->
+                <!--<version>3.0.0</version>-->
+                <!--<executions>-->
+                    <!--<execution>-->
+                        <!--<phase>package</phase>-->
+                        <!--<goals>-->
+                            <!--<goal>shade</goal>-->
+                        <!--</goals>-->
+                        <!--<configuration>-->
+                            <!--<outputFile>-->
+                                <!--${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar-->
+                            <!--</outputFile>-->
+                            <!--<transformers>-->
+                                <!--&lt;!&ndash; Required for using beam-hadoop: See https://stackoverflow.com/questions/44365545-->
+                                <!--&ndash;&gt;-->
+                                <!--<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>-->
+                            <!--</transformers>-->
+                        <!--</configuration>-->
+                    <!--</execution>-->
+                <!--</executions>-->
+            <!--</plugin>-->
+        <!--</plugins>-->
+    <!--</build>-->
 </project>

@@ -88,11 +88,10 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
   @Override
   public void emit(final O output) {
-    LOG.info("Operator " + irVertex.getId() + " emit " + output + " to ");
+    //LOG.info("Operator " + irVertex.getId() + " emit " + output + " to ");
     List<String> nextOpIds = null;
 
     for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
-      LOG.info(internalVertex.getNextOperator().getId());
       if (internalVertex.getNextOperator().isSink || !internalVertex.getNextOperator().isOffloading) {
         if (nextOpIds == null) {
           nextOpIds = new LinkedList<>();
