@@ -21,6 +21,7 @@ public final class StatelessOffloadingOutputEncoder implements OffloadingEncoder
     public void encode(OffloadingResultEvent element, OutputStream outputStream) throws IOException {
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeInt(element.data.size());
+      dos.writeLong(element.watermark);
       //System.out.println("Encoding " + element.data.size() + " events");
 
       for (final Triple<List<String>, String, Object> triple : element.data) {

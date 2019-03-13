@@ -18,15 +18,19 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
 import javax.inject.Inject;
+import java.util.Map;
 import java.util.Optional;
+import java.util.PriorityQueue;
 
 /**
  * A factory that produces {@link InputReader} and {@link OutputWriter}.
@@ -51,12 +55,18 @@ public final class IntermediateDataIOFactory {
    */
   public OutputWriter createWriter(final String srcTaskId,
                                    final RuntimeEdge<?> runtimeEdge) {
-    if (isPipe(runtimeEdge)) {
-      return new PipeOutputWriter(srcTaskId, runtimeEdge, pipeManagerWorker);
-    } else {
-      final StageEdge stageEdge = (StageEdge) runtimeEdge;
-      return new BlockOutputWriter(srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker);
-    }
+    final StageEdge stageEdge = (StageEdge) runtimeEdge;
+    return new BlockOutputWriter(srcTaskId, stageEdge.getDstIRVertex(), runtimeEdge, blockManagerWorker);
+  }
+
+  public OutputWriter createPipeWriter(
+    final String srcTaskId,
+    final RuntimeEdge<?> runtimeEdge,
+    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
+    final Map<Long, Long> prevWatermarkMap,
+    final Map<Long, Integer> watermarkCounterMap) {
+    return new PipeOutputWriter(srcTaskId, runtimeEdge, pipeManagerWorker,
+      expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap);
   }
 
   /**

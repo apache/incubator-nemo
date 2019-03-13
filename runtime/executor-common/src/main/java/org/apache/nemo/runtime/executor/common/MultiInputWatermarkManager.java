@@ -35,6 +35,8 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
   private final List<Watermark> watermarks;
   private final OutputCollector<?> watermarkCollector;
   private int minWatermarkIndex;
+  private String sourceId;
+
   public MultiInputWatermarkManager(final int numEdges,
                                     final OutputCollector<?> watermarkCollector) {
     super();
@@ -98,5 +100,15 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
       }
       watermarks.set(edgeIndex, watermark);
     }
+  }
+
+  @Override
+  public void setWatermarkSourceId(String sid) {
+    sourceId = sid;
+  }
+
+  @Override
+  public String getWatermarkSourceId() {
+    return sourceId;
   }
 }

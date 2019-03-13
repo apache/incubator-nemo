@@ -30,8 +30,8 @@ import java.io.Serializable;
  */
 public interface OutputCollector<O> extends Serializable {
 
+  // for offloadig
   void setInputTimestamp(long timestamp);
-
   long getInputTimestamp();
 
   /**

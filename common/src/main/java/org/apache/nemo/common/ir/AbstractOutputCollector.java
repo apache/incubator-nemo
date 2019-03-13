@@ -1,8 +1,13 @@
 package org.apache.nemo.common.ir;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public abstract class AbstractOutputCollector<O> implements OutputCollector<O> {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractOutputCollector.class.getName());
 
   protected long inputTimestamp;
+
   protected volatile boolean startOffloading;
   protected volatile boolean endOffloading;
   protected volatile boolean offloading;
@@ -20,12 +25,10 @@ public abstract class AbstractOutputCollector<O> implements OutputCollector<O> {
   @Override
   public void enableOffloading() {
     startOffloading = true;
-    offloading = true;
   }
 
   @Override
   public void disableOffloading() {
-    offloading = false;
     endOffloading = true;
   }
 }

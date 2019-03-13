@@ -69,7 +69,8 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         if (edges.size() == 1) {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
             new SingleInputWatermarkManager(
-              new OperatorWatermarkCollector((OperatorVertex) childVertex)));
+              new OperatorWatermarkCollector((OperatorVertex) childVertex),
+              null, null, null, null));
         } else {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
             new MultiInputWatermarkManager(edges.size(),
@@ -121,14 +122,16 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
   // receive batch (list) data
   @Override
   public void onData(final OffloadingDataEvent element) {
-    System.out.println("Received data size: " + element.data.size());
+    System.out.println("Received data size: " + element.data.size() + ", checkpoint watermark: " + element.watermark);
     for (final Pair<List<String>, Object> input : element.data) {
       final List<String> nextOps = input.left();
       final Object d = input.right();
       for (final String nextOpId : nextOps) {
         final NextIntraTaskOperatorInfo nextOp = operatorVertexMap.get(nextOpId);
         if (d instanceof Watermark) {
-          nextOp.getWatermarkManager().trackAndEmitWatermarks(nextOp.getEdgeIndex(), (Watermark) d);
+          final Watermark watermark = (Watermark) d;
+          nextOp.getWatermarkManager()
+            .trackAndEmitWatermarks(nextOp.getEdgeIndex(), watermark);
         } else {
           final TimestampAndValue tsv = (TimestampAndValue) d;
           outputCollectorMap.get(nextOpId).setInputTimestamp(tsv.timestamp);
@@ -136,15 +139,13 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         }
       }
     }
-
-    resultCollector.flush();
+    resultCollector.flush(element.watermark);
   }
 
   @Override
   public void close() {
 
   }
-
 
 
   // Get all of the intra-task edges

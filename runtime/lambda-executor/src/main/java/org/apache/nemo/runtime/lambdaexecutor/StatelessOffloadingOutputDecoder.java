@@ -22,6 +22,7 @@ public final class StatelessOffloadingOutputDecoder implements OffloadingDecoder
     public OffloadingResultEvent decode(InputStream inputStream) throws IOException {
       final DataInputStream dis = new DataInputStream(inputStream);
       final int length = dis.readInt();
+      final long watermark = dis.readLong();
       //System.out.println("Decoding " + length + " events");
       final List<Triple<List<String>, String, Object>> data = new ArrayList<>(length);
       for (int i = 0; i < length; i++) {
@@ -35,6 +36,6 @@ public final class StatelessOffloadingOutputDecoder implements OffloadingDecoder
         final Object object = serializer.getDecoderFactory().create(dis).decode();
         data.add(new Triple<>(nextVertices, edgeId, object));
       }
-      return new OffloadingResultEvent(data);
+      return new OffloadingResultEvent(data, watermark);
     }
   }

@@ -111,7 +111,8 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     if (numOfIterators > 1) {
       inputWatermarkManager = new MultiInputWatermarkManager(numOfIterators, new WatermarkCollector());
     } else {
-      inputWatermarkManager = new SingleInputWatermarkManager(new WatermarkCollector());
+      inputWatermarkManager = new SingleInputWatermarkManager(
+        new WatermarkCollector(), null, null, null, null);
     }
 
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {

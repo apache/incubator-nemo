@@ -55,6 +55,8 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
   private final Edge edge;
   private final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
 
+  public String watermarkSourceId;
+
   /**
    * Constructor of the output collector.
    * @param irVertex the ir vertex that emits the output
@@ -158,9 +160,9 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
-    }
+//    if (LOG.isDebugEnabled()) {
+//      LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
+//    }
 
     List<String> nextOpIds = null;
 
@@ -175,6 +177,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
         //System.out.println("Operator " + irVertex.getId() + " emits watermark " + watermark);
         //System.out.println("Sink Emit watermark " + watermark);
       } else {
+        //LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
@@ -187,6 +190,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
           }
           nextOpIds.add(internalVertex.getNextOperator().getId());
         } else {
+          //LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
           internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
         }
       }
@@ -203,6 +207,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
 
     if (nextOpIds != null) {
+      //LOG.info("Offloading Watermark {} emit to {}", watermark, nextOpIds);
       resultCollector.result.add(new Triple<>(
         nextOpIds,
         edge.getId(),

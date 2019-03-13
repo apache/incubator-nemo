@@ -25,6 +25,8 @@ public final class StatelessOffloadingInputDecoder implements OffloadingDecoder<
     public OffloadingDataEvent decode(InputStream inputStream) throws IOException {
       final DataInputStream dis = new DataInputStream(inputStream);
       final int length = dis.readInt();
+      final long watermark = dis.readLong();
+
       //System.out.println("Decoding " + length + " inputs");
       final List<Pair<List<String>, Object>> data = new ArrayList<>(length);
       for (int i = 0; i < length; i++) {
@@ -40,6 +42,6 @@ public final class StatelessOffloadingInputDecoder implements OffloadingDecoder<
         //System.out.println("Decoded data " + vertexId + "/" + edgeId + " cnt: " + i);
         data.add(Pair.of(nextVerticeIds, object));
       }
-      return new OffloadingDataEvent(data);
+      return new OffloadingDataEvent(data, watermark);
     }
   }

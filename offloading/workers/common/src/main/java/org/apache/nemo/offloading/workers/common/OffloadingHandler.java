@@ -92,7 +92,7 @@ public final class OffloadingHandler {
   private void writeResult(final Channel opendChannel,
                            final List<ChannelFuture> futures,
                            final Pair<Object, Integer> data) {
-    final ByteBuf byteBuf = opendChannel.alloc().ioBuffer();
+    final ByteBuf byteBuf = opendChannel.alloc().buffer();
 
     if (data.left() == NoResult.INSTANCE) {
       // bit 0 1

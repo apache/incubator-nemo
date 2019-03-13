@@ -26,12 +26,12 @@ import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.executor.task.OffloadingContext;
 import org.apache.nemo.runtime.executor.task.OperatorMetricCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * OffloadingOutputCollector implementation.
@@ -56,6 +56,12 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   // for logging
   private long inputTimestamp;
   private final OperatorMetricCollector operatorMetricCollector;
+  private final Map<Long, Long> prevWatermarkMap;
+
+  private long currWatermark = 0;
+
+  private OffloadingContext currOffloadingContext;
+  public final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap;
 
   /**
    * Constructor of the output collector.
@@ -72,7 +78,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final List<OutputWriter> externalMainOutputs,
     final Map<String, List<OutputWriter>> externalAdditionalOutputs,
-    final OperatorMetricCollector operatorMetricCollector) {
+    final OperatorMetricCollector operatorMetricCollector,
+    final Map<Long, Long> prevWatermarkMap,
+    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap) {
     this.outputCollectorMap = outputCollectorMap;
     this.irVertex = irVertex;
     this.internalMainOutputs = internalMainOutputs;
@@ -80,6 +88,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     this.externalMainOutputs = externalMainOutputs;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
     this.operatorMetricCollector = operatorMetricCollector;
+    this.prevWatermarkMap = prevWatermarkMap;
+    this.expectedWatermarkMap = expectedWatermarkMap;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -96,6 +106,10 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     writer.write(output);
   }
 
+  public void setCurrentOffloadingContext(final OffloadingContext offloadingContext) {
+    currOffloadingContext = offloadingContext;
+  }
+
   @Override
   public void setInputTimestamp(long ts) {
     inputTimestamp = ts;
@@ -110,16 +124,33 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   public void emit(final O output) {
     operatorMetricCollector.emittedCnt += 1;
 
+    //LOG.info("Offloading {}, Start offloading {}, End offloading {}, in {}",
+    //  offloading, startOffloading, endOffloading, irVertex.getId());
+
     if (irVertex.isSink) {
       operatorMetricCollector.processDone(inputTimestamp);
     }
 
-    // startOffloading should be called first!
-    if (startOffloading) {
-      operatorMetricCollector.startOffloading();
-      startOffloading = false;
+    if (endOffloading) {
+      LOG.info("Operator {} end to offload", irVertex.getId());
+      offloading = false;
+      operatorMetricCollector.endOffloading();
+      endOffloading = false;
+      currOffloadingContext = null;
+
+      if (startOffloading) {
+        // this means that it does not receive any event during offloading
+        // we then disable the start offloading
+        startOffloading = false;
+      }
     }
 
+    if (startOffloading) {
+      LOG.info("Operator {} start to offload", irVertex.getId());
+      operatorMetricCollector.startOffloading();
+      startOffloading = false;
+      offloading = true;
+    }
 
     // For offloading
     List<String> offloadingIds = null;
@@ -146,17 +177,11 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     // For offloading
     if (offloadingIds != null) {
       operatorMetricCollector.sendToServerless(
-        new TimestampAndValue<>(inputTimestamp, output), offloadingIds);
+        new TimestampAndValue<>(inputTimestamp, output), offloadingIds, currWatermark);
     }
 
     for (final OutputWriter externalWriter : externalMainOutputs) {
       emit(externalWriter, new TimestampAndValue<>(inputTimestamp, output));
-    }
-
-    // this should be called at last!
-    if (endOffloading) {
-      operatorMetricCollector.endOffloading();
-      endOffloading = false;
     }
   }
 
@@ -186,7 +211,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     // For offloading
     if (offloadingIds != null) {
       operatorMetricCollector.sendToServerless(
-        new TimestampAndValue<>(inputTimestamp, output), offloadingIds);
+        new TimestampAndValue<>(inputTimestamp, output), offloadingIds, currWatermark);
     }
 
     if (externalAdditionalOutputs.containsKey(dstVertexId)) {
@@ -198,6 +223,13 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
   @Override
   public void emitWatermark(final Watermark watermark) {
+
+    if (offloading) {
+      prevWatermarkMap.put(watermark.getTimestamp(), currWatermark);
+    }
+
+    currWatermark = watermark.getTimestamp();
+
     if (LOG.isDebugEnabled()) {
       LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
     }
@@ -212,6 +244,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         }
         offloadingIds.add(internalVertex.getNextOperator().getId());
       } else {
+        final Pair<OperatorMetricCollector, OutputCollector> pair =
+          outputCollectorMap.get(internalVertex.getNextOperator().getId());
+        LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
@@ -224,6 +259,9 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
           }
           offloadingIds.add(internalVertex.getNextOperator().getId());
         } else {
+          final Pair<OperatorMetricCollector, OutputCollector> pair =
+            outputCollectorMap.get(internalVertex.getNextOperator().getId());
+          LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
           internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
         }
       }
@@ -231,7 +269,15 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     // For offloading
     if (offloadingIds != null) {
-      operatorMetricCollector.sendToServerless(watermark, offloadingIds);
+
+      // add this watermark to the expected map
+      final List<String> sinks = currOffloadingContext.getOffloadingSinks(irVertex);
+      for (final String sink : sinks) {
+        LOG.info("Expected watermark for {}: {}", sink, watermark);
+        expectedWatermarkMap.get(sink).left().add(watermark);
+      }
+
+      operatorMetricCollector.sendToServerless(watermark, offloadingIds, currWatermark);
     }
 
 

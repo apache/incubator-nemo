@@ -63,9 +63,10 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   private long workerInitCnt = 0;
   private int processingCnt = 0;
 
-  private int bufferedCnt = 0;
-  private int addedOutput = 0;
+  //private int bufferedCnt = 0;
+  //private int addedOutput = 0;
 
+  private boolean finished = false;
   private volatile boolean shutdown = false;
 
   private final Map<OffloadingWorker, Boolean> initWorkerSpeculative = new HashMap<>();
@@ -316,7 +317,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         }
         final PendingOutput po = new PendingOutput(worker.execute(dataBuf, dataId, speculative), dataId);
         outputQueue.add(po);
-        addedOutput += 1;
+        //addedOutput += 1;
         runningWorkers.add(Pair.of(System.currentTimeMillis(), worker));
       } catch (final IllegalReferenceCountException e) {
         // the input becomes null ... this means that we don't have to do speculative execution
@@ -367,7 +368,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
           LOG.info("Output latency {}, id {} done", System.currentTimeMillis() - output.startTime, dataId);
           }
-          iterator.remove();
+
           final Optional<O> optional = data.get();
           if (isEmittable && optional.isPresent()) {
             if (Constants.enableLambdaLogging) {
@@ -375,6 +376,8 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
             }
             eventHandler.onNext(optional.get());
           }
+
+          iterator.remove();
         }
 
       } catch (InterruptedException e) {
@@ -412,7 +415,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
     dataBufferQueue.add(Pair.of(encodeData(data, Unpooled.directBuffer()),
       workerFactory.getAndIncreaseDataId()));
-    bufferedCnt += 1;
+    //bufferedCnt += 1;
 
     final OffloadingWorker<I, O> worker =
       workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
@@ -435,7 +438,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
     }
 
     dataBufferQueue.add(Pair.of(data, workerFactory.getAndIncreaseDataId()));
-    bufferedCnt += 1;
+    //bufferedCnt += 1;
 
     final OffloadingWorker<I, O> worker =
       workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
@@ -561,7 +564,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
                   }
 
                   dataBufferQueue.add(data);
-                  bufferedCnt += 1;
+                  //bufferedCnt += 1;
 
                   final OffloadingWorker<I, O> worker =
                     workerFactory.createOffloadingWorker(copiedBuf, offloadingSerializer);
@@ -610,11 +613,18 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
     // TODO: release worker init buffer
     workerInitBuffer.release();
+
+    finished = true;
   }
 
   @Override
   public boolean isShutdown() {
     return shutdown;
+  }
+
+  @Override
+  public boolean isFinished() {
+    return finished;
   }
 
   final class PendingOutput<O> {

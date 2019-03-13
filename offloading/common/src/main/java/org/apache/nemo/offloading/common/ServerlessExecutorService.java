@@ -13,4 +13,6 @@ public interface ServerlessExecutorService<I> {
   void shutdown();
 
   boolean isShutdown();
+
+  boolean isFinished();
 }
