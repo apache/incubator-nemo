@@ -85,7 +85,6 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
         try{
           this.fs = fs;
           this.file = fs.lookup(filePath).get().asFile();
-          file.syncDir();
           LOG.info("HY: {} fetched", blockId);
         }
         catch(Exception e2){
