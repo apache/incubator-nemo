@@ -211,10 +211,9 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 final NonSerializedPartition<K> deserializePartition = DataUtil.deserializePartition(
                   partitionBytes.length, serializer, key,
                   new ByteArrayInputStream(partitionBytes));
-                partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
-
                 deserializePartition.getData().forEach(data ->
                   LOG.info("deser {}", data));
+                partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
               } else {
                 // Have to skip this partition.
                 skipBytes(fileStream, partitionMetadata.getPartitionSize());

@@ -187,6 +187,11 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
               final byte[] partitionBytes = new byte[partitionMetadata.getPartitionSize()];
               fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
               partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
+              final NonSerializedPartition<K> deserializePartition = DataUtil.deserializePartition(
+                partitionBytes.length, serializer, key,
+                new ByteArrayInputStream(partitionBytes));
+              deserializePartition.getData().forEach(data ->
+                LOG.info("deser {}", data));
             } else {
               // Have to skip this partition.
               skipBytes(fileStream, partitionMetadata.getPartitionSize());
