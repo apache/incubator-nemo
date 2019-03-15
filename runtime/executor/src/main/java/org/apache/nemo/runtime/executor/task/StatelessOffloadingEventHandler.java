@@ -10,10 +10,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public final class StatelessOffloadingEventHandler implements EventHandler<OffloadingResultEvent> {
   private static final Logger LOG = LoggerFactory.getLogger(StatelessOffloadingEventHandler.class.getName());
 
-  private final ConcurrentLinkedQueue<OffloadingResultEvent> offloadingQueue;
+  private final ConcurrentLinkedQueue<Object> offloadingQueue;
 
   public StatelessOffloadingEventHandler(
-    final ConcurrentLinkedQueue<OffloadingResultEvent> offloadingQueue) {
+    final ConcurrentLinkedQueue<Object> offloadingQueue) {
     this.offloadingQueue = offloadingQueue;
   }
 

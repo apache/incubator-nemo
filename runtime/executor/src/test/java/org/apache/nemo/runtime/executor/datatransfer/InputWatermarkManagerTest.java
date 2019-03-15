@@ -50,7 +50,7 @@ public final class InputWatermarkManagerTest {
 
     final OperatorVertex operatorVertex = new OperatorVertex(transform);
     final InputWatermarkManager watermarkManager =
-      new MultiInputWatermarkManager(3, new OperatorWatermarkCollector(operatorVertex));
+      new MultiInputWatermarkManager(null, 3, new OperatorWatermarkCollector(operatorVertex));
 
     //edge1: 10 s
     //edge2: 5 s

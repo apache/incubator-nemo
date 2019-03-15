@@ -120,7 +120,7 @@ public final class PipeOutputWriter implements OutputWriter {
       doInitialize();
     }
 
-    LOG.info("Watermark in output writer to {}", stageEdge.getDstIRVertex().getId());
+    //LOG.info("Watermark in output writer to {}", stageEdge.getDstIRVertex().getId());
     final PriorityQueue<Watermark> expectedWatermarkQueue =
       expectedWatermarkMap.get(stageEdge.getDstIRVertex().getId()).left();
 
@@ -136,12 +136,11 @@ public final class PipeOutputWriter implements OutputWriter {
         // check whether outputs are emitted
         final long ts = pendingWatermarkQueue.peek().getTimestamp();
         if (expectedWatermarkQueue.peek().getTimestamp() > ts) {
-          LOG.warn("This may be emitted from the internal vertex: {}, {} -> {}",
-            ts, stageEdge.getSrcIRVertex().getId(), stageEdge.getDst().getId());
-
-          final Watermark watermarkToBeEmitted = pendingWatermarkQueue.poll();
-          final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
-          writeData(watermarkWithIndex, pipes, true);
+          LOG.warn("This may be emitted from the internal vertex: {}, {} -> {}, we don't have to emit it again",
+            ts, stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
+          pendingWatermarkQueue.poll();
+          //final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
+          //writeData(watermarkWithIndex, pipes, true);
 
         } else {
           if (!prevWatermarkMap.containsKey(ts)) {

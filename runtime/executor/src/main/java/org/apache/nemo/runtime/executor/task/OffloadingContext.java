@@ -8,6 +8,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.ServerlessExecutorService;
 import org.apache.nemo.runtime.common.plan.StageEdge;
@@ -22,9 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public final class OffloadingContext {
@@ -33,7 +32,7 @@ public final class OffloadingContext {
   private final String taskId;
   private final byte[] serializedDag;
   private final Collection<Pair<OperatorMetricCollector, OutputCollector>> burstyOperators;
-  private final ConcurrentLinkedQueue<OffloadingResultEvent> offloadingEventQueue;
+  private final ConcurrentLinkedQueue<Object> offloadingEventQueue;
 
 
   private ServerlessExecutorService serverlessExecutorService;
@@ -54,9 +53,12 @@ public final class OffloadingContext {
   private boolean isStarted = false;
   private boolean finished = false;
 
+  private final ScheduledExecutorService flusher = Executors.newSingleThreadScheduledExecutor();
+  private final EvalConf evalConf;
+
   public OffloadingContext(
     final String taskId,
-    final ConcurrentLinkedQueue<OffloadingResultEvent> offloadingEventQueue,
+    final ConcurrentLinkedQueue<Object> offloadingEventQueue,
     final Collection<Pair<OperatorMetricCollector, OutputCollector>> burstyOperators,
     final ServerlessExecutorProvider serverlessExecutorProvider,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
@@ -65,7 +67,8 @@ public final class OffloadingContext {
     final SerializerManager serializerManager,
     final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap,
     final Map<String, OutputWriter> outputWriterMap,
-    final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap) {
+    final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap,
+    final EvalConf evalConf) {
     this.taskId = taskId;
     this.offloadingEventQueue = offloadingEventQueue;
     this.burstyOperators = burstyOperators;
@@ -77,10 +80,10 @@ public final class OffloadingContext {
     this.vertexIdAndCollectorMap = vertexIdAndCollectorMap;
     this.outputWriterMap = outputWriterMap;
     this.operatorInfoMap = operatorInfoMap;
+    this.evalConf = evalConf;
   }
 
   public void startOffloading() {
-
 
     if (isStarted) {
       throw new RuntimeException("The offloading is already started");
@@ -140,11 +143,32 @@ public final class OffloadingContext {
         LOG.info("Header operator: {}, sinks: {}", pair.left().irVertex, sinks);
         final OperatorMetricCollector omc = pair.left();
         if (!omc.irVertex.isSink) {
-          final OutputCollector oc = pair.right();
           omc.setServerlessExecutorService(serverlessExecutorService);
-          ((OperatorVertexOutputCollector) oc).setCurrentOffloadingContext(this);
-          oc.enableOffloading();
+
+          // Send start message
+          offloadingEventQueue.add(new OffloadingControlEvent(
+            OffloadingControlEvent.ControlMessageType.START_OFFLOADING, omc.irVertex.getId(), this));
         }
+      }
+
+      flusher.scheduleAtFixedRate(() -> {
+        try {
+          if (!finished) {
+            flush();
+          }
+        } catch (final Exception e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }, evalConf.flushPeriod, evalConf.flushPeriod,TimeUnit.MILLISECONDS);
+    }
+  }
+
+  private void flush() {
+    if (!finished) {
+      for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
+        offloadingEventQueue.add(new OffloadingControlEvent(
+          OffloadingControlEvent.ControlMessageType.FLUSH, pair.left().irVertex.getId()));
       }
     }
   }
@@ -159,6 +183,13 @@ public final class OffloadingContext {
     }
 
     finished = true;
+    flusher.shutdown();
+    try {
+      flusher.awaitTermination(3000, TimeUnit.MILLISECONDS);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
 
     LOG.info("End offloading!");
     // Do sth for offloading end
@@ -166,7 +197,10 @@ public final class OffloadingContext {
     for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
       if (!pair.left().irVertex.isSink) {
         LOG.info("Disable offloading {}", pair.left().irVertex.getId());
-        pair.right().disableOffloading();
+
+        // Send stop message
+        offloadingEventQueue.add(new OffloadingControlEvent(
+          OffloadingControlEvent.ControlMessageType.STOP_OFFLOADING, pair.left().irVertex.getId()));
       }
     }
 

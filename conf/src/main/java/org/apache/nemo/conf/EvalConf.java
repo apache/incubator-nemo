@@ -10,6 +10,10 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.tang.formats.CommandLine;
 
 import javax.inject.Inject;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public final class EvalConf {
 
@@ -37,6 +41,10 @@ public final class EvalConf {
   public final class FlushPeriod implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "latency sampling cnt per sec", short_name = "sampling_cnt", default_value = "5")
+  public final class SamplingCount implements Name<Integer> {
+  }
+
 
   @NamedParameter(short_name = "bottleneck_detection_period", default_value = "1000")
   public static final class BottleneckDetectionPeriod implements Name<Long> {
@@ -50,6 +58,11 @@ public final class EvalConf {
   public static final class BottleneckDetectionCpuThreshold implements Name<Double> {
   }
 
+  @NamedParameter(short_name = "monitor_vertices", default_value = "")
+  public static final class MonitorVertices implements Name<String> {
+
+  }
+
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
   public final int poolSize;
@@ -60,6 +73,9 @@ public final class EvalConf {
   public final long bottleneckDetectionPeriod;
   public final int bottleneckDetectionConsecutive;
   public final double bottleneckDetectionThreshold;
+  public final List<String> monitoringVertices;
+  public final String monitorVerticesStr;
+  public final int samplingCnt;
 
 
   @Inject
@@ -71,7 +87,9 @@ public final class EvalConf {
                    @Parameter(EnableOffloadingDebug.class) final boolean offloadingdebug,
                    @Parameter(BottleneckDetectionPeriod.class) final long bottleneckDetectionPeriod,
                    @Parameter(BottleneckDetectionConsecutive.class) final int bottleneckDetectionConsecutive,
-                   @Parameter(BottleneckDetectionCpuThreshold.class) final double bottleneckDetectionThreshold) {
+                   @Parameter(BottleneckDetectionCpuThreshold.class) final double bottleneckDetectionThreshold,
+                   @Parameter(MonitorVertices.class) final String monitorVertices,
+                   @Parameter(SamplingCount.class) final int samplingCnt) {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -81,6 +99,13 @@ public final class EvalConf {
     this.bottleneckDetectionPeriod = bottleneckDetectionPeriod;
     this.bottleneckDetectionConsecutive = bottleneckDetectionConsecutive;
     this.bottleneckDetectionThreshold = bottleneckDetectionThreshold;
+    this.samplingCnt = samplingCnt;
+    this.monitoringVertices = monitorVertices.length() == 0 ? Collections.emptyList() :
+      Arrays
+      .stream(monitorVertices.split(","))
+      .map(num -> "vertex" + num).collect(Collectors.toList());
+    System.out.println("Monitoring vertices: " + monitoringVertices.toString());
+    this.monitorVerticesStr = monitorVertices;
   }
 
   public Configuration getConfiguration() {
@@ -94,6 +119,8 @@ public final class EvalConf {
     jcb.bindNamedParameter(BottleneckDetectionPeriod.class, Long.toString(bottleneckDetectionPeriod));
     jcb.bindNamedParameter(BottleneckDetectionConsecutive.class, Integer.toString(bottleneckDetectionConsecutive));
     jcb.bindNamedParameter(BottleneckDetectionCpuThreshold.class, Double.toString(bottleneckDetectionThreshold));
+    jcb.bindNamedParameter(MonitorVertices.class, monitorVerticesStr);
+    jcb.bindNamedParameter(SamplingCount.class, Integer.toString(samplingCnt));
     return jcb.build();
   }
 
@@ -108,6 +135,8 @@ public final class EvalConf {
     cl.registerShortNameOfClass(BottleneckDetectionCpuThreshold.class);
     cl.registerShortNameOfClass(BottleneckDetectionConsecutive.class);
     cl.registerShortNameOfClass(BottleneckDetectionPeriod.class);
+    cl.registerShortNameOfClass(MonitorVertices.class);
+    cl.registerShortNameOfClass(SamplingCount.class);
   }
 
   @Override
@@ -120,9 +149,11 @@ public final class EvalConf {
     sb.append("flushBytes: "); sb.append(flushBytes); sb.append("\n");
     sb.append("flushCount: "); sb.append(flushCount); sb.append("\n");
     sb.append("flushPeriod: "); sb.append(flushPeriod); sb.append("\n");
+    sb.append("samplingCnt: "); sb.append(samplingCnt); sb.append("\n");
     sb.append("bottleneckDetectionPeriod: "); sb.append(bottleneckDetectionPeriod); sb.append("\n");
     sb.append("bottleneckDectionConsectutive: "); sb.append(bottleneckDetectionConsecutive); sb.append("\n");
     sb.append("bottleneckDetectionThreshold: "); sb.append(bottleneckDetectionThreshold); sb.append("\n");
+    sb.append("monitorVertices: "); sb.append(monitoringVertices); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

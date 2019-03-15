@@ -73,7 +73,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
               null, null, null, null));
         } else {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
-            new MultiInputWatermarkManager(edges.size(),
+            new MultiInputWatermarkManager(null, edges.size(),
               new OperatorWatermarkCollector((OperatorVertex) childVertex)));
         }
       }

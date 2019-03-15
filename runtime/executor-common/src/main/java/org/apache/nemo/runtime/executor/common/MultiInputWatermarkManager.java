@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,10 +37,13 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
   private final OutputCollector<?> watermarkCollector;
   private int minWatermarkIndex;
   private String sourceId;
+  private final IRVertex vertex;
 
-  public MultiInputWatermarkManager(final int numEdges,
+  public MultiInputWatermarkManager(final IRVertex vertex,
+                                    final int numEdges,
                                     final OutputCollector<?> watermarkCollector) {
     super();
+    this.vertex = vertex;
     this.watermarks = new ArrayList<>(numEdges);
     this.watermarkCollector = watermarkCollector;
     this.minWatermarkIndex = 0;
@@ -69,6 +73,13 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
         watermarks.toString());
     }
 
+    /*
+    if (vertex != null) {
+      LOG.info("At {} Track watermark {} emitted from edge {}:, {}", vertex.getId(), watermark.getTimestamp(), edgeIndex,
+        watermarks.toString());
+    }
+    */
+
     if (edgeIndex == minWatermarkIndex) {
       // update min watermark
       final Watermark prevMinWatermark = watermarks.get(minWatermarkIndex);
@@ -79,7 +90,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
 
       if (minWatermark.getTimestamp() < prevMinWatermark.getTimestamp()) {
         throw new IllegalStateException(
-          "The current min watermark is ahead of prev min: " + minWatermark + ", " + prevMinWatermark);
+          "The current min watermark is ahead of prev min: " + minWatermark + ", " + prevMinWatermark + " at " + vertex.getId());
       }
 
       if (minWatermark.getTimestamp() > prevMinWatermark.getTimestamp()) {

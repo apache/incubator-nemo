@@ -46,10 +46,6 @@ public interface OutputCollector<O> extends Serializable {
    */
   void emitWatermark(Watermark watermark);
 
-  void enableOffloading();
-
-  void disableOffloading();
-
   /**
    * Multi-destination emit.
    * Currently unused, but might come in handy

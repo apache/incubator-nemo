@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
-import io.netty.buffer.*;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
@@ -119,11 +118,14 @@ public final class TaskExecutor {
 
   private transient OffloadingContext currOffloadingContext = null;
 
-  private final ConcurrentLinkedQueue<OffloadingResultEvent> offloadingEventQueue = new ConcurrentLinkedQueue<>();
+  private final ConcurrentLinkedQueue<Object> offloadingEventQueue = new ConcurrentLinkedQueue<>();
+  private final ConcurrentLinkedQueue<ControlEvent> controlEventQueue = new ConcurrentLinkedQueue<>();
 
 
   private final Map<Long, Integer> watermarkCounterMap = new HashMap<>();
   private final Map<Long, Long> prevWatermarkMap = new HashMap<>();
+
+  private Set<String> monitoringVertices;
 
   // key: offloading sink, val:
   //                            - left: watermarks emitted from the offloading header
@@ -167,9 +169,7 @@ public final class TaskExecutor {
       taskOutgoingEdges.get(src.getId()).add(dst.getId());
     });
 
-    irVertexDag.getVertices().forEach(vertex -> {
-      LOG.info("Vertex: {}", vertex.getId());
-    });
+    this.monitoringVertices = new HashSet<>();
 
     this.processedEventCollector = Executors.newSingleThreadScheduledExecutor();
     this.detector = new InputFluctuationDetector(vertexIdAndCollectorMap);
@@ -194,7 +194,8 @@ public final class TaskExecutor {
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
-    // For offloading
+
+    // For offloading: collecting input rate
     processedEventCollector.scheduleAtFixedRate(() -> {
       for (final Pair<OperatorMetricCollector, OutputCollector> ocPair : vertexIdAndCollectorMap.values()) {
         final OperatorMetricCollector oc = ocPair.left();
@@ -204,7 +205,15 @@ public final class TaskExecutor {
       }
     }, 1, 1, TimeUnit.SECONDS);
 
-    // for offloading debugging
+    // For latency logging
+    se.scheduleAtFixedRate(() -> {
+      for (final String monitoringVertex : monitoringVertices) {
+        controlEventQueue.add(
+          new ControlEvent(ControlEvent.ControlMessageType.FLUSH_LATENCY, monitoringVertex));
+      }
+    }, 2, 1, TimeUnit.SECONDS);
+
+    // For offloading debugging
     if (evalConf.offloadingdebug) {
       se.scheduleAtFixedRate(() -> {
 
@@ -222,7 +231,8 @@ public final class TaskExecutor {
             serializerManager,
             vertexIdAndCollectorMap,
             outputWriterMap,
-            operatorInfoMap);
+            operatorInfoMap,
+            evalConf);
 
           currOffloadingContext = offloadingContext;
 
@@ -266,7 +276,8 @@ public final class TaskExecutor {
       serializerManager,
       vertexIdAndCollectorMap,
       outputWriterMap,
-      operatorInfoMap);
+      operatorInfoMap,
+      evalConf);
 
     currOffloadingContext = offloadingContext;
     offloadingContext.startOffloading();
@@ -320,6 +331,9 @@ public final class TaskExecutor {
 
       if (irVertexDag.getOutgoingEdgesOf(childVertex.getId()).size() == 0) {
         childVertex.isSink = true;
+        // If it is sink or emit to next stage, we log the latency
+        LOG.info("MonitoringVertex: {}", childVertex.getId());
+        monitoringVertices.add(childVertex.getId());
         LOG.info("Sink vertex: {}", childVertex.getId());
       }
 
@@ -351,7 +365,7 @@ public final class TaskExecutor {
               watermarkCounterMap));
         } else {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
-            new MultiInputWatermarkManager(edges.size(),
+            new MultiInputWatermarkManager(childVertex, edges.size(),
               new OperatorWatermarkCollector((OperatorVertex) childVertex)));
         }
       }
@@ -415,14 +429,16 @@ public final class TaskExecutor {
             serializerManager.getSerializer(edges.get(0).getId()),
             edges.get(0),
             evalConf,
-            watermarkCounterMap);
+            watermarkCounterMap,
+            monitoringVertices);
         } else {
           omc = new OperatorMetricCollector(irVertex,
             dstVertices,
             null,
             null,
             evalConf,
-            watermarkCounterMap);
+            watermarkCounterMap,
+            monitoringVertices);
         }
 
         outputCollector = new OperatorVertexOutputCollector(
@@ -431,7 +447,7 @@ public final class TaskExecutor {
           externalMainOutputs, externalAdditionalOutputMap, omc,
           prevWatermarkMap, expectedWatermarkMap);
 
-        LOG.info("Put {} to map", irVertex.getId());
+
         vertexIdAndCollectorMap.put(irVertex.getId(), Pair.of(omc, outputCollector));
       }
 
@@ -646,7 +662,6 @@ public final class TaskExecutor {
     return (currentTime - prevTime) >= pollingPeriod;
   }
 
-
   // For offloading!
   private void handleOffloadingEvent(final Triple<List<String>, String, Object> triple) {
     //LOG.info("Result handle {} / {} / {}", triple.first, triple.second, triple.third);
@@ -717,20 +732,43 @@ public final class TaskExecutor {
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty()) {
 
+
+      // handling control event
+      while (!controlEventQueue.isEmpty()) {
+        final ControlEvent event = controlEventQueue.poll();
+        final OperatorVertexOutputCollector oc = (OperatorVertexOutputCollector)
+          vertexIdAndCollectorMap.get(event.getDstVertexId()).right();
+        oc.handleControlMessage(event);
+      }
+
       if (evalConf.enableOffloading || evalConf.offloadingdebug) {
+
         // check offloading queue to process events
         while (!offloadingEventQueue.isEmpty()) {
           // fetch events
-          final OffloadingResultEvent msg = offloadingEventQueue.poll();
-          LOG.info("Result processed in executor: cnt {}, watermark: {}", msg.data.size(), msg.watermark);
+          final Object data = offloadingEventQueue.poll();
 
-          final long inputWatermark = msg.watermark;
-          // handle input watermark
-          watermarkCounterMap.put(inputWatermark, watermarkCounterMap.get(inputWatermark) - 1);
-          LOG.info("Receive input watermark {}, cnt: {}", inputWatermark, watermarkCounterMap.get(inputWatermark));
+          if (data instanceof OffloadingResultEvent) {
+            final OffloadingResultEvent msg = (OffloadingResultEvent) data;
+            LOG.info("Result processed in executor: cnt {}, watermark: {}", msg.data.size(), msg.watermark);
 
-          for (final Triple<List<String>, String, Object> triple : msg.data) {
-            handleOffloadingEvent(triple);
+            final long inputWatermark = msg.watermark;
+            // handle input watermark
+            watermarkCounterMap.put(inputWatermark, watermarkCounterMap.get(inputWatermark) - 1);
+            LOG.info("Receive input watermark {}, cnt: {}", inputWatermark, watermarkCounterMap.get(inputWatermark));
+
+            for (final Triple<List<String>, String, Object> triple : msg.data) {
+              handleOffloadingEvent(triple);
+            }
+          } else if (data instanceof OffloadingControlEvent) {
+            final OffloadingControlEvent msg = (OffloadingControlEvent) data;
+            //LOG.info("Control event process: {}, for {}", msg.getControlMessageType(), msg.getDstVertexId());
+            final OperatorVertexOutputCollector oc = (OperatorVertexOutputCollector)
+              vertexIdAndCollectorMap.get(msg.getDstVertexId()).right();
+            oc.handleOffloadingControlMessage(msg);
+
+          } else {
+            throw new RuntimeException("Unsupported type: " + data);
           }
         }
       }
