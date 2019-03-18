@@ -107,8 +107,9 @@ public final class TaskExecutor {
   // Variables for offloading - end
 
   private final ScheduledExecutorService se = Executors.newSingleThreadScheduledExecutor();
+  private final ExecutorService offloadingService = Executors.newSingleThreadExecutor();
 
-  private long adjustTime;
+  private final long adjustTime;
 
   private boolean isFirstEvent = true;
 
@@ -125,12 +126,17 @@ public final class TaskExecutor {
   private final Map<Long, Integer> watermarkCounterMap = new HashMap<>();
   private final Map<Long, Long> prevWatermarkMap = new HashMap<>();
 
-  private Set<String> monitoringVertices;
-
   // key: offloading sink, val:
   //                            - left: watermarks emitted from the offloading header
   //                            - right: pending watermarks
   public final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap = new HashMap<>();
+
+
+  final Map<String, Double> samplingMap = new HashMap<>();
+
+  private final long taskStartTime;
+
+  private final BlockingQueue<OffloadingRequestEvent> offloadingRequestQueue = new LinkedBlockingQueue<>();
   /**
    * Constructor.
    *
@@ -169,10 +175,10 @@ public final class TaskExecutor {
       taskOutgoingEdges.get(src.getId()).add(dst.getId());
     });
 
-    this.monitoringVertices = new HashSet<>();
-
     this.processedEventCollector = Executors.newSingleThreadScheduledExecutor();
     this.detector = new InputFluctuationDetector(vertexIdAndCollectorMap);
+
+    samplingMap.putAll(evalConf.samplingJson);
 
     this.evalConf = evalConf;
 
@@ -194,6 +200,15 @@ public final class TaskExecutor {
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
+    this.taskStartTime = System.currentTimeMillis();
+
+    this.adjustTime = System.currentTimeMillis() - 1436918400000L;
+
+    for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
+      vertexIdAndCollectorMap.values()) {
+      metricCollector.left().setAdjustTime(adjustTime);
+    }
+
 
     // For offloading: collecting input rate
     processedEventCollector.scheduleAtFixedRate(() -> {
@@ -206,24 +221,37 @@ public final class TaskExecutor {
     }, 1, 1, TimeUnit.SECONDS);
 
     // For latency logging
+    /*
     se.scheduleAtFixedRate(() -> {
       for (final String monitoringVertex : monitoringVertices) {
         controlEventQueue.add(
           new ControlEvent(ControlEvent.ControlMessageType.FLUSH_LATENCY, monitoringVertex));
       }
     }, 2, 1, TimeUnit.SECONDS);
+    */
 
     // For offloading debugging
     if (evalConf.offloadingdebug) {
       se.scheduleAtFixedRate(() -> {
 
         try {
-          LOG.info("Start offloading at task {}, {}!", taskId, vertexIdAndCollectorMap.values());
+          final Collection<Pair<OperatorMetricCollector, OutputCollector>> burstyOps = new LinkedList<>();
+
+          if (!evalConf.burstyOperatorStr.isEmpty()) {
+            final String[] ops = evalConf.burstyOperatorStr.split(",");
+            for (int i = 0; i < ops.length; i++) {
+              burstyOps.add(vertexIdAndCollectorMap.get("vertex" + ops[i]));
+            }
+          } else {
+            burstyOps.addAll(vertexIdAndCollectorMap.values());
+          }
+
+          LOG.info("Start offloading at task {}, {}!", taskId, burstyOps);
 
           final OffloadingContext offloadingContext = new OffloadingContext(
             taskId,
             offloadingEventQueue,
-            vertexIdAndCollectorMap.values(),
+            burstyOps,
             serverlessExecutorProvider,
             irVertexDag,
             serializedDag,
@@ -257,34 +285,77 @@ public final class TaskExecutor {
         }
       }, 30, 50, TimeUnit.SECONDS);
 
+    }
 
+    if (evalConf.enableOffloading) {
+      offloadingService.execute(() -> {
+        try {
+          handleOffloadingRequestEvent();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
+    }
+  }
+
+  private void handleOffloadingRequestEvent() throws InterruptedException {
+
+    while (!Thread.interrupted()) {
+
+
+      final OffloadingRequestEvent event = offloadingRequestQueue.take();
+
+      if (event.isStart) {
+        // wait until the previous context is finished
+        while (currOffloadingContext != null && !currOffloadingContext.isFinished()) {
+          Thread.sleep(200);
+        }
+
+        if (!offloadingRequestQueue.isEmpty()) {
+          final OffloadingRequestEvent endEvent = offloadingRequestQueue.poll();
+          if (!endEvent.isStart) {
+            // just remove it
+            LOG.warn("The offloading start " + event.isStart + " at time " + event.startTime + " is not triggered yet... so just ignore offloading end");
+          } else {
+            throw new RuntimeException("Received offloading start message after starting offload!");
+          }
+        } else {
+
+          LOG.info("Start offloading at {}!", taskId);
+          final List<Pair<OperatorMetricCollector, OutputCollector>> ocs =
+            detector.retrieveBurstyOutputCollectors(event.startTime);
+
+          final OffloadingContext offloadingContext = new OffloadingContext(
+            taskId,
+            offloadingEventQueue,
+            ocs,
+            serverlessExecutorProvider,
+            irVertexDag,
+            serializedDag,
+            taskOutgoingEdges,
+            serializerManager,
+            vertexIdAndCollectorMap,
+            outputWriterMap,
+            operatorInfoMap,
+            evalConf);
+
+          currOffloadingContext = offloadingContext;
+          offloadingContext.startOffloading();
+        }
+      } else {
+        LOG.info("End offloading at {}!", taskId);
+        currOffloadingContext.endOffloading();
+      }
     }
   }
 
   public void startOffloading(final long baseTime) {
-    LOG.info("Start offloading!");
-
-    final List<Pair<OperatorMetricCollector, OutputCollector>> ocs = detector.retrieveBurstyOutputCollectors(baseTime);
-    final OffloadingContext offloadingContext = new OffloadingContext(
-      taskId,
-      offloadingEventQueue,
-      ocs,
-      serverlessExecutorProvider,
-      irVertexDag,
-      serializedDag,
-      taskOutgoingEdges,
-      serializerManager,
-      vertexIdAndCollectorMap,
-      outputWriterMap,
-      operatorInfoMap,
-      evalConf);
-
-    currOffloadingContext = offloadingContext;
-    offloadingContext.startOffloading();
+    offloadingRequestQueue.add(new OffloadingRequestEvent(true, baseTime));
   }
 
   public void endOffloading() {
-    currOffloadingContext.endOffloading();
+    offloadingRequestQueue.add(new OffloadingRequestEvent(false, 0));
   }
 
 
@@ -333,7 +404,9 @@ public final class TaskExecutor {
         childVertex.isSink = true;
         // If it is sink or emit to next stage, we log the latency
         LOG.info("MonitoringVertex: {}", childVertex.getId());
-        monitoringVertices.add(childVertex.getId());
+        if (!samplingMap.containsKey(childVertex.getId())) {
+          samplingMap.put(childVertex.getId(), 1.0);
+        }
         LOG.info("Sink vertex: {}", childVertex.getId());
       }
 
@@ -423,6 +496,7 @@ public final class TaskExecutor {
 
         OperatorMetricCollector omc;
 
+
         if (!dstVertices.isEmpty()) {
           omc = new OperatorMetricCollector(irVertex,
             dstVertices,
@@ -430,7 +504,7 @@ public final class TaskExecutor {
             edges.get(0),
             evalConf,
             watermarkCounterMap,
-            monitoringVertices);
+            samplingMap);
         } else {
           omc = new OperatorMetricCollector(irVertex,
             dstVertices,
@@ -438,7 +512,7 @@ public final class TaskExecutor {
             null,
             evalConf,
             watermarkCounterMap,
-            monitoringVertices);
+            samplingMap);
         }
 
         outputCollector = new OperatorVertexOutputCollector(
@@ -633,14 +707,17 @@ public final class TaskExecutor {
     } else if (event instanceof TimestampAndValue) {
 
       // This is for latency logging
+      /*
       if (isFirstEvent) {
+        final long elapsedTime = System.currentTimeMillis() - taskStartTime;
         isFirstEvent = false;
-        adjustTime = System.currentTimeMillis() - ((TimestampAndValue) event).timestamp;
+        adjustTime = taskStartTime - ((TimestampAndValue) event).timestamp;
         for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
           vertexIdAndCollectorMap.values()) {
           metricCollector.left().setAdjustTime(adjustTime);
         }
       }
+      */
 
       // Process data element
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
@@ -689,7 +766,6 @@ public final class TaskExecutor {
           throw new RuntimeException("Unknown type: " + elem);
         }
       } else {
-        LOG.info("Emit to output writer {}", nextOpId);
         // this is for output writer
         final OutputWriter outputWriter = outputWriterMap.get(nextOpId);
         if (elem instanceof Watermark) {

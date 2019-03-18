@@ -120,7 +120,7 @@ public final class PipeOutputWriter implements OutputWriter {
       doInitialize();
     }
 
-    //LOG.info("Watermark in output writer to {}", stageEdge.getDstIRVertex().getId());
+    //LOG.info("Watermark in output writer from {} to {}", stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
     final PriorityQueue<Watermark> expectedWatermarkQueue =
       expectedWatermarkMap.get(stageEdge.getDstIRVertex().getId()).left();
 
@@ -155,7 +155,7 @@ public final class PipeOutputWriter implements OutputWriter {
           } else {
             final long prevWatermark = prevWatermarkMap.get(ts);
             if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
-              LOG.info("Remove {}  prev watermark: {}", ts, prevWatermark);
+              //LOG.info("Remove {}  prev watermark: {}", ts, prevWatermark);
               final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
               pendingWatermarkQueue.poll();
               prevWatermarkMap.remove(prevWatermark);
@@ -173,6 +173,7 @@ public final class PipeOutputWriter implements OutputWriter {
         }
       }
     } else {
+      //LOG.info("No-offloading watermark {} from {}", watermark, stageEdge.getSrcIRVertex().getId());
       final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermark, srcTaskIndex);
       // flush data whenever receiving watermarks
       writeData(watermarkWithIndex, pipes, true);

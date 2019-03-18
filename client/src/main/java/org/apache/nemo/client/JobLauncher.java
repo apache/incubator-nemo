@@ -22,6 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.backend.nemo.NemoPlanRewriter;
+import org.apache.nemo.conf.EvalConf.SamplingPath;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.driver.NemoDriver;
@@ -125,6 +126,17 @@ public final class JobLauncher {
   public static void setup(final String[] args) throws InjectionException, ClassNotFoundException, IOException {
     // Get Job and Driver Confs
     builtJobConf = getJobConf(args);
+
+    final Injector inj = Tang.Factory.getTang().newInjector(builtJobConf);
+    final String samplingJsonPath = inj.getNamedInstance(SamplingPath.class);
+
+    if (!samplingJsonPath.isEmpty()) {
+      final String content = new String(Files.readAllBytes(Paths.get(samplingJsonPath)), StandardCharsets.UTF_8);
+      final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
+      jcb.bindNamedParameter(EvalConf.SamplingJsonString.class, content);
+      builtJobConf = Configurations.merge(builtJobConf, jcb.build());
+    }
+
 
     // Registers actions for launching the DAG.
     LOG.info("Launching RPC Server");

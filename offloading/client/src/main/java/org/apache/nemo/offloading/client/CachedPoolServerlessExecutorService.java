@@ -162,39 +162,43 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
 
         long curTime = System.currentTimeMillis();
         final List<OffloadingWorker> readyWorkers = new ArrayList<>(runningWorkers.size());
-        final Iterator<Pair<Long, OffloadingWorker>> iterator = runningWorkers.iterator();
-        while (iterator.hasNext()) {
-          final Pair<Long, OffloadingWorker> pair = iterator.next();
-          if (pair.right().isReady()) {
-            iterator.remove();
-            readyWorkers.add(pair.right());
-
-            totalProcessingTime += (curTime - pair.left());
-            processingCnt += 1;
-
-          } else if (isOutputEmitted(pair.right())) {
-            // the output is already emitted
-            // just finish this worker
-            iterator.remove();
-            final Pair<ByteBuf, Integer> data = pair.right().getCurrentProcessingInput();
-
-            if (data == null) {
-              if (Constants.enableLambdaLogging) {
-                LOG.info("Input data is null but worker {} is ready? {}", pair.right().getId(), pair.right().isReady());
-              }
-              // this is end
+        synchronized (runningWorkers) {
+          final Iterator<Pair<Long, OffloadingWorker>> iterator = runningWorkers.iterator();
+          while (iterator.hasNext()) {
+            final Pair<Long, OffloadingWorker> pair = iterator.next();
+            if (pair.right().isReady()) {
               readyWorkers.add(pair.right());
 
               totalProcessingTime += (curTime - pair.left());
               processingCnt += 1;
 
-            } else {
-              final int dataId = data.right();
-              if (Constants.enableLambdaLogging) {
-                LOG.info("Reject execution for data: {}", dataId);
+              iterator.remove();
+
+            } else if (isOutputEmitted(pair.right())) {
+              // the output is already emitted
+              // just finish this worker
+              final Pair<ByteBuf, Integer> data = pair.right().getCurrentProcessingInput();
+
+              if (data == null) {
+                if (Constants.enableLambdaLogging) {
+                  LOG.info("Input data is null but worker {} is ready? {}", pair.right().getId(), pair.right().isReady());
+                }
+                // this is end
+                readyWorkers.add(pair.right());
+
+                totalProcessingTime += (curTime - pair.left());
+                processingCnt += 1;
+
+              } else {
+                final int dataId = data.right();
+                if (Constants.enableLambdaLogging) {
+                  LOG.info("Reject execution for data: {}", dataId);
+                }
+                finishedWorkers += 1;
+                pair.right().finishOffloading();
               }
-              finishedWorkers += 1;
-              pair.right().finishOffloading();
+
+              iterator.remove();
             }
           }
         }
@@ -339,6 +343,7 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
         throw new RuntimeException("Worker is not ready..." +
           "Finish worker " + worker.getId());
       }
+
       worker.finishOffloading();
       finishedWorkers += 1;
     }

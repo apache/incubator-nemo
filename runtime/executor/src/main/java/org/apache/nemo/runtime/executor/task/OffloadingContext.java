@@ -92,7 +92,9 @@ public final class OffloadingContext {
     isStarted = true;
     sourceAndSinkMap = new HashMap<>();
 
-    if (!burstyOperators.isEmpty()) {
+    if (burstyOperators.isEmpty()) {
+      offloadingHead = Collections.emptyList();
+    } else {
       // 1) remove stateful
 
       // build DAG
@@ -191,8 +193,11 @@ public final class OffloadingContext {
     }
 
 
-    LOG.info("End offloading!");
+    LOG.info("End offloading at {}, {}", taskId, offloadingHead);
     // Do sth for offloading end
+    if (offloadingHead.isEmpty()) {
+      return;
+    }
 
     for (final Pair<OperatorMetricCollector, OutputCollector> pair : offloadingHead) {
       if (!pair.left().irVertex.isSink) {
@@ -226,7 +231,7 @@ public final class OffloadingContext {
   }
 
   public boolean isFinished() {
-    return serverlessExecutorService.isFinished();
+    return offloadingHead.isEmpty() || serverlessExecutorService.isFinished();
   }
 
   public List<String> getOffloadingSinks(final IRVertex src) {

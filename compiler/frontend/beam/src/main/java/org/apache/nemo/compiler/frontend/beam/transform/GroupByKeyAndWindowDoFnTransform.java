@@ -51,8 +51,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> {
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyAndWindowDoFnTransform.class.getName());
 
-  private final SystemReduceFn reduceFn;
-  //private final Map<K, List<WindowedValue<InputT>>> keyToValues;
+  private final SystemReduceFn reduceFn; //private final Map<K, List<WindowedValue<InputT>>> keyToValues;
   private transient InMemoryTimerInternalsFactory inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
   private Watermark prevOutputWatermark;
@@ -216,6 +215,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       prevOutputWatermark = outputWatermarkCandidate;
       // emit watermark
 
+      //LOG.info("Emit watermark at GBKW: {}", outputWatermarkCandidate);
       getOutputCollector().emitWatermark(outputWatermarkCandidate);
       // Remove minimum watermark holds
       if (minWatermarkHold.getTimestamp() == outputWatermarkCandidate.getTimestamp()) {
@@ -227,6 +227,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   @Override
   public void onWatermark(final Watermark watermark) {
+
+    //LOG.info("Watermark at GBKW: {}", watermark);
     checkAndInvokeBundle();
     inputWatermark = watermark;
 

@@ -123,7 +123,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     switch (msg.getControlMessageType()) {
       case FLUSH_LATENCY: {
         //LOG.info("Operator {} flush latency", irVertex.getId());
-        operatorMetricCollector.flushLatencies();
+        //operatorMetricCollector.flushLatencies();
         break;
       }
       default: {

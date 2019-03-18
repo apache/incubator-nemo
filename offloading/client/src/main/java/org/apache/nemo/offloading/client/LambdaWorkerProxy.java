@@ -116,6 +116,10 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
                     // invalid output
                     // TODO: re-execute the data
                     reExecutionThread.execute(() -> {
+
+                      throw new RuntimeException("Data " + resultId + " is Invalid for worker " + workerId);
+
+                      /*
                       for (final Integer dataId : pendingData.keySet()) {
                         if (Constants.enableLambdaLogging) {
                           LOG.info("Re-execution data {} in worker {}", dataId, workerId);
@@ -138,6 +142,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 
                         channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, input));
                       }
+                      */
                     });
                   } else {
                     final ByteBuf curInputBuf = currentProcessingInput.left();

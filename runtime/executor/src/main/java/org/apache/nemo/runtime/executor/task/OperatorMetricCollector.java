@@ -47,9 +47,9 @@ public final class OperatorMetricCollector {
 
   private final boolean isMonitor;
 
-  private final List<Integer> latencyList = new ArrayList<>();
+  final double samplingRate;
 
-  private int expectedCnt;
+  private final Random random = new Random();
 
   public OperatorMetricCollector(final IRVertex srcVertex,
                                  final List<IRVertex> dstVertices,
@@ -57,21 +57,21 @@ public final class OperatorMetricCollector {
                                  final Edge edge,
                                  final EvalConf evalConf,
                                  final Map<Long, Integer> watermarkCounterMap,
-                                 final Set<String> monitoringVertices) {
+                                 final Map<String, Double> samplingMap) {
     this.irVertex = srcVertex;
     this.serializedCnt = 0;
     this.dstVertices = dstVertices;
     this.evalConf = evalConf;
     this.serializer = serializer;
     this.edge = edge;
-    this.expectedCnt = evalConf.samplingCnt;
     this.watermarkCounterMap = watermarkCounterMap;
     this.processedEvents = new LinkedList<>();
     this.inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
     this.bos = new ByteBufOutputStream(inputBuffer);
-    this.isMonitor = monitoringVertices.contains(srcVertex.getId());
+    this.isMonitor = samplingMap.containsKey(srcVertex.getId());
+    this.samplingRate = samplingMap.getOrDefault(srcVertex.getId(), 0.0);
 
-    LOG.info("Monitoring {} {}", srcVertex, isMonitor);
+    LOG.info("Sampling rate of {}: {}", srcVertex, samplingRate);
   }
 
   public void setServerlessExecutorService(final ServerlessExecutorService sls) {
@@ -212,31 +212,35 @@ public final class OperatorMetricCollector {
     if (isMonitor) {
       final long currTime = System.currentTimeMillis();
       final int latency = (int)((currTime - startTimestamp) - adjustTime);
-      latencyList.add(latency);
+
+      if (random.nextDouble() < samplingRate) {
+        LOG.info("Event Latency {} from {}", latency, irVertex.getId());
+      }
     }
   }
 
+  /*
   // TODO: trigger this function
   public void flushLatencies() {
-    if (latencyList.isEmpty()) {
-      // accumulate the expected cnt
-      expectedCnt += evalConf.samplingCnt;
-    } else {
+    if (!latencyList.isEmpty()) {
       final long cTime = System.currentTimeMillis();
-      final int cnt = Math.min(1, latencyList.size());
       final Random random = new Random(cTime);
+
+      final int expectedCnt = Math.max(evalConf.samplingCnt,
+        (int) (latencyList.size() * (evalConf.samplingCnt / 10000.0)));
 
       if (latencyList.size() <= expectedCnt) {
         for (final Integer latency : latencyList) {
           LOG.info("Event Latency {} from {} expectedCnt: {}", latency, irVertex.getId(), expectedCnt);
-          expectedCnt -= 1;
         }
 
         latencyList.clear();
       } else {
         // select!!
         final Set<Integer> selectedIndex = new HashSet<>();
-        LOG.info("Latency size: {}", latencyList.size());
+        //LOG.info("Latency size: {}", latencyList.size());
+        LOG.info("Expected count: {}, latency size: {} at {}", expectedCnt, latencyList.size(), irVertex.getId());
+
         while (selectedIndex.size() < expectedCnt) {
           final int index = random.nextInt(latencyList.size());
           if (!selectedIndex.contains(index)) {
@@ -245,11 +249,11 @@ public final class OperatorMetricCollector {
           }
         }
 
-        expectedCnt = 0;
         latencyList.clear();
       }
     }
   }
+  */
 
   class LatencyAndCnt {
     public long latencySum = 0;

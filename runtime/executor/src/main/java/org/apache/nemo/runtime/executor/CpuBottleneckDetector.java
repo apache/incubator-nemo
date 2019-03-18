@@ -45,6 +45,18 @@ public final class CpuBottleneckDetector {
 
       if (curCpuLoad > threshold) {
         currConsecutive += 1;
+
+        if (currConsecutive == k) {
+          // bottleneck!
+          currBottleneckId++;
+          final BottleneckEvent event =
+            new BottleneckEvent(currBottleneckId,
+              System.currentTimeMillis() - (k * r),
+              curCpuLoad, BottleneckEvent.Type.START);
+          eventHandlers.keySet().forEach((eventHandler) -> {
+            eventHandler.onNext(event);
+          });
+        }
       } else {
         if (currConsecutive >= k) {
           // we already detect the bottleneck
@@ -67,18 +79,6 @@ public final class CpuBottleneckDetector {
           // decrease curr consecutive
           currConsecutive = Math.max(0, currConsecutive - 1);
         }
-      }
-
-      if (currConsecutive == k) {
-        // bottleneck!
-        currBottleneckId++;
-        final BottleneckEvent event =
-          new BottleneckEvent(currBottleneckId,
-            System.currentTimeMillis() - (k * r),
-            curCpuLoad, BottleneckEvent.Type.START);
-        eventHandlers.keySet().forEach((eventHandler) -> {
-          eventHandler.onNext(event);
-        });
       }
     }, r, r, TimeUnit.MILLISECONDS);
   }
