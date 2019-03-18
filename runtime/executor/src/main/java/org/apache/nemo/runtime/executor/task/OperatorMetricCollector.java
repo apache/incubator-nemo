@@ -236,6 +236,7 @@ public final class OperatorMetricCollector {
       } else {
         // select!!
         final Set<Integer> selectedIndex = new HashSet<>();
+        LOG.info("Latency size: {}", latencyList.size());
         while (selectedIndex.size() < expectedCnt) {
           final int index = random.nextInt(latencyList.size());
           if (!selectedIndex.contains(index)) {
