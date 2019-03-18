@@ -265,9 +265,9 @@ public final class DataUtil {
           throw new RuntimeException(e);
         }
         try {
-          LOG.info("Entered decoding");
           next = decoder.decode();
           hasNext = true;
+          LOG.info("decoded");
           return true;
         } catch (final IOException e) {
           // IOException from decoder indicates EOF event.
