@@ -281,7 +281,7 @@ public final class MetricStore {
         final long duration = endTime - startTime;  // ms
         final String vertexProperties = jobMetric.getVertexProperties();
         final String edgeProperties = jobMetric.getEdgeProperties();
-        final Integer inputSize = jobMetric.getInputSize();
+        final Long inputSize = jobMetric.getInputSize();
         final long jvmMemSize = Runtime.getRuntime().maxMemory();
         final long memSize = ((com.sun.management.OperatingSystemMXBean) ManagementFactory
           .getOperatingSystemMXBean()).getTotalPhysicalMemorySize();

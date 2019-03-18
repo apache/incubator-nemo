@@ -55,7 +55,6 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
    */
   public BeamUnboundedSourceVertex(final UnboundedSource<O, M> source,
                                    final DisplayData displayData) {
-    super();
     this.source = source;
     this.displayData = displayData;
   }
@@ -93,6 +92,11 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
       final SourceVertex emptySourceVertex = new EmptyComponents.EmptySourceVertex("EMPTY");
       return emptySourceVertex.getReadables(desiredNumOfSplits);
     }
+  }
+
+  @Override
+  public long getEstimatedSizeBytes() {
+    return 0L;
   }
 
   @Override

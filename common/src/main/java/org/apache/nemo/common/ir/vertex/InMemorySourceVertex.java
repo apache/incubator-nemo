@@ -20,6 +20,7 @@ package org.apache.nemo.common.ir.vertex;
 
 import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.Readable;
+import org.apache.nemo.common.Util;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,7 +40,6 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
    * @param initializedSourceData the initial data object.
    */
   public InMemorySourceVertex(final Iterable<T> initializedSourceData) {
-    super();
     this.initializedSourceData = initializedSourceData;
   }
 
@@ -48,7 +48,7 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
    *
    * @param that the source object for copying
    */
-  public InMemorySourceVertex(final InMemorySourceVertex that) {
+  private InMemorySourceVertex(final InMemorySourceVertex that) {
     super(that);
     this.initializedSourceData = that.initializedSourceData;
   }
@@ -84,6 +84,13 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
       readables.add(new InMemorySourceReadable<>(dataForReader));
     }
     return readables;
+  }
+
+  @Override
+  public long getEstimatedSizeBytes() {
+    final ArrayList<Long> list = new ArrayList<>();
+    initializedSourceData.spliterator().forEachRemaining(obj -> list.add(Util.getObjectSize(obj)));
+    return list.stream().reduce((a, b) -> a + b).orElse(0L);
   }
 
   @Override
