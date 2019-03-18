@@ -231,7 +231,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
-    LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
+    //LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
     operatorMetricCollector.emittedCnt += 1;
 
     List<String> offloadingIds = null;
