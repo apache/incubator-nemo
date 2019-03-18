@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.source;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.ir.Readable;
 
 import java.io.IOException;
@@ -45,6 +46,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
   private static final Logger LOG = LoggerFactory.getLogger(BeamBoundedSourceVertex.class.getName());
   private BoundedSource<O> source;
   private final DisplayData displayData;
+  private final long estimatedSizeBytes;
 
   /**
    * Constructor of BeamBoundedSourceVertex.
@@ -53,9 +55,13 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
    * @param displayData data to display.
    */
   public BeamBoundedSourceVertex(final BoundedSource<O> source, final DisplayData displayData) {
-    super();
     this.source = source;
     this.displayData = displayData;
+    try {
+      this.estimatedSizeBytes = source.getEstimatedSizeBytes(null);
+    } catch (Exception e) {
+      throw new MetricException(e);
+    }
   }
 
   /**
@@ -63,10 +69,15 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
    *
    * @param that the source object for copying
    */
-  public BeamBoundedSourceVertex(final BeamBoundedSourceVertex that) {
+  private BeamBoundedSourceVertex(final BeamBoundedSourceVertex that) {
     super(that);
     this.source = that.source;
     this.displayData = that.displayData;
+    try {
+      this.estimatedSizeBytes = source.getEstimatedSizeBytes(null);
+    } catch (Exception e) {
+      throw new MetricException(e);
+    }
   }
 
   @Override
@@ -86,7 +97,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
     if (source != null) {
       LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
       LOG.info("desired: {}", desiredNumOfSplits);
-      source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null)
+      source.split(this.estimatedSizeBytes / desiredNumOfSplits, null)
         .forEach(boundedSource -> readables.add(new BoundedSourceReadable<>(boundedSource)));
       return readables;
     } else {
@@ -94,6 +105,11 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
       final SourceVertex emptySourceVertex = new EmptyComponents.EmptySourceVertex("EMPTY");
       return emptySourceVertex.getReadables(desiredNumOfSplits);
     }
+  }
+
+  @Override
+  public long getEstimatedSizeBytes() {
+    return this.estimatedSizeBytes;
   }
 
   @Override

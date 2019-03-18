@@ -211,8 +211,8 @@ public final class EmptyComponents {
      *
      * @param that the source object for copying
      */
-    public EmptySourceVertex(final EmptySourceVertex that) {
-      this.name = new String(that.name);
+    private EmptySourceVertex(final EmptySourceVertex that) {
+      this.name = that.name;
     }
 
     @Override
@@ -243,6 +243,11 @@ public final class EmptyComponents {
         list.add(new EmptyReadable<>());
       }
       return list;
+    }
+
+    @Override
+    public long getEstimatedSizeBytes() {
+      return 0L;
     }
 
     @Override

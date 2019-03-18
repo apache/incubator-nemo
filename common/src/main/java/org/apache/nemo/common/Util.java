@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.common;
 
+import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -26,10 +27,16 @@ import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 
+import java.io.IOException;
+import java.lang.instrument.Instrumentation;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Class to hold the utility methods.
@@ -38,10 +45,39 @@ public final class Util {
   // Assume that this tag is never used in user application
   public static final String CONTROL_EDGE_TAG = "CONTROL_EDGE";
 
+  private static Instrumentation instrumentation;
+
   /**
    * Private constructor for utility class.
    */
   private Util() {
+  }
+
+  /**
+   * Finds the project root path.
+   * @return the project root path.
+   */
+  public static String fetchProjectRootPath() {
+    return recursivelyFindLicense(Paths.get(System.getProperty("user.dir")));
+  }
+
+  /**
+   * Helper method to recursively find the LICENSE file.
+   * @param path the path to search for.
+   * @return the path containing the LICENSE file.
+   */
+  static String recursivelyFindLicense(final Path path) {
+    try (final Stream stream = Files.find(path, 1, (p, attributes) -> p.endsWith("LICENSE"))) {
+      if (stream.count() > 0) {
+        return path.toAbsolutePath().toString();
+      } else {
+        return recursivelyFindLicense(path.getParent());
+      }
+    } catch (NullPointerException e) {
+      return System.getProperty("user.dir");
+    } catch (IOException e) {
+      throw new MetricException(e);
+    }
   }
 
   /**
@@ -164,5 +200,23 @@ public final class Util {
    */
   public static String stringifyIREdgeIds(final Collection<IREdge> edges) {
     return edges.stream().map(IREdge::getId).sorted().collect(Collectors.toList()).toString();
+  }
+
+  /**
+   * Method for the instrumentation: for getting the object size.
+   * @param args arguments.
+   * @param inst the instrumentation.
+   */
+  public static void premain(final String args, final Instrumentation inst) {
+    instrumentation = inst;
+  }
+
+  /**
+   * Get the object byte size.
+   * @param o object to measure.
+   * @return the bytes of the object.
+   */
+  public static long getObjectSize(final Object o) {
+    return instrumentation.getObjectSize(o);
   }
 }
