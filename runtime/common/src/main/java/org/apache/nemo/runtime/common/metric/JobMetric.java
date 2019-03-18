@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.common.metric;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.nemo.common.MetricUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.exception.MetricException;
@@ -42,7 +43,7 @@ public final class JobMetric implements StateMetric<PlanState.State> {
   private final String id;
   private final List<StateTransitionEvent<PlanState.State>> stateTransitionEvents;
   private String irDagSummary;
-  private Integer inputSize;
+  private Long inputSize;
   private String vertexProperties;
   private String edgeProperties;
   private JsonNode irDagJson;
@@ -74,7 +75,7 @@ public final class JobMetric implements StateMetric<PlanState.State> {
     return this.irDagSummary;
   }
 
-  public Integer getInputSize() {
+  public Long getInputSize() {
     return this.inputSize;
   }
 
@@ -94,9 +95,9 @@ public final class JobMetric implements StateMetric<PlanState.State> {
     this.irDagSummary = irDag.irDAGSummary();
     this.inputSize = irDag.getRootVertices().stream()
       .filter(irVertex -> irVertex instanceof SourceVertex)
-      .mapToInt(irVertex -> {
+      .mapToLong(srcVertex -> {
         try {
-          return ((SourceVertex) irVertex).getReadables(1).size();
+          return ((SourceVertex) srcVertex).getEstimatedSizeBytes();
         } catch (Exception e) {
           throw new MetricException(e);
         }
@@ -112,6 +113,8 @@ public final class JobMetric implements StateMetric<PlanState.State> {
       throw new MetricException(e);
     }
   }
+
+
 
   @JsonProperty("stage-dag")
   public JsonNode getStageDAG() {

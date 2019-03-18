@@ -643,7 +643,6 @@ public final class TaskExecutorTest {
    * Source vertex for unbounded source test.
    */
   private final class TestUnboundedSourceVertex extends SourceVertex {
-
     @Override
     public boolean isBounded() {
       return false;
@@ -655,8 +654,12 @@ public final class TaskExecutorTest {
     }
 
     @Override
-    public void clearInternalStates() {
+    public long getEstimatedSizeBytes() {
+      return 0L;
+    }
 
+    @Override
+    public void clearInternalStates() {
     }
 
     @Override
