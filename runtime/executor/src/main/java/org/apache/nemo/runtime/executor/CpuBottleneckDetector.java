@@ -47,6 +47,7 @@ public final class CpuBottleneckDetector {
         currConsecutive += 1;
       } else {
         if (currConsecutive >= k) {
+          // we already detect the bottleneck
           if (endConsecutive == k) {
             final BottleneckEvent event =
               new BottleneckEvent(currBottleneckId,
@@ -61,6 +62,10 @@ public final class CpuBottleneckDetector {
           } else {
             endConsecutive += 1;
           }
+        } else {
+          // didn't detect the bottleneck
+          // decrease curr consecutive
+          currConsecutive = Math.max(0, currConsecutive - 1);
         }
       }
 
