@@ -91,6 +91,7 @@ public final class DataUtil {
       final InputStreamIterator iterator =
           new InputStreamIterator(Collections.singletonList(limitedInputStream).iterator(), serializer);
       iterator.forEachRemaining(deserializedData::add);
+      deserializedData.forEach(data -> LOG.info("inside DataUtil: {} {}", key, data));
       return new NonSerializedPartition(key, deserializedData, iterator.getNumSerializedBytes(),
           iterator.getNumEncodedBytes());
     }
