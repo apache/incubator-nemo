@@ -24,7 +24,6 @@ import org.apache.beam.sdk.PipelineRunner;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsRegistrar;
 import org.apache.beam.sdk.runners.PipelineRunnerRegistrar;
-import org.apache.nemo.client.beam.NemoRunner;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 
 /**

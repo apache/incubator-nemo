@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor;
 
 import avro.shaded.com.google.common.collect.Lists;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
@@ -9,9 +10,11 @@ import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagPrope
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
+import org.apache.nemo.runtime.executor.common.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -19,23 +22,25 @@ import java.util.stream.Collectors;
 public final class StatelessOffloadingTransform<O> implements OffloadingTransform<OffloadingDataEvent, O> {
 
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
+  private final Map<String, List<String>> taskOutgoingEdges;
 
   // key: data fetcher id, value: head operator
-  private final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
-  private final Map<String, NextIntraTaskOperatorInfo> operatorVertexMap;
-
+  private transient Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
+  private transient Map<String, NextIntraTaskOperatorInfo> operatorVertexMap;
   private transient OffloadingResultCollector resultCollector;
 
 
-  public StatelessOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
+  public StatelessOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
+                                      final Map<String, List<String>> taskOutgoingEdges) {
     this.irDag = irDag;
-    this.outputCollectorMap = new HashMap<>();
-    this.operatorVertexMap = new HashMap<>();
+    this.taskOutgoingEdges = taskOutgoingEdges;
   }
 
   @Override
   public void prepare(final OffloadingContext context,
                       final OffloadingOutputCollector oc) {
+    this.outputCollectorMap = new HashMap<>();
+    this.operatorVertexMap = new HashMap<>();
     System.out.println("Stateless offloading transform prepare");
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irDag.getTopologicalSort());
@@ -64,10 +69,11 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         if (edges.size() == 1) {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
             new SingleInputWatermarkManager(
-              new OperatorWatermarkCollector((OperatorVertex) childVertex)));
+              new OperatorWatermarkCollector((OperatorVertex) childVertex),
+              null, null, null, null));
         } else {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
-            new MultiInputWatermarkManager(edges.size(),
+            new MultiInputWatermarkManager(null, edges.size(),
               new OperatorWatermarkCollector((OperatorVertex) childVertex)));
         }
       }
@@ -100,7 +106,7 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
           + ", isSink: " + isSink);
         OffloadingOperatorVertexOutputCollector outputCollector = new OffloadingOperatorVertexOutputCollector(
           irVertex, irDag.getOutgoingEdgesOf(irVertex).get(0), /* just use first edge for encoding */
-          internalMainOutputs, internalAdditionalOutputMap, resultCollector, outputCollectorMap);
+          internalMainOutputs, internalAdditionalOutputMap, resultCollector, outputCollectorMap, taskOutgoingEdges);
 
         outputCollectorMap.put(irVertex.getId(), outputCollector);
 
@@ -116,14 +122,16 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
   // receive batch (list) data
   @Override
   public void onData(final OffloadingDataEvent element) {
-    System.out.println("Received data size: " + element.data.size());
+    System.out.println("Received data size: " + element.data.size() + ", checkpoint watermark: " + element.watermark);
     for (final Pair<List<String>, Object> input : element.data) {
       final List<String> nextOps = input.left();
       final Object d = input.right();
       for (final String nextOpId : nextOps) {
         final NextIntraTaskOperatorInfo nextOp = operatorVertexMap.get(nextOpId);
         if (d instanceof Watermark) {
-          nextOp.getWatermarkManager().trackAndEmitWatermarks(nextOp.getEdgeIndex(), (Watermark) d);
+          final Watermark watermark = (Watermark) d;
+          nextOp.getWatermarkManager()
+            .trackAndEmitWatermarks(nextOp.getEdgeIndex(), watermark);
         } else {
           final TimestampAndValue tsv = (TimestampAndValue) d;
           outputCollectorMap.get(nextOpId).setInputTimestamp(tsv.timestamp);
@@ -131,15 +139,13 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         }
       }
     }
-
-    resultCollector.flush();
+    resultCollector.flush(element.watermark);
   }
 
   @Override
   public void close() {
 
   }
-
 
 
   // Get all of the intra-task edges

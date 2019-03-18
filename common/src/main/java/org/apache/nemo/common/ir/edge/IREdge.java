@@ -30,7 +30,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.io.Serializable;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Physical execution plan of intermediate data movement.

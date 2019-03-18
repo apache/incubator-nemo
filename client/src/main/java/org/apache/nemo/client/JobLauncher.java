@@ -20,7 +20,8 @@ package org.apache.nemo.client;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.compiler.backend.nemo.NemoPlanRewriter;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.driver.NemoDriver;
@@ -28,6 +29,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -182,7 +184,7 @@ public final class JobLauncher {
           LOG.info("Wait for the driver to finish");
           driverLauncher.wait();
         } catch (final InterruptedException e) {
-          LOG.warn("Interrupted: " + e);
+          LOG.warn("Interrupted: ", e);
           // clean up state...
           Thread.currentThread().interrupt();
         }
@@ -209,7 +211,7 @@ public final class JobLauncher {
    * @param dag the application DAG.
    */
   // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
-  public static void launchDAG(final DAG dag) {
+  public static void launchDAG(final IRDAG dag) {
     launchDAG(dag, Collections.emptyMap(), "");
   }
 
@@ -217,7 +219,7 @@ public final class JobLauncher {
    * @param dag the application DAG.
    * @param jobId job ID.
    */
-  public static void launchDAG(final DAG dag, final String jobId) {
+  public static void launchDAG(final IRDAG dag, final String jobId) {
     launchDAG(dag, Collections.emptyMap(), jobId);
   }
 
@@ -226,7 +228,9 @@ public final class JobLauncher {
    * @param broadcastVariables broadcast variables (can be empty).
    * @param jobId job ID.
    */
-  public static void launchDAG(final DAG dag, final Map<Serializable, Object> broadcastVariables, final String jobId) {
+  public static void launchDAG(final IRDAG dag,
+                               final Map<Serializable, Object> broadcastVariables,
+                               final String jobId) {
     // launch driver if it hasn't been already
     if (driverReadyLatch == null) {
       try {
@@ -335,6 +339,7 @@ public final class JobLauncher {
     final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
     final Class schedulerImpl = ((Class<Scheduler>) Class.forName(classImplName));
     jcb.bindImplementation(Scheduler.class, schedulerImpl);
+    jcb.bindImplementation(PlanRewriter.class, NemoPlanRewriter.class);
     return jcb.build();
   }
 
@@ -458,6 +463,7 @@ public final class JobLauncher {
    * @param jobConf           job configuration to get json path.
    * @param pathParameter     named parameter represents path to the json file, or an empty string
    * @param contentsParameter named parameter represents contents of the file
+   * @param defaultContent    the default configuration
    * @return configuration with contents of the file, or an empty string as value for {@code contentsParameter}
    * @throws InjectionException exception while injection.
    */

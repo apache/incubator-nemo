@@ -18,9 +18,7 @@
  */
 package org.apache.nemo.common.pass;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.IRDAG;
 
 import java.io.Serializable;
 import java.util.function.Predicate;
@@ -29,7 +27,7 @@ import java.util.function.Predicate;
  * Abstract class for optimization passes. All passes basically extends this class.
  */
 public abstract class Pass implements Serializable {
-  private Predicate<DAG<IRVertex, IREdge>> condition;
+  private Predicate<IRDAG> condition;
 
   /**
    * Default constructor.
@@ -42,7 +40,7 @@ public abstract class Pass implements Serializable {
    * Constructor.
    * @param condition condition under which to run the pass.
    */
-  private Pass(final Predicate<DAG<IRVertex, IREdge>> condition) {
+  private Pass(final Predicate<IRDAG> condition) {
     this.condition = condition;
   }
 
@@ -50,7 +48,7 @@ public abstract class Pass implements Serializable {
    * Getter for the condition under which to apply the pass.
    * @return the condition under which to apply the pass.
    */
-  public final Predicate<DAG<IRVertex, IREdge>> getCondition() {
+  public final Predicate<IRDAG> getCondition() {
     return this.condition;
   }
 
@@ -59,7 +57,7 @@ public abstract class Pass implements Serializable {
    * @param newCondition the new condition to add to the existing condition.
    * @return the condition with the new condition added.
    */
-  public final Pass addCondition(final Predicate<DAG<IRVertex, IREdge>> newCondition) {
+  public final Pass addCondition(final Predicate<IRDAG> newCondition) {
     this.condition = this.condition.and(newCondition);
     return this;
   }

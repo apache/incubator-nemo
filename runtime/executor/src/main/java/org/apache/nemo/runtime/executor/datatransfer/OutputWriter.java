@@ -18,15 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.KeyExtractor;
-import org.apache.nemo.common.exception.UnsupportedPartitionerException;
-import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.runtime.executor.data.partitioner.*;
 
 import java.util.*;
 
@@ -53,38 +45,4 @@ public interface OutputWriter {
   Optional<Long> getWrittenBytes();
 
   void close();
-
-
-  static Partitioner getPartitioner(final RuntimeEdge runtimeEdge,
-                                    final int hashRangeMultiplier) {
-    final StageEdge stageEdge = (StageEdge) runtimeEdge;
-    final PartitionerProperty.Value partitionerPropertyValue =
-      (PartitionerProperty.Value) runtimeEdge.getPropertyValueOrRuntimeException(PartitionerProperty.class);
-    final int dstParallelism =
-      stageEdge.getDstIRVertex().getPropertyValue(ParallelismProperty.class).get();
-
-    final Partitioner partitioner;
-    switch (partitionerPropertyValue) {
-      case IntactPartitioner:
-        partitioner = new IntactPartitioner();
-        break;
-      case HashPartitioner:
-        final KeyExtractor hashKeyExtractor =
-          (KeyExtractor) runtimeEdge.getPropertyValueOrRuntimeException(KeyExtractorProperty.class);
-        partitioner = new HashPartitioner(dstParallelism, hashKeyExtractor);
-        break;
-      case DataSkewHashPartitioner:
-        final KeyExtractor dataSkewKeyExtractor =
-          (KeyExtractor) runtimeEdge.getPropertyValueOrRuntimeException(KeyExtractorProperty.class);
-        partitioner = new DataSkewHashPartitioner(hashRangeMultiplier, dstParallelism, dataSkewKeyExtractor);
-        break;
-      case DedicatedKeyPerElementPartitioner:
-        partitioner = new DedicatedKeyPerElementPartitioner();
-        break;
-      default:
-        throw new UnsupportedPartitionerException(
-          new Throwable("Partitioner " + partitionerPropertyValue + " is not supported."));
-    }
-    return partitioner;
-  }
 }

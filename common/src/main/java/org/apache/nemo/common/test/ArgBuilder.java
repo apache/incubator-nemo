@@ -74,6 +74,10 @@ public final class ArgBuilder {
     return this;
   }
 
+  /**
+   * @param maxAttempt maximum number of the attempts
+   * @return builder with the maximum number of the attempts
+   */
   public ArgBuilder addMaxTaskAttempt(final int maxAttempt) {
     args.add(Arrays.asList("-max_task_attempt", String.valueOf(maxAttempt)));
     return this;

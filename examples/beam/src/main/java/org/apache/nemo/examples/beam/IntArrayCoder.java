@@ -23,7 +23,7 @@ import org.apache.beam.sdk.coders.AtomicCoder;
 import java.io.*;
 
 /**
- * OffloadingEncoder for int[].
+ * EncoderFactory for int[].
  */
 public final class IntArrayCoder extends AtomicCoder<int[]> {
   /**

@@ -5,7 +5,7 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.Serializer;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.EvalConf;
@@ -14,9 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
+import java.util.*;
 
 public final class OperatorMetricCollector {
   private static final Logger LOG = LoggerFactory.getLogger(OperatorMetricCollector.class.getName());
@@ -25,12 +23,11 @@ public final class OperatorMetricCollector {
   final long windowsize = 2000;
   long adjustTime;
 
-  public int emittedCnt;
+  public int emittedCnt = 0;
   public final IRVertex irVertex;
   private final EvalConf evalConf;
   public final List<IRVertex> dstVertices;
 
-  private long prevFlushTime;
   private ByteBuf inputBuffer;
   private ByteBufOutputStream bos;
   public int serializedCnt;
@@ -44,23 +41,37 @@ public final class OperatorMetricCollector {
   // processed events - key: timestamp, value: processed events
   public final List<Pair<Long, Long>> processedEvents;
 
+  private long watermark;
+
+  private final Map<Long, Integer> watermarkCounterMap;
+
+  private final boolean isMonitor;
+
+  private final List<Integer> latencyList = new LinkedList<>();
+
+  private int expectedCnt;
+
   public OperatorMetricCollector(final IRVertex srcVertex,
                                  final List<IRVertex> dstVertices,
                                  final Serializer serializer,
                                  final Edge edge,
                                  final EvalConf evalConf,
-                                 final ExecutorService shutdownExecutor) {
+                                 final Map<Long, Integer> watermarkCounterMap,
+                                 final Set<String> monitoringVertices) {
     this.irVertex = srcVertex;
     this.serializedCnt = 0;
     this.dstVertices = dstVertices;
     this.evalConf = evalConf;
     this.serializer = serializer;
     this.edge = edge;
+    this.expectedCnt = evalConf.samplingCnt;
+    this.watermarkCounterMap = watermarkCounterMap;
     this.processedEvents = new LinkedList<>();
     this.inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
     this.bos = new ByteBufOutputStream(inputBuffer);
+    this.isMonitor = monitoringVertices.contains(srcVertex.getId());
 
-    //LOG.info("SrcVertex: {}, DstVertices: {}, Edge: {}", srcVertex, dstVertices, edge);
+    LOG.info("Monitoring {} {}", srcVertex, isMonitor);
   }
 
   public void setServerlessExecutorService(final ServerlessExecutorService sls) {
@@ -81,8 +92,6 @@ public final class OperatorMetricCollector {
   public void startOffloading() {
     LOG.info("OPeratorMetricCollector startOffloading");
     checkSink();
-
-    prevFlushTime = System.currentTimeMillis();
     serializedCnt = 0;
     isOffloading = true;
   }
@@ -94,36 +103,51 @@ public final class OperatorMetricCollector {
     if (inputBuffer.readableBytes() > 0) {
       // TODO: send remaining data to serverless
       flushToServerless();
-      inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
-      bos = new ByteBufOutputStream(inputBuffer);
     }
     LOG.info("End of offloading vertex  -- end {}", irVertex.getId());
     serializedCnt = 0;
     isOffloading = false;
   }
 
-  private boolean isFlusheable(final long curTime) {
+  private boolean isFlusheable() {
     if (serverlessExecutorService == null || serverlessExecutorService.isShutdown()) {
       throw new RuntimeException("Serverless executor is null or shutdowned: " + serverlessExecutorService);
     }
 
     return  (inputBuffer.readableBytes() > evalConf.flushBytes
-      || serializedCnt > evalConf.flushCount
-      || curTime - prevFlushTime > evalConf.flushPeriod);
+      || serializedCnt > evalConf.flushCount);
   }
 
-  private void flushToServerless() {
-    LOG.info("Flush to serverless in vertex {}: {}", irVertex.getId(), serializedCnt);
+  public boolean hasFlushableData() {
+    return inputBuffer.readableBytes() > 0;
+  }
+
+  public void flushToServerless() {
     final CompositeByteBuf compositeByteBuf = PooledByteBufAllocator.DEFAULT.compositeBuffer(2);
-    final ByteBuf lengthBuf = PooledByteBufAllocator.DEFAULT.buffer(4);
+    final ByteBuf lengthBuf = PooledByteBufAllocator.DEFAULT.buffer(12);
     lengthBuf.writeInt(serializedCnt);
+    lengthBuf.writeLong(watermark);
+
+    LOG.info("Flush to serverless in vertex {}, watermark: {}: {}", irVertex.getId(), serializedCnt,
+      watermark);
+    watermarkCounterMap.put(watermark,
+      watermarkCounterMap.getOrDefault(watermark, 0) + 1);
+
     compositeByteBuf.addComponents(true, lengthBuf, inputBuffer);
     // execute
 
     serverlessExecutorService.execute(compositeByteBuf);
+
+    // reset
+    inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
+    bos = new ByteBufOutputStream(inputBuffer);
+    serializedCnt = 0;
   }
 
-  public void sendToServerless(final Object event, final List<String> nextOperatorIds) {
+  public void sendToServerless(final Object event,
+                               final List<String> nextOperatorIds,
+                               final long wm) {
+    watermark = wm;
     checkSink();
 
     //final Serializer serializer = serializerManager.getSerializer(dataFetcher.edge.getId());
@@ -141,18 +165,9 @@ public final class OperatorMetricCollector {
       serializer.getEncoderFactory().create(bos).encode(event);
       serializedCnt += 1;
 
-      final long curTime = System.currentTimeMillis();
-      if (isFlusheable(curTime)) {
-        //if (serializedCnt > 10) {
-
+      if (isFlusheable()) {
         // flush
         flushToServerless();
-        prevFlushTime = curTime;
-
-        // reset
-        inputBuffer = PooledByteBufAllocator.DEFAULT.buffer();
-        bos = new ByteBufOutputStream(inputBuffer);
-        serializedCnt = 0;
       }
     } catch (IOException e) {
       e.printStackTrace();
@@ -194,9 +209,40 @@ public final class OperatorMetricCollector {
   }
 
   public void processDone(final long startTimestamp) {
-   final long currTime = System.currentTimeMillis();
-    final long latency = (currTime - startTimestamp) - adjustTime;
-    LOG.info("Event Latency {}", latency);
+    if (isMonitor) {
+      final long currTime = System.currentTimeMillis();
+      final int latency = (int)((currTime - startTimestamp) - adjustTime);
+      latencyList.add(latency);
+    }
+  }
+
+  // TODO: trigger this function
+  public void flushLatencies() {
+    if (latencyList.isEmpty()) {
+      // accumulate the expected cnt
+      expectedCnt += evalConf.samplingCnt;
+    } else {
+      final long cTime = System.currentTimeMillis();
+      final int cnt = Math.min(1, latencyList.size());
+      final double samplingRate = Math.max(1.0, expectedCnt / (double) cnt);
+      final Random random = new Random(cTime);
+
+      final Iterator<Integer> iterator = latencyList.iterator();
+      while (iterator.hasNext() && expectedCnt > 0) {
+        final Integer latency = iterator.next();
+        if (random.nextDouble() < samplingRate) {
+          LOG.info("Event Latency {} from {} expectedCnt: {}", latency, irVertex.getId(), expectedCnt);
+          expectedCnt -= 1;
+          iterator.remove();
+        }
+      }
+
+      if (expectedCnt == 0) {
+        latencyList.clear();
+      }
+
+      expectedCnt += evalConf.samplingCnt;
+    }
   }
 
   class LatencyAndCnt {

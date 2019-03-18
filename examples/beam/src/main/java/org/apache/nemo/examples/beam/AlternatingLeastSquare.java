@@ -20,12 +20,10 @@ package org.apache.nemo.examples.beam;
 
 import com.github.fommil.netlib.BLAS;
 import com.github.fommil.netlib.LAPACK;
-import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.CoderProviders;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -311,6 +309,10 @@ public final class AlternatingLeastSquare {
     private final int numFeatures;
     private final boolean isDeterministic;
 
+    /**
+     * @param numFeatures number of the features.
+     * @param isDeterministic whether or not to initialize the matrix in deterministic mode.
+     */
     CreateInitialMatrix(final int numFeatures,
                         final boolean isDeterministic) {
       this.numFeatures = numFeatures;
@@ -349,7 +351,7 @@ public final class AlternatingLeastSquare {
    * Main function for the ALS BEAM program.
    * @param args arguments.
    */
-  public static void main(final String[] args) {
+  public static void main(final String[] args) throws ClassNotFoundException {
     final Long start = System.currentTimeMillis();
     LOG.info(Arrays.toString(args));
     final String inputFilePath = args[0];
@@ -370,8 +372,7 @@ public final class AlternatingLeastSquare {
       outputFilePath = "";
     }
 
-    final PipelineOptions options = PipelineOptionsFactory.create();
-    options.setRunner(NemoRunner.class);
+    final PipelineOptions options = NemoPipelineOptionsFactory.create();
     options.setJobName("ALS");
     options.setStableUniqueNames(PipelineOptions.CheckEnabled.OFF);
 

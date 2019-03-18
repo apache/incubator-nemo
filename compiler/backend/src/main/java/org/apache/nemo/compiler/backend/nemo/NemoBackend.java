@@ -19,9 +19,8 @@
 package org.apache.nemo.compiler.backend.nemo;
 
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.backend.Backend;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.PhysicalPlanGenerator;
@@ -39,6 +38,7 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
 
   /**
    * Constructor.
+   * @param physicalPlanGenerator physical plan generator.
    */
   @Inject
   private NemoBackend(final PhysicalPlanGenerator physicalPlanGenerator) {
@@ -51,8 +51,7 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
    * @param irDAG the IR DAG to compile.
    * @return the execution plan to be submitted to Runtime.
    */
-  public PhysicalPlan compile(final DAG<IRVertex, IREdge> irDAG) {
-
+  public PhysicalPlan compile(final IRDAG irDAG) {
     final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(irDAG);
     return new PhysicalPlan(RuntimeIdManager.generatePhysicalPlanId(), stageDAG);
   }

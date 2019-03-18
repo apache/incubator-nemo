@@ -30,8 +30,8 @@ import java.io.Serializable;
  */
 public interface OutputCollector<O> extends Serializable {
 
+  // for offloadig
   void setInputTimestamp(long timestamp);
-
   long getInputTimestamp();
 
   /**
@@ -42,12 +42,9 @@ public interface OutputCollector<O> extends Serializable {
 
   /**
    * Emit watermark to downstream vertices.
+   * @param watermark watermark
    */
   void emitWatermark(Watermark watermark);
-
-  void enableOffloading();
-
-  void disableOffloading();
 
   /**
    * Multi-destination emit.
@@ -55,6 +52,7 @@ public interface OutputCollector<O> extends Serializable {
    * for operations like multi-output map.
    * @param dstVertexId destination vertex id.
    * @param output value.
+   * @param <T> output type.
    */
   <T> void emit(String dstVertexId, T output);
 }

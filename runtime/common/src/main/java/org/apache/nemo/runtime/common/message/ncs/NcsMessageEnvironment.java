@@ -201,7 +201,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case ScheduleTask:
       case BlockStateChanged:
       case ExecutorFailed:
-      case DataSizeMetric:
+      case RunTimePassMessage:
       case ExecutorDataCollected:
       case MetricMessageReceived:
       case RequestMetricFlush:

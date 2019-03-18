@@ -47,7 +47,8 @@ provider:
 
 # you can add packaging information here
 package:
-  artifact: target/offloading-lambda-0.2-SNAPSHOT.jar
+  #artifact: target/offloading-lambda-0.2-SNAPSHOT.jar
+  artifact: build/distributions/lambda.zip
 
 functions:
   imhandler:

@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.data.partition;
 
 import org.apache.nemo.common.DirectByteArrayOutputStream;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.common.Serializer;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.data.block.Block;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

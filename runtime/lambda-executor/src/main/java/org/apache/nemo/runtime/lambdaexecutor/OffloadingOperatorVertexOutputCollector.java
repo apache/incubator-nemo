@@ -18,9 +18,8 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor;
 
-import org.apache.nemo.common.NextIntraTaskOperatorInfo;
-import org.apache.nemo.common.TimestampAndValue;
-import org.apache.nemo.common.Triple;
+import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
+import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -29,10 +28,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * OffloadingOutputCollector implementation.
@@ -53,10 +49,13 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
   private final Map<String, NextIntraTaskOperatorInfo> internalMainOutputs;
   private final List<NextIntraTaskOperatorInfo> nextOperators;
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
+  private final Map<String, List<String>> taskOutgoingEdges;
 
   private final OffloadingResultCollector resultCollector;
   private final Edge edge;
   private final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap;
+
+  public String watermarkSourceId;
 
   /**
    * Constructor of the output collector.
@@ -69,7 +68,8 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
     final List<NextIntraTaskOperatorInfo> nextOperators,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
     final OffloadingResultCollector resultCollector,
-    final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap) {
+    final Map<String, OffloadingOperatorVertexOutputCollector> outputCollectorMap,
+    final Map<String, List<String>> taskOutgoingEdges) {
     this.irVertex = irVertex;
     this.edge = edge;
     this.internalMainOutputs = new HashMap<>();
@@ -81,6 +81,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.resultCollector = resultCollector;
     this.outputCollectorMap = outputCollectorMap;
+    this.taskOutgoingEdges = taskOutgoingEdges;
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -89,11 +90,10 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
   @Override
   public void emit(final O output) {
-    LOG.info("Operator " + irVertex.getId() + " emit " + output + " to ");
+    //LOG.info("Operator " + irVertex.getId() + " emit " + output + " to ");
     List<String> nextOpIds = null;
 
     for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
-      LOG.info(internalVertex.getNextOperator().getId());
       if (internalVertex.getNextOperator().isSink || !internalVertex.getNextOperator().isOffloading) {
         if (nextOpIds == null) {
           nextOpIds = new LinkedList<>();
@@ -108,6 +108,16 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
       }
     }
 
+
+    // for output writer
+    for (final String nextOutputWriterId :
+      taskOutgoingEdges.getOrDefault(irVertex.getId(), Collections.emptyList())) {
+      if (nextOpIds == null) {
+        nextOpIds = new LinkedList<>();
+      }
+      nextOpIds.add(nextOutputWriterId);
+    }
+
     if (nextOpIds != null) {
       //System.out.println("Emit to resultCollector in " + irVertex.getId());
       resultCollector.result.add(new Triple<>(
@@ -115,9 +125,6 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
         edge.getId(),
         new TimestampAndValue(inputTimestamp, output)));
     }
-
-
-    // TODO: handle output writer!!
   }
 
   @Override
@@ -153,9 +160,9 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
 
   @Override
   public void emitWatermark(final Watermark watermark) {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
-    }
+//    if (LOG.isDebugEnabled()) {
+//      LOG.debug("{} emits watermark {}", irVertex.getId(), watermark);
+//    }
 
     List<String> nextOpIds = null;
 
@@ -170,6 +177,7 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
         //System.out.println("Operator " + irVertex.getId() + " emits watermark " + watermark);
         //System.out.println("Sink Emit watermark " + watermark);
       } else {
+        //LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
@@ -182,18 +190,28 @@ public final class OffloadingOperatorVertexOutputCollector<O> extends AbstractOu
           }
           nextOpIds.add(internalVertex.getNextOperator().getId());
         } else {
+          //LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
           internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
         }
       }
     }
 
+    // for output writer
+    for (final String nextOutputWriterId :
+      taskOutgoingEdges.getOrDefault(irVertex.getId(), Collections.emptyList())) {
+      if (nextOpIds == null) {
+        nextOpIds = new LinkedList<>();
+      }
+      nextOpIds.add(nextOutputWriterId);
+    }
+
+
     if (nextOpIds != null) {
+      //LOG.info("Offloading Watermark {} emit to {}", watermark, nextOpIds);
       resultCollector.result.add(new Triple<>(
         nextOpIds,
         edge.getId(),
         watermark));
     }
-
-    // TODO: handle output writer!!
   }
 }

@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor;
 
-import org.apache.nemo.common.Triple;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 
 import java.util.LinkedList;
@@ -28,7 +27,7 @@ import java.util.List;
 public final class OffloadingResultCollector{
 
   // vertexId, edgeId, data
-  public final List<Triple<List<String>, String, Object>> result;
+  public List<Triple<List<String>, String, Object>> result;
   public final OffloadingOutputCollector collector;
 
   public OffloadingResultCollector(final OffloadingOutputCollector collector) {
@@ -36,7 +35,8 @@ public final class OffloadingResultCollector{
     this.collector = collector;
   }
 
-  public void flush() {
-    collector.emit(new OffloadingResultEvent(result));
+  public void flush(final long watermark) {
+    collector.emit(new OffloadingResultEvent(result, watermark));
+    result = new LinkedList<>();
   }
 }

@@ -45,7 +45,7 @@ public final class ExampleTestUtil {
    * @param resourcePath root folder for both resources.
    * @param outputFileName output file name.
    * @param testResourceFileName the test result file name.
-   * @throws RuntimeException if the output is invalid.
+   * @throws IOException if the output is invalid.
    */
   public static void ensureOutputValidity(final String resourcePath,
                                           final String outputFileName,
@@ -55,6 +55,8 @@ public final class ExampleTestUtil {
     try (final Stream<Path> fileStream = Files.list(Paths.get(resourcePath))) {
       testOutput = fileStream
           .filter(Files::isRegularFile)
+           // TODO 346: Do not use test file prefixes
+           // i.e., replace startsWith() with something like regex matching
           .filter(path -> path.getFileName().toString().startsWith(outputFileName))
           .flatMap(path -> {
             try {

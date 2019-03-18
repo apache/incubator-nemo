@@ -27,7 +27,7 @@ import scala.reflect.ClassTag$;
 import java.io.InputStream;
 
 /**
- * Spark OffloadingDecoder for serialization.
+ * Spark DecoderFactory for serialization.
  * @param <T> type of the object to deserialize.
  */
 public final class SparkDecoderFactory<T> implements DecoderFactory<T> {
@@ -45,6 +45,13 @@ public final class SparkDecoderFactory<T> implements DecoderFactory<T> {
   @Override
   public Decoder<T> create(final InputStream inputStream) {
     return new SparkDecoder<>(inputStream, serializer.newInstance());
+  }
+
+  @Override
+  public String toString() {
+    return "SparkDecoderFactory{"
+      + "serializer=" + serializer
+      + '}';
   }
 
   /**

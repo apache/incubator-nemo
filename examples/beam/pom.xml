@@ -37,6 +37,12 @@ under the License.
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.nemo</groupId>
+            <artifactId>nemo-client</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.github.fommil.netlib</groupId>
             <artifactId>all</artifactId>
             <version>${netlib.version}</version>
@@ -82,7 +88,6 @@ under the License.
 
     <build>
         <plugins>
-
             <!--<plugin>-->
                 <!--<groupId>org.apache.maven.plugins</groupId>-->
                 <!--<artifactId>maven-shade-plugin</artifactId>-->

@@ -18,16 +18,18 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.TimestampAndValue;
-import org.apache.nemo.common.WatermarkWithIndex;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.punctuation.TimestampAndValue;
+import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.data.partitioner.Partitioner;
-import org.apache.nemo.common.Serializer;
+import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.common.partitioner.Partitioner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,27 +53,37 @@ public final class PipeOutputWriter implements OutputWriter {
   private Serializer serializer;
   private List<ByteOutputContext> pipes;
   private final Map<ByteOutputContext, ByteOutputContext.ByteOutputStream> pipeAndStreamMap;
+  final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap;
+  final Map<Long, Long> prevWatermarkMap;
+  final Map<Long, Integer> watermarkCounterMap;
+  private final StageEdge stageEdge;
 
   /**
    * Constructor.
    *
-   * @param hashRangeMultiplier the {@link org.apache.nemo.conf.JobConf.HashRangeMultiplier}.
    * @param srcTaskId           the id of the source task.
    * @param runtimeEdge         the {@link RuntimeEdge}.
    * @param pipeManagerWorker   the pipe manager.
    */
-  PipeOutputWriter(final int hashRangeMultiplier,
-                   final String srcTaskId,
+  PipeOutputWriter(final String srcTaskId,
                    final RuntimeEdge runtimeEdge,
-                   final PipeManagerWorker pipeManagerWorker) {
+                   final PipeManagerWorker pipeManagerWorker,
+                   final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
+                   final Map<Long, Long> prevWatermarkMap,
+                   final Map<Long, Integer> watermarkCounterMap) {
+    this.stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
     this.srcTaskId = srcTaskId;
     this.pipeManagerWorker = pipeManagerWorker;
     this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId));
-    this.partitioner = OutputWriter.getPartitioner(runtimeEdge, hashRangeMultiplier);
+    this.partitioner = Partitioner
+      .getPartitioner(stageEdge.getExecutionProperties(), stageEdge.getDstIRVertex().getExecutionProperties());
     this.runtimeEdge = runtimeEdge;
     this.srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(srcTaskId);
     this.pipeAndStreamMap = new HashMap<>();
+    this.expectedWatermarkMap = expectedWatermarkMap;
+    this.prevWatermarkMap = prevWatermarkMap;
+    this.watermarkCounterMap = watermarkCounterMap;
   }
 
   private void writeData(final Object element,
@@ -108,9 +120,63 @@ public final class PipeOutputWriter implements OutputWriter {
       doInitialize();
     }
 
-    final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermark, srcTaskIndex);
-    // flush data whenever receiving watermarks
-    writeData(watermarkWithIndex, pipes, true);
+    //LOG.info("Watermark in output writer to {}", stageEdge.getDstIRVertex().getId());
+    final PriorityQueue<Watermark> expectedWatermarkQueue =
+      expectedWatermarkMap.get(stageEdge.getDstIRVertex().getId()).left();
+
+    if (!expectedWatermarkQueue.isEmpty()) {
+      // FOR OFFLOADING
+
+      // we should not emit the watermark directly.
+      final PriorityQueue<Watermark> pendingWatermarkQueue = expectedWatermarkMap.get(stageEdge.getDstIRVertex().getId()).right();
+      pendingWatermarkQueue.add(watermark);
+      while (!expectedWatermarkQueue.isEmpty() && !pendingWatermarkQueue.isEmpty() &&
+        expectedWatermarkQueue.peek().getTimestamp() >= pendingWatermarkQueue.peek().getTimestamp()) {
+
+        // check whether outputs are emitted
+        final long ts = pendingWatermarkQueue.peek().getTimestamp();
+        if (expectedWatermarkQueue.peek().getTimestamp() > ts) {
+          LOG.warn("This may be emitted from the internal vertex: {}, {} -> {}, we don't have to emit it again",
+            ts, stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
+          pendingWatermarkQueue.poll();
+          //final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
+          //writeData(watermarkWithIndex, pipes, true);
+
+        } else {
+          if (!prevWatermarkMap.containsKey(ts)) {
+            final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
+            pendingWatermarkQueue.poll();
+            LOG.info("Emit watermark {} from {} -> {}",
+              watermarkToBeEmitted, stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
+
+            final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
+            writeData(watermarkWithIndex, pipes, true);
+
+          } else {
+            final long prevWatermark = prevWatermarkMap.get(ts);
+            if (watermarkCounterMap.getOrDefault(prevWatermark, 0) == 0) {
+              LOG.info("Remove {}  prev watermark: {}", ts, prevWatermark);
+              final Watermark watermarkToBeEmitted = expectedWatermarkQueue.poll();
+              pendingWatermarkQueue.poll();
+              prevWatermarkMap.remove(prevWatermark);
+              watermarkCounterMap.remove(prevWatermark);
+
+              LOG.info("Emit watermark {} from {} -> {}",
+                watermarkToBeEmitted, stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
+
+              final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermarkToBeEmitted, srcTaskIndex);
+              writeData(watermarkWithIndex, pipes, true);
+            } else {
+              break;
+            }
+          }
+        }
+      }
+    } else {
+      final WatermarkWithIndex watermarkWithIndex = new WatermarkWithIndex(watermark, srcTaskIndex);
+      // flush data whenever receiving watermarks
+      writeData(watermarkWithIndex, pipes, true);
+    }
   }
 
   @Override

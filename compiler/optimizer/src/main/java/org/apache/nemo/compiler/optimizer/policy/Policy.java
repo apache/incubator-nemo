@@ -18,11 +18,8 @@
  */
 package org.apache.nemo.compiler.optimizer.policy;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.reef.tang.Injector;
+import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
 import java.io.Serializable;
 
@@ -33,19 +30,19 @@ import java.io.Serializable;
  */
 public interface Policy extends Serializable {
   /**
-   * Optimize the DAG with the compile time optimizations.
+   * Optimize the DAG with the compile-time optimizations.
    *
    * @param dag          input DAG.
    * @param dagDirectory directory to save the DAG information.
    * @return optimized DAG, reshaped or tagged with execution properties.
    */
-  DAG<IRVertex, IREdge> runCompileTimeOptimization(DAG<IRVertex, IREdge> dag, String dagDirectory);
+  IRDAG runCompileTimeOptimization(IRDAG dag, String dagDirectory);
 
   /**
-   * Register runtime optimizations to the event handler.
+   * Optimize the DAG with the run-time optimizations.
    *
-   * @param injector      Tang Injector which contains the implementations of run-time event handlers.
-   * @param pubSubWrapper pub-sub event handler which managing run-time and compile-time event handling.
+   * @param dag input DAG.
+   * @param message from the DAG execution.
    */
-  void registerRunTimeOptimizations(Injector injector, PubSubEventHandlerWrapper pubSubWrapper);
+  IRDAG runRunTimeOptimizations(final IRDAG dag, final Message<?> message);
 }

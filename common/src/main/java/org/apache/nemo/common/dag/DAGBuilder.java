@@ -19,11 +19,11 @@
 package org.apache.nemo.common.dag;
 
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
+import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
+import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
+import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 
 import java.io.Serializable;
 import java.util.*;
@@ -209,7 +209,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     stack.push(vertex);
     // When we encounter a vertex that we've already gone through, then there is a cycle.
     if (outgoingEdges.get(vertex).stream().map(Edge::getDst).anyMatch(stack::contains)) {
-      throw new CompileTimeOptimizationException("DAG contains a cycle");
+      throw getException("DAG contains a cycle", vertex.toString());
     } else {
       outgoingEdges.get(vertex).stream().map(Edge::getDst)
           .filter(v -> !visited.contains(v))
@@ -226,12 +226,13 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     final Supplier<Stream<V>> verticesToObserve = () -> vertices.stream().filter(v -> incomingEdges.get(v).isEmpty())
         .filter(v -> v instanceof IRVertex);
     // They should all match SourceVertex
-    if (verticesToObserve.get().anyMatch(v -> !(v instanceof SourceVertex))) {
+    if (!(verticesToObserve.get().allMatch(v -> (v instanceof SourceVertex)
+      || (v instanceof SamplingVertex && ((SamplingVertex) v).getCloneOfOriginalVertex() instanceof SourceVertex)))) {
       final String problematicVertices = verticesToObserve.get()
           .filter(v -> !(v instanceof SourceVertex))
           .map(V::getId)
           .collect(Collectors.toList()).toString();
-      throw new CompileTimeOptimizationException("DAG source check failed while building DAG. " + problematicVertices);
+      throw getException("DAG source check failed while building DAG", problematicVertices);
     }
   }
 
@@ -249,7 +250,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
       final String problematicVertices = verticesToObserve.get().filter(v ->
           !(v instanceof OperatorVertex || v instanceof LoopVertex))
           .map(V::getId).collect(Collectors.toList()).toString();
-      throw new CompileTimeOptimizationException("DAG sink check failed while building DAG: " + problematicVertices);
+      throw getException("DAG sink check failed while building DAG", problematicVertices);
     }
   }
 
@@ -257,15 +258,15 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
    * Helper method to check that all execution properties are correct and makes sense.
    */
   private void executionPropertyCheck() {
-    // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
-    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
-            .equals(e.getPropertyValue(MetricCollectionProperty.class)))
-        .filter(e -> DataFlowProperty.Value.Push.equals(e.getPropertyValue(DataFlowProperty.class).get()))
-        .forEach(e -> {
-          throw new CompileTimeOptimizationException("DAG execution property check: "
-              + "DataSizeMetricCollection edge is not compatible with push" + e.getId());
-        }));
+    final long numOfMAV = vertices.stream().filter(v -> v instanceof MessageAggregatorVertex).count();
+    final long numOfDistinctMessageIds = vertices.stream()
+      .filter(v -> v instanceof MessageAggregatorVertex)
+      .map(v -> ((MessageAggregatorVertex) v).getPropertyValue(MessageIdVertexProperty.class).get())
+      .distinct()
+      .count();
+    if (numOfMAV != numOfDistinctMessageIds) {
+      throw getException("A unique message id must exist for each MessageAggregator", "");
+    }
   }
 
   /**
@@ -327,5 +328,18 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   public DAG<V, E> build() {
     integrityCheck(true, true, true, true);
     return new DAG<>(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
+  }
+
+  /**
+   * Generates a user-friendly exception message.
+   * @param reason of the exception.
+   * @param problematicObjects that caused the exception.
+   * @return exception object.
+   */
+  private CompileTimeOptimizationException getException(final String reason, final String problematicObjects) {
+    final DAG erroredDAG = new DAG<>(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
+    erroredDAG.storeJSON("debug", "errored_ir", "Errored IR");
+    return new CompileTimeOptimizationException(reason + " /// Problematic objects are: "
+      + problematicObjects + " /// see the debug directory for the errored_ir");
   }
 }

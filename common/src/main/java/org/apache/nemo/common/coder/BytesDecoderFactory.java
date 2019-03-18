@@ -43,6 +43,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
 
   /**
    * Static initializer of the decoder.
+   * @return the initializer.
    */
   public static BytesDecoderFactory of() {
     return BYTES_DECODER_FACTORY;
@@ -51,6 +52,11 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
   @Override
   public Decoder<byte[]> create(final InputStream inputStream) {
     return new BytesDecoder(inputStream);
+  }
+
+  @Override
+  public String toString() {
+    return "BytesDecoderFactory{}";
   }
 
   /**

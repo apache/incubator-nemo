@@ -92,7 +92,7 @@ public final class OffloadingHandler {
   private void writeResult(final Channel opendChannel,
                            final List<ChannelFuture> futures,
                            final Pair<Object, Integer> data) {
-    final ByteBuf byteBuf = opendChannel.alloc().ioBuffer();
+    final ByteBuf byteBuf = opendChannel.alloc().buffer();
 
     if (data.left() == NoResult.INSTANCE) {
       // bit 0 1
@@ -158,7 +158,8 @@ public final class OffloadingHandler {
     if (classLoader == null) {
       System.out.println("Loading jar: " + opendChannel);
       try {
-        classLoader = classLoaderCallable.call();
+        //classLoader = classLoaderCallable.call();
+        classLoader = Thread.currentThread().getContextClassLoader();
       } catch (Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);

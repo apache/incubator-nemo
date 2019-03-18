@@ -29,6 +29,7 @@ import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.common.state.StageState;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.reef.tang.Injector;
 import org.junit.Before;
 import org.junit.Test;
@@ -97,7 +98,7 @@ public final class PlanStateManagerTest {
   /**
    * Test whether the methods waiting for the finish of the plan works properly.
    */
-  @Test(timeout = 2000)
+  @Test(timeout = 4000)
   public void testWaitUntilFinish() throws Exception {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);

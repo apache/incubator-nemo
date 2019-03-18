@@ -18,14 +18,15 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 /**
  * A compile-time pass composed of multiple compile-time passes, which each modifies an IR DAG.
@@ -58,7 +59,7 @@ public abstract class CompositePass extends CompileTimePass {
   }
 
   @Override
-  public final DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> irVertexIREdgeDAG) {
+  public final IRDAG apply(final IRDAG irVertexIREdgeDAG) {
     return recursivelyApply(irVertexIREdgeDAG, getPassList().iterator());
   }
 
@@ -68,8 +69,7 @@ public abstract class CompositePass extends CompileTimePass {
    * @param passIterator pass iterator.
    * @return dag.
    */
-  private DAG<IRVertex, IREdge> recursivelyApply(final DAG<IRVertex, IREdge> dag,
-                                                 final Iterator<CompileTimePass> passIterator) {
+  private IRDAG recursivelyApply(final IRDAG dag, final Iterator<CompileTimePass> passIterator) {
     if (passIterator.hasNext()) {
       return recursivelyApply(passIterator.next().apply(dag), passIterator);
     } else {
@@ -77,6 +77,9 @@ public abstract class CompositePass extends CompileTimePass {
     }
   }
 
+  /**
+   * @return the prerequisite execution properties.
+   */
   public final Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties() {
     return prerequisiteExecutionProperties;
   }

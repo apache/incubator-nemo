@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.frontend.beam;
 
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.CompilerTestUtil;
@@ -38,7 +39,7 @@ import static org.junit.Assert.assertEquals;
 public class BeamFrontendMLRTest {
   @Test
   public void testMLRDAG() throws Exception {
-    final DAG<IRVertex, IREdge> producedDAG = CompilerTestUtil.compileMLRDAG();
+    final IRDAG producedDAG = CompilerTestUtil.compileMLRDAG();
 
     assertEquals(producedDAG.getTopologicalSort(), producedDAG.getTopologicalSort());
     assertEquals(39, producedDAG.getVertices().size());

@@ -19,12 +19,9 @@
 package org.apache.nemo.examples.beam;
 
 import com.google.common.collect.Lists;
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -51,8 +48,7 @@ public final class PerPercentileAverage {
   public static void main(final String[] args) {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];
-    final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
-    options.setRunner(NemoRunner.class);
+    final PipelineOptions options = NemoPipelineOptionsFactory.create();
     options.setJobName("PerPercentileAverage");
 
     final Pipeline p = Pipeline.create(options);
@@ -108,32 +104,62 @@ public final class PerPercentileAverage {
     private int percentile;
     private int score;
 
+    /**
+     * Constructor.
+     * @param id student id.
+     * @param percentile student percentile.
+     * @param score student score.
+     */
     Student(final int id, final int percentile, final int score) {
       this.id = id;
       this.percentile = percentile;
       this.score = score;
     }
 
+    /**
+     * Getter for student id.
+     * @return id.
+     */
     public int getId() {
       return id;
     }
 
+    /**
+     * Setter for student id.
+     * @param id id.
+     */
     public void setId(final int id) {
       this.id = id;
     }
 
+    /**
+     * Getter for student percentile.
+     * @return percentile.
+     */
     public int getPercentile() {
       return percentile;
     }
 
+    /**
+     * Setter for student percentile.
+     * @param percentile percentile.
+     */
     public void setPercentile(final int percentile) {
       this.percentile = percentile;
     }
 
+    /**
+     * Getter for student score.
+     * @return score.
+     */
     public int getScore() {
       return score;
     }
 
+    /**
+     * Setter for student score.
+     * @param score score.
+     */
     public void setScore(final int score) {
       this.score = score;
     }
