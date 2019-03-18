@@ -41,8 +41,8 @@ public class OperatorVertex extends IRVertex {
    * Copy Constructor of OperatorVertex.
    * @param that the source object for copying
    */
-  public OperatorVertex(final OperatorVertex that) {
-    super();
+  private OperatorVertex(final OperatorVertex that) {
+    super(that);
     this.transform = that.transform;
   }
 

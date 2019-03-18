@@ -18,6 +18,12 @@
  */
 package org.apache.nemo.common.ir;
 
+import org.apache.nemo.common.dag.Vertex;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -34,11 +40,40 @@ public final class IdManager {
   private static AtomicInteger edgeId = new AtomicInteger(1);
   private static volatile boolean isDriver = false;
 
+  // Vertex ID Map to be used upon cloning in loop vertices.
+  private static final Map<Vertex, Queue<String>> VERTEX_ID_MAP = new HashMap<>();
+
   /**
    * @return a new operator ID.
    */
   public static String newVertexId() {
     return "vertex" + (isDriver ? "(d)" : "") + vertexId.getAndIncrement();
+  }
+
+  /**
+   * Save the vertex id for the vertices that can be cloned later on.
+   * @param v the original vertex that is to be cloned later on (RootLoopVertex's vertex).
+   * @param id The IDs of the identical vertices.
+   */
+  public static void saveVertexId(final Vertex v, final String id) {
+    VERTEX_ID_MAP.putIfAbsent(v, new LinkedBlockingQueue<>());
+    VERTEX_ID_MAP.get(v).add(id);
+  }
+
+  /**
+   * Used for cloning vertices. If an existing ID exists, it returns the unused ID,
+   * otherwise simply acts as the newVertexId method.
+   * @param v the vertex to get the ID for.
+   * @return the ID for the vertex.
+   */
+  public static String getVertexId(final Vertex v) {
+    final Queue<String> idQueue = VERTEX_ID_MAP.getOrDefault(v, null);
+    if (idQueue == null) {
+      return newVertexId();
+    } else {
+      final String id = idQueue.poll();
+      return id != null ? id : newVertexId();
+    }
   }
 
   /**
