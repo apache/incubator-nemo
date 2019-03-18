@@ -34,7 +34,6 @@ public final class CrailPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
     new PolicyBuilder()
       .registerCompileTimePass(new CrailEdgeDataStorePass()) //***확인
-      .registerCompileTimePass(new LoopOptimizationCompositePass())
       .registerCompileTimePass(new DefaultCompositePass());
   private final Policy policy;
 
