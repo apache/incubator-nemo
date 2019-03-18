@@ -96,6 +96,7 @@ public final class InMemorySideInputReader implements ReadyCheckingSideInputRead
 
   /**
    * Say a DoFn of this reader has 3 main inputs and 4 side inputs.
+   * Nemo runtime guarantees that the watermark here
    * is the minimum of the all 7 input streams.
    * @param newWatermark to set.
    */

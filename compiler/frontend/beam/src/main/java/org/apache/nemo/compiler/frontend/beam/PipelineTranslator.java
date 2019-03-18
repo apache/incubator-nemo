@@ -26,6 +26,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.AppliedPTransform;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.display.DisplayData;
+import org.apache.beam.sdk.transforms.display.HasDisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
@@ -440,6 +441,10 @@ final class PipelineTranslator {
       final PCollection<?> mainInput = (PCollection<?>)
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
+      final HasDisplayData displayData = (builder) -> {
+        builder.add(DisplayData.item("name", beamNode.getFullName()));
+      };
+
       if (sideInputMap.isEmpty()) {
         return new DoFnTransform(
           doFn,
@@ -449,7 +454,7 @@ final class PipelineTranslator {
           additionalOutputTags.getAll(),
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
-          DisplayData.from(beamNode.getTransform()));
+          DisplayData.from(displayData));
       } else {
 
         // TODO remove: ad-hoc
@@ -475,9 +480,10 @@ final class PipelineTranslator {
           mainInput.getWindowingStrategy(),
           sideInputMap,
           ctx.getPipelineOptions(),
-          DisplayData.from(beamNode.getTransform()),
+          DisplayData.from(displayData),
           coder,
           sideInputElementCoder);
+
       }
     } catch (final IOException e) {
       throw new RuntimeException(e);

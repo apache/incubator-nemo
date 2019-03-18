@@ -19,11 +19,9 @@
 package org.apache.nemo.examples.beam;
 
 import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
-import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.CoderProviders;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -102,7 +100,7 @@ public final class AlternatingLeastSquareInefficient {
    * Main function for the ALS BEAM program.
    * @param args arguments.
    */
-  public static void main(final String[] args) {
+  public static void main(final String[] args) throws ClassNotFoundException {
     final Long start = System.currentTimeMillis();
     LOG.info(Arrays.toString(args));
     final String inputFilePath = args[0];
@@ -115,8 +113,7 @@ public final class AlternatingLeastSquareInefficient {
       lambda = 0.05;
     }
 
-    final PipelineOptions options = PipelineOptionsFactory.create();
-    options.setRunner(NemoRunner.class);
+    final PipelineOptions options = NemoPipelineOptionsFactory.create();
     options.setJobName("ALS");
     options.setStableUniqueNames(PipelineOptions.CheckEnabled.OFF);
 
