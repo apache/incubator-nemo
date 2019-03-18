@@ -26,6 +26,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.runners.AppliedPTransform;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.display.DisplayData;
+import org.apache.beam.sdk.transforms.display.HasDisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -431,6 +432,10 @@ final class PipelineTranslator {
       final PCollection<?> mainInput = (PCollection<?>)
         Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
 
+      final HasDisplayData displayData = (builder) -> {
+        builder.add(DisplayData.item("name", beamNode.getFullName()));
+      };
+
       if (sideInputMap.isEmpty()) {
         return new DoFnTransform(
           doFn,
@@ -440,7 +445,7 @@ final class PipelineTranslator {
           additionalOutputTags.getAll(),
           mainInput.getWindowingStrategy(),
           ctx.getPipelineOptions(),
-          DisplayData.from(beamNode.getTransform()));
+          DisplayData.from(displayData));
       } else {
         return new PushBackDoFnTransform(
           doFn,
@@ -451,7 +456,7 @@ final class PipelineTranslator {
           mainInput.getWindowingStrategy(),
           sideInputMap,
           ctx.getPipelineOptions(),
-          DisplayData.from(beamNode.getTransform()));
+          DisplayData.from(displayData));
 
       }
     } catch (final IOException e) {
