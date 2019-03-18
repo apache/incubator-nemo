@@ -106,6 +106,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
     for(final SerializedPartition<K> serializedPartition : serializedPartitions){
       metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
       fileOutputStream.write(serializedPartition.getData());
+      LOG.info(String.format("HY: Expected write = %d, actual write = %d", serializedPartition.getLength(), serializedPartition.getData().length));
     }
     fileOutputStream.close();
   }
