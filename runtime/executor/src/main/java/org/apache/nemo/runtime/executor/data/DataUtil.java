@@ -29,6 +29,7 @@ import org.apache.nemo.runtime.executor.data.streamchainer.EncodeStreamChainer;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.reflect.annotation.ExceptionProxy;
 
 import java.io.*;
 import java.util.*;
@@ -95,6 +96,10 @@ public final class DataUtil {
       deserializedData.forEach(data -> LOG.info("inside DataUtil: {} {}", key, data));
       return new NonSerializedPartition(key, deserializedData, iterator.getNumSerializedBytes(),
           iterator.getNumEncodedBytes());
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return null;
     }
   }
 
