@@ -253,8 +253,10 @@ public final class DataUtil {
               encodedCountingStream = new CountingInputStream(buildInputStream(
                   serializedCountingStream, serializer.getDecodeStreamChainers()));
               decoder = serializer.getDecoderFactory().create(encodedCountingStream);
+              LOG.info("Got decoder");
             } else {
               cannotContinueDecoding = true;
+              LOG.info("Cannot continue decoding");
               return false;
             }
           }
@@ -263,6 +265,7 @@ public final class DataUtil {
           throw new RuntimeException(e);
         }
         try {
+          LOG.info("Entered decoding");
           next = decoder.decode();
           hasNext = true;
           return true;
