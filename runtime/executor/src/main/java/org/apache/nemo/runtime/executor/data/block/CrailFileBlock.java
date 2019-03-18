@@ -104,7 +104,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
   private void writeToFile(final Iterable<SerializedPartition<K>> serializedPartitions) throws Exception {
     final CrailBufferedOutputStream fileOutputStream = file.getBufferedOutputStream(0);
     for(final SerializedPartition<K> serializedPartition : serializedPartitions){
-      metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
+      metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getData().length);
       fileOutputStream.write(serializedPartition.getData());
       LOG.info(String.format("HY: Expected write = %d, actual write = %d", serializedPartition.getLength(), serializedPartition.getData().length));
     }
