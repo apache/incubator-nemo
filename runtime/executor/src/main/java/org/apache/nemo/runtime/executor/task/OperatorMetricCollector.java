@@ -47,7 +47,7 @@ public final class OperatorMetricCollector {
 
   private final boolean isMonitor;
 
-  private final List<Integer> latencyList = new LinkedList<>();
+  private final List<Integer> latencyList = new ArrayList<>();
 
   private int expectedCnt;
 
@@ -224,24 +224,29 @@ public final class OperatorMetricCollector {
     } else {
       final long cTime = System.currentTimeMillis();
       final int cnt = Math.min(1, latencyList.size());
-      final double samplingRate = Math.max(1.0, expectedCnt / (double) cnt);
       final Random random = new Random(cTime);
 
-      final Iterator<Integer> iterator = latencyList.iterator();
-      while (iterator.hasNext() && expectedCnt > 0) {
-        final Integer latency = iterator.next();
-        if (random.nextDouble() < samplingRate) {
+      if (latencyList.size() <= expectedCnt) {
+        for (final Integer latency : latencyList) {
           LOG.info("Event Latency {} from {} expectedCnt: {}", latency, irVertex.getId(), expectedCnt);
           expectedCnt -= 1;
-          iterator.remove();
         }
-      }
 
-      if (expectedCnt == 0) {
+        latencyList.clear();
+      } else {
+        // select!!
+        final Set<Integer> selectedIndex = new HashSet<>();
+        while (selectedIndex.size() < expectedCnt) {
+          final int index = random.nextInt(latencyList.size());
+          if (!selectedIndex.contains(index)) {
+            selectedIndex.add(index);
+            LOG.info("Event Latency {} from {} expectedCnt: {}", latencyList.get(index), irVertex.getId());
+          }
+        }
+
+        expectedCnt = 0;
         latencyList.clear();
       }
-
-      expectedCnt += evalConf.samplingCnt;
     }
   }
 
