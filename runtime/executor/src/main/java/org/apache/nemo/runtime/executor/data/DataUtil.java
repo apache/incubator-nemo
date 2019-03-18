@@ -270,6 +270,7 @@ public final class DataUtil {
           LOG.info("decoded");
           return true;
         } catch (final IOException e) {
+          LOG.info("IOException", e);
           // IOException from decoder indicates EOF event.
           numSerializedBytes += serializedCountingStream.getCount();
           numEncodedBytes += encodedCountingStream.getCount();
