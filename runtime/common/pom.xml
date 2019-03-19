@@ -41,11 +41,6 @@ under the License.
             <artifactId>nemo-conf</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>${postgresql.version}</version>
-        </dependency>
         <!-- GRPC -->
         <dependency>
             <groupId>io.grpc</groupId>

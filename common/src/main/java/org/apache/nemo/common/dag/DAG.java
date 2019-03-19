@@ -98,6 +98,14 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
   }
 
   @Override
+  public E getEdgeById(final String id) {
+    return incomingEdges.values().stream().flatMap(List::stream)
+      .filter(e -> e.getId().equals(id))
+      .findFirst()
+      .orElseThrow(() -> new IllegalEdgeOperationException("There is no edge of id: " + id));
+  }
+
+  @Override
   public List<V> getVertices() {
     return vertices;
   }

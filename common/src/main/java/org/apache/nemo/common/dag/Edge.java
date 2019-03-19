@@ -65,6 +65,15 @@ public class Edge<V extends Vertex> implements Serializable {
   }
 
   /**
+   * Method to restore String ID from the numeric ID.
+   * @param numericId the numeric id.
+   * @return the restored string ID.
+   */
+  public static final String restoreId(final Integer numericId) {
+    return "edge" + numericId;
+  }
+
+  /**
    * @return source vertex.
    */
   public final V getSrc() {

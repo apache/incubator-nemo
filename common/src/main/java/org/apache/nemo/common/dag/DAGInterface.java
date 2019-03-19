@@ -37,10 +37,17 @@ import java.util.function.Predicate;
 public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Serializable {
   /**
    * Retrieves the vertex given its ID.
-   * @param id of the vertex to retrieve
-   * @return the vertex
+   * @param id of the vertex to retrieve.
+   * @return the vertex.
    */
   V getVertexById(final String id);
+
+  /**
+   * Retrieves the edge given its ID.
+   * @param id of the edge to retrieve.
+   * @return the edge.
+   */
+  E getEdgeById(final String id);
 
   /**
    * Retrieves the vertices of this DAG.

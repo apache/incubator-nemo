@@ -42,6 +42,13 @@ public abstract class ExecutionProperty<T extends Serializable> implements Seria
     return this.value;
   }
 
+  /**
+   * @return the class of the value type.
+   */
+  public final Class<? extends Serializable> getValueClass() {
+    return this.value.getClass();
+  }
+
   @Override
   public final boolean equals(final Object o) {
     if (this == o) {

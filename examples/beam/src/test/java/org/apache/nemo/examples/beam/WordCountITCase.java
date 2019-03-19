@@ -23,6 +23,7 @@ import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.ConditionalLargeShufflePolicy;
+import org.apache.nemo.compiler.optimizer.policy.XGBoostPolicy;
 import org.apache.nemo.examples.beam.policy.*;
 import org.junit.After;
 import org.junit.Before;
@@ -125,6 +126,16 @@ public final class WordCountITCase {
       .addJobId(WordCountITCase.class.getSimpleName() + "_speculative")
       .addMaxTaskAttempt(Integer.MAX_VALUE)
       .addOptimizationPolicy(AggressiveSpeculativeCloningPolicyParallelismFive.class.getCanonicalName())
+      .build());
+  }
+
+  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  public void testXGBoost() throws Exception {
+    JobLauncher.main(builder
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WordCountITCase.class.getSimpleName() + "_xgboost")
+      .addMaxTaskAttempt(Integer.MAX_VALUE)
+      .addOptimizationPolicy(XGBoostPolicy.class.getCanonicalName())
       .build());
   }
 }

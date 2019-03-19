@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.nemo.common.MetricUtils;
 import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.exception.UnsupportedMetricException;
 import org.apache.nemo.runtime.common.metric.*;
@@ -68,6 +69,12 @@ public final class MetricStore {
     private static final MetricStore INSTANCE = new MetricStore();
   }
 
+  /**
+   * Get the metric class by its name.
+   * @param className the name of the class.
+   * @param <T> type of the metric.
+   * @return the class of the type of the metric.
+   */
   public <T extends Metric> Class<T> getMetricClassByName(final String className) {
     if (!metricList.keySet().contains(className)) {
       throw new NoSuchElementException();
@@ -221,13 +228,14 @@ public final class MetricStore {
   /**
    * Save the job metrics for the optimization to the DB, in the form of LibSVM, to a local SQLite DB.
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
+   * @param jobId The ID of the job which we record the metrics of.
    */
-  private void saveOptimizationMetricsToLocal() {
+  private void saveOptimizationMetricsToLocal(final String jobId) {
     final String[] syntax = {"INTEGER PRIMARY KEY AUTOINCREMENT"};
 
     try (final Connection c = DriverManager.getConnection(MetricUtils.SQLITE_DB_NAME)) {
       LOG.info("Opened database successfully at {}", MetricUtils.SQLITE_DB_NAME);
-      saveOptimizationMetrics(c, syntax);
+      saveOptimizationMetrics(jobId, c, syntax);
     } catch (SQLException e) {
       LOG.error("Error while saving optimization metrics to SQLite: {}", e);
     }
@@ -236,32 +244,38 @@ public final class MetricStore {
   /**
    * Save the job metrics for the optimization to the DB, in the form of LibSVM, to a remote DB, if applicable.
    * The metrics are as follows: the JCT (duration), and the IR DAG execution properties.
+   * @param address Address to the DB.
+   * @param jobId Job ID, of which we record the metrics.
+   * @param dbId the ID of the DB.
+   * @param dbPasswd the Password to the DB.
    */
-  public void saveOptimizationMetricsToDB(final String address, final String id, final String passwd) {
+  public void saveOptimizationMetricsToDB(final String address, final String jobId,
+                                          final String dbId, final String dbPasswd) {
     final String[] syntax = {"SERIAL PRIMARY KEY"};
 
     if (!MetricUtils.metaDataLoaded()) {
-      saveOptimizationMetricsToLocal();
+      saveOptimizationMetricsToLocal(jobId);
       return;
     }
 
-    try (final Connection c = DriverManager.getConnection(address, id, passwd)) {
+    try (final Connection c = DriverManager.getConnection(address, dbId, dbPasswd)) {
       LOG.info("Opened database successfully at {}", MetricUtils.POSTGRESQL_METADATA_DB_NAME);
       MetricUtils.deregisterBeamDriver();
-      saveOptimizationMetrics(c, syntax);
+      saveOptimizationMetrics(jobId, c, syntax);
     } catch (SQLException e) {
       LOG.error("Error while saving optimization metrics to PostgreSQL: {}", e);
       LOG.info("Saving metrics on the local SQLite DB");
-      saveOptimizationMetricsToLocal();
+      saveOptimizationMetricsToLocal(jobId);
     }
   }
 
   /**
    * Save the job metrics for the optimization to the DB, in the form of LibSVM.
+   * @param jobId the ID of the job.
    * @param c the connection to the DB.
    * @param syntax the db-specific syntax.
    */
-  private void saveOptimizationMetrics(final Connection c, final String[] syntax) {
+  private void saveOptimizationMetrics(final String jobId, final Connection c, final String[] syntax) {
     try (final Statement statement = c.createStatement()) {
       statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
@@ -287,8 +301,18 @@ public final class MetricStore {
           .getOperatingSystemMXBean()).getTotalPhysicalMemorySize();
 
         try {
+          if (c.getMetaData().getDatabaseProductName().contains("PostgreSQL")) {
+            try {
+              MetricUtils.insertOrUpdateMetadata(c, tableName, jobId);
+              LOG.info("Recorded data for {}, which has job ID: {}", tableName, jobId);
+            } catch (SQLException e) {
+              // DO NOTHING, this is trivial.
+              LOG.warn("Couldn't record the metadata for {}, which has job ID: {}", tableName, jobId);
+            }
+          }
+
           statement.executeUpdate("CREATE TABLE IF NOT EXISTS " + tableName
-              + " (id " + syntax[0] + ", duration INTEGER NOT NULL, inputsize INTEGER NOT NULL, "
+              + " (id " + syntax[0] + ", duration BIGINT NOT NULL, inputsize BIGINT NOT NULL, "
               + "jvmmemsize BIGINT NOT NULL, memsize BIGINT NOT NULL, "
               + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL, "
               + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);");

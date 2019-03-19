@@ -16,28 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.nemo.common.exception;
 
-
 /**
- * IllegalEdgeOperationException.
- * Thrown when an operation is conducted with a {org.apache.nemo.runtime.common.plan.stage.StageEdge}
- * that is unknown/invalid/out of scope.
+ * DeprecationException.
+ * Thrown when calling for deprecated APIs or when using deprecated data.
  */
-public final class IllegalEdgeOperationException extends RuntimeException {
+public class DeprecationException extends RuntimeException {
   /**
-   * IllegalEdgeOperationException.
-   * @param cause cause
+   * Constructor of DeprecationException.
+   *
+   * @param cause cause.
    */
-  public IllegalEdgeOperationException(final Throwable cause) {
+  public DeprecationException(final Throwable cause) {
     super(cause);
   }
 
   /**
-   * IllegalEdgeOperationException.
+   * Constructor of DeprecationException.
+   *
    * @param message message.
    */
-  public IllegalEdgeOperationException(final String message) {
+  public DeprecationException(final String message) {
     super(message);
   }
 }

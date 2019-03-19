@@ -20,8 +20,8 @@ package org.apache.nemo.common.ir;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Sets;
-import org.apache.nemo.common.KeyExtractor;
-import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.MetricUtils;
+import org.apache.nemo.common.PairKeyExtractor;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
@@ -70,6 +70,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   private DAG<IRVertex, IREdge> dagSnapshot; // the DAG that was saved most recently.
   private DAG<IRVertex, IREdge> modifiedDAG; // the DAG that is being updated.
 
+  private String environmentType = "";
+
   // To remember original encoders/decoders, and etc
   private final Map<StreamVertex, IREdge> streamVertexToOriginalEdge;
 
@@ -110,10 +112,27 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     return canAdvance;
   }
 
+  /**
+   * @return a IR DAG summary string, consisting of only the original vertices generated from the frontend.
+   */
   public String irDAGSummary() {
-    return "RV" + getRootVertices().size() + "_V" + getVertices().size() + "_E" + getVertices().stream()
+    return "rv" + this.getRootVertices().size()
+      + "_v" + this.getVertices().stream()
+      .filter(v -> !v.getClass().getPackage().getName().contains("vertex.utility"))  // Exclude utility vertices
+      .count()
+      + "_e" + this.getVertices().stream()
+      .filter(v -> !v.getClass().getPackage().getName().contains("vertex.utility"))  // Exclude utility vertices
       .mapToInt(v -> getIncomingEdgesOf(v).size())
-      .sum();
+      .sum()
+      + this.environmentType;
+  }
+
+  /**
+   * Method to set the environment type.
+   * @param environmentType the environment type.
+   */
+  public void setEnvironmentType(final String environmentType) {
+    this.environmentType = MetricUtils.filterEnvironmentTypeString(environmentType);
   }
 
   ////////////////////////////////////////////////// Methods for reshaping the DAG topology.
@@ -199,14 +218,12 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       modifiedDAG.getOutgoingEdgesOf(vertexToDelete).stream()
         .filter(e -> !Util.isControlEdge(e))
         .map(IREdge::getDst)
-        .forEach(dstVertex -> {
+        .forEach(dstVertex ->
           modifiedDAG.getIncomingEdgesOf(vertexToDelete).stream()
             .filter(e -> !Util.isControlEdge(e))
             .map(IREdge::getSrc)
-            .forEach(srcVertex-> { builder.connectVertices(
-              Util.cloneEdge(streamVertexToOriginalEdge.get(vertexToDelete), srcVertex, dstVertex));
-            });
-        });
+            .forEach(srcVertex -> builder.connectVertices(
+              Util.cloneEdge(streamVertexToOriginalEdge.get(vertexToDelete), srcVertex, dstVertex))));
       modifiedDAG = builder.buildWithoutSourceSinkCheck();
     } else if (vertexToDelete instanceof MessageAggregatorVertex || vertexToDelete instanceof MessageBarrierVertex) {
       modifiedDAG = rebuildExcluding(modifiedDAG, vertexGroupToDelete).buildWithoutSourceSinkCheck();
@@ -581,16 +598,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     newEdge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     newEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     newEdge.setProperty(DataFlowProperty.of(DataFlowProperty.Value.Push));
-    final KeyExtractor pairKeyExtractor = (element) -> {
-      if (element instanceof Pair) {
-        return ((Pair) element).left();
-      } else {
-        throw new IllegalStateException(element.toString());
-      }
-    };
     newEdge.setPropertyPermanently(encoder);
     newEdge.setPropertyPermanently(decoder);
-    newEdge.setPropertyPermanently(KeyExtractorProperty.of(pairKeyExtractor));
+    newEdge.setPropertyPermanently(KeyExtractorProperty.of(new PairKeyExtractor()));
 
     // TODO #345: Simplify insert(MessageBarrierVertex)
     // these are obviously wrong, but hacks for now...
@@ -653,6 +663,11 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   @Override
   public IRVertex getVertexById(final String id) {
     return modifiedDAG.getVertexById(id);
+  }
+
+  @Override
+  public IREdge getEdgeById(final String id) {
+    return modifiedDAG.getEdgeById(id);
   }
 
   @Override
