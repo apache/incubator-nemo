@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -184,8 +185,11 @@ public final class LoopExtractionPass extends ReshapingPass {
    */
   private DAG<IRVertex, IREdge> loopRolling(final DAG<IRVertex, IREdge> dag) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+    // Map for LoopVertex --> RootLoopVertex
     final HashMap<LoopVertex, LoopVertex> loopVerticesOfSameLoop = new HashMap<>();
+    // RootLoopVertex --> Map of (RolledVertex --> (Root)Vertex)
     final HashMap<LoopVertex, HashMap<IRVertex, IRVertex>> equivalentVerticesOfLoops = new HashMap<>();
+    // The RootLoopVertex that we're processing now.
     LoopVertex rootLoopVertex = null;
 
     // observe the DAG in a topological order.
@@ -203,8 +207,10 @@ public final class LoopExtractionPass extends ReshapingPass {
           rootLoopVertex = loopVertex;
           loopVerticesOfSameLoop.putIfAbsent(rootLoopVertex, rootLoopVertex);
           equivalentVerticesOfLoops.putIfAbsent(rootLoopVertex, new HashMap<>());
+          // Add the initial vertices
           for (IRVertex vertex : rootLoopVertex.getDAG().getTopologicalSort()) {
             equivalentVerticesOfLoops.get(rootLoopVertex).putIfAbsent(vertex, vertex);
+            IdManager.saveVertexId(vertex, vertex.getId());
           }
           addVertexToBuilder(builder, dag, rootLoopVertex, loopVerticesOfSameLoop);
         } else { // following loops
@@ -218,9 +224,13 @@ public final class LoopExtractionPass extends ReshapingPass {
           final Iterator<IRVertex> verticesOfRootLoopVertex =
               finalRootLoopVertex.getDAG().getTopologicalSort().iterator();
           final Iterator<IRVertex> verticesOfCurrentLoopVertex = loopVertex.getDAG().getTopologicalSort().iterator();
+          // Map of (RolledVertex --> (Root)Vertex)
           final HashMap<IRVertex, IRVertex> equivalentVertices = equivalentVerticesOfLoops.get(finalRootLoopVertex);
           while (verticesOfRootLoopVertex.hasNext() && verticesOfCurrentLoopVertex.hasNext()) {
-            equivalentVertices.put(verticesOfCurrentLoopVertex.next(), verticesOfRootLoopVertex.next());
+            final IRVertex vertexOfCurrentLoopVertex = verticesOfCurrentLoopVertex.next();
+            final IRVertex vertexOfRootLoopVertex = verticesOfRootLoopVertex.next();
+            equivalentVertices.put(vertexOfCurrentLoopVertex, vertexOfRootLoopVertex);
+            IdManager.saveVertexId(vertexOfRootLoopVertex, vertexOfCurrentLoopVertex.getId());
           }
 
           // reset non iterative incoming edges.
@@ -230,7 +240,7 @@ public final class LoopExtractionPass extends ReshapingPass {
           // incoming edges to the DAG.
           loopVertex.getDagIncomingEdges().forEach((dstVertex, edges) -> edges.forEach(edge -> {
             final IRVertex srcVertex = edge.getSrc();
-            final IRVertex equivalentDstVertex = equivalentVertices.get(dstVertex);
+            final IRVertex equivalentDstVertex = equivalentVertices.get(dstVertex);  // find the (Root)Vertex
 
             if (equivalentVertices.containsKey(srcVertex)) {
               // src is from the previous loop. vertex in previous loop -> DAG.

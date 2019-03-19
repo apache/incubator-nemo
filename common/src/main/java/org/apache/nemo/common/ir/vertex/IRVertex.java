@@ -50,9 +50,9 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
    * @param that the source object for copying
    */
   public IRVertex(final IRVertex that) {
-    super(IdManager.newVertexId());
+    super(IdManager.getVertexId(that));
     this.executionProperties = ExecutionPropertyMap.of(this);
-    that.getExecutionProperties().forEachProperties(this::setProperty);
+    that.copyExecutionPropertiesTo(this);
   }
 
   /**

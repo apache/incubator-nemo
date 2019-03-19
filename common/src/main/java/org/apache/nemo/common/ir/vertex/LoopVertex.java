@@ -72,7 +72,7 @@ public final class LoopVertex extends IRVertex {
    *
    * @param that the source object for copying
    */
-  public LoopVertex(final LoopVertex that) {
+  private LoopVertex(final LoopVertex that) {
     super(that);
     this.compositeTransformFullName = new String(that.compositeTransformFullName);
     // Copy all elements to the clone
