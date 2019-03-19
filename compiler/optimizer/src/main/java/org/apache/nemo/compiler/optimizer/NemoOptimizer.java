@@ -32,6 +32,8 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.ClientRPC;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -46,6 +48,7 @@ import java.util.stream.Collectors;
 public final class NemoOptimizer implements Optimizer {
   private final String dagDirectory;
   private final Policy optimizationPolicy;
+  private final ClientRPC clientRPC;
 
   private final Map<UUID, Integer> cacheIdToParallelism = new HashMap<>();
   private int irDagCount = 0;
@@ -54,11 +57,14 @@ public final class NemoOptimizer implements Optimizer {
   /**
    * @param dagDirectory to store JSON representation of intermediate DAGs.
    * @param policyName the name of the optimization policy.
+   * @param clientRPC the RPC channel to communicate with the client.
    */
   @Inject
   private NemoOptimizer(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
-                        @Parameter(JobConf.OptimizationPolicy.class) final String policyName) {
+                        @Parameter(JobConf.OptimizationPolicy.class) final String policyName,
+                        final ClientRPC clientRPC) {
     this.dagDirectory = dagDirectory;
+    this.clientRPC = clientRPC;
 
     try {
       optimizationPolicy = (Policy) Class.forName(policyName).newInstance();
@@ -86,7 +92,7 @@ public final class NemoOptimizer implements Optimizer {
     }
 
     // Conduct compile-time optimization.
-
+    beforeCompileTimeOptimization(dag, optimizationPolicy);
     optimizedDAG = optimizationPolicy.runCompileTimeOptimization(cacheFilteredDag, dagDirectory);
     optimizedDAG
       .storeJSON(dagDirectory, irDagId + optimizationPolicy.getClass().getSimpleName(),
@@ -111,6 +117,21 @@ public final class NemoOptimizer implements Optimizer {
   @Override
   public IRDAG optimizeAtRunTime(final IRDAG dag, final Message message) {
     return optimizationPolicy.runRunTimeOptimizations(dag, message);
+  }
+
+  /**
+   * Operations to be done prior to the Compile-Time Optimizations.
+   * @param dag the DAG to process.
+   * @param policy the optimization policy to optimize the DAG with.
+   */
+  private void beforeCompileTimeOptimization(final IRDAG dag, final Policy policy) {
+    if (policy.getClass().getName().contains("XGBoost")) {
+      clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+        .setType(ControlMessage.DriverToClientMessageType.LaunchXGBoostScript)
+        .setDataCollected(ControlMessage.DataCollectMessage.newBuilder()
+          .setData(dag.irDAGSummary()).build())
+        .build());
+    }
   }
 
   /**

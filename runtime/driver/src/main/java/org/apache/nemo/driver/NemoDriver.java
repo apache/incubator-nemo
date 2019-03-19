@@ -18,13 +18,14 @@
  */
 package org.apache.nemo.driver;
 
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageParameters;
-import org.apache.nemo.runtime.master.ClientRPC;
+import org.apache.nemo.runtime.common.message.ClientRPC;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
 import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
@@ -111,6 +112,8 @@ public final class NemoDriver {
     this.clientRPC = clientRPC;
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Notification, message ->
+      Util.pushMessageBuffer(message.getMessage()));
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
       startSchedulingUserDAG(message.getLaunchDAG().getDag());
       final Map<Serializable, Object> broadcastVars =

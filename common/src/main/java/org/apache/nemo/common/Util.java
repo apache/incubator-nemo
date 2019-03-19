@@ -34,6 +34,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -43,7 +45,8 @@ import java.util.stream.Stream;
  */
 public final class Util {
   // Assume that this tag is never used in user application
-  public static final String CONTROL_EDGE_TAG = "CONTROL_EDGE";
+  private static final String CONTROL_EDGE_TAG = "CONTROL_EDGE";
+  private static final BlockingQueue<String> MESSAGE_BUFFER = new LinkedBlockingQueue<>();
 
   private static Instrumentation instrumentation;
 
@@ -77,6 +80,24 @@ public final class Util {
       return System.getProperty("user.dir");
     } catch (IOException e) {
       throw new MetricException(e);
+    }
+  }
+
+  /**
+   * @param message push the message to the message buffer.
+   */
+  public static void pushMessageBuffer(final String message) {
+    MESSAGE_BUFFER.add(message);
+  }
+
+  /**
+   * @return the message buffer.
+   */
+  public static String takeFromMessageBuffer() {
+    try {
+      return MESSAGE_BUFFER.take();
+    } catch (InterruptedException e) {
+      throw new MetricException("Interrupted while waiting for message: " + e);
     }
   }
 

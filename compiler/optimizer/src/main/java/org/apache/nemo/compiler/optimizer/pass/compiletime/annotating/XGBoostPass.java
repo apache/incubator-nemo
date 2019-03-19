@@ -33,8 +33,6 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -56,24 +54,11 @@ public final class XGBoostPass extends AnnotatingPass {
   @Override
   public IRDAG apply(final IRDAG dag) {
     try {
-      // First, run the script.
-      final String projectRootPath = Util.fetchProjectRootPath();
-      final String scriptPath = projectRootPath + "/bin/xgboost_optimization.sh";
-      final String[] command = {scriptPath, dag.irDAGSummary()};
-      LOG.info("Running the python script at {}", scriptPath);
-      final ProcessBuilder builder = new ProcessBuilder(command);
-      builder.directory(new File(projectRootPath));
-      final Process process = builder.start();
-      final int exitcode = process.waitFor();
-      assert exitcode == 0;
-      LOG.info("Python script execution complete!");
-
-      // Second, read the results.
-      final String resultsFile = projectRootPath + "/ml/results.out";
-      LOG.info("Reading the results of the script at {}", resultsFile);
+      final String message = Util.takeFromMessageBuffer();
+      LOG.info("Received message from the client: {}", message);
       ObjectMapper mapper = new ObjectMapper();
       List<Map<String, String>> listOfMap =
-        mapper.readValue(new File(resultsFile), new TypeReference<List<Map<String, String>>>() {
+        mapper.readValue(message, new TypeReference<List<Map<String, String>>>() {
         });
       for (final Map<String, String> m : listOfMap) {
         final Pair<String, Integer> idAndEPKey = MetricUtils.stringToIdAndEPKeyIndex(m.get("feature"));
@@ -88,9 +73,6 @@ public final class XGBoostPass extends AnnotatingPass {
         }
       }
     } catch (final DeprecationException e) {
-      LOG.warn(e.getMessage());
-      return dag;
-    } catch (final FileNotFoundException e) {
       LOG.warn(e.getMessage());
       return dag;
     } catch (final Exception e) {

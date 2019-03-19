@@ -17,6 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp examples/spark/target/nemo-examples-spark-$(mvn -q \
+VERSION=$(mvn -q \
   -Dexec.executable=echo -Dexec.args='${project.version}' \
-  --non-recursive exec:exec)-shaded.jar:`yarn classpath` org.apache.nemo.client.JobLauncher "$@"
+  --non-recursive exec:exec)
+
+java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp examples/spark/target/nemo-examples-spark-${VERSION}-shaded.jar:`yarn classpath` org.apache.nemo.client.JobLauncher "$@"

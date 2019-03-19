@@ -20,6 +20,7 @@
 package org.apache.nemo.common;
 
 import com.google.common.collect.HashBiMap;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
@@ -34,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.sql.*;
@@ -220,9 +222,9 @@ public final class MetricUtils {
                                   final Integer numericId, final ExecutionProperty<?> ep) {
     // Formatted into 9 digits: 0:vertex/edge 1-5:ID 5-9:EP Index.
     builder.append(idx);
-    builder.append(String.format("04%d", numericId));
+    builder.append(String.format("%04d", numericId));
     final Integer epKeyIndex = getEpKeyIndex(ep);
-    builder.append(String.format("04%d", epKeyIndex));
+    builder.append(String.format("%04d", epKeyIndex));
 
     // Format value to an index.
     builder.append(":");
@@ -413,6 +415,34 @@ public final class MetricUtils {
       throw new MetricException(e);
     }
     return ep;
+  }
+
+  /**
+   * launches the XGBoost Script.
+   * @param irDagSummary the IR DAG to run the script for.
+   * @return the results file converted into string.
+   */
+  public static String launchXGBoostScript(final String irDagSummary) {
+    try {
+      final String projectRootPath = Util.fetchProjectRootPath();
+      final String scriptPath = projectRootPath + "/bin/xgboost_optimization.sh";
+      final String[] command = {scriptPath, irDagSummary};
+      LOG.info("Running the python script at {}", scriptPath);
+      final ProcessBuilder builder = new ProcessBuilder(command);
+      builder.directory(new File(projectRootPath));
+      builder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+      builder.redirectError(ProcessBuilder.Redirect.INHERIT);
+      final Process process = builder.start();
+      final int exitcode = process.waitFor();
+      assert exitcode == 0;
+      LOG.info("Python script execution complete!");
+
+      final String resultsFile = projectRootPath + "/ml/results.out";
+      LOG.info("Reading the results of the script at {}", resultsFile);
+      return FileUtils.readFileToString(new File(resultsFile));
+    } catch (Exception e) {
+      throw new MetricException(e);
+    }
   }
 
   /**

@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.client;
 
-import org.apache.nemo.runtime.master.ClientRPC;
+import org.apache.nemo.runtime.common.message.ClientRPC;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;

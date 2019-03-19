@@ -18,9 +18,9 @@
  */
 package org.apache.nemo.examples.beam;
 
-import org.apache.beam.sdk.PipelineRunner;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.nemo.client.beam.NemoRunner;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 
 /**
@@ -37,13 +37,7 @@ final class NemoPipelineOptionsFactory {
    */
   public static PipelineOptions create() {
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
-    try {
-      options.setRunner((Class<? extends PipelineRunner<?>>)
-        Class.forName("org.apache.nemo.client.beam.NemoRunner"));
-      return options;
-    } catch (final ClassNotFoundException e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
+    options.setRunner(NemoRunner.class);
+    return options;
   }
 }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.master;
+package org.apache.nemo.runtime.common.message;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.nemo.conf.JobConf;

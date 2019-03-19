@@ -23,14 +23,17 @@ package protobuf;
 option java_package = "org.apache.nemo.runtime.common.comm";
 option java_outer_classname = "ControlMessage";
 
+// Messages from client to driver
 enum ClientToDriverMessageType {
     LaunchDAG = 0;
     DriverShutdown = 1;
+    Notification = 2;
 }
 
 message ClientToDriverMessage {
     required ClientToDriverMessageType type = 1;
     optional LaunchDAGMessage launchDAG = 2;
+    optional string message = 3;
 }
 
 message LaunchDAGMessage {
@@ -38,21 +41,24 @@ message LaunchDAGMessage {
     optional bytes broadcastVars = 2;
 }
 
-message DataCollectMessage {
-    required string data = 1;
-}
-
+// Messages from driver to client
 enum DriverToClientMessageType {
     DriverStarted = 0;
     DriverReady = 1;
     DataCollected = 2;
     ExecutionDone = 3;
+    LaunchXGBoostScript = 4;
 }
 
 message DriverToClientMessage {
     required DriverToClientMessageType type = 1;
     optional DataCollectMessage dataCollected = 2;
 }
+
+message DataCollectMessage {
+    required string data = 1;
+}
+
 
 enum MessageType {
     TaskStateChanged = 0;
@@ -158,7 +164,6 @@ message MetricMsg {
 }
 
 // Messages between Executors
-
 enum ByteTransferDataDirection {
     INITIATOR_SENDS_DATA = 0;
     INITIATOR_RECEIVES_DATA = 1;

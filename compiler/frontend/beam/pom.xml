@@ -27,6 +27,7 @@ under the License.
 
   <artifactId>nemo-compiler-frontend-beam</artifactId>
   <name>Nemo Compiler Frontend: Beam</name>
+  <packaging>jar</packaging>
 
   <dependencies>
     <dependency>
@@ -60,7 +61,5 @@ under the License.
       <scope>provided</scope>
     </dependency>
     <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk -->
-
-
   </dependencies>
 </project>

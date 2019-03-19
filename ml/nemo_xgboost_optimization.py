@@ -280,7 +280,7 @@ for lr in learning_rates:
   bst = xgb.train(param, dtrain, num_round, watchlist, early_stopping_rounds=5)
 
   preds = bst.predict(dtest)
-  error = (sum(1 for i in range(len(preds)) if abs(preds[i] - labels[i]) > allowance) / float(len(preds)))
+  error = (sum(1 for i in range(len(preds)) if abs(preds[i] - labels[i]) > allowance) / float(len(preds))) if len(preds) > 0 else 1.0
   print('error=%f' % error)
 
   ## Better booster
