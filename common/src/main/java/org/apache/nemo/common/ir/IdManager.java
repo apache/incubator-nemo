@@ -52,6 +52,7 @@ public final class IdManager {
 
   /**
    * Save the vertex id for the vertices that can be cloned later on.
+   * WARN: this should guarantee that the vertex is no longer used, otherwise, it would result in duplicate IDs.
    * @param v the original vertex that is to be cloned later on (RootLoopVertex's vertex).
    * @param id The IDs of the identical vertices.
    */
@@ -63,6 +64,8 @@ public final class IdManager {
   /**
    * Used for cloning vertices. If an existing ID exists, it returns the unused ID,
    * otherwise simply acts as the newVertexId method.
+   * WARN: the #saveVertexId method should no longer use the ID saved at that moment,
+   * in order for this method to work correctly.
    * @param v the vertex to get the ID for.
    * @return the ID for the vertex.
    */
