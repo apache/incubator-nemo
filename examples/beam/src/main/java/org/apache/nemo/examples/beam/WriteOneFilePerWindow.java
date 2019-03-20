@@ -30,9 +30,10 @@ import org.apache.beam.sdk.values.PDone;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 import javax.annotation.Nullable;
-import static org.apache.beam.repackaged.beam_runners_core_java.com.google.common.base.MoreObjects.firstNonNull;
 
- /**
+import static com.google.common.base.MoreObjects.firstNonNull;
+
+/**
   * This class is brought from beam/examples/common/WriteOneFilePerWindow.java.
   *
   */

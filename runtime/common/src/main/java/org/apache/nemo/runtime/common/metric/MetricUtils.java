@@ -36,7 +36,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.*;
-import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Stream;
 
@@ -80,7 +79,6 @@ public final class MetricUtils {
    */
   private static Pair<HashBiMap<Integer, Class<? extends ExecutionProperty>>,
     HashBiMap<Pair<Integer, Integer>, ExecutionProperty<?>>> loadMetaData() {
-    deregisterBeamDriver();
     try (final Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
       "postgres", "fake_password")) {
       try (final Statement statement = c.createStatement()) {
@@ -145,7 +143,6 @@ public final class MetricUtils {
     }
     LOG.info("Saving Metadata..");
 
-    deregisterBeamDriver();
     try (final Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
       "postgres", "fake_password")) {
       try (final Statement statement = c.createStatement()) {
@@ -292,25 +289,6 @@ public final class MetricUtils {
       }
     } catch (IOException e) {
       throw new MetricException(e);
-    }
-  }
-
-  /**
-   * De-register Beam JDBC driver, which produces inconsistent results.
-   */
-  public static void deregisterBeamDriver() {
-    final String beamDriver = "org.apache.beam.sdk.extensions.sql.impl.JdbcDriver";
-    final Enumeration<Driver> drivers = DriverManager.getDrivers();
-    while (drivers.hasMoreElements()) {
-      final Driver d = drivers.nextElement();
-      if (d.getClass().getName().equals(beamDriver)) {
-        try {
-          DriverManager.deregisterDriver(d);
-        } catch (SQLException e) {
-          throw new MetricException(e);
-        }
-        break;
-      }
     }
   }
 }
