@@ -33,12 +33,17 @@ enum ClientToDriverMessageType {
 message ClientToDriverMessage {
     required ClientToDriverMessageType type = 1;
     optional LaunchDAGMessage launchDAG = 2;
-    optional string message = 3;
+    optional NotificationMessage message = 3;
 }
 
 message LaunchDAGMessage {
     required string dag = 1;
     optional bytes broadcastVars = 2;
+}
+
+message NotificationMessage {
+    required string type = 1;
+    required string data = 2;
 }
 
 // Messages from driver to client
@@ -47,18 +52,18 @@ enum DriverToClientMessageType {
     DriverReady = 1;
     DataCollected = 2;
     ExecutionDone = 3;
-    LaunchXGBoostScript = 4;
+    LaunchOptimization = 4;
 }
 
 message DriverToClientMessage {
     required DriverToClientMessageType type = 1;
     optional DataCollectMessage dataCollected = 2;
+    optional string optimizationType = 3;
 }
 
 message DataCollectMessage {
     required string data = 1;
 }
-
 
 enum MessageType {
     TaskStateChanged = 0;

@@ -23,7 +23,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.nemo.common.MetricUtils;
+import org.apache.nemo.runtime.common.metric.MetricUtils;
 import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.exception.UnsupportedMetricException;
 import org.apache.nemo.runtime.common.metric.*;
@@ -233,6 +233,12 @@ public final class MetricStore {
   private void saveOptimizationMetricsToLocal(final String jobId) {
     final String[] syntax = {"INTEGER PRIMARY KEY AUTOINCREMENT"};
 
+    try {
+      Class.forName("org.sqlite.JDBC");
+    } catch (ClassNotFoundException e) {
+      throw new MetricException("SQLite Driver not loaded: " + e);
+    }
+
     try (final Connection c = DriverManager.getConnection(MetricUtils.SQLITE_DB_NAME)) {
       LOG.info("Opened database successfully at {}", MetricUtils.SQLITE_DB_NAME);
       saveOptimizationMetrics(jobId, c, syntax);
@@ -260,7 +266,6 @@ public final class MetricStore {
 
     try (final Connection c = DriverManager.getConnection(address, dbId, dbPasswd)) {
       LOG.info("Opened database successfully at {}", MetricUtils.POSTGRESQL_METADATA_DB_NAME);
-      MetricUtils.deregisterBeamDriver();
       saveOptimizationMetrics(jobId, c, syntax);
     } catch (SQLException e) {
       LOG.error("Error while saving optimization metrics to PostgreSQL: {}", e);
@@ -301,28 +306,18 @@ public final class MetricStore {
           .getOperatingSystemMXBean()).getTotalPhysicalMemorySize();
 
         try {
-          if (c.getMetaData().getDatabaseProductName().contains("PostgreSQL")) {
-            try {
-              MetricUtils.insertOrUpdateMetadata(c, tableName, jobId);
-              LOG.info("Recorded data for {}, which has job ID: {}", tableName, jobId);
-            } catch (SQLException e) {
-              // DO NOTHING, this is trivial.
-              LOG.warn("Couldn't record the metadata for {}, which has job ID: {}", tableName, jobId);
-            }
-          }
-
           statement.executeUpdate("CREATE TABLE IF NOT EXISTS " + tableName
               + " (id " + syntax[0] + ", duration BIGINT NOT NULL, inputsize BIGINT NOT NULL, "
               + "jvmmemsize BIGINT NOT NULL, memsize BIGINT NOT NULL, "
               + "vertex_properties TEXT NOT NULL, edge_properties TEXT NOT NULL, "
-              + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);");
+              + "note TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);");
           LOG.info("CREATED TABLE For {} IF NOT PRESENT", tableName);
 
           statement.executeUpdate("INSERT INTO " + tableName
-            + " (duration, inputsize, jvmmemsize, memsize, vertex_properties, edge_properties) "
+            + " (duration, inputsize, jvmmemsize, memsize, vertex_properties, edge_properties, note) "
             + "VALUES (" + duration + ", " + inputSize + ", "
             + jvmMemSize + ", " + memSize + ", '"
-            + vertexProperties + "', '" + edgeProperties + "');");
+            + vertexProperties + "', '" + edgeProperties + "', '" + jobId + "');");
           LOG.info("Recorded metrics on the table for {}", tableName);
         } catch (SQLException e) {
           LOG.error("Error while saving optimization metrics: {}", e);

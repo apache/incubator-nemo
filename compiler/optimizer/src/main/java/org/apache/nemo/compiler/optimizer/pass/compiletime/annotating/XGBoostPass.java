@@ -21,15 +21,15 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.nemo.common.MetricUtils;
+import org.apache.nemo.runtime.common.metric.MetricUtils;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.Util;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
 import org.apache.nemo.common.exception.DeprecationException;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import org.apache.nemo.compiler.optimizer.OptimizerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,14 +54,14 @@ public final class XGBoostPass extends AnnotatingPass {
   @Override
   public IRDAG apply(final IRDAG dag) {
     try {
-      final String message = Util.takeFromMessageBuffer();
+      final String message = OptimizerUtils.takeFromMessageBuffer();
       LOG.info("Received message from the client: {}", message);
       ObjectMapper mapper = new ObjectMapper();
       List<Map<String, String>> listOfMap =
         mapper.readValue(message, new TypeReference<List<Map<String, String>>>() {
         });
       for (final Map<String, String> m : listOfMap) {
-        final Pair<String, Integer> idAndEPKey = MetricUtils.stringToIdAndEPKeyIndex(m.get("feature"));
+        final Pair<String, Integer> idAndEPKey = OptimizerUtils.stringToIdAndEPKeyIndex(m.get("feature"));
         LOG.info("Tuning: {} of {} should be {} than {}",
           idAndEPKey.right(), idAndEPKey.left(), m.get("val"), m.get("split"));
         final ExecutionProperty<? extends Serializable> newEP = MetricUtils.pairAndValueToEP(idAndEPKey.right(),

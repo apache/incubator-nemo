@@ -48,6 +48,7 @@ import java.util.stream.Collectors;
 public final class NemoOptimizer implements Optimizer {
   private final String dagDirectory;
   private final Policy optimizationPolicy;
+  private final String environmentType;
   private final ClientRPC clientRPC;
 
   private final Map<UUID, Integer> cacheIdToParallelism = new HashMap<>();
@@ -57,13 +58,16 @@ public final class NemoOptimizer implements Optimizer {
   /**
    * @param dagDirectory to store JSON representation of intermediate DAGs.
    * @param policyName the name of the optimization policy.
+   * @param environmentType the environment type of the workload to optimize the DAG for.
    * @param clientRPC the RPC channel to communicate with the client.
    */
   @Inject
   private NemoOptimizer(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                         @Parameter(JobConf.OptimizationPolicy.class) final String policyName,
+                        @Parameter(JobConf.EnvironmentType.class) final String environmentType,
                         final ClientRPC clientRPC) {
     this.dagDirectory = dagDirectory;
+    this.environmentType = environmentType;
     this.clientRPC = clientRPC;
 
     try {
@@ -127,9 +131,11 @@ public final class NemoOptimizer implements Optimizer {
   private void beforeCompileTimeOptimization(final IRDAG dag, final Policy policy) {
     if (policy.getClass().getName().contains("XGBoost")) {
       clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-        .setType(ControlMessage.DriverToClientMessageType.LaunchXGBoostScript)
+        .setType(ControlMessage.DriverToClientMessageType.LaunchOptimization)
+        .setOptimizationType("xgboost")
         .setDataCollected(ControlMessage.DataCollectMessage.newBuilder()
-          .setData(dag.irDAGSummary()).build())
+          .setData(dag.irDAGSummary() + OptimizerUtils.filterEnvironmentTypeString(this.environmentType))
+          .build())
         .build());
     }
   }

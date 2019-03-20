@@ -73,5 +73,16 @@ under the License.
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
+        </dependency>
+        <!--For serialization & deserialization of Beam components-->
+        <dependency>
+            <groupId>org.apache.nemo</groupId>
+            <artifactId>nemo-compiler-frontend-beam</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 </project>

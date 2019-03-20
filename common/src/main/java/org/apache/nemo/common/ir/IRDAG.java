@@ -20,7 +20,6 @@ package org.apache.nemo.common.ir;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Sets;
-import org.apache.nemo.common.MetricUtils;
 import org.apache.nemo.common.PairKeyExtractor;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
@@ -69,8 +68,6 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
   private DAG<IRVertex, IREdge> dagSnapshot; // the DAG that was saved most recently.
   private DAG<IRVertex, IREdge> modifiedDAG; // the DAG that is being updated.
-
-  private String environmentType = "";
 
   // To remember original encoders/decoders, and etc
   private final Map<StreamVertex, IREdge> streamVertexToOriginalEdge;
@@ -123,16 +120,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
       + "_e" + this.getVertices().stream()
       .filter(v -> !v.getClass().getPackage().getName().contains("vertex.utility"))  // Exclude utility vertices
       .mapToInt(v -> getIncomingEdgesOf(v).size())
-      .sum()
-      + this.environmentType;
-  }
-
-  /**
-   * Method to set the environment type.
-   * @param environmentType the environment type.
-   */
-  public void setEnvironmentType(final String environmentType) {
-    this.environmentType = MetricUtils.filterEnvironmentTypeString(environmentType);
+      .sum();
   }
 
   ////////////////////////////////////////////////// Methods for reshaping the DAG topology.

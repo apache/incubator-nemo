@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.nemo.common;
+package org.apache.nemo.runtime.common.metric;
 
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
@@ -32,7 +32,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.Serializable;
 
 public class MetricUtilsTest {
@@ -130,13 +129,13 @@ public class MetricUtilsTest {
 
     final Object ef1 = MetricUtils.indexToValue(0.1 + efidx, -0.1, eEpKeyIndex);
     final Object ef2 = MetricUtils.indexToValue(-0.1 + efidx, 0.1, eEpKeyIndex);
-    Assert.assertEquals(ef, ef1);
-    Assert.assertEquals(ef, ef2);
+    Assert.assertEquals(ef.toString(), ef1.toString());
+    Assert.assertEquals(ef.toString(), ef2.toString());
 
     final Object df1 = MetricUtils.indexToValue(0.1 + dfidx, -0.1, dEpKeyIndex);
     final Object df2 = MetricUtils.indexToValue(-0.1 + dfidx, 0.1, dEpKeyIndex);
-    Assert.assertEquals(df, df1);
-    Assert.assertEquals(df, df2);
+    Assert.assertEquals(df.toString(), df1.toString());
+    Assert.assertEquals(df.toString(), df2.toString());
   }
 
   @Test

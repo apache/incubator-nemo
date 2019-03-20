@@ -17,29 +17,24 @@
  * under the License.
  */
 
-package org.apache.nemo.common;
+package org.apache.nemo.runtime.common.metric;
 
 import com.google.common.collect.HashBiMap;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.common.dag.Edge;
-import org.apache.nemo.common.dag.Vertex;
-import org.apache.nemo.common.exception.DeprecationException;
 import org.apache.nemo.common.exception.MetricException;
-import org.apache.nemo.common.exception.UnsupportedMethodException;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.sql.*;
-import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -54,17 +49,20 @@ public final class MetricUtils {
   private static final CountDownLatch MUST_UPDATE_EP_KEY_METADATA = new CountDownLatch(1);
   private static final CountDownLatch MUST_UPDATE_EP_METADATA = new CountDownLatch(1);
 
-  private static final Pair<HashBiMap<Integer, Pair<Class<? extends ExecutionProperty>, Class<? extends Serializable>>>,
-      HashBiMap<Pair<Integer, Integer>, ExecutionProperty<?>>> METADATA = loadMetaData();
   // BiMap of (1) INDEX and (2) the Execution Property class and the value type class.
   private static final HashBiMap<Integer, Pair<Class<? extends ExecutionProperty>, Class<? extends Serializable>>>
-    EP_KEY_METADATA = METADATA.left();
-  // BiMap of (1) the Execution Property class INDEX and the value INDEX pair and (2) the Execution Property.
-  private static final HashBiMap<Pair<Integer, Integer>, ExecutionProperty<?>>
-    EP_METADATA = METADATA.right();
-
-  private static final int VERTEX = 1;
-  private static final int EDGE = 2;
+    EP_KEY_METADATA = HashBiMap.create();
+  // BiMap of (1) the Execution Property class INDEX and the value INDEX pair and (2) the Execution Property value.
+  private static final HashBiMap<Pair<Integer, Integer>, ExecutionProperty<? extends Serializable>>
+    EP_METADATA = HashBiMap.create();
+  static {
+    try {
+      Class.forName("org.postgresql.Driver");
+    } catch (ClassNotFoundException e) {
+      throw new MetricException("PostgreSQL Driver not found: " + e);
+    }
+    loadMetaData();
+  }
 
   public static final String SQLITE_DB_NAME =
     "jdbc:sqlite:" + Util.fetchProjectRootPath() + "/optimization_db.sqlite3";
@@ -82,9 +80,7 @@ public final class MetricUtils {
    * Load the BiMaps (lightweight) Metadata from the DB.
    * @return the loaded BiMaps, or initialized ones.
    */
-  private static Pair<HashBiMap<Integer, Pair<Class<? extends ExecutionProperty>, Class<? extends Serializable>>>,
-    HashBiMap<Pair<Integer, Integer>, ExecutionProperty<?>>> loadMetaData() {
-    deregisterBeamDriver();
+  private static void loadMetaData() {
     try (final Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
       "postgres", "fake_password")) {
       try (final Statement statement = c.createStatement()) {
@@ -92,43 +88,33 @@ public final class MetricUtils {
 
         statement.executeUpdate(
           "CREATE TABLE IF NOT EXISTS " + METADATA_TABLE_NAME
-          + " (key TEXT NOT NULL UNIQUE, data BYTEA NOT NULL);");
+            + " (type TEXT NOT NULL, key INT NOT NULL UNIQUE, value BYTEA NOT NULL, "
+            + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);");
 
         final ResultSet rsl = statement.executeQuery(
-          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE key='EP_KEY_METADATA';");
+          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE type='EP_KEY_METADATA';");
         LOG.info("Metadata can be successfully loaded.");
-        if (rsl.next()) {
-          final HashBiMap<Integer, Pair<Class<? extends ExecutionProperty>, Class<? extends Serializable>>>
-            indexEpKeyBiMap = SerializationUtils.deserialize(rsl.getBytes("Data"));
-          rsl.close();
-
-          final ResultSet rsr = statement.executeQuery(
-            "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE key='EP_METADATA';");
-          if (rsr.next()) {
-            final HashBiMap<Pair<Integer, Integer>, ExecutionProperty<?>> indexEpBiMap =
-              SerializationUtils.deserialize(rsr.getBytes("Data"));
-            rsr.close();
-
-            METADATA_LOADED.countDown();
-            LOG.info("Metadata successfully loaded from DB.");
-            return Pair.of(indexEpKeyBiMap, indexEpBiMap);
-          } else {
-            METADATA_LOADED.countDown();
-            LOG.info("No initial metadata for EP.");
-            return Pair.of(indexEpKeyBiMap, HashBiMap.create());
-          }
-        } else {
-          METADATA_LOADED.countDown();
-          LOG.info("No initial metadata.");
-          return Pair.of(HashBiMap.create(), HashBiMap.create());
+        while (rsl.next()) {
+          EP_KEY_METADATA.put(rsl.getInt("key"),
+            SerializationUtils.deserialize(rsl.getBytes("value")));
         }
+        rsl.close();
+
+        final ResultSet rsr = statement.executeQuery(
+          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE type='EP_METADATA';");
+        while (rsr.next()) {
+          final Integer l = rsr.getInt("key");
+          EP_METADATA.put(Pair.of(l / 10000, 1 % 10000),
+            SerializationUtils.deserialize(rsr.getBytes("value")));
+        }
+        rsr.close();
+        METADATA_LOADED.countDown();
+        LOG.info("Metadata successfully loaded from DB.");
       } catch (Exception e) {
         LOG.warn("Loading metadata from DB failed: ", e);
-        return Pair.of(HashBiMap.create(), HashBiMap.create());
       }
     } catch (Exception e) {
       LOG.warn("Loading metadata from DB failed : ", e);
-      return Pair.of(HashBiMap.create(), HashBiMap.create());
     }
   }
 
@@ -149,19 +135,30 @@ public final class MetricUtils {
     }
     LOG.info("Saving Metadata..");
 
-    deregisterBeamDriver();
     try (final Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
       "postgres", "fake_password")) {
       try (final Statement statement = c.createStatement()) {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
         if (MUST_UPDATE_EP_KEY_METADATA.getCount() == 0) {
-          insertOrUpdateMetadata(c, "EP_KEY_METADATA", EP_KEY_METADATA);
+          EP_KEY_METADATA.forEach((l, r) -> {
+            try {
+              insertOrUpdateMetadata(c, "EP_KEY_METADATA", l, r);
+            } catch (SQLException e) {
+              LOG.warn("Saving of Metadata to DB failed: ", e);
+            }
+          });
           LOG.info("EP Key Metadata saved to DB.");
         }
 
         if (MUST_UPDATE_EP_METADATA.getCount() == 0) {
-          insertOrUpdateMetadata(c, "EP_METADATA", EP_METADATA);
+          EP_METADATA.forEach((l, r) -> {
+            try {
+              insertOrUpdateMetadata(c, "EP_METADATA", l.left() * 10000 + l.right(), r);
+            } catch (SQLException e) {
+              LOG.warn("Saving of Metadata to DB failed: ", e);
+            }
+          });
           LOG.info("EP Metadata saved to DB.");
         }
       }
@@ -173,17 +170,17 @@ public final class MetricUtils {
   /**
    * Utility method to save key, value to the metadata table.
    * @param c the connection to the DB.
-   * @param key the key to write to the DB metadata table.
-   * @param value the value to write to the DB metadata table.
+   * @param type the key to write to the DB metadata table.
+   * @param key the key to write to the DB metadata table (integer).
+   * @param value the value to write to the DB metadata table (object).
    * @throws SQLException SQLException on the way.
    */
-  public static void insertOrUpdateMetadata(final Connection c, final String key, final Serializable value)
-    throws SQLException {
+  private static void insertOrUpdateMetadata(final Connection c, final String type,
+                                            final Integer key, final Serializable value) throws SQLException {
     try (final PreparedStatement pstmt = c.prepareStatement(
-      "INSERT INTO " + METADATA_TABLE_NAME + " (key, data) "
-        + "VALUES ('" + key + "', ?) ON CONFLICT (key) DO UPDATE SET data = excluded.data;")) {
-      pstmt.setBinaryStream(1,
-        new ByteArrayInputStream(SerializationUtils.serialize(value)));
+      "INSERT INTO " + METADATA_TABLE_NAME + " (type, key, value) "
+        + "VALUES ('" + type + "', " + key + ", ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value;")) {
+      pstmt.setBinaryStream(1, new ByteArrayInputStream(SerializationUtils.serialize(value)));
       pstmt.executeUpdate();
     }
   }
@@ -199,12 +196,12 @@ public final class MetricUtils {
 
     irdag.getVertices().forEach(v ->
       v.getExecutionProperties().forEachProperties(ep ->
-        epFormatter(vStringBuilder, VERTEX, v.getNumericId(), ep)));
+        epFormatter(vStringBuilder, 1, v.getNumericId(), ep)));
 
     irdag.getVertices().forEach(v ->
       irdag.getIncomingEdgesOf(v).forEach(e ->
         e.getExecutionProperties().forEachProperties(ep ->
-          epFormatter(eStringBuilder, EDGE, e.getNumericId(), ep))));
+          epFormatter(eStringBuilder, 2, e.getNumericId(), ep))));
 
     // Update the metric metadata if new execution property key / values have been discovered and updates are required.
     updateMetaData();
@@ -275,10 +272,10 @@ public final class MetricUtils {
     } else if (o instanceof Boolean) {
       return ((Boolean) o) ? 1 : 0;
     } else {
-      final ExecutionProperty<?> ep1;
+      final ExecutionProperty<? extends Serializable> ep1;
       if (o instanceof EncoderFactory || o instanceof DecoderFactory) {
         ep1 = EP_METADATA.values().stream()
-          .filter(ep2 -> ep2.getValue().toString().equals(o.toString()))
+          .filter(ep2 -> ep2.getValue().toString().equals(o.toString()) || ep2.getValue().equals(o))
           .findFirst().orElse(null);
       } else {
         ep1 = EP_METADATA.values().stream()
@@ -289,9 +286,9 @@ public final class MetricUtils {
       if (ep1 != null) {
         return EP_METADATA.inverse().get(ep1).right();
       } else {
-        final Integer valueIndex = Math.toIntExact(EP_METADATA.keySet().stream()
+        final Integer valueIndex = EP_METADATA.keySet().stream()
           .filter(pair -> pair.left().equals(epKeyIndex))
-          .count()) + 1;
+          .mapToInt(Pair::right).max().orElse(0) + 1;
         // Update the metadata if new EP value has been discovered.
         EP_METADATA.put(Pair.of(epKeyIndex, valueIndex), ep);
         LOG.info("New EP Index: ({}, {}) for {}", epKeyIndex, valueIndex, ep);
@@ -365,29 +362,6 @@ public final class MetricUtils {
   }
 
   /**
-   * Restore the formatted string into a pair of vertex/edge id and the execution property.
-   * @param string the formatted string.
-   * @return a pair of vertex/edge id and the execution property key index.
-   */
-  public static Pair<String, Integer> stringToIdAndEPKeyIndex(
-    final String string) {
-    if (string.length() != 9) {
-      throw new DeprecationException("The metric data is deprecated or does not follow the designated format");
-    }
-    final Integer idx = Integer.parseInt(string.substring(0, 1));
-    final Integer numericId = Integer.parseInt(string.substring(1, 5));
-    final String id;
-    if (idx == VERTEX) {
-      id = Vertex.restoreId(numericId);
-    } else if (idx == EDGE) {
-      id = Edge.restoreId(numericId);
-    } else {
-      throw new UnsupportedMethodException("The index " + idx + " cannot be categorized into a vertex or an edge");
-    }
-    return Pair.of(id, Integer.parseInt(string.substring(5, 9)));
-  }
-
-  /**
    * Receives the pair of execution property and value classes, and returns the optimized value of the EP.
    * @param epKeyIndex the EP Key index to retrieve the new EP from.
    * @param split the split point.
@@ -415,89 +389,5 @@ public final class MetricUtils {
       throw new MetricException(e);
     }
     return ep;
-  }
-
-  /**
-   * launches the XGBoost Script.
-   * @param irDagSummary the IR DAG to run the script for.
-   * @return the results file converted into string.
-   */
-  public static String launchXGBoostScript(final String irDagSummary) {
-    try {
-      final String projectRootPath = Util.fetchProjectRootPath();
-      final String scriptPath = projectRootPath + "/bin/xgboost_optimization.sh";
-      final String[] command = {scriptPath, irDagSummary};
-      LOG.info("Running the python script at {}", scriptPath);
-      final ProcessBuilder builder = new ProcessBuilder(command);
-      builder.directory(new File(projectRootPath));
-      builder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-      builder.redirectError(ProcessBuilder.Redirect.INHERIT);
-      final Process process = builder.start();
-      final int exitcode = process.waitFor();
-      assert exitcode == 0;
-      LOG.info("Python script execution complete!");
-
-      final String resultsFile = projectRootPath + "/ml/results.out";
-      LOG.info("Reading the results of the script at {}", resultsFile);
-      return FileUtils.readFileToString(new File(resultsFile));
-    } catch (Exception e) {
-      throw new MetricException(e);
-    }
-  }
-
-  /**
-   * Types of environments to categorize them into.
-   */
-  public enum EnvironmentType {
-    DEFAULT,
-    TRANSIENT,
-    LARGE_SHUFFLE,
-    DISAGGREGATION,
-    DATA_SKEW,
-    STREAMING,
-    SMALL_SIZE,
-  }
-
-  /**
-   * Method to infiltrate keyword-containing string into the enum of Types above.
-   * @param environmentType the input string.
-   * @return the formatted string corresponding to each type.
-   */
-  public static String filterEnvironmentTypeString(final String environmentType) {
-    if (environmentType.toLowerCase().contains("transient")) {
-      return "_" + EnvironmentType.TRANSIENT.toString().toLowerCase();
-    } else if (environmentType.toLowerCase().contains("large") && environmentType.toLowerCase().contains("shuffle")) {
-      return "_" + EnvironmentType.LARGE_SHUFFLE.toString().toLowerCase();
-    } else if (environmentType.toLowerCase().contains("disaggregat")) {
-      return "_" + EnvironmentType.DISAGGREGATION.toString().toLowerCase();
-    } else if (environmentType.toLowerCase().contains("stream")) {
-      return "_" + EnvironmentType.STREAMING.toString().toLowerCase();
-    } else if (environmentType.toLowerCase().contains("small")) {
-      return "_" + EnvironmentType.SMALL_SIZE.toString().toLowerCase();
-    } else if (environmentType.toLowerCase().contains("skew")) {
-      return "_" + EnvironmentType.DATA_SKEW.toString().toLowerCase();
-    } else {
-      return "";  // Default
-    }
-  }
-
-  /**
-   * De-register Beam JDBC driver, which produces inconsistent results.
-   * This is solved in newer Beam versions. Delete this when updating the Beam version.
-   */
-  public static void deregisterBeamDriver() {
-    final String beamDriver = "org.apache.beam.sdk.extensions.sql.impl.JdbcDriver";
-    final Enumeration<Driver> drivers = DriverManager.getDrivers();
-    while (drivers.hasMoreElements()) {
-      final Driver d = drivers.nextElement();
-      if (d.getClass().getName().equals(beamDriver)) {
-        try {
-          DriverManager.deregisterDriver(d);
-        } catch (SQLException e) {
-          throw new MetricException(e);
-        }
-        break;
-      }
-    }
   }
 }

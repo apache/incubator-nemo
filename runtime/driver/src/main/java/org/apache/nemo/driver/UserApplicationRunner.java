@@ -44,7 +44,6 @@ public final class UserApplicationRunner {
   private static final Logger LOG = LoggerFactory.getLogger(UserApplicationRunner.class.getName());
 
   private final int maxScheduleAttempt;
-  private final String environmentType;
 
   private final RuntimeMaster runtimeMaster;
   private final Optimizer optimizer;
@@ -54,7 +53,6 @@ public final class UserApplicationRunner {
   /**
    * Constructor.
    * @param maxScheduleAttempt maximum scheuling attempt.
-   * @param environmentType the environment type of the workload.
    * @param optimizer the nemo optimizer.
    * @param backend the backend to actually execute the job.
    * @param runtimeMaster the runtime master.
@@ -62,13 +60,11 @@ public final class UserApplicationRunner {
    */
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.MaxTaskAttempt.class) final int maxScheduleAttempt,
-                                @Parameter(JobConf.EnvironmentType.class) final String environmentType,
                                 final Optimizer optimizer,
                                 final Backend<PhysicalPlan> backend,
                                 final RuntimeMaster runtimeMaster,
                                 final PlanRewriter planRewriter) {
     this.maxScheduleAttempt = maxScheduleAttempt;
-    this.environmentType = environmentType;
     this.runtimeMaster = runtimeMaster;
     this.optimizer = optimizer;
     this.backend = backend;
@@ -87,7 +83,6 @@ public final class UserApplicationRunner {
       LOG.info("##### Nemo Compiler Start #####");
 
       final IRDAG dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
-      dag.setEnvironmentType(this.environmentType);
       final IRDAG optimizedDAG = optimizer.optimizeAtCompileTime(dag);
       ((NemoPlanRewriter) planRewriter).setIRDAG(optimizedDAG);
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);

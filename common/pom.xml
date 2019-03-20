@@ -52,10 +52,5 @@ under the License.
           <artifactId>beam-sdks-java-core</artifactId>
           <version>${beam.version}</version>
         </dependency>
-        <dependency>
-          <groupId>org.postgresql</groupId>
-          <artifactId>postgresql</artifactId>
-          <version>${postgresql.version}</version>
-        </dependency>
     </dependencies>
 </project>

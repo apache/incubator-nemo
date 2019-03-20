@@ -19,24 +19,23 @@
 package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.beam.sdk.io.BoundedSource;
+import org.apache.beam.sdk.io.hadoop.format.HadoopFormatIO;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.ir.Readable;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.test.EmptyComponents;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import org.apache.nemo.common.ir.vertex.SourceVertex;
-import org.apache.beam.sdk.io.BoundedSource;
-import org.apache.beam.sdk.io.hadoop.inputformat.HadoopInputFormatIO;
-import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.nemo.common.test.EmptyComponents;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * SourceVertex implementation for BoundedSource.
@@ -181,10 +180,10 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
 
     @Override
     public List<String> getLocations() throws Exception {
-      if (boundedSource instanceof HadoopInputFormatIO.HadoopInputFormatBoundedSource) {
+      if (boundedSource instanceof HadoopFormatIO.HadoopInputFormatBoundedSource) {
         final Field inputSplitField = boundedSource.getClass().getDeclaredField("inputSplit");
         inputSplitField.setAccessible(true);
-        final InputSplit inputSplit = ((HadoopInputFormatIO.SerializableSplit) inputSplitField
+        final InputSplit inputSplit = ((HadoopFormatIO.SerializableSplit) inputSplitField
             .get(boundedSource)).getSplit();
         return Arrays.asList(inputSplit.getLocations());
       } else {

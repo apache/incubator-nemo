@@ -18,18 +18,18 @@
  */
 package org.apache.nemo.driver;
 
-import org.apache.nemo.common.Util;
+import org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.common.ir.IdManager;
+import org.apache.nemo.compiler.optimizer.OptimizerUtils;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.common.message.ClientRPC;
+import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.master.BroadcastManagerMaster;
 import org.apache.nemo.runtime.master.RuntimeMaster;
-import org.apache.commons.lang3.SerializationUtils;
-import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.ActiveContext;
@@ -112,8 +112,7 @@ public final class NemoDriver {
     this.clientRPC = clientRPC;
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
-    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Notification, message ->
-      Util.pushMessageBuffer(message.getMessage()));
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Notification, this::notificationHandler);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
       startSchedulingUserDAG(message.getLaunchDAG().getDag());
       final Map<Serializable, Object> broadcastVars =
@@ -195,6 +194,20 @@ public final class NemoDriver {
       // flush metrics
       runtimeMaster.flushMetrics();
     });
+  }
+
+  /**
+   * handler for notifications from the client.
+   * @param message message from the client.
+   */
+  private void notificationHandler(final ControlMessage.ClientToDriverMessage message) {
+    switch (message.getMessage().getType()) {
+      case "xgboost":
+        OptimizerUtils.pushMessageBuffer(message.getMessage().getData());
+        break;
+      default:
+        break;
+    }
   }
 
   /**
