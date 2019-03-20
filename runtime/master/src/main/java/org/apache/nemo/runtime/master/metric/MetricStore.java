@@ -247,7 +247,6 @@ public final class MetricStore {
 
     try (final Connection c = DriverManager.getConnection(address, id, passwd)) {
       LOG.info("Opened database successfully at {}", MetricUtils.POSTGRESQL_METADATA_DB_NAME);
-      MetricUtils.deregisterBeamDriver();
       saveOptimizationMetrics(c, syntax);
     } catch (SQLException e) {
       LOG.error("Error while saving optimization metrics to PostgreSQL: {}", e);
