@@ -19,10 +19,13 @@
 package org.apache.nemo.examples.beam;
 
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.extensions.sql.SqlTransform;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.schemas.Schema;
-import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.*;
 
 import java.util.List;
@@ -62,7 +65,7 @@ public final class SimpleSumSQL {
       .collect(Collectors.toList());
 
     // Create a source PCollection
-    final PCollection<Row> inputTable = PBegin.in(p).apply(Create.of(rows).withCoder(schema.getRowCoder()));
+    final PCollection<Row> inputTable = PBegin.in(p).apply(Create.of(rows).withCoder(RowCoder.of(schema)));
 
     // Run 2 SQL queries
     // ==> Sum of ints larger than 1
