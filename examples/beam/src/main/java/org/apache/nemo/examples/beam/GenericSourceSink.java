@@ -93,7 +93,7 @@ final class GenericSourceSink {
 
   /**
    * Write data.
-   * This method could later be replaced using the HadoopFormatIO class.
+   * NEMO-365: This method could later be replaced using the HadoopFormatIO class.
    * @param dataToWrite data to write
    * @param path        path to write data
    * @return            returns {@link PDone}
