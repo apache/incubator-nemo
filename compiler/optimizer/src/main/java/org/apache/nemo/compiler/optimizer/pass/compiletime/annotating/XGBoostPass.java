@@ -56,20 +56,25 @@ public final class XGBoostPass extends AnnotatingPass {
     try {
       final String message = OptimizerUtils.takeFromMessageBuffer();
       LOG.info("Received message from the client: {}", message);
-      ObjectMapper mapper = new ObjectMapper();
-      List<Map<String, String>> listOfMap =
-        mapper.readValue(message, new TypeReference<List<Map<String, String>>>() {
-        });
-      for (final Map<String, String> m : listOfMap) {
-        final Pair<String, Integer> idAndEPKey = OptimizerUtils.stringToIdAndEPKeyIndex(m.get("feature"));
-        LOG.info("Tuning: {} of {} should be {} than {}",
-          idAndEPKey.right(), idAndEPKey.left(), m.get("val"), m.get("split"));
-        final ExecutionProperty<? extends Serializable> newEP = MetricUtils.pairAndValueToEP(idAndEPKey.right(),
-          Double.valueOf(m.get("split")), Double.valueOf(m.get("val")));
-        if (idAndEPKey.left().startsWith("vertex")) {
-          dag.getVertexById(idAndEPKey.left()).setProperty((VertexExecutionProperty) newEP);
-        } else if (idAndEPKey.left().startsWith("edge")) {
-          dag.getEdgeById(idAndEPKey.left()).setProperty((EdgeExecutionProperty) newEP);
+
+      if (message.isEmpty()) {
+        return dag;
+      } else {
+        ObjectMapper mapper = new ObjectMapper();
+        List<Map<String, String>> listOfMap =
+          mapper.readValue(message, new TypeReference<List<Map<String, String>>>() {
+          });
+        for (final Map<String, String> m : listOfMap) {
+          final Pair<String, Integer> idAndEPKey = OptimizerUtils.stringToIdAndEPKeyIndex(m.get("feature"));
+          LOG.info("Tuning: {} of {} should be {} than {}",
+            idAndEPKey.right(), idAndEPKey.left(), m.get("val"), m.get("split"));
+          final ExecutionProperty<? extends Serializable> newEP = MetricUtils.pairAndValueToEP(idAndEPKey.right(),
+            Double.valueOf(m.get("split")), Double.valueOf(m.get("val")));
+          if (idAndEPKey.left().startsWith("vertex")) {
+            dag.getVertexById(idAndEPKey.left()).setProperty((VertexExecutionProperty) newEP);
+          } else if (idAndEPKey.left().startsWith("edge")) {
+            dag.getEdgeById(idAndEPKey.left()).setProperty((EdgeExecutionProperty) newEP);
+          }
         }
       }
     } catch (final DeprecationException e) {
