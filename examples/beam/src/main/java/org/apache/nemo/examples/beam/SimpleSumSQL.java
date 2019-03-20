@@ -65,7 +65,9 @@ public final class SimpleSumSQL {
       .collect(Collectors.toList());
 
     // Create a source PCollection
-    final PCollection<Row> inputTable = PBegin.in(p).apply(Create.of(rows).withCoder(RowCoder.of(schema)));
+    final PCollection<Row> inputTable = PBegin.in(p)
+      .apply(Create.of(rows).withCoder(RowCoder.of(schema)))
+      .setRowSchema(schema);
 
     // Run 2 SQL queries
     // ==> Sum of ints larger than 1
