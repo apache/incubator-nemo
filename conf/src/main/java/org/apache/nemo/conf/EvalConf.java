@@ -1,6 +1,5 @@
 package org.apache.nemo.conf;
 
-import org.apache.nemo.conf.JobConf;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.JavaConfigurationBuilder;
 import org.apache.reef.tang.Tang;
@@ -14,7 +13,6 @@ import org.codehaus.jackson.type.TypeReference;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public final class EvalConf {
 
@@ -67,6 +65,9 @@ public final class EvalConf {
   public static final class BottleneckDetectionCpuThreshold implements Name<Double> {
   }
 
+  @NamedParameter(short_name = "is_local_source", default_value = "true")
+  public static final class IsLocalSource implements Name<Boolean> {
+  }
 
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
@@ -81,6 +82,7 @@ public final class EvalConf {
   public final String samplingJsonStr;
   public final Map<String, Double> samplingJson;
   public final String burstyOperatorStr;
+  public final boolean isLocalSource;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -93,7 +95,8 @@ public final class EvalConf {
                    @Parameter(BottleneckDetectionConsecutive.class) final int bottleneckDetectionConsecutive,
                    @Parameter(BottleneckDetectionCpuThreshold.class) final double bottleneckDetectionThreshold,
                    @Parameter(SamplingJsonString.class) final String samplingJsonStr,
-                   @Parameter(BurstyOperatorString.class) final String burstyOperatorStr) throws IOException {
+                   @Parameter(BurstyOperatorString.class) final String burstyOperatorStr,
+                   @Parameter(IsLocalSource.class) final boolean isLocalSource) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -105,6 +108,7 @@ public final class EvalConf {
     this.bottleneckDetectionThreshold = bottleneckDetectionThreshold;
     this.samplingJsonStr = samplingJsonStr;
     this.burstyOperatorStr = burstyOperatorStr;
+    this.isLocalSource = isLocalSource;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -127,6 +131,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(BottleneckDetectionCpuThreshold.class, Double.toString(bottleneckDetectionThreshold));
     jcb.bindNamedParameter(SamplingJsonString.class, samplingJsonStr);
     jcb.bindNamedParameter(BurstyOperatorString.class, burstyOperatorStr);
+    jcb.bindNamedParameter(IsLocalSource.class, Boolean.toString(isLocalSource));
     return jcb.build();
   }
 
@@ -143,6 +148,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(BottleneckDetectionPeriod.class);
     cl.registerShortNameOfClass(SamplingPath.class);
     cl.registerShortNameOfClass(BurstyOperatorString.class);
+    cl.registerShortNameOfClass(IsLocalSource.class);
   }
 
   @Override
@@ -161,6 +167,7 @@ public final class EvalConf {
     sb.append("bottleneckDetectionThreshold: "); sb.append(bottleneckDetectionThreshold); sb.append("\n");
     sb.append("samplingJson: "); sb.append(samplingJsonStr); sb.append("\n");
     sb.append("burstyOps: "); sb.append(burstyOperatorStr); sb.append("\n");
+    sb.append("isLocalSource: "); sb.append(isLocalSource); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

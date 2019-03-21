@@ -48,7 +48,7 @@ public final class OffloadingHandler {
   // current states of lambda
   private LambdaStatus status;
 
-  private final Callable<ClassLoader> classLoaderCallable;
+  //private final Callable<ClassLoader> classLoaderCallable;
 
   private OffloadingEncoder outputEncoder;
 
@@ -56,7 +56,7 @@ public final class OffloadingHandler {
 
   private int dataProcessingCnt = 0;
 
-	public OffloadingHandler(final Callable<ClassLoader> classLoaderCallable) {
+	public OffloadingHandler() {
 		LOG.info("Handler is created!");
           this.clientWorkerGroup = new NioEventLoopGroup(1,
         new DefaultThreadFactory("hello" + "-ClientWorker"));
@@ -68,7 +68,7 @@ public final class OffloadingHandler {
         .option(ChannelOption.SO_REUSEADDR, true)
         .option(ChannelOption.SO_KEEPALIVE, true);
     this.status = LambdaStatus.INIT;
-    this.classLoaderCallable = classLoaderCallable;
+    //this.classLoaderCallable = classLoaderCallable;
 	}
 
   private Channel channelOpen(final Map<String, Object> input) {

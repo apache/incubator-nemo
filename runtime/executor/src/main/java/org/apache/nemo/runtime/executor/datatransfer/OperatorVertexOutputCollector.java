@@ -268,6 +268,8 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   @Override
   public void emitWatermark(final Watermark watermark) {
 
+    //LOG.info("Emit watermark {} from {}", watermark, irVertex.getId());
+
     if (offloading) {
       prevWatermarkMap.put(watermark.getTimestamp(), currWatermark);
     }

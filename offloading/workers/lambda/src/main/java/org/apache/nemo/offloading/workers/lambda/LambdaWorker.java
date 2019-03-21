@@ -1,11 +1,11 @@
 package org.apache.nemo.offloading.workers.lambda;
 
-import com.amazonaws.ClientConfiguration;
+//import com.amazonaws.ClientConfiguration;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.S3Object;
+//import com.amazonaws.services.s3.AmazonS3;
+//import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+//import com.amazonaws.services.s3.model.S3Object;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.nemo.offloading.workers.common.OffloadingHandler;
@@ -21,9 +21,8 @@ import java.util.Map;
 public class LambdaWorker implements RequestHandler<Map<String, Object>, Object> {
 
 	private static final Logger LOG = LogManager.getLogger(LambdaWorker.class);
-	//private static final OutputSender sender = new OutputSender("18.182.129.182", 20312);
-	private static final AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
-    .withClientConfiguration(new ClientConfiguration().withMaxConnections(10)).build();
+	//private static final AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
+  //  .withClientConfiguration(new ClientConfiguration().withMaxConnections(10)).build();
 
 	private static final String BUCKET_NAME = "nemo-serverless";
 	private static final String PATH = "/tmp/nexmark-0.2-SNAPSHOT-shaded.jar";
@@ -32,6 +31,7 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
   private final OffloadingHandler offloadingHandler;
 
 	private ClassLoader createClassLoader() {
+	  /*
 		// read jar file
 		//final S3Object result = s3Client.getObject(BUCKET_NAME, "jars/shaded.jar");
 		if (!Files.exists(Paths.get(PATH))) {
@@ -56,10 +56,12 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
+		*/
+	  return null;
   }
 
 	public LambdaWorker() {
-    this.offloadingHandler = new OffloadingHandler(this::createClassLoader);
+    this.offloadingHandler = new OffloadingHandler();
 	}
 
 

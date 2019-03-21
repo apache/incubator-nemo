@@ -13,7 +13,7 @@ dependencies {
     )
 
 
-    compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.429'
+    //compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.429'
     compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.8.2'
     //compile group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.8.5'
     //compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.8.5'
@@ -24,8 +24,14 @@ dependencies {
 
     // beam
     //compile group: 'org.apache.beam', name: 'beam-sdks-java-core', version: '2.6.0'
-    compile group: 'org.apache.beam', name: 'beam-runners-core-java', version: '2.6.0'
-    compile group: 'org.apache.beam', name: 'beam-sdks-java-io-google-cloud-platform', version: '2.6.0'
+    //compile group: 'org.apache.beam', name: 'beam-runners-core-java', version: '2.6.0'
+    //compile group: 'org.apache.beam', name: 'beam-sdks-java-io-google-cloud-platform', version: '2.6.0'
+
+    // for kafka
+    //compile group: 'org.apache.kafka', name: 'kafka_2.12', version: '2.1.0'
+    //compile group: 'org.springframework', name: 'spring-expression', version: '5.1.5.RELEASE'
+
+
 
     compile fileTree(dir: 'jars', include: '*.jar')
 }

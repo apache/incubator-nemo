@@ -40,9 +40,7 @@ public class VMWorker {
       serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
         new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
 
-      final OffloadingHandler handler = new OffloadingHandler(() -> {
-        return this.getClass().getClassLoader();
-      });
+      final OffloadingHandler handler = new OffloadingHandler();
 
     final BlockingQueue<OffloadingEvent> requestQueue = new LinkedBlockingQueue<>();
     singleThread.execute(() -> {

@@ -159,6 +159,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
       if (isCurrentAvailable) {
         final O elem = reader.getCurrent();
         final Instant currTs = reader.getCurrentTimestamp();
+        LOG.info("Curr timestamp: {}", currTs);
         return new TimestampAndValue<>(currTs.getMillis(),
           WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp()));
       } else {
@@ -169,6 +170,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     @Override
     public long readWatermark() {
       final Instant watermark = reader.getWatermark();
+      LOG.info("Reader {}, watermark {}", reader.getClass().getName(), watermark);
       // Finish if the watermark == TIMESTAMP_MAX_VALUE
       isFinished = (watermark.getMillis() >= GlobalWindow.TIMESTAMP_MAX_VALUE.getMillis());
       return watermark.getMillis();

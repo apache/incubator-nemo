@@ -214,7 +214,8 @@ public final class OperatorMetricCollector {
       final int latency = (int)((currTime - startTimestamp) - adjustTime);
 
       if (random.nextDouble() < samplingRate) {
-        LOG.info("Event Latency {} from {}", latency, irVertex.getId());
+        LOG.info("Event Latency {} from {} // curTime: {}, startTime: {}, adjustTime: {}", latency, irVertex.getId(),
+          currTime, startTimestamp, adjustTime);
       }
     }
   }
