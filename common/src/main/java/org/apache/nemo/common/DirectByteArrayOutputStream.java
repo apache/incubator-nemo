@@ -52,6 +52,6 @@ public final class DirectByteArrayOutputStream extends ByteArrayOutputStream {
    * @return the number of valid bytes in the buffer.
    */
   public int getCount() {
-    return count;
+    return size();
   }
 }
