@@ -18,12 +18,12 @@
  */
 package org.apache.nemo.common.dag;
 
-import java.io.Serializable;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.Serializable;
 
 /**
  * Connects two vertices of a DAG.
@@ -62,15 +62,6 @@ public class Edge<V extends Vertex> implements Serializable {
    */
   public final Integer getNumericId() {
     return Integer.parseInt(id.replaceAll("[^\\d.]", ""));
-  }
-
-  /**
-   * Method to restore String ID from the numeric ID.
-   * @param numericId the numeric id.
-   * @return the restored string ID.
-   */
-  public static final String restoreId(final Integer numericId) {
-    return "edge" + numericId;
   }
 
   /**

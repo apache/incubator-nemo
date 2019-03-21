@@ -237,7 +237,7 @@ public final class MetricUtils {
    */
   static Integer getEpKeyIndex(final ExecutionProperty<?> ep) {
     return EP_KEY_METADATA.inverse()
-      .computeIfAbsent(Pair.of(ep.getClass(), ep.getValueClass()), epClassPair -> {
+      .computeIfAbsent(Pair.of(ep.getClass(), ep.getValue().getClass()), epClassPair -> {
         LOG.info("New EP Key Index: {} for {}", EP_KEY_METADATA.size() + 1, epClassPair.left().getSimpleName());
         // Update the metadata if new EP key has been discovered.
         MUST_UPDATE_EP_KEY_METADATA.countDown();

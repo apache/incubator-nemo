@@ -50,15 +50,6 @@ public abstract class Vertex implements Serializable {
   }
 
   /**
-   * Method to restore String ID from the numeric ID.
-   * @param numericId the numeric id.
-   * @return the restored string ID.
-   */
-  public static final String restoreId(final Integer numericId) {
-    return "vertex" + numericId;
-  }
-
-  /**
    * @return JSON representation of additional properties
    */
   @SuppressWarnings("checkstyle:designforextension")

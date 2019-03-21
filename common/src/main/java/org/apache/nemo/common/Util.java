@@ -203,6 +203,24 @@ public final class Util {
   }
 
   /**
+   * Method to restore String ID from the numeric ID.
+   * @param numericId the numeric id.
+   * @return the restored string ID.
+   */
+  public static String restoreVertexId(final Integer numericId) {
+    return "vertex" + numericId;
+  }
+
+  /**
+   * Method to restore String ID from the numeric ID.
+   * @param numericId the numeric id.
+   * @return the restored string ID.
+   */
+  public static String restoreEdgeId(final Integer numericId) {
+    return "edge" + numericId;
+  }
+
+  /**
    * Method for the instrumentation: for getting the object size.
    * @param args arguments.
    * @param inst the instrumentation.

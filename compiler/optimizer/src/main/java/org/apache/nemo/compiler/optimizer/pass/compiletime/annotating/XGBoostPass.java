@@ -21,15 +21,15 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.nemo.runtime.common.metric.MetricUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
-import org.apache.nemo.common.exception.DeprecationException;
+import org.apache.nemo.common.exception.InvalidParameterException;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.compiler.optimizer.OptimizerUtils;
+import org.apache.nemo.runtime.common.metric.MetricUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,7 +77,7 @@ public final class XGBoostPass extends AnnotatingPass {
           }
         }
       }
-    } catch (final DeprecationException e) {
+    } catch (final InvalidParameterException e) {
       LOG.warn(e.getMessage());
       return dag;
     } catch (final Exception e) {

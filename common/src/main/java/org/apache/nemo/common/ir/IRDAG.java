@@ -110,15 +110,15 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   }
 
   /**
-   * @return a IR DAG summary string, consisting of only the original vertices generated from the frontend.
+   * @return a IR DAG summary string, consisting of only the vertices generated from the frontend.
    */
   public String irDAGSummary() {
     return "rv" + this.getRootVertices().size()
       + "_v" + this.getVertices().stream()
-      .filter(v -> !v.getClass().getPackage().getName().contains("vertex.utility"))  // Exclude utility vertices
+      .filter(v -> !v.isUtilityVertex())  // Exclude utility vertices
       .count()
       + "_e" + this.getVertices().stream()
-      .filter(v -> !v.getClass().getPackage().getName().contains("vertex.utility"))  // Exclude utility vertices
+      .filter(v -> !v.isUtilityVertex())  // Exclude utility vertices
       .mapToInt(v -> getIncomingEdgesOf(v).size())
       .sum();
   }

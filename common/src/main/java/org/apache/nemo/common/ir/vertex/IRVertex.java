@@ -85,6 +85,10 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
     return this;
   }
 
+  public final Boolean isUtilityVertex() {
+    return this.getClass().getPackage().getName().contains("vertex.utility");
+  }
+
   /**
    * Get the executionProperty of the IRVertex.
    * @param <T> Type of the return value.

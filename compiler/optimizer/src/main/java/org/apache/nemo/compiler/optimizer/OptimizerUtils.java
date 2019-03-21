@@ -20,9 +20,8 @@
 package org.apache.nemo.compiler.optimizer;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.dag.Edge;
-import org.apache.nemo.common.dag.Vertex;
-import org.apache.nemo.common.exception.DeprecationException;
+import org.apache.nemo.common.Util;
+import org.apache.nemo.common.exception.InvalidParameterException;
 import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.exception.UnsupportedMethodException;
 
@@ -67,32 +66,20 @@ public final class OptimizerUtils {
   public static Pair<String, Integer> stringToIdAndEPKeyIndex(
     final String string) {
     if (string.length() != 9) {
-      throw new DeprecationException("The metric data is deprecated or does not follow the designated format");
+      throw new InvalidParameterException("The metric data should follow the format of "
+        + "[0]: index indicating vertex/edge, [1-4]: id of the component, and [5-8]: EP Key index");
     }
     final Integer idx = Integer.parseInt(string.substring(0, 1));
     final Integer numericId = Integer.parseInt(string.substring(1, 5));
     final String id;
     if (idx == 1) {
-      id = Vertex.restoreId(numericId);
+      id = Util.restoreVertexId(numericId);
     } else if (idx == 2) {
-      id = Edge.restoreId(numericId);
+      id = Util.restoreEdgeId(numericId);
     } else {
       throw new UnsupportedMethodException("The index " + idx + " cannot be categorized into a vertex or an edge");
     }
     return Pair.of(id, Integer.parseInt(string.substring(5, 9)));
-  }
-
-  /**
-   * Types of environments to categorize them into.
-   */
-  public enum EnvironmentType {
-    DEFAULT,
-    TRANSIENT,
-    LARGE_SHUFFLE,
-    DISAGGREGATION,
-    DATA_SKEW,
-    STREAMING,
-    SMALL_SIZE,
   }
 
   /**
@@ -102,17 +89,17 @@ public final class OptimizerUtils {
    */
   public static String filterEnvironmentTypeString(final String environmentType) {
     if (environmentType.toLowerCase().contains("transient")) {
-      return "_" + EnvironmentType.TRANSIENT.toString().toLowerCase();
+      return "transient";
     } else if (environmentType.toLowerCase().contains("large") && environmentType.toLowerCase().contains("shuffle")) {
-      return "_" + EnvironmentType.LARGE_SHUFFLE.toString().toLowerCase();
+      return "large_shuffle";
     } else if (environmentType.toLowerCase().contains("disaggregat")) {
-      return "_" + EnvironmentType.DISAGGREGATION.toString().toLowerCase();
+      return "disaggregation";
     } else if (environmentType.toLowerCase().contains("stream")) {
-      return "_" + EnvironmentType.STREAMING.toString().toLowerCase();
+      return "streaming";
     } else if (environmentType.toLowerCase().contains("small")) {
-      return "_" + EnvironmentType.SMALL_SIZE.toString().toLowerCase();
+      return "small_size";
     } else if (environmentType.toLowerCase().contains("skew")) {
-      return "_" + EnvironmentType.DATA_SKEW.toString().toLowerCase();
+      return "data_skew";
     } else {
       return "";  // Default
     }

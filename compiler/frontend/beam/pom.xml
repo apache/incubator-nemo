@@ -27,7 +27,6 @@ under the License.
 
   <artifactId>nemo-compiler-frontend-beam</artifactId>
   <name>Nemo Compiler Frontend: Beam</name>
-  <packaging>jar</packaging>
 
   <dependencies>
     <dependency>
