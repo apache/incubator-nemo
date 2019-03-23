@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor;
 
+import org.apache.log4j.Logger;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 
 import java.util.LinkedList;
@@ -25,6 +26,7 @@ import java.util.List;
 
 
 public final class OffloadingResultCollector{
+  private static final Logger LOG = Logger.getLogger(OffloadingResultCollector.class.getName());
 
   // vertexId, edgeId, data
   public List<Triple<List<String>, String, Object>> result;
@@ -36,6 +38,7 @@ public final class OffloadingResultCollector{
   }
 
   public void flush(final long watermark) {
+    //LOG.info("Flush data w/ watermark: " + watermark + " num of data: " + result.size());
     collector.emit(new OffloadingResultEvent(result, watermark));
     result = new LinkedList<>();
   }

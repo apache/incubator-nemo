@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.task;
+package org.apache.nemo.runtime.executor.common;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -28,7 +28,7 @@ import java.util.NoSuchElementException;
 /**
  * An abstraction for fetching data from task-external sources.
  */
-abstract class DataFetcher implements AutoCloseable {
+public abstract class DataFetcher implements AutoCloseable {
   private final IRVertex dataSource;
   private final OutputCollector outputCollector;
   public final RuntimeEdge edge;
@@ -37,7 +37,7 @@ abstract class DataFetcher implements AutoCloseable {
    * @param dataSource to fetch from.
    * @param outputCollector for the data fetched.
    */
-  DataFetcher(final IRVertex dataSource,
+  public DataFetcher(final IRVertex dataSource,
               final RuntimeEdge edge,
               final OutputCollector outputCollector) {
     this.dataSource = dataSource;
@@ -51,13 +51,13 @@ abstract class DataFetcher implements AutoCloseable {
    * @throws IOException upon I/O error
    * @throws java.util.NoSuchElementException if no more element is available
    */
-  abstract Object fetchDataElement() throws IOException, NoSuchElementException;
+  public abstract Object fetchDataElement() throws IOException, NoSuchElementException;
 
-  OutputCollector getOutputCollector() {
+  public OutputCollector getOutputCollector() {
     return outputCollector;
   }
 
-  IRVertex getDataSource() {
+  public IRVertex getDataSource() {
     return dataSource;
   }
 }

@@ -10,6 +10,7 @@ public final class OffloadingEvent implements Serializable {
     VM_RUN,
     CLIENT_HANDSHAKE,
     WORKER_INIT,
+    STREAM_WORKER_INIT,
     DATA,
     GBK_START,
     GBK,

@@ -1,9 +1,9 @@
-package org.apache.nemo.runtime.lambdaexecutor;
+package org.apache.nemo.runtime.lambdaexecutor.kafka;
 
 import avro.shaded.com.google.common.collect.Lists;
-import org.apache.commons.lang3.SerializationUtils;
-import org.apache.log4j.Logger;
-import org.apache.nemo.common.*;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
@@ -11,17 +11,30 @@ import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagPrope
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.punctuation.TimestampAndValue;
-import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
+import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingDataEvent;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingOperatorVertexOutputCollector;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingTransformContextImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-public final class StatelessOffloadingTransform<O> implements OffloadingTransform<OffloadingDataEvent, O> {
-  private static final Logger LOG = Logger.getLogger(StatelessOffloadingTransform.class.getName());
+public final class KafkaOffloadingTransform<O> implements OffloadingTransform<UnboundedSource.CheckpointMark, O> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaOffloadingTransform.class.getName());
 
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final Map<String, List<String>> taskOutgoingEdges;
@@ -31,9 +44,13 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
   private transient Map<String, NextIntraTaskOperatorInfo> operatorVertexMap;
   private transient OffloadingResultCollector resultCollector;
 
+  private transient HandleDataFetcher dataFetcherExecutor;
+  final List<DataFetcher> dataFetchers = new ArrayList<>();
 
-  public StatelessOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
-                                      final Map<String, List<String>> taskOutgoingEdges) {
+
+  // TODO: we should get checkpoint mark in constructor!
+  public KafkaOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
+                                  final Map<String, List<String>> taskOutgoingEdges) {
     this.irDag = irDag;
     this.taskOutgoingEdges = taskOutgoingEdges;
   }
@@ -51,8 +68,16 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
     // Build a map for edge as a key and edge index as a value
     // This variable is used for creating NextIntraTaskOperatorInfo
     // in {@link this#getInternalMainOutputs and this#internalMainOutputs}
+    final AtomicInteger sourceCnt = new AtomicInteger(0);
     final Map<Edge, Integer> edgeIndexMap = new HashMap<>();
     reverseTopologicallySorted.forEach(childVertex -> {
+
+      if (childVertex instanceof BeamUnboundedSourceVertex) {
+        LOG.info("Beam unbounded source: {}, sourceCnt: {}", childVertex, sourceCnt);
+        sourceCnt.getAndIncrement();
+      }
+
+
       final List<Edge> edges = getAllIncomingEdges(irDag, childVertex);
       for (int edgeIndex = 0; edgeIndex < edges.size(); edgeIndex++) {
         final Edge edge = edges.get(edgeIndex);
@@ -80,6 +105,9 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         }
       }
     });
+
+
+
 
     reverseTopologicallySorted.forEach(irVertex -> {
 
@@ -112,6 +140,17 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
 
         outputCollectorMap.put(irVertex.getId(), outputCollector);
 
+        // get source
+        if (irVertex instanceof BeamUnboundedSourceVertex) {
+          final BeamUnboundedSourceVertex beamUnboundedSourceVertex = (BeamUnboundedSourceVertex) irVertex;
+          final RuntimeEdge edge = irDag.getOutgoingEdgesOf(irVertex).get(0);
+
+          final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
+            beamUnboundedSourceVertex, edge, null, outputCollector);
+          dataFetchers.add(dataFetcher);
+          LOG.info("SourceVertex data fetcher: {}, edge: {}", irVertex.getId(), edge.getId());
+        }
+
         final Transform transform;
         if (irVertex instanceof OperatorVertex) {
           transform = ((OperatorVertex) irVertex).getTransform();
@@ -119,37 +158,38 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
         }
       }
     });
+
   }
 
   // receive batch (list) data
   @Override
-  public void onData(final OffloadingDataEvent element) {
-    System.out.println("Received data size: " + element.data.size() + ", checkpoint watermark: " + element.watermark);
-    for (final Pair<List<String>, Object> input : element.data) {
-      final List<String> nextOps = input.left();
-      final Object d = input.right();
-      for (final String nextOpId : nextOps) {
-        final NextIntraTaskOperatorInfo nextOp = operatorVertexMap.get(nextOpId);
-        if (d instanceof Watermark) {
-          final Watermark watermark = (Watermark) d;
-          nextOp.getWatermarkManager()
-            .trackAndEmitWatermarks(nextOp.getEdgeIndex(), watermark);
-        } else {
-          final TimestampAndValue tsv = (TimestampAndValue) d;
-          outputCollectorMap.get(nextOpId).setInputTimestamp(tsv.timestamp);
-          nextOp.getNextOperator().getTransform().onData(tsv.value);
-        }
-      }
-    }
-    LOG.info("Flush data cnt: " + resultCollector.result.size()
-      + ", watermark: " + element.watermark);
+  public void onData(final UnboundedSource.CheckpointMark checkpointMark) {
+    // TODO: handle multiple data fetchers!!
 
-    resultCollector.flush(element.watermark);
+    LOG.info("Receive checkpointmark: {}", checkpointMark);
+
+    final SourceVertexDataFetcher dataFetcher = (SourceVertexDataFetcher) dataFetchers.get(0);
+    final BeamUnboundedSourceVertex beamUnboundedSourceVertex = (BeamUnboundedSourceVertex) dataFetcher.getDataSource();
+    final UnboundedSource unboundedSource = beamUnboundedSourceVertex.getUnboundedSource();
+
+    final UnboundedSourceReadable readable =
+      new UnboundedSourceReadable(unboundedSource, null, checkpointMark);
+
+    dataFetcher.setReadable(readable);
+
+    dataFetcherExecutor = new HandleDataFetcher(dataFetchers, resultCollector);
+    dataFetcherExecutor.start();
   }
 
   @Override
   public void close() {
-
+    try {
+      dataFetcherExecutor.close();
+      // TODO: we send checkpoint mark to vm
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
 
@@ -162,7 +202,6 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
     return edges;
   }
 
-  // TODO #253: Refactor getInternal(Main/Additional)OutputMap
   public static List<NextIntraTaskOperatorInfo> getInternalMainOutputs(
     final IRVertex irVertex,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
@@ -181,7 +220,6 @@ public final class StatelessOffloadingTransform<O> implements OffloadingTransfor
       .collect(Collectors.toList());
   }
 
-  // TODO #253: Refactor getInternal(Main/Additional)OutputMap
   private static Map<String, List<NextIntraTaskOperatorInfo>> getInternalAdditionalOutputMap(
     final IRVertex irVertex,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,

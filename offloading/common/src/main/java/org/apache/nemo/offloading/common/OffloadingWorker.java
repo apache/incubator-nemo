@@ -14,7 +14,7 @@ public interface OffloadingWorker<I, O> {
   Future<Optional<O>> execute(ByteBuf input, int dataId, boolean speculative);
   //Future<O> execute(I input);
 
-  void finishOffloading();
+  <T> T finishOffloading();
 
   //<T> List<T> getResult();
 

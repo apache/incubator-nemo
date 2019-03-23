@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
@@ -98,6 +99,7 @@ public final class Executor {
   private final ExecutorService executorService;
 
   private final EvalConf evalConf;
+  private final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -109,6 +111,7 @@ public final class Executor {
                    final MetricManagerWorker metricMessageSender,
                    final ServerlessExecutorProvider serverlessExecutorProvider,
                    final CpuBottleneckDetector bottleneckDetector,
+                   final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
                    final EvalConf evalConf) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
@@ -121,7 +124,9 @@ public final class Executor {
     this.metricMessageSender = metricMessageSender;
     this.evalConf = evalConf;
     LOG.info("\n{}", evalConf);
-    this.serverlessExecutorProvider = serverlessExecutorProvider; this.bottleneckDetector = bottleneckDetector;
+    this.serverlessExecutorProvider = serverlessExecutorProvider;
+    this.lambdaOffloadingWorkerFactory = lambdaOffloadingWorkerFactory;
+    this.bottleneckDetector = bottleneckDetector;
     this.taskExecutorMap = new ConcurrentHashMap<>();
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
@@ -200,6 +205,7 @@ public final class Executor {
       final TaskExecutor taskExecutor =
       new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
           metricMessageSender, persistentConnectionToMasterMap, serializerManager, serverlessExecutorProvider,
+        lambdaOffloadingWorkerFactory,
         evalConf);
 
       taskExecutorMap.put(taskExecutor, true);

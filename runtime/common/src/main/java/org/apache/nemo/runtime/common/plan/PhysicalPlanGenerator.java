@@ -179,7 +179,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
             throw new PhysicalPlanGenerationException(e);
           }
           // Clear internal metadata.
-          sourceVertex.clearInternalStates();
+          //sourceVertex.clearInternalStates();
         }
 
         // Add vertex to the stage.

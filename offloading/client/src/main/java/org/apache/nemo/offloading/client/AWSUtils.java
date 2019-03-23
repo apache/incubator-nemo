@@ -30,7 +30,7 @@ public final class AWSUtils {
   public static final AWSLambda AWS_LAMBDA;
   public static final String S3_BUCKET_NAME = "nemo-serverless";
   public static final String SIDEINPUT_LAMBDA_NAME = "nemo-dev-hello";
-  public static final String SIDEINPUT_LAMBDA_NAME2 = "nemo-dev-imhandler";
+  public static final String SIDEINPUT_LAMBDA_NAME2 = "nemo-dev-tg-erverless-worker";
 
   static {
     //AWS_S3 = AmazonS3ClientBuilder.standard().build();

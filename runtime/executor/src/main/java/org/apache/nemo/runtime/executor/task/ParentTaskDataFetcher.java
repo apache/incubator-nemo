@@ -22,6 +22,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.slf4j.Logger;
@@ -63,7 +64,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
-  Object fetchDataElement() throws IOException {
+  public Object fetchDataElement() throws IOException {
     try {
       if (firstFetch) {
         fetchDataLazily();

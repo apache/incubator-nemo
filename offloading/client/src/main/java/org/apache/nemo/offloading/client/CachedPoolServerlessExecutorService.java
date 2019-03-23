@@ -465,11 +465,17 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   }
 
   @Override
+  public OffloadingWorker createStreamWorker() {
+    throw new RuntimeException("Not support");
+  }
+
+  @Override
   public void shutdown() {
 
     shutdown = true;
     // shutdown all workers
     long prevTime = System.currentTimeMillis();
+
     synchronized (initializingWorkers) {
       synchronized (runningWorkers) {
         LOG.info("Shutting down workers {}/{}..., init: {}, running: {}", finishedWorkers, createdWorkers,

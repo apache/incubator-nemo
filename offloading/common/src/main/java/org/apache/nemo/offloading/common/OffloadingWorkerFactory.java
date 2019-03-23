@@ -8,6 +8,10 @@ public interface OffloadingWorkerFactory {
   OffloadingWorker createOffloadingWorker(ByteBuf workerInitBuf,
                                           OffloadingSerializer offloadingSerializer);
 
+  <O> OffloadingWorker createStreamingWorker(ByteBuf workerInitBuf,
+                                          OffloadingSerializer offloadingSerializer,
+                                         EventHandler<O> eventHandler);
+
   void deleteOffloadingWorker(OffloadingWorker worker);
 
   int getAndIncreaseDataId();

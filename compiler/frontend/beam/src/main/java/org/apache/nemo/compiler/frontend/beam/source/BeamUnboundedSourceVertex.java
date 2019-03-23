@@ -96,6 +96,14 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     }
   }
 
+  public void setUnboundedSource(final UnboundedSource unboundedSource) {
+    source = unboundedSource;
+  }
+
+  public UnboundedSource getUnboundedSource() {
+    return source;
+  }
+
   @Override
   public void clearInternalStates() {
     source = null;
@@ -113,82 +121,4 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
     return getId();
   }
 
-  /**
-   * UnboundedSourceReadable class.
-   * @param <O> output type.
-   * @param <M> checkpoint mark type.
-   */
-  private static final class UnboundedSourceReadable<O, M extends UnboundedSource.CheckpointMark>
-    implements Readable<Object> {
-    private final UnboundedSource<O, M> unboundedSource;
-    private UnboundedSource.UnboundedReader<O> reader;
-    private boolean isStarted = false;
-    private boolean isCurrentAvailable = false;
-    private boolean isFinished = false;
-
-    /**
-     * Constructor.
-     * @param unboundedSource unbounded source.
-     */
-    UnboundedSourceReadable(final UnboundedSource<O, M> unboundedSource) {
-      this.unboundedSource = unboundedSource;
-    }
-
-    @Override
-    public void prepare() {
-      try {
-        reader = unboundedSource.createReader(null, null);
-      } catch (final Exception e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    @Override
-    public Object readCurrent() {
-      try {
-        if (!isStarted) {
-          isStarted = true;
-          isCurrentAvailable = reader.start();
-        } else {
-          isCurrentAvailable = reader.advance();
-        }
-      } catch (final Exception e) {
-        throw new RuntimeException(e);
-      }
-
-      if (isCurrentAvailable) {
-        final O elem = reader.getCurrent();
-        final Instant currTs = reader.getCurrentTimestamp();
-        LOG.info("Curr timestamp: {}", currTs);
-        return new TimestampAndValue<>(currTs.getMillis(),
-          WindowedValue.timestampedValueInGlobalWindow(elem, reader.getCurrentTimestamp()));
-      } else {
-        throw new NoSuchElementException();
-      }
-    }
-
-    @Override
-    public long readWatermark() {
-      final Instant watermark = reader.getWatermark();
-      LOG.info("Reader {}, watermark {}", reader.getClass().getName(), watermark);
-      // Finish if the watermark == TIMESTAMP_MAX_VALUE
-      isFinished = (watermark.getMillis() >= GlobalWindow.TIMESTAMP_MAX_VALUE.getMillis());
-      return watermark.getMillis();
-    }
-
-    @Override
-    public boolean isFinished() {
-      return isFinished;
-    }
-
-    @Override
-    public List<String> getLocations() throws Exception {
-      return new ArrayList<>();
-    }
-
-    @Override
-    public void close() throws IOException {
-      reader.close();
-    }
-  }
 }

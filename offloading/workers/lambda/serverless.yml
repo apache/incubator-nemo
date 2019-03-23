@@ -51,7 +51,7 @@ package:
   artifact: build/distributions/lambda.zip
 
 functions:
-  imhandler:
+  tg-erverless-worker:
     handler: org.apache.nemo.offloading.workers.lambda.LambdaWorker
 #      - stream:
 #        arn: arn:aws:kinesis:ap-northeast-1:835596193924:stream/nemo

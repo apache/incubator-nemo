@@ -10,8 +10,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-public final class InputFluctuationDetector {
-  private static final Logger LOG = LoggerFactory.getLogger(InputFluctuationDetector.class.getName());
+public final class OutputFluctuationDetector {
+  private static final Logger LOG = LoggerFactory.getLogger(OutputFluctuationDetector.class.getName());
 
   // key: timestamp, value: processed event
   //private final List<Pair<Long, Long>> processedEvents;
@@ -19,7 +19,7 @@ public final class InputFluctuationDetector {
   private int length = 20;
 
   // timescale: sec
-  public InputFluctuationDetector(
+  public OutputFluctuationDetector(
     final Map<String, Pair<OperatorMetricCollector, OutputCollector>> metricCollectors) {
     //this.processedEvents = new LinkedList<>();
     this.metricCollectors = metricCollectors.values();
@@ -39,7 +39,7 @@ public final class InputFluctuationDetector {
   public synchronized List<Pair<OperatorMetricCollector, OutputCollector>> retrieveBurstyOutputCollectors(final long baseTime) {
     final List<Pair<OperatorMetricCollector, OutputCollector>> burstyCollectors = new ArrayList<>(metricCollectors.size());
     for (final Pair<OperatorMetricCollector, OutputCollector> pair : metricCollectors) {
-      if (isInputFluctuation(baseTime, pair.left().processedEvents)) {
+      if (isOutputFluctuation(baseTime, pair.left().processedEvents)) {
         burstyCollectors.add(pair);
       }
     }
@@ -48,8 +48,8 @@ public final class InputFluctuationDetector {
   }
 
   // 어느 시점 (baseTime) 을 기준으로 fluctuation 하였는가?
-  private boolean isInputFluctuation(final long baseTime,
-                                    final List<Pair<Long, Long>> processedEvents) {
+  private boolean isOutputFluctuation(final long baseTime,
+                                      final List<Pair<Long, Long>> processedEvents) {
     final List<Long> beforeBaseTime = new ArrayList<>();
     final List<Long> afterBaseTime = new ArrayList<>();
 

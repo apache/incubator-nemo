@@ -352,7 +352,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
 */
 
   @Override
-  public void finishOffloading() {
+  public <T> T finishOffloading() {
     /*
     try {
       byteBufOutputStream.close();
@@ -385,6 +385,7 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
     offloadingWorkerFactory.deleteOffloadingWorker(this);
     channelThread.shutdown();
     finished = true;
+    return null;
   }
 
   @Override

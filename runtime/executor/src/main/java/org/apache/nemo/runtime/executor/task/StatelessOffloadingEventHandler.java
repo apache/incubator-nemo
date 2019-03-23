@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public final class StatelessOffloadingEventHandler implements EventHandler<OffloadingResultEvent> {
+public final class StatelessOffloadingEventHandler implements EventHandler<Object> {
   private static final Logger LOG = LoggerFactory.getLogger(StatelessOffloadingEventHandler.class.getName());
 
   private final ConcurrentLinkedQueue<Object> offloadingQueue;
@@ -18,8 +18,10 @@ public final class StatelessOffloadingEventHandler implements EventHandler<Offlo
   }
 
   @Override
-  public void onNext(OffloadingResultEvent msg) {
-    LOG.info("Result received: cnt {}", msg.data.size());
+  public void onNext(Object msg) {
+    if (msg instanceof OffloadingResultEvent) {
+      LOG.info("Result received: cnt {}", ((OffloadingResultEvent) msg).data.size());
+    }
     offloadingQueue.add(msg);
   }
 }

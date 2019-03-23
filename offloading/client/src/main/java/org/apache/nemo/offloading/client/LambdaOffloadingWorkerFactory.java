@@ -72,6 +72,53 @@ public final class LambdaOffloadingWorkerFactory implements OffloadingWorkerFact
   }
 
   @Override
+  public OffloadingWorker createStreamingWorker(final ByteBuf workerInitBuffer,
+                                                final OffloadingSerializer offloadingSerializer,
+                                                final EventHandler eventHandler) {
+    createChannelRequest();
+    final Future<Pair<Channel, OffloadingEvent>> channelFuture = new Future<Pair<Channel, OffloadingEvent>>() {
+
+      @Override
+      public boolean cancel(boolean mayInterruptIfRunning) {
+        return false;
+      }
+
+      @Override
+      public boolean isCancelled() {
+        return false;
+      }
+
+      @Override
+      public boolean isDone() {
+        return false;
+      }
+
+      @Override
+      public Pair<Channel, OffloadingEvent> get() throws InterruptedException, ExecutionException {
+        final Pair<Channel, OffloadingEvent> pair;
+        try {
+          pair = nemoEventHandler.getHandshakeQueue().take();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+
+        pair.left().writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.WORKER_INIT, workerInitBuffer));
+
+        return pair;
+      }
+
+      @Override
+      public Pair<Channel, OffloadingEvent> get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        return null;
+      }
+    };
+
+    return new StreamingLambdaWorkerProxy(workerId.getAndIncrement(), channelFuture, this, channelEventHandlerMap,
+      offloadingSerializer.getInputEncoder(), offloadingSerializer.getOutputDecoder(), eventHandler);
+  }
+
+  @Override
   public OffloadingWorker createOffloadingWorker(final ByteBuf workerInitBuffer,
                                                  final OffloadingSerializer offloadingSerializer) {
 

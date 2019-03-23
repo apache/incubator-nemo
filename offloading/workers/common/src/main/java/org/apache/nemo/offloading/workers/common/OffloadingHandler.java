@@ -11,6 +11,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.nemo.offloading.common.*;
 
@@ -57,6 +58,9 @@ public final class OffloadingHandler {
   private int dataProcessingCnt = 0;
 
 	public OffloadingHandler() {
+    Logger.getRootLogger().setLevel(Level.INFO);
+
+
 		LOG.info("Handler is created!");
           this.clientWorkerGroup = new NioEventLoopGroup(1,
         new DefaultThreadFactory("hello" + "-ClientWorker"));
@@ -221,7 +225,11 @@ public final class OffloadingHandler {
       if (endFlag == 0) {
         System.out.println("end elapsed time: " + (System.currentTimeMillis() - sst));
         try {
-          opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
+          if (opendChannel.isOpen()) {
+            opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
+          } else {
+            throw new RuntimeException("Channel is already closed..");
+          }
         } catch (InterruptedException e) {
           e.printStackTrace();
           throw new RuntimeException(e);
@@ -340,6 +348,7 @@ public final class OffloadingHandler {
         case END:
           // send result
           System.out.println("Offloading end");
+          offloadingTransform.close();
           nemoEvent.getByteBuf().release();
           endBlockingQueue.add(0);
           // end of event
@@ -370,7 +379,7 @@ public final class OffloadingHandler {
 
     @Override
     public void emit(Object output) {
-      System.out.println("Emit output of data " + dataId);
+      //System.out.println("Emit output of data " + dataId);
       result.add(Pair.of(output, dataId));
       hasDataReceived = true;
     }
