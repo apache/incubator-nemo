@@ -20,15 +20,12 @@ package org.apache.nemo.examples.beam;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.FlatMapElements;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TypeDescriptors;
-import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.NemoRunner;
 
 import java.util.Arrays;
 /**
@@ -47,8 +44,7 @@ public final class MinimalWordCount {
   public static void main(final String[] args) {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];
-    final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
-    options.setRunner(NemoRunner.class);
+    final PipelineOptions options = NemoPipelineOptionsFactory.create();
     options.setJobName("MinimalWordCount");
     // Create the Pipeline object with the options we defined above
     final Pipeline p = Pipeline.create(options);

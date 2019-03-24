@@ -60,9 +60,9 @@ public final class SparkScala {
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testWordCount() throws Exception {
-    final String inputFileName = "inputs/test_input_wordcount_spark";
-    final String outputFileName = "inputs/test_output_wordcount_spark";
-    final String expectedOutputFilename = "/outputs/expected_output_wordcount_spark";
+    final String inputFileName = "inputs/test_input_spark_wordcount";
+    final String outputFileName = "inputs/test_output_spark_wordcount";
+    final String expectedOutputFilename = "/outputs/expected_output_spark_wordcount";
     final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
     final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
@@ -82,10 +82,10 @@ public final class SparkScala {
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testCachingWordCount() throws Exception {
-    final String inputFileName = "inputs/test_input_wordcount_spark";
-    final String outputFileName1 = "test_output_wordcount_spark";
+    final String inputFileName = "inputs/test_input_spark_wordcount";
+    final String outputFileName1 = "test_output_spark_wordcount";
     final String outputFileName2 = "test_output_reversed_wordcount_spark";
-    final String expectedOutputFilename1 = "outputs/expected_output_wordcount_spark";
+    final String expectedOutputFilename1 = "outputs/expected_output_spark_wordcount";
     final String expectedOutputFilename2 = "outputs/expected_output_reversed_wordcount_spark";
     final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
     final String outputFilePath1 = ExampleTestArgs.getFileBasePath() + outputFileName1;

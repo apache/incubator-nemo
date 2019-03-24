@@ -18,10 +18,9 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 import java.util.List;
@@ -41,7 +40,7 @@ public final class DisaggregationEdgeDataStorePass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public IRDAG apply(final IRDAG dag) {
     dag.getVertices().forEach(vertex -> { // Initialize the DataStore of the DAG with GlusterFileStore.
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       inEdges.forEach(edge ->

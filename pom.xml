@@ -28,7 +28,7 @@ under the License.
 
     <groupId>org.apache.nemo</groupId>
     <artifactId>nemo-project</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.2-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Nemo Project</name>
 
@@ -44,7 +44,7 @@ under the License.
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <auto-service.version>1.0-rc2</auto-service.version>
-        <beam.version>2.6.0</beam.version>
+        <beam.version>2.11.0</beam.version>
         <spark.version>2.2.0</spark.version>
         <scala.version>2.11.8</scala.version>
         <kryo.version>4.0.1</kryo.version>
@@ -61,6 +61,8 @@ under the License.
         <jetty-server.version>9.4.10.v20180503</jetty-server.version>
         <jetty-servlet.version>9.4.10.v20180503</jetty-servlet.version>
         <commons-math.version>3.6.1</commons-math.version>
+        <sqlite-jdbc.version>3.25.2</sqlite-jdbc.version>
+        <postgresql.version>42.2.5</postgresql.version>
         <slf4j.version>1.7.20</slf4j.version>
         <!-- Tests -->
         <mockito.version>2.13.0</mockito.version>
@@ -172,6 +174,10 @@ under the License.
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${surefire.version}</version>
+                  <configuration>
+                    <!-- Useful for debugging: See https://stackoverflow.com/a/16941432 -->
+                    <trimStackTrace>false</trimStackTrace>
+                  </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>

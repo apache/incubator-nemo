@@ -35,7 +35,6 @@ import java.util.Optional;
  */
 public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
-  private boolean stagePartitioned;
 
   /**
    * Constructor of IRVertex.
@@ -43,7 +42,6 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
   public IRVertex() {
     super(IdManager.newVertexId());
     this.executionProperties = ExecutionPropertyMap.of(this);
-    this.stagePartitioned = false;
   }
 
   /**
@@ -52,10 +50,9 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
    * @param that the source object for copying
    */
   public IRVertex(final IRVertex that) {
-    super(IdManager.newVertexId());
+    super(IdManager.getVertexId(that));
     this.executionProperties = ExecutionPropertyMap.of(this);
-    that.getExecutionProperties().forEachProperties(this::setProperty);
-    this.stagePartitioned = that.stagePartitioned;
+    that.copyExecutionPropertiesTo(this);
   }
 
   /**
@@ -104,20 +101,6 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
    */
   public final ExecutionPropertyMap<VertexExecutionProperty> getExecutionProperties() {
     return executionProperties;
-  }
-
-  /**
-   * Mark that this IRVertex has been added to stage.
-   */
-  public final void setStagePartitioned() {
-    stagePartitioned = true;
-  }
-
-  /**
-   * @return whether or not this IRVertex has been added to a stage.
-   */
-  public final boolean getStagePartitioned() {
-    return stagePartitioned;
   }
 
   /**

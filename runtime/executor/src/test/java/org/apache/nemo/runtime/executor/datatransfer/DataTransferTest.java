@@ -39,6 +39,7 @@ import org.apache.nemo.runtime.common.message.MessageParameters;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
+import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.nemo.runtime.common.plan.StageEdge;
@@ -48,8 +49,9 @@ import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.master.*;
-import org.apache.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import org.apache.commons.io.FileUtils;
+import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
@@ -96,7 +98,7 @@ import static org.powermock.api.mockito.PowerMockito.when;
  * to run the test with leakage reports for netty {@link io.netty.util.ReferenceCounted} objects.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class,
+@PrepareForTest({PubSubEventHandlerWrapper.class, MetricMessageHandler.class,
     SourceVertex.class, ClientRPC.class, MetricManagerMaster.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
@@ -136,13 +138,16 @@ public final class DataTransferTest {
     final Injector injector = LocalMessageEnvironment.forkInjector(dispatcherInjector,
         MessageEnvironment.MASTER_COMMUNICATION_ID);
 
+    final PlanRewriter planRewriter = mock(PlanRewriter.class);
+    injector.bindVolatileInstance(PlanRewriter.class, planRewriter);
+
     injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
-    injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
     final AtomicInteger executorCount = new AtomicInteger(0);
     injector.bindVolatileInstance(ClientRPC.class, mock(ClientRPC.class));
     injector.bindVolatileInstance(MetricManagerMaster.class, mock(MetricManagerMaster.class));
     injector.bindVolatileInstance(MetricMessageHandler.class, mock(MetricMessageHandler.class));
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, EMPTY_DAG_DIRECTORY);
+    injector.bindVolatileParameter(JobConf.JobId.class, "jobId");
 
     // Necessary for wiring up the message environments
     injector.bindVolatileInstance(Scheduler.class, injector.getInstance(BatchScheduler.class));
@@ -309,20 +314,11 @@ public final class DataTransferTest {
     final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex);
     dummyIREdge.setProperty(KeyExtractorProperty.of(element -> element));
     dummyIREdge.setProperty(CommunicationPatternProperty.of(commPattern));
-    dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+    dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.Hash));
     dummyIREdge.setProperty(DataStoreProperty.of(store));
     dummyIREdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     dummyIREdge.setProperty(EncoderProperty.of(ENCODER_FACTORY));
     dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
-    if (dummyIREdge.getPropertyValue(CommunicationPatternProperty.class).get()
-        .equals(CommunicationPatternProperty.Value.Shuffle)) {
-      final int parallelism = dstVertex.getPropertyValue(ParallelismProperty.class).get();
-      final Map<Integer, KeyRange> metric = new HashMap<>();
-      for (int i = 0; i < parallelism; i++) {
-        metric.put(i, HashRange.of(i, i + 1, false));
-      }
-      dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(metric)));
-    }
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
     final RuntimeEdge dummyEdge;
 
@@ -395,21 +391,12 @@ public final class DataTransferTest {
     dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
     dummyIREdge.setProperty(KeyExtractorProperty.of(element -> element));
     dummyIREdge.setProperty(CommunicationPatternProperty.of(commPattern));
-    dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+    dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.Hash));
     dummyIREdge.setProperty(DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue("dummy")));
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty
         = dummyIREdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     duplicateDataProperty.get().setRepresentativeEdgeId(edgeId);
     duplicateDataProperty.get().setGroupSize(2);
-    if (dummyIREdge.getPropertyValue(CommunicationPatternProperty.class).get()
-        .equals(CommunicationPatternProperty.Value.Shuffle)) {
-      final int parallelism = dstVertex.getPropertyValue(ParallelismProperty.class).get();
-      final Map<Integer, KeyRange> metric = new HashMap<>();
-      for (int i = 0; i < parallelism; i++) {
-        metric.put(i, HashRange.of(i, i + 1, false));
-      }
-      dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(metric)));
-    }
     dummyIREdge.setProperty(DataStoreProperty.of(store));
     dummyIREdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
     final RuntimeEdge dummyEdge, dummyEdge2;
@@ -533,7 +520,12 @@ public final class DataTransferTest {
     final ExecutionPropertyMap<VertexExecutionProperty> stageExecutionProperty = new ExecutionPropertyMap<>(stageId);
     stageExecutionProperty.put(ParallelismProperty.of(PARALLELISM_TEN));
     stageExecutionProperty.put(ScheduleGroupProperty.of(0));
-    return new Stage(stageId, emptyDag, stageExecutionProperty, Collections.emptyList());
+    return new Stage(
+      stageId,
+      IntStream.range(0, PARALLELISM_TEN).boxed().collect(Collectors.toList()),
+      emptyDag,
+      stageExecutionProperty,
+      Collections.emptyList());
   }
 
   /**

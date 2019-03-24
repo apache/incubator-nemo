@@ -18,18 +18,16 @@
  */
 package org.apache.nemo.common.test;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
@@ -53,11 +51,23 @@ public final class EmptyComponents {
   private EmptyComponents() {
   }
 
+  public static IREdge newDummyShuffleEdge(final IRVertex src, final IRVertex dst) {
+    final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, src, dst);
+    edge.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor()));
+    edge.setProperty(KeyEncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
+    edge.setProperty(KeyDecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
+    edge.setProperty(EncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
+    edge.setProperty(DecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
+    edge.setProperty(KeyEncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
+    edge.setProperty(KeyDecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
+    return edge;
+  }
+
   /**
    * Builds dummy IR DAG for testing.
    * @return the dummy IR DAG.
    */
-  public static DAG<IRVertex, IREdge> buildEmptyDAG() {
+  public static IRDAG buildEmptyDAG() {
     DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     final IRVertex s = new EmptyComponents.EmptySourceVertex<>("s");
     final IRVertex t1 = new OperatorVertex(new EmptyComponents.EmptyTransform("t1"));
@@ -72,11 +82,11 @@ public final class EmptyComponents {
     dagBuilder.addVertex(t4);
     dagBuilder.addVertex(t5);
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, s, t1));
-    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, t1, t2));
+    dagBuilder.connectVertices(newDummyShuffleEdge(t1, t2));
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t3));
-    dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, t3, t4));
+    dagBuilder.connectVertices(newDummyShuffleEdge(t3, t4));
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t5));
-    return dagBuilder.build();
+    return new IRDAG(dagBuilder.build());
   }
 
   /**
@@ -85,7 +95,7 @@ public final class EmptyComponents {
    * and KeyExtractorProperty by default.
    * @return the dummy IR DAG.
    */
-  public static DAG<IRVertex, IREdge> buildEmptyDAGForSkew() {
+  public static IRDAG buildEmptyDAGForSkew() {
     DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     final IRVertex s = new EmptyComponents.EmptySourceVertex<>("s");
     final IRVertex t1 = new OperatorVertex(new EmptyComponents.EmptyTransform("t1"));
@@ -94,15 +104,8 @@ public final class EmptyComponents {
     final IRVertex t4 = new OperatorVertex(new EmptyComponents.EmptyTransform("t4"));
     final IRVertex t5 = new OperatorVertex(new EmptyComponents.EmptyTransform("t5"));
 
-    final IREdge shuffleEdgeBetweenT1AndT2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, t1, t2);
-    shuffleEdgeBetweenT1AndT2.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor()));
-    shuffleEdgeBetweenT1AndT2.setProperty(EncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
-    shuffleEdgeBetweenT1AndT2.setProperty(DecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
-
-    final IREdge shuffleEdgeBetweenT3AndT4 = new IREdge(CommunicationPatternProperty.Value.Shuffle, t3, t4);
-    shuffleEdgeBetweenT3AndT4.setProperty(KeyExtractorProperty.of(new DummyBeamKeyExtractor()));
-    shuffleEdgeBetweenT3AndT4.setProperty(EncoderProperty.of(new EncoderFactory.DummyEncoderFactory()));
-    shuffleEdgeBetweenT3AndT4.setProperty(DecoderProperty.of(new DecoderFactory.DummyDecoderFactory()));
+    final IREdge shuffleEdgeBetweenT1AndT2 = newDummyShuffleEdge(t1, t2);
+    final IREdge shuffleEdgeBetweenT3AndT4 = newDummyShuffleEdge(t3, t4);
 
     dagBuilder.addVertex(s);
     dagBuilder.addVertex(t1);
@@ -115,7 +118,7 @@ public final class EmptyComponents {
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t3));
     dagBuilder.connectVertices(shuffleEdgeBetweenT3AndT4);
     dagBuilder.connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, t2, t5));
-    return dagBuilder.build();
+    return new IRDAG(dagBuilder.build());
   }
 
   /**
@@ -181,6 +184,7 @@ public final class EmptyComponents {
    */
   public static final class EmptySourceVertex<T> extends SourceVertex<T> {
     private String name;
+    private int minNumReadables;
 
     /**
      * Constructor.
@@ -188,7 +192,18 @@ public final class EmptyComponents {
      * @param name name for the vertex.
      */
     public EmptySourceVertex(final String name) {
+      new EmptySourceVertex(name, 1);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param name name for the vertex.
+     * @param minNumReadables for the vertex.
+     */
+    public EmptySourceVertex(final String name, final int minNumReadables) {
       this.name = name;
+      this.minNumReadables = minNumReadables;
     }
 
     /**
@@ -196,8 +211,8 @@ public final class EmptyComponents {
      *
      * @param that the source object for copying
      */
-    public EmptySourceVertex(final EmptySourceVertex that) {
-      this.name = new String(that.name);
+    private EmptySourceVertex(final EmptySourceVertex that) {
+      this.name = that.name;
     }
 
     @Override
@@ -210,17 +225,29 @@ public final class EmptyComponents {
     }
 
     @Override
+    public ObjectNode getPropertiesAsJsonNode() {
+      final ObjectNode node = getIRVertexPropertiesAsJsonNode();
+      node.put("source", "EmptySourceVertex(" + name + " / minNumReadables: " + minNumReadables + ")");
+      return node;
+    }
+
+    @Override
     public boolean isBounded() {
       return true;
     }
 
     @Override
     public List<Readable<T>> getReadables(final int desirednumOfSplits) {
-      final List list = new ArrayList(desirednumOfSplits);
-      for (int i = 0; i < desirednumOfSplits; i++) {
+      final List<Readable<T>> list = new ArrayList<>(Math.max(minNumReadables, desirednumOfSplits));
+      for (int i = 0; i < Math.max(minNumReadables, desirednumOfSplits); i++) {
         list.add(new EmptyReadable<>());
       }
       return list;
+    }
+
+    @Override
+    public long getEstimatedSizeBytes() {
+      return 0L;
     }
 
     @Override

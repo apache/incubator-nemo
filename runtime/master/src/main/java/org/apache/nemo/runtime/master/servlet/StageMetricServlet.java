@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.master.servlet;
 
-import org.apache.nemo.runtime.master.MetricStore;
+import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.nemo.runtime.common.metric.StageMetric;
 
 import javax.servlet.http.HttpServlet;

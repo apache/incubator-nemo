@@ -18,11 +18,9 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import java.util.HashMap;
 import java.util.Optional;
@@ -41,7 +39,7 @@ public final class DuplicateEdgeGroupSizePass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public IRDAG apply(final IRDAG dag) {
     final HashMap<String, Integer> groupIdToGroupSize = new HashMap<>();
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
         .forEach(e -> {
@@ -65,7 +63,6 @@ public final class DuplicateEdgeGroupSizePass extends AnnotatingPass {
             }
           }
         }));
-
     return dag;
   }
 }

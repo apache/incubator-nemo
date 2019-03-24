@@ -62,6 +62,17 @@ public final class PairEncoderFactory<A, B> implements EncoderFactory<Pair<A, B>
     return new PairEncoder<>(outputStream, leftEncoderFactory, rightEncoderFactory);
   }
 
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("Pair(");
+    sb.append(leftEncoderFactory.toString());
+    sb.append(", ");
+    sb.append(rightEncoderFactory.toString());
+    sb.append(")");
+    return sb.toString();
+  }
+
   /**
    * PairEncoder.
    * @param <T1> type for the left coder.

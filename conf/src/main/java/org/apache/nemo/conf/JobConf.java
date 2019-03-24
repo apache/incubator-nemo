@@ -76,6 +76,28 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class GlusterVolumeDirectory implements Name<String> {
   }
 
+  /**
+   * Address pointing to the DB for saving metrics.
+   */
+  @NamedParameter(doc = "DB address", short_name = "db_dir", default_value =
+    "jdbc:postgresql://nemo-optimization.cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization")
+  public final class DBAddress implements Name<String> {
+  }
+
+  /**
+   * ID for the pointed DB address for saving metrics.
+   */
+  @NamedParameter(doc = "DB ID", short_name = "db_id", default_value = "postgres")
+  public final class DBId implements Name<String> {
+  }
+
+  /**
+   * Password for the pointed DB address for saving metrics.
+   */
+  @NamedParameter(doc = "DB Password", short_name = "db_password", default_value = "fake_password")
+  public final class DBPasswd implements Name<String> {
+  }
+
   //////////////////////////////// Client-Driver RPC
 
   /**
@@ -208,19 +230,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   @NamedParameter(doc = "Number of serialization thread for scheduling", short_name = "schedule_ser_thread",
       default_value = "8")
   public final class ScheduleSerThread implements Name<Integer> {
-  }
-
-  /**
-   * Hash range multiplier.
-   * If we need to split or recombine an output data from a task after it is stored,
-   * we multiply the hash range with this factor in advance
-   * to prevent the extra deserialize - rehash - serialize process.
-   * In these cases, the hash range will be (hash range multiplier X destination task parallelism).
-   * The reason why we do not divide the output into a fixed number is that the fixed number can be smaller than
-   * the destination task parallelism.
-   */
-  @NamedParameter(doc = "Hash range multiplier", short_name = "hash_range_multiplier", default_value = "10")
-  public final class HashRangeMultiplier implements Name<Integer> {
   }
 
   /**

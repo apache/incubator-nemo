@@ -21,13 +21,13 @@ package org.apache.nemo.common.ir.vertex;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
-import org.apache.nemo.common.util.Util;
 
 import java.io.Serializable;
 import java.util.*;
@@ -72,7 +72,7 @@ public final class LoopVertex extends IRVertex {
    *
    * @param that the source object for copying
    */
-  public LoopVertex(final LoopVertex that) {
+  private LoopVertex(final LoopVertex that) {
     super(that);
     this.compositeTransformFullName = new String(that.compositeTransformFullName);
     // Copy all elements to the clone
@@ -310,6 +310,11 @@ public final class LoopVertex extends IRVertex {
     this.maxNumberOfIterations--;
   }
 
+  /**
+   * Check termination condition.
+   * @param that another vertex.
+   * @return true if equals.
+   */
   public boolean terminationConditionEquals(final LoopVertex that) {
     if (this.maxNumberOfIterations.equals(that.getMaxNumberOfIterations()) && Util
         .checkEqualityOfIntPredicates(this.terminationCondition, that.getTerminationCondition(),

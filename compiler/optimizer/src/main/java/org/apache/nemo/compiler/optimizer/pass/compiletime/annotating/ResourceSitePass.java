@@ -20,18 +20,18 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSiteProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.apache.commons.math3.optim.BaseOptimizer;
 import org.apache.commons.math3.optim.PointValuePair;
 import org.apache.commons.math3.optim.linear.*;
 import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
 import org.apache.commons.math3.util.Incrementor;
+import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSiteProperty;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +74,7 @@ public final class ResourceSitePass extends AnnotatingPass {
   }
 
   @Override
-  public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+  public IRDAG apply(final IRDAG dag) {
     if (bandwidthSpecificationString.isEmpty()) {
       dag.topologicalDo(irVertex -> irVertex.setProperty(ResourceSiteProperty.of(EMPTY_MAP)));
     } else {
@@ -110,7 +110,7 @@ public final class ResourceSitePass extends AnnotatingPass {
    * @param bandwidthSpecification bandwidth specification.
    */
   private static void assignNodeShares(
-      final DAG<IRVertex, IREdge> dag,
+      final IRDAG dag,
       final BandwidthSpecification bandwidthSpecification) {
     dag.topologicalDo(irVertex -> {
       final Collection<IREdge> inEdges = dag.getIncomingEdgesOf(irVertex);

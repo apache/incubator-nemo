@@ -23,7 +23,7 @@ under the License.
     <parent>
         <groupId>org.apache.nemo</groupId>
         <artifactId>nemo-runtime</artifactId>
-        <version>0.1-SNAPSHOT</version>
+        <version>0.2-SNAPSHOT</version>
         <relativePath>../</relativePath>
     </parent>
 
@@ -75,6 +75,11 @@ under the License.
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>${sqlite-jdbc.version}</version>
         </dependency>
         <dependency>
             <!--

@@ -19,22 +19,23 @@
 package org.apache.nemo.compiler.frontend.beam.source;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.beam.sdk.io.BoundedSource;
+import org.apache.beam.sdk.io.hadoop.format.HadoopFormatIO;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.ir.Readable;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.test.EmptyComponents;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import org.apache.nemo.common.ir.vertex.SourceVertex;
-import org.apache.beam.sdk.io.BoundedSource;
-import org.apache.beam.sdk.io.hadoop.inputformat.HadoopInputFormatIO;
-import org.apache.hadoop.mapreduce.InputSplit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * SourceVertex implementation for BoundedSource.
@@ -44,6 +45,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
   private static final Logger LOG = LoggerFactory.getLogger(BeamBoundedSourceVertex.class.getName());
   private BoundedSource<O> source;
   private final DisplayData displayData;
+  private final long estimatedSizeBytes;
 
   /**
    * Constructor of BeamBoundedSourceVertex.
@@ -52,9 +54,13 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
    * @param displayData data to display.
    */
   public BeamBoundedSourceVertex(final BoundedSource<O> source, final DisplayData displayData) {
-    super();
     this.source = source;
     this.displayData = displayData;
+    try {
+      this.estimatedSizeBytes = source.getEstimatedSizeBytes(null);
+    } catch (Exception e) {
+      throw new MetricException(e);
+    }
   }
 
   /**
@@ -62,10 +68,15 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
    *
    * @param that the source object for copying
    */
-  public BeamBoundedSourceVertex(final BeamBoundedSourceVertex that) {
+  private BeamBoundedSourceVertex(final BeamBoundedSourceVertex that) {
     super(that);
     this.source = that.source;
     this.displayData = that.displayData;
+    try {
+      this.estimatedSizeBytes = source.getEstimatedSizeBytes(null);
+    } catch (Exception e) {
+      throw new MetricException(e);
+    }
   }
 
   @Override
@@ -81,11 +92,23 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
   @Override
   public List<Readable<WindowedValue<O>>> getReadables(final int desiredNumOfSplits) throws Exception {
     final List<Readable<WindowedValue<O>>> readables = new ArrayList<>();
-    LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
-    LOG.info("desired: {}", desiredNumOfSplits);
-    source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null)
+
+    if (source != null) {
+      LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
+      LOG.info("desired: {}", desiredNumOfSplits);
+      source.split(this.estimatedSizeBytes / desiredNumOfSplits, null)
         .forEach(boundedSource -> readables.add(new BoundedSourceReadable<>(boundedSource)));
-    return readables;
+      return readables;
+    } else {
+      // TODO #333: Remove SourceVertex#clearInternalStates
+      final SourceVertex emptySourceVertex = new EmptyComponents.EmptySourceVertex("EMPTY");
+      return emptySourceVertex.getReadables(desiredNumOfSplits);
+    }
+  }
+
+  @Override
+  public long getEstimatedSizeBytes() {
+    return this.estimatedSizeBytes;
   }
 
   @Override
@@ -157,10 +180,10 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
 
     @Override
     public List<String> getLocations() throws Exception {
-      if (boundedSource instanceof HadoopInputFormatIO.HadoopInputFormatBoundedSource) {
+      if (boundedSource instanceof HadoopFormatIO.HadoopInputFormatBoundedSource) {
         final Field inputSplitField = boundedSource.getClass().getDeclaredField("inputSplit");
         inputSplitField.setAccessible(true);
-        final InputSplit inputSplit = ((HadoopInputFormatIO.SerializableSplit) inputSplitField
+        final InputSplit inputSplit = ((HadoopFormatIO.SerializableSplit) inputSplitField
             .get(boundedSource)).getSplit();
         return Arrays.asList(inputSplit.getLocations());
       } else {

@@ -24,6 +24,7 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 /**
  * Decoder ExecutionProperty.
  * TODO #276: Add NoCoder property value in Encoder/DecoderProperty
+ * TODO #342: Check Encoder/Decoder symmetry
  */
 public final class DecoderProperty extends EdgeExecutionProperty<DecoderFactory> {
   /**

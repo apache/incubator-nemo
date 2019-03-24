@@ -21,8 +21,14 @@ package org.apache.nemo.runtime.common.metric;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.exception.MetricException;
+import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.common.state.PlanState;
 
 import java.io.IOException;
@@ -33,30 +39,96 @@ import java.util.List;
  * Metric class for Job (or {@link PhysicalPlan}).
  */
 public final class JobMetric implements StateMetric<PlanState.State> {
-  private String id;
-  private List<StateTransitionEvent<PlanState.State>> stateTransitionEvents = new ArrayList<>();
+  private final String id;
+  private final List<StateTransitionEvent<PlanState.State>> stateTransitionEvents;
+  private String irDagSummary;
+  private Long inputSize;
+  private String vertexProperties;
+  private String edgeProperties;
+  private JsonNode irDagJson;
   private JsonNode stageDagJson;
 
+  /**
+   * Constructor.
+   * @param physicalPlan physical plan to derive the id from.
+   */
   public JobMetric(final PhysicalPlan physicalPlan) {
-    this.id = physicalPlan.getPlanId();
+    this(physicalPlan.getPlanId());
   }
 
+  /**
+   * Constructor with the designated id.
+   * @param id the id.
+   */
   public JobMetric(final String id) {
     this.id = id;
+    this.stateTransitionEvents = new ArrayList<>();
   }
 
-  @JsonProperty("dag")
+  @JsonProperty("ir-dag")
+  public JsonNode getIRDAG() {
+    return irDagJson;
+  }
+
+  public String getIrDagSummary() {
+    return this.irDagSummary;
+  }
+
+  public Long getInputSize() {
+    return this.inputSize;
+  }
+
+  public String getVertexProperties() {
+    return this.vertexProperties;
+  }
+
+  public String getEdgeProperties() {
+    return this.edgeProperties;
+  }
+
+  /**
+   * Setter for the IR DAG.
+   * @param irDag the IR DAG.
+   */
+  public void setIRDAG(final IRDAG irDag) {
+    this.irDagSummary = irDag.irDAGSummary();
+    this.inputSize = irDag.getRootVertices().stream()
+      .filter(irVertex -> irVertex instanceof SourceVertex)
+      .mapToLong(srcVertex -> {
+        try {
+          return ((SourceVertex) srcVertex).getEstimatedSizeBytes();
+        } catch (Exception e) {
+          throw new MetricException(e);
+        }
+      })
+      .sum();
+    final Pair<String, String> stringifiedProperties = MetricUtils.stringifyIRDAGProperties(irDag);
+    this.vertexProperties = stringifiedProperties.left();
+    this.edgeProperties = stringifiedProperties.right();
+    final ObjectMapper objectMapper = new ObjectMapper();
+    try {
+      this.irDagJson = objectMapper.readTree(irDag.toString());
+    } catch (final IOException e) {
+      throw new MetricException(e);
+    }
+  }
+
+  @JsonProperty("stage-dag")
   public JsonNode getStageDAG() {
     return stageDagJson;
   }
 
-  public void setStageDAG(final DAG dag) {
+  /**
+   * Setter for the stage DAG.
+   * @param dag the stage DAG.
+   */
+  public void setStageDAG(final DAG<Stage, StageEdge> dag) {
     final String dagJson = dag.toString();
     final ObjectMapper objectMapper = new ObjectMapper();
     try {
       this.stageDagJson = objectMapper.readTree(dagJson);
     } catch (final IOException e) {
-      throw new RuntimeException(e);
+      throw new MetricException(e);
     }
   }
 

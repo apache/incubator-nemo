@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.spark.core;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
@@ -105,7 +106,7 @@ public final class SparkFrontendUtils {
     builder.connectVertices(newEdge);
 
     // launch DAG
-    JobLauncher.launchDAG(builder.build(), SparkBroadcastVariables.getAll(), "");
+    JobLauncher.launchDAG(new IRDAG(builder.build()), SparkBroadcastVariables.getAll(), "");
 
     return (List<T>) JobLauncher.getCollectedData();
   }

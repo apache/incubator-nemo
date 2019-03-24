@@ -1,6 +1,7 @@
 # Nemo
 
 [![Build Status](https://travis-ci.org/apache/incubator-nemo.svg?branch=master)](https://travis-ci.org/apache/incubator-nemo)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=org.apache.nemo%3Anemo-project&metric=alert_status)](https://sonarcloud.io/dashboard?id=org.apache.nemo%3Anemo-project)
 
 A Data Processing System for Flexible Employment With Different Deployment Characteristics.
 
@@ -65,6 +66,10 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 
 ## Running Beam applications
 
+Apache Nemo is an official runner of Apache Beam, and it can be executed from Beam, using NemoRunner, as well as directly from the Nemo project. 
+The details of using NemoRunner from Beam is shown on the [NemoRunner page of the Apache Beam website](https://beam.apache.org/documentation/runners/nemo/).
+Below describes how Beam applications can be run directly on Nemo.
+
 ### Configurable options
 * `-job_id`: ID of the Beam job
 * `-user_main`: Canonical name of the Beam application
@@ -90,6 +95,16 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
  	-user_main org.apache.nemo.examples.beam.WordCount \
  	-optimization_policy org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy \
 	-user_args "hdfs://v-m:9000/test_input_wordcount hdfs://v-m:9000/test_output_wordcount"
+
+## NEXMark streaming Q0 (query0) example 
+./bin/run_nexmark.sh \
+ 	-job_id nexmark-Q0 \
+	-executor_json `pwd`/examples/resources/executors/beam_test_executor_resources.json \
+ 	-user_main org.apache.beam.sdk.nexmark.Main \
+ 	-optimization_policy org.apache.nemo.compiler.optimizer.policy.StreamingPolicy \
+  -scheduler_impl_class_name org.apache.nemo.runtime.master.scheduler.StreamingScheduler \	
+	-user_args "--runner=org.apache.nemo.client.beam.NemoRunner --streaming=true --query=0 --numEventGenerators=1"
+
 ```
 ## Resource Configuration
 `-executor_json` command line option can be used to provide a path to the JSON file that describes resource configuration for executors. Its default value is `config/default.json`, which initializes one of each `Transient`, `Reserved`, and `Compute` executor, each of which has one core and 1024MB memory.
@@ -143,3 +158,4 @@ Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 ## Speeding up builds 
 * To exclude Spark related packages: mvn clean install -T 2C -DskipTests -pl \\!compiler/frontend/spark,\\!examples/spark
 * To exclude Beam related packages: mvn clean install -T 2C -DskipTests -pl \\!compiler/frontend/beam,\\!examples/beam
+* To exclude NEXMark related packages: mvn clean install -T 2C -DskipTests -pl \\!examples/nexmark

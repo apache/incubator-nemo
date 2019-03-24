@@ -21,10 +21,8 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.ir.edge.IREdge;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,7 +38,7 @@ import static org.junit.Assert.assertEquals;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class LargeShuffleCompositePassTest {
-  private DAG<IRVertex, IREdge> compiledDAG;
+  private IRDAG compiledDAG;
 
   @Before
   public void setUp() throws Exception {
@@ -49,7 +47,7 @@ public class LargeShuffleCompositePassTest {
 
   @Test
   public void testLargeShuffle() {
-    final DAG<IRVertex, IREdge> processedDAG = new LargeShuffleCompositePass().apply(compiledDAG);
+    final IRDAG processedDAG = new LargeShuffleCompositePass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
       if (processedDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
@@ -85,17 +83,12 @@ public class LargeShuffleCompositePassTest {
               edgeFromMerger.getPropertyValue(DataStoreProperty.class).get());
           assertEquals(BytesEncoderFactory.of(),
               edgeFromMerger.getPropertyValue(EncoderProperty.class).get());
-          assertEquals(PartitionerProperty.Value.DedicatedKeyPerElementPartitioner,
-              edgeFromMerger.getPropertyValue(PartitionerProperty.class).get());
+          assertEquals(PartitionerProperty.Type.DedicatedKeyPerElement,
+              edgeFromMerger.getPropertyValue(PartitionerProperty.class).get().left());
           assertEquals(CompressionProperty.Value.None,
               edgeFromMerger.getPropertyValue(CompressionProperty.class).get());
           assertEquals(CompressionProperty.Value.LZ4,
               edgeFromMerger.getPropertyValue(DecompressionProperty.class).get());
-        });
-      } else {
-        // Non merger vertex.
-        processedDAG.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          assertEquals(DataFlowProperty.Value.Pull, irEdge.getPropertyValue(DataFlowProperty.class).get());
         });
       }
     });

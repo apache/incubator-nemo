@@ -70,6 +70,7 @@ import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.any;
@@ -188,6 +189,24 @@ public final class TaskExecutorTest {
     assertTrue(checkEqualElements(elements, runtimeEdgeToOutputData.get(taskOutEdge.getId())));
   }
 
+    /**
+   * Test invalid parameter failure.
+   */
+  @Test()
+  public void testInvalidInputData() throws Exception {
+    try{
+      // Execute the task.
+      final TaskExecutor taskExecutor = getTaskExecutor(null, null);
+      taskExecutor.execute();
+
+      // This should not be reached.
+      fail();
+    }
+    catch(NullPointerException e){
+      assertEquals(true, true);
+    }
+  }
+
   /**
    * This test emits data and watermark by emulating an unbounded source readable.
    */
@@ -203,7 +222,7 @@ public final class TaskExecutorTest {
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
     final List<Watermark> emittedWatermarks = new LinkedList<>();
 
-    final Transform transform = new RelayTransformNoWatermarkEmit(emittedWatermarks);
+    final Transform transform = new StreamTransformNoWatermarkEmit(emittedWatermarks);
     final OperatorVertex operatorVertex = new OperatorVertex(transform);
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
@@ -240,7 +259,7 @@ public final class TaskExecutorTest {
    */
   @Test(timeout=5000)
   public void testParentTaskDataFetching() throws Exception {
-    final IRVertex vertex = new OperatorVertex(new RelayTransform());
+    final IRVertex vertex = new OperatorVertex(new StreamTransform());
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(vertex)
@@ -290,9 +309,9 @@ public final class TaskExecutorTest {
   @Test()
   public void testMultipleIncomingEdges() throws Exception {
     final List<Watermark> emittedWatermarks = new ArrayList<>();
-    final IRVertex operatorIRVertex1 = new OperatorVertex(new RelayTransform());
-    final IRVertex operatorIRVertex2 = new OperatorVertex(new RelayTransformNoWatermarkEmit(emittedWatermarks));
-    final IRVertex operatorIRVertex3 = new OperatorVertex(new RelayTransform());
+    final IRVertex operatorIRVertex1 = new OperatorVertex(new StreamTransform());
+    final IRVertex operatorIRVertex2 = new OperatorVertex(new StreamTransformNoWatermarkEmit(emittedWatermarks));
+    final IRVertex operatorIRVertex3 = new OperatorVertex(new StreamTransform());
 
     final IRVertex sourceIRVertex1 = new TestUnboundedSourceVertex();
     final IRVertex sourceIRVertex2 = new TestUnboundedSourceVertex();
@@ -376,8 +395,8 @@ public final class TaskExecutorTest {
    */
   @Test(timeout=5000)
   public void testTwoOperators() throws Exception {
-    final IRVertex operatorIRVertex1 = new OperatorVertex(new RelayTransform());
-    final IRVertex operatorIRVertex2 = new OperatorVertex(new RelayTransform());
+    final IRVertex operatorIRVertex1 = new OperatorVertex(new StreamTransform());
+    final IRVertex operatorIRVertex2 = new OperatorVertex(new StreamTransform());
 
     final String edgeId = "edge";
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
@@ -409,7 +428,7 @@ public final class TaskExecutorTest {
     final Transform singleListTransform = new CreateSingleListTransform();
 
     final long broadcastId = 0;
-    final IRVertex operatorIRVertex1 = new OperatorVertex(new RelayTransform());
+    final IRVertex operatorIRVertex1 = new OperatorVertex(new StreamTransform());
     final IRVertex operatorIRVertex2 = new OperatorVertex(new BroadcastVariablePairingTransform(broadcastId));
 
     final String edgeId = "edge";
@@ -460,9 +479,9 @@ public final class TaskExecutorTest {
 
     final IRVertex routerVertex = new OperatorVertex(
       new RoutingTransform(Arrays.asList(additionalTag1, additionalTag2)));
-    final IRVertex mainVertex= new OperatorVertex(new RelayTransform());
-    final IRVertex bonusVertex1 = new OperatorVertex(new RelayTransform());
-    final IRVertex bonusVertex2 = new OperatorVertex(new RelayTransform());
+    final IRVertex mainVertex= new OperatorVertex(new StreamTransform());
+    final IRVertex bonusVertex1 = new OperatorVertex(new StreamTransform());
+    final IRVertex bonusVertex2 = new OperatorVertex(new StreamTransform());
 
     final RuntimeEdge<IRVertex> edge1 = createEdge(routerVertex, mainVertex, "edge-1");
     final RuntimeEdge<IRVertex> edge2 = createEdge(routerVertex, bonusVertex1, "edge-2");
@@ -523,7 +542,7 @@ public final class TaskExecutorTest {
     return new StageEdge("SEdge" + RUNTIME_EDGE_ID.getAndIncrement(),
         ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne),
         irVertex,
-        new OperatorVertex(new RelayTransform()),
+        new OperatorVertex(new StreamTransform()),
         mock(Stage.class),
         mock(Stage.class));
   }
@@ -533,7 +552,7 @@ public final class TaskExecutorTest {
       ExecutionPropertyMap.of(mock(IREdge.class), CommunicationPatternProperty.Value.OneToOne);
     return new StageEdge("runtime outgoing edge id",
       executionPropertyMap,
-      new OperatorVertex(new RelayTransform()),
+      new OperatorVertex(new StreamTransform()),
       irVertex,
       mock(Stage.class),
       mock(Stage.class));
@@ -591,11 +610,11 @@ public final class TaskExecutorTest {
    * because OutputWriter currently does not support watermarks (TODO #245)
    * @param <T> type
    */
-  private class RelayTransformNoWatermarkEmit<T> implements Transform<T, T> {
+  private class StreamTransformNoWatermarkEmit<T> implements Transform<T, T> {
     private OutputCollector<T> outputCollector;
     private final List<Watermark> emittedWatermarks;
 
-    RelayTransformNoWatermarkEmit(final List<Watermark> emittedWatermarks) {
+    StreamTransformNoWatermarkEmit(final List<Watermark> emittedWatermarks) {
       this.emittedWatermarks = emittedWatermarks;
     }
 
@@ -624,7 +643,6 @@ public final class TaskExecutorTest {
    * Source vertex for unbounded source test.
    */
   private final class TestUnboundedSourceVertex extends SourceVertex {
-
     @Override
     public boolean isBounded() {
       return false;
@@ -636,8 +654,12 @@ public final class TaskExecutorTest {
     }
 
     @Override
-    public void clearInternalStates() {
+    public long getEstimatedSizeBytes() {
+      return 0L;
+    }
 
+    @Override
+    public void clearInternalStates() {
     }
 
     @Override
@@ -714,7 +736,7 @@ public final class TaskExecutorTest {
    * Simple identity function for testing.
    * @param <T> input/output type.
    */
-  private class RelayTransform<T> implements Transform<T, T> {
+  private class StreamTransform<T> implements Transform<T, T> {
     private OutputCollector<T> outputCollector;
 
     @Override

@@ -18,38 +18,63 @@
  */
 package org.apache.nemo.common.ir.edge.executionproperty;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
  * Partitioner ExecutionProperty.
  */
-public final class PartitionerProperty extends EdgeExecutionProperty<PartitionerProperty.Value> {
+public final class PartitionerProperty
+  extends EdgeExecutionProperty<Pair<PartitionerProperty.Type, Integer>> {
+
+  // Lazily use the number of destination parallelism to minimize the number of partitions.
+  public static final int NUM_EQUAL_TO_DST_PARALLELISM = 0;
+
   /**
    * Constructor.
    *
    * @param value value of the execution property.
    */
-  private PartitionerProperty(final Value value) {
+  private PartitionerProperty(final Pair<Type, Integer> value) {
     super(value);
   }
 
   /**
-   * Static method exposing the constructor.
-   *
-   * @param value value of the new execution property.
-   * @return the newly created execution property.
+   * @param type of the partitioner.
+   * @return the property.
    */
-  public static PartitionerProperty of(final Value value) {
-    return new PartitionerProperty(value);
+  public static PartitionerProperty of(final Type type) {
+    return PartitionerProperty.of(type, NUM_EQUAL_TO_DST_PARALLELISM, true);
   }
 
   /**
-   * Possible values of Partitioner ExecutionProperty.
+   * @param type of the partitioner.
+   * @param numOfPartitions to create.
+   * @return the property.
    */
-  public enum Value {
-    DataSkewHashPartitioner,
-    HashPartitioner,
-    IntactPartitioner,
-    DedicatedKeyPerElementPartitioner
+  public static PartitionerProperty of(final Type type, final int numOfPartitions) {
+    return PartitionerProperty.of(type, numOfPartitions, false);
+  }
+
+  /**
+   * @param type of the partitioner.
+   * @param numOfPartitions to create.
+   * @param auto if the number of partitions is auto.
+   * @return the property.
+   */
+  private static PartitionerProperty of(final Type type, final int numOfPartitions, final boolean auto) {
+    if (!auto && numOfPartitions <= 0) {
+      throw new IllegalArgumentException(String.valueOf(numOfPartitions));
+    }
+    return new PartitionerProperty(Pair.of(type, numOfPartitions));
+  }
+
+  /**
+   * Partitioning types.
+   */
+  public enum Type {
+    Hash,
+    Intact,
+    DedicatedKeyPerElement
   }
 }

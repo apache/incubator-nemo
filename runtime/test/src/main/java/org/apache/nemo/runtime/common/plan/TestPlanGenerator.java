@@ -20,12 +20,13 @@ package org.apache.nemo.runtime.common.plan;
 
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.compiler.optimizer.policy.BasicPullPolicy;
@@ -94,9 +95,9 @@ public final class TestPlanGenerator {
    * @return convert an IR into a physical plan using the given policy.
    * @throws Exception exception.
    */
-  private static PhysicalPlan convertIRToPhysical(final DAG<IRVertex, IREdge> irDAG,
+  private static PhysicalPlan convertIRToPhysical(final IRDAG irDAG,
                                                   final Policy policy) throws Exception {
-    final DAG<IRVertex, IREdge> optimized = policy.runCompileTimeOptimization(irDAG, EMPTY_DAG_DIRECTORY);
+    final IRDAG optimized = policy.runCompileTimeOptimization(irDAG, EMPTY_DAG_DIRECTORY);
     final DAG<Stage, StageEdge> physicalDAG = PLAN_GENERATOR.apply(optimized);
     return new PhysicalPlan("TestPlan", physicalDAG);
   }
@@ -104,7 +105,7 @@ public final class TestPlanGenerator {
   /**
    * @return a dag that joins two vertices.
    */
-  private static DAG<IRVertex, IREdge> getTwoVerticesJoinedDAG() {
+  private static IRDAG getTwoVerticesJoinedDAG() {
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
 
     final Transform t = new EmptyComponents.EmptyTransform("empty");
@@ -133,26 +134,26 @@ public final class TestPlanGenerator {
     v5.setProperty(ResourcePriorityProperty.of(ResourcePriorityProperty.COMPUTE));
     dagBuilder.addVertex(v5);
 
-    final IREdge e1 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v1, v2);
+    final IREdge e1 = EmptyComponents.newDummyShuffleEdge(v1, v2);
     dagBuilder.connectVertices(e1);
 
-    final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v3, v2);
+    final IREdge e2 = EmptyComponents.newDummyShuffleEdge(v3, v2);
     dagBuilder.connectVertices(e2);
 
-    final IREdge e3 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v2, v4);
+    final IREdge e3 = EmptyComponents.newDummyShuffleEdge(v2, v4);
     dagBuilder.connectVertices(e3);
 
-    final IREdge e4 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v4, v5);
+    final IREdge e4 = EmptyComponents.newDummyShuffleEdge(v4, v5);
     dagBuilder.connectVertices(e4);
 
-    return dagBuilder.buildWithoutSourceSinkCheck();
+    return new IRDAG(dagBuilder.buildWithoutSourceSinkCheck());
   }
 
   /**
    * @param sameContainerType whether all three vertices are of the same container type
    * @return a dag with 3 sequential vertices.
    */
-  private static DAG<IRVertex, IREdge> getThreeSequentialVerticesDAG(final boolean sameContainerType) {
+  private static IRDAG getThreeSequentialVerticesDAG(final boolean sameContainerType) {
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
 
     final Transform t = new EmptyComponents.EmptyTransform("empty");
@@ -179,12 +180,12 @@ public final class TestPlanGenerator {
     }
     dagBuilder.addVertex(v3);
 
-    final IREdge e1 = new IREdge(CommunicationPatternProperty.Value.Shuffle, v1, v2);
+    final IREdge e1 = EmptyComponents.newDummyShuffleEdge(v1, v2);
     dagBuilder.connectVertices(e1);
 
     final IREdge e2 = new IREdge(CommunicationPatternProperty.Value.OneToOne, v2, v3);
     dagBuilder.connectVertices(e2);
 
-    return dagBuilder.buildWithoutSourceSinkCheck();
+    return new IRDAG(dagBuilder.buildWithoutSourceSinkCheck());
   }
 }

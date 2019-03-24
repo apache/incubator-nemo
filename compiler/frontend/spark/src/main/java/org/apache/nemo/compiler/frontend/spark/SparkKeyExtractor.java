@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.spark;
 
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.nemo.common.KeyExtractor;
 import scala.Tuple2;
 
@@ -33,5 +34,24 @@ public final class SparkKeyExtractor implements KeyExtractor {
     } else {
       return element;
     }
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (o == null || getClass() != o.getClass()) {
+
+      return false;
+    }
+
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder(2437, 17).toHashCode();
   }
 }

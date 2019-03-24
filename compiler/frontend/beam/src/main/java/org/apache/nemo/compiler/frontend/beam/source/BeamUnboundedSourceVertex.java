@@ -26,6 +26,7 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.test.EmptyComponents;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +55,6 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
    */
   public BeamUnboundedSourceVertex(final UnboundedSource<O, M> source,
                                    final DisplayData displayData) {
-    super();
     this.source = source;
     this.displayData = displayData;
   }
@@ -81,10 +81,22 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
   @Override
   public List<Readable<Object>> getReadables(final int desiredNumOfSplits) throws Exception {
+
     final List<Readable<Object>> readables = new ArrayList<>();
-    source.split(desiredNumOfSplits, null)
-      .forEach(unboundedSource -> readables.add(new UnboundedSourceReadable<>(unboundedSource)));
-    return readables;
+    if (source != null) {
+      source.split(desiredNumOfSplits, null)
+        .forEach(unboundedSource -> readables.add(new UnboundedSourceReadable<>(unboundedSource)));
+      return readables;
+    } else {
+      // TODO #333: Remove SourceVertex#clearInternalStates
+      final SourceVertex emptySourceVertex = new EmptyComponents.EmptySourceVertex("EMPTY");
+      return emptySourceVertex.getReadables(desiredNumOfSplits);
+    }
+  }
+
+  @Override
+  public long getEstimatedSizeBytes() {
+    return 0L;
   }
 
   @Override

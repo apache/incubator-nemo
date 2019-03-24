@@ -63,6 +63,17 @@ public final class PairDecoderFactory<A, B> implements DecoderFactory<Pair<A, B>
     return new PairDecoder<>(inputStream, leftDecoderFactory, rightDecoderFactory);
   }
 
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("Pair(");
+    sb.append(leftDecoderFactory.toString());
+    sb.append(", ");
+    sb.append(rightDecoderFactory.toString());
+    sb.append(")");
+    return sb.toString();
+  }
+
   /**
    * PairDecoder.
    * @param <T1> type for the left coder.

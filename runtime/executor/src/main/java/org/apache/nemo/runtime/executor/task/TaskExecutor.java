@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.vertex.*;
-import org.apache.nemo.common.ir.vertex.transform.AggregateMetricTransform;
+import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.datatransfer.MultiInputWatermarkManager;
@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.nemo.runtime.executor.datatransfer.DynOptDataOutputCollector;
+import org.apache.nemo.runtime.executor.datatransfer.RunTimeMessageOutputCollector;
 import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -213,22 +213,26 @@ public final class TaskExecutor {
 
       // Additional outputs
       final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputMap =
-        getInternalAdditionalOutputMap(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
+        getInternalOutputMap(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
       final Map<String, List<OutputWriter>> externalAdditionalOutputMap =
         getExternalAdditionalOutputMap(irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory);
 
       // Main outputs
-      final List<NextIntraTaskOperatorInfo> internalMainOutputs =
-        getInternalMainOutputs(irVertex, irVertexDag, edgeIndexMap, operatorWatermarkManagerMap);
+      final List<NextIntraTaskOperatorInfo> internalMainOutputs;
+      if (internalAdditionalOutputMap.containsKey(AdditionalOutputTagProperty.getMainOutputTag())) {
+        internalMainOutputs = internalAdditionalOutputMap.remove(AdditionalOutputTagProperty.getMainOutputTag());
+      } else {
+        internalMainOutputs = new ArrayList<>();
+      }
       final List<OutputWriter> externalMainOutputs =
         getExternalMainOutputs(irVertex, task.getTaskOutgoingEdges(), intermediateDataIOFactory);
 
       final OutputCollector outputCollector;
 
       if (irVertex instanceof OperatorVertex
-        && ((OperatorVertex) irVertex).getTransform() instanceof AggregateMetricTransform) {
-        outputCollector = new DynOptDataOutputCollector(
-          irVertex, persistentConnectionToMasterMap, this);
+        && ((OperatorVertex) irVertex).getTransform() instanceof MessageAggregatorTransform) {
+        outputCollector = new RunTimeMessageOutputCollector(
+          taskId, irVertex, persistentConnectionToMasterMap, this);
       } else {
         outputCollector = new OperatorVertexOutputCollector(
           irVertex, internalMainOutputs, internalAdditionalOutputMap,
@@ -540,20 +544,34 @@ public final class TaskExecutor {
     return map;
   }
 
-  // TODO #253: Refactor getInternal(Main/Additional)OutputMap
-  private Map<String, List<NextIntraTaskOperatorInfo>> getInternalAdditionalOutputMap(
+  /**
+   * Return a map of Internal Outputs associated with their output tag.
+   * If an edge has no output tag, its info are added to the mainOutputTag.
+   *
+   * @param irVertex source irVertex
+   * @param irVertexDag DAG of IRVertex and RuntimeEdge
+   * @param edgeIndexMap Map of edge and index
+   * @param operatorWatermarkManagerMap Map of irVertex and InputWatermarkManager
+   * @return Map<OutputTag, List<NextIntraTaskOperatorInfo>>
+   */
+  private Map<String, List<NextIntraTaskOperatorInfo>> getInternalOutputMap(
     final IRVertex irVertex,
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
     final Map<Edge, Integer> edgeIndexMap,
     final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap) {
-    // Add all intra-task additional tags to additional output map.
+    // Add all intra-task tags to additional output map.
     final Map<String, List<NextIntraTaskOperatorInfo>> map = new HashMap<>();
 
     irVertexDag.getOutgoingEdgesOf(irVertex.getId())
       .stream()
-      .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
       .map(edge -> {
-          final String outputTag = edge.getPropertyValue(AdditionalOutputTagProperty.class).get();
+          final boolean isPresent = edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent();
+          final String outputTag;
+          if (isPresent) {
+            outputTag = edge.getPropertyValue(AdditionalOutputTagProperty.class).get();
+          } else {
+            outputTag = AdditionalOutputTagProperty.getMainOutputTag();
+          }
           final int index = edgeIndexMap.get(edge);
           final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
           final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
@@ -565,25 +583,6 @@ public final class TaskExecutor {
       });
 
     return map;
-  }
-
-  // TODO #253: Refactor getInternal(Main/Additional)OutputMap
-  private List<NextIntraTaskOperatorInfo> getInternalMainOutputs(
-    final IRVertex irVertex,
-    final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-    final Map<Edge, Integer> edgeIndexMap,
-    final Map<IRVertex, InputWatermarkManager> operatorWatermarkManagerMap) {
-
-    return irVertexDag.getOutgoingEdgesOf(irVertex.getId())
-      .stream()
-      .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
-      .map(edge -> {
-        final int index = edgeIndexMap.get(edge);
-        final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
-        final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
-        return new NextIntraTaskOperatorInfo(index, nextOperator, inputWatermarkManager);
-      })
-      .collect(Collectors.toList());
   }
 
   /**
