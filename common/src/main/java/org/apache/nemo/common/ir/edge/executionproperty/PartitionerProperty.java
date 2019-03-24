@@ -70,6 +70,15 @@ public final class PartitionerProperty
   }
 
   /**
+   * Static constructor.
+   * @param value the Pair value.
+   * @return the new execution property.
+   */
+  public static PartitionerProperty of(final Pair<Type, Integer> value) {
+    return new PartitionerProperty(value);
+  }
+
+  /**
    * Partitioning types.
    */
   public enum Type {

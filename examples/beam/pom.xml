@@ -78,8 +78,6 @@ under the License.
                 </exclusion>
             </exclusions>
         </dependency>
-
-
     </dependencies>
 
     <build>

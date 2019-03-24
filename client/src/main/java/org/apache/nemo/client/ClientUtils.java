@@ -22,6 +22,7 @@ package org.apache.nemo.client;
 import org.apache.commons.io.FileUtils;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.exception.MetricException;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,11 +41,34 @@ public final class ClientUtils {
   }
 
   /**
+   * Handler for the launch optimization message.
+   * @param message the message received from the driver.
+   */
+  static void launchOptimizationHandler(final ControlMessage.DriverToClientMessage message,
+                                                final DriverRPCServer driverRPCServer) {
+    switch (message.getOptimizationType()) {
+      case "xgboost":
+        new Thread(() ->
+          driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+            .setType(ControlMessage.ClientToDriverMessageType.Notification)
+            .setMessage(ControlMessage.NotificationMessage.newBuilder()
+              .setType("xgboost")
+              .setData(ClientUtils.launchXGBoostScript(message.getDataCollected().getData()))
+              .build())
+            .build()))
+          .start();
+        break;
+      default:
+        break;
+    }
+  }
+
+  /**
    * launches the XGBoost Script.
    * @param irDagSummary the IR DAG to run the script for.
    * @return the results file converted into string.
    */
-  static String launchXGBoostScript(final String irDagSummary) {
+  private static String launchXGBoostScript(final String irDagSummary) {
     try {
       final String projectRootPath = Util.fetchProjectRootPath();
       final String scriptPath = projectRootPath + "/bin/xgboost_optimization.sh";

@@ -35,6 +35,8 @@ import java.io.ByteArrayInputStream;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.sql.*;
+import java.util.Arrays;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -50,7 +52,7 @@ public final class MetricUtils {
   private static final CountDownLatch MUST_UPDATE_EP_METADATA = new CountDownLatch(1);
 
   // BiMap of (1) INDEX and (2) the Execution Property class and the value type class.
-  private static final HashBiMap<Integer, Pair<Class<? extends ExecutionProperty>, Class<? extends Serializable>>>
+  static final HashBiMap<Integer, Pair<Class<? extends ExecutionProperty>, Class<? extends Serializable>>>
     EP_KEY_METADATA = HashBiMap.create();
   // BiMap of (1) the Execution Property class INDEX and the value INDEX pair and (2) the Execution Property value.
   private static final HashBiMap<Pair<Integer, Integer>, ExecutionProperty<? extends Serializable>>
@@ -237,12 +239,51 @@ public final class MetricUtils {
    */
   static Integer getEpKeyIndex(final ExecutionProperty<?> ep) {
     return EP_KEY_METADATA.inverse()
-      .computeIfAbsent(Pair.of(ep.getClass(), ep.getValue().getClass()), epClassPair -> {
-        LOG.info("New EP Key Index: {} for {}", EP_KEY_METADATA.size() + 1, epClassPair.left().getSimpleName());
-        // Update the metadata if new EP key has been discovered.
-        MUST_UPDATE_EP_KEY_METADATA.countDown();
-        return EP_KEY_METADATA.size() + 1;
-      });
+      .computeIfAbsent(Pair.of(ep.getClass(), getParameterType(ep.getClass(), ep.getValue().getClass())),
+        epClassPair -> {
+          final Integer idx = EP_KEY_METADATA.keySet().stream().mapToInt(i -> i).max().orElse(0) + 1;
+          LOG.info("New EP Key Index: {} for {}", idx, epClassPair.left().getSimpleName());
+          // Update the metadata if new EP key has been discovered.
+          MUST_UPDATE_EP_KEY_METADATA.countDown();
+          return idx;
+        });
+  }
+
+  /**
+   * Recursive method for getting the parameter type of the execution property.
+   * This can be used, for example, to get DecoderFactory, instead of BeamDecoderFactory.
+   * @param epClass execution property class to observe.
+   * @param valueClass the value class of the execution property.
+   * @return the parameter type.
+   */
+  private static Class<? extends Serializable> getParameterType(final Class<? extends ExecutionProperty> epClass,
+                                                                final Class<? extends Serializable> valueClass) {
+    if (!getMethodFor(epClass, "of", valueClass.getSuperclass()).isPresent()
+      || !(Serializable.class.isAssignableFrom(valueClass.getSuperclass()))) {
+      final Class<? extends Serializable> candidate = Arrays.stream(valueClass.getInterfaces())
+        .filter(vc -> Serializable.class.isAssignableFrom(vc) && getMethodFor(epClass, "of", vc).isPresent())
+        .map(vc -> getParameterType(epClass, ((Class<? extends Serializable>) vc))).findFirst().orElse(null);
+      return candidate == null ? valueClass : candidate;
+    } else {
+      return getParameterType(epClass, ((Class<? extends Serializable>) valueClass.getSuperclass()));
+    }
+  }
+
+  /**
+   * Utility method to getting an optional method called 'name' for the class.
+   * @param clazz class to get the method of.
+   * @param name the name of the method.
+   * @param valueTypes the value types of the method.
+   * @return optional of the method. It returns Optional.empty() if the method could not be found.
+   */
+  public static Optional<Method> getMethodFor(final Class<? extends ExecutionProperty> clazz,
+                                              final String name, final Class<?>... valueTypes) {
+    try {
+      final Method mthd = clazz.getMethod(name, valueTypes);
+      return Optional.of(mthd);
+    } catch (final Exception e) {
+      return Optional.empty();
+    }
   }
 
   /**
@@ -250,7 +291,7 @@ public final class MetricUtils {
    * @param index the index of the EP Key.
    * @return the class of the execution property (EP), as well as the type of the value of the EP.
    */
-  static Pair<Class<? extends ExecutionProperty>, Class<? extends Serializable>> getEpPairFromKeyIndex(
+  private static Pair<Class<? extends ExecutionProperty>, Class<? extends Serializable>> getEpPairFromKeyIndex(
     final Integer index) {
     return EP_KEY_METADATA.get(index);
   }
@@ -307,7 +348,7 @@ public final class MetricUtils {
    * @param epKeyIndex the EP Key index to retrieve information from.
    * @return the value object reflecting the split and the tweak values.
    */
-  static Object indexToValue(final Double split, final Double tweak, final Integer epKeyIndex) {
+  static Serializable indexToValue(final Double split, final Double tweak, final Integer epKeyIndex) {
     final Class<? extends Serializable> targetObjectClass = getEpPairFromKeyIndex(epKeyIndex).right();
     final boolean splitIsInteger = split.compareTo((double) split.intValue()) == 0;
     final Pair<Integer, Integer> splitIntVal = splitIsInteger
@@ -349,15 +390,17 @@ public final class MetricUtils {
         .filter(p -> p.left().equals(epKeyIndex))
         .mapToInt(Pair::right);
       final Integer left = valueCandidates.get()
-        .filter(n -> n < split.intValue())
-        .sorted()
+        .filter(n -> n < split)
+        .map(n -> -n).sorted().map(n -> -n)  // maximum among smaller values
         .findFirst().orElse(valueCandidates.get().min().getAsInt());
       final Integer right = valueCandidates.get()
-        .filter(n -> n > split.intValue())
-        .map(n -> -n).sorted().map(n -> -n)
+        .filter(n -> n > split)
+        .sorted()  // minimum among larger values
         .findFirst().orElse(valueCandidates.get().max().getAsInt());
       final Integer targetValue = tweak < 0 ? left : right;
-      return EP_METADATA.get(Pair.of(epKeyIndex, targetValue)).getValue();
+      final Serializable res = EP_METADATA.get(Pair.of(epKeyIndex, targetValue)).getValue();
+      LOG.info("Translated: {} into VALUE of {}", split, res);
+      return res;
     }
   }
 
@@ -373,14 +416,14 @@ public final class MetricUtils {
     final Double split,
     final Double tweak) {
 
-    final Object value = indexToValue(split, tweak, epKeyIndex);
+    final Serializable value = indexToValue(split, tweak, epKeyIndex);
     final Class<? extends ExecutionProperty> epClass = getEpPairFromKeyIndex(epKeyIndex).left();
 
     final ExecutionProperty<? extends Serializable> ep;
     try {
-      final Method staticConstructor = epClass.getMethod("of", value.getClass());
-      ep =
-        (ExecutionProperty<? extends Serializable>) staticConstructor.invoke(null, value);
+      final Method staticConstructor = getMethodFor(epClass, "of", getParameterType(epClass, value.getClass()))
+        .orElseThrow(NoSuchMethodException::new);
+      ep = (ExecutionProperty<? extends Serializable>) staticConstructor.invoke(null, value);
     } catch (final NoSuchMethodException e) {
       throw new MetricException("Class " + epClass.getName()
         + " does not have a static method exposing the constructor 'of' with value type " + value.getClass().getName()

@@ -23,13 +23,11 @@ import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.ConditionalLargeShufflePolicy;
-import org.apache.nemo.compiler.optimizer.policy.XGBoostPolicy;
 import org.apache.nemo.examples.beam.policy.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -38,7 +36,6 @@ import org.powermock.modules.junit4.PowerMockRunner;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-@PowerMockIgnore({ "javax.net.ssl.*", "javax.security.*" })
 public final class WordCountITCase {
   private static ArgBuilder builder;
 
@@ -128,16 +125,6 @@ public final class WordCountITCase {
       .addJobId(WordCountITCase.class.getSimpleName() + "_speculative")
       .addMaxTaskAttempt(Integer.MAX_VALUE)
       .addOptimizationPolicy(AggressiveSpeculativeCloningPolicyParallelismFive.class.getCanonicalName())
-      .build());
-  }
-
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
-  public void testXGBoost() throws Exception {
-    JobLauncher.main(builder
-      .addResourceJson(executorResourceFileName)
-      .addJobId(WordCountITCase.class.getSimpleName() + "_xgboost")
-      .addMaxTaskAttempt(Integer.MAX_VALUE)
-      .addOptimizationPolicy(XGBoostPolicy.class.getCanonicalName())
       .build());
   }
 }

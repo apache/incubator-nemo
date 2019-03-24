@@ -33,7 +33,7 @@ public final class ResourceLocalityProperty extends VertexExecutionProperty<Bool
    *
    * @param value value of the ExecutionProperty
    */
-  private ResourceLocalityProperty(final boolean value) {
+  private ResourceLocalityProperty(final Boolean value) {
     super(value);
   }
 
@@ -43,7 +43,7 @@ public final class ResourceLocalityProperty extends VertexExecutionProperty<Bool
    * @param value value of the new execution property
    * @return the execution property
    */
-  public static ResourceLocalityProperty of(final boolean value) {
+  public static ResourceLocalityProperty of(final Boolean value) {
     return value ? SOURCE_TRUE : SOURCE_FALSE;
   }
 }

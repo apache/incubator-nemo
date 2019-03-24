@@ -135,8 +135,8 @@ public final class JobLauncher {
       .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
       .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
         SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
-      .registerHandler(ControlMessage.DriverToClientMessageType.LaunchOptimization,
-        JobLauncher::launchOptimizationHandler)
+      .registerHandler(ControlMessage.DriverToClientMessageType.LaunchOptimization, message ->
+        ClientUtils.launchOptimizationHandler(message, driverRPCServer))
       .run();
 
     final Configuration driverConf = getDriverConf(builtJobConf);
@@ -302,28 +302,6 @@ public final class JobLauncher {
     LOG.info("User program started");
     method.invoke(null, (Object) args);
     LOG.info("User program finished");
-  }
-
-  /**
-   * Handler for the launch optimization message.
-   * @param message the message received from the driver.
-   */
-  private static void launchOptimizationHandler(final ControlMessage.DriverToClientMessage message) {
-    switch (message.getOptimizationType()) {
-      case "xgboost":
-        new Thread(() ->
-          driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
-            .setType(ControlMessage.ClientToDriverMessageType.Notification)
-            .setMessage(ControlMessage.NotificationMessage.newBuilder()
-              .setType("xgboost")
-              .setData(ClientUtils.launchXGBoostScript(message.getDataCollected().getData()))
-              .build())
-            .build()))
-          .start();
-        break;
-      default:
-        break;
-    }
   }
 
   /**

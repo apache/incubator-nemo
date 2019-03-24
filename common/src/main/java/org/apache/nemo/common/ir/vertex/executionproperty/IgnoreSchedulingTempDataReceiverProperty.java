@@ -32,13 +32,13 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 public final class IgnoreSchedulingTempDataReceiverProperty extends VertexExecutionProperty<Boolean> {
 
   private static final IgnoreSchedulingTempDataReceiverProperty IGNORE_SCHEDULING_TEMP_DATA_RECEIVER_PROPERTY =
-    new IgnoreSchedulingTempDataReceiverProperty();
+    new IgnoreSchedulingTempDataReceiverProperty(true);
 
   /**
    * Constructor.
    */
-  private IgnoreSchedulingTempDataReceiverProperty() {
-    super(true);
+  private IgnoreSchedulingTempDataReceiverProperty(final Boolean value) {
+    super(value);
   }
 
   /**
@@ -48,5 +48,15 @@ public final class IgnoreSchedulingTempDataReceiverProperty extends VertexExecut
    */
   public static IgnoreSchedulingTempDataReceiverProperty of() {
     return IGNORE_SCHEDULING_TEMP_DATA_RECEIVER_PROPERTY;
+  }
+
+  /**
+   * Static method exposing the constructor.
+   *
+   * @param value the boolean value. This is always true by default for this property.
+   * @return the new execution property.
+   */
+  public static IgnoreSchedulingTempDataReceiverProperty of(final Boolean value) {
+    return new IgnoreSchedulingTempDataReceiverProperty(value);
   }
 }

@@ -63,11 +63,10 @@ public final class OptimizerUtils {
    * @param string the formatted string.
    * @return a pair of vertex/edge id and the execution property key index.
    */
-  public static Pair<String, Integer> stringToIdAndEPKeyIndex(
-    final String string) {
+  public static Pair<String, Integer> stringToIdAndEPKeyIndex(final String string) {
     if (string.length() != 9) {
       throw new InvalidParameterException("The metric data should follow the format of "
-        + "[0]: index indicating vertex/edge, [1-4]: id of the component, and [5-8]: EP Key index");
+        + "[0]: index indicating vertex/edge, [1-4]: id of the component, and [5-8]: EP Key index. Current: " + string);
     }
     final Integer idx = Integer.parseInt(string.substring(0, 1));
     final Integer numericId = Integer.parseInt(string.substring(1, 5));

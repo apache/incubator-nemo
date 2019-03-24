@@ -23,11 +23,15 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
+import org.apache.nemo.common.exception.IllegalEdgeOperationException;
+import org.apache.nemo.common.exception.IllegalVertexOperationException;
 import org.apache.nemo.common.exception.InvalidParameterException;
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.compiler.optimizer.OptimizerUtils;
 import org.apache.nemo.runtime.common.metric.MetricUtils;
 import org.slf4j.Logger;
@@ -64,18 +68,33 @@ public final class XGBoostPass extends AnnotatingPass {
         List<Map<String, String>> listOfMap =
           mapper.readValue(message, new TypeReference<List<Map<String, String>>>() {
           });
-        for (final Map<String, String> m : listOfMap) {
+        listOfMap.stream().filter(m -> m.get("feature").length() == 9).forEach(m -> {
           final Pair<String, Integer> idAndEPKey = OptimizerUtils.stringToIdAndEPKeyIndex(m.get("feature"));
           LOG.info("Tuning: {} of {} should be {} than {}",
             idAndEPKey.right(), idAndEPKey.left(), m.get("val"), m.get("split"));
           final ExecutionProperty<? extends Serializable> newEP = MetricUtils.pairAndValueToEP(idAndEPKey.right(),
             Double.valueOf(m.get("split")), Double.valueOf(m.get("val")));
-          if (idAndEPKey.left().startsWith("vertex")) {
-            dag.getVertexById(idAndEPKey.left()).setProperty((VertexExecutionProperty) newEP);
-          } else if (idAndEPKey.left().startsWith("edge")) {
-            dag.getEdgeById(idAndEPKey.left()).setProperty((EdgeExecutionProperty) newEP);
+          try {
+            if (idAndEPKey.left().startsWith("vertex")) {
+              final IRVertex v = dag.getVertexById(idAndEPKey.left());
+              final VertexExecutionProperty<?> originalEP = v.getExecutionProperties().stream()
+                .filter(ep -> ep.getClass().isAssignableFrom(newEP.getClass())).findFirst().orElse(null);
+              v.setProperty((VertexExecutionProperty) newEP);
+              if (!dag.checkIntegrity().isPassed()) {
+                v.setProperty(originalEP);
+              }
+            } else if (idAndEPKey.left().startsWith("edge")) {
+              final IREdge e = dag.getEdgeById(idAndEPKey.left());
+              final EdgeExecutionProperty<?> originalEP = e.getExecutionProperties().stream()
+                .filter(ep -> ep.getClass().isAssignableFrom(newEP.getClass())).findFirst().orElse(null);
+              e.setProperty((EdgeExecutionProperty) newEP);
+              if (!dag.checkIntegrity().isPassed()) {
+                e.setProperty(originalEP);
+              }
+            }
+          } catch (IllegalVertexOperationException | IllegalEdgeOperationException e) {
           }
-        }
+        });
       }
     } catch (final InvalidParameterException e) {
       LOG.warn(e.getMessage());

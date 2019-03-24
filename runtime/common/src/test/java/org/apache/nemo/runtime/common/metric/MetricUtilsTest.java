@@ -29,13 +29,10 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.junit.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 
 public class MetricUtilsTest {
-  private static final Logger LOG = LoggerFactory.getLogger(MetricUtilsTest.class.getName());
 
   @Test
   public void testEnumIndexAndValue() {
@@ -68,8 +65,6 @@ public class MetricUtilsTest {
   public void testIntegerBooleanIndexAndValue() {
     final Integer one = 1;
     final Integer hundred = 100;
-    final Boolean t = true;
-    final Boolean f = false;
 
     final ParallelismProperty pEp1 = ParallelismProperty.of(one);
     final ParallelismProperty pEp100 = ParallelismProperty.of(hundred);
@@ -79,8 +74,8 @@ public class MetricUtilsTest {
     Assert.assertEquals(Integer.valueOf(100), MetricUtils.valueToIndex(pEp100KeyIndex, pEp100));
 
 
-    final ResourceSlotProperty rsEpT = ResourceSlotProperty.of(t);
-    final ResourceSlotProperty rsEpF = ResourceSlotProperty.of(f);
+    final ResourceSlotProperty rsEpT = ResourceSlotProperty.of(true);
+    final ResourceSlotProperty rsEpF = ResourceSlotProperty.of(false);
     final Integer rsEpTKeyIndex = MetricUtils.getEpKeyIndex(rsEpT);
     final Integer rsEpFKeyIndex = MetricUtils.getEpKeyIndex(rsEpF);
     Assert.assertEquals(Integer.valueOf(1), MetricUtils.valueToIndex(rsEpTKeyIndex, rsEpT));
@@ -129,13 +124,13 @@ public class MetricUtilsTest {
 
     final Object ef1 = MetricUtils.indexToValue(0.1 + efidx, -0.1, eEpKeyIndex);
     final Object ef2 = MetricUtils.indexToValue(-0.1 + efidx, 0.1, eEpKeyIndex);
-    Assert.assertEquals(ef.toString(), ef1.toString());
-    Assert.assertEquals(ef.toString(), ef2.toString());
+    Assert.assertEquals("EP_INDEX: (" + eEpKeyIndex + ", " + efidx + ")", ef.toString(), ef1.toString());
+    Assert.assertEquals("EP_INDEX: (" + eEpKeyIndex + ", " + efidx + ")", ef.toString(), ef2.toString());
 
     final Object df1 = MetricUtils.indexToValue(0.1 + dfidx, -0.1, dEpKeyIndex);
     final Object df2 = MetricUtils.indexToValue(-0.1 + dfidx, 0.1, dEpKeyIndex);
-    Assert.assertEquals(df.toString(), df1.toString());
-    Assert.assertEquals(df.toString(), df2.toString());
+    Assert.assertEquals("EP_INDEX: (" + dEpKeyIndex + ", " + dfidx + ")", df.toString(), df1.toString());
+    Assert.assertEquals("EP_INDEX: (" + dEpKeyIndex + ", " + dfidx + ")", df.toString(), df2.toString());
   }
 
   @Test
@@ -149,5 +144,12 @@ public class MetricUtilsTest {
     final ExecutionProperty<? extends Serializable> ep2 =
       MetricUtils.pairAndValueToEP(epKeyIndex, 0.5, -0.1);
     Assert.assertEquals(ep, ep2);
+  }
+
+  @Test
+  public void validateStaticConstructorsOfExecutionProperties() {
+    MetricUtils.EP_KEY_METADATA.values().forEach(p -> Assert.assertTrue(
+      p.left().getName() + "should have an 'of' method with its value class, " + p.right().getName(),
+        MetricUtils.getMethodFor(p.left(), "of", p.right()).isPresent()));
   }
 }

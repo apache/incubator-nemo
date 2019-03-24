@@ -33,7 +33,7 @@ public final class ResourceSlotProperty extends VertexExecutionProperty<Boolean>
    *
    * @param value value of the ExecutionProperty
    */
-  private ResourceSlotProperty(final boolean value) {
+  private ResourceSlotProperty(final Boolean value) {
     super(value);
   }
 
@@ -43,7 +43,7 @@ public final class ResourceSlotProperty extends VertexExecutionProperty<Boolean>
    * @param value value of the new execution property
    * @return the execution property
    */
-  public static ResourceSlotProperty of(final boolean value) {
+  public static ResourceSlotProperty of(final Boolean value) {
     return value ? COMPLIANCE_TRUE : COMPLIANCE_FALSE;
   }
 }
