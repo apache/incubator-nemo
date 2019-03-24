@@ -31,6 +31,16 @@ under the License.
     <name>Nemo Runtime Executor</name>
 
     <dependencies>
+      <dependency>
+        <groupId>org.apache.beam</groupId>
+        <artifactId>beam-sdks-java-io-kafka</artifactId>
+        <version>2.6.0-SNAPSHOT</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.kafka</groupId>
+        <artifactId>kafka-clients</artifactId>
+        <version>2.1.0</version>
+      </dependency>
         <dependency>
             <groupId>org.apache.nemo</groupId>
             <artifactId>nemo-runtime-common</artifactId>
@@ -89,5 +99,12 @@ under the License.
             <version>1.6.2</version>
             <scope>test</scope>
         </dependency>
+
+      <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-math3 -->
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-math3</artifactId>
+        <version>3.6.1</version>
+      </dependency>
     </dependencies>
 </project>

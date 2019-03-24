@@ -389,6 +389,11 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   }
 
   @Override
+  public void forceClose() {
+
+  }
+
+  @Override
   public String toString() {
     return workerId;
   }

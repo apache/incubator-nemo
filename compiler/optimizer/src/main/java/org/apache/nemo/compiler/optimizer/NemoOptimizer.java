@@ -31,6 +31,8 @@ import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDa
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
+import org.apache.nemo.compiler.optimizer.policy.StreamingPolicy;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -50,18 +52,22 @@ public final class NemoOptimizer implements Optimizer {
   private final Map<UUID, Integer> cacheIdToParallelism = new HashMap<>();
   private int irDagCount = 0;
 
-
   /**
    * @param dagDirectory to store JSON representation of intermediate DAGs.
    * @param policyName the name of the optimization policy.
    */
   @Inject
   private NemoOptimizer(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
-                        @Parameter(JobConf.OptimizationPolicy.class) final String policyName) {
+                        @Parameter(JobConf.OptimizationPolicy.class) final String policyName,
+                        @Parameter(EvalConf.SourceParallelism.class) final int sourceParallelism) {
     this.dagDirectory = dagDirectory;
 
     try {
       optimizationPolicy = (Policy) Class.forName(policyName).newInstance();
+      if (optimizationPolicy instanceof StreamingPolicy) {
+        final StreamingPolicy streamingPolicy = (StreamingPolicy) optimizationPolicy;
+        streamingPolicy.build(sourceParallelism);
+      }
       if (policyName == null) {
         throw new CompileTimeOptimizationException("A policy name should be specified.");
       }

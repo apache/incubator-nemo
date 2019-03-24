@@ -118,8 +118,8 @@ public final class OffloadingHandler {
     }
 
     System.out.println("Write result");
-    futures.add(opendChannel.writeAndFlush(
-      new OffloadingEvent(OffloadingEvent.Type.RESULT, byteBuf)));
+    opendChannel.writeAndFlush(
+      new OffloadingEvent(OffloadingEvent.Type.RESULT, byteBuf));
   }
 
 	public Object handleRequest(Map<String, Object> input) {

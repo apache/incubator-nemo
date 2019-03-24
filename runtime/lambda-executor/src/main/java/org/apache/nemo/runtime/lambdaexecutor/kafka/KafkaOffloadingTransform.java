@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-public final class KafkaOffloadingTransform<O> implements OffloadingTransform<UnboundedSource.CheckpointMark, O> {
+public final class KafkaOffloadingTransform<O> implements OffloadingTransform<KafkaOffloadingInput, O> {
 
   private static final Logger LOG = LoggerFactory.getLogger(KafkaOffloadingTransform.class.getName());
 
@@ -163,21 +163,23 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Un
 
   // receive batch (list) data
   @Override
-  public void onData(final UnboundedSource.CheckpointMark checkpointMark) {
+  public void onData(final KafkaOffloadingInput input) {
     // TODO: handle multiple data fetchers!!
 
+    final UnboundedSource.CheckpointMark checkpointMark = input.checkpointMark;
+    final UnboundedSource unboundedSource = input.unboundedSource;
     LOG.info("Receive checkpointmark: {}", checkpointMark);
 
     final SourceVertexDataFetcher dataFetcher = (SourceVertexDataFetcher) dataFetchers.get(0);
     final BeamUnboundedSourceVertex beamUnboundedSourceVertex = (BeamUnboundedSourceVertex) dataFetcher.getDataSource();
-    final UnboundedSource unboundedSource = beamUnboundedSourceVertex.getUnboundedSource();
+    beamUnboundedSourceVertex.setUnboundedSource(unboundedSource);
 
     final UnboundedSourceReadable readable =
       new UnboundedSourceReadable(unboundedSource, null, checkpointMark);
 
     dataFetcher.setReadable(readable);
 
-    dataFetcherExecutor = new HandleDataFetcher(dataFetchers, resultCollector);
+    dataFetcherExecutor = new HandleDataFetcher(input.id, dataFetchers, resultCollector);
     dataFetcherExecutor.start();
   }
 

@@ -83,6 +83,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
   @Override
   public List<Readable<Object>> getReadables(final int desiredNumOfSplits) throws Exception {
+    LOG.info("Desirable num splits: {}", desiredNumOfSplits);
 
     final List<Readable<Object>> readables = new ArrayList<>();
     if (source != null) {

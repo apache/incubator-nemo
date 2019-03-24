@@ -16,6 +16,8 @@ public interface OffloadingWorker<I, O> {
 
   <T> T finishOffloading();
 
+  void forceClose();
+
   //<T> List<T> getResult();
 
   boolean isReady();

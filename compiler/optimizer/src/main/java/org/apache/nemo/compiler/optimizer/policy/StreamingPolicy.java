@@ -27,14 +27,18 @@ import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
  * Streaming policy.
  */
 public final class StreamingPolicy implements Policy {
-  private final Policy policy;
+  private Policy policy;
 
   /**
    * Default constructor.
    */
   public StreamingPolicy() {
+
+  }
+
+  public void build(final int parallelism) {
     final PolicyBuilder builder = new PolicyBuilder();
-    builder.registerCompileTimePass(new DefaultCompositePass());
+    builder.registerCompileTimePass(new DefaultCompositePass(parallelism));
     builder.registerCompileTimePass(new PipeTransferForAllEdgesPass());
     this.policy = builder.build();
   }

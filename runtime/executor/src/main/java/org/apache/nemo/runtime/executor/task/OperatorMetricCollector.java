@@ -23,7 +23,6 @@ public final class OperatorMetricCollector {
   final long windowsize = 2000;
   long adjustTime;
 
-  public int emittedCnt = 0;
   public final IRVertex irVertex;
   private final EvalConf evalConf;
   public final List<IRVertex> dstVertices;
@@ -50,6 +49,7 @@ public final class OperatorMetricCollector {
   final double samplingRate;
 
   private final Random random = new Random();
+  private final String taskId;
 
   public OperatorMetricCollector(final IRVertex srcVertex,
                                  final List<IRVertex> dstVertices,
@@ -57,7 +57,8 @@ public final class OperatorMetricCollector {
                                  final Edge edge,
                                  final EvalConf evalConf,
                                  final Map<Long, Integer> watermarkCounterMap,
-                                 final Map<String, Double> samplingMap) {
+                                 final Map<String, Double> samplingMap,
+                                 final String taskId) {
     this.irVertex = srcVertex;
     this.serializedCnt = 0;
     this.dstVertices = dstVertices;
@@ -70,6 +71,7 @@ public final class OperatorMetricCollector {
     this.bos = new ByteBufOutputStream(inputBuffer);
     this.isMonitor = samplingMap.containsKey(srcVertex.getId());
     this.samplingRate = samplingMap.getOrDefault(srcVertex.getId(), 0.0);
+    this.taskId = taskId;
 
     LOG.info("Sampling rate of {}: {}", srcVertex, samplingRate);
   }
@@ -214,8 +216,8 @@ public final class OperatorMetricCollector {
       final int latency = (int)((currTime - startTimestamp) - adjustTime);
 
       if (random.nextDouble() < samplingRate) {
-        LOG.info("Event Latency {} from {} // curTime: {}, startTime: {}, adjustTime: {}", latency, irVertex.getId(),
-          currTime, startTimestamp, adjustTime);
+        LOG.info("Event Latency {} from {} in {}", latency, irVertex.getId(),
+          taskId);
       }
     }
   }

@@ -41,6 +41,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   private final EventHandler<O> eventHandler;
 
+  private final ExecutorService closeThread = Executors.newSingleThreadExecutor();
+
   public StreamingLambdaWorkerProxy(final int workerId,
                                     final Future<Pair<Channel, OffloadingEvent>> channelFuture,
                                     final OffloadingWorkerFactory offloadingWorkerFactory,
@@ -160,6 +162,48 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
     return null;
   }
 
+
+  @Override
+  public void forceClose() {
+    if (channel != null) {
+      //byteBufOutputStream.buffer().release();
+      closeThread.execute(() -> {
+        try {
+          LOG.info("Send end mesesage to worker {}", workerId);
+          channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
+    } else {
+      closeThread.execute(() -> {
+        while (channel == null) {
+          try {
+            Thread.sleep(200);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+
+        try {
+          LOG.info("Send end mesesage to worker {}", workerId);
+          channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
+    }
+
+    finished = true;
+  }
 
   @Override
   public <T> T finishOffloading() {

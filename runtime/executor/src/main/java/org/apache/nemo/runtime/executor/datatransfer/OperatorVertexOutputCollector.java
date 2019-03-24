@@ -164,7 +164,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   @Override
   public void emit(final O output) {
     //LOG.info("{} emits {} to {}", irVertex.getId(), output);
-    operatorMetricCollector.emittedCnt += 1;
 
     //LOG.info("Offloading {}, Start offloading {}, End offloading {}, in {}",
     //  offloading, startOffloading, endOffloading, irVertex.getId());
@@ -232,7 +231,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
     //LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
-    operatorMetricCollector.emittedCnt += 1;
 
     List<String> offloadingIds = null;
 
@@ -293,7 +291,6 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
         final Pair<OperatorMetricCollector, OutputCollector> pair =
           outputCollectorMap.get(internalVertex.getNextOperator().getId());
         //LOG.info("Internal Watermark {} emit to {}", watermark, internalVertex.getNextOperator().getId());
-
 
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }

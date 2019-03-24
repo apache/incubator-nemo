@@ -50,10 +50,12 @@ public final class KafkaOffloadingOutputEncoder implements OffloadingEncoder<Obj
         final Serializer serializer = serializerMap.get(triple.second);
         serializer.getEncoderFactory().create(outputStream).encode(triple.third);
       }
-    } else if (data instanceof UnboundedSource.CheckpointMark) {
+    } else if (data instanceof KafkaOffloadingOutput) {
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeChar(KAFKA_CHECKPOINT);
-      checkpointMarkCoder.encode((UnboundedSource.CheckpointMark) data, outputStream);
+      final KafkaOffloadingOutput output = (KafkaOffloadingOutput) data;
+      dos.writeInt(output.id);
+      checkpointMarkCoder.encode(output.checkpointMark, outputStream);
     } else {
       throw new RuntimeException("Unsupported type: " + data);
     }

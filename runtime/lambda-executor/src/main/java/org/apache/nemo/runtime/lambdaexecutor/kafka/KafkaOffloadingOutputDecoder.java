@@ -50,7 +50,9 @@ public final class KafkaOffloadingOutputDecoder implements OffloadingDecoder<Obj
           return new OffloadingResultEvent(data, watermark);
         }
         case KafkaOffloadingOutputEncoder.KAFKA_CHECKPOINT: {
-          return coder.decode(inputStream);
+          final int id = new DataInputStream(inputStream).readInt();
+          final UnboundedSource.CheckpointMark checkpointMark = coder.decode(inputStream);
+          return new KafkaOffloadingOutput(id, checkpointMark);
         }
         default: {
           throw new RuntimeException("Unsupported type: " + type);

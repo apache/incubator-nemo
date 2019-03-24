@@ -72,6 +72,10 @@ public class SourceVertexDataFetcher extends DataFetcher {
     isStarted = false;
   }
 
+  public boolean isStarted() {
+    return isStarted;
+  }
+
   public Readable getReadable() {
     return readable;
   }

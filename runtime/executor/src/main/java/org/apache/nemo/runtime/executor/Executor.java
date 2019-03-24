@@ -58,7 +58,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.*;
 
 import org.apache.reef.wake.EventHandler;
@@ -91,8 +94,6 @@ public final class Executor {
 
   private final ServerlessExecutorProvider serverlessExecutorProvider;
 
-  private final CpuBottleneckDetector bottleneckDetector;
-
   private volatile boolean started = false;
 
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
@@ -100,6 +101,9 @@ public final class Executor {
 
   private final EvalConf evalConf;
   private final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory;
+
+  private final TaskOffloader taskOffloader;
+
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -110,9 +114,13 @@ public final class Executor {
                    final BroadcastManagerWorker broadcastManagerWorker,
                    final MetricManagerWorker metricMessageSender,
                    final ServerlessExecutorProvider serverlessExecutorProvider,
-                   final CpuBottleneckDetector bottleneckDetector,
+                   final TaskOffloader taskOffloader,
+                   //final CpuBottleneckDetector bottleneckDetector,
                    final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
-                   final EvalConf evalConf) {
+                   final EvalConf evalConf,
+                   final TaskExecutorMapWrapper taskExecutorMapWrapper) {
+                   //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
+                   //final CpuEventModel cpuEventModel) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
               .namingPattern("TaskExecutor thread-%d")
@@ -121,13 +129,13 @@ public final class Executor {
     this.serializerManager = serializerManager;
     this.intermediateDataIOFactory = intermediateDataIOFactory;
     this.broadcastManagerWorker = broadcastManagerWorker;
+    this.taskOffloader = taskOffloader;
     this.metricMessageSender = metricMessageSender;
     this.evalConf = evalConf;
     LOG.info("\n{}", evalConf);
     this.serverlessExecutorProvider = serverlessExecutorProvider;
     this.lambdaOffloadingWorkerFactory = lambdaOffloadingWorkerFactory;
-    this.bottleneckDetector = bottleneckDetector;
-    this.taskExecutorMap = new ConcurrentHashMap<>();
+    this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
 
@@ -143,8 +151,17 @@ public final class Executor {
       SerializationUtils.deserialize(task.getSerializedIRDag());
 
     if (!started) {
-      bottleneckDetector.setBottleneckHandler(new BottleneckHandler());
-      bottleneckDetector.start();
+
+      if (evalConf.enableOffloading) {
+        taskOffloader.start();
+      }
+
+      if (evalConf.offloadingdebug) {
+
+      }
+
+      //bottleneckDetector.setBottleneckHandler(new BottleneckHandler());
+      //bottleneckDetector.start();
       started = true;
     }
 
@@ -298,7 +315,13 @@ public final class Executor {
     }
   }
 
+  /*
   final class BottleneckHandler implements EventHandler<CpuBottleneckDetector.BottleneckEvent> {
+
+    private List<TaskExecutor> prevOffloadingExecutors = new ArrayList<>();
+    private long prevEndTime = System.currentTimeMillis();
+    private long slackTime = 10000;
+    private boolean started = false;
 
     @Override
     public void onNext(final CpuBottleneckDetector.BottleneckEvent event) {
@@ -306,14 +329,50 @@ public final class Executor {
       if (evalConf.enableOffloading) {
         switch (event.type) {
           case START: {
-            for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-              taskExecutor.startOffloading(event.startTime);
+
+            if (!(slackTime >= System.currentTimeMillis() - prevEndTime)) {
+              // skip
+              LOG.info("Skip start event!");
+            } else {
+              started = true;
+
+              // estimate desirable events
+              final int desirableEvents = cpuEventModel.desirableCountForLoad(cpuThreshold);
+
+              final double ratio = desirableEvents / (double) event.processedEvents;
+              final int numExecutors = taskExecutorMap.keySet().size();
+              final int offloadingCnt = Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors));
+
+              LOG.info("Desirable events: {} for load {}, total: {}, offloadingCnt: {}",
+                desirableEvents, cpuThreshold, event.processedEvents, offloadingCnt);
+
+              int cnt = 0;
+              for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+                if (taskExecutor.isStateless()) {
+                  LOG.info("Start offloading of {}", taskExecutor.getId());
+                  taskExecutor.startOffloading(event.startTime);
+                  prevOffloadingExecutors.add(taskExecutor);
+
+                  cnt += 1;
+                  if (offloadingCnt == cnt) {
+                    break;
+                  }
+                }
+              }
             }
             break;
           }
+
           case END: {
-            for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-              taskExecutor.endOffloading();
+            if (started) {
+              started = false;
+              for (final TaskExecutor taskExecutor : prevOffloadingExecutors) {
+                LOG.info("End offloading of {}", taskExecutor.getId());
+                taskExecutor.endOffloading();
+              }
+
+              prevEndTime = System.currentTimeMillis();
+              prevOffloadingExecutors.clear();
             }
             break;
           }
@@ -323,4 +382,5 @@ public final class Executor {
       }
     }
   }
+  */
 }
