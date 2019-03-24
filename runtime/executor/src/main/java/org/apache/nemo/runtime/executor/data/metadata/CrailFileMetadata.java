@@ -44,7 +44,6 @@ import java.util.List;
 public final class CrailFileMetadata<K extends Serializable> extends FileMetadata<K> {
   private static final Logger LOG = LoggerFactory.getLogger(CrailFileMetadata.class.getName());
   private final String metaFilePath;
-  private static CrailConfiguration conf;
   private static CrailStore fs;
 
   /**
@@ -52,15 +51,10 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    *
    * @param metaFilePath the metadata file path.
    */
-  private CrailFileMetadata(final String metaFilePath) {
+  private CrailFileMetadata(final String metaFilePath, CrailStore fs) {
     super();
     this.metaFilePath = metaFilePath;
-    try {
-      conf = new CrailConfiguration();
-      fs = CrailStore.newInstance(conf);
-    }catch(Exception e){
-      LOG.info("HY: CrailConfiguration failed");
-    }
+    this.fs = fs;
   }
 
   /**
@@ -70,15 +64,10 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    * @param partitionMetadataList the partition metadata list.
    */
   private CrailFileMetadata(final String metaFilePath,
-                            final List<PartitionMetadata<K>> partitionMetadataList) {
+                            final List<PartitionMetadata<K>> partitionMetadataList, CrailStore fs) {
     super(partitionMetadataList);
     this.metaFilePath = metaFilePath;
-    try {
-      conf = new CrailConfiguration();
-      fs = CrailStore.newInstance(conf);
-    }catch(Exception e){
-      LOG.info("HY: CrailConfiguration failed");
-    }
+    this.fs = fs;
   }
 
   /**
@@ -103,8 +92,6 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
     LOG.info("HY: metadata commit for block {}", metaFilePath);
     final Iterable<PartitionMetadata<K>> partitionMetadataItr = getPartitionMetadataList();
     try{
-      conf = new CrailConfiguration();
-      fs = CrailStore.newInstance(conf);
       CrailBufferedOutputStream metaFileOutputstream =fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile().getBufferedOutputStream(0);
       for (PartitionMetadata<K> partitionMetadata : partitionMetadataItr) {
         final byte[] key = SerializationUtils.serialize(partitionMetadata.getKey());
@@ -129,8 +116,8 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    * @param <T>          the key type of the block's partitions.
    * @return the created block metadata.
    */
-  public static <T extends Serializable> CrailFileMetadata<T> create(final String metaFilePath) {
-    return new CrailFileMetadata<>(metaFilePath);
+  public static <T extends Serializable> CrailFileMetadata<T> create(final String metaFilePath, CrailStore fs) {
+    return new CrailFileMetadata<>(metaFilePath, fs);
   }
 
   /**
@@ -163,6 +150,6 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
     } catch (Exception e) {
       throw new IOException("HY: File "+metaFilePath+ " does not exist!");
     }
-    return new CrailFileMetadata<>(metaFilePath, partitionMetadataList);
+    return new CrailFileMetadata<>(metaFilePath, partitionMetadataList, fs);
   }
 }
