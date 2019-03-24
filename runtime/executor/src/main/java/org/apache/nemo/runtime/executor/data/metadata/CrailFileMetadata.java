@@ -46,7 +46,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
   private final String metaFilePath;
   private static CrailConfiguration conf;
   private static CrailStore fs;
-  private static CrailFile file=null;
+
   /**
    * Constructor for creating a non-committed new file metadata.
    *
@@ -141,7 +141,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    * @return the created block metadata.
    * @throws IOException if fail to open.
    */
-  public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath) throws Exception{
+  public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath, CrailStore fs) throws Exception{
     LOG.info("HY: metafilePath {}", metaFilePath);
     final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();
     try {
