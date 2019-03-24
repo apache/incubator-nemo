@@ -83,7 +83,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
         b = inputStream.read();
       }
 
-      final int lengthToRead = byteOutputStream.getCount();
+      final int lengthToRead = byteOutputStream.size();
       if (lengthToRead == 0) {
         if (!returnedArray) {
           returnedArray = true;
@@ -93,7 +93,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
         }
       }
       final byte[] resultBytes = new byte[lengthToRead]; // Read the size of this byte array.
-      System.arraycopy(byteOutputStream.getBufDirectly(), 0, resultBytes, 0, lengthToRead);
+      System.arraycopy(byteOutputStream.toByteArray(), 0, resultBytes, 0, lengthToRead);
 
       returnedArray = true;
       return resultBytes;
