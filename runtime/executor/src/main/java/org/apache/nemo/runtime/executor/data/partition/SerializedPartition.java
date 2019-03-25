@@ -115,7 +115,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
       // inner buffer directly, which can be an unfinished(not flushed) buffer.
       wrappedStream.close();
-      this.serializedData = bytesOutputStream.toByteArray();
+      this.serializedData = bytesOutputStream.getBufDirectly();
       this.length = bytesOutputStream.size();
       this.committed = true;
     }
