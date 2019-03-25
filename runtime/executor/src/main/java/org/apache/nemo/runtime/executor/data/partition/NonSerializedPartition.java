@@ -96,7 +96,8 @@ public final class NonSerializedPartition<K> implements Partition<Iterable, K> {
 
   /**
    * @return the number of bytes in serialized form (which is, for example, encoded and compressed)
-   * @throws org.apache.nemo.runtime.executor.data.DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException when then information is not available
+   * @throws org.apache.nemo.runtime.executor.data.DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException
+   * when then information is not available
    */
   public long getNumSerializedBytes() throws DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException {
     if (numSerializedBytes == -1) {
@@ -107,7 +108,8 @@ public final class NonSerializedPartition<K> implements Partition<Iterable, K> {
 
   /**
    * @return the number of bytes in encoded form (which is ready to be decoded)
-   * @throws org.apache.nemo.runtime.executor.data.DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException when then information is not available
+   * @throws org.apache.nemo.runtime.executor.data.DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException
+   * when then information is not available
    */
   public long getNumEncodedBytes() throws DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException {
     if (numEncodedBytes == -1) {
