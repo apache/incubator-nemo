@@ -47,11 +47,4 @@ public final class DirectByteArrayOutputStream extends ByteArrayOutputStream {
   public byte[] getBufDirectly() {
     return buf;
   }
-
-  /**
-   * @return the number of valid bytes in the buffer.
-   */
-  public int getCount() {
-    return count;
-  }
 }
