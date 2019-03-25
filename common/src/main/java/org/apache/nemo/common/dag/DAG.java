@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 
 /**
  * DAG implementation.
+ *
  * @param <V> the vertex type
  * @param <E> the edge type
  */
@@ -52,11 +53,12 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
 
   /**
    * Constructor of DAG, called by the DAGBuilder.
-   * @param vertices set of vertices.
-   * @param incomingEdges map of incoming edges for each vertex.
-   * @param outgoingEdges map of outgoing edges for each vertex.
+   *
+   * @param vertices              set of vertices.
+   * @param incomingEdges         map of incoming edges for each vertex.
+   * @param outgoingEdges         map of outgoing edges for each vertex.
    * @param assignedLoopVertexMap map of assignedLoopVertex info.
-   * @param loopStackDepthMap map of stack depth of LoopVertices.
+   * @param loopStackDepthMap     map of stack depth of LoopVertices.
    */
   public DAG(final Set<V> vertices,
              final Map<V, Set<E>> incomingEdges,
@@ -68,9 +70,9 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
     this.outgoingEdges = new HashMap<>();
     vertices.stream().sorted(Comparator.comparingInt(Vertex::getNumericId)).forEachOrdered(this.vertices::add);
     incomingEdges.forEach((v, es) -> this.incomingEdges.put(v.getId(),
-        es.stream().sorted(Comparator.comparingInt(Edge::getNumericId)).collect(Collectors.toList())));
+      es.stream().sorted(Comparator.comparingInt(Edge::getNumericId)).collect(Collectors.toList())));
     outgoingEdges.forEach((v, es) -> this.outgoingEdges.put(v.getId(),
-        es.stream().sorted(Comparator.comparingInt(Edge::getNumericId)).collect(Collectors.toList())));
+      es.stream().sorted(Comparator.comparingInt(Edge::getNumericId)).collect(Collectors.toList())));
 
     this.rootVertices = new ArrayList<>();
     vertices.forEach(v -> {
@@ -150,7 +152,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
       }
     }
     throw new IllegalEdgeOperationException(
-        new Throwable("There exists no edge from " + srcVertexId + " to " + dstVertexId));
+      new Throwable("There exists no edge from " + srcVertexId + " to " + dstVertexId));
   }
 
   @Override
@@ -169,8 +171,9 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
 
   /**
    * Recursively adds ancestors of a vertex to the given list.
+   *
    * @param ancestorList to accumulate the ancestors.
-   * @param vertexId to find the ancestors for.
+   * @param vertexId     to find the ancestors for.
    */
   private void addAncestors(final List<V> ancestorList, final String vertexId) {
     getParents(vertexId).forEach(parent -> {
@@ -208,15 +211,15 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
   public void dfsTraverse(final Consumer<V> function, final TraversalOrder traversalOrder) {
     final Set<V> visited = new HashSet<>();
     getVertices().stream().filter(vertex -> incomingEdges.get(vertex.getId()).isEmpty()) // root Operators
-        .filter(vertex -> !visited.contains(vertex))
-        .forEachOrdered(vertex -> dfsDo(vertex, function, traversalOrder, visited));
+      .filter(vertex -> !visited.contains(vertex))
+      .forEachOrdered(vertex -> dfsDo(vertex, function, traversalOrder, visited));
   }
 
   @Override
   public void dfsDo(final V vertex,
-                     final Consumer<V> vertexConsumer,
-                     final TraversalOrder traversalOrder,
-                     final Set<V> visited) {
+                    final Consumer<V> vertexConsumer,
+                    final TraversalOrder traversalOrder,
+                    final Set<V> visited) {
     visited.add(vertex);
     if (traversalOrder == TraversalOrder.PreOrder) {
       vertexConsumer.accept(vertex);
@@ -224,8 +227,8 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
     final List<E> outEdges = getOutgoingEdgesOf(vertex);
     if (!outEdges.isEmpty()) {
       outEdges.stream().map(Edge::getDst)
-          .filter(outOperator -> !visited.contains(outOperator))
-          .forEachOrdered(outOperator -> dfsDo(outOperator, vertexConsumer, traversalOrder, visited));
+        .filter(outOperator -> !visited.contains(outOperator))
+        .forEachOrdered(outOperator -> dfsDo(outOperator, vertexConsumer, traversalOrder, visited));
     }
     if (traversalOrder == TraversalOrder.PostOrder) {
       vertexConsumer.accept(vertex);
@@ -237,8 +240,10 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
     final Set<V> reachableFromV1 = new HashSet<>();
     final Set<V> reachableFromV2 = new HashSet<>();
 
-    this.dfsDo(v1, (v) -> { }, TraversalOrder.PostOrder, reachableFromV1);
-    this.dfsDo(v2, (v) -> { }, TraversalOrder.PostOrder, reachableFromV2);
+    this.dfsDo(v1, (v) -> {
+    }, TraversalOrder.PostOrder, reachableFromV1);
+    this.dfsDo(v2, (v) -> {
+    }, TraversalOrder.PostOrder, reachableFromV2);
 
     return reachableFromV1.contains(v2) || reachableFromV2.contains(v1);
   }
@@ -306,10 +311,10 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
       printWriter.println(toString());
       printWriter.close();
       LOG.debug(String.format("DAG JSON for %s is saved at %s"
-          + " (Use https://service.jangho.kr/nemo-dag/ to visualize it.)", description, file.getPath()));
+        + " (Use https://service.jangho.kr/nemo-dag/ to visualize it.)", description, file.getPath()));
     } catch (IOException e) {
       LOG.warn(String.format("Cannot store JSON representation of %s to %s: %s",
-          description, file.getPath(), e.toString()));
+        description, file.getPath(), e.toString()));
     }
   }
 }

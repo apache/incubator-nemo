@@ -34,19 +34,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Rewrites the physical plan during execution, to enforce the optimizations of Nemo RunTimePasses.
- *
+ * <p>
  * A high-level flow of a rewrite is as follows:
  * Runtime - (PhysicalPlan-level info) - NemoPlanRewriter - (IRDAG-level info) - NemoOptimizer - (new IRDAG)
  * - NemoPlanRewriter - (new PhysicalPlan) - Runtime
- *
+ * <p>
  * Here, the NemoPlanRewriter acts as a translator between the Runtime that only understands PhysicalPlan-level info,
  * and the NemoOptimizer that only understands IRDAG-level info.
- *
+ * <p>
  * This decoupling between the NemoOptimizer and the Runtime lets Nemo optimization policies dynamically control
  * distributed execution behaviors, and at the same time enjoy correctness/reusability/composability properties that
  * the IRDAG abstraction provides.

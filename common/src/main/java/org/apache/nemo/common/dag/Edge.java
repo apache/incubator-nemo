@@ -18,12 +18,12 @@
  */
 package org.apache.nemo.common.dag;
 
-import java.io.Serializable;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.Serializable;
 
 /**
  * Connects two vertices of a DAG.
@@ -40,7 +40,8 @@ public class Edge<V extends Vertex> implements Serializable {
 
   /**
    * Constructor for Edge.
-   * @param id ID of the edge.
+   *
+   * @param id  ID of the edge.
    * @param src source vertex.
    * @param dst destination vertex.
    */

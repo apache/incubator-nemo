@@ -26,6 +26,7 @@ package org.apache.nemo.common.exception;
 public final class IllegalVertexOperationException extends RuntimeException {
   /**
    * IllegalVertexOperationException.
+   *
    * @param message message
    */
   public IllegalVertexOperationException(final String message) {

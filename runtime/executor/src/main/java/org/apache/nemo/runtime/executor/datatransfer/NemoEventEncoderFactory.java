@@ -53,6 +53,7 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
 
   /**
    * This encodes normal data and WatermarkWithIndex.
+   *
    * @param <T>
    */
   private final class NemoEventEncoder<T> implements EncoderFactory.Encoder<T> {

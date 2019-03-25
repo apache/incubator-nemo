@@ -38,9 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-import static org.apache.beam.sdk.transforms.windowing.PaneInfo.Timing.EARLY;
-import static org.apache.beam.sdk.transforms.windowing.PaneInfo.Timing.LATE;
-import static org.apache.beam.sdk.transforms.windowing.PaneInfo.Timing.ON_TIME;
+import static org.apache.beam.sdk.transforms.windowing.PaneInfo.Timing.*;
 import static org.apache.beam.sdk.values.WindowingStrategy.AccumulationMode.ACCUMULATING_FIRED_PANES;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -175,7 +173,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
     doFnTransform.onWatermark(watermark2);
 
     assertEquals(0, oc.outputs.size()); // do not emit anything
-   assertEquals(1, oc.watermarks.size());
+    assertEquals(1, oc.watermarks.size());
 
     // check output watermark
     assertEquals(1400,
@@ -284,7 +282,7 @@ public final class GroupByKeyAndWindowDoFnTransformTest {
         outputTag,
         WindowingStrategy.of(window).withTrigger(trigger)
           .withMode(ACCUMULATING_FIRED_PANES)
-        .withAllowedLateness(lateness),
+          .withAllowedLateness(lateness),
         PipelineOptionsFactory.as(NemoPipelineOptions.class),
         SystemReduceFn.buffering(NULL_INPUT_CODER),
         DisplayData.none());

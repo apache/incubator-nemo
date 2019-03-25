@@ -32,6 +32,7 @@ import java.util.function.Function;
 public abstract class CompileTimePass extends Pass implements Function<IRDAG, IRDAG> {
   /**
    * Getter for prerequisite execution properties.
+   *
    * @return set of prerequisite execution properties.
    */
   public abstract Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties();

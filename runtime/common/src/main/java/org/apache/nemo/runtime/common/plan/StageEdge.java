@@ -21,15 +21,15 @@ package org.apache.nemo.runtime.common.plan;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,7 +92,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   }
 
   @Override
-    public ObjectNode getPropertiesAsJsonNode() {
+  public ObjectNode getPropertiesAsJsonNode() {
     final ObjectNode node = JsonNodeFactory.instance.objectNode();
     node.put("runtimeEdgeId", getId());
     node.set("executionProperties", getExecutionProperties().asJsonNode());
@@ -159,7 +159,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    */
   public List<KeyRange> getKeyRanges() {
     final ArrayList<KeyRange> defaultPartitionSet = new ArrayList<>();
-    for (int taskIndex = 0; taskIndex <  getDst().getParallelism(); taskIndex++) {
+    for (int taskIndex = 0; taskIndex < getDst().getParallelism(); taskIndex++) {
       defaultPartitionSet.add(taskIndex, HashRange.of(taskIndex, taskIndex + 1));
     }
     final List<KeyRange> keyRanges = getExecutionProperties()

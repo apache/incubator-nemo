@@ -25,7 +25,8 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 /**
  * OutputCollector implementation.
@@ -48,10 +49,11 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
 
   /**
    * Constructor of the output collector.
-   * @param irVertex the ir vertex that emits the output
-   * @param internalMainOutputs internal main outputs
+   *
+   * @param irVertex                  the ir vertex that emits the output
+   * @param internalMainOutputs       internal main outputs
    * @param internalAdditionalOutputs internal additional outputs
-   * @param externalMainOutputs external main outputs
+   * @param externalMainOutputs       external main outputs
    * @param externalAdditionalOutputs external additional outputs
    */
   public OperatorVertexOutputCollector(

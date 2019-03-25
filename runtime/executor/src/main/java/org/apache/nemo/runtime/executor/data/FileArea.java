@@ -31,9 +31,9 @@ public final class FileArea implements Serializable {
   /**
    * Creates a file area.
    *
-   * @param path      the path to the file
-   * @param position  the starting position of the area
-   * @param count     the length of the area
+   * @param path     the path to the file
+   * @param position the starting position of the area
+   * @param count    the length of the area
    */
   public FileArea(final String path, final long position, final long count) {
     this.path = path;

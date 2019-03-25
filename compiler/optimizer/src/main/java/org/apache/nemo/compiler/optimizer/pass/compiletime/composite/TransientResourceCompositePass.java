@@ -34,9 +34,9 @@ public final class TransientResourceCompositePass extends CompositePass {
    */
   public TransientResourceCompositePass() {
     super(Arrays.asList(
-        new TransientResourcePriorityPass(),
-        new TransientResourceDataStorePass(),
-        new TransientResourceDataFlowPass()
+      new TransientResourcePriorityPass(),
+      new TransientResourceDataStorePass(),
+      new TransientResourceDataFlowPass()
     ));
   }
 }

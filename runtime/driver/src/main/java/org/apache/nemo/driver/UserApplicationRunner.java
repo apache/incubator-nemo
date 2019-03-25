@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.driver;
 
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.backend.Backend;
@@ -28,7 +29,6 @@ import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.RuntimeMaster;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +82,7 @@ public final class UserApplicationRunner {
 
       // Execute!
       final Pair<PlanStateManager, ScheduledExecutorService> executionResult =
-          runtimeMaster.execute(physicalPlan, maxScheduleAttempt);
+        runtimeMaster.execute(physicalPlan, maxScheduleAttempt);
       runtimeMaster.recordIRDAGMetrics(optimizedDAG, physicalPlan.getPlanId());
 
       // Wait for the job to finish and stop logging

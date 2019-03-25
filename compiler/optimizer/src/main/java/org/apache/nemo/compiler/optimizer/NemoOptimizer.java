@@ -53,7 +53,7 @@ public final class NemoOptimizer implements Optimizer {
 
   /**
    * @param dagDirectory to store JSON representation of intermediate DAGs.
-   * @param policyName the name of the optimization policy.
+   * @param policyName   the name of the optimization policy.
    */
   @Inject
   private NemoOptimizer(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,

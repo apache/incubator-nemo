@@ -18,12 +18,12 @@
  */
 package org.apache.nemo.compiler.backend.nemo;
 
+import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy;
 import org.apache.nemo.conf.JobConf;
@@ -53,11 +53,11 @@ public final class NemoBackendTest<I, O> {
   @Before
   public void setUp() throws Exception {
     this.dag = new IRDAG(builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1))
-        .connectVertices(EmptyComponents.newDummyShuffleEdge(map1, groupByKey))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine, map2))
-        .build());
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1))
+      .connectVertices(EmptyComponents.newDummyShuffleEdge(map1, groupByKey))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine, map2))
+      .build());
 
     this.dag = new TransientResourcePolicy().runCompileTimeOptimization(dag, EMPTY_DAG_DIRECTORY);
 

@@ -39,14 +39,14 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.*;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
  * Two threads use this class
  * - Network thread: Saves pipe connections created from destination tasks.
  * - Task executor thread: Creates new pipe connections to destination tasks (read),
- *                         or retrieves a saved pipe connection (write)
+ * or retrieves a saved pipe connection (write)
  */
 @ThreadSafe
 public final class PipeManagerWorker {
@@ -141,7 +141,7 @@ public final class PipeManagerWorker {
   /**
    * (SYNCHRONIZATION) Called by task threads.
    *
-   * @param runtimeEdge runtime edge
+   * @param runtimeEdge  runtime edge
    * @param srcTaskIndex source task index
    * @return output contexts.
    */

@@ -26,13 +26,14 @@ import java.io.Serializable;
 
 /**
  * Specifies cloned execution of a vertex.
- *
+ * <p>
  * A major limitations of the current implementation:
  * *ALL* of the clones are always scheduled immediately
  */
 public final class ClonedSchedulingProperty extends VertexExecutionProperty<ClonedSchedulingProperty.CloneConf> {
   /**
    * Constructor.
+   *
    * @param value value of the execution property.
    */
   private ClonedSchedulingProperty(final CloneConf value) {
@@ -41,6 +42,7 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Clon
 
   /**
    * Static method exposing the constructor.
+   *
    * @param conf value of the new execution property.
    * @return the newly created execution property.
    */
@@ -74,7 +76,8 @@ public final class ClonedSchedulingProperty extends VertexExecutionProperty<Clon
 
     /**
      * Clone stragglers judiciously.
-     * @param fractionToWaitFor before trying to clone.
+     *
+     * @param fractionToWaitFor    before trying to clone.
      * @param medianTimeMultiplier to identify stragglers.
      */
     public CloneConf(final double fractionToWaitFor, final double medianTimeMultiplier) {

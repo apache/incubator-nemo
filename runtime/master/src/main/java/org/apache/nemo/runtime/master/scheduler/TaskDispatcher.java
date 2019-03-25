@@ -18,13 +18,17 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
+import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.NotThreadSafe;
+import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,12 +36,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.annotation.concurrent.NotThreadSafe;
-import javax.inject.Inject;
 
 /**
  * Dispatches tasks to executors in discrete batches (dispatch iterations).
@@ -68,7 +66,7 @@ final class TaskDispatcher {
                          final PlanStateManager planStateManager) {
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.dispatcherThread = Executors.newSingleThreadExecutor(runnable ->
-        new Thread(runnable, "TaskDispatcher thread"));
+      new Thread(runnable, "TaskDispatcher thread"));
     this.planStateManager = planStateManager;
     this.isSchedulerRunning = false;
     this.isTerminated = false;
@@ -121,14 +119,14 @@ final class TaskDispatcher {
           final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
           if (constraint.isPresent() && !candidateExecutors.getValue().isEmpty()) {
             candidateExecutors.setValue(candidateExecutors.getValue().stream()
-                .filter(e -> constraint.get().testSchedulability(e, task))
-                .collect(Collectors.toSet()));
+              .filter(e -> constraint.get().testSchedulability(e, task))
+              .collect(Collectors.toSet()));
           }
         });
         if (!candidateExecutors.getValue().isEmpty()) {
           // Select executor
           final ExecutorRepresenter selectedExecutor
-              = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
+            = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
           // update metadata first
           planStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 

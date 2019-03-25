@@ -29,9 +29,9 @@ import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
  */
 public final class BasicPullPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
-      new PolicyBuilder()
-          .registerCompileTimePass(new AggressiveSpeculativeCloningPass())
-          .registerCompileTimePass(new DefaultScheduleGroupPass());
+    new PolicyBuilder()
+      .registerCompileTimePass(new AggressiveSpeculativeCloningPass())
+      .registerCompileTimePass(new DefaultScheduleGroupPass());
   private final Policy policy;
 
   /**

@@ -20,6 +20,8 @@ package org.apache.nemo.common.ir.executionproperty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
@@ -27,9 +29,6 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-
-import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.Serializable;
@@ -40,6 +39,7 @@ import java.util.stream.Stream;
 
 /**
  * ExecutionPropertyMap Class, which uses HashMap for keeping track of ExecutionProperties for vertices and edges.
+ *
  * @param <T> Type of {@link ExecutionProperty} this map stores.
  */
 @NotThreadSafe
@@ -50,6 +50,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
 
   /**
    * Constructor for ExecutionPropertyMap class.
+   *
    * @param id ID of the vertex / edge to keep the execution property of.
    */
   @VisibleForTesting
@@ -59,13 +60,14 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
 
   /**
    * Static initializer for irEdges.
-   * @param irEdge irEdge to keep the execution property of.
+   *
+   * @param irEdge      irEdge to keep the execution property of.
    * @param commPattern Data communication pattern type of the edge.
    * @return The corresponding ExecutionPropertyMap.
    */
   public static ExecutionPropertyMap<EdgeExecutionProperty> of(
-      final IREdge irEdge,
-      final CommunicationPatternProperty.Value commPattern) {
+    final IREdge irEdge,
+    final CommunicationPatternProperty.Value commPattern) {
     final ExecutionPropertyMap<EdgeExecutionProperty> map = new ExecutionPropertyMap<>(irEdge.getId());
     map.put(CommunicationPatternProperty.of(commPattern));
     map.put(EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));
@@ -94,6 +96,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
 
   /**
    * Static initializer for irVertex.
+   *
    * @param irVertex irVertex to keep the execution property of.
    * @return The corresponding ExecutionPropertyMap.
    */
@@ -105,6 +108,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
 
   /**
    * ID of the item this ExecutionPropertyMap class is keeping track of.
+   *
    * @return the ID of the item this ExecutionPropertyMap class is keeping track of.
    */
   public String getId() {
@@ -113,6 +117,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
 
   /**
    * Put the given execution property  in the ExecutionPropertyMap. By default, it does not finalize the property.
+   *
    * @param executionProperty execution property to insert.
    * @return the previous execution property, or null if there was no execution property
    * with the specified property key.
@@ -123,19 +128,20 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
 
   /**
    * Put the given execution property in the ExecutionPropertyMap.
+   *
    * @param executionProperty execution property to insert.
-   * @param finalize whether or not to finalize the execution property.
+   * @param finalize          whether or not to finalize the execution property.
    * @return the previous execution property, or null if there was no execution property
    * with the specified property key.
    */
   public T put(final T executionProperty, final Boolean finalize) {
     // check if the property has been already finalized. We don't mind overwriting an identical value.
     if (finalizedProperties.contains(executionProperty.getClass())
-        && properties.get(executionProperty.getClass()) != null
-        && !properties.get(executionProperty.getClass()).equals(executionProperty)) {
+      && properties.get(executionProperty.getClass()) != null
+      && !properties.get(executionProperty.getClass()).equals(executionProperty)) {
       throw new CompileTimeOptimizationException("Trying to overwrite a finalized execution property ["
-          + executionProperty.getClass().getSimpleName() + "] from ["
-          + properties.get(executionProperty.getClass()).getValue() + "] to [" + executionProperty.getValue() + "]");
+        + executionProperty.getClass().getSimpleName() + "] from ["
+        + properties.get(executionProperty.getClass()).getValue() + "] to [" + executionProperty.getValue() + "]");
     }
 
     // start the actual put process.
@@ -147,7 +153,8 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
 
   /**
    * Get the value of the given execution property type.
-   * @param <U> Type of the return value.
+   *
+   * @param <U>                  Type of the return value.
    * @param executionPropertyKey the execution property type to find the value of.
    * @return the value of the given execution property.
    */
@@ -158,6 +165,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
 
   /**
    * remove the execution property.
+   *
    * @param key key of the execution property to remove.
    * @return the removed execution property
    */
@@ -175,6 +183,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
 
   /**
    * Same as forEach function in Java 8, but for execution properties.
+   *
    * @param action action to apply to each of the execution properties.
    */
   public void forEachProperties(final Consumer<? super T> action) {
@@ -216,13 +225,13 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     }
     final ExecutionPropertyMap that = (ExecutionPropertyMap) obj;
     return properties.values().stream().collect(Collectors.toSet())
-        .equals(that.properties.values().stream().collect(Collectors.toSet()));
+      .equals(that.properties.values().stream().collect(Collectors.toSet()));
   }
 
   @Override
   public int hashCode() {
     return new HashCodeBuilder(17, 37)
-        .append(properties.values().stream().map(ExecutionProperty::getValue).collect(Collectors.toSet()))
-        .toHashCode();
+      .append(properties.values().stream().map(ExecutionProperty::getValue).collect(Collectors.toSet()))
+      .toHashCode();
   }
 }

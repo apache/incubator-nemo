@@ -18,9 +18,9 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
+import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceLocalityProperty;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.tang.Injector;
@@ -38,7 +38,8 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Test cases for {@link LocalitySchedulingConstraint}.
@@ -70,17 +71,17 @@ public final class LocalitySchedulingConstraintTest {
   @Test
   public void testSourceLocationAwareSchedulingNotAvailable() throws InjectionException {
     final SchedulingConstraint schedulingConstraint = injector
-        .getInstance(LocalitySchedulingConstraint.class);
+      .getInstance(LocalitySchedulingConstraint.class);
 
     // Prepare test scenario
     final Task task = CreateTask.withReadablesWithSourceLocations(
-        Collections.singletonList(Collections.singletonList(SITE_0)));
+      Collections.singletonList(Collections.singletonList(SITE_0)));
     final ExecutorRepresenter e0 = mockExecutorRepresenter(SITE_1);
     final ExecutorRepresenter e1 = mockExecutorRepresenter(SITE_1);
 
     assertEquals(Collections.emptySet(), Arrays.asList(e0, e1).stream()
-        .filter(e -> schedulingConstraint.testSchedulability(e, task))
-        .collect(Collectors.toSet()));
+      .filter(e -> schedulingConstraint.testSchedulability(e, task))
+      .collect(Collectors.toSet()));
   }
 
   /**
@@ -90,18 +91,18 @@ public final class LocalitySchedulingConstraintTest {
   @Test
   public void testSourceLocationAwareSchedulingWithMultiSource() throws InjectionException {
     final SchedulingConstraint schedulingConstraint = injector
-        .getInstance(LocalitySchedulingConstraint.class);
+      .getInstance(LocalitySchedulingConstraint.class);
     // Prepare test scenario
     final Task task0 = CreateTask.withReadablesWithSourceLocations(
-        Collections.singletonList(Collections.singletonList(SITE_1)));
+      Collections.singletonList(Collections.singletonList(SITE_1)));
     final Task task1 = CreateTask.withReadablesWithSourceLocations(
-        Collections.singletonList(Arrays.asList(SITE_0, SITE_1, SITE_2)));
+      Collections.singletonList(Arrays.asList(SITE_0, SITE_1, SITE_2)));
     final Task task2 = CreateTask.withReadablesWithSourceLocations(
-        Arrays.asList(Collections.singletonList(SITE_0), Collections.singletonList(SITE_1),
-            Arrays.asList(SITE_1, SITE_2)));
+      Arrays.asList(Collections.singletonList(SITE_0), Collections.singletonList(SITE_1),
+        Arrays.asList(SITE_1, SITE_2)));
     final Task task3 = CreateTask.withReadablesWithSourceLocations(
-        Arrays.asList(Collections.singletonList(SITE_1), Collections.singletonList(SITE_0),
-            Arrays.asList(SITE_0, SITE_2)));
+      Arrays.asList(Collections.singletonList(SITE_1), Collections.singletonList(SITE_0),
+        Arrays.asList(SITE_0, SITE_2)));
 
     final ExecutorRepresenter e = mockExecutorRepresenter(SITE_1);
     for (final Task task : new HashSet<>(Arrays.asList(task0, task1, task2, task3))) {
@@ -121,7 +122,7 @@ public final class LocalitySchedulingConstraintTest {
       final Task mockInstance = mock(Task.class);
       final Map<String, Readable> readableMap = new HashMap<>();
       readables.forEach(readable -> readableMap.put(String.format("TASK-%d", intraTaskIndex.getAndIncrement()),
-          readable));
+        readable));
       when(mockInstance.getTaskId()).thenReturn(String.format("T-%d", taskIndex.getAndIncrement()));
       when(mockInstance.getIrVertexIdToReadable()).thenReturn(readableMap);
       when(mockInstance.getPropertyValue(ResourceLocalityProperty.class)).thenReturn(Optional.of(true));

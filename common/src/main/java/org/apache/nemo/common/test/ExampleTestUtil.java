@@ -33,6 +33,7 @@ import java.util.stream.Stream;
  */
 public final class ExampleTestUtil {
   private static final Double ERROR = 1e-8;
+
   /**
    * Private constructor.
    */
@@ -42,8 +43,8 @@ public final class ExampleTestUtil {
   /**
    * Ensures output correctness with the given test resource file.
    *
-   * @param resourcePath root folder for both resources.
-   * @param outputFileName output file name.
+   * @param resourcePath         root folder for both resources.
+   * @param outputFileName       output file name.
    * @param testResourceFileName the test result file name.
    * @throws IOException if the output is invalid.
    */
@@ -54,38 +55,38 @@ public final class ExampleTestUtil {
     final String testOutput;
     try (final Stream<Path> fileStream = Files.list(Paths.get(resourcePath))) {
       testOutput = fileStream
-          .filter(Files::isRegularFile)
-           // TODO 346: Do not use test file prefixes
-           // i.e., replace startsWith() with something like regex matching
-          .filter(path -> path.getFileName().toString().startsWith(outputFileName))
-          .flatMap(path -> {
-            try {
-              return Files.lines(path);
-            } catch (final IOException e) {
-              throw new RuntimeException(e);
-            }
-          })
-          .sorted()
-          .reduce("", (p, q) -> (p + "\n" + q));
+        .filter(Files::isRegularFile)
+        // TODO 346: Do not use test file prefixes
+        // i.e., replace startsWith() with something like regex matching
+        .filter(path -> path.getFileName().toString().startsWith(outputFileName))
+        .flatMap(path -> {
+          try {
+            return Files.lines(path);
+          } catch (final IOException e) {
+            throw new RuntimeException(e);
+          }
+        })
+        .sorted()
+        .reduce("", (p, q) -> (p + "\n" + q));
     }
 
     final String resourceOutput;
 
     try (final Stream<String> lineStream = Files.lines(Paths.get(resourcePath + testResourceFileName))) {
       resourceOutput = lineStream
-          .sorted()
-          .reduce("", (p, q) -> (p + "\n" + q));
+        .sorted()
+        .reduce("", (p, q) -> (p + "\n" + q));
     }
 
     if (!testOutput.equals(resourceOutput)) {
       final String outputMsg =
-          "Test output mismatch while comparing [" + outputFileName + "] from [" + testResourceFileName + "] under "
-              + resourcePath + ":\n"
-              + "=============" + outputFileName + "=================="
-              + testOutput
-              + "\n=============" + testResourceFileName + "=================="
-              + resourceOutput
-              + "\n===============================";
+        "Test output mismatch while comparing [" + outputFileName + "] from [" + testResourceFileName + "] under "
+          + resourcePath + ":\n"
+          + "=============" + outputFileName + "=================="
+          + testOutput
+          + "\n=============" + testResourceFileName + "=================="
+          + resourceOutput
+          + "\n===============================";
       throw new RuntimeException(outputMsg);
     }
   }
@@ -95,11 +96,11 @@ public final class ExampleTestUtil {
    * Due to the floating point math error, the output of the test can be different every time.
    * Thus we cannot compare plain text output, but have to check its numeric error.
    *
-   * @param resourcePath path to resources.
-   * @param outputFileName name of output file.
+   * @param resourcePath         path to resources.
+   * @param outputFileName       name of output file.
    * @param testResourceFileName name of the file to compare the outputs to.
    * @throws RuntimeException if the output is invalid.
-   * @throws IOException exception.
+   * @throws IOException      exception.
    */
   public static void ensureALSOutputValidity(final String resourcePath,
                                              final String outputFileName,
@@ -108,30 +109,30 @@ public final class ExampleTestUtil {
     final List<List<Double>> testOutput;
     try (final Stream<Path> fileStream = Files.list(Paths.get(resourcePath))) {
       testOutput = fileStream
-          .filter(Files::isRegularFile)
-          .filter(path -> path.getFileName().toString().startsWith(outputFileName))
-          .flatMap(path -> {
-            try {
-              return Files.lines(path);
-            } catch (final IOException e) {
-              throw new RuntimeException(e);
-            }
-          })
-          .sorted()
-          .filter(line -> !line.trim().equals(""))
-          .map(line -> Arrays.asList(line.split("\\s*,\\s*"))
-              .stream().map(s -> Double.valueOf(s)).collect(Collectors.toList()))
-          .collect(Collectors.toList());
+        .filter(Files::isRegularFile)
+        .filter(path -> path.getFileName().toString().startsWith(outputFileName))
+        .flatMap(path -> {
+          try {
+            return Files.lines(path);
+          } catch (final IOException e) {
+            throw new RuntimeException(e);
+          }
+        })
+        .sorted()
+        .filter(line -> !line.trim().equals(""))
+        .map(line -> Arrays.asList(line.split("\\s*,\\s*"))
+          .stream().map(s -> Double.valueOf(s)).collect(Collectors.toList()))
+        .collect(Collectors.toList());
     }
 
     final List<List<Double>> resourceOutput;
     try (final Stream<String> lineStream = Files.lines(Paths.get(resourcePath + testResourceFileName))) {
       resourceOutput = lineStream
-          .sorted()
-          .filter(line -> !line.trim().equals(""))
-          .map(line -> Arrays.asList(line.split("\\s*,\\s*"))
-              .stream().map(s -> Double.valueOf(s)).collect(Collectors.toList()))
-          .collect(Collectors.toList());
+        .sorted()
+        .filter(line -> !line.trim().equals(""))
+        .map(line -> Arrays.asList(line.split("\\s*,\\s*"))
+          .stream().map(s -> Double.valueOf(s)).collect(Collectors.toList()))
+        .collect(Collectors.toList());
     }
 
     if (testOutput.size() != resourceOutput.size()) {
@@ -160,9 +161,9 @@ public final class ExampleTestUtil {
                                       final String outputFileName) throws IOException {
     try (final Stream<Path> fileStream = Files.list(Paths.get(directory))) {
       final Set<Path> outputFilePaths = fileStream
-          .filter(Files::isRegularFile)
-          .filter(path -> path.getFileName().toString().startsWith(outputFileName))
-          .collect(Collectors.toSet());
+        .filter(Files::isRegularFile)
+        .filter(path -> path.getFileName().toString().startsWith(outputFileName))
+        .collect(Collectors.toSet());
       for (final Path outputFilePath : outputFilePaths) {
         Files.delete(outputFilePath);
       }

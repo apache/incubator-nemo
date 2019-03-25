@@ -49,7 +49,7 @@ public final class ClientRPC {
   private static final int RETRY_TIMEOUT = 100;
 
   private final Map<ControlMessage.ClientToDriverMessageType, EventHandler<ControlMessage.ClientToDriverMessage>>
-      handlers = new ConcurrentHashMap<>();
+    handlers = new ConcurrentHashMap<>();
   private final Transport transport;
   private final Link<ControlMessage.DriverToClientMessage> link;
   private volatile boolean isClosed = false;
@@ -60,7 +60,7 @@ public final class ClientRPC {
                     @Parameter(JobConf.ClientSideRPCServerHost.class) final String clientHost,
                     @Parameter(JobConf.ClientSideRPCServerPort.class) final int clientPort) {
     transport = transportFactory.newInstance(localAddressProvider.getLocalAddress(),
-        0, new SyncStage<>(new RPCEventHandler()), null, RETRY_COUNT, RETRY_TIMEOUT);
+      0, new SyncStage<>(new RPCEventHandler()), null, RETRY_COUNT, RETRY_TIMEOUT);
     final SocketAddress clientAddress = new InetSocketAddress(clientHost, clientPort);
     try {
       link = transport.open(clientAddress, ENCODER, LINK_LISTENER);
@@ -72,7 +72,8 @@ public final class ClientRPC {
 
   /**
    * Registers handler for the given type of message.
-   * @param type the type of message
+   *
+   * @param type    the type of message
    * @param handler handler implementation
    * @return {@code this}
    */
@@ -100,6 +101,7 @@ public final class ClientRPC {
 
   /**
    * Write message to client.
+   *
    * @param message message to send.
    */
   public void send(final ControlMessage.DriverToClientMessage message) {
@@ -109,6 +111,7 @@ public final class ClientRPC {
 
   /**
    * Handles message from client.
+   *
    * @param message message to process
    */
   private void handleMessage(final ControlMessage.ClientToDriverMessage message) {

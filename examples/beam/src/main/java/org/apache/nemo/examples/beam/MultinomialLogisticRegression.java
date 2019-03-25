@@ -18,8 +18,6 @@
  */
 package org.apache.nemo.examples.beam;
 
-import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
-import org.apache.nemo.common.Pair;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.*;
@@ -30,10 +28,12 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
-
-import java.util.*;
+import org.apache.nemo.common.Pair;
+import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
 
 /**
  * Sample Multinomial Logistic Regression application.
@@ -62,8 +62,9 @@ public final class MultinomialLogisticRegression {
 
     /**
      * Constructor for CalculateGradient DoFn class.
-     * @param modelView PCollectionView of the model.
-     * @param numClasses number of classes.
+     *
+     * @param modelView   PCollectionView of the model.
+     * @param numClasses  number of classes.
      * @param numFeatures number of features.
      */
     CalculateGradient(final PCollectionView<Map<Integer, List<Double>>> modelView,
@@ -94,6 +95,7 @@ public final class MultinomialLogisticRegression {
 
     /**
      * Method for parsing lines of inputs.
+     *
      * @param input input line.
      * @return the parsed key-value pair.
      */
@@ -118,6 +120,7 @@ public final class MultinomialLogisticRegression {
 
     /**
      * ProcessElement method for BEAM.
+     *
      * @param c Process context.
      * @throws Exception Exception on the way.
      */
@@ -252,11 +255,12 @@ public final class MultinomialLogisticRegression {
 
     /**
      * Constructor for ApplyGradient DoFn class.
-     * @param numFeatures number of features.
-     * @param numClasses number of classes.
+     *
+     * @param numFeatures  number of features.
+     * @param numClasses   number of classes.
      * @param iterationNum number of iteration.
-     * @param gradientTag TupleTag of gradient.
-     * @param modelTag TupleTag of model.
+     * @param gradientTag  TupleTag of gradient.
+     * @param modelTag     TupleTag of model.
      */
     ApplyGradient(final Integer numFeatures, final Integer numClasses, final Integer iterationNum,
                   final TupleTag<List<Double>> gradientTag, final TupleTag<List<Double>> modelTag) {
@@ -269,6 +273,7 @@ public final class MultinomialLogisticRegression {
 
     /**
      * ProcessElement method for BEAM.
+     *
      * @param c Process context.
      * @throws Exception Exception on the way.
      */
@@ -326,7 +331,7 @@ public final class MultinomialLogisticRegression {
    * Combine Function for Iterable of gradients.
    */
   public static final class CombineFunctionForIterable
-      implements SerializableFunction<Iterable<List<Double>>, List<Double>> {
+    implements SerializableFunction<Iterable<List<Double>>, List<Double>> {
     @Override
     public List<Double> apply(final Iterable<List<Double>> gradients) {
       List<Double> ret = null;
@@ -348,11 +353,11 @@ public final class MultinomialLogisticRegression {
   }
 
   /**
-   + Composite transform that wraps the transforms inside the loop.
-   + The loop updates the model in each iteration.
+   * + Composite transform that wraps the transforms inside the loop.
+   * + The loop updates the model in each iteration.
    */
   public static final class UpdateModel
-      extends LoopCompositeTransform<PCollection<KV<Integer, List<Double>>>, PCollection<KV<Integer, List<Double>>>> {
+    extends LoopCompositeTransform<PCollection<KV<Integer, List<Double>>>, PCollection<KV<Integer, List<Double>>>> {
     private final Integer numFeatures;
     private final Integer numClasses;
     private final Integer iterationNum;
@@ -360,10 +365,11 @@ public final class MultinomialLogisticRegression {
 
     /**
      * Constructor of UpdateModel CompositeTransform.
-     * @param numFeatures number of features.
-     * @param numClasses number of classes.
+     *
+     * @param numFeatures  number of features.
+     * @param numClasses   number of classes.
      * @param iterationNum iteration number.
-     * @param readInput PCollection of
+     * @param readInput    PCollection of
      */
     UpdateModel(final Integer numFeatures, final Integer numClasses, final Integer iterationNum,
                 final PCollection<String> readInput) {
@@ -380,28 +386,29 @@ public final class MultinomialLogisticRegression {
 
       // Find gradient.
       final PCollection<KV<Integer, List<Double>>> gradient = readInput
-          .apply(ParDo.of(
-              new CalculateGradient(modelView, numClasses, numFeatures)).withSideInputs(modelView))
-          .apply(Combine.perKey(new CombineFunction()));
+        .apply(ParDo.of(
+          new CalculateGradient(modelView, numClasses, numFeatures)).withSideInputs(modelView))
+        .apply(Combine.perKey(new CombineFunction()));
 
       // Tags for CoGroupByKey.
       final TupleTag<List<Double>> gradientTag = new TupleTag<>();
       final TupleTag<List<Double>> modelTag = new TupleTag<>();
       final KeyedPCollectionTuple<Integer> coGbkInput = KeyedPCollectionTuple
-          .of(gradientTag, gradient)
-          .and(modelTag, model);
+        .of(gradientTag, gradient)
+        .and(modelTag, model);
 
       final PCollection<KV<Integer, CoGbkResult>> groupResult =
-          coGbkInput.apply(CoGroupByKey.create());
+        coGbkInput.apply(CoGroupByKey.create());
 
       // Update the model
       return groupResult
-          .apply(ParDo.of(new ApplyGradient(numFeatures, numClasses, iterationNum, gradientTag, modelTag)));
+        .apply(ParDo.of(new ApplyGradient(numFeatures, numClasses, iterationNum, gradientTag, modelTag)));
     }
   }
 
   /**
    * Main function for the MLR BEAM program.
+   *
    * @param args arguments.
    */
   public static void main(final String[] args) {
@@ -425,23 +432,23 @@ public final class MultinomialLogisticRegression {
 
     // Initialization of the model for Logistic Regression.
     PCollection<KV<Integer, List<Double>>> model = p
-        .apply(Create.of(initialModelKeys))
-        .apply(ParDo.of(new DoFn<Integer, KV<Integer, List<Double>>>() {
-          @ProcessElement
-          public void processElement(final ProcessContext c) throws Exception {
-            if (c.element() == numClasses - 1) {
-              final List<Double> model = new ArrayList<>(1);
-              model.add(0.0);
-              c.output(KV.of(c.element(), model));
-            } else {
-              final List<Double> model = new ArrayList<>(numFeatures);
-              for (Integer i = 0; i < numFeatures; i++) {
-                model.add(i, 0.0);
-              }
-              c.output(KV.of(c.element(), model));
+      .apply(Create.of(initialModelKeys))
+      .apply(ParDo.of(new DoFn<Integer, KV<Integer, List<Double>>>() {
+        @ProcessElement
+        public void processElement(final ProcessContext c) throws Exception {
+          if (c.element() == numClasses - 1) {
+            final List<Double> model = new ArrayList<>(1);
+            model.add(0.0);
+            c.output(KV.of(c.element(), model));
+          } else {
+            final List<Double> model = new ArrayList<>(numFeatures);
+            for (Integer i = 0; i < numFeatures; i++) {
+              model.add(i, 0.0);
             }
+            c.output(KV.of(c.element(), model));
           }
-        }));
+        }
+      }));
 
     // Read input data
     final PCollection<String> readInput = GenericSourceSink.read(p, inputFilePath);

@@ -30,8 +30,9 @@ public final class HashRange implements KeyRange<Integer> {
 
   /**
    * Private constructor.
+   *
    * @param rangeBeginInclusive point at which the hash range starts (inclusive).
-   * @param rangeEndExclusive point at which the hash range ends (exclusive).
+   * @param rangeEndExclusive   point at which the hash range ends (exclusive).
    */
   private HashRange(final int rangeBeginInclusive, final int rangeEndExclusive) {
     if (rangeBeginInclusive < 0 || rangeEndExclusive < 0) {
@@ -121,7 +122,7 @@ public final class HashRange implements KeyRange<Integer> {
    */
   @Override
   public int hashCode() {
-    return Arrays.hashCode(new Object[] {
+    return Arrays.hashCode(new Object[]{
       rangeBeginInclusive,
       rangeEndExclusive,
     });

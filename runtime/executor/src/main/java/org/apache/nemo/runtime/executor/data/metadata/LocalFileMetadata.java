@@ -24,6 +24,7 @@ import java.io.Serializable;
 /**
  * This class represents a metadata for a local file {@link org.apache.nemo.runtime.executor.data.block.Block}.
  * It resides in local only, and does not synchronize globally.
+ *
  * @param <K> the key type of its partitions.
  */
 @ThreadSafe

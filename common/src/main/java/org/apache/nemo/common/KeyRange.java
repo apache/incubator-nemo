@@ -22,6 +22,7 @@ import java.io.Serializable;
 
 /**
  * Represents the key range of data partitions within a block.
+ *
  * @param <K> the type of key to assign for each partition.
  */
 public interface KeyRange<K extends Serializable> extends Serializable {

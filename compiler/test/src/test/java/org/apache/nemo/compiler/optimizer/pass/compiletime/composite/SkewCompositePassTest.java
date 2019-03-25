@@ -21,8 +21,8 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.composite;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityProperty;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
@@ -63,7 +63,7 @@ public class SkewCompositePassTest {
     final CompositePass dataSkewPass = new SkewCompositePass();
     final Set<Class<? extends ExecutionProperty>> prerequisites = new HashSet<>();
     dataSkewPass.getPassList().forEach(compileTimePass ->
-        prerequisites.addAll(compileTimePass.getPrerequisiteExecutionProperties()));
+      prerequisites.addAll(compileTimePass.getPrerequisiteExecutionProperties()));
     dataSkewPass.getPassList().forEach(compileTimePass -> {
       if (compileTimePass instanceof AnnotatingPass) {
         prerequisites.removeAll(((AnnotatingPass) compileTimePass).getExecutionPropertiesToAnnotate());
@@ -76,6 +76,7 @@ public class SkewCompositePassTest {
    * Test for {@link SkewCompositePass} with MR workload.
    * It should have inserted vertex with {@link MessageBarrierTransform}
    * and vertex with {@link MessageAggregatorTransform} for each shuffle edge.
+   *
    * @throws Exception exception on the way.
    */
   @Test
@@ -88,7 +89,7 @@ public class SkewCompositePassTest {
         mrDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
           CommunicationPatternProperty.Value.Shuffle
             .equals(irEdge.getPropertyValue(CommunicationPatternProperty.class).get())))
-      .count();
+        .count();
 
     final IRDAG processedDAG = new SkewCompositePass().apply(new DefaultParallelismPass().apply(mrDAG));
     assertEquals(originalVerticesNum + numOfShuffleEdges * 2, processedDAG.getVertices().size());
@@ -96,13 +97,13 @@ public class SkewCompositePassTest {
     processedDAG.filterVertices(v -> v instanceof OperatorVertex
       && ((OperatorVertex) v).getTransform() instanceof MessageBarrierTransform)
       .forEach(metricV -> {
-          final List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());
-          reducerV.forEach(rV -> {
-            if (rV instanceof OperatorVertex &&
-              !(((OperatorVertex) rV).getTransform() instanceof MessageAggregatorTransform)) {
-              assertTrue(rV.getPropertyValue(ResourceAntiAffinityProperty.class).isPresent());
-            }
-          });
+        final List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());
+        reducerV.forEach(rV -> {
+          if (rV instanceof OperatorVertex &&
+            !(((OperatorVertex) rV).getTransform() instanceof MessageAggregatorTransform)) {
+            assertTrue(rV.getPropertyValue(ResourceAntiAffinityProperty.class).isPresent());
+          }
+        });
       });
   }
 }

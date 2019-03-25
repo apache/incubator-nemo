@@ -30,10 +30,10 @@ import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
  */
 public final class ConditionalLargeShufflePolicy implements Policy {
   public static final PolicyBuilder BUILDER =
-      new PolicyBuilder()
-          .registerCompileTimePass(new LargeShuffleCompositePass(), dag -> getMaxParallelism(dag) > 300)
-          .registerCompileTimePass(new LoopOptimizationCompositePass())
-          .registerCompileTimePass(new DefaultCompositePass());
+    new PolicyBuilder()
+      .registerCompileTimePass(new LargeShuffleCompositePass(), dag -> getMaxParallelism(dag) > 300)
+      .registerCompileTimePass(new LoopOptimizationCompositePass())
+      .registerCompileTimePass(new DefaultCompositePass());
   private final Policy policy;
 
   /**
@@ -45,13 +45,14 @@ public final class ConditionalLargeShufflePolicy implements Policy {
 
   /**
    * Returns the maximum parallelism of the vertices of a IR DAG.
+   *
    * @param dag dag to observe.
    * @return the maximum parallelism, or 1 by default.
    */
   private static int getMaxParallelism(final IRDAG dag) {
     return dag.getVertices().stream()
-        .mapToInt(vertex -> vertex.getPropertyValue(ParallelismProperty.class).orElse(1))
-        .max().orElse(1);
+      .mapToInt(vertex -> vertex.getPropertyValue(ParallelismProperty.class).orElse(1))
+      .max().orElse(1);
   }
 
   @Override

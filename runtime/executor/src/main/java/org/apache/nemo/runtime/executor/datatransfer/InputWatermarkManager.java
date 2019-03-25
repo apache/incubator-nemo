@@ -35,12 +35,13 @@ public interface InputWatermarkManager {
    * if multiple threads access this method concurrently.
    * Ex)
    * -- input stream1 (edge 1):  ---------- ts: 3 ------------------ts: 6
-   *                                                                 ^^^
-   *                                                              emit ts: 4 (edge 2) watermark at this time
+   * ^^^
+   * emit ts: 4 (edge 2) watermark at this time
    * -- input stream2 (edge 2):  ----------------- ts: 4------
-   *                                                 ^^^
-   *                                             emit ts: 3 (edge 1) watermark at this time
+   * ^^^
+   * emit ts: 3 (edge 1) watermark at this time
    * -- input stream3 (edge 3):  ------- ts: 5 ---------------
+   *
    * @param edgeIndex incoming edge index
    * @param watermark watermark emitted from the edge
    */

@@ -32,6 +32,7 @@ import java.util.List;
  * Because the data is stored in a remote file and globally accessed by multiple nodes,
  * each read, or deletion for a block needs one instance of this metadata.
  * The metadata is store in and read from a file (after a remote file block is committed).
+ *
  * @param <K> the key type of its partitions.
  */
 @ThreadSafe
@@ -77,8 +78,8 @@ public final class RemoteFileMetadata<K extends Serializable> extends FileMetada
   public synchronized void commitBlock() throws IOException {
     final Iterable<PartitionMetadata<K>> partitionMetadataItr = getPartitionMetadataList();
     try (
-        final FileOutputStream metafileOutputStream = new FileOutputStream(metaFilePath, false);
-        final DataOutputStream dataOutputStream = new DataOutputStream(metafileOutputStream)
+      final FileOutputStream metafileOutputStream = new FileOutputStream(metaFilePath, false);
+      final DataOutputStream dataOutputStream = new DataOutputStream(metafileOutputStream)
     ) {
       for (PartitionMetadata<K> partitionMetadata : partitionMetadataItr) {
         final byte[] key = SerializationUtils.serialize(partitionMetadata.getKey());
@@ -116,8 +117,8 @@ public final class RemoteFileMetadata<K extends Serializable> extends FileMetada
     }
     final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();
     try (
-        final FileInputStream metafileInputStream = new FileInputStream(metaFilePath);
-        final DataInputStream dataInputStream = new DataInputStream(metafileInputStream)
+      final FileInputStream metafileInputStream = new FileInputStream(metaFilePath);
+      final DataInputStream dataInputStream = new DataInputStream(metafileInputStream)
     ) {
       while (dataInputStream.available() > 0) {
         final int keyLength = dataInputStream.readInt();
@@ -127,9 +128,9 @@ public final class RemoteFileMetadata<K extends Serializable> extends FileMetada
         }
 
         final PartitionMetadata<T> partitionMetadata = new PartitionMetadata<>(
-            SerializationUtils.deserialize(desKey),
-            dataInputStream.readInt(),
-            dataInputStream.readLong()
+          SerializationUtils.deserialize(desKey),
+          dataInputStream.readInt(),
+          dataInputStream.readLong()
         );
         partitionMetadataList.add(partitionMetadata);
       }

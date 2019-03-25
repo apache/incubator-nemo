@@ -37,9 +37,7 @@ import java.util.stream.IntStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Tests {@link StreamingScheduler}.
@@ -78,7 +76,7 @@ public final class StreamingSchedulerTest {
       .collect(Collectors.toList());
   }
 
-  @Test(timeout=10000)
+  @Test(timeout = 10000)
   public void testScheduleEverything() throws Exception {
     final PhysicalPlan physicalPlan =
       TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);

@@ -62,25 +62,27 @@ public final class TransientResourceDataStorePass extends AnnotatingPass {
 
   /**
    * checks if the edge is from transient container to a reserved container.
+   *
    * @param irEdge edge to check.
    * @return whether or not the edge satisfies the condition.
    */
   static boolean fromTransientToReserved(final IREdge irEdge) {
     return ResourcePriorityProperty.TRANSIENT
-        .equals(irEdge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get())
-        && ResourcePriorityProperty.RESERVED
-        .equals(irEdge.getDst().getPropertyValue(ResourcePriorityProperty.class).get());
+      .equals(irEdge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get())
+      && ResourcePriorityProperty.RESERVED
+      .equals(irEdge.getDst().getPropertyValue(ResourcePriorityProperty.class).get());
   }
 
   /**
    * checks if the edge is from reserved container to a transient container.
+   *
    * @param irEdge edge to check.
    * @return whether or not the edge satisfies the condition.
    */
   static boolean fromReservedToTransient(final IREdge irEdge) {
     return ResourcePriorityProperty.RESERVED
-        .equals(irEdge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get())
-        && ResourcePriorityProperty.TRANSIENT
-        .equals(irEdge.getDst().getPropertyValue(ResourcePriorityProperty.class).get());
+      .equals(irEdge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get())
+      && ResourcePriorityProperty.TRANSIENT
+      .equals(irEdge.getDst().getPropertyValue(ResourcePriorityProperty.class).get());
   }
 }

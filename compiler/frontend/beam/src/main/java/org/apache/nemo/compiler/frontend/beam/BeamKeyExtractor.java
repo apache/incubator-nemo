@@ -19,9 +19,9 @@
 package org.apache.nemo.compiler.frontend.beam;
 
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.KV;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.nemo.common.KeyExtractor;
-import org.apache.beam.sdk.values.KV;
 
 /**
  * Extracts the key from a KV element.

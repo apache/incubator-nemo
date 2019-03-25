@@ -19,8 +19,12 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import com.google.common.collect.Sets;
+import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.exception.UnknownExecutionStateException;
+import org.apache.nemo.common.exception.UnknownFailureCauseException;
+import org.apache.nemo.common.exception.UnrecoverableFailureException;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.executionproperty.MessageIdEdgeProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
@@ -29,13 +33,14 @@ import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexPropert
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.*;
 import org.apache.nemo.runtime.common.state.BlockState;
-import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.nemo.runtime.master.*;
-import org.apache.nemo.common.exception.*;
 import org.apache.nemo.runtime.common.state.StageState;
+import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.runtime.master.BlockManagerMaster;
+import org.apache.nemo.runtime.master.PlanAppender;
+import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
@@ -45,12 +50,10 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-
 /**
  * (CONCURRENCY) Only a single dedicated thread should use the public methods of this class.
  * (i.e., runtimeMasterThread in RuntimeMaster)
- *
+ * <p>
  * BatchScheduler receives a single {@link PhysicalPlan} to execute and schedules the Tasks.
  */
 @DriverSide
@@ -125,7 +128,7 @@ public final class BatchScheduler implements Scheduler {
 
   /**
    * @param taskId that generated the message.
-   * @param data of the message.
+   * @param data   of the message.
    */
   public void onRunTimePassMessage(final String taskId, final Object data) {
     final Set<StageEdge> targetEdges = getEdgesToOptimize(taskId);
@@ -135,8 +138,8 @@ public final class BatchScheduler implements Scheduler {
   /**
    * Action for after task execution is put on hold.
    *
-   * @param executorId       the ID of the executor.
-   * @param taskId           the ID of the task.
+   * @param executorId the ID of the executor.
+   * @param taskId     the ID of the task.
    */
   private void onTaskExecutionOnHold(final String executorId,
                                      final String taskId) {
@@ -466,7 +469,7 @@ public final class BatchScheduler implements Scheduler {
    * Get the target edges of dynamic optimization.
    * The edges are annotated with {@link MessageIdEdgeProperty}, which are outgoing edges of
    * parents of the stage put on hold.
-   *
+   * <p>
    * See {@link org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping.SkewReshapingPass}
    * for setting the target edges of dynamic optimization.
    *

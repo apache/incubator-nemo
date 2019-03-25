@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class UnsupportedMetricException extends RuntimeException {
   /**
    * UnsupportedMetricException.
+   *
    * @param cause cause
    */
   public UnsupportedMetricException(final Throwable cause) {

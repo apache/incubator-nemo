@@ -25,6 +25,7 @@ import java.util.List;
 /**
  * IRVertex that reads data from an external source.
  * It is to be implemented in the compiler frontend with source-specific data fetching logic.
+ *
  * @param <O> output type.
  */
 public abstract class SourceVertex<O> extends IRVertex {
@@ -60,6 +61,7 @@ public abstract class SourceVertex<O> extends IRVertex {
 
   /**
    * Gets the estimated size of bytes. Returns 0L if not applicable.
+   *
    * @return size of input bytes.
    */
   public abstract long getEstimatedSizeBytes();

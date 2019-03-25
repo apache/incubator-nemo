@@ -30,7 +30,10 @@ import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProper
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.IntPredicate;
 
 /**
@@ -118,7 +121,8 @@ public final class LoopVertex extends IRVertex {
 
   /**
    * Maps an edge from/to loop with the corresponding edge from/to internal vertex.
-   * @param edgeWithLoop an edge from/to loop
+   *
+   * @param edgeWithLoop           an edge from/to loop
    * @param edgeWithInternalVertex the corresponding edge from/to internal vertex
    */
   public void mapEdgeWithLoop(final IREdge edgeWithLoop, final IREdge edgeWithInternalVertex) {
@@ -136,6 +140,7 @@ public final class LoopVertex extends IRVertex {
 
   /**
    * Adds the incoming edge of the contained DAG.
+   *
    * @param edge edge to add.
    */
   public void addDagIncomingEdge(final IREdge edge) {
@@ -152,12 +157,14 @@ public final class LoopVertex extends IRVertex {
 
   /**
    * Adds an iterative incoming edge, from the previous iteration, but connection internally.
+   *
    * @param edge edge to add.
    */
   public void addIterativeIncomingEdge(final IREdge edge) {
     this.iterativeIncomingEdges.putIfAbsent(edge.getDst(), new HashSet<>());
     this.iterativeIncomingEdges.get(edge.getDst()).add(edge);
   }
+
   /**
    * @return the iterative incoming edges inside the DAG.
    */
@@ -167,6 +174,7 @@ public final class LoopVertex extends IRVertex {
 
   /**
    * Adds a non-iterative incoming edge, from outside the previous iteration.
+   *
    * @param edge edge to add.
    */
   public void addNonIterativeIncomingEdge(final IREdge edge) {
@@ -183,12 +191,14 @@ public final class LoopVertex extends IRVertex {
 
   /**
    * Adds and outgoing edge of the contained DAG.
+   *
    * @param edge edge to add.
    */
   public void addDagOutgoingEdge(final IREdge edge) {
     this.dagOutgoingEdges.putIfAbsent(edge.getSrc(), new HashSet<>());
     this.dagOutgoingEdges.get(edge.getSrc()).add(edge);
   }
+
   /**
    * @return outgoing edges of the contained DAG.
    */
@@ -202,13 +212,14 @@ public final class LoopVertex extends IRVertex {
   public void markDuplicateEdges() {
     nonIterativeIncomingEdges.forEach(((irVertex, irEdges) -> irEdges.forEach(irEdge -> {
       irEdge.setProperty(
-          DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue(String.valueOf(duplicateEdgeGroupId))));
+        DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue(String.valueOf(duplicateEdgeGroupId))));
       duplicateEdgeGroupId++;
     })));
   }
 
   /**
    * Method for unrolling an iteration of the LoopVertex.
+   *
    * @param dagBuilder DAGBuilder to add the unrolled iteration to.
    * @return a LoopVertex with one less maximum iteration.
    */
@@ -236,7 +247,7 @@ public final class LoopVertex extends IRVertex {
     // process DAG incoming edges.
     getDagIncomingEdges().forEach((dstVertex, irEdges) -> irEdges.forEach(edge -> {
       final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-          edge.getSrc(), originalToNewIRVertex.get(dstVertex));
+        edge.getSrc(), originalToNewIRVertex.get(dstVertex));
       edge.copyExecutionPropertiesTo(newIrEdge);
       dagBuilder.connectVertices(newIrEdge);
     }));
@@ -245,7 +256,7 @@ public final class LoopVertex extends IRVertex {
       // if termination condition met, we process the DAG outgoing edge.
       getDagOutgoingEdges().forEach((srcVertex, irEdges) -> irEdges.forEach(edge -> {
         final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-            originalToNewIRVertex.get(srcVertex), edge.getDst());
+          originalToNewIRVertex.get(srcVertex), edge.getDst());
         edge.copyExecutionPropertiesTo(newIrEdge);
         dagBuilder.addVertex(edge.getDst()).connectVertices(newIrEdge);
       }));
@@ -256,7 +267,7 @@ public final class LoopVertex extends IRVertex {
     this.nonIterativeIncomingEdges.forEach((dstVertex, irEdges) -> irEdges.forEach(this::addDagIncomingEdge));
     this.iterativeIncomingEdges.forEach((dstVertex, irEdges) -> irEdges.forEach(edge -> {
       final IREdge newIrEdge = new IREdge(edge.getPropertyValue(CommunicationPatternProperty.class).get(),
-          originalToNewIRVertex.get(edge.getSrc()), dstVertex);
+        originalToNewIRVertex.get(edge.getSrc()), dstVertex);
       edge.copyExecutionPropertiesTo(newIrEdge);
       this.addDagIncomingEdge(newIrEdge);
     }));
@@ -270,6 +281,7 @@ public final class LoopVertex extends IRVertex {
   public Boolean loopTerminationConditionMet() {
     return loopTerminationConditionMet(maxNumberOfIterations);
   }
+
   /**
    * @param intPredicateInput input for the intPredicate of the loop termination condition.
    * @return whether or not the loop termination condition has been met.
@@ -280,29 +292,34 @@ public final class LoopVertex extends IRVertex {
 
   /**
    * Set the maximum number of iterations.
+   *
    * @param maxNum maximum number of iterations.
    */
   public void setMaxNumberOfIterations(final Integer maxNum) {
     this.maxNumberOfIterations = maxNum;
   }
+
   /**
    * @return termination condition int predicate.
    */
   public IntPredicate getTerminationCondition() {
     return terminationCondition;
   }
+
   /**
    * @return maximum number of iterations.
    */
   public Integer getMaxNumberOfIterations() {
     return this.maxNumberOfIterations;
   }
+
   /**
    * increase the value of maximum number of iterations by 1.
    */
   public void increaseMaxNumberOfIterations() {
     this.maxNumberOfIterations++;
   }
+
   /**
    * decrease the value of maximum number of iterations by 1.
    */
@@ -312,13 +329,14 @@ public final class LoopVertex extends IRVertex {
 
   /**
    * Check termination condition.
+   *
    * @param that another vertex.
    * @return true if equals.
    */
   public boolean terminationConditionEquals(final LoopVertex that) {
     if (this.maxNumberOfIterations.equals(that.getMaxNumberOfIterations()) && Util
-        .checkEqualityOfIntPredicates(this.terminationCondition, that.getTerminationCondition(),
-            this.maxNumberOfIterations)) {
+      .checkEqualityOfIntPredicates(this.terminationCondition, that.getTerminationCondition(),
+        this.maxNumberOfIterations)) {
       return true;
     }
     return false;
@@ -326,6 +344,7 @@ public final class LoopVertex extends IRVertex {
 
   /**
    * Set the intPredicate termination condition for the LoopVertex.
+   *
    * @param terminationCondition the termination condition to set.
    */
   public void setTerminationCondition(final IntPredicate terminationCondition) {
@@ -347,6 +366,7 @@ public final class LoopVertex extends IRVertex {
 
   /**
    * Convert the crossing edges to JSON.
+   *
    * @param map map of the crossing edges.
    * @return a string of JSON showing the crossing edges.
    */

@@ -49,9 +49,9 @@ public final class PolicyBuilderTest {
   public void testShouldFailPolicy() {
     try {
       final Policy failPolicy = new PolicyBuilder()
-          .registerCompileTimePass(new TransientResourceCompositePass())
-          .registerCompileTimePass(new DefaultScheduleGroupPass())
-          .build();
+        .registerCompileTimePass(new TransientResourceCompositePass())
+        .registerCompileTimePass(new DefaultScheduleGroupPass())
+        .build();
     } catch (Exception e) { // throw an exception if default execution properties are not set.
       assertTrue(e instanceof CompileTimeOptimizationException);
       assertTrue(e.getMessage().contains("Prerequisite ExecutionProperty hasn't been met"));

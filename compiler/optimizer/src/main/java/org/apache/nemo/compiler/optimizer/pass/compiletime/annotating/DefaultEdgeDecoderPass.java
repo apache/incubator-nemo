@@ -29,7 +29,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 public final class DefaultEdgeDecoderPass extends AnnotatingPass {
 
   private static final DecoderProperty DEFAULT_DECODER_PROPERTY =
-      DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY);
+    DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY);
 
   /**
    * Default constructor.
@@ -41,11 +41,11 @@ public final class DefaultEdgeDecoderPass extends AnnotatingPass {
   @Override
   public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(irVertex ->
-        dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          if (!irEdge.getPropertyValue(DecoderProperty.class).isPresent()) {
-            irEdge.setProperty(DEFAULT_DECODER_PROPERTY);
-          }
-        }));
+      dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
+        if (!irEdge.getPropertyValue(DecoderProperty.class).isPresent()) {
+          irEdge.setProperty(DEFAULT_DECODER_PROPERTY);
+        }
+      }));
     return dag;
   }
 }

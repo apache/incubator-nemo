@@ -55,12 +55,12 @@ import java.util.stream.Collectors;
  * An IRDAG object captures a high-level data processing application (e.g., Spark/Beam application).
  * - IRVertex: A data-parallel operation. (e.g., map)
  * - IREdge: A data dependency between two operations. (e.g., shuffle)
- *
+ * <p>
  * Largely two types of IRDAG optimization(modification) methods are provided.
  * All of these methods preserve application semantics.
  * - Annotation: setProperty(), getPropertyValue() on each IRVertex/IREdge
  * - Reshaping: insert(), delete() on the IRDAG
- *
+ * <p>
  * TODO #341: Rethink IRDAG insert() signatures
  */
 @NotThreadSafe
@@ -98,6 +98,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
   /**
    * Used internally by Nemo to advance the DAG snapshot after applying each pass.
+   *
    * @param checker that compares the dagSnapshot and the modifiedDAG
    *                to determine if the snapshot can be set the current modifiedDAG.
    * @return true if the checker passes, false otherwise.
@@ -121,7 +122,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   /**
    * Deletes a previously inserted utility vertex.
    * (e.g., MessageBarrierVertex, StreamVertex, SamplingVertex)
-   *
+   * <p>
    * Notice that the actual number of vertices that will be deleted after this call returns can be more than one.
    * We roll back the changes made with the previous insert(), while preserving application semantics.
    *
@@ -155,13 +156,13 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   /**
    * Delete a group of vertex that corresponds to the specified vertex.
    * And then recursively delete neighboring utility vertices.
-   *
+   * <p>
    * (WARNING) Only call this method inside delete(), or inside this method itself.
    * This method uses buildWithoutSourceSinkCheck() for intermediate DAGs,
    * which will be finally checked in delete().
    *
    * @param vertexToDelete to delete
-   * @param visited vertex groups (because cyclic dependencies between vertex groups are possible)
+   * @param visited        vertex groups (because cyclic dependencies between vertex groups are possible)
    */
   private void deleteRecursively(final IRVertex vertexToDelete, final Set<IRVertex> visited) {
     if (!Util.isUtilityVertex(vertexToDelete)) {
@@ -203,8 +204,9 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
           modifiedDAG.getIncomingEdgesOf(vertexToDelete).stream()
             .filter(e -> !Util.isControlEdge(e))
             .map(IREdge::getSrc)
-            .forEach(srcVertex-> { builder.connectVertices(
-              Util.cloneEdge(streamVertexToOriginalEdge.get(vertexToDelete), srcVertex, dstVertex));
+            .forEach(srcVertex -> {
+              builder.connectVertices(
+                Util.cloneEdge(streamVertexToOriginalEdge.get(vertexToDelete), srcVertex, dstVertex));
             });
         });
       modifiedDAG = builder.buildWithoutSourceSinkCheck();
@@ -237,14 +239,14 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
   /**
    * Inserts a new vertex that streams data.
-   *
+   * <p>
    * Before: src - edgeToStreamize - dst
    * After: src - edgeToStreamizeWithNewDestination - streamVertex - oneToOneEdge - dst
    * (replaces the "Before" relationships)
-   *
+   * <p>
    * This preserves semantics as the streamVertex simply forwards data elements from the input edge to the output edge.
    *
-   * @param streamVertex to insert.
+   * @param streamVertex    to insert.
    * @param edgeToStreamize to modify.
    */
   public void insert(final StreamVertex streamVertex, final IREdge edgeToStreamize) {
@@ -319,24 +321,24 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
   /**
    * Inserts a new vertex that analyzes intermediate data, and triggers a dynamic optimization.
-   *
+   * <p>
    * For each edge in edgesToGetStatisticsOf...
-   *
+   * <p>
    * Before: src - edge - dst
    * After: src - oneToOneEdge(a clone of edge) - messageBarrierVertex -
-   *        shuffleEdge - messageAggregatorVertex - broadcastEdge - dst
+   * shuffleEdge - messageAggregatorVertex - broadcastEdge - dst
    * (the "Before" relationships are unmodified)
-   *
+   * <p>
    * This preserves semantics as the results of the inserted message vertices are never consumed by the original IRDAG.
-   *
+   * <p>
    * TODO #345: Simplify insert(MessageBarrierVertex)
    *
-   * @param messageBarrierVertex to insert.
+   * @param messageBarrierVertex    to insert.
    * @param messageAggregatorVertex to insert.
-   * @param mbvOutputEncoder to use.
-   * @param mbvOutputDecoder to use.
-   * @param edgesToGetStatisticsOf to examine.
-   * @param edgesToOptimize to optimize.
+   * @param mbvOutputEncoder        to use.
+   * @param mbvOutputDecoder        to use.
+   * @param edgesToGetStatisticsOf  to examine.
+   * @param edgesToOptimize         to optimize.
    */
   public void insert(final MessageBarrierVertex messageBarrierVertex,
                      final MessageAggregatorVertex messageAggregatorVertex,
@@ -430,29 +432,29 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
 
   /**
    * Inserts a set of samplingVertices that process sampled data.
-   *
+   * <p>
    * This method automatically inserts the following three types of edges.
    * (1) Edges between samplingVertices to reflect the original relationship
    * (2) Edges from the original IRDAG to samplingVertices that clone the inEdges of the original vertices
    * (3) Edges from the samplingVertices to the original IRDAG to respect executeAfterSamplingVertices
-   *
+   * <p>
    * Suppose the caller supplies the following arguments to perform a "sampled run" of vertices {V1, V2},
    * prior to executing them.
    * - samplingVertices: {V1', V2'}
    * - childrenOfSamplingVertices: {V1}
-   *
+   * <p>
    * Before: V1 - oneToOneEdge - V2 - shuffleEdge - V3
    * After: V1' - oneToOneEdge - V2' - controlEdge - V1 - oneToOneEdge - V2 - shuffleEdge - V3
-   *
+   * <p>
    * This preserves semantics as the original IRDAG remains unchanged and unaffected.
-   *
+   * <p>
    * (Future calls to insert() can add new vertices that connect to sampling vertices. Such new vertices will also be
    * wrapped with sampling vertices, as new vertices that consume outputs from sampling vertices will process
    * a subset of data anyways, and no such new vertex will reach the original DAG except via control edges)
-   *
+   * <p>
    * TODO #343: Extend SamplingVertex control edges
    *
-   * @param toInsert sampling vertices.
+   * @param toInsert     sampling vertices.
    * @param executeAfter that must be executed after toInsert.
    */
   public void insert(final Set<SamplingVertex> toInsert,
@@ -523,6 +525,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   /**
    * Reshape unsafely, without guarantees on preserving application semantics.
    * TODO #330: Refactor Unsafe Reshaping Passes
+   *
    * @param unsafeReshapingFunction takes as input the underlying DAG, and outputs a reshaped DAG.
    */
   public void reshapeUnsafely(final Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>> unsafeReshapingFunction) {
@@ -567,8 +570,8 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
   }
 
   /**
-   * @param mbv src.
-   * @param mav dst.
+   * @param mbv     src.
+   * @param mav     dst.
    * @param encoder src-dst encoder.
    * @param decoder src-dst decoder.
    * @return the edge.

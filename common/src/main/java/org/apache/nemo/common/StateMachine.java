@@ -36,7 +36,8 @@ public final class StateMachine {
 
   /**
    * Private constructor.
-   * @param stateMap Map of state enum to the state.
+   *
+   * @param stateMap     Map of state enum to the state.
    * @param initialState initial state of the state machine.
    */
   private StateMachine(final Map<Enum, State> stateMap, final Enum initialState) {
@@ -62,7 +63,7 @@ public final class StateMachine {
    *
    * @param state a state
    * @throws IllegalStateTransitionException the state is unknown state, or the transition
-   * from the current state to the specified state is illegal
+   *                                         from the current state to the specified state is illegal
    */
   public synchronized void setState(final Enum state) throws IllegalStateTransitionException {
     if (!stateMap.containsKey(state)) {
@@ -83,11 +84,11 @@ public final class StateMachine {
    * if the current state equals to the expected state.
    *
    * @param expectedCurrentState an expected state
-   * @param state a state
+   * @param state                a state
    * @return {@code true} if successful. {@code false} indicates that
    * the actual value was not equal to the expected value.
    * @throws IllegalStateTransitionException if the state is unknown state, or the transition
-   * from the current state to the specified state is illegal
+   *                                         from the current state to the specified state is illegal
    */
   public synchronized boolean compareAndSetState(final Enum expectedCurrentState,
                                                  final Enum state) throws IllegalStateTransitionException {
@@ -96,7 +97,7 @@ public final class StateMachine {
       setState(state);
     } else {
       LOG.debug("The expected current state [" + expectedCurrentState
-          + "] is different from the actual state [" + currentState.stateEnum + "]");
+        + "] is different from the actual state [" + currentState.stateEnum + "]");
     }
 
     return compared;
@@ -114,7 +115,7 @@ public final class StateMachine {
    */
   private String getPossibleTransitionsFromCurrentState() {
     final StringBuilder stringBuilder = new StringBuilder()
-        .append("Possible transitions from the current state are").append('\n');
+      .append("Possible transitions from the current state are").append('\n');
 
     for (final Transition transition : currentState.getAllTransitions()) {
       stringBuilder.append(transition).append('\n');
@@ -128,7 +129,7 @@ public final class StateMachine {
     final StringBuilder stringBuilder = new StringBuilder();
     for (final State state : stateMap.values()) {
       stringBuilder.append(state).append('\n')
-          .append("Possible transitions:").append('\n');
+        .append("Possible transitions:").append('\n');
       for (final Transition transition : state.getAllTransitions()) {
         stringBuilder.append(transition).append('\n');
       }
@@ -154,7 +155,8 @@ public final class StateMachine {
 
     /**
      * Private constructor.
-     * @param stateEnum Enum of the state.
+     *
+     * @param stateEnum   Enum of the state.
      * @param description Description of the state.
      */
     private State(final Enum stateEnum, final String description) {
@@ -165,6 +167,7 @@ public final class StateMachine {
 
     /**
      * Adds a transition to the state.
+     *
      * @param transition the added transition.
      */
     private void addTransition(final Transition transition) {
@@ -206,8 +209,9 @@ public final class StateMachine {
 
     /**
      * Private constructor.
-     * @param from State from which we switch.
-     * @param to State that we switch to.
+     *
+     * @param from        State from which we switch.
+     * @param to          State that we switch to.
      * @param description Description of the transition.
      */
     private Transition(final State from, final State to, final String description) {
@@ -244,7 +248,7 @@ public final class StateMachine {
     /**
      * Adds a state with name and description.
      *
-     * @param stateEnum enumeration indicating the state
+     * @param stateEnum   enumeration indicating the state
      * @param description description of the state
      * @return the builder
      * @throws RuntimeException if the state was already added
@@ -275,12 +279,12 @@ public final class StateMachine {
     /**
      * Adds a transition with description.
      *
-     * @param from from state name
-     * @param to to state name
+     * @param from        from state name
+     * @param to          to state name
      * @param description description of the transition
      * @return the builder
      * @throws RuntimeException if either from or to state was not added, or the same transition
-     * was already added
+     *                          was already added
      */
     public Builder addTransition(final Enum from, final Enum to, final String description) {
       if (!stateEnumSet.contains(from)) {

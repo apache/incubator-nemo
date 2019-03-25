@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class UnknownExecutionStateException extends RuntimeException {
   /**
    * UnknownExecutionStateException.
+   *
    * @param cause cause
    */
   public UnknownExecutionStateException(final Throwable cause) {

@@ -38,6 +38,7 @@ public abstract class Pass implements Serializable {
 
   /**
    * Constructor.
+   *
    * @param condition condition under which to run the pass.
    */
   private Pass(final Predicate<IRDAG> condition) {
@@ -46,6 +47,7 @@ public abstract class Pass implements Serializable {
 
   /**
    * Getter for the condition under which to apply the pass.
+   *
    * @return the condition under which to apply the pass.
    */
   public final Predicate<IRDAG> getCondition() {
@@ -54,6 +56,7 @@ public abstract class Pass implements Serializable {
 
   /**
    * Add the condition to the existing condition to run the pass.
+   *
    * @param newCondition the new condition to add to the existing condition.
    * @return the condition with the new condition added.
    */

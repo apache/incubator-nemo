@@ -25,6 +25,7 @@ import java.io.InputStream;
 
 /**
  * An DecoderFactory for {@link Pair}. Reference: KvCoder in BEAM.
+ *
  * @param <A> type for the left coder.
  * @param <B> type for the right coder.
  */
@@ -49,8 +50,8 @@ public final class PairDecoderFactory<A, B> implements DecoderFactory<Pair<A, B>
    *
    * @param leftDecoderFactory  left coder.
    * @param rightDecoderFactory right coder.
-   * @param <A>          type of the left element.
-   * @param <B>          type of the right element.
+   * @param <A>                 type of the left element.
+   * @param <B>                 type of the right element.
    * @return the new PairDecoderFactory.
    */
   public static <A, B> PairDecoderFactory<A, B> of(final DecoderFactory<A> leftDecoderFactory,
@@ -76,6 +77,7 @@ public final class PairDecoderFactory<A, B> implements DecoderFactory<Pair<A, B>
 
   /**
    * PairDecoder.
+   *
    * @param <T1> type for the left coder.
    * @param <T2> type for the right coder.
    */
@@ -87,7 +89,7 @@ public final class PairDecoderFactory<A, B> implements DecoderFactory<Pair<A, B>
     /**
      * Constructor.
      *
-     * @param inputStream  the input stream to decode.
+     * @param inputStream         the input stream to decode.
      * @param leftDecoderFactory  the actual decoder to use for left elements.
      * @param rightDecoderFactory the actual decoder to use for right elements.
      * @throws IOException if fail to instantiate coders.

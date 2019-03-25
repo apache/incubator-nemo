@@ -42,8 +42,8 @@ public final class PerPercentileAverageITCase {
   private static final String outputFileName = "test_output_partition";
   private static final String expectedOutputFileName = "outputs/expected_output_partition";
   private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
-  private static final String inputFilePath =  ExampleTestArgs.getFileBasePath() + inputFileName;
-  private static final String outputFilePath =  ExampleTestArgs.getFileBasePath() + outputFileName;
+  private static final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
+  private static final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
   @Before
   public void setUp() throws Exception {
@@ -58,15 +58,15 @@ public final class PerPercentileAverageITCase {
     try {
       for (int i = 0; i < 10; i++) {
         ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(),
-            outputFileName + "_" + i,
-            expectedOutputFileName + "_" + i);
+          outputFileName + "_" + i,
+          expectedOutputFileName + "_" + i);
       }
     } finally {
       ExampleTestUtil.deleteOutputFile(ExampleTestArgs.getFileBasePath(), outputFileName);
     }
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
       .addJobId(PerPercentileAverage.class.getSimpleName())

@@ -19,23 +19,26 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.edge.executionproperty.*;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.common.ir.vertex.utility.StreamVertex;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
 /**
  * This pass assumes that a StreamVertex was previously inserted to receive each shuffle edge.
- *
+ * <p>
  * src - shuffle-edge - streamvertex - one-to-one-edge - dst
- *
+ * <p>
  * (1) shuffle-edge
  * Encode/compress into byte[], and have the receiver read data as the same byte[], rather than decompressing/decoding.
  * Perform a push-based in-memory shuffle with discarding on.
- *
+ * <p>
  * (2) streamvertex
  * Ignore resource slots, such that all tasks fetch the in-memory input data blocks as soon as they become available.
- *
+ * <p>
  * (3) one-to-one-edge
  * Do not encode/compress the byte[]
  * Perform a pull-based and on-disk data transfer with the DedicatedKeyPerElement.

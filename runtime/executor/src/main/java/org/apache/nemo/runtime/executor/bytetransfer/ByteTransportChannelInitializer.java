@@ -18,10 +18,10 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
-import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -101,12 +101,12 @@ final class ByteTransportChannelInitializer extends ChannelInitializer<SocketCha
     final ContextManager contextManager = new ContextManager(pipeManagerWorker.get(), blockManagerWorker.get(),
       byteTransfer.get(), byteTransport.get().getChannelGroup(), localExecutorId, ch);
     ch.pipeline()
-        // inbound
-        .addLast(new FrameDecoder(contextManager))
-        // outbound
-        .addLast(controlFrameEncoder)
-        .addLast(dataFrameEncoder)
-        // inbound
-        .addLast(contextManager);
+      // inbound
+      .addLast(new FrameDecoder(contextManager))
+      // outbound
+      .addLast(controlFrameEncoder)
+      .addLast(dataFrameEncoder)
+      // inbound
+      .addLast(contextManager);
   }
 }

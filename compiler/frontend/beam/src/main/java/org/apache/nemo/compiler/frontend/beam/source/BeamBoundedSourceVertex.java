@@ -39,6 +39,7 @@ import java.util.List;
 
 /**
  * SourceVertex implementation for BoundedSource.
+ *
  * @param <O> output type.
  */
 public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue<O>> {
@@ -50,7 +51,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
   /**
    * Constructor of BeamBoundedSourceVertex.
    *
-   * @param source BoundedSource to read from.
+   * @param source      BoundedSource to read from.
    * @param displayData data to display.
    */
   public BeamBoundedSourceVertex(final BoundedSource<O> source, final DisplayData displayData) {
@@ -125,6 +126,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
 
   /**
    * BoundedSourceReadable class.
+   *
    * @param <T> type.
    */
   private static final class BoundedSourceReadable<T> implements Readable<WindowedValue<T>> {
@@ -134,6 +136,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
 
     /**
      * Constructor of the BoundedSourceReadable.
+     *
      * @param boundedSource the BoundedSource.
      */
     BoundedSourceReadable(final BoundedSource<T> boundedSource) {
@@ -184,7 +187,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
         final Field inputSplitField = boundedSource.getClass().getDeclaredField("inputSplit");
         inputSplitField.setAccessible(true);
         final InputSplit inputSplit = ((HadoopFormatIO.SerializableSplit) inputSplitField
-            .get(boundedSource)).getSplit();
+          .get(boundedSource)).getSplit();
         return Arrays.asList(inputSplit.getLocations());
       } else {
         throw new UnsupportedOperationException();

@@ -29,7 +29,7 @@ import java.io.Serializable;
 
 /**
  * Java SparkSQL example: User-defined Typed Aggregation.
- *
+ * <p>
  * This code has been copied from the Apache Spark (https://github.com/apache/spark) to demonstrate a spark example.
  */
 public final class JavaUserDefinedTypedAggregation {
@@ -49,6 +49,7 @@ public final class JavaUserDefinedTypedAggregation {
 
     /**
      * Getter.
+     *
      * @return name.
      */
     public String getName() {
@@ -57,6 +58,7 @@ public final class JavaUserDefinedTypedAggregation {
 
     /**
      * Setter.
+     *
      * @param name name.
      */
     public void setName(final String name) {
@@ -65,6 +67,7 @@ public final class JavaUserDefinedTypedAggregation {
 
     /**
      * Getter.
+     *
      * @return salary.
      */
     public long getSalary() {
@@ -73,6 +76,7 @@ public final class JavaUserDefinedTypedAggregation {
 
     /**
      * Setter.
+     *
      * @param salary salary.
      */
     public void setSalary(final long salary) {
@@ -83,7 +87,7 @@ public final class JavaUserDefinedTypedAggregation {
   /**
    * Average class.
    */
-  public static final class Average implements Serializable  {
+  public static final class Average implements Serializable {
     private long sum;
     private long count;
 
@@ -96,7 +100,8 @@ public final class JavaUserDefinedTypedAggregation {
 
     /**
      * Public constructor.
-     * @param sum sum.
+     *
+     * @param sum   sum.
      * @param count count.
      */
     public Average(final long sum, final long count) {
@@ -106,6 +111,7 @@ public final class JavaUserDefinedTypedAggregation {
 
     /**
      * Getter.
+     *
      * @return sum.
      */
     public long getSum() {
@@ -114,6 +120,7 @@ public final class JavaUserDefinedTypedAggregation {
 
     /**
      * Setter.
+     *
      * @param sum sum.
      */
     public void setSum(final long sum) {
@@ -122,6 +129,7 @@ public final class JavaUserDefinedTypedAggregation {
 
     /**
      * Getter.
+     *
      * @return count.
      */
     public long getCount() {
@@ -130,6 +138,7 @@ public final class JavaUserDefinedTypedAggregation {
 
     /**
      * Setter.
+     *
      * @param count count.
      */
     public void setCount(final long count) {
@@ -156,7 +165,7 @@ public final class JavaUserDefinedTypedAggregation {
      * Combine two values to produce a new value.
      * For performance, the function may modify `buffer` and return it instead of constructing a new object.
      *
-     * @param buffer first value.
+     * @param buffer   first value.
      * @param employee second value.
      * @return average.
      */
@@ -214,13 +223,14 @@ public final class JavaUserDefinedTypedAggregation {
 
   /**
    * Main function.
+   *
    * @param args arguments.
    */
   public static void main(final String[] args) {
     SparkSession spark = SparkSession
-        .builder()
-        .appName("Java Spark SQL user-defined Datasets aggregation example")
-        .getOrCreate();
+      .builder()
+      .appName("Java Spark SQL user-defined Datasets aggregation example")
+      .getOrCreate();
 
     Encoder<Employee> employeeEncoder = Encoders.bean(Employee.class);
     String path = args[0];

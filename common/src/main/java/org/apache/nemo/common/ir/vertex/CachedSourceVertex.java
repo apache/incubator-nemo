@@ -27,6 +27,7 @@ import java.util.List;
 /**
  * Bounded source vertex for cached data.
  * It does not have actual data but just wraps the cached input data.
+ *
  * @param <T> the type of data to emit.
  */
 public final class CachedSourceVertex<T> extends SourceVertex<T> {

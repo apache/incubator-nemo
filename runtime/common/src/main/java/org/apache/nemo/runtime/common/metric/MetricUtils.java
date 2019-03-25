@@ -75,6 +75,7 @@ public final class MetricUtils {
 
   /**
    * Load the BiMaps (lightweight) Metadata from the DB.
+   *
    * @return the loaded BiMaps, or initialized ones.
    */
   private static Pair<HashBiMap<Integer, Class<? extends ExecutionProperty>>,
@@ -86,7 +87,7 @@ public final class MetricUtils {
 
         statement.executeUpdate(
           "CREATE TABLE IF NOT EXISTS " + METADATA_TABLE_NAME
-          + " (key TEXT NOT NULL UNIQUE, data BYTEA NOT NULL);");
+            + " (key TEXT NOT NULL UNIQUE, data BYTEA NOT NULL);");
 
         final ResultSet rsl = statement.executeQuery(
           "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE key='EP_KEY_METADATA';");
@@ -162,7 +163,7 @@ public final class MetricUtils {
         if (MUST_UPDATE_EP_METADATA.getCount() == 0) {
           try (final PreparedStatement pstmt =
                  c.prepareStatement("INSERT INTO " + METADATA_TABLE_NAME + "(key, data) "
-                     + "VALUES ('EP_METADATA', ?) ON CONFLICT (key) DO UPDATE SET data = excluded.data;")) {
+                   + "VALUES ('EP_METADATA', ?) ON CONFLICT (key) DO UPDATE SET data = excluded.data;")) {
             pstmt.setBinaryStream(1,
               new ByteArrayInputStream(SerializationUtils.serialize(EP_METADATA)));
             pstmt.executeUpdate();
@@ -177,6 +178,7 @@ public final class MetricUtils {
 
   /**
    * Stringify execution properties of an IR DAG.
+   *
    * @param irdag IR DAG to observe.
    * @return the pair of stringified execution properties. Left is for vertices, right is for edges.
    */
@@ -200,10 +202,11 @@ public final class MetricUtils {
 
   /**
    * Formatter for execution properties. It updates the metadata for the metrics if new EP key / values are discovered.
-   * @param builder string builder to append the metrics to.
-   * @param idx index specifying whether it's a vertex or an edge. This should be one digit.
+   *
+   * @param builder   string builder to append the metrics to.
+   * @param idx       index specifying whether it's a vertex or an edge. This should be one digit.
    * @param numericId numeric ID of the vertex or the edge.
-   * @param ep the execution property.
+   * @param ep        the execution property.
    */
   private static void epFormatter(final StringBuilder builder, final int idx,
                                   final Integer numericId, final ExecutionProperty<?> ep) {
@@ -227,8 +230,9 @@ public final class MetricUtils {
   /**
    * Helper method to convert Execution Property value objects to an integer index.
    * It updates the metadata for the metrics if new EP values are discovered.
+   *
    * @param epKeyIndex the index of the execution property key.
-   * @param ep the execution property containing the value.
+   * @param ep         the execution property containing the value.
    * @return the converted value index.
    */
   private static Integer valueToIndex(final Integer epKeyIndex, final ExecutionProperty<?> ep) {
@@ -269,6 +273,7 @@ public final class MetricUtils {
 
   /**
    * Finds the project root path.
+   *
    * @return the project root path.
    */
   private static String fetchProjectRootPath() {
@@ -277,6 +282,7 @@ public final class MetricUtils {
 
   /**
    * Helper method to recursively find the LICENSE file.
+   *
    * @param path the path to search for.
    * @return the path containing the LICENSE file.
    */

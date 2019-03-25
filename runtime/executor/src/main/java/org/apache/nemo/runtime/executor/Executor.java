@@ -19,19 +19,21 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
+import org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.exception.IllegalMessageException;
+import org.apache.nemo.common.exception.UnknownFailureCauseException;
+import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DecompressionProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.common.exception.IllegalMessageException;
-import org.apache.nemo.common.exception.UnknownFailureCauseException;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageContext;
@@ -46,15 +48,13 @@ import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.datatransfer.NemoEventEncoderFactory;
 import org.apache.nemo.runtime.executor.task.TaskExecutor;
-import org.apache.commons.lang3.SerializationUtils;
-import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Executor.
@@ -95,8 +95,8 @@ public final class Executor {
                    final MetricManagerWorker metricMessageSender) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
-        .namingPattern("TaskExecutor thread-%d")
-        .build());
+      .namingPattern("TaskExecutor thread-%d")
+      .build());
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.serializerManager = serializerManager;
     this.intermediateDataIOFactory = intermediateDataIOFactory;
@@ -111,12 +111,13 @@ public final class Executor {
 
   private synchronized void onTaskReceived(final Task task) {
     LOG.debug("Executor [{}] received Task [{}] to execute.",
-        new Object[]{executorId, task.getTaskId()});
+      new Object[]{executorId, task.getTaskId()});
     executorService.execute(() -> launchTask(task));
   }
 
   /**
    * Launches the Task, and keeps track of the execution state with taskStateManager.
+   *
    * @param task to launch.
    */
   private void launchTask(final Task task) {
@@ -124,43 +125,43 @@ public final class Executor {
     try {
       final long deserializationStartTime = System.currentTimeMillis();
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
-          SerializationUtils.deserialize(task.getSerializedIRDag());
+        SerializationUtils.deserialize(task.getSerializedIRDag());
       metricMessageSender.send("TaskMetric", task.getTaskId(), "taskDeserializationTime",
         SerializationUtils.serialize(System.currentTimeMillis() - deserializationStartTime));
       final TaskStateManager taskStateManager =
-          new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
+        new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
       task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(),
-          getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
-          getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
-          e.getPropertyValue(CompressionProperty.class).orElse(null),
-          e.getPropertyValue(DecompressionProperty.class).orElse(null)));
+        getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
+        getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
+        e.getPropertyValue(CompressionProperty.class).orElse(null),
+        e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       task.getTaskOutgoingEdges().forEach(e -> serializerManager.register(e.getId(),
-          getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
-          getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
-          e.getPropertyValue(CompressionProperty.class).orElse(null),
-          e.getPropertyValue(DecompressionProperty.class).orElse(null)));
+        getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
+        getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
+        e.getPropertyValue(CompressionProperty.class).orElse(null),
+        e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       irDag.getVertices().forEach(v -> {
         irDag.getOutgoingEdgesOf(v).forEach(e -> serializerManager.register(e.getId(),
-            getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
-            getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
-            e.getPropertyValue(CompressionProperty.class).orElse(null),
-            e.getPropertyValue(DecompressionProperty.class).orElse(null)));
+          getEncoderFactory(e.getPropertyValue(EncoderProperty.class).get()),
+          getDecoderFactory(e.getPropertyValue(DecoderProperty.class).get()),
+          e.getPropertyValue(CompressionProperty.class).orElse(null),
+          e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       });
 
       new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-          metricMessageSender, persistentConnectionToMasterMap).execute();
+        metricMessageSender, persistentConnectionToMasterMap).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-          ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.ExecutorFailed)
-              .setExecutorFailedMsg(ControlMessage.ExecutorFailedMsg.newBuilder()
-                  .setExecutorId(executorId)
-                  .setException(ByteString.copyFrom(SerializationUtils.serialize(e)))
-                  .build())
-              .build());
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.ExecutorFailed)
+          .setExecutorFailedMsg(ControlMessage.ExecutorFailedMsg.newBuilder()
+            .setExecutorId(executorId)
+            .setException(ByteString.copyFrom(SerializationUtils.serialize(e)))
+            .build())
+          .build());
       throw e;
     }
   }
@@ -169,6 +170,7 @@ public final class Executor {
    * This wraps the encoder with NemoEventEncoder.
    * If the encoder is BytesEncoderFactory, we do not wrap the encoder.
    * TODO #276: Add NoCoder property value in Encoder/DecoderProperty
+   *
    * @param encoderFactory encoder factory
    * @return wrapped encoder
    */
@@ -184,6 +186,7 @@ public final class Executor {
    * This wraps the encoder with NemoEventDecoder.
    * If the decoder is BytesDecoderFactory, we do not wrap the decoder.
    * TODO #276: Add NoCoder property value in Encoder/DecoderProperty
+   *
    * @param decoderFactory decoder factory
    * @return wrapped decoder
    */
@@ -200,7 +203,7 @@ public final class Executor {
       metricMessageSender.close();
     } catch (final UnknownFailureCauseException e) {
       throw new UnknownFailureCauseException(
-          new Exception("Closing MetricManagerWorker failed in executor " + executorId));
+        new Exception("Closing MetricManagerWorker failed in executor " + executorId));
     }
   }
 
@@ -215,7 +218,7 @@ public final class Executor {
         case ScheduleTask:
           final ControlMessage.ScheduleTaskMsg scheduleTaskMsg = message.getScheduleTaskMsg();
           final Task task =
-              SerializationUtils.deserialize(scheduleTaskMsg.getTask().toByteArray());
+            SerializationUtils.deserialize(scheduleTaskMsg.getTask().toByteArray());
           onTaskReceived(task);
           break;
         case RequestMetricFlush:
@@ -223,15 +226,15 @@ public final class Executor {
           break;
         default:
           throw new IllegalMessageException(
-              new Exception("This message should not be received by an executor :" + message.getType()));
+            new Exception("This message should not be received by an executor :" + message.getType()));
       }
     }
 
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
-      default:
-        throw new IllegalMessageException(
+        default:
+          throw new IllegalMessageException(
             new Exception("This message should not be requested to an executor :" + message.getType()));
       }
     }

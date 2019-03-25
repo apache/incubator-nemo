@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class IllegalMessageException extends RuntimeException {
   /**
    * IllegalMessageException.
+   *
    * @param cause cause
    */
   public IllegalMessageException(final Throwable cause) {

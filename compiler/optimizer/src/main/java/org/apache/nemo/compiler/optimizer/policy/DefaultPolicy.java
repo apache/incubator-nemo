@@ -27,8 +27,8 @@ import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
  */
 public final class DefaultPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
-      new PolicyBuilder()
-          .registerCompileTimePass(new DefaultCompositePass());
+    new PolicyBuilder()
+      .registerCompileTimePass(new DefaultCompositePass());
   private final Policy policy;
 
   /**

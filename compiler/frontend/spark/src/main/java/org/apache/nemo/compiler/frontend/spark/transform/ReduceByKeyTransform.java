@@ -25,10 +25,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Transform for reduce by key transformation.
+ *
  * @param <K> key type.
  * @param <V> value type.
  */
@@ -41,6 +45,7 @@ public final class ReduceByKeyTransform<K, V> extends NoWatermarkEmitTransform<T
 
   /**
    * Constructor.
+   *
    * @param func reduce function.
    */
   public ReduceByKeyTransform(final Function2<V, V, V> func) {

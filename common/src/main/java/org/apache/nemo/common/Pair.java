@@ -23,6 +23,7 @@ import java.util.Objects;
 
 /**
  * Pair class.
+ *
  * @param <A> type of the left element.
  * @param <B> type of the right element.
  */
@@ -32,7 +33,8 @@ public final class Pair<A, B> implements Serializable {
 
   /**
    * Private constructor for Pair class.
-   * @param left left element.
+   *
+   * @param left  left element.
    * @param right right element.
    */
   private Pair(final A left, final B right) {
@@ -46,6 +48,7 @@ public final class Pair<A, B> implements Serializable {
   public A left() {
     return left;
   }
+
   /**
    * @return right element
    */
@@ -61,23 +64,24 @@ public final class Pair<A, B> implements Serializable {
   @Override
   public boolean equals(final Object obj) {
     return obj instanceof Pair
-        && Objects.equals(this.left, ((Pair) obj).left)
-        && Objects.equals(this.right, ((Pair) obj).right);
+      && Objects.equals(this.left, ((Pair) obj).left)
+      && Objects.equals(this.right, ((Pair) obj).right);
   }
 
   @Override
   public int hashCode() {
     return this.left == null
-        ? (this.right == null ? 0 : this.right.hashCode() + 1)
-        : (this.right == null ? this.left.hashCode() + 2 : this.left.hashCode() * 17 + this.right.hashCode());
+      ? (this.right == null ? 0 : this.right.hashCode() + 1)
+      : (this.right == null ? this.left.hashCode() + 2 : this.left.hashCode() * 17 + this.right.hashCode());
   }
 
   /**
    * Static initializer of the Pair class.
-   * @param left left element.
+   *
+   * @param left  left element.
    * @param right right element.
-   * @param <A> Type of the left element.
-   * @param <B> Type of the right element.
+   * @param <A>   Type of the left element.
+   * @param <B>   Type of the right element.
    * @return the newly created Pair.
    */
   public static <A, B> Pair<A, B> of(final A left, final B right) {

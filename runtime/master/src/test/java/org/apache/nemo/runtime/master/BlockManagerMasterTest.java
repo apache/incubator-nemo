@@ -33,9 +33,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+
+import static org.junit.Assert.*;
 
 /**
  * Test for {@link BlockManagerMaster}.
@@ -48,21 +47,21 @@ public final class BlockManagerMasterTest {
   @Before
   public void setUp() throws Exception {
     final Injector injector = LocalMessageEnvironment.forkInjector(LocalMessageDispatcher.getInjector(),
-        MessageEnvironment.MASTER_COMMUNICATION_ID);
+      MessageEnvironment.MASTER_COMMUNICATION_ID);
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
   }
 
   private static void checkInProgressToNotAvailableException(final Future<String> future,
                                                              final String expectedPartitionId,
                                                              final BlockState.State expectedState)
-      throws IllegalStateException, InterruptedException {
+    throws IllegalStateException, InterruptedException {
     assertTrue(future.isDone());
     try {
       future.get();
       throw new IllegalStateException("An ExecutionException was expected.");
     } catch (final ExecutionException executionException) {
       final AbsentBlockException absentBlockException
-          = (AbsentBlockException) executionException.getCause();
+        = (AbsentBlockException) executionException.getCause();
       assertEquals(expectedPartitionId, absentBlockException.getBlockId());
       assertEquals(expectedState, absentBlockException.getState());
     }
@@ -70,7 +69,7 @@ public final class BlockManagerMasterTest {
 
   private static void checkBlockLocation(final Future<String> future,
                                          final String expectedLocation)
-      throws InterruptedException, ExecutionException {
+    throws InterruptedException, ExecutionException {
     assertTrue(future.isDone());
     assertEquals(expectedLocation, future.get()); // must not throw any exception.
   }

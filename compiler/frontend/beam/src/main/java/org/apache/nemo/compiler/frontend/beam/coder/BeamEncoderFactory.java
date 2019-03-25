@@ -18,10 +18,10 @@
  */
 package org.apache.nemo.compiler.frontend.beam.coder;
 
-import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.VoidCoder;
+import org.apache.nemo.common.coder.EncoderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +30,7 @@ import java.io.OutputStream;
 
 /**
  * {@link EncoderFactory} from {@link Coder}.
+ *
  * @param <T> the type of element to encode.
  */
 public final class BeamEncoderFactory<T> implements EncoderFactory<T> {

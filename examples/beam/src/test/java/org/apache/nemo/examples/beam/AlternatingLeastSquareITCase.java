@@ -22,9 +22,7 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.common.test.ExampleTestUtil;
-import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
-import org.apache.nemo.examples.beam.policy.TransientResourcePolicyParallelismTen;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,8 +50,8 @@ public final class AlternatingLeastSquareITCase {
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numIteration, lambda, output);
+      .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
+      .addUserArgs(input, numFeatures, numIteration, lambda, output);
   }
 
   @After
@@ -65,13 +63,13 @@ public final class AlternatingLeastSquareITCase {
     }
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testDefault() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(noPoisonResources)
-        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_default")
-        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addResourceJson(noPoisonResources)
+      .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_default")
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 
   // TODO #137: Retry parent task(s) upon task INPUT_READ_FAILURE

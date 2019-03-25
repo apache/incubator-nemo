@@ -31,6 +31,7 @@ public abstract class AbstractBlockStore implements BlockStore {
 
   /**
    * Constructor.
+   *
    * @param serializerManager the coder manager.
    */
   protected AbstractBlockStore(final SerializerManager serializerManager) {

@@ -32,9 +32,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -53,7 +51,7 @@ public final class PendingTaskCollectionPointerTest {
   @Before
   public void setUp() throws InjectionException {
     this.pendingTaskCollectionPointer = Tang.Factory.getTang().newInjector()
-        .getInstance(PendingTaskCollectionPointer.class);
+      .getInstance(PendingTaskCollectionPointer.class);
   }
 
   @Test

@@ -42,8 +42,8 @@ public interface MessageEnvironment {
    * Set up a {@link MessageListener} with a listener id.
    *
    * @param listenerId an identifier of the message listener
-   * @param listener a message listener
-   * @param <T> The type of the message to be sent in the environment
+   * @param listener   a message listener
+   * @param <T>        The type of the message to be sent in the environment
    */
   <T> void setupListener(String listenerId, MessageListener<T> listener);
 
@@ -60,13 +60,14 @@ public interface MessageEnvironment {
    *
    * @param receiverId a receiver id
    * @param listenerId an identifier of the message listener
-   * @param <T> The type of the message to be sent in the environment
+   * @param <T>        The type of the message to be sent in the environment
    * @return a message sender
    */
   <T> Future<MessageSender<T>> asyncConnect(String receiverId, String listenerId);
 
   /**
    * Close this message environment.
+   *
    * @throws Exception while closing
    */
   void close() throws Exception;

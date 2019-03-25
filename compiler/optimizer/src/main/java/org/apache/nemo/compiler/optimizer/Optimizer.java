@@ -40,7 +40,7 @@ public interface Optimizer {
   /**
    * Optimize the submitted DAG at run time.
    *
-   * @param dag input.
+   * @param dag     input.
    * @param message for optimization.
    * @return optimized DAG.
    */

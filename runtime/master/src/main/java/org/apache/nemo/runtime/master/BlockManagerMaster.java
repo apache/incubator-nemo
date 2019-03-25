@@ -18,17 +18,19 @@
  */
 package org.apache.nemo.runtime.master;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.exception.AbsentBlockException;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.state.BlockState;
-
-import com.google.common.annotations.VisibleForTesting;
+import org.apache.reef.annotations.audience.DriverSide;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
@@ -42,10 +44,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
-
-import org.apache.reef.annotations.audience.DriverSide;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Master-side block manager.
@@ -75,6 +73,7 @@ public final class BlockManagerMaster {
 
   /**
    * Constructor.
+   *
    * @param masterMessageEnvironment the message environment.
    */
   @Inject
@@ -140,8 +139,9 @@ public final class BlockManagerMaster {
 
   /**
    * Get handlers of blocks that are in a particular state.
+   *
    * @param blockIdOrWildcard to query
-   * @param state of the block
+   * @param state             of the block
    * @return the handlers, empty if none matches.
    */
   public List<BlockRequestHandler> getBlockHandlers(final String blockIdOrWildcard,

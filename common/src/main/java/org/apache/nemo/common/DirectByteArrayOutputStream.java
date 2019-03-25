@@ -35,6 +35,7 @@ public final class DirectByteArrayOutputStream extends ByteArrayOutputStream {
 
   /**
    * Constructor specifying the size.
+   *
    * @param size the initial size.
    */
   public DirectByteArrayOutputStream(final int size) {

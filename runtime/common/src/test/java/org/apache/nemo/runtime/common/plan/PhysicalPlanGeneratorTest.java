@@ -49,11 +49,11 @@ public final class PhysicalPlanGeneratorTest {
     final IRVertex v0 = newIRVertex(0, 5);
     final IRVertex v1 = newIRVertex(0, 3);
     final IRDAG irDAG = new IRDAG(new DAGBuilder<IRVertex, IREdge>()
-        .addVertex(v0)
-        .addVertex(v1)
-        .connectVertices(newIREdge(v0, v1, CommunicationPatternProperty.Value.OneToOne,
-            DataFlowProperty.Value.Pull))
-        .buildWithoutSourceSinkCheck());
+      .addVertex(v0)
+      .addVertex(v1)
+      .connectVertices(newIREdge(v0, v1, CommunicationPatternProperty.Value.OneToOne,
+        DataFlowProperty.Value.Pull))
+      .buildWithoutSourceSinkCheck());
 
     final DAG<Stage, StageEdge> stageDAG = physicalPlanGenerator.apply(irDAG);
     final Iterator<Stage> stages = stageDAG.getVertices().iterator();

@@ -32,8 +32,8 @@ public final class LargeShufflePolicyParallelismFive implements Policy {
 
   public LargeShufflePolicyParallelismFive() {
     this.policy = new PolicyImpl(
-        PolicyTestUtil.overwriteParallelism(5, LargeShufflePolicy.BUILDER.getCompileTimePasses()),
-        LargeShufflePolicy.BUILDER.getRunTimePasses());
+      PolicyTestUtil.overwriteParallelism(5, LargeShufflePolicy.BUILDER.getCompileTimePasses()),
+      LargeShufflePolicy.BUILDER.getRunTimePasses());
   }
 
   @Override

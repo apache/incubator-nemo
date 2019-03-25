@@ -20,10 +20,13 @@ package org.apache.nemo.compiler.optimizer.policy;
 
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.*;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ShuffleEdgePushPass;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 
 /**
  * A policy for tests.

@@ -56,7 +56,7 @@ public class DefaultParallelismPassTest {
     final IRDAG processedDAG = new DefaultParallelismPass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex ->
-        assertEquals(1, irVertex.getPropertyValue(ParallelismProperty.class).get().longValue()));
+      assertEquals(1, irVertex.getPropertyValue(ParallelismProperty.class).get().longValue()));
   }
 
   @Test
@@ -65,8 +65,8 @@ public class DefaultParallelismPassTest {
     final IRDAG processedDAG = new DefaultParallelismPass(desiredSourceParallelism, 2).apply(compiledDAG);
 
     processedDAG.getTopologicalSort().stream()
-        .filter(irVertex -> irVertex instanceof SourceVertex)
-        .forEach(irVertex -> assertEquals(desiredSourceParallelism,
-            irVertex.getPropertyValue(ParallelismProperty.class).get().longValue()));
+      .filter(irVertex -> irVertex instanceof SourceVertex)
+      .forEach(irVertex -> assertEquals(desiredSourceParallelism,
+        irVertex.getPropertyValue(ParallelismProperty.class).get().longValue()));
   }
 }

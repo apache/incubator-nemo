@@ -43,7 +43,7 @@ public final class MRJava {
   @Before
   public void setUp() {
     builder = new ArgBuilder()
-        .addResourceJson(executorResourceFileName);
+      .addResourceJson(executorResourceFileName);
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
@@ -55,11 +55,11 @@ public final class MRJava {
     final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
     JobLauncher.main(builder
-        .addJobId(JavaWordCount.class.getSimpleName() + "_test")
-        .addUserMain(JavaWordCount.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath)
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
-        .build());
+      .addJobId(JavaWordCount.class.getSimpleName() + "_test")
+      .addUserMain(JavaWordCount.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath)
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
 
     try {
       ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFilename);
@@ -77,11 +77,11 @@ public final class MRJava {
     final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
     JobLauncher.main(builder
-        .addJobId(JavaWordAndLineCount.class.getSimpleName() + "_test")
-        .addUserMain(JavaWordAndLineCount.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath)
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
-        .build());
+      .addJobId(JavaWordAndLineCount.class.getSimpleName() + "_test")
+      .addUserMain(JavaWordAndLineCount.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath)
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
 
     try {
       ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFilename);

@@ -18,9 +18,9 @@
  */
 package org.apache.nemo.examples.spark;
 
+import org.apache.nemo.compiler.frontend.spark.core.JavaSparkContext;
 import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaPairRDD;
 import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
-import org.apache.nemo.compiler.frontend.spark.core.JavaSparkContext;
 import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
 import scala.Tuple2;
 
@@ -37,6 +37,7 @@ public final class JavaMapReduce {
 
   /**
    * Main method.
+   *
    * @param args arguments.
    * @throws Exception exceptions.
    */
@@ -49,13 +50,13 @@ public final class JavaMapReduce {
     final boolean yarn = args.length > 3 && Boolean.parseBoolean(args[3]);
 
     final SparkSession.Builder sparkBuilder = SparkSession
-        .builder()
-        .appName("JavaMapReduce");
+      .builder()
+      .appName("JavaMapReduce");
     if (yarn) {
       sparkBuilder
-          .config("mapreduce.input.fileinputformat.input.dir.recursive", "true")
-          .master("yarn")
-          .config("spark.submit.deployMode", "cluster");
+        .config("mapreduce.input.fileinputformat.input.dir.recursive", "true")
+        .master("yarn")
+        .config("spark.submit.deployMode", "cluster");
     }
     final SparkSession spark = sparkBuilder.getOrCreate();
 
@@ -65,15 +66,15 @@ public final class JavaMapReduce {
     final JavaSparkContext jsc = new JavaSparkContext(spark.sparkContext());
     final JavaRDD<String> data = jsc.textFile(input, parallelism);
     final JavaPairRDD<String, Long> documentToCount = data
-        .mapToPair(line -> {
-          final String[] words = line.split(" +");
-          final String documentId = words[0] + "#" + words[1];
-          final long count = Long.parseLong(words[2]);
-          return new Tuple2<>(documentId, count);
-        });
+      .mapToPair(line -> {
+        final String[] words = line.split(" +");
+        final String documentId = words[0] + "#" + words[1];
+        final long count = Long.parseLong(words[2]);
+        return new Tuple2<>(documentId, count);
+      });
     final JavaRDD<String> documentToSum = documentToCount
-        .reduceByKey((i1, i2) -> i1 + i2)
-        .map(t -> t._1() + ": " + t._2());
+      .reduceByKey((i1, i2) -> i1 + i2)
+      .map(t -> t._1() + ": " + t._2());
     documentToSum.saveAsTextFile(output);
 
     // DONE

@@ -31,6 +31,7 @@ import java.util.function.BiFunction;
 
 /**
  * Aggregates upstream messages.
+ *
  * @param <K> of the input pair.
  * @param <V> of the input pair.
  * @param <O> of the output aggregated message.

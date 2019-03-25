@@ -46,7 +46,7 @@ public final class WindowedWordCount {
 
 
   /**
-   * @param p pipeline.
+   * @param p    pipeline.
    * @param args arguments.
    * @return source.
    */
@@ -91,8 +91,10 @@ public final class WindowedWordCount {
       throw new RuntimeException("Unsupported input type: " + inputType);
     }
   }
+
   /**
    * Main function for the MR BEAM program.
+   *
    * @param args arguments.
    */
   public static void main(final String[] args) {

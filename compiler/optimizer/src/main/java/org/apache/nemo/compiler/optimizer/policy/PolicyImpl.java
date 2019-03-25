@@ -45,8 +45,9 @@ public final class PolicyImpl implements Policy {
 
   /**
    * Constructor.
+   *
    * @param compileTimePasses compile time passes of the policy.
-   * @param runTimePasses run time passes of the policy.
+   * @param runTimePasses     run time passes of the policy.
    */
   public PolicyImpl(final List<CompileTimePass> compileTimePasses, final Set<RunTimePass<?>> runTimePasses) {
     this.compileTimePasses = compileTimePasses;
@@ -61,8 +62,9 @@ public final class PolicyImpl implements Policy {
 
   /**
    * A recursive method to process each pass one-by-one to the given DAG.
-   * @param dag DAG to process.
-   * @param passes passes to apply.
+   *
+   * @param dag          DAG to process.
+   * @param passes       passes to apply.
    * @param dagDirectory directory to save the DAG information.
    * @return the processed DAG.
    * @throws Exception Exceptions on the way.
@@ -116,8 +118,9 @@ public final class PolicyImpl implements Policy {
   /**
    * Checks if the annotating pass hasn't modified the DAG structure.
    * It checks if the number of Vertices and Edges are the same.
+   *
    * @param before DAG before modification.
-   * @param after DAG after modification.
+   * @param after  DAG after modification.
    * @return true if there is no problem, false if there is a problem.
    */
   private static Boolean checkAnnotatingPass(final IRDAG before, final IRDAG after) {
@@ -159,8 +162,9 @@ public final class PolicyImpl implements Policy {
   /**
    * Checks if the reshaping pass hasn't modified execution properties.
    * It checks if all of its vertices and edges have the same execution properties as before (if it existed then).
+   *
    * @param before DAG before modification.
-   * @param after DAG after modification.
+   * @param after  DAG after modification.
    * @return true if there is no problem, false if there is a problem.
    */
   private static Boolean checkReshapingPass(final IRDAG before, final IRDAG after) {

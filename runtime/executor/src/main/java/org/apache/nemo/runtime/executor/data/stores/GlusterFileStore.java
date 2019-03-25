@@ -19,13 +19,14 @@
 package org.apache.nemo.runtime.executor.data.stores;
 
 import org.apache.nemo.common.exception.BlockFetchException;
-import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.BlockWriteException;
-import org.apache.nemo.runtime.executor.data.*;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.data.block.Block;
-import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
-import org.apache.nemo.runtime.executor.data.metadata.RemoteFileMetadata;
 import org.apache.nemo.runtime.executor.data.block.FileBlock;
+import org.apache.nemo.runtime.executor.data.metadata.RemoteFileMetadata;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -68,7 +69,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
     final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata metadata =
-        RemoteFileMetadata.create(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
+      RemoteFileMetadata.create(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
     return new FileBlock<>(blockId, serializer, filePath, metadata);
   }
 
@@ -82,7 +83,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   public void writeBlock(final Block block) throws BlockWriteException {
     if (!(block instanceof FileBlock)) {
       throw new BlockWriteException(new Throwable(
-          this.toString() + " only accept " + FileBlock.class.getName()));
+        this.toString() + " only accept " + FileBlock.class.getName()));
     } else if (!block.isCommitted()) {
       throw new BlockWriteException(new Throwable("The block " + block.getId() + "is not committed yet."));
     }
@@ -149,7 +150,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
     final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata<K> metadata =
-        RemoteFileMetadata.open(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
+      RemoteFileMetadata.open(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
     return new FileBlock<>(blockId, serializer, filePath, metadata);
   }
 }

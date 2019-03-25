@@ -65,6 +65,7 @@ public final class PolicyBuilder {
 
   /**
    * Register a compile time pass.
+   *
    * @param compileTimePass the compile time pass to register.
    * @return the PolicyBuilder which registers the compileTimePass.
    */
@@ -79,7 +80,7 @@ public final class PolicyBuilder {
     // Check prerequisite execution properties.
     if (!annotatedExecutionProperties.containsAll(compileTimePass.getPrerequisiteExecutionProperties())) {
       throw new CompileTimeOptimizationException("Prerequisite ExecutionProperty hasn't been met for "
-          + compileTimePass.getClass().getSimpleName());
+        + compileTimePass.getClass().getSimpleName());
     }
 
     // check annotation of annotating passes.
@@ -95,8 +96,9 @@ public final class PolicyBuilder {
 
   /**
    * Register compile time pass with its condition under which to run the pass.
+   *
    * @param compileTimePass the compile time pass to register.
-   * @param condition condition under which to run the pass.
+   * @param condition       condition under which to run the pass.
    * @return the PolicyBuilder which registers the compileTimePass.
    */
   public PolicyBuilder registerCompileTimePass(final CompileTimePass compileTimePass,
@@ -107,7 +109,8 @@ public final class PolicyBuilder {
 
   /**
    * Register a run time pass.
-   * @param runTimePass the runtime pass to register.
+   *
+   * @param runTimePass           the runtime pass to register.
    * @param runTimePassRegisterer the compile time pass that triggers the runtime pass.
    * @return the PolicyBuilder which registers the runTimePass and the runTimePassRegisterer.
    */
@@ -120,9 +123,10 @@ public final class PolicyBuilder {
 
   /**
    * Register a run time pass.
-   * @param runTimePass the runtime pass to register.
+   *
+   * @param runTimePass           the runtime pass to register.
    * @param runTimePassRegisterer the compile time pass that triggers the runtime pass.
-   * @param condition condition under which to run the pass.
+   * @param condition             condition under which to run the pass.
    * @return the PolicyBuilder which registers the runTimePass and the runTimePassRegisterer.
    */
   public PolicyBuilder registerRunTimePass(final RunTimePass<?> runTimePass,
@@ -134,6 +138,7 @@ public final class PolicyBuilder {
 
   /**
    * Getter for compile time passes.
+   *
    * @return the list of compile time passes.
    */
   public List<CompileTimePass> getCompileTimePasses() {
@@ -142,6 +147,7 @@ public final class PolicyBuilder {
 
   /**
    * Getter for run time passes.
+   *
    * @return the list of run time passes.
    */
   public Set<RunTimePass<?>> getRunTimePasses() {
@@ -150,6 +156,7 @@ public final class PolicyBuilder {
 
   /**
    * Build a policy using compileTimePasses and runTimePasses in this object.
+   *
    * @return the built Policy.
    */
   public Policy build() {

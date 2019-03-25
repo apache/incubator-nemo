@@ -18,17 +18,20 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
-import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.NettyChannelImplementationSelector;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.ChannelGroupFuture;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.NettyChannelImplementationSelector;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.Identifier;
@@ -61,31 +64,32 @@ final class ByteTransport implements AutoCloseable {
 
   /**
    * Constructs a byte transport and starts listening.
-   * @param nameResolver          provides naming registry
-   * @param localExecutorId       the id of this executor
-   * @param channelImplSelector   provides implementation for netty channel
-   * @param channelInitializer    initializes channel pipeline
-   * @param tcpPortProvider       provides an iterator of random tcp ports
-   * @param localAddressProvider  provides the local address of the node to bind to
-   * @param port                  the listening port; 0 means random assign using {@code tcpPortProvider}
-   * @param serverBacklog         the maximum number of pending connections to the server
-   * @param numListeningThreads   the number of listening threads of the server
-   * @param numWorkingThreads     the number of working threads of the server
-   * @param numClientThreads      the number of client threads
+   *
+   * @param nameResolver         provides naming registry
+   * @param localExecutorId      the id of this executor
+   * @param channelImplSelector  provides implementation for netty channel
+   * @param channelInitializer   initializes channel pipeline
+   * @param tcpPortProvider      provides an iterator of random tcp ports
+   * @param localAddressProvider provides the local address of the node to bind to
+   * @param port                 the listening port; 0 means random assign using {@code tcpPortProvider}
+   * @param serverBacklog        the maximum number of pending connections to the server
+   * @param numListeningThreads  the number of listening threads of the server
+   * @param numWorkingThreads    the number of working threads of the server
+   * @param numClientThreads     the number of client threads
    */
   @Inject
   private ByteTransport(
-      final NameResolver nameResolver,
-      @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
-      final NettyChannelImplementationSelector channelImplSelector,
-      final ByteTransportChannelInitializer channelInitializer,
-      final TcpPortProvider tcpPortProvider,
-      final LocalAddressProvider localAddressProvider,
-      @Parameter(JobConf.PartitionTransportServerPort.class) final int port,
-      @Parameter(JobConf.PartitionTransportServerBacklog.class) final int serverBacklog,
-      @Parameter(JobConf.PartitionTransportServerNumListeningThreads.class) final int numListeningThreads,
-      @Parameter(JobConf.PartitionTransportServerNumWorkingThreads.class) final int numWorkingThreads,
-      @Parameter(JobConf.PartitionTransportClientNumThreads.class) final int numClientThreads) {
+    final NameResolver nameResolver,
+    @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
+    final NettyChannelImplementationSelector channelImplSelector,
+    final ByteTransportChannelInitializer channelInitializer,
+    final TcpPortProvider tcpPortProvider,
+    final LocalAddressProvider localAddressProvider,
+    @Parameter(JobConf.PartitionTransportServerPort.class) final int port,
+    @Parameter(JobConf.PartitionTransportServerBacklog.class) final int serverBacklog,
+    @Parameter(JobConf.PartitionTransportServerNumListeningThreads.class) final int numListeningThreads,
+    @Parameter(JobConf.PartitionTransportServerNumWorkingThreads.class) final int numWorkingThreads,
+    @Parameter(JobConf.PartitionTransportClientNumThreads.class) final int numClientThreads) {
 
     this.nameResolver = nameResolver;
 
@@ -96,23 +100,23 @@ final class ByteTransport implements AutoCloseable {
     final String host = localAddressProvider.getLocalAddress();
 
     serverListeningGroup = channelImplSelector.newEventLoopGroup(numListeningThreads,
-        new DefaultThreadFactory(SERVER_LISTENING));
+      new DefaultThreadFactory(SERVER_LISTENING));
     serverWorkingGroup = channelImplSelector.newEventLoopGroup(numWorkingThreads,
-        new DefaultThreadFactory(SERVER_WORKING));
+      new DefaultThreadFactory(SERVER_WORKING));
     clientGroup = channelImplSelector.newEventLoopGroup(numClientThreads, new DefaultThreadFactory(CLIENT));
 
     clientBootstrap = new Bootstrap()
-        .group(clientGroup)
-        .channel(channelImplSelector.getChannelClass())
-        .handler(channelInitializer)
-        .option(ChannelOption.SO_REUSEADDR, true);
+      .group(clientGroup)
+      .channel(channelImplSelector.getChannelClass())
+      .handler(channelInitializer)
+      .option(ChannelOption.SO_REUSEADDR, true);
 
     final ServerBootstrap serverBootstrap = new ServerBootstrap()
-        .group(serverListeningGroup, serverWorkingGroup)
-        .channel(channelImplSelector.getServerChannelClass())
-        .childHandler(channelInitializer)
-        .option(ChannelOption.SO_BACKLOG, serverBacklog)
-        .option(ChannelOption.SO_REUSEADDR, true);
+      .group(serverListeningGroup, serverWorkingGroup)
+      .channel(channelImplSelector.getServerChannelClass())
+      .childHandler(channelInitializer)
+      .option(ChannelOption.SO_BACKLOG, serverBacklog)
+      .option(ChannelOption.SO_REUSEADDR, true);
 
     Channel listeningChannel = null;
     if (port == 0) {
@@ -193,7 +197,8 @@ final class ByteTransport implements AutoCloseable {
 
   /**
    * Connect to the {@link ByteTransport} server of the specified executor.
-   * @param remoteExecutorId  the id of the executor
+   *
+   * @param remoteExecutorId the id of the executor
    * @return a {@link ChannelFuture} for connecting
    */
   ChannelFuture connectTo(final String remoteExecutorId) {

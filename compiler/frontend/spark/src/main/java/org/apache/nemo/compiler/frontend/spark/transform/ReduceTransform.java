@@ -38,6 +38,7 @@ public final class ReduceTransform<T> implements Transform<T, T> {
 
   /**
    * Constructor.
+   *
    * @param func function to run for the reduce transform.
    */
   public ReduceTransform(final Function2<T, T, T> func) {
@@ -76,9 +77,10 @@ public final class ReduceTransform<T> implements Transform<T, T> {
 
   /**
    * Reduce the iterator elements into a single object.
+   *
    * @param elements the iterator of elements.
-   * @param func function to apply for reduction.
-   * @param <T> type of the elements.
+   * @param func     function to apply for reduction.
+   * @param <T>      type of the elements.
    * @return the reduced element.
    */
   @Nullable

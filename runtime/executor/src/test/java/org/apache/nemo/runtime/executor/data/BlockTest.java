@@ -18,8 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.data;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.nemo.common.HashRange;
-import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.coder.IntDecoderFactory;
 import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.runtime.executor.data.block.Block;
@@ -29,7 +29,6 @@ import org.apache.nemo.runtime.executor.data.block.SerializedMemoryBlock;
 import org.apache.nemo.runtime.executor.data.metadata.LocalFileMetadata;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
-import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -126,6 +125,7 @@ public final class BlockTest {
 
   /**
    * Compare the contents of a list and an iterable.
+   *
    * @param list     the list to test.
    * @param iterable the iterable to test.
    * @throws RuntimeException if the contents are not matched.

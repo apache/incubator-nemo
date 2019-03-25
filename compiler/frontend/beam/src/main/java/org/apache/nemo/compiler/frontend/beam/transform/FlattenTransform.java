@@ -24,6 +24,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 
 /**
  * Flatten transform implementation.
+ *
  * @param <T> input/output type.
  */
 public final class FlattenTransform<T> implements Transform<T, T> {

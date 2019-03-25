@@ -21,7 +21,9 @@ package org.apache.nemo.examples.beam;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.windowing.SlidingWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
@@ -51,8 +53,10 @@ public final class WindowedBroadcast {
       .withRate(2, Duration.standardSeconds(1))
       .withTimestampFn(num -> new Instant(num * 500))); // 0.5 second between subsequent elements
   }
+
   /**
    * Main function for the MR BEAM program.
+   *
    * @param args arguments.
    */
   public static void main(final String[] args) {
@@ -60,7 +64,7 @@ public final class WindowedBroadcast {
 
     final Window<Long> windowFn = Window
       .<Long>into(SlidingWindows.of(Duration.standardSeconds(2))
-      .every(Duration.standardSeconds(1)));
+        .every(Duration.standardSeconds(1)));
 
     final PipelineOptions options = NemoPipelineOptionsFactory.create();
     options.setJobName("WindowedBroadcast");

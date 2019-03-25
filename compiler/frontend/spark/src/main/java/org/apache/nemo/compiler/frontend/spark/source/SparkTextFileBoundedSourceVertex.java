@@ -21,13 +21,18 @@ package org.apache.nemo.compiler.frontend.spark.source;
 import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
-import org.apache.spark.*;
+import org.apache.spark.Partition;
+import org.apache.spark.SparkConf;
+import org.apache.spark.SparkContext;
+import org.apache.spark.TaskContext$;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.util.SizeEstimator;
 import scala.collection.JavaConverters;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Bounded source vertex for Spark text file.
@@ -50,11 +55,11 @@ public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String>
     final Partition[] partitions = sparkContext.textFile(inputPath, numPartitions).getPartitions();
     for (int i = 0; i < partitions.length; i++) {
       readables.add(new SparkTextFileBoundedSourceReadable(
-          partitions[i],
-          sparkContext.getConf(),
-          i,
-          inputPath,
-          numPartitions));
+        partitions[i],
+        sparkContext.getConf(),
+        i,
+        inputPath,
+        numPartitions));
     }
     this.estimatedSizeBytes = SizeEstimator.estimate(sparkContext.textFile(inputPath, numPartitions));
   }

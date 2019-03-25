@@ -20,8 +20,8 @@ package org.apache.nemo.runtime.executor.data;
 
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.runtime.executor.data.streamchainer.*;
 import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
+import org.apache.nemo.runtime.executor.data.streamchainer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,17 +82,17 @@ public final class SerializerManager {
     // Compression chain
     if (compressionProperty != null) {
       LOG.debug("Adding {} compression chain for {}",
-          compressionProperty, runtimeEdgeId);
+        compressionProperty, runtimeEdgeId);
       encodeStreamChainers.add(new CompressionStreamChainer(compressionProperty));
     }
     if (decompressionProperty != null) {
       LOG.debug("Adding {} decompression chain for {}",
-          decompressionProperty, runtimeEdgeId);
+        decompressionProperty, runtimeEdgeId);
       decodeStreamChainers.add(new DecompressionStreamChainer(decompressionProperty));
     }
 
     final Serializer serializer =
-        new Serializer(encoderFactory, decoderFactory, encodeStreamChainers, decodeStreamChainers);
+      new Serializer(encoderFactory, decoderFactory, encodeStreamChainers, decodeStreamChainers);
     runtimeEdgeIdToSerializer.putIfAbsent(runtimeEdgeId, serializer);
   }
 

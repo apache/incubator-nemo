@@ -20,13 +20,14 @@ package org.apache.nemo.runtime.executor.data;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.common.exception.UnsupportedBlockStoreException;
 import org.apache.nemo.common.exception.UnsupportedExecutionPropertyException;
-import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -39,20 +40,23 @@ import org.apache.nemo.runtime.executor.data.block.Block;
 import org.apache.nemo.runtime.executor.data.block.FileBlock;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
-import org.apache.nemo.runtime.executor.data.stores.BlockStore;
 import org.apache.nemo.runtime.executor.data.stores.*;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Executor-side block manager.
@@ -93,7 +97,7 @@ public final class BlockManagerWorker {
    * @param persistentConnectionToMasterMap the connection map.
    * @param byteTransfer                    the byte transfer.
    * @param serializerManager               the serializer manager.
-   * @param blockTransferThrottler    restricts parallel connections
+   * @param blockTransferThrottler          restricts parallel connections
    */
   @Inject
   private BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -125,7 +129,7 @@ public final class BlockManagerWorker {
   /**
    * Creates a new block.
    *
-   * @param blockId the ID of the block to create.
+   * @param blockId    the ID of the block to create.
    * @param blockStore the store to place the block.
    * @return the created block.
    * @throws BlockWriteException for any error occurred while trying to create a block.
@@ -148,31 +152,31 @@ public final class BlockManagerWorker {
    * @return the {@link CompletableFuture} of the block.
    */
   public CompletableFuture<DataUtil.IteratorWithNumBytes> readBlock(
-      final String blockIdWildcard,
-      final String runtimeEdgeId,
-      final DataStoreProperty.Value blockStore,
-      final KeyRange keyRange) {
+    final String blockIdWildcard,
+    final String runtimeEdgeId,
+    final DataStoreProperty.Value blockStore,
+    final KeyRange keyRange) {
     // Let's see if a remote worker has it
     final CompletableFuture<ControlMessage.Message> blockLocationFuture =
-        pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {
-          // Ask Master for the location.
-          // (IMPORTANT): This 'request' effectively blocks the TaskExecutor thread if the block is IN_PROGRESS.
-          // We use this property to make the receiver task of a 'push' edge to wait in an Executor for its input data
-          // to become available.
-          final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
-              .getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
-                  ControlMessage.Message.newBuilder()
-                      .setId(RuntimeIdManager.generateMessageId())
-                      .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-                      .setType(ControlMessage.MessageType.RequestBlockLocation)
-                      .setRequestBlockLocationMsg(
-                          ControlMessage.RequestBlockLocationMsg.newBuilder()
-                              .setExecutorId(executorId)
-                              .setBlockIdWildcard(blockIdWildcard)
-                              .build())
-                      .build());
-          return responseFromMasterFuture;
-        });
+      pendingBlockLocationRequest.computeIfAbsent(blockIdWildcard, blockIdToRequest -> {
+        // Ask Master for the location.
+        // (IMPORTANT): This 'request' effectively blocks the TaskExecutor thread if the block is IN_PROGRESS.
+        // We use this property to make the receiver task of a 'push' edge to wait in an Executor for its input data
+        // to become available.
+        final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
+          .getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
+            ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdManager.generateMessageId())
+              .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.RequestBlockLocation)
+              .setRequestBlockLocationMsg(
+                ControlMessage.RequestBlockLocationMsg.newBuilder()
+                  .setExecutorId(executorId)
+                  .setBlockIdWildcard(blockIdWildcard)
+                  .build())
+              .build());
+        return responseFromMasterFuture;
+      });
     blockLocationFuture.whenComplete((message, throwable) -> {
       pendingBlockLocationRequest.remove(blockIdWildcard);
     });
@@ -184,11 +188,11 @@ public final class BlockManagerWorker {
       }
 
       final ControlMessage.BlockLocationInfoMsg blockLocationInfoMsg =
-          responseFromMaster.getBlockLocationInfoMsg();
+        responseFromMaster.getBlockLocationInfoMsg();
       if (!blockLocationInfoMsg.hasOwnerExecutorId()) {
         throw new BlockFetchException(new Throwable(
-            "Block " + blockIdWildcard + " location unknown: "
-                + "The block state is " + blockLocationInfoMsg.getState()));
+          "Block " + blockIdWildcard + " location unknown: "
+            + "The block state is " + blockLocationInfoMsg.getState()));
       }
 
       // This is the executor id that we wanted to know
@@ -206,8 +210,8 @@ public final class BlockManagerWorker {
             .setKeyRange(ByteString.copyFrom(SerializationUtils.serialize(keyRange)))
             .build();
         final CompletableFuture<ByteInputContext> contextFuture = blockTransferThrottler
-            .requestTransferPermission(runtimeEdgeId)
-            .thenCompose(obj -> byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), false));
+          .requestTransferPermission(runtimeEdgeId)
+          .thenCompose(obj -> byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), false));
 
         // whenComplete() ensures that blockTransferThrottler.onTransferFinished() is always called,
         // even on failures. Actual failure handling and Task retry will be done by DataFetcher.
@@ -224,8 +228,8 @@ public final class BlockManagerWorker {
         });
 
         return contextFuture
-            .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
-                serializerManager.getSerializer(runtimeEdgeId)));
+          .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
+            serializerManager.getSerializer(runtimeEdgeId)));
       }
     });
   }
@@ -233,10 +237,10 @@ public final class BlockManagerWorker {
   /**
    * Writes a block to a store.
    *
-   * @param block                the block to write.
-   * @param blockStore           the store to save the block.
-   * @param expectedReadTotal    the expected number of read for this block.
-   * @param persistence          how to handle the used block.
+   * @param block             the block to write.
+   * @param blockStore        the store to save the block.
+   * @param expectedReadTotal the expected number of read for this block.
+   * @param persistence       how to handle the used block.
    */
   public void writeBlock(final Block block,
                          final DataStoreProperty.Value blockStore,
@@ -259,10 +263,10 @@ public final class BlockManagerWorker {
     final BlockStore store = getBlockStore(blockStore);
     store.writeBlock(block);
     final ControlMessage.BlockStateChangedMsg.Builder blockStateChangedMsgBuilder =
-        ControlMessage.BlockStateChangedMsg.newBuilder()
-            .setExecutorId(executorId)
-            .setBlockId(blockId)
-            .setState(ControlMessage.BlockStateFromExecutor.AVAILABLE);
+      ControlMessage.BlockStateChangedMsg.newBuilder()
+        .setExecutorId(executorId)
+        .setBlockId(blockId)
+        .setState(ControlMessage.BlockStateFromExecutor.AVAILABLE);
 
     if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
       blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
@@ -271,12 +275,12 @@ public final class BlockManagerWorker {
     }
 
     persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-        .send(ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.BlockStateChanged)
-            .setBlockStateChangedMsg(blockStateChangedMsgBuilder.build())
-            .build());
+      .send(ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.BlockStateChanged)
+        .setBlockStateChangedMsg(blockStateChangedMsgBuilder.build())
+        .build());
   }
 
   /**
@@ -293,10 +297,10 @@ public final class BlockManagerWorker {
 
     if (deleted) {
       final ControlMessage.BlockStateChangedMsg.Builder blockStateChangedMsgBuilder =
-          ControlMessage.BlockStateChangedMsg.newBuilder()
-              .setExecutorId(executorId)
-              .setBlockId(blockId)
-              .setState(ControlMessage.BlockStateFromExecutor.NOT_AVAILABLE);
+        ControlMessage.BlockStateChangedMsg.newBuilder()
+          .setExecutorId(executorId)
+          .setBlockId(blockId)
+          .setState(ControlMessage.BlockStateFromExecutor.NOT_AVAILABLE);
 
       if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
         blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
@@ -305,12 +309,12 @@ public final class BlockManagerWorker {
       }
 
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-          .send(ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.BlockStateChanged)
-              .setBlockStateChangedMsg(blockStateChangedMsgBuilder)
-              .build());
+        .send(ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.BlockStateChanged)
+          .setBlockStateChangedMsg(blockStateChangedMsgBuilder)
+          .build());
     } else {
       throw new BlockFetchException(new Throwable("Cannot find corresponding block " + blockId));
     }
@@ -341,7 +345,7 @@ public final class BlockManagerWorker {
           final Optional<Block> optionalBlock = getBlockStore(blockStore).readBlock(blockId);
           if (optionalBlock.isPresent()) {
             if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)
-                || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+              || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
@@ -394,9 +398,9 @@ public final class BlockManagerWorker {
    * @return the result data in the block.
    */
   private CompletableFuture<DataUtil.IteratorWithNumBytes> getDataFromLocalBlock(
-      final String blockId,
-      final DataStoreProperty.Value blockStore,
-      final KeyRange keyRange) {
+    final String blockId,
+    final DataStoreProperty.Value blockStore,
+    final KeyRange keyRange) {
     final BlockStore store = getBlockStore(blockStore);
 
     // First, try to fetch the block from local BlockStore.
@@ -418,7 +422,7 @@ public final class BlockManagerWorker {
           }
 
           return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator, numSerializedBytes,
-              numEncodedBytes));
+            numEncodedBytes));
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
           return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator));
         }
@@ -459,6 +463,7 @@ public final class BlockManagerWorker {
 
   /**
    * Gets the {@link BlockStore} from annotated value of {@link DataStoreProperty}.
+   *
    * @param blockStore the annotated value of {@link DataStoreProperty}.
    * @return the block store.
    */
@@ -480,11 +485,12 @@ public final class BlockManagerWorker {
 
   /**
    * Decodes BlockStore property from protocol buffer.
+   *
    * @param blockStore property from protocol buffer
    * @return the corresponding {@link DataStoreProperty} value
    */
   private static ControlMessage.BlockStore convertBlockStore(
-      final DataStoreProperty.Value blockStore) {
+    final DataStoreProperty.Value blockStore) {
     switch (blockStore) {
       case MemoryStore:
         return ControlMessage.BlockStore.MEMORY;
@@ -502,11 +508,12 @@ public final class BlockManagerWorker {
 
   /**
    * Encodes {@link DataStoreProperty} value into protocol buffer property.
+   *
    * @param blockStoreType {@link DataStoreProperty} value
    * @return the corresponding {@link ControlMessage.BlockStore} value
    */
   private static DataStoreProperty.Value convertBlockStore(
-      final ControlMessage.BlockStore blockStoreType) {
+    final ControlMessage.BlockStore blockStoreType) {
     switch (blockStoreType) {
       case MEMORY:
         return DataStoreProperty.Value.MemoryStore;

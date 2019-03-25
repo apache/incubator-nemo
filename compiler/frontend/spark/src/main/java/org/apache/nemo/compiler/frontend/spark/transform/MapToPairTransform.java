@@ -26,6 +26,7 @@ import scala.Tuple2;
 
 /**
  * Map elements to Pair elements.
+ *
  * @param <T> input type.
  * @param <K> output key type.
  * @param <V> output value type.
@@ -36,6 +37,7 @@ public final class MapToPairTransform<T, K, V> implements Transform<T, Tuple2<K,
 
   /**
    * Constructor.
+   *
    * @param func Pair function to apply to each element.
    */
   public MapToPairTransform(final PairFunction<T, K, V> func) {

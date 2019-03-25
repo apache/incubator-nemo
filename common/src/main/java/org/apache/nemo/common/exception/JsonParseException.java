@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class JsonParseException extends RuntimeException {
   /**
    * JsonParseException.
+   *
    * @param cause cause
    */
   public JsonParseException(final Throwable cause) {

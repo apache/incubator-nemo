@@ -22,7 +22,9 @@ import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.ir.edge.executionproperty.*;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.MessageBarrierVertex;
@@ -31,25 +33,28 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Optimizes the PartitionSet property of shuffle edges to handle data skews using the SamplingVertex.
- *
+ * <p>
  * This pass effectively partitions the IRDAG by non-oneToOne edges, clones each subDAG partition using SamplingVertex
  * to process sampled data, and executes each cloned partition prior to executing the corresponding original partition.
- *
+ * <p>
  * Suppose the IRDAG is partitioned into three sub-DAG partitions with shuffle dependencies as follows:
  * P1 - P2 - P3
- *
+ * <p>
  * Then, this pass will produce something like:
  * P1' - P1
- *     - P2' - P2 - P3
+ * - P2' - P2 - P3
  * where Px' consists of SamplingVertex objects that clone the execution of Px.
  * (P3 is not cloned here because it is a sink partition, and none of the outgoing edges of its vertices needs to be
  * optimized)
- *
+ * <p>
  * For each Px' this pass also inserts a MessageBarrierVertex, to use its data statistics for dynamically optimizing
  * the execution behaviors of Px.
  */

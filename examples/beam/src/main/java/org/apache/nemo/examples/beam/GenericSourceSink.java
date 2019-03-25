@@ -57,9 +57,10 @@ final class GenericSourceSink {
 
   /**
    * Read data.
-   * @param pipeline  beam pipeline
-   * @param path      path to read
-   * @return          returns the read value
+   *
+   * @param pipeline beam pipeline
+   * @param path     path to read
+   * @return returns the read value
    */
   public static PCollection<String> read(final Pipeline pipeline,
                                          final String path) {
@@ -72,19 +73,19 @@ final class GenericSourceSink {
 
       // Without translations, Beam internally does some weird cloning
       final HadoopFormatIO.Read<Long, String> read = HadoopFormatIO.<Long, String>read()
-          .withConfiguration(hadoopConf)
-          .withKeyTranslation(new SimpleFunction<LongWritable, Long>() {
-            @Override
-            public Long apply(final LongWritable longWritable) {
-              return longWritable.get();
-            }
-          })
-          .withValueTranslation(new SimpleFunction<Text, String>() {
-            @Override
-            public String apply(final Text text) {
-              return text.toString();
-            }
-          });
+        .withConfiguration(hadoopConf)
+        .withKeyTranslation(new SimpleFunction<LongWritable, Long>() {
+          @Override
+          public Long apply(final LongWritable longWritable) {
+            return longWritable.get();
+          }
+        })
+        .withValueTranslation(new SimpleFunction<Text, String>() {
+          @Override
+          public String apply(final Text text) {
+            return text.toString();
+          }
+        });
       return pipeline.apply(read).apply(MapElements.into(TypeDescriptor.of(String.class)).via(KV::getValue));
     } else {
       return pipeline.apply(TextIO.read().from(path));
@@ -94,9 +95,10 @@ final class GenericSourceSink {
   /**
    * Write data.
    * NEMO-365: This method could later be replaced using the HadoopFormatIO class.
+   *
    * @param dataToWrite data to write
    * @param path        path to write data
-   * @return            returns {@link PDone}
+   * @return returns {@link PDone}
    */
   public static PDone write(final PCollection<String> dataToWrite,
                             final String path) {
@@ -110,8 +112,9 @@ final class GenericSourceSink {
 
   /**
    * Check if given path is HDFS path.
+   *
    * @param path path to check
-   * @return     boolean value indicating whether the path is HDFS path or not
+   * @return boolean value indicating whether the path is HDFS path or not
    */
   private static boolean isHDFSPath(final String path) {
     return path.startsWith("hdfs://") || path.startsWith("s3a://") || path.startsWith("file://");
@@ -132,7 +135,7 @@ final class HDFSWrite extends DoFn<String, Void> {
   /**
    * Constructor.
    *
-   * @param path    HDFS path
+   * @param path HDFS path
    */
   HDFSWrite(final String path) {
     this.path = path;
@@ -158,7 +161,8 @@ final class HDFSWrite extends DoFn<String, Void> {
 
   /**
    * process element.
-   * @param c          context {@link ProcessContext}
+   *
+   * @param c context {@link ProcessContext}
    * @throws Exception exception.
    */
   @ProcessElement
@@ -174,7 +178,8 @@ final class HDFSWrite extends DoFn<String, Void> {
 
   /**
    * Teardown.
-   * @throws IOException  output stream exception
+   *
+   * @throws IOException output stream exception
    */
   @Teardown
   public void tearDown() throws IOException {

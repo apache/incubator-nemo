@@ -18,13 +18,13 @@
  */
 package org.apache.nemo.compiler.frontend.spark.transform;
 
-import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
+import org.apache.nemo.common.ir.vertex.transform.Transform;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,6 +33,7 @@ import java.util.UUID;
 
 /**
  * Transform which saves elements to a HDFS text file for Spark.
+ *
  * @param <I> input type.
  */
 public final class HDFSTextFileTransform<I> extends NoWatermarkEmitTransform<I, String> {
@@ -63,8 +64,8 @@ public final class HDFSTextFileTransform<I> extends NoWatermarkEmitTransform<I, 
   @Override
   public void close() {
     try (
-        final FileSystem fileSystem = fileName.getFileSystem(new JobConf());
-        final FSDataOutputStream outputStream = fileSystem.create(fileName, false);
+      final FileSystem fileSystem = fileName.getFileSystem(new JobConf());
+      final FSDataOutputStream outputStream = fileSystem.create(fileName, false);
     ) {
       for (final I element : elements) {
         outputStream.writeBytes(element + "\n");

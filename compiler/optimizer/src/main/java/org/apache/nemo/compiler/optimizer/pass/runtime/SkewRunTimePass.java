@@ -19,9 +19,9 @@
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
 import org.apache.nemo.common.HashRange;
+import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
@@ -102,10 +102,10 @@ public final class SkewRunTimePass extends RunTimePass<Map<Object, Long>> {
    * redistribute the key range of partitions with approximate size of (total size of partitions / the number of tasks).
    * Assumption: the returned key of the partitioner is always 0 or positive integer.
    *
-   * @param keyToCountMap statistics.
-   * @param partitioner used.
+   * @param keyToCountMap   statistics.
+   * @param partitioner     used.
    * @param numOfPartitions created.
-   * @param dstParallelism of the destination vertex.
+   * @param dstParallelism  of the destination vertex.
    * @return an optimal PartitionSetProperty and a ResourceAntiAffinityProperty.
    */
   Pair<PartitionSetProperty, ResourceAntiAffinityProperty> analyzeMessage(final Map<Object, Long> keyToCountMap,

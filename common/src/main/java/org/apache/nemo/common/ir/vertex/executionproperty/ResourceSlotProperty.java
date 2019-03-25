@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 public final class ResourceSlotProperty extends VertexExecutionProperty<Boolean> {
   private static final ResourceSlotProperty COMPLIANCE_TRUE = new ResourceSlotProperty(true);
   private static final ResourceSlotProperty COMPLIANCE_FALSE
-      = new ResourceSlotProperty(false);
+    = new ResourceSlotProperty(false);
 
   /**
    * Default constructor.

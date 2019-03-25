@@ -26,9 +26,9 @@ import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
-import org.apache.beam.sdk.values.KV;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.joda.time.Instant;
@@ -39,7 +39,8 @@ import java.util.*;
 
 /**
  * Groups elements according to key and window.
- * @param <K> key type.
+ *
+ * @param <K>      key type.
  * @param <InputT> input type.
  */
 public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
@@ -55,12 +56,13 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   /**
    * GroupByKey constructor.
-   * @param outputCoders output coders
-   * @param mainOutputTag main output tag
+   *
+   * @param outputCoders      output coders
+   * @param mainOutputTag     main output tag
    * @param windowingStrategy windowing strategy
-   * @param options pipeline options
-   * @param reduceFn reduce function
-   * @param displayData display data.
+   * @param options           pipeline options
+   * @param reduceFn          reduce function
+   * @param displayData       display data.
    */
   public GroupByKeyAndWindowDoFnTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
                                           final TupleTag<KV<K, Iterable<InputT>>> mainOutputTag,
@@ -85,6 +87,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   /**
    * This creates a new DoFn that groups elements by key and window.
+   *
    * @param doFn original doFn.
    * @return GroupAlsoByWindowViaWindowSetNewDoFn
    */
@@ -114,6 +117,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   /**
    * It collects data for each key.
    * The collected data are emitted at {@link GroupByKeyAndWindowDoFnTransform#onWatermark(Watermark)}
+   *
    * @param element data element
    */
   @Override
@@ -134,8 +138,9 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   /**
    * Process the collected data and trigger timers.
-   * @param inputWatermark current input watermark
-   * @param processingTime processing time
+   *
+   * @param inputWatermark   current input watermark
+   * @param processingTime   processing time
    * @param synchronizedTime synchronized time
    */
   private void processElementsAndTriggerTimers(final Watermark inputWatermark,
@@ -166,7 +171,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   /**
    * Output watermark
    * = max(prev output watermark,
-   *          min(input watermark, watermark holds)).
+   * min(input watermark, watermark holds)).
+   *
    * @param inputWatermark input watermark
    */
   private void emitOutputWatermark(final Watermark inputWatermark) {
@@ -219,9 +225,10 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   /**
    * Trigger times for current key.
    * When triggering, it emits the windowed data to downstream operators.
-   * @param key key
-   * @param watermark watermark
-   * @param processingTime processing time
+   *
+   * @param key              key
+   * @param watermark        watermark
+   * @param processingTime   processing time
    * @param synchronizedTime synchronized time
    */
   private void triggerTimers(final K key,
@@ -252,6 +259,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   /**
    * Get timer data.
+   *
    * @param timerInternals in-memory timer internals.
    * @return list of timer datas.
    */
@@ -382,6 +390,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     public void emitWatermark(final Watermark watermark) {
       outputCollector.emitWatermark(watermark);
     }
+
     @Override
     public <T> void emit(final String dstVertexId, final T output) {
       outputCollector.emit(dstVertexId, output);

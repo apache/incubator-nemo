@@ -20,6 +20,7 @@ package org.apache.nemo.common.ir.edge;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -27,10 +28,8 @@ import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-
 import java.io.Serializable;
-import java.util.*;
+import java.util.Optional;
 
 /**
  * Physical execution plan of intermediate data movement.
@@ -54,6 +53,7 @@ public final class IREdge extends Edge<IRVertex> {
 
   /**
    * Set an executionProperty of the IREdge.
+   *
    * @param executionProperty the execution property.
    * @return the IREdge with the execution property set.
    */
@@ -64,6 +64,7 @@ public final class IREdge extends Edge<IRVertex> {
 
   /**
    * Set an executionProperty of the IREdge, permanently.
+   *
    * @param executionProperty the execution property.
    * @return the IREdge with the execution property set.
    */
@@ -80,7 +81,7 @@ public final class IREdge extends Edge<IRVertex> {
    * @return the execution property.
    */
   public <T extends Serializable> Optional<T> getPropertyValue(
-      final Class<? extends EdgeExecutionProperty<T>> executionPropertyKey) {
+    final Class<? extends EdgeExecutionProperty<T>> executionPropertyKey) {
     return executionProperties.get(executionPropertyKey);
   }
 
@@ -125,10 +126,10 @@ public final class IREdge extends Edge<IRVertex> {
   @Override
   public int hashCode() {
     return new HashCodeBuilder(17, 37)
-        .append(getSrc().hashCode())
-        .append(getDst().hashCode())
-        .append(executionProperties)
-        .toHashCode();
+      .append(getSrc().hashCode())
+      .append(getDst().hashCode())
+      .append(executionProperties)
+      .toHashCode();
   }
 
   @Override

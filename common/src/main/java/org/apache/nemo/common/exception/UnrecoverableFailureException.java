@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class UnrecoverableFailureException extends RuntimeException {
   /**
    * UnrecoverableFailureException.
+   *
    * @param cause cause
    */
   public UnrecoverableFailureException(final Throwable cause) {

@@ -38,7 +38,7 @@ import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -51,11 +51,11 @@ import static org.mockito.Mockito.when;
  */
 public final class ContainerManagerTest {
   private static final ResourceSpecification RESOURCE_SPEC_A =
-      new ResourceSpecification(ResourcePriorityProperty.COMPUTE, 1, 1024);
+    new ResourceSpecification(ResourcePriorityProperty.COMPUTE, 1, 1024);
   private static final ResourceSpecification RESOURCE_SPEC_B =
-      new ResourceSpecification(ResourcePriorityProperty.TRANSIENT, 2, 2048);
+    new ResourceSpecification(ResourcePriorityProperty.TRANSIENT, 2, 2048);
   private static final ResourceSpecification RESOURCE_SPEC_C =
-      new ResourceSpecification(ResourcePriorityProperty.RESERVED, 3, 3072);
+    new ResourceSpecification(ResourcePriorityProperty.RESERVED, 3, 3072);
 
   private ContainerManager containerManager;
   private AtomicInteger testIdNumber = new AtomicInteger(0);
@@ -78,8 +78,8 @@ public final class ContainerManagerTest {
     final MessageEnvironment mockMsgEnv = mock(MessageEnvironment.class);
     when(mockMsgEnv.asyncConnect(anyString(), anyString())).thenReturn(mock(Future.class));
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
-        .build();
+      .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
+      .build();
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
     injector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
     injector.bindVolatileInstance(MessageEnvironment.class, mockMsgEnv);
@@ -106,11 +106,11 @@ public final class ContainerManagerTest {
         final EvaluatorDescriptor descriptor = createDescriptor(spec);
 
         containerManager.onContainerAllocated(
-            executorId,
-            createMockEvaluator(evaluatorId, descriptor),
-            createMockConfiguration());
+          executorId,
+          createMockEvaluator(evaluatorId, descriptor),
+          createMockConfiguration());
         final ExecutorRepresenter executorRepresenter =
-            containerManager.onContainerLaunched(createMockContext(executorId, descriptor)).get();
+          containerManager.onContainerLaunched(createMockContext(executorId, descriptor)).get();
         assertEquals(spec.getContainerType(), executorRepresenter.getContainerType());
         assertEquals(spec.getCapacity(), executorRepresenter.getExecutorCapacity());
         assertEquals(descriptor.getNodeDescriptor().getName(), executorRepresenter.getNodeName());
@@ -124,9 +124,9 @@ public final class ContainerManagerTest {
     final String evaluatorId = getEvaluatorId();
 
     containerManager.onContainerAllocated(
-        getExecutorId(),
-        createMockEvaluator(evaluatorId, createDescriptor(RESOURCE_SPEC_A)),
-        createMockConfiguration());
+      getExecutorId(),
+      createMockEvaluator(evaluatorId, createDescriptor(RESOURCE_SPEC_A)),
+      createMockConfiguration());
     assertEquals(RESOURCE_SPEC_A, containerManager.onContainerFailed(evaluatorId));
   }
 
@@ -138,9 +138,9 @@ public final class ContainerManagerTest {
     final EvaluatorDescriptor descriptor = createDescriptor(RESOURCE_SPEC_A);
 
     containerManager.onContainerAllocated(
-        executorId,
-        createMockEvaluator(evaluatorId, descriptor),
-        createMockConfiguration());
+      executorId,
+      createMockEvaluator(evaluatorId, descriptor),
+      createMockConfiguration());
     containerManager.onContainerLaunched(createMockContext(executorId, descriptor));
     assertEquals(RESOURCE_SPEC_A, containerManager.onContainerFailed(evaluatorId));
   }

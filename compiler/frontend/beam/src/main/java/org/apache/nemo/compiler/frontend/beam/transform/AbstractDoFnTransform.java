@@ -44,8 +44,8 @@ import java.util.Map;
 /**
  * This is a base class for Beam DoFn Transforms.
  *
- * @param <InputT> input type.
- * @param <InterT> intermediate type.
+ * @param <InputT>  input type.
+ * @param <InterT>  intermediate type.
  * @param <OutputT> output type.
  */
 public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
@@ -84,15 +84,16 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   /**
    * AbstractDoFnTransform constructor.
-   * @param doFn doFn
-   * @param inputCoder input coder
-   * @param outputCoders output coders
-   * @param mainOutputTag main output tag
+   *
+   * @param doFn                 doFn
+   * @param inputCoder           input coder
+   * @param outputCoders         output coders
+   * @param mainOutputTag        main output tag
    * @param additionalOutputTags additional output tags
-   * @param windowingStrategy windowing strategy
-   * @param sideInputs side inputs
-   * @param options pipeline options
-   * @param displayData display data.
+   * @param windowingStrategy    windowing strategy
+   * @param sideInputs           side inputs
+   * @param options              pipeline options
+   * @param displayData          display data.
    */
   public AbstractDoFnTransform(final DoFn<InterT, OutputT> doFn,
                                final Coder<InputT> inputCoder,
@@ -116,6 +117,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   /**
    * Getter function for side inputs.
+   *
    * @return the side inputs
    */
   final Map<Integer, PCollectionView<?>> getSideInputs() {
@@ -124,6 +126,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   /**
    * Getter function for output manager.
+   *
    * @return the output manager.
    */
   final DoFnRunners.OutputManager getOutputManager() {
@@ -132,6 +135,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   /**
    * Getter function for windowing strategy.
+   *
    * @return the windowing strategy.
    */
   final WindowingStrategy getWindowingStrategy() {
@@ -140,6 +144,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   /**
    * Getter function for output tag.
+   *
    * @return main output tag.
    */
   final TupleTag<OutputT> getMainOutputTag() {
@@ -148,6 +153,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   /**
    * Getter function for DoFn runner.
+   *
    * @return DoFn runner.
    */
   final DoFnRunner<InterT, OutputT> getDoFnRunner() {
@@ -156,6 +162,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   /**
    * Getter function for push back runner.
+   *
    * @return push back runner.
    */
   final PushbackSideInputDoFnRunner<InterT, OutputT> getPushBackRunner() {
@@ -164,6 +171,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   /**
    * Getter function for side input reader.
+   *
    * @return side input reader.
    */
   final InMemorySideInputReader getSideInputReader() {
@@ -172,6 +180,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   /**
    * Getter function for DoFn.
+   *
    * @return DoFn.
    */
   public final DoFn getDoFn() {
@@ -181,7 +190,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   /**
    * Checks whether the bundle is finished or not.
    * Starts the bundle if it is done.
-   *
+   * <p>
    * TODO #263: Partial Combining for Beam Streaming
    * We may want to use separate methods for doFnRunner/pushBackRunner
    * (same applies to the other bundle-related methods)
@@ -251,6 +260,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       public StateInternals stateInternals() {
         throw new UnsupportedOperationException("Not support stateInternals in DoFnTransform");
       }
+
       @Override
       public TimerInternals timerInternals() {
         throw new UnsupportedOperationException("Not support timerInternals in DoFnTransform");
@@ -284,6 +294,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   /**
    * Getter function for output collector.
+   *
    * @return output collector.
    */
   public final OutputCollector<WindowedValue<OutputT>> getOutputCollector() {
@@ -304,6 +315,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   /**
    * An abstract function that wraps the original doFn.
+   *
    * @param originalDoFn the original doFn.
    * @return wrapped doFn.
    */
@@ -311,6 +323,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
 
   /**
    * An abstract function that wraps the original output collector.
+   *
    * @param oc the original outputCollector.
    * @return wrapped output collector.
    */

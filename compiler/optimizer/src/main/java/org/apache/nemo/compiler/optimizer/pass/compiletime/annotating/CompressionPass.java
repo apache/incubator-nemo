@@ -39,6 +39,7 @@ public final class CompressionPass extends AnnotatingPass {
 
   /**
    * Constructor.
+   *
    * @param compression Compression to apply on edges.
    */
   public CompressionPass(final CompressionProperty.Value compression) {

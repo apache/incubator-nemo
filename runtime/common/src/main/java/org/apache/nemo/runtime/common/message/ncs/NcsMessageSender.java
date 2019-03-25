@@ -22,10 +22,10 @@ import org.apache.nemo.runtime.common.ReplyFutureMap;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.reef.io.network.Connection;
-
-import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * MessageSender for NCS.
@@ -37,8 +37,8 @@ final class NcsMessageSender implements MessageSender<ControlMessage.Message> {
   private final ReplyFutureMap<ControlMessage.Message> replyFutureMap;
 
   NcsMessageSender(
-      final Connection<ControlMessage.Message> connection,
-      final ReplyFutureMap replyFutureMap) {
+    final Connection<ControlMessage.Message> connection,
+    final ReplyFutureMap replyFutureMap) {
     this.connection = connection;
     this.replyFutureMap = replyFutureMap;
   }
