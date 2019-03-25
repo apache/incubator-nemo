@@ -83,7 +83,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   private void writeToFile(final Iterable<SerializedPartition<K>> serializedPartitions)
     throws IOException {
-    try (final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
+    try (FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
       for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
         // Reserve a partition write and get the metadata.
         metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
@@ -180,7 +180,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       final List<NonSerializedPartition<K>> deserializedPartitions = new ArrayList<>();
       try {
         final List<Pair<K, byte[]>> partitionKeyBytesPairs = new ArrayList<>();
-        try (final FileInputStream fileStream = new FileInputStream(filePath)) {
+        try (FileInputStream fileStream = new FileInputStream(filePath)) {
           for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
             final K key = partitionMetadata.getKey();
             if (keyRange.includes(key)) {
@@ -225,7 +225,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       // Deserialize the data
       final List<SerializedPartition<K>> partitionsInRange = new ArrayList<>();
       try {
-        try (final FileInputStream fileStream = new FileInputStream(filePath)) {
+        try (FileInputStream fileStream = new FileInputStream(filePath)) {
           for (final PartitionMetadata<K> partitionmetadata : metadata.getPartitionMetadataList()) {
             final K key = partitionmetadata.getKey();
             if (keyRange.includes(key)) {

@@ -44,9 +44,9 @@ final class ClassPathBuilder {
    * @return
    */
   private static boolean couldBeYarnConfigurationPath(final String path) {
-    return path.contains("conf") ||
-      path.contains("etc") ||
-      path.contains(HadoopEnvironment.HADOOP_CONF_DIR);
+    return path.contains("conf")
+      || path.contains("etc")
+      || path.contains(HadoopEnvironment.HADOOP_CONF_DIR);
   }
 
   /**

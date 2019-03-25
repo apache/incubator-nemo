@@ -59,7 +59,7 @@ public final class LocalTextFileTransform<I> extends NoWatermarkEmitTransform<I,
   @Override
   public void close() {
     try (
-      final Writer writer =
+      Writer writer =
         new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName, false), "utf-8"))
     ) {
       for (final I element : elements) {

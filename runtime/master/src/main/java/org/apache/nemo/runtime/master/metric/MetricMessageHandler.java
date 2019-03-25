@@ -34,8 +34,8 @@ public interface MetricMessageHandler {
    * @param metricField field name of the metric.
    * @param metricValue serialized metric data value.
    */
-  void onMetricMessageReceived(final String metricType, final String metricId,
-                               final String metricField, final byte[] metricValue);
+  void onMetricMessageReceived(String metricType, String metricId,
+                               String metricField, byte[] metricValue);
 
   /**
    * Cleans up and terminates this handler.

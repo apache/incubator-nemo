@@ -44,5 +44,5 @@ public interface Optimizer {
    * @param message for optimization.
    * @return optimized DAG.
    */
-  IRDAG optimizeAtRunTime(final IRDAG dag, final Message message);
+  IRDAG optimizeAtRunTime(IRDAG dag, Message message);
 }

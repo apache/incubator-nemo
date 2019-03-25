@@ -80,9 +80,9 @@ public final class MetricUtils {
    */
   private static Pair<HashBiMap<Integer, Class<? extends ExecutionProperty>>,
     HashBiMap<Pair<Integer, Integer>, ExecutionProperty<?>>> loadMetaData() {
-    try (final Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
+    try (Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
       "postgres", "fake_password")) {
-      try (final Statement statement = c.createStatement()) {
+      try (Statement statement = c.createStatement()) {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
         statement.executeUpdate(
@@ -144,13 +144,13 @@ public final class MetricUtils {
     }
     LOG.info("Saving Metadata..");
 
-    try (final Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
+    try (Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
       "postgres", "fake_password")) {
-      try (final Statement statement = c.createStatement()) {
+      try (Statement statement = c.createStatement()) {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
         if (MUST_UPDATE_EP_KEY_METADATA.getCount() == 0) {
-          try (final PreparedStatement pstmt = c.prepareStatement(
+          try (PreparedStatement pstmt = c.prepareStatement(
             "INSERT INTO " + METADATA_TABLE_NAME + " (key, data) "
               + "VALUES ('EP_KEY_METADATA', ?) ON CONFLICT (key) DO UPDATE SET data = excluded.data;")) {
             pstmt.setBinaryStream(1,
@@ -161,7 +161,7 @@ public final class MetricUtils {
         }
 
         if (MUST_UPDATE_EP_METADATA.getCount() == 0) {
-          try (final PreparedStatement pstmt =
+          try (PreparedStatement pstmt =
                  c.prepareStatement("INSERT INTO " + METADATA_TABLE_NAME + "(key, data) "
                    + "VALUES ('EP_METADATA', ?) ON CONFLICT (key) DO UPDATE SET data = excluded.data;")) {
             pstmt.setBinaryStream(1,
@@ -287,7 +287,7 @@ public final class MetricUtils {
    * @return the path containing the LICENSE file.
    */
   private static String recursivelyFindLicense(final Path path) {
-    try (final Stream stream = Files.find(path, 1, (p, attributes) -> p.endsWith("LICENSE"))) {
+    try (Stream stream = Files.find(path, 1, (p, attributes) -> p.endsWith("LICENSE"))) {
       if (stream.count() > 0) {
         return path.toAbsolutePath().toString();
       } else {

@@ -75,7 +75,7 @@ public final class PipeOutputWriter implements OutputWriter {
 
   private void writeData(final Object element, final List<ByteOutputContext> pipeList) {
     pipeList.forEach(pipe -> {
-      try (final ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
+      try (ByteOutputContext.ByteOutputStream pipeToWriteTo = pipe.newOutputStream()) {
         pipeToWriteTo.writeElement(element, serializer);
       } catch (IOException e) {
         throw new RuntimeException(e); // For now we crash the executor on IOException

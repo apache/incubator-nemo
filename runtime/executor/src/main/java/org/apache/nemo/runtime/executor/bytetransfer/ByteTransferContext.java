@@ -113,7 +113,7 @@ public abstract class ByteTransferContext {
    *
    * @param cause the cause of exception handling
    */
-  public abstract void onChannelError(@Nullable final Throwable cause);
+  public abstract void onChannelError(@Nullable Throwable cause);
 
   /**
    * Sets exception.
