@@ -44,8 +44,6 @@ public class Event implements Serializable {
     return timestamp;
   }
 
-  ;
-
   /**
    * Set timestamp.
    *
