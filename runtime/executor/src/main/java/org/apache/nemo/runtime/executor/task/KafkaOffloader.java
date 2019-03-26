@@ -67,7 +67,6 @@ public final class KafkaOffloader {
   private final AtomicLong prevOffloadStartTime;
   private final AtomicLong prevOffloadEndTime;
 
-
   public KafkaOffloader(final byte[] serializedDag,
                         final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
                         final Map<String, List<String>> taskOutgoingEdges,
@@ -108,7 +107,6 @@ public final class KafkaOffloader {
     if (kafkaUnboundedSource.getTopicPartitions().size() > 1) {
       throw new RuntimeException("Kafka has > 1 partitions...");
     }
-
 
     final TopicPartition topicPartition = (TopicPartition)
       kafkaUnboundedSource.getTopicPartitions().get(0);
@@ -154,6 +152,38 @@ public final class KafkaOffloader {
     return streamingWorkerService;
   }
 
+  private KafkaCheckpointMark createMergedCheckpointMarks(
+    final List<Pair<SourceVertexDataFetcher, UnboundedSource.CheckpointMark>> list) {
+    final List<KafkaCheckpointMark.PartitionMark> partitionMarks =
+      list.stream()
+        .map(pair -> {
+          final SourceVertexDataFetcher sourceVertexDataFetcher = pair.left();
+          // SEND checkpoint and unbounded source
+          final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
+          final KafkaCheckpointMark cmark;
+
+          if (sourceVertexDataFetcher.isStarted()) {
+            try {
+              cmark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
+            } catch (NullPointerException e) {
+              e.printStackTrace();
+              throw new RuntimeException("Null at creating merged checkpoint source " + readable + ", " + sourceVertexDataFetcher);
+            }
+          } else {
+            cmark = (KafkaCheckpointMark) pair.right();
+          }
+
+          return cmark.getPartitions().get(0);
+        })
+        .collect(Collectors.toList());
+
+    partitionMarks.sort((o1, o2) -> {
+        return o1.getPartition() - o2.getPartition();
+    });
+
+    return new KafkaCheckpointMark(partitionMarks, Optional.empty());
+  }
+
   public synchronized void handleKafkaOffloadingOutput(final KafkaOffloadingOutput output) {
     // handling checkpoint mark to resume the kafka source reading
     // Serverless -> VM
@@ -176,9 +206,47 @@ public final class KafkaOffloader {
         throw new RuntimeException("Invalid task status: " + taskStatus);
       }
 
+      LOG.info("Merge {} sources into one", reExecutedDataFetchers.size());
       // TODO: merge sources!!
-      // 1) remove reExecute data fetchers
-      // 2) merge all of them into one!
+      // 1) merge all of them into one!
+      final UnboundedSource.CheckpointMark mergedCheckpoint = createMergedCheckpointMarks(reExecutedDataFetchers);
+      final SourceVertexDataFetcher oSourceVertexDataFetcher = sourceVertexDataFetchers.get(0);
+      final BeamUnboundedSourceVertex oSourceVertex = (BeamUnboundedSourceVertex) oSourceVertexDataFetcher.getDataSource();
+      final UnboundedSource oSource = oSourceVertex.getUnboundedSource();
+
+      final UnboundedSourceReadable newReadable =
+        new UnboundedSourceReadable(oSource, null, mergedCheckpoint);
+
+      oSourceVertexDataFetcher.setReadable(newReadable);
+      availableFetchers.add(oSourceVertexDataFetcher);
+
+      // 2) remove reExecute data fetchers
+      // close all data fetchers
+      reExecutedDataFetchers.stream().forEach(pair -> {
+        if (!availableFetchers.remove(pair.left())) {
+          pendingFetchers.remove(pair.left());
+        }
+      });
+
+      final List<SourceVertexDataFetcher> closeExecutors =
+        reExecutedDataFetchers.stream()
+        .map(Pair::left)
+        .collect(Collectors.toList());
+
+      closeService.execute(() -> {
+        closeExecutors.stream().forEach(dataFetcher -> {
+          if (dataFetcher.isStarted()) {
+            try {
+              dataFetcher.getReadable().close();
+            } catch (IOException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+          }
+        });
+      });
+
+      reExecutedDataFetchers.clear();
     }
   }
 

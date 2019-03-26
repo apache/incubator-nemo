@@ -130,6 +130,10 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
     private volatile boolean newSubStream = true;
     private volatile boolean closed = false;
 
+    public Channel getChannel() {
+      return channel;
+    }
+
     @Override
     public void write(final int i) throws IOException {
       final ByteBuf byteBuf = channel.alloc().ioBuffer(1, 1);

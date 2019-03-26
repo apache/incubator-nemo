@@ -37,15 +37,18 @@ public final class HandleDataFetcher {
 
   private final int id;
 
+  private final UnboundedSource.CheckpointMark startCheckpointMark;
 
   public HandleDataFetcher(final int id,
                            final List<DataFetcher> fetchers,
-                           final OffloadingResultCollector resultCollector) {
+                           final OffloadingResultCollector resultCollector,
+                           final UnboundedSource.CheckpointMark startCheckpointMark) {
     LOG.info("Handle data fetcher start");
     this.id = id;
     this.executorService = Executors.newSingleThreadExecutor();
     this.resultCollector = resultCollector;
     this.fetchers = fetchers;
+    this.startCheckpointMark = startCheckpointMark;
     this.pollingTrigger.scheduleAtFixedRate(() -> {
       pollingTime = true;
     }, pollingInterval, pollingInterval, TimeUnit.MILLISECONDS);
@@ -155,10 +158,16 @@ public final class HandleDataFetcher {
 
       // send checkpoint mark to the VM!!
       final SourceVertexDataFetcher dataFetcher = (SourceVertexDataFetcher) fetchers.get(0);
-      final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
-      final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
-      LOG.info("Send checkpointmark {} to vm: {}", id, checkpointMark);
-      resultCollector.collector.emit(new KafkaOffloadingOutput(id, checkpointMark));
+      if (dataFetcher.isStarted()) {
+        final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
+        final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
+        LOG.info("Send checkpointmark {} to vm: {}", checkpointMark, id);
+        resultCollector.collector.emit(new KafkaOffloadingOutput(id, checkpointMark));
+      } else {
+        LOG.info("Send checkpointmark {} to vm: {}", startCheckpointMark, id);
+        resultCollector.collector.emit(new KafkaOffloadingOutput(id, startCheckpointMark));
+      }
+
 
       // Close all data fetchers
       fetchers.forEach(fetcher -> {
