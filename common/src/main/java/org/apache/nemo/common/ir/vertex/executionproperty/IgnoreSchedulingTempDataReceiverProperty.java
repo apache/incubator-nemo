@@ -52,6 +52,7 @@ public final class IgnoreSchedulingTempDataReceiverProperty extends VertexExecut
 
   /**
    * Static method exposing the constructor.
+   * This is used by reflection by the MetricUtils class.
    *
    * @param value the boolean value. This is always true by default for this property.
    * @return the new execution property.

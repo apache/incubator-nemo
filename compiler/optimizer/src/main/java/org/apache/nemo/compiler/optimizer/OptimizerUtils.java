@@ -22,17 +22,12 @@ package org.apache.nemo.compiler.optimizer;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.exception.InvalidParameterException;
-import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.exception.UnsupportedMethodException;
-
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Utility class for optimizer.
  */
 public final class OptimizerUtils {
-  private static final BlockingQueue<String> MESSAGE_BUFFER = new LinkedBlockingQueue<>();
 
   /**
    * Private constructor.
@@ -41,29 +36,12 @@ public final class OptimizerUtils {
   }
 
   /**
-   * @param message push the message to the message buffer.
-   */
-  public static void pushMessageBuffer(final String message) {
-    MESSAGE_BUFFER.add(message);
-  }
-
-  /**
-   * @return the message buffer.
-   */
-  public static String takeFromMessageBuffer() {
-    try {
-      return MESSAGE_BUFFER.take();
-    } catch (InterruptedException e) {
-      throw new MetricException("Interrupted while waiting for message: " + e);
-    }
-  }
-
-  /**
    * Restore the formatted string into a pair of vertex/edge id and the execution property.
    * @param string the formatted string.
    * @return a pair of vertex/edge id and the execution property key index.
    */
   public static Pair<String, Integer> stringToIdAndEPKeyIndex(final String string) {
+    // Formatted into 9 digits: 0:vertex/edge 1-5:ID 5-9:EP Index.
     if (string.length() != 9) {
       throw new InvalidParameterException("The metric data should follow the format of "
         + "[0]: index indicating vertex/edge, [1-4]: id of the component, and [5-8]: EP Key index. Current: " + string);

@@ -22,10 +22,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.exception.CompileTimeOptimizationException;
-import org.apache.nemo.common.exception.IllegalEdgeOperationException;
-import org.apache.nemo.common.exception.IllegalVertexOperationException;
-import org.apache.nemo.common.exception.InvalidParameterException;
+import org.apache.nemo.common.exception.*;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
@@ -40,6 +37,8 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Pass for applying XGBoost optimizations.
@@ -47,6 +46,8 @@ import java.util.Map;
 @Annotates()
 public final class XGBoostPass extends AnnotatingPass {
   private static final Logger LOG = LoggerFactory.getLogger(XGBoostPass.class.getName());
+
+  private static final BlockingQueue<String> MESSAGE_QUEUE = new LinkedBlockingQueue<>();
 
   /**
    * Default constructor.
@@ -58,16 +59,18 @@ public final class XGBoostPass extends AnnotatingPass {
   @Override
   public IRDAG apply(final IRDAG dag) {
     try {
-      final String message = OptimizerUtils.takeFromMessageBuffer();
+      final String message = XGBoostPass.takeMessage();
       LOG.info("Received message from the client: {}", message);
 
       if (message.isEmpty()) {
+        LOG.info("No optimization included in the message. Returning the original dag.");
         return dag;
       } else {
         ObjectMapper mapper = new ObjectMapper();
         List<Map<String, String>> listOfMap =
           mapper.readValue(message, new TypeReference<List<Map<String, String>>>() {
           });
+        // Formatted into 9 digits: 0:vertex/edge 1-5:ID 5-9:EP Index.
         listOfMap.stream().filter(m -> m.get("feature").length() == 9).forEach(m -> {
           final Pair<String, Integer> idAndEPKey = OptimizerUtils.stringToIdAndEPKeyIndex(m.get("feature"));
           LOG.info("Tuning: {} of {} should be {} than {}",
@@ -104,5 +107,23 @@ public final class XGBoostPass extends AnnotatingPass {
     }
 
     return dag;
+  }
+
+  /**
+   * @param message push the message to the message queue.
+   */
+  public static void pushMessage(final String message) {
+    MESSAGE_QUEUE.add(message);
+  }
+
+  /**
+   * @return the message from the blocking queue.
+   */
+  private static String takeMessage() {
+    try {
+      return MESSAGE_QUEUE.take();
+    } catch (InterruptedException e) {
+      throw new MetricException("Interrupted while waiting for message: " + e);
+    }
   }
 }

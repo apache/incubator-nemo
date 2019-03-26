@@ -246,6 +246,7 @@ ids = le.fit_transform(col)
 col_to_id = dict(zip(col, ids))
 id_to_col = dict(zip(ids, col))
 
+## PREPROCESSING DATA FOR TAINING
 encoded_rows = encode_processed_rows(processed_rows, col_to_id)
 write_to_file('nemo_optimization.out', encoded_rows)
 # write_to_file('decode_test', decode_rows(encoded_rows, id_to_col))
@@ -258,14 +259,14 @@ allowance = avg_20_duration // 25  # 4%
 row_size = len(processed_rows)
 print("total_rows: ", row_size)
 
-## TRAIN
+## TRAIN THE MODEL (REGRESSION)
 dtrain = ddata.slice([i for i in range(0, row_size) if i%6 != 5])  # mod is not 5
 print("train_rows: ", dtrain.num_row())
 dtest = ddata.slice([i for i in range(0, row_size) if i%6 == 5])  # mod is 5
 print("test_rows: ", dtest.num_row())
 labels = dtest.get_label()
 
-## Existing booster
+## Load existing booster, if it exists
 bst_opt = xgb.Booster(model_file=modelname) if Path(modelname).is_file() else None
 preds_opt = bst_opt.predict(dtest) if bst_opt is not None else None
 error_opt = (sum(1 for i in range(len(preds_opt)) if abs(preds_opt[i] - labels[i]) > allowance) / float(len(preds_opt))) if preds_opt is not None else 1
@@ -289,6 +290,7 @@ for lr in learning_rates:
     bst.save_model(modelname)
 
 ## Let's now use bst_opt
+## Check out the histogram by uncommenting the lines below
 # fscore = bst_opt.get_fscore()
 # sorted_fscore = sorted(fscore.items(), key=lambda kv: kv[1])
 # for i in range(len(sorted_fscore)):

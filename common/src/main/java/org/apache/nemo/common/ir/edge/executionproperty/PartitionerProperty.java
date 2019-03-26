@@ -71,6 +71,7 @@ public final class PartitionerProperty
 
   /**
    * Static constructor.
+   * This is used by reflection by the MetricUtils class.
    * @param value the Pair value.
    * @return the new execution property.
    */

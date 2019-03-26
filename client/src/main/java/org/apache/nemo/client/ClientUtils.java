@@ -45,7 +45,7 @@ public final class ClientUtils {
    * @param message the message received from the driver.
    */
   static void launchOptimizationHandler(final ControlMessage.DriverToClientMessage message,
-                                                final DriverRPCServer driverRPCServer) {
+                                        final DriverRPCServer driverRPCServer) {
     switch (message.getOptimizationType()) {
       case "xgboost":
         new Thread(() ->

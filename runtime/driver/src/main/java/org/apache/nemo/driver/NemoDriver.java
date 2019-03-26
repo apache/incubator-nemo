@@ -23,6 +23,7 @@ import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.compiler.optimizer.OptimizerUtils;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.XGBoostPass;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -203,7 +204,7 @@ public final class NemoDriver {
   private void notificationHandler(final ControlMessage.ClientToDriverMessage message) {
     switch (message.getMessage().getType()) {
       case "xgboost":
-        OptimizerUtils.pushMessageBuffer(message.getMessage().getData());
+        XGBoostPass.pushMessage(message.getMessage().getData());
         break;
       default:
         break;
