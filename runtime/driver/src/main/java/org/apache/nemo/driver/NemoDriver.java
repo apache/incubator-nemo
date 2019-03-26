@@ -21,7 +21,6 @@ package org.apache.nemo.driver;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.common.ir.IdManager;
-import org.apache.nemo.compiler.optimizer.OptimizerUtils;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSitePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.XGBoostPass;
 import org.apache.nemo.conf.JobConf;
