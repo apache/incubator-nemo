@@ -124,7 +124,7 @@ public final class HandleDataFetcher {
             }
           }
 
-          if (processedCnt > 0) {
+          if (!resultCollector.result.isEmpty()) {
             // flush data
             resultCollector.flush(-1);
           }
@@ -146,7 +146,7 @@ public final class HandleDataFetcher {
       LOG.info("Closed handle datafetcher");
 
       if (closed) {
-        if (processedCnt > 0) {
+        if (!resultCollector.result.isEmpty()) {
           // flush data
           resultCollector.flush(-1);
         }

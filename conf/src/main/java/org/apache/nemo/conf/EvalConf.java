@@ -77,7 +77,7 @@ public final class EvalConf {
   public static final class IsLocalSource implements Name<Boolean> {
   }
 
-  @NamedParameter(short_name = "source_parallelism", default_value = "1")
+  @NamedParameter(short_name = "source_parallelism", default_value = "4")
   public static final class SourceParallelism implements Name<Integer> {
   }
 

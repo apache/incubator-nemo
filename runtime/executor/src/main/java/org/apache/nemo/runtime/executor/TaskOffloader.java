@@ -31,10 +31,10 @@ public final class TaskOffloader {
   private final Queue<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
-  private long slackTime = 15000;
+  private long slackTime = 5000;
 
 
-  private final int windowSize = 5;
+  private final int windowSize = 2;
   private final DescriptiveStatistics cpuAverage;
   private final DescriptiveStatistics eventAverage;
   private final EvalConf evalConf;
@@ -87,6 +87,63 @@ public final class TaskOffloader {
     return taskExecutors;
   }
 
+  private int calculateOFfloadedTasks() {
+    int cnt = 0;
+    for (final Pair<TaskExecutor, Long> offloadExecutor : offloadedExecutors) {
+      if (offloadExecutor.left().isOffloaded()) {
+        cnt += 1;
+      }
+    }
+    return cnt;
+  }
+
+  private int findTasksThatProcessEvents() {
+    int cnt = 0;
+    for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+      if (taskExecutor.isRunning() || taskExecutor.isOffloadPending()) {
+        cnt += 1;
+      }
+    }
+    return cnt;
+  }
+
+  final class TaskStatInfo {
+    public final int running;
+    public final int offload_pending;
+    public final int offloaded;
+    public final int deoffloaded;
+    public TaskStatInfo(final int running, final int offload_pending, final int offloaded, final int deoffloaded) {
+      this.running = running;
+      this.offload_pending = offload_pending;
+      this.offloaded = offloaded;
+      this.deoffloaded = deoffloaded;
+    }
+  }
+
+  private TaskStatInfo measureTaskStatInfo() {
+    int running = 0;
+    int offpending = 0;
+    int offloaded = 0;
+    int deoffpending = 0;
+     for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+      if (taskExecutor.isRunning()) {
+        running += 1;
+      } else if (taskExecutor.isOffloadPending()) {
+        offpending += 1;
+      } else if (taskExecutor.isOffloaded()) {
+        offloaded += 1;
+      } else if (taskExecutor.isDeoffloadPending()) {
+        deoffpending += 1;
+      }
+    }
+
+    LOG.info("Task running {}, offload_pending: {}, offloaded: {}, deoffload_pending: {}, total: {}",
+      running, offpending, offloaded, deoffpending, taskExecutorMap.size());
+
+     return new TaskStatInfo(running, offpending, offloaded, deoffpending);
+  }
+
+
   public void start() {
     this.monitorThread.scheduleAtFixedRate(() -> {
       cpuAverage.addValue(profiler.getCpuLoad());
@@ -100,22 +157,27 @@ public final class TaskOffloader {
       LOG.info("Current cpu load: {}, # events: {}, consecutive: {}/{}, threshold: {}",
         cpuMean, eventMean, currConsecutive, k, threshold);
 
+
       if (cpuMean < 0.94 && cpuMean > 0.03 && eventMean > 100) {
         // prevent bias
         LOG.info("Add model to {} / {}", cpuMean, eventMean);
         cpuEventModel.add(cpuMean, (int) eventMean);
       }
 
-      if (cpuMean > threshold) {
-        if (eventMean > evalConf.eventThreshold) {
+      if (cpuMean > threshold && eventMean > evalConf.eventThreshold) {
+
+        final TaskStatInfo taskStatInfo = measureTaskStatInfo();
+        if (taskStatInfo.running > evalConf.minVmTask) {
+
           // offload if it is bursty state
           // we should offload some task executors
           final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
           final double ratio = desirableEvents / eventMean;
-          final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
-          final int adjustVmCnt = Math.max(evalConf.minVmTask,
-            Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors)));
-          final int offloadingCnt = numExecutors - adjustVmCnt;
+          final int numExecutors = Math.min(taskExecutorMap.size(), taskStatInfo.running + taskStatInfo.offload_pending);
+          //final int adjustVmCnt = Math.max(evalConf.minVmTask,
+          //  Math.min(numExecutors, (int) Math.ceil(ratio * numExecutors)));
+          final int adjustVmCnt = (int) ((evalConf.eventThreshold / eventMean) * numExecutors);
+          final int offloadingCnt = Math.max(0, numExecutors - adjustVmCnt - taskStatInfo.offload_pending);
 
           LOG.info("Start desirable events: {} for load {}, total: {}, desirableVm: {}, currVm: {}, " +
               "offloadingCnt: {}, offloadedExecutors: {}",
@@ -123,9 +185,15 @@ public final class TaskOffloader {
             offloadingCnt, offloadedExecutors.size());
 
           int cnt = 0;
-          final Collection<TaskExecutor> offloadableTasks = findOffloadableTasks();
-          for (final TaskExecutor taskExecutor : offloadableTasks) {
-            if (taskExecutor.isStateless()) {
+          final List<TaskExecutor> taskExecutors = new ArrayList<>(taskExecutorMap.keySet());
+          Collections.sort(taskExecutors, new Comparator<TaskExecutor>() {
+            @Override
+            public int compare(TaskExecutor o1, TaskExecutor o2) {
+              return (int)(o1.getPrevOffloadEndTime().get() - o2.getPrevOffloadEndTime().get());
+            }
+          });
+          for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+            if (taskExecutor.isStateless() && taskExecutor.isRunning()) {
               if (offloadingCnt == cnt) {
                 break;
               }
@@ -137,15 +205,19 @@ public final class TaskOffloader {
             }
           }
         }
-      } else {
+      } else if (cpuMean < threshold && eventMean < evalConf.eventThreshold) {
         if (!offloadedExecutors.isEmpty()) {
+          final TaskStatInfo taskStatInfo = measureTaskStatInfo();
           // if there are offloaded executors
           // we should finish the offloading
           final int desirableEvents = cpuEventModel.desirableCountForLoad(threshold);
           final double ratio = desirableEvents / eventMean;
-          final int numExecutors = taskExecutorMap.keySet().size() - offloadedExecutors.size();
-          final int adjustVmCnt = Math.min(taskExecutorMap.size(), (int) Math.ceil(ratio * numExecutors));
-          final int deOffloadingCnt = adjustVmCnt - numExecutors;
+          final int offloadedCnt = calculateOFfloadedTasks();
+          final int numExecutors = Math.max(
+            Math.min(taskExecutorMap.size(), taskStatInfo.running + taskStatInfo.offload_pending), 1);
+          //final int adjustVmCnt = Math.min(taskExecutorMap.size(), (int) Math.ceil(ratio * numExecutors));
+          final int adjustVmCnt = (int) ((evalConf.eventThreshold / eventMean) * numExecutors);
+          final int deOffloadingCnt = Math.max(0, adjustVmCnt - numExecutors - taskStatInfo.deoffloaded);
 
           LOG.info("Stop desirable events: {} for load {}, total: {}, desriableVm: {}, currVm: {}, " +
               "deoffloadingCnt: {}, offloadedExecutors: {}",

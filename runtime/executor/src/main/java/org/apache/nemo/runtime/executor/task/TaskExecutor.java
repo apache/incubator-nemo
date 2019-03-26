@@ -64,6 +64,8 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
@@ -159,8 +161,19 @@ public final class TaskExecutor {
   private final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory;
 
   private final AtomicInteger processedCnt = new AtomicInteger(0);
+  private final AtomicLong prevOffloadStartTime = new AtomicLong(System.currentTimeMillis());
+  private final AtomicLong prevOffloadEndTime = new AtomicLong(System.currentTimeMillis());
 
   private boolean isStateless = true;
+
+  public enum Status {
+    RUNNING,
+    OFFLOAD_PENDING,
+    OFFLOADED,
+    DEOFFLOAD_PENDING
+  }
+
+  private final AtomicReference<Status> status = new AtomicReference<>(Status.RUNNING);
 
   /**
    * Constructor.
@@ -271,6 +284,22 @@ public final class TaskExecutor {
     }
   }
 
+  public boolean isRunning() {
+    return status.get() == Status.RUNNING;
+  }
+
+  public boolean isOffloadPending() {
+    return status.get() == Status.OFFLOAD_PENDING;
+  }
+
+  public boolean isOffloaded() {
+    return status.get() == Status.OFFLOADED;
+  }
+
+  public boolean isDeoffloadPending() {
+    return status.get() == Status.DEOFFLOAD_PENDING;
+  }
+
   public String getId() {
     return taskId;
   }
@@ -281,6 +310,14 @@ public final class TaskExecutor {
 
   public AtomicInteger getProcessedCnt() {
     return processedCnt;
+  }
+
+  public AtomicLong getPrevOffloadStartTime() {
+    return prevOffloadStartTime;
+  }
+
+  public AtomicLong getPrevOffloadEndTime() {
+    return prevOffloadEndTime;
   }
 
   private void handleOffloadingRequestEvent() throws InterruptedException {
@@ -771,7 +808,10 @@ public final class TaskExecutor {
         sourceVertexDataFetchers,
         taskId,
         availableFetchers,
-        pendingFetchers));
+        pendingFetchers,
+        status,
+        prevOffloadStartTime,
+        prevOffloadEndTime));
     } else {
       kafkaOffloader = Optional.empty();
     }
