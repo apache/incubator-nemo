@@ -119,7 +119,7 @@ public final class DataUtil {
         // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
         // inner buffer directly, which can be an unfinished(not flushed) buffer.
         wrappedStream.close();
-        // Note that serializedBytes include invalid bytes. So we have to use it with the actualLength whenever needed
+        // Note that serializedBytes include invalid bytes. So we have to use it with the actualLength by using size() whenever needed
         final byte[] serializedBytes = bytesOutputStream.getBufDirectly();
         final int actualLength = bytesOutputStream.size();
         serializedPartitions.add(
