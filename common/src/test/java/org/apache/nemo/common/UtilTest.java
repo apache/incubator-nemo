@@ -18,13 +18,13 @@
  */
 package org.apache.nemo.common;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.nio.file.Paths;
 import java.util.function.IntPredicate;
 
-import org.junit.Assert;
-import org.junit.Test;
+import static junit.framework.TestCase.assertEquals;
 
 public class UtilTest {
   @Test

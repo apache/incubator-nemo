@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class UnknownFailureCauseException extends RuntimeException {
   /**
    * UnknownFailureCauseException.
+   *
    * @param cause cause
    */
   public UnknownFailureCauseException(final Throwable cause) {

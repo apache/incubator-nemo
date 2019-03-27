@@ -41,7 +41,7 @@ public final class BlockState {
     // From IN_PROGRESS
     stateMachineBuilder.addTransition(State.IN_PROGRESS, State.AVAILABLE, "The block is successfully created");
     stateMachineBuilder.addTransition(State.IN_PROGRESS, State.NOT_AVAILABLE,
-        "The block is lost before being created");
+      "The block is lost before being created");
 
     // From AVAILABLE
     stateMachineBuilder.addTransition(State.AVAILABLE, State.NOT_AVAILABLE, "The block is not available");

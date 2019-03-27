@@ -39,17 +39,17 @@ public final class UpfrontCloningPass extends AnnotatingPass {
   @Override
   public IRDAG apply(final IRDAG dag) {
     dag.getVertices().stream()
-        .filter(vertex -> dag.getIncomingEdgesOf(vertex.getId())
-          .stream()
-          // TODO #198: Handle Un-cloneable Beam Sink Operators
-          // only shuffle receivers (for now... as particular Beam sink operators fail when cloned)
-          .anyMatch(edge ->
-            edge.getPropertyValue(CommunicationPatternProperty.class)
-              .orElseThrow(() -> new IllegalStateException())
-              .equals(CommunicationPatternProperty.Value.Shuffle))
-          )
-        .forEach(vertex -> vertex.setProperty(
-          ClonedSchedulingProperty.of(new ClonedSchedulingProperty.CloneConf()))); // clone upfront, always
+      .filter(vertex -> dag.getIncomingEdgesOf(vertex.getId())
+        .stream()
+        // TODO #198: Handle Un-cloneable Beam Sink Operators
+        // only shuffle receivers (for now... as particular Beam sink operators fail when cloned)
+        .anyMatch(edge ->
+          edge.getPropertyValue(CommunicationPatternProperty.class)
+            .orElseThrow(() -> new IllegalStateException())
+            .equals(CommunicationPatternProperty.Value.Shuffle))
+      )
+      .forEach(vertex -> vertex.setProperty(
+        ClonedSchedulingProperty.of(new ClonedSchedulingProperty.CloneConf()))); // clone upfront, always
     return dag;
   }
 }

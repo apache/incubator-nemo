@@ -43,9 +43,7 @@ import org.junit.Test;
 
 import java.util.*;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 
 public final class DoFnTransformTest {
@@ -342,6 +340,7 @@ public final class DoFnTransformTest {
 
   /**
    * Identitiy do fn.
+   *
    * @param <T> type
    */
   private static class IdentityDoFn<T> extends DoFn<T, T> {
@@ -354,6 +353,7 @@ public final class DoFnTransformTest {
 
   /**
    * Side input do fn.
+   *
    * @param <T> type
    */
   private static class SimpleSideInputDoFn<T> extends DoFn<T, String> {

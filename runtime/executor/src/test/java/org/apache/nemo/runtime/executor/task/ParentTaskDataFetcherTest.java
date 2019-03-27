@@ -24,7 +24,6 @@ import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.BlockInputReader;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
-import org.apache.nemo.runtime.executor.datatransfer.InputWatermarkManager;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -32,7 +31,10 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
@@ -48,7 +50,7 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({InputReader.class, VertexHarness.class, BlockInputReader.class})
 public final class ParentTaskDataFetcherTest {
 
-  @Test(timeout=5000)
+  @Test(timeout = 5000)
   public void testEmpty() throws Exception {
     final List<String> empty = new ArrayList<>(0); // empty data
     final InputReader inputReader = generateInputReader(generateCompletableFuture(empty.iterator()));
@@ -58,7 +60,7 @@ public final class ParentTaskDataFetcherTest {
     assertEquals(Finishmark.getInstance(), fetcher.fetchDataElement());
   }
 
-  @Test(timeout=5000)
+  @Test(timeout = 5000)
   public void testNull() throws Exception {
     final List<String> oneNull = new ArrayList<>(1); // empty data
     oneNull.add(null);
@@ -71,7 +73,7 @@ public final class ParentTaskDataFetcherTest {
     assertEquals(null, fetcher.fetchDataElement());
   }
 
-  @Test(timeout=5000)
+  @Test(timeout = 5000)
   public void testNonEmpty() throws Exception {
     // InputReader
     final String singleData = "Single";
@@ -86,7 +88,7 @@ public final class ParentTaskDataFetcherTest {
     assertEquals(singleData, fetcher.fetchDataElement());
   }
 
-  @Test(timeout=5000, expected = IOException.class)
+  @Test(timeout = 5000, expected = IOException.class)
   public void testErrorWhenRPC() throws Exception {
     // Failing future
     final CompletableFuture failingFuture = CompletableFuture.runAsync(() -> {
@@ -108,7 +110,7 @@ public final class ParentTaskDataFetcherTest {
     assertTrue(failingFuture.isCompletedExceptionally());
   }
 
-  @Test(timeout=5000, expected = IOException.class)
+  @Test(timeout = 5000, expected = IOException.class)
   public void testErrorWhenReadingData() throws Exception {
     // Failed iterator
     final InputReader inputReader = generateInputReader(generateCompletableFuture(new FailedIterator()));
@@ -134,7 +136,7 @@ public final class ParentTaskDataFetcherTest {
   }
 
   private CompletableFuture generateCompletableFuture(final Iterator iterator) {
-   return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(iterator));
+    return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(iterator));
   }
 
   private class FailedIterator implements Iterator {

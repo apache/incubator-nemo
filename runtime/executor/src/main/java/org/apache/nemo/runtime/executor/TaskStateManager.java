@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor;
 
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
 import org.apache.nemo.common.exception.UnknownFailureCauseException;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -26,14 +27,12 @@ import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.metric.StateTransitionEvent;
 import org.apache.nemo.runtime.common.plan.Task;
-
-import java.util.*;
-
 import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Optional;
 
 /**
  * Manages the states related to a task.
@@ -60,24 +59,25 @@ public final class TaskStateManager {
     this.metricMessageSender = metricMessageSender;
 
     metricMessageSender.send("TaskMetric", taskId,
-        "containerId", SerializationUtils.serialize(executorId));
+      "containerId", SerializationUtils.serialize(executorId));
     metricMessageSender.send("TaskMetric", taskId,
-        "scheduleAttempt", SerializationUtils.serialize(attemptIdx));
+      "scheduleAttempt", SerializationUtils.serialize(attemptIdx));
   }
 
   /**
    * Updates the state of the task.
-   * @param newState of the task.
+   *
+   * @param newState        of the task.
    * @param vertexPutOnHold the vertex put on hold.
-   * @param cause only provided as non-empty upon recoverable failures.
+   * @param cause           only provided as non-empty upon recoverable failures.
    */
   public synchronized void onTaskStateChanged(final TaskState.State newState,
                                               final Optional<String> vertexPutOnHold,
                                               final Optional<TaskState.RecoverableTaskFailureCause> cause) {
     metricMessageSender.send("TaskMetric", taskId,
-        "stateTransitionEvent", SerializationUtils.serialize(new StateTransitionEvent<>(
-            System.currentTimeMillis(), null, newState
-        )));
+      "stateTransitionEvent", SerializationUtils.serialize(new StateTransitionEvent<>(
+        System.currentTimeMillis(), null, newState
+      )));
 
     switch (newState) {
       case EXECUTING:
@@ -106,19 +106,20 @@ public final class TaskStateManager {
 
   /**
    * Notifies the change in task state to master.
-   * @param newState of the task.
+   *
+   * @param newState        of the task.
    * @param vertexPutOnHold the vertex put on hold.
-   * @param cause only provided as non-empty upon recoverable failures.
+   * @param cause           only provided as non-empty upon recoverable failures.
    */
   private void notifyTaskStateToMaster(final TaskState.State newState,
                                        final Optional<String> vertexPutOnHold,
                                        final Optional<TaskState.RecoverableTaskFailureCause> cause) {
     final ControlMessage.TaskStateChangedMsg.Builder msgBuilder =
-        ControlMessage.TaskStateChangedMsg.newBuilder()
-            .setExecutorId(executorId)
-            .setTaskId(taskId)
-            .setAttemptIdx(attemptIdx)
-            .setState(convertState(newState));
+      ControlMessage.TaskStateChangedMsg.newBuilder()
+        .setExecutorId(executorId)
+        .setTaskId(taskId)
+        .setAttemptIdx(attemptIdx)
+        .setState(convertState(newState));
     if (vertexPutOnHold.isPresent()) {
       msgBuilder.setVertexPutOnHoldId(vertexPutOnHold.get());
     }
@@ -128,12 +129,12 @@ public final class TaskStateManager {
 
     // Send taskStateChangedMsg to master!
     persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.TaskStateChanged)
-            .setTaskStateChangedMsg(msgBuilder.build())
-            .build());
+      ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.TaskStateChanged)
+        .setTaskStateChangedMsg(msgBuilder.build())
+        .build());
   }
 
   private ControlMessage.TaskStateFromExecutor convertState(final TaskState.State state) {
@@ -156,7 +157,7 @@ public final class TaskStateManager {
   }
 
   private ControlMessage.RecoverableFailureCause convertFailureCause(
-      final TaskState.RecoverableTaskFailureCause cause) {
+    final TaskState.RecoverableTaskFailureCause cause) {
     switch (cause) {
       case INPUT_READ_FAILURE:
         return ControlMessage.RecoverableFailureCause.InputReadFailure;
@@ -164,7 +165,7 @@ public final class TaskStateManager {
         return ControlMessage.RecoverableFailureCause.OutputWriteFailure;
       default:
         throw new UnknownFailureCauseException(
-            new Throwable("The failure cause for the recoverable failure is unknown"));
+          new Throwable("The failure cause for the recoverable failure is unknown"));
     }
   }
 

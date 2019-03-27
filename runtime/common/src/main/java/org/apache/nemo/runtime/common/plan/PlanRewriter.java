@@ -24,14 +24,14 @@ package org.apache.nemo.runtime.common.plan;
 public interface PlanRewriter {
   /**
    * @param currentPhysicalPlan to rewrite.
-   * @param messageId of the rewrite.
+   * @param messageId           of the rewrite.
    * @return physical plan.
    */
   PhysicalPlan rewrite(final PhysicalPlan currentPhysicalPlan, final int messageId);
 
   /**
    * @param messageId of the rewrite.
-   * @param data to accumulate.
+   * @param data      to accumulate.
    */
   void accumulate(final int messageId, final Object data);
 }

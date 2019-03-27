@@ -22,7 +22,10 @@ import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
-import org.apache.nemo.common.ir.edge.executionproperty.*;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
@@ -30,7 +33,10 @@ import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -80,6 +86,7 @@ public final class BlockInputReader implements InputReader {
 
   /**
    * See {@link RuntimeIdManager#generateBlockIdWildcard(String, int)} for information on block wildcards.
+   *
    * @param producerTaskIndex to use.
    * @return wildcard block id that corresponds to "ANY" task attempt of the task index.
    */

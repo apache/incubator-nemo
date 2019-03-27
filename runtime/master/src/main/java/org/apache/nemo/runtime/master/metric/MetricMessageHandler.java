@@ -28,8 +28,9 @@ public interface MetricMessageHandler {
 
   /**
    * Handle the received metric message.
-   * @param metricType a given type for the metric (ex. TaskMetric).
-   * @param metricId  id of the metric.
+   *
+   * @param metricType  a given type for the metric (ex. TaskMetric).
+   * @param metricId    id of the metric.
    * @param metricField field name of the metric.
    * @param metricValue serialized metric data value.
    */

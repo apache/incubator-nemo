@@ -40,18 +40,18 @@ public final class DefaultDataPersistencePass extends AnnotatingPass {
   @Override
   public IRDAG apply(final IRDAG dag) {
     dag.topologicalDo(irVertex ->
-        dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          if (!irEdge.getPropertyValue(DataPersistenceProperty.class).isPresent()) {
-            final DataStoreProperty.Value dataStoreValue
-                = irEdge.getPropertyValue(DataStoreProperty.class).get();
-            if (DataStoreProperty.Value.MemoryStore.equals(dataStoreValue)
-                || DataStoreProperty.Value.SerializedMemoryStore.equals(dataStoreValue)) {
-              irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard));
-            } else {
-              irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
-            }
+      dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
+        if (!irEdge.getPropertyValue(DataPersistenceProperty.class).isPresent()) {
+          final DataStoreProperty.Value dataStoreValue
+            = irEdge.getPropertyValue(DataStoreProperty.class).get();
+          if (DataStoreProperty.Value.MemoryStore.equals(dataStoreValue)
+            || DataStoreProperty.Value.SerializedMemoryStore.equals(dataStoreValue)) {
+            irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Discard));
+          } else {
+            irEdge.setProperty(DataPersistenceProperty.of(DataPersistenceProperty.Value.Keep));
           }
-        }));
+        }
+      }));
     return dag;
   }
 }

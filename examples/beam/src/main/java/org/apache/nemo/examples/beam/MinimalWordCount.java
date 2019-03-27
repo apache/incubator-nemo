@@ -17,6 +17,7 @@
  * under the License.
  */
 package org.apache.nemo.examples.beam;
+
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -28,6 +29,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TypeDescriptors;
 
 import java.util.Arrays;
+
 /**
  * MinimalWordCount program from BEAM.
  */
@@ -37,8 +39,10 @@ public final class MinimalWordCount {
    */
   private MinimalWordCount() {
   }
+
   /**
    * Main function for the MinimalWordCount Beam program.
+   *
    * @param args arguments.
    */
   public static void main(final String[] args) {

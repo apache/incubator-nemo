@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.examples.beam;
 
-import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.CoderProviders;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -29,10 +28,12 @@ import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
-
-import java.util.*;
+import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.Map;
 
 /**
  * Sample Alternating Least Square application.
@@ -53,7 +54,7 @@ public final class AlternatingLeastSquareInefficient {
    * The loop updates the user matrix and the item matrix in each iteration.
    */
   public static final class UpdateUserAndItemMatrix extends LoopCompositeTransform<
-      PCollection<KV<Integer, float[]>>, PCollection<KV<Integer, float[]>>> {
+    PCollection<KV<Integer, float[]>>, PCollection<KV<Integer, float[]>>> {
     private final Integer numFeatures;
     private final Double lambda;
     private final PCollection<String> rawData;
@@ -61,9 +62,10 @@ public final class AlternatingLeastSquareInefficient {
 
     /**
      * Constructor of UpdateUserAndItemMatrix CompositeTransform.
-     * @param numFeatures number of features.
-     * @param lambda lambda.
-     * @param rawData PCollection of raw data.
+     *
+     * @param numFeatures    number of features.
+     * @param lambda         lambda.
+     * @param rawData        PCollection of raw data.
      * @param parsedItemData PCollection of parsed item data.
      */
     UpdateUserAndItemMatrix(final Integer numFeatures, final Double lambda,
@@ -79,25 +81,26 @@ public final class AlternatingLeastSquareInefficient {
     public PCollection<KV<Integer, float[]>> expand(final PCollection<KV<Integer, float[]>> itemMatrix) {
       // Parse data for user
       final PCollection<KV<Integer, KV<int[], float[]>>> parsedUserData = rawData
-          .apply(ParDo.of(new AlternatingLeastSquare.ParseLine(true)))
-          .apply(Combine.perKey(new AlternatingLeastSquare.TrainingDataCombiner()));
+        .apply(ParDo.of(new AlternatingLeastSquare.ParseLine(true)))
+        .apply(Combine.perKey(new AlternatingLeastSquare.TrainingDataCombiner()));
 
       // Make Item Matrix view.
       final PCollectionView<Map<Integer, float[]>> itemMatrixView = itemMatrix.apply(View.asMap());
       // Get new User Matrix
       final PCollectionView<Map<Integer, float[]>> userMatrixView = parsedUserData
-          .apply(ParDo.of(new AlternatingLeastSquare.CalculateNextMatrix(numFeatures, lambda, itemMatrixView))
-              .withSideInputs(itemMatrixView))
-          .apply(View.asMap());
+        .apply(ParDo.of(new AlternatingLeastSquare.CalculateNextMatrix(numFeatures, lambda, itemMatrixView))
+          .withSideInputs(itemMatrixView))
+        .apply(View.asMap());
       // return new Item Matrix
       return parsedItemData.apply(
-          ParDo.of(new AlternatingLeastSquare.CalculateNextMatrix(numFeatures, lambda, userMatrixView))
+        ParDo.of(new AlternatingLeastSquare.CalculateNextMatrix(numFeatures, lambda, userMatrixView))
           .withSideInputs(userMatrixView));
     }
   }
 
   /**
    * Main function for the ALS BEAM program.
+   *
    * @param args arguments.
    */
   public static void main(final String[] args) throws ClassNotFoundException {
@@ -126,29 +129,29 @@ public final class AlternatingLeastSquareInefficient {
 
     // Parse data for item
     final PCollection<KV<Integer, KV<int[], float[]>>> parsedItemData = rawData
-        .apply(ParDo.of(new AlternatingLeastSquare.ParseLine(false)))
-        .apply(Combine.perKey(new AlternatingLeastSquare.TrainingDataCombiner()));
+      .apply(ParDo.of(new AlternatingLeastSquare.ParseLine(false)))
+      .apply(Combine.perKey(new AlternatingLeastSquare.TrainingDataCombiner()));
 
     // Create Initial Item Matrix
     PCollection<KV<Integer, float[]>> itemMatrix = parsedItemData
-        .apply(ParDo.of(new DoFn<KV<Integer, KV<int[], float[]>>, KV<Integer, float[]>>() {
-          @ProcessElement
-          public void processElement(final ProcessContext c) throws Exception {
-            final float[] result = new float[numFeatures];
+      .apply(ParDo.of(new DoFn<KV<Integer, KV<int[], float[]>>, KV<Integer, float[]>>() {
+        @ProcessElement
+        public void processElement(final ProcessContext c) throws Exception {
+          final float[] result = new float[numFeatures];
 
-            final KV<Integer, KV<int[], float[]>> element = c.element();
-            final float[] ratings = element.getValue().getValue();
-            for (int i = 0; i < ratings.length; i++) {
-              result[0] += ratings[i];
-            }
-
-            result[0] /= ratings.length;
-            for (int i = 1; i < result.length; i++) {
-              result[i] = (float) (Math.random() * 0.01);
-            }
-            c.output(KV.of(element.getKey(), result));
+          final KV<Integer, KV<int[], float[]>> element = c.element();
+          final float[] ratings = element.getValue().getValue();
+          for (int i = 0; i < ratings.length; i++) {
+            result[0] += ratings[i];
           }
-        }));
+
+          result[0] /= ratings.length;
+          for (int i = 1; i < result.length; i++) {
+            result[i] = (float) (Math.random() * 0.01);
+          }
+          c.output(KV.of(element.getKey(), result));
+        }
+      }));
 
     // Iterations to update Item Matrix.
     for (Integer i = 0; i < numItr; i++) {

@@ -31,6 +31,7 @@ public class DataTransferEvent extends Event {
 
   /**
    * Get transfer type.
+   *
    * @return TransferType.
    */
   public final TransferType getTransferType() {
@@ -39,6 +40,7 @@ public class DataTransferEvent extends Event {
 
   /**
    * Set transfer type.
+   *
    * @param transferType TransferType to set.
    */
   public final void setTransferType(final TransferType transferType) {

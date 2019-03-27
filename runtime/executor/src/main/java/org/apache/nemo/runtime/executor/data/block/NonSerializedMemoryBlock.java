@@ -78,7 +78,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
     } else {
       try {
         final NonSerializedPartition<K> partition =
-            nonCommittedPartitionsMap.computeIfAbsent(key, absentKey -> new NonSerializedPartition<>(key));
+          nonCommittedPartitionsMap.computeIfAbsent(key, absentKey -> new NonSerializedPartition<>(key));
         partition.write(element);
       } catch (final IOException e) {
         throw new BlockWriteException(e);
@@ -118,7 +118,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
     if (!committed) {
       try {
         final Iterable<NonSerializedPartition<K>> convertedPartitions =
-            DataUtil.convertToNonSerPartitions(serializer, partitions);
+          DataUtil.convertToNonSerPartitions(serializer, partitions);
         writePartitions(convertedPartitions);
       } catch (final IOException e) {
         throw new BlockWriteException(e);

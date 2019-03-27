@@ -42,6 +42,7 @@ public final class ClientUtils {
 
   /**
    * Handler for the launch optimization message.
+   *
    * @param message the message received from the driver.
    */
   static void launchOptimizationHandler(final ControlMessage.DriverToClientMessage message,
@@ -65,6 +66,7 @@ public final class ClientUtils {
 
   /**
    * launches the XGBoost Script.
+   *
    * @param irDagSummary the IR DAG to run the script for.
    * @return the results file converted into string.
    */

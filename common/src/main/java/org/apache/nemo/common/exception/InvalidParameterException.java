@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class InvalidParameterException extends RuntimeException {
   /**
    * InvalidParameterException.
+   *
    * @param message message
    */
   public InvalidParameterException(final String message) {

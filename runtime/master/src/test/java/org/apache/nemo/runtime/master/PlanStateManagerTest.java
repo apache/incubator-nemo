@@ -25,10 +25,10 @@ import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.common.state.StageState;
 import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.reef.tang.Injector;
 import org.junit.Before;
@@ -37,7 +37,7 @@ import org.junit.runner.RunWith;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
@@ -56,7 +56,7 @@ public final class PlanStateManagerTest {
   @Before
   public void setUp() throws Exception {
     final Injector injector = LocalMessageEnvironment.forkInjector(LocalMessageDispatcher.getInjector(),
-        MessageEnvironment.MASTER_COMMUNICATION_ID);
+      MessageEnvironment.MASTER_COMMUNICATION_ID);
     metricMessageHandler = mock(MetricMessageHandler.class);
     injector.bindVolatileInstance(MetricMessageHandler.class, metricMessageHandler);
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
@@ -70,7 +70,7 @@ public final class PlanStateManagerTest {
   @Test
   public void testPhysicalPlanStateChanges() throws Exception {
     final PhysicalPlan physicalPlan =
-        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
+      TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
     planStateManager.updatePlan(physicalPlan, MAX_SCHEDULE_ATTEMPT);
 
     assertEquals(planStateManager.getPlanId(), "TestPlan");
@@ -101,7 +101,7 @@ public final class PlanStateManagerTest {
   @Test(timeout = 4000)
   public void testWaitUntilFinish() throws Exception {
     final PhysicalPlan physicalPlan =
-        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
+      TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
     planStateManager.updatePlan(physicalPlan, MAX_SCHEDULE_ATTEMPT);
 
     assertFalse(planStateManager.isPlanDone());
@@ -114,8 +114,8 @@ public final class PlanStateManagerTest {
     // Complete the plan and check the result again.
     // It has to return COMPLETE.
     final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
-        .flatMap(stage -> planStateManager.getTaskAttemptsToSchedule(stage.getId()).stream())
-        .collect(Collectors.toList());
+      .flatMap(stage -> planStateManager.getTaskAttemptsToSchedule(stage.getId()).stream())
+      .collect(Collectors.toList());
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
     tasks.forEach(taskId -> planStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));
     final PlanState.State completedState = planStateManager.waitUntilFinish();

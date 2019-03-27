@@ -150,6 +150,6 @@ public class MetricUtilsTest {
   public void validateStaticConstructorsOfExecutionProperties() {
     MetricUtils.EP_KEY_METADATA.values().forEach(p -> Assert.assertTrue(
       p.left().getName() + "should have an 'of' method with its value class, " + p.right().getName(),
-        MetricUtils.getMethodFor(p.left(), "of", p.right()).isPresent()));
+      MetricUtils.getMethodFor(p.left(), "of", p.right()).isPresent()));
   }
 }

@@ -52,11 +52,12 @@ public final class UserApplicationRunner {
 
   /**
    * Constructor.
+   *
    * @param maxScheduleAttempt maximum scheuling attempt.
-   * @param optimizer the nemo optimizer.
-   * @param backend the backend to actually execute the job.
-   * @param runtimeMaster the runtime master.
-   * @param planRewriter plan rewriter
+   * @param optimizer          the nemo optimizer.
+   * @param backend            the backend to actually execute the job.
+   * @param runtimeMaster      the runtime master.
+   * @param planRewriter       plan rewriter
    */
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.MaxTaskAttempt.class) final int maxScheduleAttempt,
@@ -90,7 +91,7 @@ public final class UserApplicationRunner {
 
       // Execute!
       final Pair<PlanStateManager, ScheduledExecutorService> executionResult =
-          runtimeMaster.execute(physicalPlan, maxScheduleAttempt);
+        runtimeMaster.execute(physicalPlan, maxScheduleAttempt);
       runtimeMaster.recordIRDAGMetrics(optimizedDAG, physicalPlan.getPlanId());
 
       // Wait for the job to finish and stop logging

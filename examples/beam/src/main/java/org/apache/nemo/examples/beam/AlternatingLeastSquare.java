@@ -20,7 +20,6 @@ package org.apache.nemo.examples.beam;
 
 import com.github.fommil.netlib.BLAS;
 import com.github.fommil.netlib.LAPACK;
-import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.CoderProviders;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -29,6 +28,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
 import org.netlib.util.intW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +57,7 @@ public final class AlternatingLeastSquare {
 
     /**
      * Constructor for Parseline DoFn class.
+     *
      * @param isUserData flag that distinguishes user data from item data.
      */
     public ParseLine(final boolean isUserData) {
@@ -65,6 +66,7 @@ public final class AlternatingLeastSquare {
 
     /**
      * ProcessElement method for BEAM.
+     *
      * @param c Process context.
      * @throws Exception Exception on the way.
      */
@@ -102,7 +104,7 @@ public final class AlternatingLeastSquare {
    * A DoFn that relays a single vector list.
    */
   public static final class UngroupSingleVectorList
-      extends DoFn<KV<Integer, Iterable<float[]>>, KV<Integer, float[]>> {
+    extends DoFn<KV<Integer, Iterable<float[]>>, KV<Integer, float[]>> {
 
     /**
      * ProcessElement method for BEAM.
@@ -129,7 +131,7 @@ public final class AlternatingLeastSquare {
    * Combiner for the training data.
    */
   public static final class TrainingDataCombiner
-      extends Combine.CombineFn<KV<int[], float[]>, List<KV<int[], float[]>>, KV<int[], float[]>> {
+    extends Combine.CombineFn<KV<int[], float[]>, List<KV<int[], float[]>>, KV<int[], float[]>> {
 
     @Override
     public List<KV<int[], float[]>> createAccumulator() {
@@ -263,7 +265,7 @@ public final class AlternatingLeastSquare {
    * The loop updates the user matrix and the item matrix in each iteration.
    */
   public static final class UpdateUserAndItemMatrix
-      extends LoopCompositeTransform<PCollection<KV<Integer, float[]>>, PCollection<KV<Integer, float[]>>> {
+    extends LoopCompositeTransform<PCollection<KV<Integer, float[]>>, PCollection<KV<Integer, float[]>>> {
     private final Integer numFeatures;
     private final double lambda;
     private final PCollection<KV<Integer, KV<int[], float[]>>> parsedUserData;
@@ -271,8 +273,9 @@ public final class AlternatingLeastSquare {
 
     /**
      * Constructor of UpdateUserAndItemMatrix CompositeTransform.
-     * @param numFeatures number of features.
-     * @param lambda lambda.
+     *
+     * @param numFeatures    number of features.
+     * @param lambda         lambda.
      * @param parsedUserData PCollection of parsed user data.
      * @param parsedItemData PCollection of parsed item data.
      */
@@ -289,16 +292,16 @@ public final class AlternatingLeastSquare {
     public PCollection<KV<Integer, float[]>> expand(final PCollection<KV<Integer, float[]>> itemMatrix) {
       // Make Item Matrix view.
       final PCollectionView<Map<Integer, float[]>> itemMatrixView =
-          itemMatrix.apply(GroupByKey.create()).apply(ParDo.of(new UngroupSingleVectorList())).apply(View.asMap());
+        itemMatrix.apply(GroupByKey.create()).apply(ParDo.of(new UngroupSingleVectorList())).apply(View.asMap());
 
       // Get new User Matrix
       final PCollectionView<Map<Integer, float[]>> userMatrixView = parsedUserData
-          .apply(ParDo.of(new CalculateNextMatrix(numFeatures, lambda, itemMatrixView)).withSideInputs(itemMatrixView))
-          .apply(GroupByKey.create()).apply(ParDo.of(new UngroupSingleVectorList())).apply(View.asMap());
+        .apply(ParDo.of(new CalculateNextMatrix(numFeatures, lambda, itemMatrixView)).withSideInputs(itemMatrixView))
+        .apply(GroupByKey.create()).apply(ParDo.of(new UngroupSingleVectorList())).apply(View.asMap());
 
       // return new Item Matrix
       return parsedItemData.apply(ParDo.of(new CalculateNextMatrix(numFeatures, lambda, userMatrixView))
-          .withSideInputs(userMatrixView));
+        .withSideInputs(userMatrixView));
     }
   }
 
@@ -310,7 +313,7 @@ public final class AlternatingLeastSquare {
     private final boolean isDeterministic;
 
     /**
-     * @param numFeatures number of the features.
+     * @param numFeatures     number of the features.
      * @param isDeterministic whether or not to initialize the matrix in deterministic mode.
      */
     CreateInitialMatrix(final int numFeatures,
@@ -349,6 +352,7 @@ public final class AlternatingLeastSquare {
 
   /**
    * Main function for the ALS BEAM program.
+   *
    * @param args arguments.
    */
   public static void main(final String[] args) throws ClassNotFoundException {
@@ -385,17 +389,17 @@ public final class AlternatingLeastSquare {
 
     // Parse data for item
     final PCollection<KV<Integer, KV<int[], float[]>>> parsedItemData = rawData
-        .apply(ParDo.of(new ParseLine(false)))
-        .apply(Combine.perKey(new TrainingDataCombiner()));
+      .apply(ParDo.of(new ParseLine(false)))
+      .apply(Combine.perKey(new TrainingDataCombiner()));
 
     // Parse data for user
     final PCollection<KV<Integer, KV<int[], float[]>>> parsedUserData = rawData
-        .apply(ParDo.of(new ParseLine(true)))
-        .apply(Combine.perKey(new TrainingDataCombiner()));
+      .apply(ParDo.of(new ParseLine(true)))
+      .apply(Combine.perKey(new TrainingDataCombiner()));
 
     // Create Initial Item Matrix
     PCollection<KV<Integer, float[]>> itemMatrix =
-        parsedItemData.apply(ParDo.of(new CreateInitialMatrix(numFeatures, checkOutput)));
+      parsedItemData.apply(ParDo.of(new CreateInitialMatrix(numFeatures, checkOutput)));
 
     // Iterations to update Item Matrix.
     for (int i = 0; i < numItr; i++) {
@@ -405,15 +409,15 @@ public final class AlternatingLeastSquare {
 
     if (checkOutput) {
       final PCollection<String> result = itemMatrix.apply(MapElements.<KV<Integer, float[]>, String>via(
-          new SimpleFunction<KV<Integer, float[]>, String>() {
-            @Override
-            public String apply(final KV<Integer, float[]> elem) {
-              final List<String> values = Stream.of(ArrayUtils.toObject(elem.getValue()))
-                  .map(String::valueOf)
-                  .collect(Collectors.toList());
-              return elem.getKey() + "," + String.join(",", values);
-            }
-          }));
+        new SimpleFunction<KV<Integer, float[]>, String>() {
+          @Override
+          public String apply(final KV<Integer, float[]> elem) {
+            final List<String> values = Stream.of(ArrayUtils.toObject(elem.getValue()))
+              .map(String::valueOf)
+              .collect(Collectors.toList());
+            return elem.getKey() + "," + String.join(",", values);
+          }
+        }));
 
       GenericSourceSink.write(result, outputFilePath);
     }

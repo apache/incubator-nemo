@@ -18,21 +18,22 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.*;
+import org.apache.commons.io.FileUtils;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.coder.*;
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
+import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.dag.DAGBuilder;
-import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.ClientRPC;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
@@ -49,8 +50,8 @@ import org.apache.nemo.runtime.executor.TestUtil;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
-import org.apache.nemo.runtime.master.*;
-import org.apache.commons.io.FileUtils;
+import org.apache.nemo.runtime.master.BlockManagerMaster;
+import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
@@ -75,7 +76,6 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -85,41 +85,40 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static org.apache.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
-import static org.apache.nemo.runtime.common.RuntimeTestUtil.getRangedNumList;
 import static org.apache.nemo.runtime.common.RuntimeTestUtil.flatten;
+import static org.apache.nemo.runtime.common.RuntimeTestUtil.getRangedNumList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.powermock.api.mockito.PowerMockito.when;
 
 /**
  * Tests {@link InputReader} and {@link OutputWriter}.
- *
+ * <p>
  * Execute {@code mvn test -Dtest=DataTransferTest -Dio.netty.leakDetectionLevel=paranoid}
  * to run the test with leakage reports for netty {@link io.netty.util.ReferenceCounted} objects.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({PubSubEventHandlerWrapper.class, MetricMessageHandler.class,
-    SourceVertex.class, ClientRPC.class, MetricManagerMaster.class})
+  SourceVertex.class, ClientRPC.class, MetricManagerMaster.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final DataStoreProperty.Value MEMORY_STORE =
-      DataStoreProperty.Value.MemoryStore;
+    DataStoreProperty.Value.MemoryStore;
   private static final DataStoreProperty.Value SER_MEMORY_STORE =
-      DataStoreProperty.Value.SerializedMemoryStore;
+    DataStoreProperty.Value.SerializedMemoryStore;
   private static final DataStoreProperty.Value LOCAL_FILE_STORE =
-      DataStoreProperty.Value.LocalFileStore;
+    DataStoreProperty.Value.LocalFileStore;
   private static final DataStoreProperty.Value REMOTE_FILE_STORE =
-      DataStoreProperty.Value.GlusterFileStore;
+    DataStoreProperty.Value.GlusterFileStore;
   private static final String TMP_LOCAL_FILE_DIRECTORY = "./tmpLocalFiles";
   private static final String TMP_REMOTE_FILE_DIRECTORY = "./tmpRemoteFiles";
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_PREFIX_TEMPLATE = "Dummy(%d)";
   private static final AtomicInteger TEST_INDEX = new AtomicInteger(0);
   private static final EncoderFactory ENCODER_FACTORY =
-      PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of());
+    PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of());
   private static final DecoderFactory DECODER_FACTORY =
-      PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of());
+    PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of());
   private static final Tang TANG = Tang.Factory.getTang();
 
   private BlockManagerMaster master;
@@ -131,13 +130,13 @@ public final class DataTransferTest {
   @Before
   public void setUp() throws InjectionException {
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
-        .build();
+      .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
+      .build();
     final Injector baseInjector = Tang.Factory.getTang().newInjector(configuration);
     baseInjector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
     final Injector dispatcherInjector = LocalMessageDispatcher.forkInjector(baseInjector);
     final Injector injector = LocalMessageEnvironment.forkInjector(dispatcherInjector,
-        MessageEnvironment.MASTER_COMMUNICATION_ID);
+      MessageEnvironment.MASTER_COMMUNICATION_ID);
 
     final PlanRewriter planRewriter = mock(PlanRewriter.class);
     injector.bindVolatileInstance(PlanRewriter.class, planRewriter);
@@ -160,11 +159,11 @@ public final class DataTransferTest {
 
     this.master = master;
     final Pair<BlockManagerWorker, IntermediateDataIOFactory> pair1 = createWorker(
-        EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector, nameClientInjector);
+      EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector, nameClientInjector);
     this.worker1 = pair1.left();
     this.transferFactory = pair1.right();
     this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector,
-        nameClientInjector).left();
+      nameClientInjector).left();
   }
 
   @After
@@ -174,17 +173,17 @@ public final class DataTransferTest {
   }
 
   private Pair<BlockManagerWorker, IntermediateDataIOFactory> createWorker(
-      final String executorId,
-      final Injector dispatcherInjector,
-      final Injector nameClientInjector) throws InjectionException {
+    final String executorId,
+    final Injector dispatcherInjector,
+    final Injector nameClientInjector) throws InjectionException {
     final Injector messageEnvironmentInjector = LocalMessageEnvironment.forkInjector(dispatcherInjector, executorId);
     final MessageEnvironment messageEnvironment = messageEnvironmentInjector.getInstance(MessageEnvironment.class);
     final PersistentConnectionToMasterMap conToMaster = messageEnvironmentInjector
-        .getInstance(PersistentConnectionToMasterMap.class);
+      .getInstance(PersistentConnectionToMasterMap.class);
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
-        .bindNamedParameter(JobConf.ExecutorId.class, executorId)
-        .bindNamedParameter(MessageParameters.SenderId.class, executorId)
-        .build();
+      .bindNamedParameter(JobConf.ExecutorId.class, executorId)
+      .bindNamedParameter(MessageParameters.SenderId.class, executorId)
+      .build();
     final Injector injector = nameClientInjector.forkInjector(executorConfiguration);
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     injector.bindVolatileInstance(PersistentConnectionToMasterMap.class, conToMaster);
@@ -211,15 +210,15 @@ public final class DataTransferTest {
   private Injector createNameClientInjector() {
     try {
       final Configuration configuration = TANG.newConfigurationBuilder()
-          .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-          .build();
+        .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+        .build();
       final Injector injector = TANG.newInjector(configuration);
       final LocalAddressProvider localAddressProvider = injector.getInstance(LocalAddressProvider.class);
       final NameServer nameServer = injector.getInstance(NameServer.class);
       final Configuration nameClientConfiguration = NameResolverConfiguration.CONF
-          .set(NameResolverConfiguration.NAME_SERVER_HOSTNAME, localAddressProvider.getLocalAddress())
-          .set(NameResolverConfiguration.NAME_SERVICE_PORT, nameServer.getPort())
-          .build();
+        .set(NameResolverConfiguration.NAME_SERVER_HOSTNAME, localAddressProvider.getLocalAddress())
+        .set(NameResolverConfiguration.NAME_SERVICE_PORT, nameServer.getPort())
+        .build();
       return injector.forkInjector(nameClientConfiguration);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
@@ -347,7 +346,7 @@ public final class DataTransferTest {
     final List<List> dataReadList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
-          new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+        new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
 
       assertEquals(PARALLELISM_TEN, InputReader.getSourceParallelism(reader));
 
@@ -395,7 +394,7 @@ public final class DataTransferTest {
     dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Type.Hash));
     dummyIREdge.setProperty(DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue("dummy")));
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty
-        = dummyIREdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
+      = dummyIREdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     duplicateDataProperty.get().setRepresentativeEdgeId(edgeId);
     duplicateDataProperty.get().setGroupSize(2);
     dummyIREdge.setProperty(DataStoreProperty.of(store));
@@ -433,9 +432,9 @@ public final class DataTransferTest {
     final List<List> dataReadList2 = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
-          new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+        new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
       final InputReader reader2 =
-          new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
+        new BlockInputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
 
       assertEquals(PARALLELISM_TEN, InputReader.getSourceParallelism(reader));
 

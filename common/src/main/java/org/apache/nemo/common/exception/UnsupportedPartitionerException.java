@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class UnsupportedPartitionerException extends RuntimeException {
   /**
    * UnsupportedPartitionerException.
+   *
    * @param cause cause
    */
   public UnsupportedPartitionerException(final Throwable cause) {

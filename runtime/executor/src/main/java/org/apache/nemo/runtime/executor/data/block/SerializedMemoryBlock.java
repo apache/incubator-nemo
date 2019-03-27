@@ -102,7 +102,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
     if (!committed) {
       try {
         final Iterable<SerializedPartition<K>> convertedPartitions = DataUtil.convertToSerPartitions(
-            serializer, partitions);
+          serializer, partitions);
         writeSerializedPartitions(convertedPartitions);
       } catch (final IOException e) {
         throw new BlockWriteException(e);
@@ -192,7 +192,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
         final long partitionSize = serializedPartition.getLength();
         if (partitionSizes.containsKey(key)) {
           partitionSizes.compute(key,
-              (existingKey, existingValue) -> existingValue + partitionSize);
+            (existingKey, existingValue) -> existingValue + partitionSize);
         } else {
           partitionSizes.put(key, partitionSize);
         }

@@ -37,9 +37,9 @@ public final class DefaultDataStorePass extends AnnotatingPass {
   public IRDAG apply(final IRDAG dag) {
     dag.getVertices().forEach(vertex -> {
       dag.getIncomingEdgesOf(vertex).stream()
-          .filter(edge -> !edge.getPropertyValue(DataStoreProperty.class).isPresent())
-          .forEach(edge -> edge.setProperty(
-              DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore)));
+        .filter(edge -> !edge.getPropertyValue(DataStoreProperty.class).isPresent())
+        .forEach(edge -> edge.setProperty(
+          DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore)));
     });
     return dag;
   }

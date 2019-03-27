@@ -18,10 +18,10 @@
  */
 package org.apache.nemo.compiler;
 
+import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.client.JobLauncher;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -45,6 +45,7 @@ public final class CompilerTestUtil {
   /**
    * Find the root directory of Nemo project, ascending directory hierarchy one by one starting from {@code curDir}.
    * This method distinguishes the root with "LICENSE" file.
+   *
    * @param curDir the current directory
    * @return the absolute path of the root directory
    */
@@ -77,8 +78,8 @@ public final class CompilerTestUtil {
       userMainMethodArgs = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
     } catch (final Exception e) {
       throw new RuntimeException("An exception occurred while processing configuration for invoking user main. "
-          + "Note: Using compileDAG for multiple times will fail, as compileDAG method enables static method mocking "
-          + "on JobLauncher and because of this Tang may misbehave afterwards.", e);
+        + "Note: Using compileDAG for multiple times will fail, as compileDAG method enables static method mocking "
+        + "on JobLauncher and because of this Tang may misbehave afterwards.", e);
     }
     final Class userMainClass = Class.forName(userMainClassName);
     final Method userMainMethod = userMainClass.getMethod("main", String[].class);
@@ -97,9 +98,9 @@ public final class CompilerTestUtil {
     final String main = "org.apache.nemo.examples.beam.WordCount";
 
     final ArgBuilder mrArgBuilder = new ArgBuilder()
-        .addJobId("WordCount")
-        .addUserMain(main)
-        .addUserArgs(input, output);
+      .addJobId("WordCount")
+      .addUserMain(main)
+      .addUserArgs(input, output);
     return compileDAG(mrArgBuilder.build());
   }
 
@@ -110,9 +111,9 @@ public final class CompilerTestUtil {
     final String main = "org.apache.nemo.examples.beam.AlternatingLeastSquare";
 
     final ArgBuilder alsArgBuilder = new ArgBuilder()
-        .addJobId("AlternatingLeastSquare")
-        .addUserMain(main)
-        .addUserArgs(input, numFeatures, numIteration);
+      .addJobId("AlternatingLeastSquare")
+      .addUserMain(main)
+      .addUserArgs(input, numFeatures, numIteration);
     return compileDAG(alsArgBuilder.build());
   }
 
@@ -123,9 +124,9 @@ public final class CompilerTestUtil {
     final String main = "org.apache.nemo.examples.beam.AlternatingLeastSquareInefficient";
 
     final ArgBuilder alsArgBuilder = new ArgBuilder()
-        .addJobId("AlternatingLeastSquareInefficient")
-        .addUserMain(main)
-        .addUserArgs(input, numFeatures, numIteration);
+      .addJobId("AlternatingLeastSquareInefficient")
+      .addUserMain(main)
+      .addUserArgs(input, numFeatures, numIteration);
     return compileDAG(alsArgBuilder.build());
   }
 
@@ -137,9 +138,9 @@ public final class CompilerTestUtil {
     final String main = "org.apache.nemo.examples.beam.MultinomialLogisticRegression";
 
     final ArgBuilder mlrArgBuilder = new ArgBuilder()
-        .addJobId("MultinomialLogisticRegression")
-        .addUserMain(main)
-        .addUserArgs(input, numFeatures, numClasses, numIteration);
+      .addJobId("MultinomialLogisticRegression")
+      .addUserMain(main)
+      .addUserArgs(input, numFeatures, numClasses, numIteration);
     return compileDAG(mlrArgBuilder.build());
   }
 }

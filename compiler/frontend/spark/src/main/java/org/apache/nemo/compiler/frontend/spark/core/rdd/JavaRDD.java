@@ -29,7 +29,10 @@ import org.apache.nemo.compiler.frontend.spark.source.SparkDatasetBoundedSourceV
 import org.apache.nemo.compiler.frontend.spark.source.SparkTextFileBoundedSourceVertex;
 import org.apache.nemo.compiler.frontend.spark.sql.Dataset;
 import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
-import org.apache.spark.*;
+import org.apache.spark.Partition;
+import org.apache.spark.Partitioner;
+import org.apache.spark.SparkContext;
+import org.apache.spark.TaskContext;
 import org.apache.spark.api.java.JavaFutureAction;
 import org.apache.spark.api.java.Optional;
 import org.apache.spark.api.java.function.*;
@@ -40,11 +43,15 @@ import scala.Option;
 import scala.Tuple2;
 import scala.reflect.ClassTag$;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Java RDD.
+ *
  * @param <T> type of the final element.
  */
 public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
@@ -70,7 +77,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     builder.addVertex(initializedSourceVertex);
 
     final RDD<T> nemoRdd = new RDD<>(sparkContext, builder.buildWithoutSourceSinkCheck(),
-        initializedSourceVertex, Option.empty(), ClassTag$.MODULE$.apply(Object.class));
+      initializedSourceVertex, Option.empty(), ClassTag$.MODULE$.apply(Object.class));
 
     return new JavaRDD<>(nemoRdd);
   }
@@ -115,7 +122,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     builder.addVertex(sparkBoundedSourceVertex);
 
     return new JavaRDD<>(
-        sparkRDD, sparkSession.sparkContext(), builder.buildWithoutSourceSinkCheck(), sparkBoundedSourceVertex);
+      sparkRDD, sparkSession.sparkContext(), builder.buildWithoutSourceSinkCheck(), sparkBoundedSourceVertex);
   }
 
   /**
@@ -203,7 +210,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   @Override
   public <K2, V2> JavaPairRDD<K2, V2> mapToPair(final PairFunction<T, K2, V2> f) {
     final RDD<Tuple2<K2, V2>> pairRdd =
-        rdd.map(SparkFrontendUtils.pairFunctionToPlainFunction(f), ClassTag$.MODULE$.apply(Object.class));
+      rdd.map(SparkFrontendUtils.pairFunctionToPlainFunction(f), ClassTag$.MODULE$.apply(Object.class));
     return JavaPairRDD.fromRDD(pairRdd);
   }
 

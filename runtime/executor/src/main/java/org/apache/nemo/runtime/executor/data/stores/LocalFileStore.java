@@ -21,16 +21,18 @@ package org.apache.nemo.runtime.executor.data.stores;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.executor.data.*;
+import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.data.block.Block;
-import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
-import org.apache.nemo.runtime.executor.data.metadata.LocalFileMetadata;
 import org.apache.nemo.runtime.executor.data.block.FileBlock;
+import org.apache.nemo.runtime.executor.data.metadata.LocalFileMetadata;
+import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 
 /**
  * Stores blocks in local files.
@@ -42,8 +44,8 @@ public final class LocalFileStore extends LocalBlockStore {
   /**
    * Constructor.
    *
-   * @param fileDirectory the directory which will contain the files.
-   * @param serializerManager  the serializer manager.
+   * @param fileDirectory     the directory which will contain the files.
+   * @param serializerManager the serializer manager.
    */
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
@@ -73,7 +75,7 @@ public final class LocalFileStore extends LocalBlockStore {
   public void writeBlock(final Block block) throws BlockWriteException {
     if (!(block instanceof FileBlock)) {
       throw new BlockWriteException(new Throwable(
-          this.toString() + "only accept " + FileBlock.class.getName()));
+        this.toString() + "only accept " + FileBlock.class.getName()));
     } else if (!block.isCommitted()) {
       throw new BlockWriteException(new Throwable("The block " + block.getId() + "is not committed yet."));
     } else {

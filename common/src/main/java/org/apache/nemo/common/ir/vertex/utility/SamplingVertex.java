@@ -32,7 +32,7 @@ public final class SamplingVertex extends IRVertex {
   private final float desiredSampleRate;
 
   /**
-   * @param originalVertex to clone.
+   * @param originalVertex    to clone.
    * @param desiredSampleRate percentage of tasks to execute.
    *                          The actual sample rate may vary depending on neighboring sampling vertices.
    */
@@ -80,7 +80,7 @@ public final class SamplingVertex extends IRVertex {
 
   /**
    * Obtains a clone of an original edge that is attached to this sampling vertex.
-   *
+   * <p>
    * Original edge: src - to - dst
    * When src == originalVertex, return thisSamplingVertex - to - dst
    * When dst == originalVertex, return src - to - thisSamplingVertex

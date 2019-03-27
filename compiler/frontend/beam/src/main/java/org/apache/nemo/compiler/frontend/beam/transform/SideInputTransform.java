@@ -27,6 +27,7 @@ import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 /**
  * Side input transform implementation.
  * TODO #297: Consider Removing SideInputTransform
+ *
  * @param <T> input/output type.
  */
 public final class SideInputTransform<T> implements Transform<WindowedValue<T>, WindowedValue<SideInputElement<T>>> {
@@ -35,6 +36,7 @@ public final class SideInputTransform<T> implements Transform<WindowedValue<T>, 
 
   /**
    * Constructor.
+   *
    * @param index side input index.
    */
   public SideInputTransform(final int index) {

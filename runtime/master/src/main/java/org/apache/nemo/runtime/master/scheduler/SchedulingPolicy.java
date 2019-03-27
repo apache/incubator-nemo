@@ -18,9 +18,9 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
+import net.jcip.annotations.ThreadSafe;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
-import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -39,7 +39,7 @@ public interface SchedulingPolicy {
    *
    * @param executors The collection of available executors.
    *                  Implementations can assume that the collection is not empty.
-   * @param task The task to schedule
+   * @param task      The task to schedule
    * @return The selected executor. It must be a member of {@code executors}.
    */
   ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task);

@@ -32,9 +32,9 @@ public final class DisaggregationPolicyParallelismFive implements Policy {
 
   public DisaggregationPolicyParallelismFive() {
     this.policy = new PolicyImpl(
-        PolicyTestUtil.overwriteParallelism(5,
-            DisaggregationPolicy.BUILDER.getCompileTimePasses()),
-        DisaggregationPolicy.BUILDER.getRunTimePasses());
+      PolicyTestUtil.overwriteParallelism(5,
+        DisaggregationPolicy.BUILDER.getCompileTimePasses()),
+      DisaggregationPolicy.BUILDER.getRunTimePasses());
   }
 
   @Override

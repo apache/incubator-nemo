@@ -57,10 +57,10 @@ public final class NemoOptimizer implements Optimizer {
 
 
   /**
-   * @param dagDirectory to store JSON representation of intermediate DAGs.
-   * @param policyName the name of the optimization policy.
+   * @param dagDirectory       to store JSON representation of intermediate DAGs.
+   * @param policyName         the name of the optimization policy.
    * @param environmentTypeStr the environment type of the workload to optimize the DAG for.
-   * @param clientRPC the RPC channel to communicate with the client.
+   * @param clientRPC          the RPC channel to communicate with the client.
    */
   @Inject
   private NemoOptimizer(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
@@ -126,7 +126,8 @@ public final class NemoOptimizer implements Optimizer {
 
   /**
    * Operations to be done prior to the Compile-Time Optimizations.
-   * @param dag the DAG to process.
+   *
+   * @param dag    the DAG to process.
    * @param policy the optimization policy to optimize the DAG with.
    */
   private void beforeCompileTimeOptimization(final IRDAG dag, final Policy policy) {

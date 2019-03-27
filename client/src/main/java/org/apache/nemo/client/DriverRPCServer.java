@@ -48,7 +48,7 @@ import java.util.Map;
 @NotThreadSafe
 public final class DriverRPCServer {
   private final Map<ControlMessage.DriverToClientMessageType, EventHandler<ControlMessage.DriverToClientMessage>>
-      handlers = new HashMap<>();
+    handlers = new HashMap<>();
   private boolean isRunning = false;
   private boolean isShutdown = false;
   private Transport transport;
@@ -59,7 +59,8 @@ public final class DriverRPCServer {
 
   /**
    * Registers handler for the given type of message.
-   * @param type the type of message
+   *
+   * @param type    the type of message
    * @param handler handler implementation
    * @return {@code this}
    */
@@ -88,7 +89,7 @@ public final class DriverRPCServer {
       injector.bindVolatileParameter(RemoteConfiguration.HostAddress.class, host);
       injector.bindVolatileParameter(RemoteConfiguration.Port.class, 0);
       injector.bindVolatileParameter(RemoteConfiguration.RemoteServerStage.class,
-          new SyncStage<>(new ServerEventHandler()));
+        new SyncStage<>(new ServerEventHandler()));
       transport = injector.getInstance(NettyMessagingTransport.class);
       LOG.info("DriverRPCServer running at {}", transport.getListeningPort());
       isRunning = true;
@@ -120,13 +121,14 @@ public final class DriverRPCServer {
    */
   public Configuration getListeningConfiguration() {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindNamedParameter(JobConf.ClientSideRPCServerHost.class, getListeningHost())
-        .bindNamedParameter(JobConf.ClientSideRPCServerPort.class, String.valueOf(getListeningPort()))
-        .build();
+      .bindNamedParameter(JobConf.ClientSideRPCServerHost.class, getListeningHost())
+      .bindNamedParameter(JobConf.ClientSideRPCServerPort.class, String.valueOf(getListeningPort()))
+      .build();
   }
 
   /**
    * Sends a message to driver.
+   *
    * @param message message to send
    */
   public void send(final ControlMessage.ClientToDriverMessage message) {
@@ -186,6 +188,7 @@ public final class DriverRPCServer {
 
   /**
    * Throws a {@link RuntimeException} if the server is shut down, or it has different state than the expected state.
+   *
    * @param running the expected state of the server
    */
   private void ensureServerState(final boolean running) {

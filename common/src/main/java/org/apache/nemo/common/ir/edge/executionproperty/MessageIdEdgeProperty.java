@@ -28,6 +28,7 @@ import java.util.HashSet;
 public final class MessageIdEdgeProperty extends EdgeExecutionProperty<HashSet<Integer>> {
   /**
    * Constructor.
+   *
    * @param value value of the execution property.
    */
   private MessageIdEdgeProperty(final HashSet<Integer> value) {
@@ -36,6 +37,7 @@ public final class MessageIdEdgeProperty extends EdgeExecutionProperty<HashSet<I
 
   /**
    * Static method exposing the constructor.
+   *
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */

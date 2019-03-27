@@ -59,11 +59,12 @@ public final class LoopOptimizations {
 
   /**
    * Static function to collect LoopVertices.
-   * @param dag DAG to observe.
+   *
+   * @param dag          DAG to observe.
    * @param loopVertices Map to save the LoopVertices to, according to their termination conditions.
-   * @param inEdges incoming edges of LoopVertices.
-   * @param outEdges outgoing Edges of LoopVertices.
-   * @param builder builder to build the rest of the DAG on.
+   * @param inEdges      incoming edges of LoopVertices.
+   * @param outEdges     outgoing Edges of LoopVertices.
+   * @param builder      builder to build the rest of the DAG on.
    */
   private static void collectLoopVertices(final DAG<IRVertex, IREdge> dag,
                                           final List<LoopVertex> loopVertices,
@@ -209,12 +210,13 @@ public final class LoopOptimizations {
 
     /**
      * Merge the list of loopVertices into a single LoopVertex.
+     *
      * @param loopVertices list of LoopVertices to merge.
      * @return the merged single LoopVertex.
      */
     private LoopVertex mergeLoopVertices(final Set<LoopVertex> loopVertices) {
       final String newName =
-          String.join("+", loopVertices.stream().map(LoopVertex::getName).collect(Collectors.toList()));
+        String.join("+", loopVertices.stream().map(LoopVertex::getName).collect(Collectors.toList()));
       final LoopVertex mergedLoopVertex = new LoopVertex(newName);
       loopVertices.forEach(loopVertex -> {
         final DAG<IRVertex, IREdge> dagToCopy = loopVertex.getDAG();
@@ -224,9 +226,9 @@ public final class LoopOptimizations {
         });
         loopVertex.getDagIncomingEdges().forEach((v, es) -> es.forEach(mergedLoopVertex::addDagIncomingEdge));
         loopVertex.getIterativeIncomingEdges().forEach((v, es) ->
-            es.forEach(mergedLoopVertex::addIterativeIncomingEdge));
+          es.forEach(mergedLoopVertex::addIterativeIncomingEdge));
         loopVertex.getNonIterativeIncomingEdges().forEach((v, es) ->
-            es.forEach(mergedLoopVertex::addNonIterativeIncomingEdge));
+          es.forEach(mergedLoopVertex::addNonIterativeIncomingEdge));
         loopVertex.getDagOutgoingEdges().forEach((v, es) -> es.forEach(mergedLoopVertex::addDagOutgoingEdge));
       });
       return mergedLoopVertex;

@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class UnsupportedMethodException extends RuntimeException {
   /**
    * UnsupportedMethodException.
+   *
    * @param message message
    */
   public UnsupportedMethodException(final String message) {

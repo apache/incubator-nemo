@@ -33,6 +33,7 @@ import static org.apache.nemo.runtime.executor.data.DataUtil.buildOutputStream;
 /**
  * A collection of data elements. The data is stored as an array of bytes.
  * This is a unit of read / write towards {@link org.apache.nemo.runtime.executor.data.block.Block}s.
+ *
  * @param <K> the key type of its partitions.
  */
 public final class SerializedPartition<K> implements Partition<byte[], K> {
@@ -43,9 +44,12 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   private volatile int length;
   private volatile boolean committed;
   // Will be null when the partition is committed when it is constructed.
-  @Nullable private final DirectByteArrayOutputStream bytesOutputStream;
-  @Nullable private final OutputStream wrappedStream;
-  @Nullable private final EncoderFactory.Encoder encoder;
+  @Nullable
+  private final DirectByteArrayOutputStream bytesOutputStream;
+  @Nullable
+  private final OutputStream wrappedStream;
+  @Nullable
+  private final EncoderFactory.Encoder encoder;
 
   /**
    * Creates a serialized {@link Partition} without actual data.
@@ -107,6 +111,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
 
   /**
    * Commits a partition to prevent further data write.
+   *
    * @throws IOException if fail to commit partition.
    */
   @Override

@@ -71,7 +71,7 @@ public final class TestPlanGenerator {
 
   /**
    * @param planType type of the plan to generate.
-   * @param isPush whether to use the push policy.
+   * @param isPush   whether to use the push policy.
    * @return the generated plan.
    * @throws Exception exception.
    */
@@ -90,7 +90,7 @@ public final class TestPlanGenerator {
   }
 
   /**
-   * @param irDAG irDAG.
+   * @param irDAG  irDAG.
    * @param policy policy.
    * @return convert an IR into a physical plan using the given policy.
    * @throws Exception exception.

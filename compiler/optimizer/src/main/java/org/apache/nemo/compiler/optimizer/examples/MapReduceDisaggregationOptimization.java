@@ -45,6 +45,7 @@ public final class MapReduceDisaggregationOptimization {
 
   /**
    * Main function of the example MR program.
+   *
    * @param args arguments.
    * @throws Exception Exceptions on the way.
    */

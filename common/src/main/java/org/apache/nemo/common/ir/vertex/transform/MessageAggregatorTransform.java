@@ -40,6 +40,7 @@ public final class MessageAggregatorTransform<K, V, O> extends NoWatermarkEmitTr
 
   /**
    * Default constructor.
+   *
    * @param aggregatedDynOptData per-stage aggregated dynamic optimization data.
    * @param dynOptDataAggregator aggregator to use.
    */

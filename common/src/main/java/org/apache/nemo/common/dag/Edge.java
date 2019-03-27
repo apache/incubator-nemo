@@ -40,7 +40,8 @@ public class Edge<V extends Vertex> implements Serializable {
 
   /**
    * Constructor for Edge.
-   * @param id ID of the edge.
+   *
+   * @param id  ID of the edge.
    * @param src source vertex.
    * @param dst destination vertex.
    */

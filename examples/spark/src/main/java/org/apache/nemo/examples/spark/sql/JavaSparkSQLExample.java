@@ -18,12 +18,6 @@
  */
 package org.apache.nemo.examples.spark.sql;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Arrays;
-import java.util.Collections;
-import java.io.Serializable;
-
 import org.apache.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import org.apache.nemo.compiler.frontend.spark.sql.Dataset;
 import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
@@ -34,12 +28,19 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
-// col("...") is preferable to df.col("...")
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import static org.apache.spark.sql.functions.col;
+
+// col("...") is preferable to df.col("...")
 
 /**
  * Java Spark SQL Example program.
- *
+ * <p>
  * This code has been copied from the Apache Spark (https://github.com/apache/spark) to demonstrate a spark example.
  */
 public final class JavaSparkSQLExample {
@@ -59,6 +60,7 @@ public final class JavaSparkSQLExample {
 
     /**
      * Getter.
+     *
      * @return name.
      */
     public String getName() {
@@ -67,6 +69,7 @@ public final class JavaSparkSQLExample {
 
     /**
      * Setter.
+     *
      * @param name name.
      */
     public void setName(final String name) {
@@ -75,6 +78,7 @@ public final class JavaSparkSQLExample {
 
     /**
      * Getter.
+     *
      * @return age.
      */
     public int getAge() {
@@ -83,6 +87,7 @@ public final class JavaSparkSQLExample {
 
     /**
      * Setter.
+     *
      * @param age age.
      */
     public void setAge(final int age) {
@@ -92,15 +97,16 @@ public final class JavaSparkSQLExample {
 
   /**
    * Main function.
+   *
    * @param args arguments.
    * @throws AnalysisException Exception.
    */
   public static void main(final String[] args) throws AnalysisException {
     SparkSession spark = SparkSession
-        .builder()
-        .appName("Java Spark SQL basic example")
-        .config("spark.some.config.option", "some-value")
-        .getOrCreate();
+      .builder()
+      .appName("Java Spark SQL basic example")
+      .config("spark.some.config.option", "some-value")
+      .getOrCreate();
 
     runBasicDataFrameExample(spark, args[0]);
     runDatasetCreationExample(spark, args[0]);
@@ -112,12 +118,13 @@ public final class JavaSparkSQLExample {
 
   /**
    * Function to run basic data frame example.
-   * @param spark spark session.
+   *
+   * @param spark      spark session.
    * @param peopleJson path to people json file.
    * @throws AnalysisException exception.
    */
   private static void runBasicDataFrameExample(final SparkSession spark, final String peopleJson)
-      throws AnalysisException {
+    throws AnalysisException {
     Dataset<Row> df = spark.read().json(peopleJson);
 
     // Displays the content of the DataFrame to stdout
@@ -215,7 +222,8 @@ public final class JavaSparkSQLExample {
 
   /**
    * Function to run data creation example.
-   * @param spark spark session.
+   *
+   * @param spark      spark session.
    * @param peopleJson path to people json file.
    */
   private static void runDatasetCreationExample(final SparkSession spark, final String peopleJson) {
@@ -227,8 +235,8 @@ public final class JavaSparkSQLExample {
     // Encoders are created for Java beans
     Encoder<Person> personEncoder = Encoders.bean(Person.class);
     Dataset<Person> javaBeanDS = spark.createDataset(
-        Collections.singletonList(person),
-        personEncoder
+      Collections.singletonList(person),
+      personEncoder
     );
     javaBeanDS.show();
     // +---+----+
@@ -241,8 +249,8 @@ public final class JavaSparkSQLExample {
     Encoder<Integer> integerEncoder = Encoders.INT();
     Dataset<Integer> primitiveDS = spark.createDataset(Arrays.asList(1, 2, 3), integerEncoder);
     Dataset<Integer> transformedDS = primitiveDS.map(
-        (MapFunction<Integer, Integer>) value -> value + 1,
-        integerEncoder);
+      (MapFunction<Integer, Integer>) value -> value + 1,
+      integerEncoder);
     transformedDS.collect(); // Returns [2, 3, 4]
 
     // DataFrames can be converted to a Dataset by providing a class. Mapping based on name
@@ -260,21 +268,22 @@ public final class JavaSparkSQLExample {
 
   /**
    * Function to run infer schema example.
-   * @param spark spark session.
+   *
+   * @param spark     spark session.
    * @param peopleTxt path to people txt file.
    */
   private static void runInferSchemaExample(final SparkSession spark, final String peopleTxt) {
     // Create an RDD of Person objects from a text file
     JavaRDD<Person> peopleRDD = spark.read()
-        .textFile(peopleTxt)
-        .javaRDD()
-        .map(line -> {
-          String[] parts = line.split(",");
-          Person person = new Person();
-          person.setName(parts[0]);
-          person.setAge(Integer.parseInt(parts[1].trim()));
-          return person;
-        });
+      .textFile(peopleTxt)
+      .javaRDD()
+      .map(line -> {
+        String[] parts = line.split(",");
+        Person person = new Person();
+        person.setName(parts[0]);
+        person.setAge(Integer.parseInt(parts[1].trim()));
+        return person;
+      });
 
     // Apply a schema to an RDD of JavaBeans to get a DataFrame
     Dataset<Row> peopleDF = spark.createDataFrame(peopleRDD, Person.class);
@@ -287,8 +296,8 @@ public final class JavaSparkSQLExample {
     // The columns of a row in the result can be accessed by field index
     Encoder<String> stringEncoder = Encoders.STRING();
     Dataset<String> teenagerNamesByIndexDF = teenagersDF.map(
-        (MapFunction<Row, String>) row -> "Name: " + row.getString(0),
-        stringEncoder);
+      (MapFunction<Row, String>) row -> "Name: " + row.getString(0),
+      stringEncoder);
     teenagerNamesByIndexDF.show();
     // +------------+
     // |       value|
@@ -298,8 +307,8 @@ public final class JavaSparkSQLExample {
 
     // or by field name
     Dataset<String> teenagerNamesByFieldDF = teenagersDF.map(
-        (MapFunction<Row, String>) row -> "Name: " + row.<String>getAs("name"),
-        stringEncoder);
+      (MapFunction<Row, String>) row -> "Name: " + row.<String>getAs("name"),
+      stringEncoder);
     teenagerNamesByFieldDF.show();
     // +------------+
     // |       value|
@@ -310,14 +319,15 @@ public final class JavaSparkSQLExample {
 
   /**
    * Function to run programmatic schema example.
-   * @param spark spark session.
+   *
+   * @param spark     spark session.
    * @param peopleTxt path to people txt file.
    */
   private static void runProgrammaticSchemaExample(final SparkSession spark, final String peopleTxt) {
     // Create an RDD
     JavaRDD<String> peopleRDD = spark.read()
-        .textFile(peopleTxt)
-        .toJavaRDD();
+      .textFile(peopleTxt)
+      .toJavaRDD();
 
     // The schema is encoded in a string
     String schemaString = "name age";
@@ -348,8 +358,8 @@ public final class JavaSparkSQLExample {
     // The results of SQL queries are DataFrames and support all the normal RDD operations
     // The columns of a row in the result can be accessed by field index or by field name
     Dataset<String> namesDS = results.map(
-        (MapFunction<Row, String>) row -> "Name: " + row.getString(0),
-        Encoders.STRING());
+      (MapFunction<Row, String>) row -> "Name: " + row.getString(0),
+      Encoders.STRING());
     namesDS.show();
     // +-------------+
     // |        value|

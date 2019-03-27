@@ -18,9 +18,9 @@
  */
 package org.apache.nemo.client.beam;
 
-import org.apache.nemo.client.ClientEndpoint;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.metrics.MetricResults;
+import org.apache.nemo.client.ClientEndpoint;
 import org.joda.time.Duration;
 
 import java.io.IOException;

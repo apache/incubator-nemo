@@ -37,6 +37,7 @@ public final class OptimizerUtils {
 
   /**
    * Restore the formatted string into a pair of vertex/edge id and the execution property.
+   *
    * @param string the formatted string.
    * @return a pair of vertex/edge id and the execution property key index.
    */
@@ -61,6 +62,7 @@ public final class OptimizerUtils {
 
   /**
    * Method to infiltrate keyword-containing string into the enum of Types above.
+   *
    * @param environmentType the input string.
    * @return the formatted string corresponding to each type.
    */

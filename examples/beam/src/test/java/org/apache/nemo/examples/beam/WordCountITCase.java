@@ -44,14 +44,14 @@ public final class WordCountITCase {
   private static final String expectedOutputFileName = "outputs/expected_output_wordcount";
   private static final String executorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_executor_resources.json";
   private static final String oneExecutorResourceFileName = ExampleTestArgs.getFileBasePath() + "executors/beam_test_one_executor_resources.json";
-  private static final String inputFilePath =  ExampleTestArgs.getFileBasePath() + inputFileName;
-  private static final String outputFilePath =  ExampleTestArgs.getFileBasePath() + outputFileName;
+  private static final String inputFilePath = ExampleTestArgs.getFileBasePath() + inputFileName;
+  private static final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addUserMain(WordCount.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath);
+      .addUserMain(WordCount.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath);
   }
 
   @After
@@ -63,62 +63,62 @@ public final class WordCountITCase {
     }
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WordCountITCase.class.getSimpleName())
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testLargeShuffle() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName() + "_largeShuffle")
-        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WordCountITCase.class.getSimpleName() + "_largeShuffle")
+      .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testLargeShuffleInOneExecutor() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(oneExecutorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName() + "_largeshuffleInOneExecutor")
-        .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addResourceJson(oneExecutorResourceFileName)
+      .addJobId(WordCountITCase.class.getSimpleName() + "_largeshuffleInOneExecutor")
+      .addOptimizationPolicy(LargeShufflePolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testConditionalLargeShuffle() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName() + "_conditionalLargeShuffle")
-        .addOptimizationPolicy(ConditionalLargeShufflePolicy.class.getCanonicalName())
-        .build());
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WordCountITCase.class.getSimpleName() + "_conditionalLargeShuffle")
+      .addOptimizationPolicy(ConditionalLargeShufflePolicy.class.getCanonicalName())
+      .build());
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testTransientResource() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName() + "_transient")
-        .addOptimizationPolicy(TransientResourcePolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WordCountITCase.class.getSimpleName() + "_transient")
+      .addOptimizationPolicy(TransientResourcePolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testClonedScheduling() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(WordCountITCase.class.getSimpleName() + "_clonedscheduling")
-        .addMaxTaskAttempt(Integer.MAX_VALUE)
-        .addOptimizationPolicy(UpfrontSchedulingPolicyParallelismFive.class.getCanonicalName())
-        .build());
+      .addResourceJson(executorResourceFileName)
+      .addJobId(WordCountITCase.class.getSimpleName() + "_clonedscheduling")
+      .addMaxTaskAttempt(Integer.MAX_VALUE)
+      .addOptimizationPolicy(UpfrontSchedulingPolicyParallelismFive.class.getCanonicalName())
+      .build());
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testSpeculativeExecution() throws Exception {
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)

@@ -24,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * A simple {@link MessageSender} implementation that works on a single node.
+ *
  * @param <T> a message type
  */
 public final class LocalMessageSender<T> implements MessageSender<T> {
@@ -35,9 +36,9 @@ public final class LocalMessageSender<T> implements MessageSender<T> {
   private boolean isClosed;
 
   public LocalMessageSender(final String senderId,
-                     final String targetId,
-                     final String messageTypeId,
-                     final LocalMessageDispatcher dispatcher) {
+                            final String targetId,
+                            final String messageTypeId,
+                            final LocalMessageDispatcher dispatcher) {
     this.senderId = senderId;
     this.targetId = targetId;
     this.messageTypeId = messageTypeId;

@@ -34,9 +34,9 @@ import java.util.Arrays;
  */
 public final class DefaultPolicyWithSeparatePass implements Policy {
   public static final PolicyBuilder BUILDER =
-      new PolicyBuilder()
-          .registerCompileTimePass(new DefaultParallelismPass())
-          .registerCompileTimePass(new RefactoredPass());
+    new PolicyBuilder()
+      .registerCompileTimePass(new DefaultParallelismPass())
+      .registerCompileTimePass(new RefactoredPass());
   private final Policy policy;
 
   /**
@@ -65,8 +65,8 @@ public final class DefaultPolicyWithSeparatePass implements Policy {
      */
     RefactoredPass() {
       super(Arrays.asList(
-          new DefaultDataStorePass(),
-          new DefaultScheduleGroupPass()
+        new DefaultDataStorePass(),
+        new DefaultScheduleGroupPass()
       ));
     }
   }

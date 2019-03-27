@@ -35,12 +35,13 @@ public abstract class ReshapingPass extends CompileTimePass {
 
   /**
    * Constructor.
+   *
    * @param cls the reshaping pass class.
    */
   public ReshapingPass(final Class<? extends ReshapingPass> cls) {
     final Requires requires = cls.getAnnotation(Requires.class);
     this.prerequisiteExecutionProperties = requires == null
-        ? new HashSet<>() : new HashSet<>(Arrays.asList(requires.value()));
+      ? new HashSet<>() : new HashSet<>(Arrays.asList(requires.value()));
   }
 
   /**

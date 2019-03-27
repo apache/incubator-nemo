@@ -28,6 +28,7 @@ import java.util.UUID;
 
 /**
  * Transform which saves elements to a local text file for Spark.
+ *
  * @param <I> input type.
  */
 public final class LocalTextFileTransform<I> extends NoWatermarkEmitTransform<I, String> {
@@ -58,8 +59,8 @@ public final class LocalTextFileTransform<I> extends NoWatermarkEmitTransform<I,
   @Override
   public void close() {
     try (
-        final Writer writer =
-            new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName, false), "utf-8"))
+      final Writer writer =
+        new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName, false), "utf-8"))
     ) {
       for (final I element : elements) {
         writer.write(element + "\n");

@@ -30,6 +30,7 @@ public class OperatorVertex extends IRVertex {
 
   /**
    * Constructor of OperatorVertex.
+   *
    * @param t transform for the OperatorVertex.
    */
   public OperatorVertex(final Transform t) {
@@ -39,6 +40,7 @@ public class OperatorVertex extends IRVertex {
 
   /**
    * Copy Constructor of OperatorVertex.
+   *
    * @param that the source object for copying
    */
   private OperatorVertex(final OperatorVertex that) {

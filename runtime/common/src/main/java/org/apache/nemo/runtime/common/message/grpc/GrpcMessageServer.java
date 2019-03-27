@@ -18,13 +18,13 @@
  */
 package org.apache.nemo.runtime.common.message.grpc;
 
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
+import io.grpc.stub.StreamObserver;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.comm.GrpcMessageService;
 import org.apache.nemo.runtime.common.comm.MessageServiceGrpc;
 import org.apache.nemo.runtime.common.message.MessageListener;
-import io.grpc.Server;
-import io.grpc.ServerBuilder;
-import io.grpc.stub.StreamObserver;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
@@ -39,11 +39,11 @@ import java.util.concurrent.ConcurrentMap;
  * Represent the RPC server that is responsible for responding all messages from other clients. The server tries to
  * bind to a random port, and registers the bounded ip address to the name server with the localSenderId
  * (which is defined in {@link org.apache.nemo.runtime.common.message.MessageParameters.SenderId}).
- *
+ * <p>
  * The listeners, implementations of {@link MessageListener}, should be setup on this class, and then the incoming
  * messages, which contain corresponding listener id as property, are properly dispatched to the registered
  * listeners.
- *
+ * <p>
  * The currently implemented RPC methods are send and request.
  *
  * @see org.apache.nemo.runtime.common.message.MessageSender#send(Object)
@@ -66,10 +66,11 @@ final class GrpcMessageServer {
 
   /**
    * Constructor.
+   *
    * @param localAddressProvider local address provider.
-   * @param nameResolver name resolver.
-   * @param idFactory identifier factory.
-   * @param localSenderId id of the local sender.
+   * @param nameResolver         name resolver.
+   * @param idFactory            identifier factory.
+   * @param localSenderId        id of the local sender.
    */
   GrpcMessageServer(final LocalAddressProvider localAddressProvider,
                     final NameResolver nameResolver,
@@ -84,8 +85,9 @@ final class GrpcMessageServer {
 
   /**
    * Set up a listener.
+   *
    * @param listenerId id of the listener.
-   * @param listener the message listener.
+   * @param listener   the message listener.
    */
   void setupListener(final String listenerId, final MessageListener<ControlMessage.Message> listener) {
     if (listenerMap.putIfAbsent(listenerId, listener) != null) {
@@ -95,6 +97,7 @@ final class GrpcMessageServer {
 
   /**
    * Remove a listener by its id.
+   *
    * @param listenerId id of the listener to remove.
    */
   void removeListener(final String listenerId) {
@@ -110,8 +113,8 @@ final class GrpcMessageServer {
   void start() throws Exception {
     // 1. Bind to random port
     this.server = ServerBuilder.forPort(0)
-        .addService(new MessageService())
-        .build();
+      .addService(new MessageService())
+      .build();
 
     // 2. Start the server
     server.start();
@@ -123,6 +126,7 @@ final class GrpcMessageServer {
 
   /**
    * For registering to the name server.
+   *
    * @param port port of the socket address.
    * @throws Exception
    */
@@ -139,11 +143,12 @@ final class GrpcMessageServer {
     }
 
     throw new Exception("Failed to register id=" + localSenderId + " after "
-        + NAME_SERVER_REGISTER_RETRY_COUNT + " retries");
+      + NAME_SERVER_REGISTER_RETRY_COUNT + " retries");
   }
 
   /**
    * Closes the server.
+   *
    * @throws Exception exception while closing.
    */
   void close() throws Exception {
@@ -161,7 +166,7 @@ final class GrpcMessageServer {
      * Receive a message from a client, notify a corresponding listener, if exists, and finish the rpc call by calling
      * {@link StreamObserver#onNext(Object)} with the VOID_MESSAGE and calling {@link StreamObserver#onCompleted()}.
      *
-     * @param message a message from a client
+     * @param message          a message from a client
      * @param responseObserver an observer to control this rpc call
      */
     @Override
@@ -170,14 +175,14 @@ final class GrpcMessageServer {
       final MessageListener<ControlMessage.Message> listener = listenerMap.get(message.getListenerId());
       if (listener == null) {
         LOG.warn("A msg is ignored since there is no registered listener. msg.id={}, msg.listenerId={}, msg.type={}",
-            message.getId(), message.getListenerId(), message.getType());
+          message.getId(), message.getListenerId(), message.getType());
         responseObserver.onNext(voidMessage);
         responseObserver.onCompleted();
         return;
       }
 
       LOG.debug("[SEND] request msg.id={}, msg.listenerId={}, msg.type={}",
-          message.getId(), message.getListenerId(), message.getType());
+        message.getId(), message.getListenerId(), message.getType());
       listener.onMessage(message);
       responseObserver.onNext(voidMessage);
       responseObserver.onCompleted();
@@ -188,22 +193,22 @@ final class GrpcMessageServer {
      * raises an exception with {@link StreamObserver#onError(Throwable)}. This rpc call will be finished in
      * {@link GrpcMessageContext} since the context only know when the {@link MessageListener} would reply a message.
      *
-     * @param message a message from a client
+     * @param message          a message from a client
      * @param responseObserver an observer to control this rpc call
      */
     @Override
     public void request(final ControlMessage.Message message,
                         final StreamObserver<ControlMessage.Message> responseObserver) {
       LOG.debug("[REQUEST] request msg.id={}, msg.listenerId={}, msg.type={}",
-          message.getId(), message.getListenerId(), message.getType());
+        message.getId(), message.getListenerId(), message.getType());
 
       final MessageListener<ControlMessage.Message> listener = listenerMap.get(message.getListenerId());
       if (listener == null) {
         LOG.warn("A message arrived, which has no registered listener. msg.id={}, msg.listenerId={}, msg.type={}",
-            message.getId(), message.getListenerId(), message.getType());
+          message.getId(), message.getListenerId(), message.getType());
 
         responseObserver.onError(new Exception("There is no registered listener id=" + message.getListenerId()
-            + " for message type=" + message.getType()));
+          + " for message type=" + message.getType()));
         return;
       }
 

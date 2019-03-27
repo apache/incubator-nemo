@@ -18,13 +18,12 @@
  */
 package org.apache.nemo.compiler.optimizer.pass.runtime;
 
-import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.KeyExtractor;
+import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.executionproperty.PartitionSetProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityProperty;
 import org.apache.nemo.common.partitioner.HashPartitioner;
-import org.apache.nemo.common.partitioner.Partitioner;
 import org.junit.Before;
 import org.junit.Test;
 

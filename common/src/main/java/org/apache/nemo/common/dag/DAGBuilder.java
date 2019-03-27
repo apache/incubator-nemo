@@ -19,8 +19,11 @@
 package org.apache.nemo.common.dag;
 
 import org.apache.nemo.common.exception.CompileTimeOptimizationException;
-import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.exception.IllegalVertexOperationException;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.LoopVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.utility.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
@@ -34,6 +37,7 @@ import java.util.stream.Stream;
 
 /**
  * DAG Builder.
+ *
  * @param <V> the vertex type.
  * @param <E> the edge type.
  */
@@ -157,10 +161,10 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     } else {
       this.buildWithoutSourceSinkCheck().storeJSON("debug", "errored_ir", "Errored IR");
       throw new IllegalVertexOperationException("The DAG does not contain"
-          + (vertices.contains(src) ? "" : " [source]") + (vertices.contains(dst) ? "" : " [destination]")
-          + " of the edge: [" + (src == null ? null : src.getId())
-          + "]->[" + (dst == null ? null : dst.getId()) + "] in "
-          + vertices.stream().map(V::getId).collect(Collectors.toSet()));
+        + (vertices.contains(src) ? "" : " [source]") + (vertices.contains(dst) ? "" : " [destination]")
+        + " of the edge: [" + (src == null ? null : src.getId())
+        + "]->[" + (dst == null ? null : dst.getId()) + "] in "
+        + vertices.stream().map(V::getId).collect(Collectors.toSet()));
     }
     return this;
   }
@@ -212,8 +216,8 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
       throw getException("DAG contains a cycle", vertex.toString());
     } else {
       outgoingEdges.get(vertex).stream().map(Edge::getDst)
-          .filter(v -> !visited.contains(v))
-          .forEachOrdered(v -> cycleCheck(stack, visited, v));
+        .filter(v -> !visited.contains(v))
+        .forEachOrdered(v -> cycleCheck(stack, visited, v));
     }
     stack.pop();
   }
@@ -224,14 +228,14 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   private void sourceCheck() {
     // We observe IRVertex that do not have any incoming edges.
     final Supplier<Stream<V>> verticesToObserve = () -> vertices.stream().filter(v -> incomingEdges.get(v).isEmpty())
-        .filter(v -> v instanceof IRVertex);
+      .filter(v -> v instanceof IRVertex);
     // They should all match SourceVertex
     if (!(verticesToObserve.get().allMatch(v -> (v instanceof SourceVertex)
       || (v instanceof SamplingVertex && ((SamplingVertex) v).getCloneOfOriginalVertex() instanceof SourceVertex)))) {
       final String problematicVertices = verticesToObserve.get()
-          .filter(v -> !(v instanceof SourceVertex))
-          .map(V::getId)
-          .collect(Collectors.toList()).toString();
+        .filter(v -> !(v instanceof SourceVertex))
+        .map(V::getId)
+        .collect(Collectors.toList()).toString();
       throw getException("DAG source check failed while building DAG", problematicVertices);
     }
   }
@@ -242,14 +246,14 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
   private void sinkCheck() {
     // We observe IRVertex that do not have any outgoing edges.
     final Supplier<Stream<V>> verticesToObserve = () -> vertices.stream()
-        .filter(v -> outgoingEdges.get(v).isEmpty())
-        .filter(v -> v instanceof IRVertex);
+      .filter(v -> outgoingEdges.get(v).isEmpty())
+      .filter(v -> v instanceof IRVertex);
     // They should either be OperatorVertex or LoopVertex
     if (verticesToObserve.get().anyMatch(v ->
       !(v instanceof OperatorVertex || v instanceof LoopVertex))) {
       final String problematicVertices = verticesToObserve.get().filter(v ->
-          !(v instanceof OperatorVertex || v instanceof LoopVertex))
-          .map(V::getId).collect(Collectors.toList()).toString();
+        !(v instanceof OperatorVertex || v instanceof LoopVertex))
+        .map(V::getId).collect(Collectors.toList()).toString();
       throw getException("DAG sink check failed while building DAG", problematicVertices);
     }
   }
@@ -285,7 +289,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
       final Stack<V> stack = new Stack<>();
       final Set<V> visited = new HashSet<>();
       vertices.stream().filter(v -> incomingEdges.get(v).isEmpty()) // source operators
-          .forEachOrdered(v -> cycleCheck(stack, visited, v));
+        .forEachOrdered(v -> cycleCheck(stack, visited, v));
     }
     if (source) {
       sourceCheck();
@@ -332,7 +336,8 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
 
   /**
    * Generates a user-friendly exception message.
-   * @param reason of the exception.
+   *
+   * @param reason             of the exception.
    * @param problematicObjects that caused the exception.
    * @return exception object.
    */

@@ -57,6 +57,7 @@ public final class MetricUtils {
   // BiMap of (1) the Execution Property class INDEX and the value INDEX pair and (2) the Execution Property value.
   private static final HashBiMap<Pair<Integer, Integer>, ExecutionProperty<? extends Serializable>>
     EP_METADATA = HashBiMap.create();
+
   static {
     try {
       Class.forName("org.postgresql.Driver");
@@ -80,6 +81,7 @@ public final class MetricUtils {
 
   /**
    * Load the BiMaps (lightweight) Metadata from the DB.
+   *
    * @return the loaded BiMaps, or initialized ones.
    */
   private static void loadMetaData() {
@@ -171,14 +173,15 @@ public final class MetricUtils {
 
   /**
    * Utility method to save key, value to the metadata table.
-   * @param c the connection to the DB.
-   * @param type the key to write to the DB metadata table.
-   * @param key the key to write to the DB metadata table (integer).
+   *
+   * @param c     the connection to the DB.
+   * @param type  the key to write to the DB metadata table.
+   * @param key   the key to write to the DB metadata table (integer).
    * @param value the value to write to the DB metadata table (object).
    * @throws SQLException SQLException on the way.
    */
   private static void insertOrUpdateMetadata(final Connection c, final String type,
-                                            final Integer key, final Serializable value) throws SQLException {
+                                             final Integer key, final Serializable value) throws SQLException {
     try (final PreparedStatement pstmt = c.prepareStatement(
       "INSERT INTO " + METADATA_TABLE_NAME + " (type, key, value) "
         + "VALUES ('" + type + "', " + key + ", ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value;")) {
@@ -189,6 +192,7 @@ public final class MetricUtils {
 
   /**
    * Stringify execution properties of an IR DAG.
+   *
    * @param irdag IR DAG to observe.
    * @return the pair of stringified execution properties. Left is for vertices, right is for edges.
    */
@@ -212,10 +216,11 @@ public final class MetricUtils {
 
   /**
    * Formatter for execution properties. It updates the metadata for the metrics if new EP key / values are discovered.
-   * @param builder string builder to append the metrics to.
-   * @param idx index specifying whether it's a vertex or an edge. This should be one digit.
+   *
+   * @param builder   string builder to append the metrics to.
+   * @param idx       index specifying whether it's a vertex or an edge. This should be one digit.
    * @param numericId numeric ID of the vertex or the edge.
-   * @param ep the execution property.
+   * @param ep        the execution property.
    */
   private static void epFormatter(final StringBuilder builder, final int idx,
                                   final Integer numericId, final ExecutionProperty<?> ep) {
@@ -234,6 +239,7 @@ public final class MetricUtils {
 
   /**
    * Get the EP Key index from the metadata.
+   *
    * @param ep the EP to retrieve the Key index of.
    * @return the Key index.
    */
@@ -252,7 +258,8 @@ public final class MetricUtils {
   /**
    * Recursive method for getting the parameter type of the execution property.
    * This can be used, for example, to get DecoderFactory, instead of BeamDecoderFactory.
-   * @param epClass execution property class to observe.
+   *
+   * @param epClass    execution property class to observe.
    * @param valueClass the value class of the execution property.
    * @return the parameter type.
    */
@@ -271,8 +278,9 @@ public final class MetricUtils {
 
   /**
    * Utility method to getting an optional method called 'name' for the class.
-   * @param clazz class to get the method of.
-   * @param name the name of the method.
+   *
+   * @param clazz      class to get the method of.
+   * @param name       the name of the method.
    * @param valueTypes the value types of the method.
    * @return optional of the method. It returns Optional.empty() if the method could not be found.
    */
@@ -288,6 +296,7 @@ public final class MetricUtils {
 
   /**
    * Inverse method of the #getEpKeyIndex method.
+   *
    * @param index the index of the EP Key.
    * @return the class of the execution property (EP), as well as the type of the value of the EP.
    */
@@ -299,8 +308,9 @@ public final class MetricUtils {
   /**
    * Helper method to convert Execution Property value objects to an integer index.
    * It updates the metadata for the metrics if new EP values are discovered.
+   *
    * @param epKeyIndex the index of the execution property key.
-   * @param ep the execution property containing the value.
+   * @param ep         the execution property containing the value.
    * @return the converted value index.
    */
   static Integer valueToIndex(final Integer epKeyIndex, final ExecutionProperty<?> ep) {
@@ -340,13 +350,16 @@ public final class MetricUtils {
   }
 
   /**
+   * <<<<<<< HEAD
    * Helper method to do the opposite of the #valueToIndex method.
    * It receives the split, and the direction of the tweak value (which show the target index value),
    * and returns the actual value which the execution property uses.
-   * @param split the split value, from which to start from.
-   * @param tweak the tweak value, to which we should tweak the split value.
+   *
+   * @param split      the split value, from which to start from.
+   * @param tweak      the tweak value, to which we should tweak the split value.
    * @param epKeyIndex the EP Key index to retrieve information from.
-   * @return the value object reflecting the split and the tweak values.
+   * @return the project root path.
+   * >>>>>>> master
    */
   static Serializable indexToValue(final Double split, final Double tweak, final Integer epKeyIndex) {
     final Class<? extends Serializable> targetObjectClass = getEpPairFromKeyIndex(epKeyIndex).right();
@@ -405,11 +418,15 @@ public final class MetricUtils {
   }
 
   /**
+   * <<<<<<< HEAD
    * Receives the pair of execution property and value classes, and returns the optimized value of the EP.
+   *
    * @param epKeyIndex the EP Key index to retrieve the new EP from.
-   * @param split the split point.
-   * @param tweak the direction in which to tweak the execution property value.
-   * @return the tweaked execution property.
+   * @param split      the split point.
+   * @param tweak      the direction in which to tweak the execution property value.
+   * @param path       the path to search for.
+   * @return the path containing the LICENSE file.
+   * >>>>>>> master
    */
   public static ExecutionProperty<? extends Serializable> pairAndValueToEP(
     final Integer epKeyIndex,

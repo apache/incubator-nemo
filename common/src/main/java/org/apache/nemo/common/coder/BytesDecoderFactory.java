@@ -43,6 +43,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
 
   /**
    * Static initializer of the decoder.
+   *
    * @return the initializer.
    */
   public static BytesDecoderFactory of() {
@@ -70,7 +71,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
     /**
      * Constructor.
      *
-     * @param inputStream  the input stream to decode.
+     * @param inputStream the input stream to decode.
      */
     private BytesDecoder(final InputStream inputStream) {
       this.inputStream = inputStream;

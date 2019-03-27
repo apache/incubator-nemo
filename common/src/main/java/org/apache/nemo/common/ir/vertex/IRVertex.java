@@ -20,11 +20,11 @@ package org.apache.nemo.common.ir.vertex;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.nemo.common.Cloneable;
+import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import org.apache.nemo.common.Cloneable;
 
 import java.io.Serializable;
 import java.util.Optional;
@@ -57,6 +57,7 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
 
   /**
    * Static function to copy executionProperties from a vertex to the other.
+   *
    * @param thatVertex the edge to copy executionProperties to.
    */
   public final void copyExecutionPropertiesTo(final IRVertex thatVertex) {
@@ -91,12 +92,13 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
 
   /**
    * Get the executionProperty of the IRVertex.
-   * @param <T> Type of the return value.
+   *
+   * @param <T>                  Type of the return value.
    * @param executionPropertyKey key of the execution property.
    * @return the execution property.
    */
   public final <T extends Serializable> Optional<T> getPropertyValue(
-      final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
+    final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
     return executionProperties.get(executionPropertyKey);
   }
 

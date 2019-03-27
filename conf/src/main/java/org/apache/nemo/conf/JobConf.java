@@ -127,7 +127,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * The name of the optimization policy.
    */
   @NamedParameter(doc = "The canonical name of the optimization policy", short_name = "optimization_policy",
-      default_value = "org.apache.nemo.compiler.optimizer.policy.DefaultPolicy")
+    default_value = "org.apache.nemo.compiler.optimizer.policy.DefaultPolicy")
   public final class OptimizationPolicy implements Name<String> {
   }
 
@@ -144,7 +144,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * The fraction of container memory not to use fo the JVM heap.
    */
   @NamedParameter(doc = "The fraction of the container memory not to use for the JVM heap", short_name = "heap_slack",
-      default_value = "0.3")
+    default_value = "0.3")
   public final class JVMHeapSlack implements Name<Double> {
   }
 
@@ -178,7 +178,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Used for fault-injected tests.
    */
   @NamedParameter(doc = "Executor crashes after expected time, does not crash when -1",
-      short_name = "executor_poison_sec", default_value = "-1")
+    short_name = "executor_poison_sec", default_value = "-1")
   public final class ExecutorPosionSec implements Name<Integer> {
   }
 
@@ -186,7 +186,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Path to the JSON file that specifies bandwidth between locations.
    */
   @NamedParameter(doc = "Path to the JSON file that specifies bandwidth between locations",
-      short_name = "bandwidth_json", default_value = "")
+    short_name = "bandwidth_json", default_value = "")
   public final class BandwidthJSONPath implements Name<String> {
   }
 
@@ -194,7 +194,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Path to the JSON file that specifies resource layout.
    */
   @NamedParameter(doc = "Path to the JSON file that specifies resources for executors", short_name = "executor_json",
-      default_value = "")
+    default_value = "")
   public final class ExecutorJSONPath implements Name<String> {
   }
 
@@ -219,7 +219,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Number of I/O threads for block fetch requests from other executor.
    */
   @NamedParameter(doc = "Number of I/O threads for block fetch request.", short_name = "io_request_threads",
-      default_value = "5")
+    default_value = "5")
   public final class IORequestHandleThreadsTotal implements Name<Integer> {
   }
 
@@ -227,7 +227,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Maximum number of parallel downloads for a runtime edge.
    */
   @NamedParameter(doc = "Maximum number of parallel downloads for a runtime edge.", short_name = "max_downloads",
-      default_value = "30")
+    default_value = "30")
   public final class MaxNumDownloadsForARuntimeEdge implements Name<Integer> {
   }
 
@@ -235,7 +235,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * The number of serialization threads for scheduling.
    */
   @NamedParameter(doc = "Number of serialization thread for scheduling", short_name = "schedule_ser_thread",
-      default_value = "8")
+    default_value = "8")
   public final class ScheduleSerThread implements Name<Integer> {
   }
 
@@ -243,7 +243,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * The TCP port to which local block transfer binds. 0 means random port.
    */
   @NamedParameter(doc = "Port to which PartitionTransport binds (0 means random port)",
-      short_name = "block_port", default_value = "0")
+    short_name = "block_port", default_value = "0")
   public final class PartitionTransportServerPort implements Name<Integer> {
   }
 
@@ -251,7 +251,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * The maximum length which the pending connection queue of block transfer may grow to.
    */
   @NamedParameter(doc = "The maximum number of pending connections to PartitionTransport server",
-      short_name = "block_backlog", default_value = "128")
+    short_name = "block_backlog", default_value = "128")
   public final class PartitionTransportServerBacklog implements Name<Integer> {
   }
 
@@ -259,7 +259,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * The number of listening threads of block transfer server.
    */
   @NamedParameter(doc = "The number of listening threads of PartitionTransport server",
-      short_name = "block_threads_listening", default_value = "3")
+    short_name = "block_threads_listening", default_value = "3")
   public final class PartitionTransportServerNumListeningThreads implements Name<Integer> {
   }
 
@@ -268,7 +268,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * which work on accepted connections.
    */
   @NamedParameter(doc = "The number of working threads of PartitionTransport server",
-      short_name = "block_threads_working", default_value = "10")
+    short_name = "block_threads_working", default_value = "10")
   public final class PartitionTransportServerNumWorkingThreads implements Name<Integer> {
   }
 
@@ -276,7 +276,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * The number of threads of block transfer client.
    */
   @NamedParameter(doc = "The number of threads of PartitionTransport client",
-      short_name = "block_threads_client", default_value = "10")
+    short_name = "block_threads_client", default_value = "10")
   public final class PartitionTransportClientNumThreads implements Name<Integer> {
   }
 
@@ -295,9 +295,9 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public static final OptionalParameter<String> GLUSTER_DISK_DIRECTORY = new OptionalParameter<>();
 
   public static final ConfigurationModule EXECUTOR_CONF = new JobConf()
-      .bindNamedParameter(ExecutorId.class, EXECUTOR_ID)
-      .bindNamedParameter(JobId.class, JOB_ID)
-      .bindNamedParameter(FileDirectory.class, LOCAL_DISK_DIRECTORY)
-      .bindNamedParameter(GlusterVolumeDirectory.class, GLUSTER_DISK_DIRECTORY)
-      .build();
+    .bindNamedParameter(ExecutorId.class, EXECUTOR_ID)
+    .bindNamedParameter(JobId.class, JOB_ID)
+    .bindNamedParameter(FileDirectory.class, LOCAL_DISK_DIRECTORY)
+    .bindNamedParameter(GlusterVolumeDirectory.class, GLUSTER_DISK_DIRECTORY)
+    .build();
 }

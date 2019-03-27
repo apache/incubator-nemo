@@ -23,7 +23,6 @@ import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.wake.IdentifierFactory;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

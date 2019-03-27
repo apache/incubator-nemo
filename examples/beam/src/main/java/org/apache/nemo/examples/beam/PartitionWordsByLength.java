@@ -61,33 +61,33 @@ public final class PartitionWordsByLength {
     final PCollection<String> lines = GenericSourceSink.read(p, inputFilePath);
 
     PCollectionTuple results = lines
-        .apply(FlatMapElements
-            .into(TypeDescriptors.strings())
-            .via(line -> Arrays.asList(line.split(" "))))
-        .apply(ParDo.of(new DoFn<String, String>() {
-          // processElement with Beam OutputReceiver.
-          @ProcessElement
-          public void processElement(final ProcessContext c) {
-            final String word = c.element();
-            if (word.length() < 6) {
-              c.output(shortWordsTag, KV.of(word.length(), word));
-            } else if (word.length() < 11) {
-              c.output(longWordsTag, KV.of(word.length(), word));
-            } else if (word.length() > 12) {
-              c.output(veryVeryLongWordsTag, word);
-            } else {
-              c.output(word);
-            }
+      .apply(FlatMapElements
+        .into(TypeDescriptors.strings())
+        .via(line -> Arrays.asList(line.split(" "))))
+      .apply(ParDo.of(new DoFn<String, String>() {
+        // processElement with Beam OutputReceiver.
+        @ProcessElement
+        public void processElement(final ProcessContext c) {
+          final String word = c.element();
+          if (word.length() < 6) {
+            c.output(shortWordsTag, KV.of(word.length(), word));
+          } else if (word.length() < 11) {
+            c.output(longWordsTag, KV.of(word.length(), word));
+          } else if (word.length() > 12) {
+            c.output(veryVeryLongWordsTag, word);
+          } else {
+            c.output(word);
           }
-        }).withOutputTags(veryLongWordsTag, TupleTagList
-            .of(shortWordsTag).and(longWordsTag).and(veryVeryLongWordsTag)));
+        }
+      }).withOutputTags(veryLongWordsTag, TupleTagList
+        .of(shortWordsTag).and(longWordsTag).and(veryVeryLongWordsTag)));
 
     PCollection<String> shortWords = results.get(shortWordsTag)
-        .apply(GroupByKey.create())
-        .apply(MapElements.via(new FormatLines()));
+      .apply(GroupByKey.create())
+      .apply(MapElements.via(new FormatLines()));
     PCollection<String> longWords = results.get(longWordsTag)
-        .apply(GroupByKey.create())
-        .apply(MapElements.via(new FormatLines()));
+      .apply(GroupByKey.create())
+      .apply(MapElements.via(new FormatLines()));
     PCollection<String> veryLongWords = results.get(veryLongWordsTag);
     PCollection<String> veryVeryLongWords = results.get(veryVeryLongWordsTag);
 

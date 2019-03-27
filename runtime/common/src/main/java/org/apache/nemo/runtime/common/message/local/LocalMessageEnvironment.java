@@ -39,7 +39,7 @@ import java.util.concurrent.Future;
 public final class LocalMessageEnvironment implements MessageEnvironment {
   private static final Tang TANG = Tang.Factory.getTang();
   public static final Configuration LOCAL_MESSAGE_ENVIRONMENT_CONFIGURATION = TANG.newConfigurationBuilder()
-      .bindImplementation(MessageEnvironment.class, LocalMessageEnvironment.class).build();
+    .bindImplementation(MessageEnvironment.class, LocalMessageEnvironment.class).build();
 
   private final String currentNodeId;
   private final LocalMessageDispatcher dispatcher;
@@ -53,7 +53,7 @@ public final class LocalMessageEnvironment implements MessageEnvironment {
 
   @Override
   public <T> void setupListener(
-      final String listenerId, final MessageListener<T> listener) {
+    final String listenerId, final MessageListener<T> listener) {
     dispatcher.setupListener(currentNodeId, listenerId, listener);
   }
 
@@ -64,9 +64,9 @@ public final class LocalMessageEnvironment implements MessageEnvironment {
 
   @Override
   public <T> Future<MessageSender<T>> asyncConnect(
-      final String targetId, final String messageTypeId) {
+    final String targetId, final String messageTypeId) {
     return CompletableFuture.completedFuture(new LocalMessageSender<T>(
-        currentNodeId, targetId, messageTypeId, dispatcher));
+      currentNodeId, targetId, messageTypeId, dispatcher));
   }
 
   @Override
@@ -84,13 +84,13 @@ public final class LocalMessageEnvironment implements MessageEnvironment {
    *
    * @param baseInjector provided by {@link LocalMessageDispatcher#getInjector()}
    *                     or {@link LocalMessageDispatcher#forkInjector(Injector)}
-   * @param senderId  the identifier for the sender
+   * @param senderId     the identifier for the sender
    * @return an {@link Injector} which has {@link LocalMessageDispatcher} instance for {@link MessageEnvironment}
    * @throws InjectionException when fails to inject {@link MessageEnvironment}
    */
   public static Injector forkInjector(final Injector baseInjector, final String senderId) throws InjectionException {
     final Injector injector = baseInjector.forkInjector(TANG.newConfigurationBuilder()
-        .bindNamedParameter(MessageParameters.SenderId.class, senderId).build());
+      .bindNamedParameter(MessageParameters.SenderId.class, senderId).build());
     injector.getInstance(MessageEnvironment.class);
     return injector;
   }

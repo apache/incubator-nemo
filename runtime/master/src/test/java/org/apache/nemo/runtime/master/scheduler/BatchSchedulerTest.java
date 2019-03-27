@@ -18,18 +18,18 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
+import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.nemo.runtime.common.plan.*;
+import org.apache.nemo.runtime.master.BlockManagerMaster;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
-import org.apache.nemo.runtime.master.BlockManagerMaster;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -43,7 +43,10 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -87,19 +90,19 @@ public final class BatchSchedulerTest {
 
     final ExecutorService serializationExecutorService = Executors.newSingleThreadExecutor();
     final ResourceSpecification computeSpec =
-        new ResourceSpecification(ResourcePriorityProperty.COMPUTE, EXECUTOR_CAPACITY, 0);
+      new ResourceSpecification(ResourcePriorityProperty.COMPUTE, EXECUTOR_CAPACITY, 0);
     final Function<String, ExecutorRepresenter> computeSpecExecutorRepresenterGenerator = executorId ->
-        new ExecutorRepresenter(executorId, computeSpec, mockMsgSender, activeContext, serializationExecutorService,
-            executorId);
+      new ExecutorRepresenter(executorId, computeSpec, mockMsgSender, activeContext, serializationExecutorService,
+        executorId);
     final ExecutorRepresenter a3 = computeSpecExecutorRepresenterGenerator.apply("a3");
     final ExecutorRepresenter a2 = computeSpecExecutorRepresenterGenerator.apply("a2");
     final ExecutorRepresenter a1 = computeSpecExecutorRepresenterGenerator.apply("a1");
 
     final ResourceSpecification storageSpec =
-        new ResourceSpecification(ResourcePriorityProperty.TRANSIENT, EXECUTOR_CAPACITY, 0);
+      new ResourceSpecification(ResourcePriorityProperty.TRANSIENT, EXECUTOR_CAPACITY, 0);
     final Function<String, ExecutorRepresenter> storageSpecExecutorRepresenterGenerator = executorId ->
-        new ExecutorRepresenter(executorId, storageSpec, mockMsgSender, activeContext, serializationExecutorService,
-            executorId);
+      new ExecutorRepresenter(executorId, storageSpec, mockMsgSender, activeContext, serializationExecutorService,
+        executorId);
     final ExecutorRepresenter b2 = storageSpecExecutorRepresenterGenerator.apply("b2");
     final ExecutorRepresenter b1 = storageSpecExecutorRepresenterGenerator.apply("b1");
 
@@ -117,20 +120,20 @@ public final class BatchSchedulerTest {
    * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchScheduler}.
    * Task state changes are explicitly submitted to scheduler instead of executor messages.
    */
-  @Test(timeout=10000)
+  @Test(timeout = 10000)
   public void testPull() throws Exception {
     scheduleAndCheckPlanTermination(
-        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false));
+      TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false));
   }
 
   /**
    * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchScheduler}.
    * Task state changes are explicitly submitted to scheduler instead of executor messages.
    */
-  @Test(timeout=10000)
+  @Test(timeout = 10000)
   public void testPush() throws Exception {
     scheduleAndCheckPlanTermination(
-        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, true));
+      TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, true));
   }
 
   private void scheduleAndCheckPlanTermination(final PhysicalPlan plan) throws InjectionException {
@@ -145,7 +148,7 @@ public final class BatchSchedulerTest {
       LOG.debug("Checking that all stages of ScheduleGroup {} enter the executing state", scheduleGroupIdx);
       stages.forEach(stage -> {
         SchedulerTestUtil.completeStage(
-            planStateManager, scheduler, executorRegistry, stage, SCHEDULE_ATTEMPT_INDEX);
+          planStateManager, scheduler, executorRegistry, stage, SCHEDULE_ATTEMPT_INDEX);
       });
     }
 
@@ -156,9 +159,9 @@ public final class BatchSchedulerTest {
   }
 
   private List<Stage> filterStagesWithAScheduleGroup(
-      final DAG<Stage, StageEdge> physicalDAG, final int scheduleGroup) {
+    final DAG<Stage, StageEdge> physicalDAG, final int scheduleGroup) {
     final Set<Stage> stageSet = new HashSet<>(physicalDAG.filterVertices(
-        stage -> stage.getScheduleGroup() == scheduleGroup));
+      stage -> stage.getScheduleGroup() == scheduleGroup));
 
     // Return the filtered vertices as a sorted list
     final List<Stage> sortedStages = new ArrayList<>(stageSet.size());

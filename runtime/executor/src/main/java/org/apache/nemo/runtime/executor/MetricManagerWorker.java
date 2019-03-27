@@ -19,18 +19,17 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
+import org.apache.nemo.common.exception.UnknownFailureCauseException;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.common.exception.UnknownFailureCauseException;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.reef.annotations.audience.EvaluatorSide;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.concurrent.*;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Metric sender that periodically flushes the collected metrics to Driver.
@@ -52,18 +51,18 @@ public final class MetricManagerWorker implements MetricMessageSender {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     final Runnable batchMetricMessages = () -> flushMetricMessageQueueToMaster();
     this.scheduledExecutorService.scheduleAtFixedRate(batchMetricMessages, 0,
-                                                      FLUSHING_PERIOD, TimeUnit.MILLISECONDS);
+      FLUSHING_PERIOD, TimeUnit.MILLISECONDS);
   }
 
   @Override
   public void flush() {
     flushMetricMessageQueueToMaster();
     persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdManager.generateMessageId())
-            .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.MetricFlushed)
-            .build());
+      ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.MetricFlushed)
+        .build());
   }
 
   private synchronized void flushMetricMessageQueueToMaster() {
@@ -81,12 +80,12 @@ public final class MetricManagerWorker implements MetricMessageSender {
       }
 
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-          ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdManager.generateMessageId())
-              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.MetricMessageReceived)
-              .setMetricMsg(metricMsgBuilder.build())
-              .build());
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.MetricMessageReceived)
+          .setMetricMsg(metricMsgBuilder.build())
+          .build());
     }
   }
 
@@ -94,12 +93,12 @@ public final class MetricManagerWorker implements MetricMessageSender {
   public void send(final String metricType, final String metricId,
                    final String metricField, final byte[] metricValue) {
     metricMessageQueue.add(
-        ControlMessage.Metric.newBuilder()
-            .setMetricType(metricType)
-            .setMetricId(metricId)
-            .setMetricField(metricField)
-            .setMetricValue(ByteString.copyFrom(metricValue))
-            .build());
+      ControlMessage.Metric.newBuilder()
+        .setMetricType(metricType)
+        .setMetricId(metricId)
+        .setMetricField(metricField)
+        .setMetricValue(ByteString.copyFrom(metricValue))
+        .build());
   }
 
   @Override

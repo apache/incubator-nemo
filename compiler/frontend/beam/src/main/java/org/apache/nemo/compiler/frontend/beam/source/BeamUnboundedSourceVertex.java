@@ -38,6 +38,7 @@ import java.util.NoSuchElementException;
 
 /**
  * SourceVertex implementation for UnboundedSource.
+ *
  * @param <O> output type.
  * @param <M> checkpoint mark type.
  */
@@ -50,7 +51,8 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
   /**
    * The default constructor for beam unbounded source.
-   * @param source unbounded source.
+   *
+   * @param source      unbounded source.
    * @param displayData static display data associated with a pipeline component.
    */
   public BeamUnboundedSourceVertex(final UnboundedSource<O, M> source,
@@ -61,6 +63,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
   /**
    * Copy constructor.
+   *
    * @param that the original vertex.
    */
   private BeamUnboundedSourceVertex(final BeamUnboundedSourceVertex<O, M> that) {
@@ -113,11 +116,12 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
   /**
    * UnboundedSourceReadable class.
+   *
    * @param <O> output type.
    * @param <M> checkpoint mark type.
    */
   private static final class UnboundedSourceReadable<O, M extends UnboundedSource.CheckpointMark>
-      implements Readable<Object> {
+    implements Readable<Object> {
     private final UnboundedSource<O, M> unboundedSource;
     private UnboundedSource.UnboundedReader<O> reader;
     private boolean isStarted = false;
@@ -126,6 +130,7 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
 
     /**
      * Constructor.
+     *
      * @param unboundedSource unbounded source.
      */
     UnboundedSourceReadable(final UnboundedSource<O, M> unboundedSource) {

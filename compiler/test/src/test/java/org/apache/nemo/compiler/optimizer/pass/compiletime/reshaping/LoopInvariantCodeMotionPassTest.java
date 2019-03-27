@@ -19,7 +19,6 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.client.JobLauncher;
-import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
@@ -59,7 +58,7 @@ public class LoopInvariantCodeMotionPassTest {
     groupedDAG = new LoopExtractionPass().apply(originalALSDAG);
 
     final Optional<LoopVertex> alsLoopOpt = groupedDAG.getTopologicalSort().stream()
-        .filter(irVertex -> irVertex instanceof LoopVertex).map(irVertex -> (LoopVertex) irVertex).findFirst();
+      .filter(irVertex -> irVertex instanceof LoopVertex).map(irVertex -> (LoopVertex) irVertex).findFirst();
     assertTrue(alsLoopOpt.isPresent());
     final LoopVertex alsLoop = alsLoopOpt.get();
 
@@ -94,7 +93,7 @@ public class LoopInvariantCodeMotionPassTest {
             final Optional<IREdge> incomingEdge = newDAGIncomingEdge.stream().findFirst();
             assertTrue(incomingEdge.isPresent());
             final IREdge newIREdge = new IREdge(incomingEdge.get().getPropertyValue(
-                CommunicationPatternProperty.class).get(), incomingEdge.get().getSrc(), alsLoop);
+              CommunicationPatternProperty.class).get(), incomingEdge.get().getSrc(), alsLoop);
             newIREdge.setProperty(EncoderProperty.of(incomingEdge.get().getPropertyValue(EncoderProperty.class).get()));
             newIREdge.setProperty(DecoderProperty.of(incomingEdge.get().getPropertyValue(DecoderProperty.class).get()));
             builder.connectVertices(newIREdge);
@@ -111,11 +110,11 @@ public class LoopInvariantCodeMotionPassTest {
     final long numberOfGroupedVertices = groupedDAG.getVertices().size();
 
     final IRDAG processedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
-        .apply(dagToBeRefactored);
+      .apply(dagToBeRefactored);
     assertEquals(numberOfGroupedVertices, processedDAG.getVertices().size());
 
     final IRDAG notProcessedDAG = LoopOptimizations.getLoopInvariantCodeMotionPass()
-        .apply(groupedDAG);
+      .apply(groupedDAG);
     assertEquals(numberOfGroupedVertices, notProcessedDAG.getVertices().size());
   }
 

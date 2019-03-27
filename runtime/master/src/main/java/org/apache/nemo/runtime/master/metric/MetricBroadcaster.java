@@ -33,13 +33,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class MetricBroadcaster {
   private static final Logger LOG = LoggerFactory.getLogger(MetricBroadcaster.class.getName());
   private final Set<Session> sessions = ConcurrentHashMap.newKeySet();
+
   /**
    * Private constructor.
    */
-  private MetricBroadcaster() { }
+  private MetricBroadcaster() {
+  }
 
   /**
    * Getter for the singleton object.
+   *
    * @return MetricBroadcaster object.
    */
   public static MetricBroadcaster getInstance() {
@@ -55,6 +58,7 @@ public final class MetricBroadcaster {
 
   /**
    * Add a session to the session list.
+   *
    * @param session a WebSocket session.
    */
   public synchronized void addSession(final Session session) {
@@ -68,6 +72,7 @@ public final class MetricBroadcaster {
 
   /**
    * Remove a session from the session list.
+   *
    * @param session a WebSocket session.
    */
   public synchronized void removeSession(final Session session) {
@@ -76,6 +81,7 @@ public final class MetricBroadcaster {
 
   /**
    * Send text frame to each WebSocket session.
+   *
    * @param text text to send.
    */
   public void broadcast(final String text) {
@@ -90,6 +96,7 @@ public final class MetricBroadcaster {
 
   /**
    * Send binary frame to each WebSocket session.
+   *
    * @param bytes byte array to send.
    */
   public void broadcast(final byte[] bytes) {

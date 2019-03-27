@@ -43,7 +43,7 @@ public final class SparkScala {
   @Before
   public void setUp() {
     builder = new ArgBuilder()
-        .addResourceJson(executorResourceFileName);
+      .addResourceJson(executorResourceFileName);
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
@@ -51,11 +51,11 @@ public final class SparkScala {
     final String numParallelism = "3";
 
     JobLauncher.main(builder
-        .addJobId(SparkPi.class.getSimpleName() + "_test")
-        .addUserMain(SparkPi.class.getCanonicalName())
-        .addUserArgs(numParallelism)
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
-        .build());
+      .addJobId(SparkPi.class.getSimpleName() + "_test")
+      .addUserMain(SparkPi.class.getCanonicalName())
+      .addUserArgs(numParallelism)
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
@@ -67,11 +67,11 @@ public final class SparkScala {
     final String outputFilePath = ExampleTestArgs.getFileBasePath() + outputFileName;
 
     JobLauncher.main(builder
-        .addJobId(SparkWordCount.class.getSimpleName() + "_test")
-        .addUserMain(SparkWordCount.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath)
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
-        .build());
+      .addJobId(SparkWordCount.class.getSimpleName() + "_test")
+      .addUserMain(SparkWordCount.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath)
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
 
     try {
       ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName, expectedOutputFilename);
@@ -92,11 +92,11 @@ public final class SparkScala {
     final String outputFilePath2 = ExampleTestArgs.getFileBasePath() + outputFileName2;
 
     JobLauncher.main(builder
-        .addJobId(SparkCachingWordCount.class.getSimpleName() + "_test")
-        .addUserMain(SparkCachingWordCount.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath1, outputFilePath2)
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
-        .build());
+      .addJobId(SparkCachingWordCount.class.getSimpleName() + "_test")
+      .addUserMain(SparkCachingWordCount.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath1, outputFilePath2)
+      .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+      .build());
 
     try {
       ExampleTestUtil.ensureOutputValidity(ExampleTestArgs.getFileBasePath(), outputFileName1, expectedOutputFilename1);

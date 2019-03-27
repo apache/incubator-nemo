@@ -55,6 +55,7 @@ public final class Util {
 
   /**
    * Finds the project root path.
+   *
    * @return the project root path.
    */
   public static String fetchProjectRootPath() {
@@ -63,6 +64,7 @@ public final class Util {
 
   /**
    * Helper method to recursively find the LICENSE file.
+   *
    * @param path the path to search for.
    * @return the path containing the LICENSE file.
    */
@@ -102,8 +104,8 @@ public final class Util {
 
   /**
    * @param edgeToClone to copy execution properties from.
-   * @param newSrc of the new edge.
-   * @param newDst of the new edge.
+   * @param newSrc      of the new edge.
+   * @param newDst      of the new edge.
    * @return the new edge.
    */
   public static IREdge cloneEdge(final IREdge edgeToClone,
@@ -119,8 +121,8 @@ public final class Util {
    *
    * @param commPattern to use.
    * @param edgeToClone to copy execution properties from.
-   * @param newSrc of the new edge.
-   * @param newDst of the new edge.
+   * @param newSrc      of the new edge.
+   * @param newDst      of the new edge.
    * @return the new edge.
    */
   public static IREdge cloneEdge(final CommunicationPatternProperty.Value commPattern,
@@ -204,6 +206,7 @@ public final class Util {
 
   /**
    * Method to restore String ID from the numeric ID.
+   *
    * @param numericId the numeric id.
    * @return the restored string ID.
    */
@@ -213,6 +216,7 @@ public final class Util {
 
   /**
    * Method to restore String ID from the numeric ID.
+   *
    * @param numericId the numeric id.
    * @return the restored string ID.
    */
@@ -222,6 +226,7 @@ public final class Util {
 
   /**
    * Method for the instrumentation: for getting the object size.
+   *
    * @param args arguments.
    * @param inst the instrumentation.
    */
@@ -231,6 +236,7 @@ public final class Util {
 
   /**
    * Get the object byte size.
+   *
    * @param o object to measure.
    * @return the bytes of the object.
    */

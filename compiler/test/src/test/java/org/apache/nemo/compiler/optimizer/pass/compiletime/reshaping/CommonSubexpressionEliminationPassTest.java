@@ -19,13 +19,12 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import org.apache.nemo.client.JobLauncher;
-import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.test.EmptyComponents;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,18 +58,18 @@ public class CommonSubexpressionEliminationPassTest {
   public void setUp() {
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     dagNotToOptimize = new IRDAG(dagBuilder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine)
-        .addVertex(map2)
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine, map2))
-        .build());
+      .addVertex(map2)
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine, map2))
+      .build());
     dagToOptimize = new IRDAG(dagBuilder.addVertex(map1clone).addVertex(groupByKey2).addVertex(combine2).addVertex(map22)
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1clone))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, map1clone, groupByKey2))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey2, combine2))
-        .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine2, map22))
-        .build());
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, source, map1clone))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.Shuffle, map1clone, groupByKey2))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, groupByKey2, combine2))
+      .connectVertices(new IREdge(CommunicationPatternProperty.Value.OneToOne, combine2, map22))
+      .build());
   }
 
   @Test

@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.common;
 
-import org.apache.nemo.common.StateMachine;
 import org.apache.nemo.common.exception.IllegalStateTransitionException;
 import org.junit.Before;
 import org.junit.Test;

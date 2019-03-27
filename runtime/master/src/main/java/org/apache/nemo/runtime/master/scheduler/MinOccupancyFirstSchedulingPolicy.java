@@ -24,7 +24,8 @@ import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.*;
+import java.util.Collection;
+import java.util.OptionalInt;
 
 /**
  * This policy chooses a set of Executors, on which have minimum running Tasks.
@@ -40,7 +41,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
   @Override
   public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task) {
     final OptionalInt minOccupancy =
-        executors.stream()
+      executors.stream()
         .map(executor -> executor.getNumOfRunningTasks())
         .mapToInt(i -> i).min();
 
@@ -49,8 +50,8 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
     }
 
     return executors.stream()
-        .filter(executor -> executor.getNumOfRunningTasks() == minOccupancy.getAsInt())
-        .findFirst()
-        .orElseThrow(() -> new RuntimeException("No such executor"));
+      .filter(executor -> executor.getNumOfRunningTasks() == minOccupancy.getAsInt())
+      .findFirst()
+      .orElseThrow(() -> new RuntimeException("No such executor"));
   }
 }

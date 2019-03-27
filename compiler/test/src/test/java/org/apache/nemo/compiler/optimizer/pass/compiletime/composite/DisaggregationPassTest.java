@@ -22,9 +22,9 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import org.apache.nemo.compiler.CompilerTestUtil;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultDataStorePass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DisaggregationEdgeDataStorePass;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultDataStorePass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -49,13 +49,13 @@ public class DisaggregationPassTest {
   @Test
   public void testDisaggregation() throws Exception {
     final IRDAG processedDAG =
-        new DisaggregationEdgeDataStorePass().apply(
-            new DefaultDataStorePass().apply(
-                  new DefaultParallelismPass().apply(compiledDAG)));
+      new DisaggregationEdgeDataStorePass().apply(
+        new DefaultDataStorePass().apply(
+          new DefaultParallelismPass().apply(compiledDAG)));
 
     processedDAG.getTopologicalSort().forEach(irVertex ->
       processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger ->
-          assertEquals(DataStoreProperty.Value.GlusterFileStore,
-              edgeToMerger.getPropertyValue(DataStoreProperty.class).get())));
+        assertEquals(DataStoreProperty.Value.GlusterFileStore,
+          edgeToMerger.getPropertyValue(DataStoreProperty.class).get())));
   }
 }

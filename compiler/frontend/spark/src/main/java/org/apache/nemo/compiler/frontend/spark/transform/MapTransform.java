@@ -25,6 +25,7 @@ import org.apache.spark.api.java.function.Function;
 
 /**
  * Map Transform for Spark.
+ *
  * @param <I> input type.
  * @param <O> output type.
  */
@@ -34,6 +35,7 @@ public final class MapTransform<I, O> implements Transform<I, O> {
 
   /**
    * Constructor.
+   *
    * @param func the function to run map with.
    */
   public MapTransform(final Function<I, O> func) {
@@ -47,11 +49,11 @@ public final class MapTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void onData(final I element) {
-      try {
-        outputCollector.emit(func.call(element));
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
+    try {
+      outputCollector.emit(func.call(element));
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

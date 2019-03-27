@@ -53,6 +53,7 @@ public final class PipeManagerMaster {
 
   /**
    * Constructor.
+   *
    * @param masterMessageEnvironment the message environment.
    */
   @Inject

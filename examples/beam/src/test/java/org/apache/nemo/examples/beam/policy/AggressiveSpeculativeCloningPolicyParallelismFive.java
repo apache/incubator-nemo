@@ -33,17 +33,20 @@ import java.util.List;
  */
 public final class AggressiveSpeculativeCloningPolicyParallelismFive implements Policy {
   private final Policy policy;
+
   public AggressiveSpeculativeCloningPolicyParallelismFive() {
     final List<CompileTimePass> overwritingPasses = DefaultPolicy.BUILDER.getCompileTimePasses();
     overwritingPasses.add(new AggressiveSpeculativeCloningPass()); // CLONING!
     this.policy = new PolicyImpl(
-        PolicyTestUtil.overwriteParallelism(5, overwritingPasses),
-        DefaultPolicy.BUILDER.getRunTimePasses());
+      PolicyTestUtil.overwriteParallelism(5, overwritingPasses),
+      DefaultPolicy.BUILDER.getRunTimePasses());
   }
+
   @Override
   public IRDAG runCompileTimeOptimization(final IRDAG dag, final String dagDirectory) {
     return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
+
   @Override
   public IRDAG runRunTimeOptimizations(final IRDAG dag, final Message<?> message) {
     return this.policy.runRunTimeOptimizations(dag, message);

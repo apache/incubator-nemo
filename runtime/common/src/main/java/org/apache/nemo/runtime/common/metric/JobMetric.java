@@ -50,6 +50,7 @@ public final class JobMetric implements StateMetric<PlanState.State> {
 
   /**
    * Constructor.
+   *
    * @param physicalPlan physical plan to derive the id from.
    */
   public JobMetric(final PhysicalPlan physicalPlan) {
@@ -58,6 +59,7 @@ public final class JobMetric implements StateMetric<PlanState.State> {
 
   /**
    * Constructor with the designated id.
+   *
    * @param id the id.
    */
   public JobMetric(final String id) {
@@ -88,6 +90,7 @@ public final class JobMetric implements StateMetric<PlanState.State> {
 
   /**
    * Setter for the IR DAG.
+   *
    * @param irDag the IR DAG.
    */
   public void setIRDAG(final IRDAG irDag) {
@@ -120,6 +123,7 @@ public final class JobMetric implements StateMetric<PlanState.State> {
 
   /**
    * Setter for the stage DAG.
+   *
    * @param dag the stage DAG.
    */
   public void setStageDAG(final DAG<Stage, StageEdge> dag) {
