@@ -350,7 +350,6 @@ public final class MetricUtils {
   }
 
   /**
-   * <<<<<<< HEAD
    * Helper method to do the opposite of the #valueToIndex method.
    * It receives the split, and the direction of the tweak value (which show the target index value),
    * and returns the actual value which the execution property uses.
@@ -359,7 +358,6 @@ public final class MetricUtils {
    * @param tweak      the tweak value, to which we should tweak the split value.
    * @param epKeyIndex the EP Key index to retrieve information from.
    * @return the project root path.
-   * >>>>>>> master
    */
   static Serializable indexToValue(final Double split, final Double tweak, final Integer epKeyIndex) {
     final Class<? extends Serializable> targetObjectClass = getEpPairFromKeyIndex(epKeyIndex).right();
@@ -418,17 +416,14 @@ public final class MetricUtils {
   }
 
   /**
-   * <<<<<<< HEAD
    * Receives the pair of execution property and value classes, and returns the optimized value of the EP.
    *
    * @param epKeyIndex the EP Key index to retrieve the new EP from.
    * @param split      the split point.
    * @param tweak      the direction in which to tweak the execution property value.
-   * @param path       the path to search for.
-   * @return the path containing the LICENSE file.
-   * >>>>>>> master
+   * @return The execution property constructed from the key index and the split value.
    */
-  public static ExecutionProperty<? extends Serializable> pairAndValueToEP(
+  public static ExecutionProperty<? extends Serializable> keyAndValueToEP(
     final Integer epKeyIndex,
     final Double split,
     final Double tweak) {

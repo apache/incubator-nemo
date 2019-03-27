@@ -142,7 +142,7 @@ public class MetricUtilsTest {
     Assert.assertEquals(Integer.valueOf(0), idx);
 
     final ExecutionProperty<? extends Serializable> ep2 =
-      MetricUtils.pairAndValueToEP(epKeyIndex, 0.5, -0.1);
+      MetricUtils.keyAndValueToEP(epKeyIndex, 0.5, -0.1);
     Assert.assertEquals(ep, ep2);
   }
 

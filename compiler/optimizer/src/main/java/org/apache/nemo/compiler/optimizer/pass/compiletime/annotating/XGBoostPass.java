@@ -75,7 +75,7 @@ public final class XGBoostPass extends AnnotatingPass {
           final Pair<String, Integer> idAndEPKey = OptimizerUtils.stringToIdAndEPKeyIndex(m.get("feature"));
           LOG.info("Tuning: {} of {} should be {} than {}",
             idAndEPKey.right(), idAndEPKey.left(), m.get("val"), m.get("split"));
-          final ExecutionProperty<? extends Serializable> newEP = MetricUtils.pairAndValueToEP(idAndEPKey.right(),
+          final ExecutionProperty<? extends Serializable> newEP = MetricUtils.keyAndValueToEP(idAndEPKey.right(),
             Double.valueOf(m.get("split")), Double.valueOf(m.get("val")));
           try {
             if (idAndEPKey.left().startsWith("vertex")) {
