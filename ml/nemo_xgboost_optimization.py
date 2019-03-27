@@ -35,11 +35,12 @@ from sklearn import preprocessing
 # METHODS
 # ########################################################
 def format_row(duration, inputsize, jvmmemsize, totalmemsize, vertex_properties, edge_properties):
-  duration_in_10sec = int(duration) // 1000
+  duration_in_sec = int(duration) // 1000
   inputsize_in_10kb = int(inputsize) // 10240  # capable of expressing upto around 20TB with int range
   jvmmemsize_in_mb = int(jvmmemsize) // 1048576
   totalmemsize_in_mb = int(totalmemsize) // 1048576
-  return f'{duration_in_10sec} 0:{inputsize_in_10kb} 1:{jvmmemsize_in_mb} 2:{totalmemsize_in_mb} {vertex_properties} {edge_properties}'
+  return f'{duration_in_sec} 0:{inputsize_in_10kb} 1:{jvmmemsize_in_mb} 2:{totalmemsize_in_mb} {vertex_properties} {edge_properties}'
+
 
 
 # ########################################################
@@ -107,12 +108,25 @@ def stringify_num(num):
 def dict_union(d1, d2):
   for k, v in d2.items():
     if k in d1:
-      if type(d1[k]) is dict and type(v) is dict:
+      if type(d1[k]) is dict and type(v) is dict:  # When same 'feature'
         d1[k] = dict_union(d1[k], v)
-      else:
+      else:  # When same 'split'
         d1[k] = d1[k] + v
-    else:
+    elif type(v) is dict:  # When no initial data
       d1[k] = v
+    else:  # k = split, v = diff. include if it does not violate.
+      if v > 0 > max(d1.values()) and k < max(d1.keys()):  # If no positive values yet
+        d1[k] = v
+      elif v > max(d1.values()) > 0:  # Update if greater value
+        max_key = max(d1, key=lambda key: d1[key])
+        del d1[max_key]
+        d1[k] = v
+      elif v < 0 < min(d1.values()) and min(d1.keys()) < k:  # If no negative values yet
+        d1[k] = v
+      elif v < min(d1.values()) < 0:  # Update if smaller value
+        min_key = min(d1, key=lambda key: d1[key])
+        del d1[min_key]
+        d1[k] = v
   return d1
 
 
@@ -207,7 +221,7 @@ class Node:
     lapprox = self.left.getApprox()
     rapprox = self.right.getApprox()
     if (rapprox != 0 and abs(lapprox / rapprox) < 0.04) or (lapprox != 0 and abs(rapprox / lapprox) < 0.04):
-      return 0
+      return 0  # ignore
     return lapprox - rapprox
 
   def importanceDict(self):
@@ -231,10 +245,8 @@ class Node:
 # ########################################################
 # MAIN FUNCTION
 # ########################################################
-argv = sys.argv[1:]
-tablename = ''
 try:
-  opts, args = getopt.getopt(argv, "ht:", ["tablename="])
+  opts, args = getopt.getopt(sys.argv[1:], "ht:m:i:", ["tablename=", "memsize=", "inputsize="])
 except getopt.GetoptError:
   print('nemo_xgboost_optimization.py -t <tablename>')
   sys.exit(2)
@@ -244,6 +256,10 @@ for opt, arg in opts:
     sys.exit()
   elif opt in ("-t", "--tablename"):
     tablename = arg
+  elif opt in ("-m", "--memsize"):
+    memsize = arg
+  elif opt in ("-i", "--inputsize"):
+    inputsize = arg
 
 modelname = tablename + "_bst.model"
 processed_rows = load_data_from_db(tablename)
@@ -287,6 +303,7 @@ preds_opt = bst_opt.predict(dtest) if bst_opt is not None else None
 error_opt = (sum(1 for i in range(len(preds_opt)) if abs(preds_opt[i] - labels[i]) > allowance) / float(
   len(preds_opt))) if preds_opt is not None else 1
 print('opt_error=%f' % error_opt)
+min_error = error_opt
 
 learning_rates = [0.1, 0.3, 0.4, 0.5, 0.6, 0.7, 0.9]
 for lr in learning_rates:
@@ -305,6 +322,9 @@ for lr in learning_rates:
   if error <= error_opt:
     bst_opt = bst
     bst.save_model(modelname)
+    min_error = error
+
+print('minimum error=%f' % min_error)
 
 ## Let's now use bst_opt
 ## Check out the histogram by uncommenting the lines below
@@ -323,7 +343,7 @@ df = bst_opt.trees_to_dataframe()
 
 trees = {}
 for index, row in df.iterrows():
-  if row['Tree'] not in trees:
+  if row['Tree'] not in trees:  # Tree number = index
     trees[row['Tree']] = Tree()
 
   translated_feature = id_to_col[int(row['Feature'][1:])] if row['Feature'].startswith('f') else row['Feature']
