@@ -315,7 +315,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements DAGInterf
 
     final File file = new File(directory, name + ".json");
     file.getParentFile().mkdirs();
-    try (final PrintWriter printWriter = new PrintWriter(file)) {
+    try (PrintWriter printWriter = new PrintWriter(file)) {
       printWriter.println(toString());
       printWriter.close();
       LOG.debug(String.format("DAG JSON for %s is saved at %s"

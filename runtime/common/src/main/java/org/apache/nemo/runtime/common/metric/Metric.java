@@ -36,5 +36,5 @@ public interface Metric {
    * @param metricValue byte array of serialized data value.
    * @return true if the metric was changed or false if not.
    */
-  boolean processMetricMessage(final String metricField, final byte[] metricValue);
+  boolean processMetricMessage(String metricField, byte[] metricValue);
 }

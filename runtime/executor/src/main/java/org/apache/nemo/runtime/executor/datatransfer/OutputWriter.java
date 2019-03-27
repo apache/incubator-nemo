@@ -31,14 +31,14 @@ public interface OutputWriter {
    *
    * @param element the element to write.
    */
-  void write(final Object element);
+  void write(Object element);
 
   /**
    * Writes watermarks to all edges.
    *
    * @param watermark watermark
    */
-  void writeWatermark(final Watermark watermark);
+  void writeWatermark(Watermark watermark);
 
   /**
    * @return the total written bytes.

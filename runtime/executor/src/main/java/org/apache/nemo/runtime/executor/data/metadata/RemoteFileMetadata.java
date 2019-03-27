@@ -78,8 +78,8 @@ public final class RemoteFileMetadata<K extends Serializable> extends FileMetada
   public synchronized void commitBlock() throws IOException {
     final Iterable<PartitionMetadata<K>> partitionMetadataItr = getPartitionMetadataList();
     try (
-      final FileOutputStream metafileOutputStream = new FileOutputStream(metaFilePath, false);
-      final DataOutputStream dataOutputStream = new DataOutputStream(metafileOutputStream)
+      FileOutputStream metafileOutputStream = new FileOutputStream(metaFilePath, false);
+      DataOutputStream dataOutputStream = new DataOutputStream(metafileOutputStream)
     ) {
       for (PartitionMetadata<K> partitionMetadata : partitionMetadataItr) {
         final byte[] key = SerializationUtils.serialize(partitionMetadata.getKey());
@@ -117,8 +117,8 @@ public final class RemoteFileMetadata<K extends Serializable> extends FileMetada
     }
     final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();
     try (
-      final FileInputStream metafileInputStream = new FileInputStream(metaFilePath);
-      final DataInputStream dataInputStream = new DataInputStream(metafileInputStream)
+      FileInputStream metafileInputStream = new FileInputStream(metaFilePath);
+      DataInputStream dataInputStream = new DataInputStream(metafileInputStream)
     ) {
       while (dataInputStream.available() > 0) {
         final int keyLength = dataInputStream.readInt();

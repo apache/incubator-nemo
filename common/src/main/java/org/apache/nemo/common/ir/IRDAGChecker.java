@@ -131,30 +131,30 @@ public final class IRDAGChecker {
    * Checks each single vertex.
    */
   private interface SingleVertexChecker {
-    CheckerResult check(final IRVertex irVertex);
+    CheckerResult check(IRVertex irVertex);
   }
 
   /**
    * Checks each single edge.
    */
   private interface SingleEdgeChecker {
-    CheckerResult check(final IREdge irEdge);
+    CheckerResult check(IREdge irEdge);
   }
 
   /**
    * Checks each vertex and its neighbor edges.
    */
   private interface NeighborChecker {
-    CheckerResult check(final IRVertex irVertex,
-                        final List<IREdge> inEdges,
-                        final List<IREdge> outEdges);
+    CheckerResult check(IRVertex irVertex,
+                        List<IREdge> inEdges,
+                        List<IREdge> outEdges);
   }
 
   /**
    * Checks the entire DAG.
    */
   public interface GlobalDAGChecker {
-    CheckerResult check(final DAG<IRVertex, IREdge> irdag);
+    CheckerResult check(DAG<IRVertex, IREdge> irdag);
   }
 
   ///////////////////////////// Checker implementations

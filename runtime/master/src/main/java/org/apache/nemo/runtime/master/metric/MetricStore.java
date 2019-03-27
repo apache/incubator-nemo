@@ -184,7 +184,7 @@ public final class MetricStore {
     final JsonFactory jsonFactory = new JsonFactory();
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
 
-    try (final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8)) {
+    try (JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8)) {
       jsonGenerator.setCodec(objectMapper);
 
       jsonGenerator.writeStartObject();
@@ -210,7 +210,7 @@ public final class MetricStore {
     final JsonFactory jsonFactory = new JsonFactory();
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
 
-    try (final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8)) {
+    try (JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8)) {
       jsonGenerator.setCodec(objectMapper);
 
       jsonGenerator.writeStartObject();
@@ -234,7 +234,7 @@ public final class MetricStore {
    * @param filePath path to dump JSON.
    */
   public void dumpAllMetricToFile(final String filePath) {
-    try (final BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
       final String jsonDump = dumpAllMetricToJson();
       writer.write(jsonDump);
     } catch (final IOException e) {
@@ -257,7 +257,7 @@ public final class MetricStore {
       throw new MetricException("SQLite Driver not loaded: " + e);
     }
 
-    try (final Connection c = DriverManager.getConnection(MetricUtils.SQLITE_DB_NAME)) {
+    try (Connection c = DriverManager.getConnection(MetricUtils.SQLITE_DB_NAME)) {
       LOG.info("Opened database successfully at {}", MetricUtils.SQLITE_DB_NAME);
       saveOptimizationMetrics(jobId, c, syntax);
     } catch (SQLException e) {
@@ -283,7 +283,7 @@ public final class MetricStore {
       return;
     }
 
-    try (final Connection c = DriverManager.getConnection(address, dbId, dbPasswd)) {
+    try (Connection c = DriverManager.getConnection(address, dbId, dbPasswd)) {
       LOG.info("Opened database successfully at {}", MetricUtils.POSTGRESQL_METADATA_DB_NAME);
       saveOptimizationMetrics(jobId, c, syntax);
     } catch (SQLException e) {
@@ -301,7 +301,7 @@ public final class MetricStore {
    * @param syntax the db-specific syntax.
    */
   private void saveOptimizationMetrics(final String jobId, final Connection c, final String[] syntax) {
-    try (final Statement statement = c.createStatement()) {
+    try (Statement statement = c.createStatement()) {
       statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
       getMetricMap(JobMetric.class).values().forEach(o -> {
@@ -363,7 +363,7 @@ public final class MetricStore {
     final T metric = getMetricWithId(metricClass, id);
     final JsonFactory jsonFactory = new JsonFactory();
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    try (final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8)) {
+    try (JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8)) {
       jsonGenerator.setCodec(objectMapper);
 
       jsonGenerator.writeStartObject();

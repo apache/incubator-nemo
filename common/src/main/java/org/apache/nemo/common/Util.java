@@ -69,7 +69,7 @@ public final class Util {
    * @return the path containing the LICENSE file.
    */
   static String recursivelyFindLicense(final Path path) {
-    try (final Stream stream = Files.find(path, 1, (p, attributes) -> p.endsWith("LICENSE"))) {
+    try (Stream stream = Files.find(path, 1, (p, attributes) -> p.endsWith("LICENSE"))) {
       if (stream.count() > 0) {
         return path.toAbsolutePath().toString();
       } else {

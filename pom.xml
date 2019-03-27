@@ -70,6 +70,7 @@ under the License.
     <powermock.version>2.0.0-beta.5</powermock.version>
     <surefire.version>3.0.0-M1</surefire.version>
     <junit.version>4.12</junit.version>
+    <checkstyle.version>8.16</checkstyle.version>
   </properties>
 
   <modules>
@@ -187,7 +188,14 @@ under the License.
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>2.17</version>
+        <version>3.0.0</version>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>${checkstyle.version}</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
             <id>validate</id>

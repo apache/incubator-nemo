@@ -607,7 +607,7 @@ public final class PlanStateManager {
 
     final File file = new File(dagDirectory, planId + "-" + dagLogFileIndex + "-" + suffix + ".json");
     file.getParentFile().mkdirs();
-    try (final PrintWriter printWriter = new PrintWriter(file)) {
+    try (PrintWriter printWriter = new PrintWriter(file)) {
       printWriter.println(toStringWithPhysicalPlan());
       LOG.debug(String.format("JSON representation of plan state for %s(%s) was saved to %s",
         planId, dagLogFileIndex + "-" + suffix, file.getPath()));

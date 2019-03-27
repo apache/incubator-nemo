@@ -85,9 +85,9 @@ public final class MetricUtils {
    * @return the loaded BiMaps, or initialized ones.
    */
   private static void loadMetaData() {
-    try (final Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
+    try (Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
       "postgres", "fake_password")) {
-      try (final Statement statement = c.createStatement()) {
+      try (Statement statement = c.createStatement()) {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
         statement.executeUpdate(
@@ -139,9 +139,9 @@ public final class MetricUtils {
     }
     LOG.info("Saving Metadata..");
 
-    try (final Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
+    try (Connection c = DriverManager.getConnection(MetricUtils.POSTGRESQL_METADATA_DB_NAME,
       "postgres", "fake_password")) {
-      try (final Statement statement = c.createStatement()) {
+      try (Statement statement = c.createStatement()) {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
         if (MUST_UPDATE_EP_KEY_METADATA.getCount() == 0) {
