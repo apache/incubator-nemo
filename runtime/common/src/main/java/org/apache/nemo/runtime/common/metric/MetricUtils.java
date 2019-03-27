@@ -182,7 +182,7 @@ public final class MetricUtils {
    */
   private static void insertOrUpdateMetadata(final Connection c, final String type,
                                              final Integer key, final Serializable value) throws SQLException {
-    try (final PreparedStatement pstmt = c.prepareStatement(
+    try (PreparedStatement pstmt = c.prepareStatement(
       "INSERT INTO " + METADATA_TABLE_NAME + " (type, key, value) "
         + "VALUES ('" + type + "', " + key + ", ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value;")) {
       pstmt.setBinaryStream(1, new ByteArrayInputStream(SerializationUtils.serialize(value)));
