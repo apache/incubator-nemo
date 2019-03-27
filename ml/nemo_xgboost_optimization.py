@@ -18,12 +18,17 @@
 # under the License.
 #
 
-import numpy as np
-import xgboost as xgb
-import psycopg2 as pg
-from sklearn import preprocessing
+import getopt
+import json
+import sys
 from pathlib import Path
-import json, sys, getopt
+
+import numpy as np
+import psycopg2 as pg
+import xgboost as xgb
+from sklearn import preprocessing
+
+
 # import matplotlib.pyplot as plt
 
 # ########################################################
@@ -35,6 +40,7 @@ def format_row(duration, inputsize, jvmmemsize, totalmemsize, vertex_properties,
   jvmmemsize_in_mb = int(jvmmemsize) // 1048576
   totalmemsize_in_mb = int(totalmemsize) // 1048576
   return f'{duration_in_10sec} 0:{inputsize_in_10kb} 1:{jvmmemsize_in_mb} 2:{totalmemsize_in_mb} {vertex_properties} {edge_properties}'
+
 
 # ########################################################
 def load_data_from_db(tablename):
@@ -62,6 +68,7 @@ def load_data_from_db(tablename):
   conn.close()
   return processed_rows
 
+
 # ########################################################
 def write_to_file(filename, rows):
   f = open(filename, 'w')
@@ -69,32 +76,36 @@ def write_to_file(filename, rows):
     f.write(row + "\n")
   f.close()
 
+
 def encode_processed_rows(processed_rows, col_to_id):
-  for i,row in enumerate(processed_rows):
+  for i, row in enumerate(processed_rows):
     arr = row.split()
-    for j,it in enumerate(arr[1:]):
-      k,v = it.split(':')
+    for j, it in enumerate(arr[1:]):
+      k, v = it.split(':')
       ek = col_to_id[int(k)]
-      arr[j+1] = f'{ek}:{v}'
+      arr[j + 1] = f'{ek}:{v}'
     processed_rows[i] = ' '.join(arr)
   return processed_rows
 
+
 def decode_rows(rows, id_to_col):
-  for i,row in enumerate(rows):
+  for i, row in enumerate(rows):
     arr = row.split()
-    for j,it in enumerate(arr[1:]):
-      ek,v = it.split(':')
+    for j, it in enumerate(arr[1:]):
+      ek, v = it.split(':')
       k = id_to_col[int(ek)]
-      arr[j+1] = f'{k}:{v}'
+      arr[j + 1] = f'{k}:{v}'
     rows[i] = ' '.join(arr)
   return rows
+
 
 # ########################################################
 def stringify_num(num):
   return str(round(num, 2))
 
+
 def dict_union(d1, d2):
-  for k,v in d2.items():
+  for k, v in d2.items():
     if k in d1:
       if type(d1[k]) is dict and type(v) is dict:
         d1[k] = dict_union(d1[k], v)
@@ -103,6 +114,7 @@ def dict_union(d1, d2):
     else:
       d1[k] = v
   return d1
+
 
 # ########################################################
 class Tree:
@@ -132,6 +144,7 @@ class Tree:
 
   def __str__(self):
     return json.dumps(json.loads(str(self.root)), indent=4)
+
 
 class Node:
   parent = None
@@ -183,9 +196,9 @@ class Node:
     else:
       lapprox = self.left.getApprox()
       rapprox = self.right.getApprox()
-      if rapprox != 0 and abs(lapprox/rapprox) < 0.04:  # smaller than 4% then ignore
+      if rapprox != 0 and abs(lapprox / rapprox) < 0.04:  # smaller than 4% then ignore
         return rapprox
-      elif lapprox != 0 and abs(rapprox/lapprox) < 0.04:
+      elif lapprox != 0 and abs(rapprox / lapprox) < 0.04:
         return lapprox
       else:
         return (lapprox + rapprox) / 2
@@ -193,7 +206,7 @@ class Node:
   def getDiff(self):
     lapprox = self.left.getApprox()
     rapprox = self.right.getApprox()
-    if (rapprox != 0 and abs(lapprox/rapprox) < 0.04) or (lapprox != 0 and abs(rapprox/lapprox) < 0.04):
+    if (rapprox != 0 and abs(lapprox / rapprox) < 0.04) or (lapprox != 0 and abs(rapprox / lapprox) < 0.04):
       return 0
     return lapprox - rapprox
 
@@ -211,7 +224,9 @@ class Node:
     else:
       left = str(self.left) if self.left.isLeaf() else json.loads(str(self.left))
       right = str(self.right) if self.right.isLeaf() else json.loads(str(self.right))
-      return json.dumps({self.index: f'{self.feature}' + '{' + stringify_num(self.getApprox()) + ',' + stringify_num(self.getDiff()) + '}', 'L' + self.left.getIndex(): left, 'R' + self.right.getIndex(): right})
+      return json.dumps({self.index: f'{self.feature}' + '{' + stringify_num(self.getApprox()) + ',' + stringify_num(
+        self.getDiff()) + '}', 'L' + self.left.getIndex(): left, 'R' + self.right.getIndex(): right})
+
 
 # ########################################################
 # MAIN FUNCTION
@@ -219,7 +234,7 @@ class Node:
 argv = sys.argv[1:]
 tablename = ''
 try:
-  opts, args = getopt.getopt(argv,"ht:",["tablename="])
+  opts, args = getopt.getopt(argv, "ht:", ["tablename="])
 except getopt.GetoptError:
   print('nemo_xgboost_optimization.py -t <tablename>')
   sys.exit(2)
@@ -239,7 +254,7 @@ col = []
 for row in processed_rows:
   arr = row.split()
   for it in arr[1:]:
-    k,v = it.split(':')
+    k, v = it.split(':')
     col.append(int(k))
 le = preprocessing.LabelEncoder()
 ids = le.fit_transform(col)
@@ -260,28 +275,30 @@ row_size = len(processed_rows)
 print("total_rows: ", row_size)
 
 ## TRAIN THE MODEL (REGRESSION)
-dtrain = ddata.slice([i for i in range(0, row_size) if i%6 != 5])  # mod is not 5
+dtrain = ddata.slice([i for i in range(0, row_size) if i % 6 != 5])  # mod is not 5
 print("train_rows: ", dtrain.num_row())
-dtest = ddata.slice([i for i in range(0, row_size) if i%6 == 5])  # mod is 5
+dtest = ddata.slice([i for i in range(0, row_size) if i % 6 == 5])  # mod is 5
 print("test_rows: ", dtest.num_row())
 labels = dtest.get_label()
 
 ## Load existing booster, if it exists
 bst_opt = xgb.Booster(model_file=modelname) if Path(modelname).is_file() else None
 preds_opt = bst_opt.predict(dtest) if bst_opt is not None else None
-error_opt = (sum(1 for i in range(len(preds_opt)) if abs(preds_opt[i] - labels[i]) > allowance) / float(len(preds_opt))) if preds_opt is not None else 1
+error_opt = (sum(1 for i in range(len(preds_opt)) if abs(preds_opt[i] - labels[i]) > allowance) / float(
+  len(preds_opt))) if preds_opt is not None else 1
 print('opt_error=%f' % error_opt)
 
 learning_rates = [0.1, 0.3, 0.4, 0.5, 0.6, 0.7, 0.9]
 for lr in learning_rates:
-  param = {'max_depth':6, 'eta':lr, 'verbosity':0, 'objective':'reg:linear'}
+  param = {'max_depth': 6, 'eta': lr, 'verbosity': 0, 'objective': 'reg:linear'}
 
   watchlist = [(dtest, 'eval'), (dtrain, 'train')]
   num_round = row_size // 10
   bst = xgb.train(param, dtrain, num_round, watchlist, early_stopping_rounds=5)
 
   preds = bst.predict(dtest)
-  error = (sum(1 for i in range(len(preds)) if abs(preds[i] - labels[i]) > allowance) / float(len(preds))) if len(preds) > 0 else 1.0
+  error = (sum(1 for i in range(len(preds)) if abs(preds[i] - labels[i]) > allowance) / float(len(preds))) if len(
+    preds) > 0 else 1.0
   print('error=%f' % error)
 
   ## Better booster
@@ -311,7 +328,8 @@ for index, row in df.iterrows():
 
   translated_feature = id_to_col[int(row['Feature'][1:])] if row['Feature'].startswith('f') else row['Feature']
   # print(translated_feature)
-  trees[row['Tree']].addNode(row['ID'], translated_feature, row['Split'], row['Yes'], row['No'], row['Missing'], row['Gain'])
+  trees[row['Tree']].addNode(row['ID'], translated_feature, row['Split'], row['Yes'], row['No'], row['Missing'],
+                             row['Gain'])
 
 results = {}
 print("\nGenerated Trees:")
@@ -324,8 +342,8 @@ print(json.dumps(results, indent=2))
 
 print("\nSummary")
 resultsJson = []
-for k,v in results.items():
-  for kk,vv in v.items():
+for k, v in results.items():
+  for kk, vv in v.items():
     resultsJson.append({'feature': k, 'split': kk, 'val': vv})
     how = 'greater' if vv > 0 else 'smaller'
     restring = f'{k} should be {how} than {kk}'
