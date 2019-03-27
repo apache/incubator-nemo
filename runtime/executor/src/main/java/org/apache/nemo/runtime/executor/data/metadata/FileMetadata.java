@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * This class represents a metadata for a {@link org.apache.nemo.runtime.executor.data.block.Block}.
  * The writer and reader determine the status of a file block
  * (such as accessibility, how many bytes are written, etc.) by using this metadata.
+ *
  * @param <K> the key type of its partitions.
  */
 public abstract class FileMetadata<K extends Serializable> {
@@ -48,6 +49,7 @@ public abstract class FileMetadata<K extends Serializable> {
 
   /**
    * Construct a file metadata with existing partition metadata.
+   *
    * @param partitionMetadataList the partition metadata list.
    */
   public FileMetadata(final List<PartitionMetadata<K>> partitionMetadataList) {
@@ -59,7 +61,7 @@ public abstract class FileMetadata<K extends Serializable> {
   /**
    * Writes the metadata for a partition.
    *
-   * @param key     the key of the partition.
+   * @param key           the key of the partition.
    * @param partitionSize the size of the partition.
    * @throws IOException if fail to append the partition metadata.
    */
@@ -70,7 +72,7 @@ public abstract class FileMetadata<K extends Serializable> {
     }
 
     final PartitionMetadata partitionMetadata =
-        new PartitionMetadata(key, partitionSize, writtenBytesCursor);
+      new PartitionMetadata(key, partitionSize, writtenBytesCursor);
     partitionMetadataList.add(partitionMetadata);
     writtenBytesCursor += partitionSize;
   }
@@ -101,6 +103,7 @@ public abstract class FileMetadata<K extends Serializable> {
 
   /**
    * Set the commit value.
+   *
    * @param committed whether this block is committed or not.
    */
   protected final void setCommitted(final boolean committed) {

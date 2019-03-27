@@ -27,6 +27,7 @@ public class MetricException extends RuntimeException {
 
   /**
    * MetricException.
+   *
    * @param cause the cause of the exception.
    */
   public MetricException(final Throwable cause) {
@@ -35,6 +36,7 @@ public class MetricException extends RuntimeException {
 
   /**
    * MetricException.
+   *
    * @param cause the cause of the exception.
    */
   public MetricException(final String cause) {

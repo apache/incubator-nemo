@@ -36,10 +36,10 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * Writes happen in a serialized manner with {@link PipeContainer#putPipeListIfAbsent(Pair, int)}.
  * This ensures that each key is initialized exactly once, and never updated.
- *
+ * <p>
  * Writes and reads for the same key never occur concurrently with no problem, because
  * (1) write never updates, and (2) read happens only after the write.
- *
+ * <p>
  * Reads can happen concurrently with no problem.
  */
 @ThreadSafe
@@ -53,6 +53,7 @@ public final class PipeContainer {
 
   /**
    * Blocks the get operation when the number of elements is smaller than expected.
+   *
    * @param <T> type of the value.
    */
   class CountBasedBlockingContainer<T> {

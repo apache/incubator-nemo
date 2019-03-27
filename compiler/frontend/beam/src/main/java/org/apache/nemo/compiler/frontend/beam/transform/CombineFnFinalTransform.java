@@ -38,6 +38,7 @@ import java.util.Map;
  * (Currently supports batch-style global windows only)
  * TODO #263: Partial Combining for Beam Streaming
  * TODO #264: Partial Combining with Beam SideInputs
+ *
  * @param <K> Key type.
  * @param <A> Accum type.
  * @param <O> Output type.
@@ -53,6 +54,7 @@ public final class CombineFnFinalTransform<K, A, O>
 
   /**
    * Constructor.
+   *
    * @param combineFn combine function.
    */
   public CombineFnFinalTransform(final CombineFnBase.GlobalCombineFn<?, A, O> combineFn) {

@@ -58,25 +58,27 @@ public final class TransientResourcePriorityPass extends AnnotatingPass {
 
   /**
    * Checks whether the irEdges have M2M relationship.
+   *
    * @param irEdges irEdges to check.
    * @return whether of not any of them has M2M relationship.
    */
   private boolean hasM2M(final List<IREdge> irEdges) {
     return irEdges.stream().anyMatch(edge ->
-        edge.getPropertyValue(CommunicationPatternProperty.class).get()
-          .equals(CommunicationPatternProperty.Value.Shuffle));
+      edge.getPropertyValue(CommunicationPatternProperty.class).get()
+        .equals(CommunicationPatternProperty.Value.Shuffle));
   }
 
   /**
    * Checks whether the irEdges are all from reserved containers.
+   *
    * @param irEdges irEdges to check.
    * @return whether of not they are from reserved containers.
    */
   private boolean allO2OFromReserved(final List<IREdge> irEdges) {
     return irEdges.stream()
-        .allMatch(edge -> CommunicationPatternProperty.Value.OneToOne.equals(
-            edge.getPropertyValue(CommunicationPatternProperty.class).get())
-            && edge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get().equals(
-                ResourcePriorityProperty.RESERVED));
+      .allMatch(edge -> CommunicationPatternProperty.Value.OneToOne.equals(
+        edge.getPropertyValue(CommunicationPatternProperty.class).get())
+        && edge.getSrc().getPropertyValue(ResourcePriorityProperty.class).get().equals(
+        ResourcePriorityProperty.RESERVED));
   }
 }

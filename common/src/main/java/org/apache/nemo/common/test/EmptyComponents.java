@@ -19,6 +19,7 @@
 package org.apache.nemo.common.test;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.beam.sdk.values.KV;
 import org.apache.nemo.common.KeyExtractor;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
@@ -33,7 +34,6 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.NoWatermarkEmitTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.beam.sdk.values.KV;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -65,6 +65,7 @@ public final class EmptyComponents {
 
   /**
    * Builds dummy IR DAG for testing.
+   *
    * @return the dummy IR DAG.
    */
   public static IRDAG buildEmptyDAG() {
@@ -93,6 +94,7 @@ public final class EmptyComponents {
    * Builds dummy IR DAG to test skew handling.
    * For DataSkewPolicy, shuffle edges needs extra setting for EncoderProperty, DecoderProperty
    * and KeyExtractorProperty by default.
+   *
    * @return the dummy IR DAG.
    */
   public static IRDAG buildEmptyDAGForSkew() {
@@ -198,7 +200,7 @@ public final class EmptyComponents {
     /**
      * Constructor.
      *
-     * @param name name for the vertex.
+     * @param name            name for the vertex.
      * @param minNumReadables for the vertex.
      */
     public EmptySourceVertex(final String name, final int minNumReadables) {

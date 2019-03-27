@@ -54,13 +54,13 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
     final Map<String, Integer> propertyValue = task.getPropertyValue(ResourceSiteProperty.class)
-        .orElseThrow(() -> new RuntimeException("ResourceSiteProperty expected"));
+      .orElseThrow(() -> new RuntimeException("ResourceSiteProperty expected"));
     if (propertyValue.isEmpty()) {
       return true;
     }
     try {
       return executor.getNodeName().equals(
-          getNodeName(propertyValue, RuntimeIdManager.getIndexFromTaskId(task.getTaskId())));
+        getNodeName(propertyValue, RuntimeIdManager.getIndexFromTaskId(task.getTaskId())));
     } catch (final IllegalStateException e) {
       throw new RuntimeException(String.format("Cannot schedule %s", task.getTaskId(), e));
     }

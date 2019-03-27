@@ -21,33 +21,36 @@ package org.apache.nemo.runtime.master.resource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.protobuf.ByteString;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * (WARNING) This class is not thread-safe, and thus should only be accessed through ExecutorRegistry.
- *
+ * <p>
  * Contains information/state regarding an executor.
  * Such information may include:
- *    a) The executor's resource type.
- *    b) The executor's capacity (ex. number of cores).
- *    c) Tasks scheduled/launched for the executor.
- *    d) Name of the physical node which hosts this executor.
- *    e) (Please add other information as we implement more features).
+ * a) The executor's resource type.
+ * b) The executor's capacity (ex. number of cores).
+ * c) Tasks scheduled/launched for the executor.
+ * d) Name of the physical node which hosts this executor.
+ * e) (Please add other information as we implement more features).
  */
 @NotThreadSafe
 public final class ExecutorRepresenter {
@@ -67,12 +70,13 @@ public final class ExecutorRepresenter {
 
   /**
    * Creates a reference to the specified executor.
-   * @param executorId the executor id
-   * @param resourceSpecification specification for the executor
-   * @param messageSender provides communication context for this executor
-   * @param activeContext context on the corresponding REEF evaluator
+   *
+   * @param executorId                   the executor id
+   * @param resourceSpecification        specification for the executor
+   * @param messageSender                provides communication context for this executor
+   * @param activeContext                context on the corresponding REEF evaluator
    * @param serializationExecutorService provides threads for message serialization
-   * @param nodeName physical name of the node where this executor resides
+   * @param nodeName                     physical name of the node where this executor resides
    */
   public ExecutorRepresenter(final String executorId,
                              final ResourceSpecification resourceSpecification,
@@ -102,7 +106,7 @@ public final class ExecutorRepresenter {
     failedTasks.addAll(runningComplyingTasks.values());
     failedTasks.addAll(runningNonComplyingTasks.values());
     final Set<String> taskIds = Stream.concat(runningComplyingTasks.keySet().stream(),
-        runningNonComplyingTasks.keySet().stream()).collect(Collectors.toSet());
+      runningNonComplyingTasks.keySet().stream()).collect(Collectors.toSet());
     runningComplyingTasks.clear();
     runningNonComplyingTasks.clear();
     return taskIds;
@@ -110,11 +114,12 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks the Task as running, and sends scheduling message to the executor.
+   *
    * @param task the task to run
    */
   public void onTaskScheduled(final Task task) {
     (task.getPropertyValue(ResourceSlotProperty.class).orElse(true)
-        ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
+      ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
 
@@ -136,6 +141,7 @@ public final class ExecutorRepresenter {
 
   /**
    * Sends control message to the executor.
+   *
    * @param message Message object to send
    */
   public void sendControlMessage(final ControlMessage.Message message) {
@@ -144,6 +150,7 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks the specified Task as completed.
+   *
    * @param taskId id of the completed task
    */
   public void onTaskExecutionComplete(final String taskId) {
@@ -154,6 +161,7 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks the specified Task as failed.
+   *
    * @param taskId id of the Task
    */
   public void onTaskExecutionFailed(final String taskId) {
@@ -174,7 +182,7 @@ public final class ExecutorRepresenter {
    */
   public Set<Task> getRunningTasks() {
     return Stream.concat(runningComplyingTasks.values().stream(),
-        runningNonComplyingTasks.values().stream()).collect(Collectors.toSet());
+      runningNonComplyingTasks.values().stream()).collect(Collectors.toSet());
   }
 
   /**

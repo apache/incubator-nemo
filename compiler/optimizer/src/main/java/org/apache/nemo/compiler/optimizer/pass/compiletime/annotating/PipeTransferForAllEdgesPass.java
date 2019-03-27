@@ -37,8 +37,8 @@ public final class PipeTransferForAllEdgesPass extends AnnotatingPass {
   public IRDAG apply(final IRDAG dag) {
     dag.getVertices().forEach(vertex -> {
       dag.getIncomingEdgesOf(vertex).stream()
-          .forEach(edge -> edge.setPropertyPermanently(
-              DataStoreProperty.of(DataStoreProperty.Value.Pipe)));
+        .forEach(edge -> edge.setPropertyPermanently(
+          DataStoreProperty.of(DataStoreProperty.Value.Pipe)));
     });
     return dag;
   }

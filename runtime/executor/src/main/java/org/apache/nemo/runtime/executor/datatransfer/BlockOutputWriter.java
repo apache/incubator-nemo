@@ -21,13 +21,14 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.partitioner.DedicatedKeyPerElement;
+import org.apache.nemo.common.partitioner.Partitioner;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.block.Block;
-import org.apache.nemo.common.partitioner.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,10 +55,10 @@ public final class BlockOutputWriter implements OutputWriter {
   /**
    * Constructor.
    *
-   * @param srcTaskId           the id of the source task.
-   * @param dstIrVertex         the destination IR vertex.
-   * @param runtimeEdge         the {@link RuntimeEdge}.
-   * @param blockManagerWorker  the {@link BlockManagerWorker}.
+   * @param srcTaskId          the id of the source task.
+   * @param dstIrVertex        the destination IR vertex.
+   * @param runtimeEdge        the {@link RuntimeEdge}.
+   * @param blockManagerWorker the {@link BlockManagerWorker}.
    */
   BlockOutputWriter(final String srcTaskId,
                     final IRVertex dstIrVertex,
@@ -72,12 +73,12 @@ public final class BlockOutputWriter implements OutputWriter {
     this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class)
       .orElseThrow(() -> new RuntimeException("No data store property on the edge"));
     blockToWrite = blockManagerWorker.createBlock(
-        RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), blockStoreValue);
+      RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), blockStoreValue);
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
-        runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
+      runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     nonDummyBlock = !duplicateDataProperty.isPresent()
-        || duplicateDataProperty.get().getRepresentativeEdgeId().equals(runtimeEdge.getId())
-        || duplicateDataProperty.get().getGroupSize() <= 1;
+      || duplicateDataProperty.get().getRepresentativeEdgeId().equals(runtimeEdge.getId())
+      || duplicateDataProperty.get().getGroupSize() <= 1;
   }
 
   @Override
@@ -86,7 +87,7 @@ public final class BlockOutputWriter implements OutputWriter {
       blockToWrite.write(partitioner.partition(element), element);
 
       final DedicatedKeyPerElement dedicatedKeyPerElement =
-          partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
+        partitioner.getClass().getAnnotation(DedicatedKeyPerElement.class);
       if (dedicatedKeyPerElement != null) {
         blockToWrite.commitPartitions();
       }

@@ -35,6 +35,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
   private final List<Watermark> watermarks;
   private final OutputCollector<?> watermarkCollector;
   private int minWatermarkIndex;
+
   public MultiInputWatermarkManager(final int numEdges,
                                     final OutputCollector<?> watermarkCollector) {
     super();
@@ -71,7 +72,7 @@ public final class MultiInputWatermarkManager implements InputWatermarkManager {
       // update min watermark
       final Watermark prevMinWatermark = watermarks.get(minWatermarkIndex);
       watermarks.set(minWatermarkIndex, watermark);
-       // find min watermark
+      // find min watermark
       minWatermarkIndex = findNextMinWatermarkIndex();
       final Watermark minWatermark = watermarks.get(minWatermarkIndex);
 

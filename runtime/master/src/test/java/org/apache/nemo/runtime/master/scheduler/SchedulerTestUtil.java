@@ -32,10 +32,11 @@ import java.util.Optional;
 final class SchedulerTestUtil {
   /**
    * Complete the stage by completing all of its Tasks.
+   *
    * @param planStateManager for the submitted plan.
-   * @param scheduler for the submitted plan.
+   * @param scheduler        for the submitted plan.
    * @param executorRegistry provides executor representers
-   * @param stage for which the states should be marked as complete.
+   * @param stage            for which the states should be marked as complete.
    */
   static void completeStage(final PlanStateManager planStateManager,
                             final Scheduler scheduler,
@@ -53,7 +54,7 @@ final class SchedulerTestUtil {
           final TaskState.State taskState = planStateManager.getTaskState(taskId);
           if (TaskState.State.EXECUTING == taskState) {
             sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId,
-                TaskState.State.COMPLETE, attemptIdx, null);
+              TaskState.State.COMPLETE, attemptIdx, null);
           } else if (TaskState.State.READY == taskState || TaskState.State.COMPLETE == taskState) {
             // Skip READY (try in the next loop and see if it becomes EXECUTING) and COMPLETE.
           } else {
@@ -69,11 +70,12 @@ final class SchedulerTestUtil {
   /**
    * Sends task state change event to scheduler.
    * This replaces executor's task completion messages for testing purposes.
-   * @param scheduler for the submitted plan.
+   *
+   * @param scheduler        for the submitted plan.
    * @param executorRegistry provides executor representers
-   * @param taskId for the task to change the state.
-   * @param newState for the task.
-   * @param cause in the case of a recoverable failure.
+   * @param taskId           for the task to change the state.
+   * @param newState         for the task.
+   * @param cause            in the case of a recoverable failure.
    */
   static void sendTaskStateEventToScheduler(final Scheduler scheduler,
                                             final ExecutorRegistry executorRegistry,
@@ -90,7 +92,7 @@ final class SchedulerTestUtil {
       }
     }
     scheduler.onTaskStateReportFromExecutor(scheduledExecutor.getExecutorId(), taskId, attemptIdx,
-        newState, null, cause);
+      newState, null, cause);
   }
 
   static void sendTaskStateEventToScheduler(final Scheduler scheduler,

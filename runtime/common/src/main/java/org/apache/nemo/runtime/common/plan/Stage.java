@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.common.plan;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Vertex;
 import org.apache.nemo.common.ir.Readable;
@@ -28,7 +29,6 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
-import org.apache.commons.lang3.SerializationUtils;
 
 import java.io.Serializable;
 import java.util.List;
@@ -104,7 +104,7 @@ public final class Stage extends Vertex {
    */
   public int getScheduleGroup() {
     return executionProperties.get(ScheduleGroupProperty.class)
-        .orElseThrow(() -> new RuntimeException("ScheduleGroup property must be set for Stage"));
+      .orElseThrow(() -> new RuntimeException("ScheduleGroup property must be set for Stage"));
   }
 
   /**
@@ -129,7 +129,7 @@ public final class Stage extends Vertex {
    * @return the execution property.
    */
   public <T extends Serializable> Optional<T> getPropertyValue(
-      final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
+    final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
     return executionProperties.get(executionPropertyKey);
   }
 

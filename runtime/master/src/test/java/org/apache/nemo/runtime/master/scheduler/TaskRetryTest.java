@@ -17,6 +17,7 @@
  * under the License.
  */
 package org.apache.nemo.runtime.master.scheduler;
+
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -27,15 +28,15 @@ import org.apache.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
+import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.nemo.runtime.common.state.BlockState;
 import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
-import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.PlanStateManager;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
-import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.junit.Before;
@@ -64,9 +65,10 @@ import static org.mockito.Mockito.mock;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({BlockManagerMaster.class, TaskDispatcher.class, SchedulingConstraintRegistry.class,
-    PubSubEventHandlerWrapper.class})
+  PubSubEventHandlerWrapper.class})
 public final class TaskRetryTest {
-  @Rule public TestName testName = new TestName();
+  @Rule
+  public TestName testName = new TestName();
 
   private static final Logger LOG = LoggerFactory.getLogger(TaskRetryTest.class.getName());
   private static final AtomicInteger ID_OFFSET = new AtomicInteger(1);
@@ -96,7 +98,7 @@ public final class TaskRetryTest {
     runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, injector);
   }
 
-  @Test(timeout=60000)
+  @Test(timeout = 60000)
   public void testExecutorRemoved() throws Exception {
     // Until the plan finishes, events happen
     while (!planStateManager.isPlanDone()) {
@@ -122,7 +124,7 @@ public final class TaskRetryTest {
     assertTrue(planStateManager.isPlanDone());
   }
 
-  @Test(timeout=60000)
+  @Test(timeout = 60000)
   public void testTaskOutputWriteFailure() throws Exception {
     // Three executors are used
     executorAdded(1.0);
@@ -163,7 +165,7 @@ public final class TaskRetryTest {
     final ExecutorService serExecutorService = Executors.newSingleThreadExecutor();
     final ResourceSpecification computeSpec = new ResourceSpecification(ResourcePriorityProperty.COMPUTE, 2, 0);
     final ExecutorRepresenter executor = new ExecutorRepresenter("EXECUTOR" + ID_OFFSET.getAndIncrement(),
-        computeSpec, mockMsgSender, activeContext, serExecutorService, "NODE" + ID_OFFSET.getAndIncrement());
+      computeSpec, mockMsgSender, activeContext, serExecutorService, "NODE" + ID_OFFSET.getAndIncrement());
     scheduler.onExecutorAdded(executor);
   }
 
@@ -219,8 +221,8 @@ public final class TaskRetryTest {
       final int randomIndex = random.nextInt(executingTasks.size());
       final String selectedTask = executingTasks.get(randomIndex);
       SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry, selectedTask,
-          TaskState.State.SHOULD_RETRY, RuntimeIdManager.getAttemptFromTaskId(selectedTask),
-          TaskState.RecoverableTaskFailureCause.OUTPUT_WRITE_FAILURE);
+        TaskState.State.SHOULD_RETRY, RuntimeIdManager.getAttemptFromTaskId(selectedTask),
+        TaskState.RecoverableTaskFailureCause.OUTPUT_WRITE_FAILURE);
     }
   }
 
@@ -228,11 +230,11 @@ public final class TaskRetryTest {
 
   private List<String> getTasksInState(final PlanStateManager planStateManager, final TaskState.State state) {
     return planStateManager.getAllTaskAttemptIdsToItsState()
-        .entrySet()
-        .stream()
-        .filter(entry -> entry.getValue().equals(state))
-        .map(Map.Entry::getKey)
-        .collect(Collectors.toList());
+      .entrySet()
+      .stream()
+      .filter(entry -> entry.getValue().equals(state))
+      .map(Map.Entry::getKey)
+      .collect(Collectors.toList());
   }
 
   private void runPhysicalPlan(final TestPlanGenerator.PlanType planType,

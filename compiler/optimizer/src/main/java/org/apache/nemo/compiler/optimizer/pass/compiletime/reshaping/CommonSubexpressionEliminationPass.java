@@ -135,10 +135,11 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
 
   /**
    * merge equivalent operator vertices and add them to the provided builder.
-   * @param ovs operator vertices that are to be merged (if there are no dependencies between them).
-   * @param builder builder to add the merged vertices to.
-   * @param dag dag to observe while adding them.
-   * @param inEdges incoming edges information.
+   *
+   * @param ovs      operator vertices that are to be merged (if there are no dependencies between them).
+   * @param builder  builder to add the merged vertices to.
+   * @param dag      dag to observe while adding them.
+   * @param inEdges  incoming edges information.
    * @param outEdges outgoing edges information.
    */
   private static void mergeAndAddToBuilder(final List<OperatorVertex> ovs, final DAGBuilder<IRVertex, IREdge> builder,
@@ -161,7 +162,7 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
             outEdges.getOrDefault(ov, new HashSet<>()).forEach(e -> {
               outListToModify.remove(e);
               final IREdge newIrEdge = new IREdge(e.getPropertyValue(CommunicationPatternProperty.class).get(),
-                  operatorVertexToUse, e.getDst());
+                operatorVertexToUse, e.getDst());
               final Optional<EncoderFactory> encoderProperty = e.getPropertyValue(EncoderProperty.class);
               if (encoderProperty.isPresent()) {
                 newIrEdge.setProperty(EncoderProperty.of(encoderProperty.get()));

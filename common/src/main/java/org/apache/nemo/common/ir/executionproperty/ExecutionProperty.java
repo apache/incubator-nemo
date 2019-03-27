@@ -22,6 +22,7 @@ import java.io.Serializable;
 
 /**
  * An abstract class for each execution factors.
+ *
  * @param <T> Type of the value.
  */
 public abstract class ExecutionProperty<T extends Serializable> implements Serializable {
@@ -29,6 +30,7 @@ public abstract class ExecutionProperty<T extends Serializable> implements Seria
 
   /**
    * Default constructor.
+   *
    * @param value value of the ExecutionProperty.
    */
   public ExecutionProperty(final T value) {

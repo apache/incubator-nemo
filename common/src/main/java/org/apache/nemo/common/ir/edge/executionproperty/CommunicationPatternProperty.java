@@ -21,13 +21,15 @@ package org.apache.nemo.common.ir.edge.executionproperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 // TODO #492: modularizing runtime components for data communication pattern.
+
 /**
  * DataCommunicationPattern ExecutionProperty.
  */
 public final class CommunicationPatternProperty
-    extends EdgeExecutionProperty<CommunicationPatternProperty.Value> {
+  extends EdgeExecutionProperty<CommunicationPatternProperty.Value> {
   /**
    * Constructor.
+   *
    * @param value value of the execution property.
    */
   private CommunicationPatternProperty(final Value value) {
@@ -36,6 +38,7 @@ public final class CommunicationPatternProperty
 
   /**
    * Static method exposing the constructor.
+   *
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */

@@ -18,8 +18,8 @@
  */
 package org.apache.nemo.runtime.master.servlet;
 
-import org.apache.nemo.runtime.master.metric.MetricStore;
 import org.apache.nemo.runtime.common.metric.JobMetric;
+import org.apache.nemo.runtime.master.metric.MetricStore;
 
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -33,7 +33,7 @@ public final class JobMetricServlet extends HttpServlet {
 
   @Override
   protected void doGet(final HttpServletRequest request, final HttpServletResponse response)
-          throws IOException {
+    throws IOException {
     final MetricStore metricStore = MetricStore.getStore();
     response.setContentType("application/json");
     response.setStatus(HttpServletResponse.SC_OK);

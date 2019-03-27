@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.punctuation.Watermark;
 
-import java.util.*;
+import java.util.Optional;
 
 /**
  * Represents the output data transfer from a task.
@@ -35,6 +35,7 @@ public interface OutputWriter {
 
   /**
    * Writes watermarks to all edges.
+   *
    * @param watermark watermark
    */
   void writeWatermark(final Watermark watermark);

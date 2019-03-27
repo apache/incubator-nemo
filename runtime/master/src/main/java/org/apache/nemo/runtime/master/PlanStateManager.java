@@ -19,17 +19,28 @@
 package org.apache.nemo.runtime.master;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.nemo.common.StateMachine;
 import org.apache.nemo.common.exception.IllegalStateTransitionException;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
-import org.apache.nemo.common.StateMachine;
 import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.metric.JobMetric;
+import org.apache.nemo.runtime.common.metric.StageMetric;
+import org.apache.nemo.runtime.common.metric.TaskMetric;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.common.state.StageState;
+import org.apache.nemo.runtime.common.state.TaskState;
+import org.apache.nemo.runtime.master.metric.MetricStore;
+import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.ThreadSafe;
+import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -40,26 +51,13 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.nemo.runtime.common.metric.JobMetric;
-import org.apache.nemo.runtime.common.metric.StageMetric;
-import org.apache.nemo.runtime.common.metric.TaskMetric;
-import org.apache.nemo.runtime.master.metric.MetricStore;
-import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.annotations.Parameter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.annotation.concurrent.ThreadSafe;
-import javax.inject.Inject;
-
 import static org.apache.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 
 /**
  * Maintains three levels of state machines (PlanState, StageState, and TaskState) of a physical plan.
  * The main API this class provides is onTaskStateReportFromExecutor(), which directly changes a TaskState.
  * PlanState and StageState are updated internally in the class, and can only be read from the outside.
- *
+ * <p>
  * (CONCURRENCY) The public methods of this class are synchronized.
  */
 @DriverSide
@@ -259,6 +257,7 @@ public final class PlanStateManager {
 
   /**
    * List of task times so far for this stage.
+   *
    * @param stageId of the stage.
    * @return a copy of the list, empty if none completed.
    */
@@ -268,8 +267,8 @@ public final class PlanStateManager {
   }
 
   /**
-   * @param stageId of the clone.
-   * @param taskIndex of the clone.
+   * @param stageId     of the clone.
+   * @param taskIndex   of the clone.
    * @param numOfClones of the clone.
    * @return true if the numOfClones has been modified, false otherwise
    */

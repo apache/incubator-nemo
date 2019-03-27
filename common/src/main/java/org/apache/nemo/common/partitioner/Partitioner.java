@@ -48,7 +48,7 @@ public interface Partitioner<K extends Serializable> {
 
   /**
    * @param edgeProperties edge properties.
-   * @param dstProperties vertex properties.
+   * @param dstProperties  vertex properties.
    * @return the partitioner.
    */
   static Partitioner getPartitioner(final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,

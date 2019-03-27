@@ -29,6 +29,7 @@ import java.util.function.BiFunction;
 
 /**
  * A {@link Transform} that collects task-level statistics used for dynamic optimization.
+ *
  * @param <I> input type.
  * @param <K> output key type.
  * @param <V> output value type.
@@ -42,6 +43,7 @@ public final class MessageBarrierTransform<I, K, V> extends NoWatermarkEmitTrans
 
   /**
    * MessageBarrierTransform constructor.
+   *
    * @param userFunction that analyzes the data.
    */
   public MessageBarrierTransform(final BiFunction<I, Map<K, V>, Map<K, V>> userFunction) {

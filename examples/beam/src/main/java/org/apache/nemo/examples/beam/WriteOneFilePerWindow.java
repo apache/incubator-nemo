@@ -17,6 +17,7 @@
  * under the License.
  */
 package org.apache.nemo.examples.beam;
+
 import org.apache.beam.sdk.io.FileBasedSink;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResolveOptions;
@@ -29,14 +30,14 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
+
 import javax.annotation.Nullable;
 
 import static com.google.common.base.MoreObjects.firstNonNull;
 
 /**
-  * This class is brought from beam/examples/common/WriteOneFilePerWindow.java.
-  *
-  */
+ * This class is brought from beam/examples/common/WriteOneFilePerWindow.java.
+ */
 public final class WriteOneFilePerWindow extends PTransform<PCollection<String>, PDone> {
   // change from hourMinute to hourMinuteSecond
   private static final DateTimeFormatter FORMATTER = ISODateTimeFormat.hourMinuteSecond();
@@ -44,78 +45,84 @@ public final class WriteOneFilePerWindow extends PTransform<PCollection<String>,
   @Nullable
   private Integer numShards;
 
-   /**
-    * Constructor.
-    * @param filenamePrefix file name prefix.
-    * @param numShards number of shards.
-    */
-   public WriteOneFilePerWindow(final String filenamePrefix, final Integer numShards) {
+  /**
+   * Constructor.
+   *
+   * @param filenamePrefix file name prefix.
+   * @param numShards      number of shards.
+   */
+  public WriteOneFilePerWindow(final String filenamePrefix, final Integer numShards) {
     this.filenamePrefix = filenamePrefix;
     this.numShards = numShards;
   }
-   @Override
+
+  @Override
   public PDone expand(final PCollection<String> input) {
     final ResourceId resource = FileBasedSink.convertToFileResourceIfPossible(filenamePrefix);
     TextIO.Write write =
-        TextIO.write()
-            .to(new PerWindowFiles(resource))
-            .withTempDirectory(resource.getCurrentDirectory())
-            .withWindowedWrites();
+      TextIO.write()
+        .to(new PerWindowFiles(resource))
+        .withTempDirectory(resource.getCurrentDirectory())
+        .withWindowedWrites();
     if (numShards != null) {
       write = write.withNumShards(numShards);
     }
     return input.apply(write);
   }
-   /**
+
+  /**
    * A {@link FileBasedSink.FilenamePolicy} produces a base file name for a write based on metadata about the data
    * being written. This always includes the shard number and the total number of shards. For
    * windowed writes, it also includes the window and pane index (a sequence number assigned to each
    * trigger firing).
    */
   public static final class PerWindowFiles extends FileBasedSink.FilenamePolicy {
-     private final ResourceId baseFilename;
+    private final ResourceId baseFilename;
 
-     /**
-      * Constructor.
-      * @param baseFilename base file name.
-      */
-     PerWindowFiles(final ResourceId baseFilename) {
+    /**
+     * Constructor.
+     *
+     * @param baseFilename base file name.
+     */
+    PerWindowFiles(final ResourceId baseFilename) {
       this.baseFilename = baseFilename;
     }
 
-     /**
-      * @param window interval window
-      * @return file name prefix.
-      */
-     String filenamePrefixForWindow(final IntervalWindow window) {
+    /**
+     * @param window interval window
+     * @return file name prefix.
+     */
+    String filenamePrefixForWindow(final IntervalWindow window) {
       final String prefix =
-          baseFilename.isDirectory() ? "" : firstNonNull(baseFilename.getFilename(), "");
+        baseFilename.isDirectory() ? "" : firstNonNull(baseFilename.getFilename(), "");
       return String.format(
-          "%s-%s-%s", prefix, FORMATTER.print(window.start()), FORMATTER.print(window.end()));
+        "%s-%s-%s", prefix, FORMATTER.print(window.start()), FORMATTER.print(window.end()));
     }
-     @Override
+
+    @Override
     public ResourceId windowedFilename(
-        final int shardNumber,
-        final int numShards,
-        final BoundedWindow window,
-        final PaneInfo paneInfo,
-        final FileBasedSink.OutputFileHints outputFileHints) {
+      final int shardNumber,
+      final int numShards,
+      final BoundedWindow window,
+      final PaneInfo paneInfo,
+      final FileBasedSink.OutputFileHints outputFileHints) {
       System.out.println("Windowd file name: " + window);
       final IntervalWindow intervalWindow = (IntervalWindow) window;
       final String filename =
-          String.format(
-              "%s-%s-of-%s%s",
-              filenamePrefixForWindow(intervalWindow),
-              shardNumber,
-              numShards,
-              outputFileHints.getSuggestedFilenameSuffix());
+        String.format(
+          "%s-%s-of-%s%s",
+          filenamePrefixForWindow(intervalWindow),
+          shardNumber,
+          numShards,
+          outputFileHints.getSuggestedFilenameSuffix());
       return baseFilename
-          .getCurrentDirectory()
-          .resolve(filename, ResolveOptions.StandardResolveOptions.RESOLVE_FILE);
+        .getCurrentDirectory()
+        .resolve(filename, ResolveOptions.StandardResolveOptions.RESOLVE_FILE);
     }
-     @Override
+
+    @Override
     public ResourceId unwindowedFilename(
-        final int shardNumber, final int numShards, final FileBasedSink.OutputFileHints outputFileHints) {
+      final int shardNumber, final int numShards, final FileBasedSink.OutputFileHints outputFileHints) {
       throw new UnsupportedOperationException("Unsupported.");
     }
   }

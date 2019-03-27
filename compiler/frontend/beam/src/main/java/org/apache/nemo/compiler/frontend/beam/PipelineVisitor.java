@@ -32,7 +32,7 @@ public final class PipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   private final PipelineTranslationContext context;
 
   /**
-   * @param pipeline to visit.
+   * @param pipeline        to visit.
    * @param pipelineOptions pipeline options.
    */
   public PipelineVisitor(final Pipeline pipeline, final NemoPipelineOptions pipelineOptions) {

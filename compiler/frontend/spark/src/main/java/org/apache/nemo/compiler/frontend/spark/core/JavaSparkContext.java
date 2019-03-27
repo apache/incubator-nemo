@@ -31,6 +31,7 @@ public final class JavaSparkContext {
 
   /**
    * Constructor.
+   *
    * @param sparkContext spark context to wrap.
    */
   public JavaSparkContext(final SparkContext sparkContext) {
@@ -62,7 +63,7 @@ public final class JavaSparkContext {
    * Initiate a JavaRDD with the number of parallelism.
    *
    * @param list input data as list.
-   * @param <T> type of the initial element.
+   * @param <T>  type of the initial element.
    * @return the newly initiated JavaRDD.
    */
   public <T> JavaRDD<T> parallelize(final List<T> list) {
@@ -72,9 +73,9 @@ public final class JavaSparkContext {
   /**
    * Initiate a JavaRDD with the number of parallelism.
    *
-   * @param l input data as list.
+   * @param l      input data as list.
    * @param slices number of slices (parallelism).
-   * @param <T> type of the initial element.
+   * @param <T>    type of the initial element.
    * @return the newly initiated JavaRDD.
    */
   public <T> JavaRDD<T> parallelize(final List<T> l, final int slices) {

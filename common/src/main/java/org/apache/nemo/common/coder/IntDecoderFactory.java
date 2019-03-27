@@ -18,7 +18,9 @@
  */
 package org.apache.nemo.common.coder;
 
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * A {@link DecoderFactory} which is used for an integer.
@@ -36,6 +38,7 @@ public final class IntDecoderFactory implements DecoderFactory<Integer> {
 
   /**
    * Static initializer of the coder.
+   *
    * @return the initializer.
    */
   public static IntDecoderFactory of() {
@@ -62,7 +65,7 @@ public final class IntDecoderFactory implements DecoderFactory<Integer> {
     /**
      * Constructor.
      *
-     * @param inputStream  the input stream to decode.
+     * @param inputStream the input stream to decode.
      */
     private IntDecoder(final InputStream inputStream) {
       // If the inputStream is closed well in upper level, it is okay to not close this stream

@@ -19,13 +19,13 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.partitioner.Partitioner;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.nemo.common.partitioner.Partitioner;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,9 +55,9 @@ public final class PipeOutputWriter implements OutputWriter {
   /**
    * Constructor.
    *
-   * @param srcTaskId           the id of the source task.
-   * @param runtimeEdge         the {@link RuntimeEdge}.
-   * @param pipeManagerWorker   the pipe manager.
+   * @param srcTaskId         the id of the source task.
+   * @param runtimeEdge       the {@link RuntimeEdge}.
+   * @param pipeManagerWorker the pipe manager.
    */
   PipeOutputWriter(final String srcTaskId,
                    final RuntimeEdge runtimeEdge,
@@ -85,6 +85,7 @@ public final class PipeOutputWriter implements OutputWriter {
 
   /**
    * Writes output element.
+   *
    * @param element the element to write.
    */
   @Override

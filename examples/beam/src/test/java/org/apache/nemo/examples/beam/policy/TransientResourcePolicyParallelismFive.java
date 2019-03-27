@@ -20,9 +20,9 @@ package org.apache.nemo.examples.beam.policy;
 
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
+import org.apache.nemo.compiler.optimizer.policy.Policy;
 import org.apache.nemo.compiler.optimizer.policy.PolicyImpl;
 import org.apache.nemo.compiler.optimizer.policy.TransientResourcePolicy;
-import org.apache.nemo.compiler.optimizer.policy.Policy;
 
 /**
  * A transient resource policy with fixed parallelism 5 for tests.
@@ -32,9 +32,9 @@ public final class TransientResourcePolicyParallelismFive implements Policy {
 
   public TransientResourcePolicyParallelismFive() {
     this.policy = new PolicyImpl(
-        PolicyTestUtil.overwriteParallelism(5,
-            TransientResourcePolicy.BUILDER.getCompileTimePasses()),
-        TransientResourcePolicy.BUILDER.getRunTimePasses());
+      PolicyTestUtil.overwriteParallelism(5,
+        TransientResourcePolicy.BUILDER.getCompileTimePasses()),
+      TransientResourcePolicy.BUILDER.getRunTimePasses());
   }
 
   @Override

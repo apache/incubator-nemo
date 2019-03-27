@@ -18,7 +18,8 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +42,7 @@ public final class ByteTransfer {
 
   /**
    * Creates a byte transfer.
+   *
    * @param byteTransport provides channels to other executors
    */
   @Inject
@@ -50,6 +52,7 @@ public final class ByteTransfer {
 
   /**
    * Initiate a transfer context to receive data.
+   *
    * @param executorId        the id of the remote executor
    * @param contextDescriptor user-provided descriptor for the new context
    * @param isPipe            is pipe
@@ -63,8 +66,9 @@ public final class ByteTransfer {
 
   /**
    * Initiate a transfer context to send data.
-   * @param executorId         the id of the remote executor
-   * @param contextDescriptor  user-provided descriptor for the new context
+   *
+   * @param executorId        the id of the remote executor
+   * @param contextDescriptor user-provided descriptor for the new context
    * @param isPipe            is pipe
    * @return a {@link ByteOutputContext} to which data can be written
    */
@@ -84,7 +88,7 @@ public final class ByteTransfer {
     try {
       channelFuture = executorIdToChannelFutureMap.compute(remoteExecutorId, (executorId, cachedChannelFuture) -> {
         if (cachedChannelFuture != null
-            && (cachedChannelFuture.channel().isOpen() || cachedChannelFuture.channel().isActive())) {
+          && (cachedChannelFuture.channel().isOpen() || cachedChannelFuture.channel().isActive())) {
           return cachedChannelFuture;
         } else {
           final ChannelFuture future = byteTransport.connectTo(executorId);
@@ -109,8 +113,9 @@ public final class ByteTransfer {
 
   /**
    * Called when a remote executor initiates new transfer context.
-   * @param remoteExecutorId  id of the remote executor
-   * @param channel           the corresponding {@link Channel}.
+   *
+   * @param remoteExecutorId id of the remote executor
+   * @param channel          the corresponding {@link Channel}.
    */
   void onNewContextByRemoteExecutor(final String remoteExecutorId, final Channel channel) {
     executorIdToChannelFutureMap.compute(remoteExecutorId, (executorId, cachedChannelFuture) -> {
@@ -121,7 +126,7 @@ public final class ByteTransfer {
         return cachedChannelFuture;
       } else {
         LOG.warn("Duplicate channel for remote {}({}) and this executor",
-            new Object[]{executorId, channel.remoteAddress()});
+          new Object[]{executorId, channel.remoteAddress()});
         return channel.newSucceededFuture();
       }
     });

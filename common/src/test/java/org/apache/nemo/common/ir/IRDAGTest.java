@@ -280,7 +280,8 @@ public class IRDAGTest {
     irdag.insert(Sets.newHashSet(svOne), Sets.newHashSet(sourceVertex));
     mustPass();
 
-    final SamplingVertex svTwo = new SamplingVertex(firstOperatorVertex, 0.1f);;
+    final SamplingVertex svTwo = new SamplingVertex(firstOperatorVertex, 0.1f);
+    ;
     irdag.insert(Sets.newHashSet(svTwo), Sets.newHashSet(firstOperatorVertex));
     mustPass();
 
@@ -319,13 +320,27 @@ public class IRDAGTest {
       switch (methodIndex) {
         // Annotation methods
         // For simplicity, we test only the EPs for which all possible values are valid.
-        case 0: selectRandomVertex().setProperty(randomCSP()); break;
-        case 1: selectRandomVertex().setProperty(randomRLP()); break;
-        case 2: selectRandomVertex().setProperty(randomRPP()); break;
-        case 3: selectRandomVertex().setProperty(randomRSP()); break;
-        case 4: selectRandomEdge().setProperty(randomDFP()); break;
-        case 5: selectRandomEdge().setProperty(randomDPP()); break;
-        case 6: selectRandomEdge().setProperty(randomDSP()); break;
+        case 0:
+          selectRandomVertex().setProperty(randomCSP());
+          break;
+        case 1:
+          selectRandomVertex().setProperty(randomRLP());
+          break;
+        case 2:
+          selectRandomVertex().setProperty(randomRPP());
+          break;
+        case 3:
+          selectRandomVertex().setProperty(randomRSP());
+          break;
+        case 4:
+          selectRandomEdge().setProperty(randomDFP());
+          break;
+        case 5:
+          selectRandomEdge().setProperty(randomDPP());
+          break;
+        case 6:
+          selectRandomEdge().setProperty(randomDSP());
+          break;
 
         // Reshaping methods
         case 7:
@@ -434,11 +449,16 @@ public class IRDAGTest {
 
   private DataStoreProperty randomDSP() {
     switch (random.nextInt(4)) {
-      case 0: return DataStoreProperty.of(DataStoreProperty.Value.MemoryStore);
-      case 1: return DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore);
-      case 2: return DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore);
-      case 3: return DataStoreProperty.of(DataStoreProperty.Value.GlusterFileStore);
-      default: throw new IllegalStateException();
+      case 0:
+        return DataStoreProperty.of(DataStoreProperty.Value.MemoryStore);
+      case 1:
+        return DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore);
+      case 2:
+        return DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore);
+      case 3:
+        return DataStoreProperty.of(DataStoreProperty.Value.GlusterFileStore);
+      default:
+        throw new IllegalStateException();
     }
   }
 }

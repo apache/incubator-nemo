@@ -33,7 +33,7 @@ public final class HashPartitioner implements Partitioner<Integer> {
    * Constructor.
    *
    * @param numOfPartitions the number of partitions.
-   * @param keyExtractor   the key extractor that extracts keys from elements.
+   * @param keyExtractor    the key extractor that extracts keys from elements.
    */
   public HashPartitioner(final int numOfPartitions,
                          final KeyExtractor keyExtractor) {

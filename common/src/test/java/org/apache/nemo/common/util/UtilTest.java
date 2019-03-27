@@ -18,25 +18,25 @@
  */
 package org.apache.nemo.common.util;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.function.IntPredicate;
-
 import org.apache.nemo.common.Util;
 import org.junit.Test;
 
+import java.util.function.IntPredicate;
+
+import static org.junit.Assert.assertEquals;
+
 public class UtilTest {
 
-    @Test
-    public void testCheckEqualityOfIntPredicates() {
+  @Test
+  public void testCheckEqualityOfIntPredicates() {
 
-        IntPredicate firstPredicate = number -> number < 5;
-        IntPredicate secondPredicate = number -> number < 10;
-        assertEquals(true,
-                Util.checkEqualityOfIntPredicates(firstPredicate, secondPredicate, 4));
-        assertEquals(false,
-                Util.checkEqualityOfIntPredicates(firstPredicate, secondPredicate, 5));
-        assertEquals(false,
-                Util.checkEqualityOfIntPredicates(firstPredicate, secondPredicate, 7));
-    }
+    IntPredicate firstPredicate = number -> number < 5;
+    IntPredicate secondPredicate = number -> number < 10;
+    assertEquals(true,
+      Util.checkEqualityOfIntPredicates(firstPredicate, secondPredicate, 4));
+    assertEquals(false,
+      Util.checkEqualityOfIntPredicates(firstPredicate, secondPredicate, 5));
+    assertEquals(false,
+      Util.checkEqualityOfIntPredicates(firstPredicate, secondPredicate, 7));
+  }
 }

@@ -34,11 +34,11 @@ public final class LoopOptimizationCompositePass extends CompositePass {
    */
   public LoopOptimizationCompositePass() {
     super(Arrays.asList(
-        new LoopExtractionPass(),
-        LoopOptimizations.getLoopFusionPass(),
-        LoopOptimizations.getLoopInvariantCodeMotionPass(),
-        new LoopUnrollingPass(), // Groups then unrolls loops.
-        new DuplicateEdgeGroupSizePass()
+      new LoopExtractionPass(),
+      LoopOptimizations.getLoopFusionPass(),
+      LoopOptimizations.getLoopInvariantCodeMotionPass(),
+      new LoopUnrollingPass(), // Groups then unrolls loops.
+      new DuplicateEdgeGroupSizePass()
     ));
   }
 }

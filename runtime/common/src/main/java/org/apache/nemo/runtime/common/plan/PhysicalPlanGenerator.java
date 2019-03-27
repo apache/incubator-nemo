@@ -18,22 +18,24 @@
  */
 package org.apache.nemo.runtime.common.plan;
 
+import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.dag.DAGBuilder;
+import org.apache.nemo.common.exception.IllegalVertexOperationException;
+import org.apache.nemo.common.exception.PhysicalPlanGenerationException;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.Readable;
+import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import org.apache.nemo.common.ir.vertex.*;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.dag.DAGBuilder;
-import org.apache.nemo.common.ir.edge.IREdge;
-import org.apache.nemo.common.exception.IllegalVertexOperationException;
-import org.apache.nemo.common.exception.PhysicalPlanGenerationException;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -278,6 +280,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
 
   /**
    * Integrity check for Stage.
+   *
    * @param stage to check for
    */
   private void integrityCheck(final Stage stage) {

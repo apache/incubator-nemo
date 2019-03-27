@@ -31,6 +31,7 @@ public final class DataFrameReader extends org.apache.spark.sql.DataFrameReader 
 
   /**
    * Constructor.
+   *
    * @param sparkSession spark session.
    */
   DataFrameReader(final SparkSession sparkSession) {
@@ -103,9 +104,9 @@ public final class DataFrameReader extends org.apache.spark.sql.DataFrameReader 
                            final long lowerBound, final long upperBound, final int numPartitions,
                            final java.util.Properties connectionProperties) {
     final boolean userTriggered = initializeFunction(
-        url, table, columnName, lowerBound, upperBound, numPartitions, connectionProperties);
+      url, table, columnName, lowerBound, upperBound, numPartitions, connectionProperties);
     final Dataset<Row> result = Dataset.from(super.jdbc(
-        url, table, columnName, lowerBound, upperBound, numPartitions, connectionProperties));
+      url, table, columnName, lowerBound, upperBound, numPartitions, connectionProperties));
     this.setIsUserTriggered(userTriggered);
     return result;
   }

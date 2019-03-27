@@ -18,13 +18,13 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
+import org.apache.beam.sdk.transforms.Materializations;
+import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.beam.sdk.transforms.Materializations;
-import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.values.KV;
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Watermark;
 
@@ -34,6 +34,7 @@ import java.util.*;
 
 /**
  * This transforms emits materialized data for each window.
+ *
  * @param <I> input type
  * @param <O> materialized output type
  */
@@ -47,9 +48,10 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
 
   /**
    * Constructor of CreateViewTransform.
+   *
    * @param viewFn the viewFn that materializes data.
    */
-  public CreateViewTransform(final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn)  {
+  public CreateViewTransform(final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn) {
     this.viewFn = viewFn;
     this.windowListMap = new HashMap<>();
     this.currentOutputWatermark = Long.MIN_VALUE;
@@ -119,6 +121,7 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
 
   /**
    * Represents {@code PrimitiveViewT} supplied to the {@link ViewFn}.
+   *
    * @param <T> primitive view type
    */
   public static final class MultiView<T> implements Materializations.MultimapView<Void, T>, Serializable {
@@ -126,6 +129,7 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
 
     /**
      * Constructor.
+     *
      * @param iterable placeholder for side input data.
      */
     public MultiView(final Iterable<T> iterable) {

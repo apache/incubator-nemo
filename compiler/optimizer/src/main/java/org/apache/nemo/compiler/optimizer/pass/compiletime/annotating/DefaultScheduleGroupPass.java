@@ -42,24 +42,24 @@ import java.util.stream.Collectors;
 
 /**
  * A pass for assigning each stages in schedule groups.
- *
+ * <p>
  * TODO #347: IRDAG#partitionAcyclically
  * This code can be greatly simplified...
  *
  * <h3>Rules</h3>
  * <ul>
- *   <li>Vertices connected with push edges must be assigned same ScheduleGroup.</li>
- *   <li>For pull edges,
- *     <ul>
- *       <li>if the destination of the edge depends on multiple ScheduleGroups, split ScheduleGroup by the edge.</li>
- *       <li>if the edge is broadcast type and {@code allowBroadcastWithinScheduleGroup} is {@code false},
- *       split ScheduleGroup by the edge.</li>
- *       <li>if the edge is shuffle type and {@code allowShuffleWithinScheduleGroup} is {@code false},
- *       split ScheduleGroup by the edge.</li>
- *       <li>if the destination of the edge has multiple inEdges, split ScheduleGroup by the edge.</li>
- *       <li>Otherwise, the source and the destination of the edge should be assigned same ScheduleGroup.</li>
- *     </ul>
- *   </li>
+ * <li>Vertices connected with push edges must be assigned same ScheduleGroup.</li>
+ * <li>For pull edges,
+ * <ul>
+ * <li>if the destination of the edge depends on multiple ScheduleGroups, split ScheduleGroup by the edge.</li>
+ * <li>if the edge is broadcast type and {@code allowBroadcastWithinScheduleGroup} is {@code false},
+ * split ScheduleGroup by the edge.</li>
+ * <li>if the edge is shuffle type and {@code allowShuffleWithinScheduleGroup} is {@code false},
+ * split ScheduleGroup by the edge.</li>
+ * <li>if the destination of the edge has multiple inEdges, split ScheduleGroup by the edge.</li>
+ * <li>Otherwise, the source and the destination of the edge should be assigned same ScheduleGroup.</li>
+ * </ul>
+ * </li>
  * </ul>
  */
 @Annotates(ScheduleGroupProperty.class)
@@ -80,8 +80,9 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
 
   /**
    * Constructor.
-   * @param allowBroadcastWithinScheduleGroup whether to allow Broadcast edges within a ScheduleGroup or not
-   * @param allowShuffleWithinScheduleGroup whether to allow Shuffle edges within a ScheduleGroup or not
+   *
+   * @param allowBroadcastWithinScheduleGroup       whether to allow Broadcast edges within a ScheduleGroup or not
+   * @param allowShuffleWithinScheduleGroup         whether to allow Shuffle edges within a ScheduleGroup or not
    * @param allowMultipleInEdgesWithinScheduleGroup whether to allow vertices with multiple dependencies or not
    */
   public DefaultScheduleGroupPass(final boolean allowBroadcastWithinScheduleGroup,

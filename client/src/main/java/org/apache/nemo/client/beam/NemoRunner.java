@@ -18,12 +18,12 @@
  */
 package org.apache.nemo.client.beam;
 
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.nemo.client.JobLauncher;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineRunner;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.PipelineOptionsValidator;
+import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.apache.nemo.compiler.frontend.beam.PipelineVisitor;
 
@@ -35,6 +35,7 @@ public final class NemoRunner extends PipelineRunner<NemoPipelineResult> {
 
   /**
    * BEAM Pipeline Runner.
+   *
    * @param nemoPipelineOptions PipelineOptions.
    */
   private NemoRunner(final NemoPipelineOptions nemoPipelineOptions) {
@@ -64,6 +65,7 @@ public final class NemoRunner extends PipelineRunner<NemoPipelineResult> {
 
   /**
    * Static initializer for creating PipelineRunner with the given options.
+   *
    * @param options given PipelineOptions.
    * @return The created PipelineRunner.
    */
@@ -74,6 +76,7 @@ public final class NemoRunner extends PipelineRunner<NemoPipelineResult> {
 
   /**
    * Method to run the Pipeline.
+   *
    * @param pipeline the Pipeline to run.
    * @return The result of the pipeline.
    */

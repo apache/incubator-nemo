@@ -48,7 +48,7 @@ public final class PartitionerProperty
   }
 
   /**
-   * @param type of the partitioner.
+   * @param type            of the partitioner.
    * @param numOfPartitions to create.
    * @return the property.
    */
@@ -57,9 +57,9 @@ public final class PartitionerProperty
   }
 
   /**
-   * @param type of the partitioner.
+   * @param type            of the partitioner.
    * @param numOfPartitions to create.
-   * @param auto if the number of partitions is auto.
+   * @param auto            if the number of partitions is auto.
    * @return the property.
    */
   private static PartitionerProperty of(final Type type, final int numOfPartitions, final boolean auto) {

@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class UnsupportedExecutionPropertyException extends RuntimeException {
   /**
    * UnsupportedExecutionPropertyException.
+   *
    * @param message message
    */
   public UnsupportedExecutionPropertyException(final String message) {

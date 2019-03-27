@@ -36,6 +36,7 @@ public final class DirectByteArrayOutputStream extends ByteArrayOutputStream {
 
   /**
    * Constructor specifying the size.
+   *
    * @param size the initial size.
    */
   public DirectByteArrayOutputStream(final int size) {
@@ -45,6 +46,7 @@ public final class DirectByteArrayOutputStream extends ByteArrayOutputStream {
   /**
    * Note that serializedBytes include invalid bytes.
    * So we have to use it with the actualLength by using size() whenever needed.
+   *
    * @return the buffer where data is stored.
    */
   public byte[] getBufDirectly() {

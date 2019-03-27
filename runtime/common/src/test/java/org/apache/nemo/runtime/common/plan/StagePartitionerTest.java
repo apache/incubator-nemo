@@ -25,8 +25,10 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.*;
+import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDataReceiverProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,8 +55,8 @@ public final class StagePartitionerTest {
   }
 
   /**
-   * @param parallelism {@link ParallelismProperty} value for the new vertex
-   * @param scheduleGroup {@link ScheduleGroupProperty} value for the new vertex
+   * @param parallelism     {@link ParallelismProperty} value for the new vertex
+   * @param scheduleGroup   {@link ScheduleGroupProperty} value for the new vertex
    * @param otherProperties other {@link VertexExecutionProperty} for the new vertex
    * @return new {@link IRVertex}
    */
@@ -135,7 +137,7 @@ public final class StagePartitionerTest {
   public void testSplitByOtherProperty() {
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     final IRVertex v0 = newVertex(1, 0,
-        Arrays.asList(ResourcePriorityProperty.of(ResourcePriorityProperty.RESERVED)));
+      Arrays.asList(ResourcePriorityProperty.of(ResourcePriorityProperty.RESERVED)));
     final IRVertex v1 = newVertex(1, 0, Collections.emptyList());
     dagBuilder.addVertex(v0);
     dagBuilder.addVertex(v1);
@@ -151,7 +153,7 @@ public final class StagePartitionerTest {
   public void testNotSplitByIgnoredProperty() {
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     final IRVertex v0 = newVertex(1, 0,
-        Arrays.asList(IgnoreSchedulingTempDataReceiverProperty.of()));
+      Arrays.asList(IgnoreSchedulingTempDataReceiverProperty.of()));
     final IRVertex v1 = newVertex(1, 0, Collections.emptyList());
     dagBuilder.addVertex(v0);
     dagBuilder.addVertex(v1);

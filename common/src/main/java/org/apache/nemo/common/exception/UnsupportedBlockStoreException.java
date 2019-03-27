@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class UnsupportedBlockStoreException extends RuntimeException {
   /**
    * UnsupportedBlockStoreException.
+   *
    * @param cause cause
    */
   public UnsupportedBlockStoreException(final Throwable cause) {

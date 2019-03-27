@@ -28,7 +28,7 @@ import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 
 /**
  * Contains the {@link PipelineRunnerRegistrar} and {@link PipelineOptionsRegistrar} for the {@link NemoRunner}.
- *
+ * <p>
  * {@link AutoService} will register Nemo's implementations of the {@link PipelineRunner} and {@link PipelineOptions}
  * as available pipeline runner services.
  */

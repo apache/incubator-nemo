@@ -26,6 +26,7 @@ import java.util.function.BiFunction;
 
 /**
  * Generates messages.
+ *
  * @param <I> input type
  * @param <K> of the output pair.
  * @param <V> of the output pair.

@@ -22,13 +22,14 @@ import org.apache.nemo.common.KeyRange;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.BlockWriteException;
-import org.apache.nemo.runtime.executor.data.*;
+import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.runtime.executor.data.FileArea;
+import org.apache.nemo.runtime.executor.data.metadata.FileMetadata;
+import org.apache.nemo.runtime.executor.data.metadata.PartitionMetadata;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.Partition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
-import org.apache.nemo.runtime.executor.data.metadata.PartitionMetadata;
-import org.apache.nemo.runtime.executor.data.metadata.FileMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,7 +82,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws IOException if fail to write.
    */
   private void writeToFile(final Iterable<SerializedPartition<K>> serializedPartitions)
-      throws IOException {
+    throws IOException {
     try (final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
       for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
         // Reserve a partition write and get the metadata.
@@ -128,13 +129,13 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   @Override
   public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions)
-      throws BlockWriteException {
+    throws BlockWriteException {
     if (metadata.isCommitted()) {
       throw new BlockWriteException(new Throwable("The partition is already committed!"));
     } else {
       try {
         final Iterable<SerializedPartition<K>> convertedPartitions =
-            DataUtil.convertToSerPartitions(serializer, partitions);
+          DataUtil.convertToSerPartitions(serializer, partitions);
         writeSerializedPartitions(convertedPartitions);
       } catch (final IOException e) {
         throw new BlockWriteException(e);
@@ -151,7 +152,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   @Override
   public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions)
-      throws BlockWriteException {
+    throws BlockWriteException {
     if (metadata.isCommitted()) {
       throw new BlockWriteException(new Throwable("The partition is already committed!"));
     } else {
@@ -195,9 +196,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         }
         for (final Pair<K, byte[]> partitionKeyBytes : partitionKeyBytesPairs) {
           final NonSerializedPartition<K> deserializePartition =
-              DataUtil.deserializePartition(
-                  partitionKeyBytes.right().length, serializer, partitionKeyBytes.left(),
-                  new ByteArrayInputStream(partitionKeyBytes.right()));
+            DataUtil.deserializePartition(
+              partitionKeyBytes.right().length, serializer, partitionKeyBytes.left(),
+              new ByteArrayInputStream(partitionKeyBytes.right()));
           deserializedPartitions.add(deserializePartition);
         }
       } catch (final IOException e) {
@@ -235,7 +236,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
                 throw new IOException("The read data size does not match with the partition size.");
               }
               partitionsInRange.add(new SerializedPartition<>(
-                  key, serializedData, serializedData.length));
+                key, serializedData, serializedData.length));
             } else {
               // Have to skip this partition.
               skipBytes(fileStream, partitionmetadata.getPartitionSize());
@@ -323,7 +324,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         final long partitionSize = partitionMetadata.getPartitionSize();
         if (partitionSizes.containsKey(key)) {
           partitionSizes.compute(key,
-              (existingKey, existingValue) -> existingValue + partitionSize);
+            (existingKey, existingValue) -> existingValue + partitionSize);
         } else {
           partitionSizes.put(key, partitionSize);
         }

@@ -37,6 +37,7 @@ public abstract class CompositePass extends CompileTimePass {
 
   /**
    * Constructor.
+   *
    * @param passList list of compile time passes.
    */
   public CompositePass(final List<CompileTimePass> passList) {
@@ -52,6 +53,7 @@ public abstract class CompositePass extends CompileTimePass {
 
   /**
    * Getter for list of compile time passes.
+   *
    * @return the list of CompileTimePass.
    */
   public final List<CompileTimePass> getPassList() {
@@ -65,7 +67,8 @@ public abstract class CompositePass extends CompileTimePass {
 
   /**
    * Recursively apply the give list of passes.
-   * @param dag dag.
+   *
+   * @param dag          dag.
    * @param passIterator pass iterator.
    * @return dag.
    */

@@ -42,27 +42,27 @@ public final class DuplicateEdgeGroupSizePass extends AnnotatingPass {
   public IRDAG apply(final IRDAG dag) {
     final HashMap<String, Integer> groupIdToGroupSize = new HashMap<>();
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
-        .forEach(e -> {
-          final Optional<DuplicateEdgeGroupPropertyValue> duplicateEdgeGroupProperty =
-              e.getPropertyValue(DuplicateEdgeGroupProperty.class);
-          if (duplicateEdgeGroupProperty.isPresent()) {
-            final String groupId = duplicateEdgeGroupProperty.get().getGroupId();
-            final Integer currentCount = groupIdToGroupSize.getOrDefault(groupId, 0);
-            groupIdToGroupSize.put(groupId, currentCount + 1);
-          }
-        }));
+      .forEach(e -> {
+        final Optional<DuplicateEdgeGroupPropertyValue> duplicateEdgeGroupProperty =
+          e.getPropertyValue(DuplicateEdgeGroupProperty.class);
+        if (duplicateEdgeGroupProperty.isPresent()) {
+          final String groupId = duplicateEdgeGroupProperty.get().getGroupId();
+          final Integer currentCount = groupIdToGroupSize.getOrDefault(groupId, 0);
+          groupIdToGroupSize.put(groupId, currentCount + 1);
+        }
+      }));
 
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
-        .forEach(e -> {
-          final Optional<DuplicateEdgeGroupPropertyValue> duplicateEdgeGroupProperty =
-              e.getPropertyValue(DuplicateEdgeGroupProperty.class);
-          if (duplicateEdgeGroupProperty.isPresent()) {
-            final String groupId = duplicateEdgeGroupProperty.get().getGroupId();
-            if (groupIdToGroupSize.containsKey(groupId)) {
-              duplicateEdgeGroupProperty.get().setGroupSize(groupIdToGroupSize.get(groupId));
-            }
+      .forEach(e -> {
+        final Optional<DuplicateEdgeGroupPropertyValue> duplicateEdgeGroupProperty =
+          e.getPropertyValue(DuplicateEdgeGroupProperty.class);
+        if (duplicateEdgeGroupProperty.isPresent()) {
+          final String groupId = duplicateEdgeGroupProperty.get().getGroupId();
+          if (groupIdToGroupSize.containsKey(groupId)) {
+            duplicateEdgeGroupProperty.get().setGroupSize(groupIdToGroupSize.get(groupId));
           }
-        }));
+        }
+      }));
     return dag;
   }
 }

@@ -50,6 +50,7 @@ public abstract class ClientEndpoint {
 
   /**
    * Constructor.
+   *
    * @param stateTranslator translator to translate between the state of plan and corresponding.
    */
   public ClientEndpoint(final StateTranslator stateTranslator) {
@@ -146,7 +147,7 @@ public abstract class ClientEndpoint {
    * @return the final state of this job.
    */
   public final Enum waitUntilJobFinish(final long timeout,
-                                          final TimeUnit unit) {
+                                       final TimeUnit unit) {
     if (driverEndpoint.get() != null) {
       return stateTranslator.translateState(driverEndpoint.get().waitUntilFinish(timeout, unit));
     } else {
@@ -162,7 +163,7 @@ public abstract class ClientEndpoint {
       if (driverIsConnected) {
         final long consumedTime = System.nanoTime() - currentNano;
         return stateTranslator.translateState(driverEndpoint.get().
-            waitUntilFinish(timeout - unit.convert(consumedTime, TimeUnit.NANOSECONDS), unit));
+          waitUntilFinish(timeout - unit.convert(consumedTime, TimeUnit.NANOSECONDS), unit));
       } else {
         return PlanState.State.READY;
       }

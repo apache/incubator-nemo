@@ -23,7 +23,8 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.compiler.frontend.spark.sql.Dataset;
 import org.apache.nemo.compiler.frontend.spark.sql.SparkSession;
-import org.apache.spark.*;
+import org.apache.spark.Partition;
+import org.apache.spark.TaskContext$;
 import org.apache.spark.rdd.RDD;
 import scala.collection.JavaConverters;
 
@@ -33,6 +34,7 @@ import java.util.*;
 
 /**
  * Bounded source vertex for Spark Dataset.
+ *
  * @param <T> type of data to read.
  */
 public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
@@ -51,10 +53,10 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
     final Partition[] partitions = rdd.getPartitions();
     for (int i = 0; i < partitions.length; i++) {
       readables.add(new SparkDatasetBoundedSourceReadable(
-          partitions[i],
-          sparkSession.getDatasetCommandsList(),
-          sparkSession.getInitialConf(),
-          i));
+        partitions[i],
+        sparkSession.getDatasetCommandsList(),
+        sparkSession.getInitialConf(),
+        i));
     }
     this.estimatedByteSize = dataset.javaRDD()
       .map(o -> (long) o.toString().getBytes("UTF-8").length)

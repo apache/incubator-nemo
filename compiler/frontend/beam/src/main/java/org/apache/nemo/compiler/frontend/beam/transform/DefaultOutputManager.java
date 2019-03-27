@@ -25,6 +25,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 
 /**
  * Default output emitter that uses outputCollector.
+ *
  * @param <OutputT> output type
  */
 public final class DefaultOutputManager<OutputT> implements DoFnRunners.OutputManager {
@@ -33,7 +34,7 @@ public final class DefaultOutputManager<OutputT> implements DoFnRunners.OutputMa
 
   /**
    * @param outputCollector output collector.
-   * @param mainOutputTag main output tag.
+   * @param mainOutputTag   main output tag.
    */
   DefaultOutputManager(final OutputCollector<WindowedValue<OutputT>> outputCollector,
                        final TupleTag<OutputT> mainOutputTag) {

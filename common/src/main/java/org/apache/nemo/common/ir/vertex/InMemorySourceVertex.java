@@ -18,9 +18,9 @@
  */
 package org.apache.nemo.common.ir.vertex;
 
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.BoundedIteratorReadable;
 import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.common.Util;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,6 +29,7 @@ import java.util.List;
 
 /**
  * Source vertex with the data in memory.
+ *
  * @param <T> type of data.
  */
 public final class InMemorySourceVertex<T> extends SourceVertex<T> {
@@ -100,6 +101,7 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
 
   /**
    * Simply returns the in-memory data.
+   *
    * @param <T> type of the data.
    */
   private static final class InMemorySourceReadable<T> extends BoundedIteratorReadable<T> {
@@ -108,6 +110,7 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
 
     /**
      * Constructor.
+     *
      * @param initializedSourceData the source data.
      */
     private InMemorySourceReadable(final Iterable<T> initializedSourceData) {

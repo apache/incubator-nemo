@@ -91,7 +91,7 @@ public final class ResourceSitePass extends AnnotatingPass {
   }
 
   /**
-   * @param nodes to distribute the shares
+   * @param nodes       to distribute the shares
    * @param parallelism number of parallel tasks.
    * @return share for each node.
    */
@@ -106,23 +106,23 @@ public final class ResourceSitePass extends AnnotatingPass {
   }
 
   /**
-   * @param dag IR DAG.
+   * @param dag                    IR DAG.
    * @param bandwidthSpecification bandwidth specification.
    */
   private static void assignNodeShares(
-      final IRDAG dag,
-      final BandwidthSpecification bandwidthSpecification) {
+    final IRDAG dag,
+    final BandwidthSpecification bandwidthSpecification) {
     dag.topologicalDo(irVertex -> {
       final Collection<IREdge> inEdges = dag.getIncomingEdgesOf(irVertex);
       final int parallelism = irVertex.getPropertyValue(ParallelismProperty.class)
-          .orElseThrow(() -> new RuntimeException("Parallelism property required"));
+        .orElseThrow(() -> new RuntimeException("Parallelism property required"));
       if (inEdges.size() == 0) {
         // This vertex is root vertex.
         // Fall back to setting even distribution
         irVertex.setProperty(ResourceSiteProperty.of(EMPTY_MAP));
       } else if (isOneToOneEdge(inEdges)) {
         final Optional<HashMap<String, Integer>> property = inEdges.iterator().next().getSrc()
-            .getPropertyValue(ResourceSiteProperty.class);
+          .getPropertyValue(ResourceSiteProperty.class);
         irVertex.setProperty(ResourceSiteProperty.of(property.get()));
       } else {
         // This IRVertex has shuffle inEdge(s), or has multiple inEdges.
@@ -131,13 +131,13 @@ public final class ResourceSitePass extends AnnotatingPass {
           final IRVertex parentVertex = edgeToIRVertex.getSrc();
           final Map<String, Integer> parentShares = parentVertex.getPropertyValue(ResourceSiteProperty.class).get();
           final int parentParallelism = parentVertex.getPropertyValue(ParallelismProperty.class)
-              .orElseThrow(() -> new RuntimeException("Parallelism property required"));
+            .orElseThrow(() -> new RuntimeException("Parallelism property required"));
           final Map<String, Integer> shares = parentShares.isEmpty() ? getEvenShares(bandwidthSpecification.getNodes(),
-              parentParallelism) : parentShares;
+            parentParallelism) : parentShares;
           for (final Map.Entry<String, Integer> element : shares.entrySet()) {
             parentLocationShares.putIfAbsent(element.getKey(), 0);
             parentLocationShares.put(element.getKey(),
-                element.getValue() + parentLocationShares.get(element.getKey()));
+              element.getValue() + parentLocationShares.get(element.getKey()));
           }
         }
         final double[] ratios = optimize(bandwidthSpecification, parentLocationShares);
@@ -164,14 +164,15 @@ public final class ResourceSitePass extends AnnotatingPass {
    */
   private static boolean isOneToOneEdge(final Collection<IREdge> inEdges) {
     return inEdges.size() == 1 && inEdges.iterator().next()
-          .getPropertyValue(CommunicationPatternProperty.class).get()
-          .equals(CommunicationPatternProperty.Value.OneToOne);
+      .getPropertyValue(CommunicationPatternProperty.class).get()
+      .equals(CommunicationPatternProperty.Value.OneToOne);
   }
 
   /**
    * Computes share of parallelism that each node is responsible for.
+   *
    * @param bandwidthSpecification provides bandwidth information between nodes
-   * @param parentNodeShares shares of parallelism for the parent vertex
+   * @param parentNodeShares       shares of parallelism for the parent vertex
    * @return array of fractions of parallelism that each node is responsible for
    */
   private static double[] optimize(final BandwidthSpecification bandwidthSpecification,
@@ -191,7 +192,7 @@ public final class ResourceSitePass extends AnnotatingPass {
       uploadCoefficientVector[OBJECTIVE_COEFFICIENT_INDEX] = bandwidthSpecification.up(nodeName);
       uploadCoefficientVector[nodeCoefficientIndex] = parentParallelismOnThisLocation;
       constraints.add(new LinearConstraint(uploadCoefficientVector, Relationship.GEQ,
-          parentParallelismOnThisLocation));
+        parentParallelismOnThisLocation));
 
       // Download bandwidth
       final double[] downloadCoefficientVector = new double[coefficientVectorSize];
@@ -226,7 +227,7 @@ public final class ResourceSitePass extends AnnotatingPass {
       incrementor.setMaximalCount(2147483647);
       LOG.info(String.format("Max iterations: %d", solver.getMaxIterations()));
       final PointValuePair solved = solver.optimize(
-          new LinearConstraintSet(constraints), objectiveFunction, GoalType.MINIMIZE);
+        new LinearConstraintSet(constraints), objectiveFunction, GoalType.MINIMIZE);
 
       return Arrays.copyOfRange(solved.getPoint(), OBJECTIVE_COEFFICIENT_INDEX + 1, coefficientVectorSize);
     } catch (final NoSuchFieldException | IllegalAccessException e) {

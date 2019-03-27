@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.master;
 
+import com.fasterxml.jackson.core.TreeNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
@@ -36,12 +38,12 @@ import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.metric.MetricStore;
-import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
-import org.apache.nemo.runtime.master.servlet.*;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
+import org.apache.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.nemo.runtime.master.scheduler.Scheduler;
+import org.apache.nemo.runtime.master.servlet.*;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -53,13 +55,13 @@ import org.eclipse.jetty.servlet.ServletHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import javax.inject.Inject;
-import java.nio.file.Paths;
 import java.io.Serializable;
-import java.util.*;
+import java.nio.file.Paths;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -69,15 +71,15 @@ import static org.apache.nemo.runtime.common.state.TaskState.State.ON_HOLD;
 /**
  * (WARNING) Use runtimeMasterThread for all public methods to avoid race conditions.
  * See comments in the {@link Scheduler} for avoiding race conditions.
- *
+ * <p>
  * Runtime Master is the central controller of Runtime.
  * Compiler submits an {@link PhysicalPlan} to Runtime Master to execute a job.
  * Runtime Master handles:
- *    a) Scheduling the plan with {@link Scheduler}.
- *    b) Managing resources with {@link ContainerManager}.
- *    c) Managing blocks with {@link BlockManagerMaster}.
- *    d) Receiving and sending control messages with {@link MessageEnvironment}.
- *    e) Metric using {@link MetricMessageHandler}.
+ * a) Scheduling the plan with {@link Scheduler}.
+ * b) Managing resources with {@link ContainerManager}.
+ * c) Managing blocks with {@link BlockManagerMaster}.
+ * d) Receiving and sending control messages with {@link MessageEnvironment}.
+ * e) Metric using {@link MetricMessageHandler}.
  */
 @DriverSide
 public final class RuntimeMaster {
@@ -129,7 +131,7 @@ public final class RuntimeMaster {
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
     this.runtimeMasterThread =
-        Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster thread"));
+      Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster thread"));
 
     // Check for speculative execution every second.
     this.speculativeTaskCloningThread = Executors
@@ -145,7 +147,7 @@ public final class RuntimeMaster {
     this.metricMessageHandler = metricMessageHandler;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
-        .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
+      .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.clientRPC = clientRPC;
     this.metricManagerMaster = metricManagerMaster;
     this.jobId = jobId;
@@ -163,6 +165,7 @@ public final class RuntimeMaster {
 
   /**
    * Start Metric Server.
+   *
    * @return the metric server.
    */
   private Server startRestMetricServer() {
@@ -395,7 +398,7 @@ public final class RuntimeMaster {
           break;
         default:
           throw new IllegalMessageException(
-              new Exception("This message should not be requested to Master :" + message.getType()));
+            new Exception("This message should not be requested to Master :" + message.getType()));
       }
     }
   }
@@ -404,14 +407,14 @@ public final class RuntimeMaster {
     switch (message.getType()) {
       case TaskStateChanged:
         final ControlMessage.TaskStateChangedMsg taskStateChangedMsg
-            = message.getTaskStateChangedMsg();
+          = message.getTaskStateChangedMsg();
 
         scheduler.onTaskStateReportFromExecutor(taskStateChangedMsg.getExecutorId(),
-            taskStateChangedMsg.getTaskId(),
-            taskStateChangedMsg.getAttemptIdx(),
-            convertTaskState(taskStateChangedMsg.getState()),
-            taskStateChangedMsg.getVertexPutOnHoldId(),
-            convertFailureCause(taskStateChangedMsg.getFailureCause()));
+          taskStateChangedMsg.getTaskId(),
+          taskStateChangedMsg.getAttemptIdx(),
+          convertTaskState(taskStateChangedMsg.getState()),
+          taskStateChangedMsg.getVertexPutOnHoldId(),
+          convertFailureCause(taskStateChangedMsg.getFailureCause()));
         break;
       case ExecutorFailed:
         // Executor failed due to user code.
@@ -428,23 +431,23 @@ public final class RuntimeMaster {
       case MetricMessageReceived:
         final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
         metricList.forEach(metric ->
-            metricMessageHandler.onMetricMessageReceived(
-                metric.getMetricType(), metric.getMetricId(),
-                metric.getMetricField(), metric.getMetricValue().toByteArray()));
+          metricMessageHandler.onMetricMessageReceived(
+            metric.getMetricType(), metric.getMetricId(),
+            metric.getMetricField(), metric.getMetricValue().toByteArray()));
         break;
       case ExecutorDataCollected:
         final String serializedData = message.getDataCollected().getData();
         clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-            .setType(ControlMessage.DriverToClientMessageType.DataCollected)
-            .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(serializedData).build())
-            .build());
+          .setType(ControlMessage.DriverToClientMessageType.DataCollected)
+          .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(serializedData).build())
+          .build());
         break;
       case MetricFlushed:
         metricCountDownLatch.countDown();
         break;
       default:
         throw new IllegalMessageException(
-            new Exception("This message should not be received by Master :" + message.getType()));
+          new Exception("This message should not be received by Master :" + message.getType()));
     }
   }
 
@@ -468,7 +471,7 @@ public final class RuntimeMaster {
   }
 
   private TaskState.RecoverableTaskFailureCause convertFailureCause(
-      final ControlMessage.RecoverableFailureCause cause) {
+    final ControlMessage.RecoverableFailureCause cause) {
     switch (cause) {
       case InputReadFailure:
         return TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE;
@@ -476,7 +479,7 @@ public final class RuntimeMaster {
         return TaskState.RecoverableTaskFailureCause.OUTPUT_WRITE_FAILURE;
       default:
         throw new UnknownFailureCauseException(
-            new Throwable("The failure cause for the recoverable failure is unknown"));
+          new Throwable("The failure cause for the recoverable failure is unknown"));
     }
   }
 

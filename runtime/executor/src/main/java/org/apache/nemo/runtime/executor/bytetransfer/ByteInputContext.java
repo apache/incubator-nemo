@@ -71,10 +71,11 @@ public final class ByteInputContext extends ByteTransferContext {
 
   /**
    * Creates an input context.
-   * @param remoteExecutorId    id of the remote executor
-   * @param contextId           identifier for this context
-   * @param contextDescriptor   user-provided context descriptor
-   * @param contextManager      {@link ContextManager} for the channel
+   *
+   * @param remoteExecutorId  id of the remote executor
+   * @param contextId         identifier for this context
+   * @param contextDescriptor user-provided context descriptor
+   * @param contextManager    {@link ContextManager} for the channel
    */
   ByteInputContext(final String remoteExecutorId,
                    final ContextId contextId,
@@ -86,6 +87,7 @@ public final class ByteInputContext extends ByteTransferContext {
   /**
    * Returns {@link Iterator} of {@link InputStream}s.
    * This method always returns the same {@link Iterator} instance.
+   *
    * @return {@link Iterator} of {@link InputStream}s.
    */
   public Iterator<InputStream> getInputStreams() {
@@ -94,6 +96,7 @@ public final class ByteInputContext extends ByteTransferContext {
 
   /**
    * Returns a future, which is completed when the corresponding transfer for this context gets done.
+   *
    * @return a {@link CompletableFuture} for the same value that {@link #getInputStreams()} returns
    */
   public CompletableFuture<Iterator<InputStream>> getCompletedFuture() {
@@ -113,6 +116,7 @@ public final class ByteInputContext extends ByteTransferContext {
 
   /**
    * Called when {@link ByteBuf} is supplied to this context.
+   *
    * @param byteBuf the {@link ByteBuf} to supply
    */
   void onByteBuf(final ByteBuf byteBuf) {

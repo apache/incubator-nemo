@@ -32,8 +32,8 @@ public final class DataSkewPolicyParallelismFive implements Policy {
 
   public DataSkewPolicyParallelismFive() {
     this.policy = new PolicyImpl(
-        PolicyTestUtil.overwriteParallelism(5, DataSkewPolicy.BUILDER.getCompileTimePasses()),
-        DataSkewPolicy.BUILDER.getRunTimePasses());
+      PolicyTestUtil.overwriteParallelism(5, DataSkewPolicy.BUILDER.getCompileTimePasses()),
+      DataSkewPolicy.BUILDER.getRunTimePasses());
   }
 
   @Override

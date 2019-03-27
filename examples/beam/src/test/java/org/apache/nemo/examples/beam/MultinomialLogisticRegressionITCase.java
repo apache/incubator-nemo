@@ -21,7 +21,6 @@ package org.apache.nemo.examples.beam;
 import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestArgs;
-import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,7 +42,7 @@ public final class MultinomialLogisticRegressionITCase {
     builder = new ArgBuilder();
   }
 
-  @Test (timeout = ExampleTestArgs.TIMEOUT)
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void test() throws Exception {
     final String input = ExampleTestArgs.getFileBasePath() + "inputs/test_input_mlr";
     final String numFeatures = "100";
@@ -51,11 +50,11 @@ public final class MultinomialLogisticRegressionITCase {
     final String numIteration = "3";
 
     JobLauncher.main(builder
-        .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
-        .addUserMain(MultinomialLogisticRegression.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numClasses, numIteration)
-        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-        .addResourceJson(executorResourceFileName)
-        .build());
+      .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
+      .addUserMain(MultinomialLogisticRegression.class.getCanonicalName())
+      .addUserArgs(input, numFeatures, numClasses, numIteration)
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .addResourceJson(executorResourceFileName)
+      .build());
   }
 }

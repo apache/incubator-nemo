@@ -60,9 +60,9 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
   @Inject
   private NcsMessageEnvironment(
-      final NetworkConnectionService networkConnectionService,
-      final IdentifierFactory idFactory,
-      @Parameter(MessageParameters.SenderId.class) final String senderId) {
+    final NetworkConnectionService networkConnectionService,
+    final IdentifierFactory idFactory,
+    @Parameter(MessageParameters.SenderId.class) final String senderId) {
     this.networkConnectionService = networkConnectionService;
     this.idFactory = idFactory;
     this.senderId = senderId;
@@ -70,11 +70,11 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     this.listenerConcurrentMap = new ConcurrentHashMap<>();
     this.receiverToConnectionMap = new ConcurrentHashMap<>();
     this.connectionFactory = networkConnectionService.registerConnectionFactory(
-        idFactory.getNewInstance(NCS_CONN_FACTORY_ID),
-        new ControlMessageCodec(),
-        new NcsMessageHandler(),
-        new NcsLinkListener(),
-        idFactory.getNewInstance(senderId));
+      idFactory.getNewInstance(NCS_CONN_FACTORY_ID),
+      new ControlMessageCodec(),
+      new NcsMessageHandler(),
+      new NcsLinkListener(),
+      idFactory.getNewInstance(senderId));
   }
 
   @Override
@@ -185,7 +185,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
    * Send: Messages sent without expecting a reply.
    * Request: Messages sent to get a reply.
    * Reply: Messages that reply to a request.
-   *
+   * <p>
    * Not sure these variable names are conventionally used in RPC frameworks...
    * Let's revisit them when we work on
    */

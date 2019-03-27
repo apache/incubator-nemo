@@ -30,15 +30,15 @@ public final class PolicyTestUtil {
   /**
    * Overwrite the parallelism of existing policy.
    *
-   * @param desiredSourceParallelism       the desired source parallelism to set.
-   * @param compileTimePassesToOverwrite   the list of compile time passes to overwrite.
+   * @param desiredSourceParallelism     the desired source parallelism to set.
+   * @param compileTimePassesToOverwrite the list of compile time passes to overwrite.
    * @return the overwritten policy.
    */
   public static List<CompileTimePass> overwriteParallelism(final int desiredSourceParallelism,
-                                            final List<CompileTimePass> compileTimePassesToOverwrite) {
+                                                           final List<CompileTimePass> compileTimePassesToOverwrite) {
     final int parallelismPassIdx = compileTimePassesToOverwrite.indexOf(new DefaultParallelismPass());
     compileTimePassesToOverwrite.set(parallelismPassIdx,
-        new DefaultParallelismPass(desiredSourceParallelism, 2));
+      new DefaultParallelismPass(desiredSourceParallelism, 2));
     return compileTimePassesToOverwrite;
   }
 }

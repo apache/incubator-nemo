@@ -25,6 +25,7 @@ import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
 import org.apache.nemo.compiler.optimizer.policy.PolicyImpl;
+
 import java.util.List;
 
 /**
@@ -32,17 +33,20 @@ import java.util.List;
  */
 public final class UpfrontSchedulingPolicyParallelismFive implements Policy {
   private final Policy policy;
+
   public UpfrontSchedulingPolicyParallelismFive() {
     final List<CompileTimePass> overwritingPasses = DefaultPolicy.BUILDER.getCompileTimePasses();
     overwritingPasses.add(new UpfrontCloningPass()); // CLONING!
     this.policy = new PolicyImpl(
-        PolicyTestUtil.overwriteParallelism(5, overwritingPasses),
-        DefaultPolicy.BUILDER.getRunTimePasses());
+      PolicyTestUtil.overwriteParallelism(5, overwritingPasses),
+      DefaultPolicy.BUILDER.getRunTimePasses());
   }
+
   @Override
   public IRDAG runCompileTimeOptimization(final IRDAG dag, final String dagDirectory) {
     return this.policy.runCompileTimeOptimization(dag, dagDirectory);
   }
+
   @Override
   public IRDAG runRunTimeOptimizations(final IRDAG dag, final Message<?> message) {
     return this.policy.runRunTimeOptimizations(dag, message);

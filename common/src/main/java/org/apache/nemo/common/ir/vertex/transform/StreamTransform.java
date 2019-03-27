@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 /**
  * A {@link Transform} relays input data from upstream vertex to downstream vertex promptly.
  * This transform can be used for merging input data into the {@link OutputCollector}.
+ *
  * @param <T> input/output type.
  */
 public final class StreamTransform<T> implements Transform<T, T> {

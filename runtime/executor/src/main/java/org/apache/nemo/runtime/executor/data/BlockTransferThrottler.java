@@ -48,6 +48,7 @@ public final class BlockTransferThrottler {
 
   /**
    * Request a permission to make a connection.
+   *
    * @param runtimeEdgeId the corresponding runtime edge id.
    * @return a future that will be completed when the connection is granted.
    */
@@ -70,6 +71,7 @@ public final class BlockTransferThrottler {
 
   /**
    * Indicates the transfer has finished.
+   *
    * @param runtimeEdgeId the corresponding runtime edge id.
    */
   public synchronized void onTransferFinished(final String runtimeEdgeId) {

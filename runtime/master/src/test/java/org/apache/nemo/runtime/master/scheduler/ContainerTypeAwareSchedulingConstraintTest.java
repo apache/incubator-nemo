@@ -32,7 +32,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests {@link ContainerTypeAwareSchedulingConstraint}.
@@ -50,33 +51,34 @@ public final class ContainerTypeAwareSchedulingConstraintTest {
   @Test
   public void testContainerTypeAware() throws InjectionException {
     final SchedulingConstraint schedulingConstraint = Tang.Factory.getTang().newInjector()
-        .getInstance(ContainerTypeAwareSchedulingConstraint.class);
+      .getInstance(ContainerTypeAwareSchedulingConstraint.class);
     final ExecutorRepresenter a0 = mockExecutorRepresenter(ResourcePriorityProperty.TRANSIENT);
     final ExecutorRepresenter a1 = mockExecutorRepresenter(ResourcePriorityProperty.RESERVED);
     final ExecutorRepresenter a2 = mockExecutorRepresenter(ResourcePriorityProperty.NONE);
 
     final Task task1 = mock(Task.class);
     when(task1.getPropertyValue(ResourcePriorityProperty.class))
-        .thenReturn(Optional.of(ResourcePriorityProperty.RESERVED));
+      .thenReturn(Optional.of(ResourcePriorityProperty.RESERVED));
 
     final Set<ExecutorRepresenter> executorRepresenterList1 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
     final Set<ExecutorRepresenter> candidateExecutors1 = executorRepresenterList1.stream()
-        .filter(e -> schedulingConstraint.testSchedulability(e, task1))
-        .collect(Collectors.toSet());;
+      .filter(e -> schedulingConstraint.testSchedulability(e, task1))
+      .collect(Collectors.toSet());
+    ;
 
     final Set<ExecutorRepresenter> expectedExecutors1 = Collections.singleton(a1);
     assertEquals(expectedExecutors1, candidateExecutors1);
 
     final Task task2 = mock(Task.class);
     when(task2.getPropertyValue(ResourcePriorityProperty.class))
-        .thenReturn(Optional.of(ResourcePriorityProperty.NONE));
+      .thenReturn(Optional.of(ResourcePriorityProperty.NONE));
 
     final Set<ExecutorRepresenter> executorRepresenterList2 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
     final Set<ExecutorRepresenter> candidateExecutors2 = executorRepresenterList2.stream()
-        .filter(e -> schedulingConstraint.testSchedulability(e, task2))
-        .collect(Collectors.toSet());
+      .filter(e -> schedulingConstraint.testSchedulability(e, task2))
+      .collect(Collectors.toSet());
 
     final Set<ExecutorRepresenter> expectedExecutors2 = new HashSet<>(Arrays.asList(a0, a1, a2));
     assertEquals(expectedExecutors2, candidateExecutors2);

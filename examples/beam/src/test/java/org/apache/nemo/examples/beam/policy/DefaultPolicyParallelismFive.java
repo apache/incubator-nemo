@@ -32,8 +32,8 @@ public final class DefaultPolicyParallelismFive implements Policy {
 
   public DefaultPolicyParallelismFive() {
     this.policy = new PolicyImpl(
-        PolicyTestUtil.overwriteParallelism(5, DefaultPolicy.BUILDER.getCompileTimePasses()),
-        DefaultPolicy.BUILDER.getRunTimePasses());
+      PolicyTestUtil.overwriteParallelism(5, DefaultPolicy.BUILDER.getCompileTimePasses()),
+      DefaultPolicy.BUILDER.getRunTimePasses());
   }
 
   @Override

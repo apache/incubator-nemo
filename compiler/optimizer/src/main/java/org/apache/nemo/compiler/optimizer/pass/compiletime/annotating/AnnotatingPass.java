@@ -36,6 +36,7 @@ public abstract class AnnotatingPass extends CompileTimePass {
 
   /**
    * Constructor.
+   *
    * @param cls the annotating pass class.
    */
   public AnnotatingPass(final Class<? extends AnnotatingPass> cls) {
@@ -44,11 +45,12 @@ public abstract class AnnotatingPass extends CompileTimePass {
 
     final Requires requires = cls.getAnnotation(Requires.class);
     this.prerequisiteExecutionProperties = requires == null
-        ? new HashSet<>() : new HashSet<>(Arrays.asList(requires.value()));
+      ? new HashSet<>() : new HashSet<>(Arrays.asList(requires.value()));
   }
 
   /**
    * Getter for the execution properties to annotate through the pass.
+   *
    * @return key of execution properties to annotate through the pass.
    */
   public final Set<Class<? extends ExecutionProperty>> getExecutionPropertiesToAnnotate() {

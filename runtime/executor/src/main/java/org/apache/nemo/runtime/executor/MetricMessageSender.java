@@ -28,8 +28,9 @@ public interface MetricMessageSender extends AutoCloseable {
 
   /**
    * Send metric to master.
-   * @param metricType type of the metric
-   * @param metricId id of the metric
+   *
+   * @param metricType  type of the metric
+   * @param metricId    id of the metric
    * @param metricField field of the metric
    * @param metricValue value of the metric which is serialized
    */

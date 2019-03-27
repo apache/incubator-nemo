@@ -40,11 +40,11 @@ public final class SchedulingConstraintRegistry {
 
   @Inject
   private SchedulingConstraintRegistry(
-      final ContainerTypeAwareSchedulingConstraint containerTypeAwareSchedulingConstraint,
-      final FreeSlotSchedulingConstraint freeSlotSchedulingConstraint,
-      final LocalitySchedulingConstraint localitySchedulingConstraint,
-      final AntiAffinitySchedulingConstraint antiAffinitySchedulingConstraint,
-      final NodeShareSchedulingConstraint nodeShareSchedulingConstraint) {
+    final ContainerTypeAwareSchedulingConstraint containerTypeAwareSchedulingConstraint,
+    final FreeSlotSchedulingConstraint freeSlotSchedulingConstraint,
+    final LocalitySchedulingConstraint localitySchedulingConstraint,
+    final AntiAffinitySchedulingConstraint antiAffinitySchedulingConstraint,
+    final NodeShareSchedulingConstraint nodeShareSchedulingConstraint) {
     registerSchedulingConstraint(containerTypeAwareSchedulingConstraint);
     registerSchedulingConstraint(freeSlotSchedulingConstraint);
     registerSchedulingConstraint(localitySchedulingConstraint);
@@ -54,26 +54,28 @@ public final class SchedulingConstraintRegistry {
 
   /**
    * Registers a {@link SchedulingConstraint}.
+   *
    * @param policy the policy to register
    */
   public void registerSchedulingConstraint(final SchedulingConstraint policy) {
     final AssociatedProperty associatedProperty = policy.getClass().getAnnotation(AssociatedProperty.class);
     if (associatedProperty == null || associatedProperty.value() == null) {
       throw new RuntimeException(String.format("SchedulingConstraint %s has no associated VertexExecutionProperty",
-          policy.getClass()));
+        policy.getClass()));
     }
     final Class<? extends ExecutionProperty> property = associatedProperty.value();
     if (typeToSchedulingConstraintMap.putIfAbsent(property, policy) != null) {
       throw new RuntimeException(String.format("Multiple SchedulingConstraint for VertexExecutionProperty %s:"
-          + "%s, %s", property, typeToSchedulingConstraintMap.get(property), policy));
+        + "%s, %s", property, typeToSchedulingConstraintMap.get(property), policy));
     }
   }
 
   /**
    * Returns {@link SchedulingConstraint} for the given {@link VertexExecutionProperty}.
+   *
    * @param propertyClass {@link VertexExecutionProperty} class
    * @return the corresponding {@link SchedulingConstraint} object,
-   *         or {@link Optional#EMPTY} if no such policy was found
+   * or {@link Optional#EMPTY} if no such policy was found
    */
   public Optional<SchedulingConstraint> get(final Class<? extends VertexExecutionProperty> propertyClass) {
     return Optional.ofNullable(typeToSchedulingConstraintMap.get(propertyClass));

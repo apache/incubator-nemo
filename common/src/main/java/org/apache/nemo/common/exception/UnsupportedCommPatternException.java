@@ -25,6 +25,7 @@ package org.apache.nemo.common.exception;
 public final class UnsupportedCommPatternException extends RuntimeException {
   /**
    * UnsupportedCommPatternException.
+   *
    * @param cause cause
    */
   public UnsupportedCommPatternException(final Throwable cause) {

@@ -41,6 +41,7 @@ public final class Broadcast {
 
   /**
    * Main function for the BEAM program.
+   *
    * @param args arguments.
    */
   public static void main(final String[] args) {
@@ -53,19 +54,19 @@ public final class Broadcast {
     final PCollectionView<Iterable<String>> allCollection = elemCollection.apply(View.<String>asIterable());
 
     final PCollection<String> result = elemCollection.apply(ParDo.of(new DoFn<String, String>() {
-          @ProcessElement
-          public void processElement(final ProcessContext c) {
-            final String line = c.element();
-            final Iterable<String> all = c.sideInput(allCollection);
-            final Optional<String> appended = StreamSupport.stream(all.spliterator(), false)
-                .reduce((l, r) -> l + '\n' + r);
-            if (appended.isPresent()) {
-              c.output("line: " + line + "\n" + appended.get());
-            } else {
-              c.output("error");
-            }
+        @ProcessElement
+        public void processElement(final ProcessContext c) {
+          final String line = c.element();
+          final Iterable<String> all = c.sideInput(allCollection);
+          final Optional<String> appended = StreamSupport.stream(all.spliterator(), false)
+            .reduce((l, r) -> l + '\n' + r);
+          if (appended.isPresent()) {
+            c.output("line: " + line + "\n" + appended.get());
+          } else {
+            c.output("error");
           }
-        }).withSideInputs(allCollection)
+        }
+      }).withSideInputs(allCollection)
     );
 
     GenericSourceSink.write(result, outputFilePath);
