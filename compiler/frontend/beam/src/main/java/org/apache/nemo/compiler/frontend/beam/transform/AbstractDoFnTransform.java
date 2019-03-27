@@ -319,7 +319,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    * @param originalDoFn the original doFn.
    * @return wrapped doFn.
    */
-  abstract DoFn wrapDoFn(final DoFn originalDoFn);
+  abstract DoFn wrapDoFn(DoFn originalDoFn);
 
   /**
    * An abstract function that wraps the original output collector.
@@ -327,7 +327,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    * @param oc the original outputCollector.
    * @return wrapped output collector.
    */
-  abstract OutputCollector wrapOutputCollector(final OutputCollector oc);
+  abstract OutputCollector wrapOutputCollector(OutputCollector oc);
 
   /**
    * An abstract function that is called before close.

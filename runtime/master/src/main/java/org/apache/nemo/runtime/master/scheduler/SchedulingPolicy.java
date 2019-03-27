@@ -42,5 +42,5 @@ public interface SchedulingPolicy {
    * @param task      The task to schedule
    * @return The selected executor. It must be a member of {@code executors}.
    */
-  ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task);
+  ExecutorRepresenter selectExecutor(Collection<ExecutorRepresenter> executors, Task task);
 }

@@ -87,7 +87,7 @@ public final class DataUtil {
     // compression stream. This depends on the nature of the compression algorithm used.
     // We recommend to wrap with LimitedInputStream once more when
     // reading input from chained compression InputStream.
-    try (final LimitedInputStream limitedInputStream = new LimitedInputStream(inputStream, partitionSize)) {
+    try (LimitedInputStream limitedInputStream = new LimitedInputStream(inputStream, partitionSize)) {
       final InputStreamIterator iterator =
         new InputStreamIterator(Collections.singletonList(limitedInputStream).iterator(), serializer);
       iterator.forEachRemaining(deserializedData::add);
@@ -112,8 +112,8 @@ public final class DataUtil {
     final List<SerializedPartition<K>> serializedPartitions = new ArrayList<>();
     for (final NonSerializedPartition<K> partitionToConvert : partitionsToConvert) {
       try (
-        final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
-        final OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
+        DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
+        OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
       ) {
         serializePartition(serializer.getEncoderFactory(), partitionToConvert, wrappedStream);
         // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
@@ -148,7 +148,7 @@ public final class DataUtil {
       final K key = partitionToConvert.getKey();
 
 
-      try (final ByteArrayInputStream byteArrayInputStream =
+      try (ByteArrayInputStream byteArrayInputStream =
              new ByteArrayInputStream(partitionToConvert.getData())) {
         final NonSerializedPartition<K> deserializePartition = deserializePartition(
           partitionToConvert.getLength(), serializer, key, byteArrayInputStream);

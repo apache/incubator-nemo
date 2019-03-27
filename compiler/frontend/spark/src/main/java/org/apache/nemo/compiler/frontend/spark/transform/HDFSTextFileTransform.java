@@ -64,8 +64,8 @@ public final class HDFSTextFileTransform<I> extends NoWatermarkEmitTransform<I, 
   @Override
   public void close() {
     try (
-      final FileSystem fileSystem = fileName.getFileSystem(new JobConf());
-      final FSDataOutputStream outputStream = fileSystem.create(fileName, false);
+      FileSystem fileSystem = fileName.getFileSystem(new JobConf());
+      FSDataOutputStream outputStream = fileSystem.create(fileName, false);
     ) {
       for (final I element : elements) {
         outputStream.writeBytes(element + "\n");

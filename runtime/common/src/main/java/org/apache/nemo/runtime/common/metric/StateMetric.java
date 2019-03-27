@@ -40,5 +40,5 @@ public interface StateMetric<T extends Serializable> extends Metric {
    * @param prevState previous state.
    * @param newState  new state.
    */
-  void addEvent(final T prevState, final T newState);
+  void addEvent(T prevState, T newState);
 }

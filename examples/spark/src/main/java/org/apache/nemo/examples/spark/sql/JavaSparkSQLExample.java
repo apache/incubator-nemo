@@ -208,7 +208,7 @@ public final class JavaSparkSQLExample {
     // +----+-------+
 
     // Global temporary view is cross-session
-    try (final org.apache.spark.sql.SparkSession newSession = spark.newSession()) {
+    try (org.apache.spark.sql.SparkSession newSession = spark.newSession()) {
       newSession.sql("SELECT * FROM global_temp.people").show();
     }
     // +----+-------+

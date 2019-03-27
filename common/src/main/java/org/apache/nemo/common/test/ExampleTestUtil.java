@@ -53,7 +53,7 @@ public final class ExampleTestUtil {
                                           final String testResourceFileName) throws IOException {
 
     final String testOutput;
-    try (final Stream<Path> fileStream = Files.list(Paths.get(resourcePath))) {
+    try (Stream<Path> fileStream = Files.list(Paths.get(resourcePath))) {
       testOutput = fileStream
         .filter(Files::isRegularFile)
         // TODO 346: Do not use test file prefixes
@@ -72,7 +72,7 @@ public final class ExampleTestUtil {
 
     final String resourceOutput;
 
-    try (final Stream<String> lineStream = Files.lines(Paths.get(resourcePath + testResourceFileName))) {
+    try (Stream<String> lineStream = Files.lines(Paths.get(resourcePath + testResourceFileName))) {
       resourceOutput = lineStream
         .sorted()
         .reduce("", (p, q) -> (p + "\n" + q));
@@ -107,7 +107,7 @@ public final class ExampleTestUtil {
                                              final String testResourceFileName) throws IOException {
 
     final List<List<Double>> testOutput;
-    try (final Stream<Path> fileStream = Files.list(Paths.get(resourcePath))) {
+    try (Stream<Path> fileStream = Files.list(Paths.get(resourcePath))) {
       testOutput = fileStream
         .filter(Files::isRegularFile)
         .filter(path -> path.getFileName().toString().startsWith(outputFileName))
@@ -126,7 +126,7 @@ public final class ExampleTestUtil {
     }
 
     final List<List<Double>> resourceOutput;
-    try (final Stream<String> lineStream = Files.lines(Paths.get(resourcePath + testResourceFileName))) {
+    try (Stream<String> lineStream = Files.lines(Paths.get(resourcePath + testResourceFileName))) {
       resourceOutput = lineStream
         .sorted()
         .filter(line -> !line.trim().equals(""))
@@ -159,7 +159,7 @@ public final class ExampleTestUtil {
    */
   public static void deleteOutputFile(final String directory,
                                       final String outputFileName) throws IOException {
-    try (final Stream<Path> fileStream = Files.list(Paths.get(directory))) {
+    try (Stream<Path> fileStream = Files.list(Paths.get(directory))) {
       final Set<Path> outputFilePaths = fileStream
         .filter(Files::isRegularFile)
         .filter(path -> path.getFileName().toString().startsWith(outputFileName))

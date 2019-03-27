@@ -42,7 +42,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param id of the vertex to retrieve
    * @return the vertex
    */
-  V getVertexById(final String id);
+  V getVertexById(String id);
 
   /**
    * Retrieves the vertices of this DAG.
@@ -73,7 +73,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @return the list of incoming edges to the vertex.
    * Note that the result is never null, ensured by {@link DAGBuilder}.
    */
-  List<E> getIncomingEdgesOf(final V v);
+  List<E> getIncomingEdgesOf(V v);
 
   /**
    * Retrieves the incoming edges of the given vertex.
@@ -82,7 +82,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @return the list of incoming edges to the vertex.
    * Note that the result is never null, ensured by {@link DAGBuilder}.
    */
-  List<E> getIncomingEdgesOf(final String vertexId);
+  List<E> getIncomingEdgesOf(String vertexId);
 
   /**
    * Retrieves the outgoing edges of the given vertex.
@@ -91,7 +91,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @return the list of outgoing edges to the vertex.
    * Note that the result is never null, ensured by {@link DAGBuilder}.
    */
-  List<E> getOutgoingEdgesOf(final V v);
+  List<E> getOutgoingEdgesOf(V v);
 
   /**
    * Retrieves the outgoing edges of the given vertex.
@@ -100,7 +100,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @return the list of outgoing edges to the vertex.
    * Note that the result is never null, ensured by {@link DAGBuilder}.
    */
-  List<E> getOutgoingEdgesOf(final String vertexId);
+  List<E> getOutgoingEdgesOf(String vertexId);
 
   /**
    * Retrieves the parent vertices of the given vertex.
@@ -108,7 +108,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param vertexId the ID of the subject vertex.
    * @return the list of parent vertices.
    */
-  List<V> getParents(final String vertexId);
+  List<V> getParents(String vertexId);
 
   /**
    * Retrieves the children vertices of the given vertex.
@@ -116,7 +116,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param vertexId the ID of the subject vertex.
    * @return the list of children vertices.
    */
-  List<V> getChildren(final String vertexId);
+  List<V> getChildren(String vertexId);
 
   /**
    * Retrieves the edge between two vertices.
@@ -126,7 +126,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @return the edge if exists.
    * @throws IllegalEdgeOperationException otherwise.
    */
-  E getEdgeBetween(final String srcVertexId, final String dstVertexId) throws IllegalEdgeOperationException;
+  E getEdgeBetween(String srcVertexId, String dstVertexId) throws IllegalEdgeOperationException;
 
   /**
    * Gets the DAG's vertices in topologically sorted order.
@@ -142,7 +142,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param vertexId to find the ancestors for.
    * @return the list of ancestors.
    */
-  List<V> getAncestors(final String vertexId);
+  List<V> getAncestors(String vertexId);
 
   /**
    * Retrieves the descendants of a vertex.
@@ -150,7 +150,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param vertexId to find the descendants for.
    * @return the list of descendants.
    */
-  List<V> getDescendants(final String vertexId);
+  List<V> getDescendants(String vertexId);
 
   /**
    * Filters the vertices according to the given condition.
@@ -158,7 +158,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param condition that must be satisfied to be included in the filtered list.
    * @return the list of vertices that meet the condition.
    */
-  List<V> filterVertices(final Predicate<V> condition);
+  List<V> filterVertices(Predicate<V> condition);
 
   /**
    * Applies the function to each node in the DAG in a topological order.
@@ -166,7 +166,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    *
    * @param function to apply.
    */
-  void topologicalDo(final Consumer<V> function);
+  void topologicalDo(Consumer<V> function);
 
   /**
    * Indicates the traversal order of this DAG.
@@ -182,7 +182,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param function       to apply.
    * @param traversalOrder which the DFS should be conducted.
    */
-  void dfsTraverse(final Consumer<V> function, final TraversalOrder traversalOrder);
+  void dfsTraverse(Consumer<V> function, TraversalOrder traversalOrder);
 
   /**
    * A recursive helper function for {@link #dfsTraverse(Consumer, TraversalOrder)}.
@@ -192,10 +192,10 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param traversalOrder which the DFS should be conducted.
    * @param visited        the set of nodes visited.
    */
-  void dfsDo(final V vertex,
-             final Consumer<V> vertexConsumer,
-             final TraversalOrder traversalOrder,
-             final Set<V> visited);
+  void dfsDo(V vertex,
+             Consumer<V> vertexConsumer,
+             TraversalOrder traversalOrder,
+             Set<V> visited);
 
   /**
    * Function checks whether there is a path between two vertices.
@@ -204,7 +204,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param v2 Second vertex to check.
    * @return Whether or not there is a path between two vertices.
    */
-  Boolean pathExistsBetween(final V v1, final V v2);
+  Boolean pathExistsBetween(V v1, V v2);
 
   /**
    * Checks whether the given vertex is assigned with a wrapping LoopVertex.
@@ -212,7 +212,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param v Vertex to check.
    * @return whether or not it is wrapped by a LoopVertex
    */
-  Boolean isCompositeVertex(final V v);
+  Boolean isCompositeVertex(V v);
 
   /**
    * Retrieves the stack depth of the given vertex.
@@ -220,7 +220,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param v Vertex to check.
    * @return The depth of the stack of LoopVertices for the vertex.
    */
-  Integer getLoopStackDepthOf(final V v);
+  Integer getLoopStackDepthOf(V v);
 
   /**
    * Retrieves the wrapping LoopVertex of the vertex.
@@ -228,7 +228,7 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param v Vertex to check.
    * @return The wrapping LoopVertex.
    */
-  LoopVertex getAssignedLoopVertexOf(final V v);
+  LoopVertex getAssignedLoopVertexOf(V v);
 
   /**
    * @return {@link com.fasterxml.jackson.databind.JsonNode} for this DAG.
@@ -242,5 +242,5 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
    * @param name        name of this DAG
    * @param description description of this DAG
    */
-  void storeJSON(final String directory, final String name, final String description);
+  void storeJSON(String directory, String name, String description);
 }

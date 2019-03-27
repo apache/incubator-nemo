@@ -27,11 +27,11 @@ public interface PlanRewriter {
    * @param messageId           of the rewrite.
    * @return physical plan.
    */
-  PhysicalPlan rewrite(final PhysicalPlan currentPhysicalPlan, final int messageId);
+  PhysicalPlan rewrite(PhysicalPlan currentPhysicalPlan, int messageId);
 
   /**
    * @param messageId of the rewrite.
    * @param data      to accumulate.
    */
-  void accumulate(final int messageId, final Object data);
+  void accumulate(int messageId, Object data);
 }
