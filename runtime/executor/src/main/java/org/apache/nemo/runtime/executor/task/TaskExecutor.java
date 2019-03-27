@@ -551,7 +551,7 @@ public final class TaskExecutor {
    * @param irVertexDag                 DAG of IRVertex and RuntimeEdge
    * @param edgeIndexMap                Map of edge and index
    * @param operatorWatermarkManagerMap Map of irVertex and InputWatermarkManager
-   * @return Map<OutputTag ,   List < NextIntraTaskOperatorInfo>>
+   * @return The map of output tag to the list of next intra-task operator information.
    */
   private Map<String, List<NextIntraTaskOperatorInfo>> getInternalOutputMap(
     final IRVertex irVertex,

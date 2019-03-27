@@ -89,7 +89,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
         b = inputStream.read();
       }
 
-      final int lengthToRead = byteOutputStream.getCount();
+      final int lengthToRead = byteOutputStream.size();
       if (lengthToRead == 0) {
         if (!returnedArray) {
           returnedArray = true;
@@ -98,8 +98,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
           throw new EOFException("EoF (empty partition)!"); // TODO #120: use EOF exception instead of IOException.
         }
       }
-      final byte[] resultBytes = new byte[lengthToRead]; // Read the size of this byte array.
-      System.arraycopy(byteOutputStream.getBufDirectly(), 0, resultBytes, 0, lengthToRead);
+      final byte[] resultBytes = byteOutputStream.toByteArray();
 
       returnedArray = true;
       return resultBytes;
