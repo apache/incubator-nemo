@@ -42,6 +42,13 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Pass for applying XGBoost optimizations.
+ * <p>
+ * 1. The pass first triggers the client to run the XGBoost script, located under the `ml` python package.
+ * 2. The client runs the script, which trains the tree model using the metrics collected before, and constructs
+ *    a tree model, which then predicts the 'knobs' that minimizes the JCT based on the weights of the leaves (JCT).
+ * 3. It receives the results, and in which direction each of the knobs should be optimized, and reconstructs the
+ *    execution properties in the form that they are tuned.
+ * 4. The newly reconstructed execution properties are injected and the workload runs after the optimization.
  */
 @Annotates()
 public final class XGBoostPass extends AnnotatingPass {

@@ -25,6 +25,7 @@ from pathlib import Path
 
 import numpy as np
 import psycopg2 as pg
+import sqlite3 as sq
 import xgboost as xgb
 from sklearn import preprocessing
 
@@ -53,13 +54,20 @@ def load_data_from_db(tablename):
     dbuser = "postgres"
     dbpwd = "fake_password"
     conn = pg.connect(host=host, dbname=dbname, user=dbuser, password=dbpwd)
+    print("Connected to the PostgreSQL DB.")
   except:
-    print("I am unable to connect to the database")
+    try:
+      sqlite_file = "./optimization_db.sqlite"
+      conn = sq.connect(sqlite_file)
+      print("Connected to the SQLite DB.")
+    except:
+      print("I am unable to connect to the database. Try running the script with `./bin/xgboost_optimization.sh`")
 
   sql = "SELECT * from " + tablename
   cur = conn.cursor()
   try:
     cur.execute(sql)
+    print("Loaded data from the DB.")
   except:
     print("I can't run " + sql)
 
