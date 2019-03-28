@@ -45,15 +45,15 @@ public final class ClientUtils {
    *
    * @param message the message received from the driver.
    */
-  static void launchOptimizationHandler(final ControlMessage.DriverToClientMessage message,
-                                        final DriverRPCServer driverRPCServer) {
+  static void handleOptimizationType(final ControlMessage.DriverToClientMessage message,
+                                     final DriverRPCServer driverRPCServer) {
     switch (message.getOptimizationType()) {
-      case "xgboost":
+      case XGBoost:
         new Thread(() ->
           driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
             .setType(ControlMessage.ClientToDriverMessageType.Notification)
             .setMessage(ControlMessage.NotificationMessage.newBuilder()
-              .setType("xgboost")
+              .setOptimizationType(ControlMessage.OptimizationType.XGBoost)
               .setData(ClientUtils.launchXGBoostScript(message.getDataCollected().getData()))
               .build())
             .build()))

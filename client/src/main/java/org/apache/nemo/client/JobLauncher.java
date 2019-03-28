@@ -137,7 +137,7 @@ public final class JobLauncher {
       .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
         SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
       .registerHandler(ControlMessage.DriverToClientMessageType.LaunchOptimization, message ->
-        ClientUtils.launchOptimizationHandler(message, driverRPCServer))
+        ClientUtils.handleOptimizationType(message, driverRPCServer))
       .run();
 
     final Configuration driverConf = getDriverConf(builtJobConf);

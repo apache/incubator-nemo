@@ -59,7 +59,12 @@ public final class Util {
    * @return the project root path.
    */
   public static String fetchProjectRootPath() {
-    return recursivelyFindLicense(Paths.get(System.getProperty("user.dir")));
+    final String nemoHome = System.getenv("NEMO_HOME");
+    if (!nemoHome.isEmpty()) {
+      return nemoHome;
+    } else {
+      return recursivelyFindLicense(Paths.get(System.getProperty("user.dir")));
+    }
   }
 
   /**

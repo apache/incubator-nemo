@@ -126,6 +126,8 @@ public final class NemoOptimizer implements Optimizer {
 
   /**
    * Operations to be done prior to the Compile-Time Optimizations.
+   * This part can be reduced by not using the client RPC and sending the python script to the driver itself later on
+   * (NEMO-371).
    *
    * @param dag    the DAG to process.
    * @param policy the optimization policy to optimize the DAG with.
@@ -134,7 +136,7 @@ public final class NemoOptimizer implements Optimizer {
     if (policy instanceof XGBoostPolicy) {
       clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
         .setType(ControlMessage.DriverToClientMessageType.LaunchOptimization)
-        .setOptimizationType("xgboost")
+        .setOptimizationType(ControlMessage.OptimizationType.XGBoost)
         .setDataCollected(ControlMessage.DataCollectMessage.newBuilder()
           .setData(dag.irDAGSummary() + this.environmentTypeStr)
           .build())

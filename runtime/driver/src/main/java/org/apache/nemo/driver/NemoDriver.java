@@ -112,7 +112,7 @@ public final class NemoDriver {
     this.clientRPC = clientRPC;
     // TODO #69: Support job-wide execution property
     ResourceSitePass.setBandwidthSpecificationString(bandwidthString);
-    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Notification, this::notificationHandler);
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.Notification, this::handleNotification);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message -> {
       startSchedulingUserDAG(message.getLaunchDAG().getDag());
       final Map<Serializable, Object> broadcastVars =
@@ -201,9 +201,9 @@ public final class NemoDriver {
    *
    * @param message message from the client.
    */
-  private void notificationHandler(final ControlMessage.ClientToDriverMessage message) {
-    switch (message.getMessage().getType()) {
-      case "xgboost":
+  private void handleNotification(final ControlMessage.ClientToDriverMessage message) {
+    switch (message.getMessage().getOptimizationType()) {
+      case XGBoost:
         XGBoostPass.pushMessage(message.getMessage().getData());
         break;
       default:

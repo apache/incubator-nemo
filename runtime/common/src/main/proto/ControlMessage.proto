@@ -41,8 +41,12 @@ message LaunchDAGMessage {
     optional bytes broadcastVars = 2;
 }
 
+enum OptimizationType {
+    XGBoost = 0;
+}
+
 message NotificationMessage {
-    required string type = 1;
+    required OptimizationType optimizationType = 1;
     required string data = 2;
 }
 
@@ -58,7 +62,7 @@ enum DriverToClientMessageType {
 message DriverToClientMessage {
     required DriverToClientMessageType type = 1;
     optional DataCollectMessage dataCollected = 2;
-    optional string optimizationType = 3;
+    optional OptimizationType optimizationType = 3;
 }
 
 message DataCollectMessage {
