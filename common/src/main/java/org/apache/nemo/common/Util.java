@@ -60,7 +60,7 @@ public final class Util {
    */
   public static String fetchProjectRootPath() {
     final String nemoHome = System.getenv("NEMO_HOME");
-    if (!nemoHome.isEmpty()) {
+    if (nemoHome != null && !nemoHome.isEmpty()) {
       return nemoHome;
     } else {
       return recursivelyFindLicense(Paths.get(System.getProperty("user.dir")));
