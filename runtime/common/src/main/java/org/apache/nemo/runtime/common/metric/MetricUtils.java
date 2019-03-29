@@ -43,6 +43,7 @@ import java.util.stream.IntStream;
 
 /**
  * Utility class for metrics.
+ * This class should later be refactored into a separate metric package (TODO-NEMO-372).
  */
 public final class MetricUtils {
   private static final Logger LOG = LoggerFactory.getLogger(MetricUtils.class.getName());
