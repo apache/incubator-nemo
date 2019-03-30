@@ -16,16 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.common.util;
+package org.apache.nemo.common;
 
-import org.apache.nemo.common.Util;
+import org.junit.Assert;
 import org.junit.Test;
 
+import java.nio.file.Paths;
 import java.util.function.IntPredicate;
 
-import static org.junit.Assert.assertEquals;
+import static junit.framework.TestCase.assertEquals;
 
 public class UtilTest {
+  @Test
+  public void testRootPath() {
+    final String one = Util.recursivelyFindLicense(Paths.get(System.getProperty("user.dir")));
+    final String two = Util.recursivelyFindLicense(Paths.get(System.getProperty("user.dir")).getParent());
+    Assert.assertEquals(one, two);
+  }
 
   @Test
   public void testCheckEqualityOfIntPredicates() {

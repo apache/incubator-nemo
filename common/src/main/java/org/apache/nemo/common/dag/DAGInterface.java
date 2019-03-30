@@ -39,10 +39,18 @@ public interface DAGInterface<V extends Vertex, E extends Edge<V>> extends Seria
   /**
    * Retrieves the vertex given its ID.
    *
-   * @param id of the vertex to retrieve
-   * @return the vertex
+   * @param id of the vertex to retrieve.
+   * @return the vertex.
    */
   V getVertexById(String id);
+
+  /**
+   * Retrieves the edge given its ID.
+   *
+   * @param id of the edge to retrieve.
+   * @return the edge.
+   */
+  E getEdgeById(String id);
 
   /**
    * Retrieves the vertices of this DAG.

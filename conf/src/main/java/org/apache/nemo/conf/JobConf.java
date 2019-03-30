@@ -77,9 +77,16 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
+   * Specifies the type of the environment the workload runs on. (e.g., transient / large_shuffle)
+   */
+  @NamedParameter(doc = "Environment type", short_name = "env", default_value = "")
+  public final class EnvironmentType implements Name<String> {
+  }
+
+  /**
    * Address pointing to the DB for saving metrics.
    */
-  @NamedParameter(doc = "DB address", short_name = "db_dir", default_value =
+  @NamedParameter(doc = "DB address", short_name = "db_address", default_value =
     "jdbc:postgresql://nemo-optimization.cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization")
   public final class DBAddress implements Name<String> {
   }

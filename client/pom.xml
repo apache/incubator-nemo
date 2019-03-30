@@ -57,8 +57,6 @@ under the License.
       <artifactId>reef-runtime-yarn</artifactId>
       <version>${reef.version}</version>
     </dependency>
-
-
     <!-- for nemo-beam-runner -->
     <dependency>
       <groupId>org.apache.nemo</groupId>
@@ -72,7 +70,6 @@ under the License.
       <optional>true</optional>
     </dependency>
   </dependencies>
-
 
   <build>
     <plugins>
@@ -99,8 +96,7 @@ under the License.
                 ${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar
               </outputFile>
               <transformers>
-                <!-- Required for using beam-hadoop: See https://stackoverflow.com/questions/44365545
-                -->
+                <!-- Required for using beam-hadoop: See https://stackoverflow.com/questions/44365545-->
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
               </transformers>
             </configuration>

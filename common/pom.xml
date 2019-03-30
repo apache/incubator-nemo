@@ -53,6 +53,5 @@ under the License.
       <artifactId>beam-sdks-java-core</artifactId>
       <version>${beam.version}</version>
     </dependency>
-
   </dependencies>
 </project>

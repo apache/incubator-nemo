@@ -17,8 +17,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-VERSION=$(mvn -q \
-  -Dexec.executable=echo -Dexec.args='${project.version}' \
-  --non-recursive exec:exec)
-
-java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp examples/spark/target/nemo-examples-spark-${VERSION}-shaded.jar:`yarn classpath` org.apache.nemo.client.JobLauncher "$@"
+echo "You should already have python3 installed"
+echo "Usage: ./bin/nemo_xgboost_optimization.sh <tablename>"
+pushd ml
+touch results.out
+pip3 install -r requirements.txt
+python3 nemo_xgboost_optimization.py -t "$@"
+popd

@@ -31,7 +31,10 @@ import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDa
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 import org.apache.nemo.compiler.optimizer.policy.Policy;
+import org.apache.nemo.compiler.optimizer.policy.XGBoostPolicy;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.ClientRPC;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -46,19 +49,27 @@ import java.util.stream.Collectors;
 public final class NemoOptimizer implements Optimizer {
   private final String dagDirectory;
   private final Policy optimizationPolicy;
+  private final String environmentTypeStr;
+  private final ClientRPC clientRPC;
 
   private final Map<UUID, Integer> cacheIdToParallelism = new HashMap<>();
   private int irDagCount = 0;
 
 
   /**
-   * @param dagDirectory to store JSON representation of intermediate DAGs.
-   * @param policyName   the name of the optimization policy.
+   * @param dagDirectory       to store JSON representation of intermediate DAGs.
+   * @param policyName         the name of the optimization policy.
+   * @param environmentTypeStr the environment type of the workload to optimize the DAG for.
+   * @param clientRPC          the RPC channel to communicate with the client.
    */
   @Inject
   private NemoOptimizer(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
-                        @Parameter(JobConf.OptimizationPolicy.class) final String policyName) {
+                        @Parameter(JobConf.OptimizationPolicy.class) final String policyName,
+                        @Parameter(JobConf.EnvironmentType.class) final String environmentTypeStr,
+                        final ClientRPC clientRPC) {
     this.dagDirectory = dagDirectory;
+    this.environmentTypeStr = OptimizerUtils.filterEnvironmentTypeString(environmentTypeStr);
+    this.clientRPC = clientRPC;
 
     try {
       optimizationPolicy = (Policy) Class.forName(policyName).newInstance();
@@ -86,7 +97,7 @@ public final class NemoOptimizer implements Optimizer {
     }
 
     // Conduct compile-time optimization.
-
+    beforeCompileTimeOptimization(dag, optimizationPolicy);
     optimizedDAG = optimizationPolicy.runCompileTimeOptimization(cacheFilteredDag, dagDirectory);
     optimizedDAG
       .storeJSON(dagDirectory, irDagId + optimizationPolicy.getClass().getSimpleName(),
@@ -111,6 +122,26 @@ public final class NemoOptimizer implements Optimizer {
   @Override
   public IRDAG optimizeAtRunTime(final IRDAG dag, final Message message) {
     return optimizationPolicy.runRunTimeOptimizations(dag, message);
+  }
+
+  /**
+   * Operations to be done prior to the Compile-Time Optimizations.
+   * TODO #371: This part can be reduced by not using the client RPC and sending the python script to the driver
+   * itself later on.
+   *
+   * @param dag    the DAG to process.
+   * @param policy the optimization policy to optimize the DAG with.
+   */
+  private void beforeCompileTimeOptimization(final IRDAG dag, final Policy policy) {
+    if (policy instanceof XGBoostPolicy) {
+      clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+        .setType(ControlMessage.DriverToClientMessageType.LaunchOptimization)
+        .setOptimizationType(ControlMessage.OptimizationType.XGBoost)
+        .setDataCollected(ControlMessage.DataCollectMessage.newBuilder()
+          .setData(dag.irDAGSummary() + this.environmentTypeStr)
+          .build())
+        .build());
+    }
   }
 
   /**

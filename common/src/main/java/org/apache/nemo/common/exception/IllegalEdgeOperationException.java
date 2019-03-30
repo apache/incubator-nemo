@@ -33,4 +33,13 @@ public final class IllegalEdgeOperationException extends RuntimeException {
   public IllegalEdgeOperationException(final Throwable cause) {
     super(cause);
   }
+
+  /**
+   * IllegalEdgeOperationException.
+   *
+   * @param message message.
+   */
+  public IllegalEdgeOperationException(final String message) {
+    super(message);
+  }
 }

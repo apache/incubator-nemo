@@ -328,6 +328,10 @@ under the License.
             <exclude>**/*.json</exclude>
             <exclude>**/.editorconfig</exclude>
             <exclude>**/config.gypi</exclude>
+            <!-- ML -->
+            <exclude>**/*.txt</exclude>
+            <exclude>**/*.out</exclude>
+            <exclude>venv/**</exclude>
             <!-- EditorConfig -->
             <exclude>.editorconfig</exclude>
             <!-- formatter.xml -->

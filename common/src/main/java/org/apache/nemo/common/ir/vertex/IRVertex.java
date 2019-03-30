@@ -86,6 +86,10 @@ public abstract class IRVertex extends Vertex implements Cloneable<IRVertex> {
     return this;
   }
 
+  public final Boolean isUtilityVertex() {
+    return this.getClass().getPackage().getName().startsWith("org.apache.nemo.common.ir.vertex.utility.");
+  }
+
   /**
    * Get the executionProperty of the IRVertex.
    *

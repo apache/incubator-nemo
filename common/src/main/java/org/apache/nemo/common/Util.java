@@ -43,7 +43,7 @@ import java.util.stream.Stream;
  */
 public final class Util {
   // Assume that this tag is never used in user application
-  public static final String CONTROL_EDGE_TAG = "CONTROL_EDGE";
+  private static final String CONTROL_EDGE_TAG = "CONTROL_EDGE";
 
   private static Instrumentation instrumentation;
 
@@ -59,7 +59,12 @@ public final class Util {
    * @return the project root path.
    */
   public static String fetchProjectRootPath() {
-    return recursivelyFindLicense(Paths.get(System.getProperty("user.dir")));
+    final String nemoHome = System.getenv("NEMO_HOME");
+    if (nemoHome != null && !nemoHome.isEmpty()) {
+      return nemoHome;
+    } else {
+      return recursivelyFindLicense(Paths.get(System.getProperty("user.dir")));
+    }
   }
 
   /**
@@ -202,6 +207,26 @@ public final class Util {
    */
   public static String stringifyIREdgeIds(final Collection<IREdge> edges) {
     return edges.stream().map(IREdge::getId).sorted().collect(Collectors.toList()).toString();
+  }
+
+  /**
+   * Method to restore String ID from the numeric ID.
+   *
+   * @param numericId the numeric id.
+   * @return the restored string ID.
+   */
+  public static String restoreVertexId(final Integer numericId) {
+    return "vertex" + numericId;
+  }
+
+  /**
+   * Method to restore String ID from the numeric ID.
+   *
+   * @param numericId the numeric id.
+   * @return the restored string ID.
+   */
+  public static String restoreEdgeId(final Integer numericId) {
+    return "edge" + numericId;
   }
 
   /**

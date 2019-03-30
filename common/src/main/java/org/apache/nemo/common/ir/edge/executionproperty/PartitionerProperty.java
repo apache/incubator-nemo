@@ -70,6 +70,17 @@ public final class PartitionerProperty
   }
 
   /**
+   * Static constructor.
+   * This is used by reflection by the MetricUtils class.
+   *
+   * @param value the Pair value.
+   * @return the new execution property.
+   */
+  public static PartitionerProperty of(final Pair<Type, Integer> value) {
+    return new PartitionerProperty(value);
+  }
+
+  /**
    * Partitioning types.
    */
   public enum Type {

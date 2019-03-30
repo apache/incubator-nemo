@@ -21,6 +21,7 @@ package org.apache.nemo.client;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.Util;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.backend.nemo.NemoPlanRewriter;
 import org.apache.nemo.conf.JobConf;
@@ -122,6 +123,7 @@ public final class JobLauncher {
    */
   public static void setup(final String[] args) throws InjectionException, ClassNotFoundException, IOException {
     // Get Job and Driver Confs
+    LOG.info("Project Root Path: {}", Util.fetchProjectRootPath());
     builtJobConf = getJobConf(args);
 
     // Registers actions for launching the DAG.
@@ -134,6 +136,8 @@ public final class JobLauncher {
       .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
       .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
         SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
+      .registerHandler(ControlMessage.DriverToClientMessageType.LaunchOptimization, message ->
+        ClientUtils.handleOptimizationType(message, driverRPCServer))
       .run();
 
     final Configuration driverConf = getDriverConf(builtJobConf);
@@ -251,6 +255,7 @@ public final class JobLauncher {
     LOG.info("Launching DAG...");
     serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
     jobDoneLatch = new CountDownLatch(1);
+
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
       .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
       .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder()

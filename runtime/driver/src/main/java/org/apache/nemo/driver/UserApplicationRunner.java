@@ -50,6 +50,15 @@ public final class UserApplicationRunner {
   private final Backend<PhysicalPlan> backend;
   private final PlanRewriter planRewriter;
 
+  /**
+   * Constructor.
+   *
+   * @param maxScheduleAttempt maximum scheuling attempt.
+   * @param optimizer          the nemo optimizer.
+   * @param backend            the backend to actually execute the job.
+   * @param runtimeMaster      the runtime master.
+   * @param planRewriter       plan rewriter
+   */
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.MaxTaskAttempt.class) final int maxScheduleAttempt,
                                 final Optimizer optimizer,

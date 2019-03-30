@@ -1,0 +1,9 @@
+graphviz==0.10.1
+matplotlib==3.0.3
+numpy==1.16.2
+psycopg2==2.7.7
+psycopg2-binary==2.7.7
+pygraphviz==1.5
+sklearn==0.0
+xgboost==0.82
+pandas==0.24.1

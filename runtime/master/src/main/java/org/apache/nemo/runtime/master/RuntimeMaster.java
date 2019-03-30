@@ -29,6 +29,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.ClientRPC;
 import org.apache.nemo.runtime.common.message.MessageContext;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.MessageListener;
@@ -113,13 +114,29 @@ public final class RuntimeMaster {
   private final Server metricServer;
   private final MetricStore metricStore;
 
+  /**
+   * Constructor.
+   *
+   * @param scheduler                the scheduler implementation.
+   * @param containerManager         the container manager, in charge of the available containers.
+   * @param metricMessageHandler     the handler for metric messages.
+   * @param masterMessageEnvironment message environment for the runtime master.
+   * @param metricManagerMaster      metric manager master.
+   * @param clientRPC                the RPC channel to communicate with the client.
+   * @param planStateManager         the manager that keeps track of the plan state.
+   * @param jobId                    the Job ID, provided by the user.
+   * @param dbAddress                the DB Address, provided by the user.
+   * @param dbId                     the ID for the given DB.
+   * @param dbPassword               the password for the given DB.
+   * @param dagDirectory             directory of the DAG to save the json files and metrics into.
+   */
   @Inject
   private RuntimeMaster(final Scheduler scheduler,
                         final ContainerManager containerManager,
                         final MetricMessageHandler metricMessageHandler,
                         final MessageEnvironment masterMessageEnvironment,
-                        final ClientRPC clientRPC,
                         final MetricManagerMaster metricManagerMaster,
+                        final ClientRPC clientRPC,
                         final PlanStateManager planStateManager,
                         @Parameter(JobConf.JobId.class) final String jobId,
                         @Parameter(JobConf.DBAddress.class) final String dbAddress,
@@ -189,6 +206,12 @@ public final class RuntimeMaster {
     return server;
   }
 
+  /**
+   * Record IR DAG related metrics.
+   *
+   * @param irdag  the IR DAG to record.
+   * @param planId the ID of the IR DAG Physical Plan.
+   */
   public void recordIRDAGMetrics(final IRDAG irdag, final String planId) {
     metricStore.getOrCreateMetric(JobMetric.class, planId).setIRDAG(irdag);
   }
@@ -202,7 +225,7 @@ public final class RuntimeMaster {
 
     metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
       "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
-    metricStore.saveOptimizationMetricsToDB(dbAddress, dbId, dbPassword);
+    metricStore.saveOptimizationMetricsToDB(dbAddress, jobId, dbId, dbPassword);
   }
 
   /**
