@@ -45,6 +45,7 @@ public final class PersistentConnectionToMasterMap {
       messageSenders.put(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID,
           messageEnvironment.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_COMMUNICATION_ID,
               MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).get());
+
     } catch (InterruptedException | ExecutionException e) {
       Thread.currentThread().interrupt();
       throw new NodeConnectionException(e);

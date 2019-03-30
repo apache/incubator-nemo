@@ -195,7 +195,7 @@ public final class RuntimeMaster {
   }
 
   public void recordIRDAGMetrics(final IRDAG irdag, final String planId) {
-    metricStore.getOrCreateMetric(JobMetric.class, planId).setIRDAG(irdag);
+    //metricStore.getOrCreateMetric(JobMetric.class, planId).setIRDAG(irdag);
   }
 
   /**

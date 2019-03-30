@@ -61,6 +61,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.stream.Collectors;
 
 /**
  * Job launcher.
@@ -298,6 +299,7 @@ public final class JobLauncher {
   private static void runUserProgramMain(final Configuration jobConf) throws Exception {
     final Injector injector = TANG.newInjector(jobConf);
     final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
+
     final String userArgsString = injector.getNamedInstance(JobConf.UserMainArguments.class);
     final String[] args = userArgsString.isEmpty() ? EMPTY_USER_ARGS : userArgsString.split(" ");
     LOG.info("Args are {}", Arrays.toString(args));
@@ -388,12 +390,32 @@ public final class JobLauncher {
    * @return driver configuration.
    * @throws InjectionException exception while injection.
    */
-  private static Configuration getDriverConf(final Configuration jobConf) throws InjectionException {
+  private static Configuration getDriverConf(final Configuration jobConf) throws InjectionException, ClassNotFoundException {
     final Injector injector = TANG.newInjector(jobConf);
     final String jobId = injector.getNamedInstance(JobConf.JobId.class);
     final int driverMemory = injector.getNamedInstance(JobConf.DriverMemMb.class);
+
+    final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
+
+    final String excludeJars = injector.getNamedInstance(JobConf.ExcludeJars.class);
+    final List<String> excludeJarList;
+
+    if (!excludeJars.isEmpty()) {
+      excludeJarList = Arrays.asList(excludeJars.split(":"));
+    } else {
+      excludeJarList = Collections.emptyList();
+    }
+
     return DriverConfiguration.CONF
-        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(NemoDriver.class))
+        .setMultiple(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getAllClasspathJars()
+        .stream().filter(path -> {
+          for (final String excludeJar : excludeJarList) {
+            if (path.contains(excludeJar)) {
+              return false;
+            }
+          }
+          return true;
+          }).collect(Collectors.toSet()))
         .set(DriverConfiguration.ON_DRIVER_STARTED, NemoDriver.StartHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, NemoDriver.AllocatedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, NemoDriver.ActiveContextHandler.class)
@@ -418,6 +440,7 @@ public final class JobLauncher {
     final JavaConfigurationBuilder confBuilder = TANG.newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(JobConf.JobId.class);
+    cl.registerShortNameOfClass(JobConf.ExcludeJars.class);
     cl.registerShortNameOfClass(JobConf.UserMainClass.class);
     cl.registerShortNameOfClass(JobConf.UserMainArguments.class);
     cl.registerShortNameOfClass(JobConf.DAGDirectory.class);

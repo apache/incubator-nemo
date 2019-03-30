@@ -46,6 +46,10 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class UserMainClass implements Name<String> {
   }
 
+  @NamedParameter(doc = "Excluding jar files", short_name = "exclude_jars", default_value = "")
+  public final class ExcludeJars implements Name<String> {
+  }
+
   /**
    * User Main Arguments.
    */

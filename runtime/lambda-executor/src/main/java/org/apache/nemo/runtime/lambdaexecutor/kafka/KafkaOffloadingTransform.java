@@ -179,7 +179,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
     dataFetcher.setReadable(readable);
 
-    dataFetcherExecutor = new HandleDataFetcher(input.id, dataFetchers, resultCollector);
+    dataFetcherExecutor = new HandleDataFetcher(input.id, dataFetchers, resultCollector, checkpointMark);
     dataFetcherExecutor.start();
   }
 
