@@ -366,7 +366,7 @@ public final class JobLauncher {
     final String jobId = injector.getNamedInstance(JobConf.JobId.class);
     final int driverMemory = injector.getNamedInstance(JobConf.DriverMemMb.class);
     return DriverConfiguration.CONF
-      .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(NemoDriver.class))
+      .setMultiple(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getAllClasspathJars())
       .set(DriverConfiguration.ON_DRIVER_STARTED, NemoDriver.StartHandler.class)
       .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, NemoDriver.AllocatedEvaluatorHandler.class)
       .set(DriverConfiguration.ON_CONTEXT_ACTIVE, NemoDriver.ActiveContextHandler.class)
