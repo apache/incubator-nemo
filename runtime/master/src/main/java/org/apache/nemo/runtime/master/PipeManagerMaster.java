@@ -46,9 +46,9 @@ import java.util.concurrent.locks.ReentrantLock;
 @DriverSide
 public final class PipeManagerMaster {
   private static final Logger LOG = LoggerFactory.getLogger(PipeManagerMaster.class.getName());
-  private final Map<Pair<String, Long>, String> runtimeEdgeSrcIndexToExecutor;
-  private final Map<Pair<String, Long>, Lock> runtimeEdgeSrcIndexToLock;
-  private final Map<Pair<String, Long>, Condition> runtimeEdgeSrcIndexToCondition;
+  private final Map<Pair<String, Long>, String> runtimeEdgeIndexToExecutor;
+  private final Map<Pair<String, Long>, Lock> runtimeEdgeIndexToLock;
+  private final Map<Pair<String, Long>, Condition> runtimeEdgeIndexToCondition;
   private final ExecutorService waitForPipe;
 
   /**
@@ -59,18 +59,19 @@ public final class PipeManagerMaster {
   private PipeManagerMaster(final MessageEnvironment masterMessageEnvironment) {
     masterMessageEnvironment.setupListener(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID,
       new PipeManagerMasterControlMessageReceiver());
-    this.runtimeEdgeSrcIndexToExecutor = new ConcurrentHashMap<>();
-    this.runtimeEdgeSrcIndexToLock = new ConcurrentHashMap<>();
-    this.runtimeEdgeSrcIndexToCondition = new ConcurrentHashMap<>();
+    this.runtimeEdgeIndexToExecutor = new ConcurrentHashMap<>();
+    this.runtimeEdgeIndexToLock = new ConcurrentHashMap<>();
+    this.runtimeEdgeIndexToCondition = new ConcurrentHashMap<>();
     this.waitForPipe = Executors.newCachedThreadPool();
   }
 
   public void onTaskScheduled(final String edgeId, final long srcIndex) {
     final Pair<String, Long> keyPair = Pair.of(edgeId, srcIndex);
-    if (null != runtimeEdgeSrcIndexToLock.put(keyPair, new ReentrantLock())) {
+    LOG.info("OnTaskScheduled: {}", keyPair);
+    if (null != runtimeEdgeIndexToLock.put(keyPair, new ReentrantLock())) {
       throw new IllegalStateException(keyPair.toString());
     }
-    if (null != runtimeEdgeSrcIndexToCondition.put(keyPair, runtimeEdgeSrcIndexToLock.get(keyPair).newCondition())) {
+    if (null != runtimeEdgeIndexToCondition.put(keyPair, runtimeEdgeIndexToLock.get(keyPair).newCondition())) {
       throw new IllegalStateException(keyPair.toString());
     }
   }
@@ -84,17 +85,17 @@ public final class PipeManagerMaster {
       switch (message.getType()) {
         case PipeInit:
           final ControlMessage.PipeInitMessage pipeInitMessage = message.getPipeInitMsg();
-          final Pair<String, Long> keyPair =
-            Pair.of(pipeInitMessage.getRuntimeEdgeId(), pipeInitMessage.getSrcTaskIndex());
+          final Pair<String, Long> keyPair = getPair(pipeInitMessage);
+          LOG.info("Receive pipeInit: {}, key: {}", pipeInitMessage, keyPair);
 
           // Allow to put at most once
-          final Lock lock = runtimeEdgeSrcIndexToLock.get(keyPair);
+          final Lock lock = runtimeEdgeIndexToLock.get(keyPair);
           lock.lock();
           try {
-            if (null != runtimeEdgeSrcIndexToExecutor.put(keyPair, pipeInitMessage.getExecutorId())) {
+            if (null != runtimeEdgeIndexToExecutor.put(keyPair, pipeInitMessage.getExecutorId())) {
               throw new RuntimeException(keyPair.toString());
             }
-            runtimeEdgeSrcIndexToCondition.get(keyPair).signalAll();
+            runtimeEdgeIndexToCondition.get(keyPair).signalAll();
           } finally {
             lock.unlock();
           }
@@ -103,8 +104,28 @@ public final class PipeManagerMaster {
         default:
           throw new IllegalMessageException(new Exception(message.toString()));
       }
+    }
 
+    private Pair<String, Long> getPair(
+      final ControlMessage.RequestPipeLocationMessage pipeLocRequest) {
+      if (pipeLocRequest.hasSrcTaskIndex()) {
+        return Pair.of(pipeLocRequest.getRuntimeEdgeId(), pipeLocRequest.getSrcTaskIndex());
+      } else if (pipeLocRequest.hasDstTaskIndex()) {
+        return Pair.of(pipeLocRequest.getRuntimeEdgeId(), pipeLocRequest.getDstTaskIndex());
+      } else {
+        throw new RuntimeException("PipeLocRequest must have either srcTaskIndex or dstTaskIndex: " + pipeLocRequest);
+      }
+    }
 
+    private Pair<String, Long> getPair(
+      final ControlMessage.PipeInitMessage pipeInitMessage) {
+      if (pipeInitMessage.hasSrcTaskIndex()) {
+        return Pair.of(pipeInitMessage.getRuntimeEdgeId(), pipeInitMessage.getSrcTaskIndex());
+      } else if (pipeInitMessage.hasDstTaskIndex()) {
+        return Pair.of(pipeInitMessage.getRuntimeEdgeId(), pipeInitMessage.getDstTaskIndex());
+      } else {
+        throw new RuntimeException("PipeInitMessage must have either srcTaskIndex or dstTaskIndex: " + pipeInitMessage);
+      }
     }
 
     @Override
@@ -115,17 +136,17 @@ public final class PipeManagerMaster {
 
           // Use the executor service to avoid blocking the networking thread.
           waitForPipe.submit(() -> {
-            final Pair<String, Long> keyPair =
-              Pair.of(pipeLocRequest.getRuntimeEdgeId(), pipeLocRequest.getSrcTaskIndex());
+            final Pair<String, Long> keyPair = getPair(pipeLocRequest);
+            LOG.info("Receive pipeLocRequest: {}, key: {}", pipeLocRequest, keyPair);
 
-            final Lock lock = runtimeEdgeSrcIndexToLock.get(keyPair);
+            final Lock lock = runtimeEdgeIndexToLock.get(keyPair);
             lock.lock();
             try {
-              if (!runtimeEdgeSrcIndexToExecutor.containsKey(keyPair)) {
-                runtimeEdgeSrcIndexToCondition.get(keyPair).await();
+              if (!runtimeEdgeIndexToExecutor.containsKey(keyPair)) {
+                runtimeEdgeIndexToCondition.get(keyPair).await();
               }
 
-              final String location = runtimeEdgeSrcIndexToExecutor.get(keyPair);
+              final String location = runtimeEdgeIndexToExecutor.get(keyPair);
               if (location == null) {
                 throw new IllegalStateException(keyPair.toString());
               }

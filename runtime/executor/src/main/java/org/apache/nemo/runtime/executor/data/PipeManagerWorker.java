@@ -75,6 +75,58 @@ public final class PipeManagerWorker {
     this.toMaster = toMaster;
   }
 
+  public SerializerManager getSerializerManager() {
+    return serializerManager;
+  }
+
+  public CompletableFuture<ByteOutputContext> write(final int srcTaskIndex,
+                    final RuntimeEdge runtimeEdge,
+                    final int dstTaskIndex) {
+    final String runtimeEdgeId = runtimeEdge.getId();
+    // Get the location of the dst task (blocking call)
+    final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
+      .getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.RequestPipeLoc)
+          .setRequestPipeLocMsg(
+            ControlMessage.RequestPipeLocationMessage.newBuilder()
+              .setExecutorId(executorId)
+              .setDstTaskIndex(dstTaskIndex)
+              .setRuntimeEdgeId(runtimeEdgeId)
+              .build())
+          .build());
+
+
+    return responseFromMasterFuture.thenCompose(responseFromMaster -> {
+      // Get executor id
+      if (responseFromMaster.getType() != ControlMessage.MessageType.PipeLocInfo) {
+        throw new RuntimeException("Response message type mismatch!");
+      }
+      final ControlMessage.PipeLocationInfoMessage pipeLocInfo = responseFromMaster.getPipeLocInfoMsg();
+      if (!pipeLocInfo.hasExecutorId()) {
+        throw new IllegalStateException();
+      }
+      final String targetExecutorId = responseFromMaster.getPipeLocInfoMsg().getExecutorId();
+
+      // Descriptor
+      final ControlMessage.PipeTransferContextDescriptor descriptor =
+        ControlMessage.PipeTransferContextDescriptor.newBuilder()
+          .setRuntimeEdgeId(runtimeEdgeId)
+          .setSrcTaskIndex(srcTaskIndex)
+          .setDstTaskIndex(dstTaskIndex)
+          .setNumPipeToWait(getNumOfInputPipeToWait(runtimeEdge))
+          .build();
+
+      LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
+        runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
+      // Connect to the executor
+      return byteTransfer.newOutputContext(targetExecutorId, descriptor.toByteArray(), true)
+        .thenApply(context -> context);
+    });
+  }
+
   public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final int srcTaskIndex,
                                                                final RuntimeEdge runtimeEdge,
                                                                final int dstTaskIndex) {
@@ -123,7 +175,7 @@ public final class PipeManagerWorker {
   }
 
 
-  public void notifyMaster(final String runtimeEdgeId, final long srcTaskIndex) {
+  public void notifyMaster(final String runtimeEdgeId, final long dstTaskIndex) {
     // Notify the master that we're using this pipe.
     toMaster.getMessageSender(MessageEnvironment.PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
       ControlMessage.Message.newBuilder()
@@ -132,10 +184,42 @@ public final class PipeManagerWorker {
         .setType(ControlMessage.MessageType.PipeInit)
         .setPipeInitMsg(ControlMessage.PipeInitMessage.newBuilder()
           .setRuntimeEdgeId(runtimeEdgeId)
-          .setSrcTaskIndex(srcTaskIndex)
+          .setDstTaskIndex(dstTaskIndex)
+          //.setSrcTaskIndex(srcTaskIndex)
           .setExecutorId(executorId)
           .build())
         .build());
+  }
+
+
+
+  private int getNumOfInputPipeToWait(final RuntimeEdge runtimeEdge) {
+    final int srcParallelism = ((StageEdge) runtimeEdge).getSrc().getPropertyValue(ParallelismProperty.class)
+      .orElseThrow(() -> new IllegalStateException());
+    final CommunicationPatternProperty.Value commPattern = ((StageEdge) runtimeEdge)
+      .getPropertyValue(CommunicationPatternProperty.class)
+      .orElseThrow(() -> new IllegalStateException());
+
+    return commPattern.equals(CommunicationPatternProperty.Value.OneToOne) ? 1 : srcParallelism;
+  }
+
+  /**
+   * (SYNCHRONIZATION) Called by task threads.
+   *
+   * @param runtimeEdge runtime edge
+   * @return output contexts.
+   */
+  public List<ByteInputContext> getInputContexts(final RuntimeEdge runtimeEdge,
+                                                 final long dstTaskIndex) {
+
+    // First, initialize the pair key
+    final Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), dstTaskIndex);
+    final int parallelism = getNumOfInputPipeToWait(runtimeEdge);
+    LOG.info("Edge parallelism: {}, {}, pairKey: {}", runtimeEdge.getId(), parallelism, pairKey);
+    pipeContainer.putPipeListIfAbsent(pairKey, getNumOfInputPipeToWait(runtimeEdge));
+
+    // Then, do stuff
+    return pipeContainer.getPipes(pairKey); // blocking call
   }
 
   /**
@@ -167,6 +251,8 @@ public final class PipeManagerWorker {
    * @throws InvalidProtocolBufferException protobuf exception
    */
   public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
+    LOG.info("On output context: {}", outputContext);
+
     final ControlMessage.PipeTransferContextDescriptor descriptor =
       ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(outputContext.getContextDescriptor());
 
@@ -184,7 +270,24 @@ public final class PipeManagerWorker {
   }
 
   public void onInputContext(final ByteInputContext inputContext) throws InvalidProtocolBufferException {
-    throw new UnsupportedOperationException();
+
+     final ControlMessage.PipeTransferContextDescriptor descriptor =
+      ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(inputContext.getContextDescriptor());
+
+    final int srcTaskIndex = (int) descriptor.getSrcTaskIndex();
+    final String runtimeEdgeId = descriptor.getRuntimeEdgeId();
+    final long dstTaskIndex = descriptor.getDstTaskIndex();
+    final int numPipeToWait = (int) descriptor.getNumPipeToWait();
+    final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, dstTaskIndex);
+
+    LOG.info("On input context: {}, srcTaskIndex: {}, runtimeEdge: {}, dstTaskIndex: {}, numPipe: {}",
+      inputContext, srcTaskIndex, runtimeEdgeId, dstTaskIndex, numPipeToWait);
+
+    // First, initialize the pair key
+    pipeContainer.putPipeListIfAbsent(pairKey, numPipeToWait);
+
+    // Then, do stuff
+    pipeContainer.putPipe(pairKey, srcTaskIndex, inputContext);
   }
 
   private int getNumOfPipeToWait(final RuntimeEdge runtimeEdge) {

@@ -227,15 +227,17 @@ message InMasterBroadcastVariableMessage {
 }
 
 message PipeInitMessage {
-  required int64 srcTaskIndex = 1;
-  required string runtimeEdgeId = 2;
-  required string executorId = 3;
+  optional int64 srcTaskIndex = 1;
+  optional int64 dstTaskIndex = 2;
+  required string runtimeEdgeId = 3;
+  required string executorId = 4;
 }
 
 message RequestPipeLocationMessage {
   required string executorId = 1;
-  required int64 srcTaskIndex = 2;
+  optional int64 srcTaskIndex = 2;
   required string runtimeEdgeId = 3;
+  optional int64 dstTaskIndex = 4;
 }
 
 message PipeLocationInfoMessage {

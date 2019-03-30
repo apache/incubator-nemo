@@ -89,9 +89,14 @@ public final class StreamingScheduler implements Scheduler {
       final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
       final List<String> taskIdsToSchedule = planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId());
 
+
+
+
       taskIdsToSchedule.forEach(taskId -> {
         final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
-        stageOutgoingEdges.forEach(outEdge -> pipeManagerMaster.onTaskScheduled(outEdge.getId(), index));
+        stageIncomingEdges.forEach(inEdge ->
+          pipeManagerMaster.onTaskScheduled(inEdge.getId(), index));
+       // stageOutgoingEdges.forEach(outEdge -> pipeManagerMaster.onTaskScheduled(outEdge.getId(), index));
       });
 
       // Create tasks of this stage

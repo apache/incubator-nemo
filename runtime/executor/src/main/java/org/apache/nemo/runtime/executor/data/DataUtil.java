@@ -225,7 +225,7 @@ public final class DataUtil {
      * @param inputStreams The streams to read data from.
      * @param serializer   The serializer.
      */
-    InputStreamIterator(final Iterator<InputStream> inputStreams,
+    public InputStreamIterator(final Iterator<InputStream> inputStreams,
                         final Serializer<?, T> serializer) {
       this.inputStreams = inputStreams;
       this.serializer = serializer;

@@ -22,6 +22,8 @@ import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
@@ -30,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 /**
  * Represents the input data transfer to a task.
@@ -53,7 +56,9 @@ public final class PipeInputReader implements InputReader {
     this.srcVertex = srcIRVertex;
     this.runtimeEdge = runtimeEdge;
     this.pipeManagerWorker = pipeManagerWorker;
+    this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), dstTaskIdx);
   }
+
 
   @Override
   public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
@@ -73,6 +78,26 @@ public final class PipeInputReader implements InputReader {
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
+  }
+
+  @Override
+  public List<DataUtil.IteratorWithNumBytes> readBlocking() {
+
+    /**********************************************************/
+    /* 여기서 pipe container 같은거 사용하기
+    /**********************************************************/
+    final List<ByteInputContext> byteInputContexts = pipeManagerWorker.getInputContexts(runtimeEdge, dstTaskIndex);
+
+    return byteInputContexts.stream()
+      .map(context -> {
+        return new DataUtil.InputStreamIterator(context.getInputStreams(),
+          pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId()));
+      })
+      .collect(Collectors.toList());
+
+
+    /**********************************************************/
+    /**********************************************************/
   }
 
   @Override

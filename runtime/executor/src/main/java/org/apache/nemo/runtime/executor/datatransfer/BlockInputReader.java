@@ -74,6 +74,11 @@ public final class BlockInputReader implements InputReader {
   }
 
   @Override
+  public List<DataUtil.IteratorWithNumBytes> readBlocking() {
+    throw new UnsupportedOperationException("Not support");
+  }
+
+  @Override
   public IRVertex getSrcIrVertex() {
     return srcVertex;
   }

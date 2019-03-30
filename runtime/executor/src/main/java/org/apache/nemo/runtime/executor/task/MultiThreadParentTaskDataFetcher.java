@@ -81,7 +81,8 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   @Override
   public Object fetchDataElement() throws IOException, NoSuchElementException {
     if (firstFetch) {
-      fetchDataLazily();
+      fetch();
+      //fetchDataLazily();
       firstFetch = false;
     }
 
@@ -100,6 +101,46 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       }
     }
   }
+
+  private void fetch() {
+    final List<DataUtil.IteratorWithNumBytes> inputs = readersForParentTask.readBlocking();
+    numOfIterators = inputs.size();
+
+    if (numOfIterators > 1) {
+      inputWatermarkManager = new MultiInputWatermarkManager(getDataSource(), numOfIterators, new WatermarkCollector());
+    } else {
+      inputWatermarkManager = new SingleInputWatermarkManager(
+        new WatermarkCollector(), null, null, null, null);
+    }
+
+    for (final DataUtil.IteratorWithNumBytes iterator : inputs) {
+      // A thread for each iterator
+      queueInsertionThreads.submit(() -> {
+        // Consume this iterator to the end.
+        while (iterator.hasNext()) { // blocked on the iterator.
+          final Object element = iterator.next();
+          if (element instanceof WatermarkWithIndex) {
+            // watermark element
+            // the input watermark manager is accessed by multiple threads
+            // so we should synchronize it
+            synchronized (inputWatermarkManager) {
+              final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
+              inputWatermarkManager.trackAndEmitWatermarks(
+                watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
+            }
+          } else {
+            // data element
+            elementQueue.offer(element);
+          }
+        }
+
+        // This iterator is finished.
+        countBytesSynchronized(iterator);
+        elementQueue.offer(Finishmark.getInstance());
+      });
+    }
+  }
+
 
   private void fetchDataLazily() {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();

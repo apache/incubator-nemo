@@ -202,6 +202,7 @@ final class ByteTransport implements AutoCloseable {
     try {
       final ByteTransportIdentifier identifier = new ByteTransportIdentifier(remoteExecutorId);
       address = nameResolver.lookup(identifier);
+      LOG.info("Address of {}: {}", remoteExecutorId, address);
     } catch (final Exception e) {
       LOG.error(String.format("Cannot lookup ByteTransport listening address of %s", remoteExecutorId), e);
       throw new RuntimeException(e);

@@ -72,6 +72,7 @@ public final class ByteTransfer {
   public CompletableFuture<ByteOutputContext> newOutputContext(final String executorId,
                                                                final byte[] contextDescriptor,
                                                                final boolean isPipe) {
+    LOG.info("New output context: {}", executorId);
     return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
   }
 

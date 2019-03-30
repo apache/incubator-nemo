@@ -36,6 +36,8 @@ public interface InputReader {
    */
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read();
 
+  List<DataUtil.IteratorWithNumBytes> readBlocking();
+
   IRVertex getSrcIrVertex();
 
   static int getSourceParallelism(final InputReader inputReader) {

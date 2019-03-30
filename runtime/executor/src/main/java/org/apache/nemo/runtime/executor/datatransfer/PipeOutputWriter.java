@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
@@ -35,6 +36,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 /**
  * Represents the output data transfer from a task.
@@ -50,8 +54,8 @@ public final class PipeOutputWriter implements OutputWriter {
   private final RuntimeEdge runtimeEdge;
 
   private boolean initialized;
-  private Serializer serializer;
-  private List<ByteOutputContext> pipes;
+  private final Serializer serializer;
+  private final List<ByteOutputContext> pipes;
   private final Map<ByteOutputContext, ByteOutputContext.ByteOutputStream> pipeAndStreamMap;
   final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap;
   final Map<Long, Long> prevWatermarkMap;
@@ -75,7 +79,7 @@ public final class PipeOutputWriter implements OutputWriter {
     this.initialized = false;
     this.srcTaskId = srcTaskId;
     this.pipeManagerWorker = pipeManagerWorker;
-    this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId));
+    //this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId));
     this.partitioner = Partitioner
       .getPartitioner(stageEdge.getExecutionProperties(), stageEdge.getDstIRVertex().getExecutionProperties());
     this.runtimeEdge = runtimeEdge;
@@ -84,6 +88,8 @@ public final class PipeOutputWriter implements OutputWriter {
     this.expectedWatermarkMap = expectedWatermarkMap;
     this.prevWatermarkMap = prevWatermarkMap;
     this.watermarkCounterMap = watermarkCounterMap;
+    this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
+    this.pipes = doInitialize();
   }
 
   private void writeData(final Object element,
@@ -104,10 +110,6 @@ public final class PipeOutputWriter implements OutputWriter {
    */
   @Override
   public void write(final Object element) {
-    if (!initialized) {
-      doInitialize();
-    }
-
 
     final TimestampAndValue tis = (TimestampAndValue) element;
 
@@ -116,9 +118,6 @@ public final class PipeOutputWriter implements OutputWriter {
 
   @Override
   public void writeWatermark(final Watermark watermark) {
-    if (!initialized) {
-      doInitialize();
-    }
 
     //LOG.info("Watermark in output writer from {} to {}", stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
     final PriorityQueue<Watermark> expectedWatermarkQueue =
@@ -187,11 +186,12 @@ public final class PipeOutputWriter implements OutputWriter {
 
   @Override
   public void close() {
+    /*
     if (!initialized) {
       // In order to "wire-up" with the receivers waiting for us.:w
       doInitialize();
     }
-
+    */
 
     pipes.forEach(pipe -> {
       try {
@@ -203,11 +203,58 @@ public final class PipeOutputWriter implements OutputWriter {
     });
   }
 
-  private void doInitialize() {
+  private List<ByteOutputContext> doInitialize() {
     LOG.info("Start - doInitialize() {}", runtimeEdge);
     initialized = true;
 
+    /**********************************************************/
+
+    final Optional<CommunicationPatternProperty.Value> comValue =
+      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+
+    final List<CompletableFuture<ByteOutputContext>> byteOutputContexts;
+    if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)) {
+      byteOutputContexts = Collections.singletonList(
+        pipeManagerWorker.write(srcTaskIndex, runtimeEdge, srcTaskIndex));
+      LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskId, srcTaskIndex);
+    } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
+      || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)) {
+
+      final List<Integer> dstIndices = stageEdge.getDst().getTaskIndices();
+      byteOutputContexts =
+        dstIndices.stream()
+          .map(dstTaskIndex ->
+            pipeManagerWorker.write(srcTaskIndex, runtimeEdge, dstTaskIndex))
+          .collect(Collectors.toList());
+      LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskId, dstIndices);
+    } else {
+      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    }
+
+    return byteOutputContexts.stream()
+      .map(byteOutputContext -> {
+        try {
+          final ByteOutputContext context = byteOutputContext.get();
+          pipeAndStreamMap.put(context, context.newOutputStream());
+          LOG.info("Context {}", context);
+          return context;
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }).collect(Collectors.toList());
+
+
+    /**********************************************************/
+
     // Blocking call
+    /*
     this.pipes = pipeManagerWorker.getOutputContexts(runtimeEdge, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
     LOG.info("Finish - doInitialize() {}", runtimeEdge);
@@ -220,6 +267,7 @@ public final class PipeOutputWriter implements OutputWriter {
         throw new RuntimeException(e);
       }
     });
+    */
   }
 
   private List<ByteOutputContext> getPipeToWrite(final TimestampAndValue element) {

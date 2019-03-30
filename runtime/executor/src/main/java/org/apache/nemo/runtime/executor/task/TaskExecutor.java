@@ -564,6 +564,8 @@ public final class TaskExecutor {
         .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId())) // edge to this vertex
         .map(incomingEdge -> {
 
+          LOG.info("Incoming edge: {}, taskIndex: {}, taskId: {}", incomingEdge, taskIndex, taskId);
+
           return Pair.of(incomingEdge, intermediateDataIOFactory
             .createReader(taskIndex, incomingEdge.getSrcIRVertex(), incomingEdge));
         })
