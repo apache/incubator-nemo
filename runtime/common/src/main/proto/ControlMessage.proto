@@ -159,6 +159,7 @@ message MetricMsg {
 
 // Messages between Executors
 
+/*
 enum ByteTransferDataDirection {
     INITIATOR_SENDS_DATA = 0;
     INITIATOR_RECEIVES_DATA = 1;
@@ -171,6 +172,7 @@ message ByteTransferContextSetupMessage {
     required bytes contextDescriptor = 4;
     required bool isPipe = 5;
 }
+*/
 
 message BlockTransferContextDescriptor {
     required string blockId = 1;
@@ -179,12 +181,14 @@ message BlockTransferContextDescriptor {
     optional bytes keyRange = 4;
 }
 
+/*
 message PipeTransferContextDescriptor {
   required int64 srcTaskIndex = 1;
   required string runtimeEdgeId = 2;
   required int64 dstTaskIndex = 3;
   required int64 numPipeToWait = 4;
 }
+*/
 
 enum TaskStateFromExecutor {
     READY = 0;

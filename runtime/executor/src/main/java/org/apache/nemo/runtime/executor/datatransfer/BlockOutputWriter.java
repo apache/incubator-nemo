@@ -26,7 +26,7 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.block.Block;
-import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.partitioner.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

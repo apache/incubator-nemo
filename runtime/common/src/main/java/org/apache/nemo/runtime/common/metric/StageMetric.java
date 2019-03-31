@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.common.metric;
 
-import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.runtime.common.state.StageState;
 
 import java.util.ArrayList;

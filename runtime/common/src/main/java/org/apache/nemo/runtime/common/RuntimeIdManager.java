@@ -18,6 +18,8 @@
  */
 package org.apache.nemo.runtime.common;
 
+import org.apache.nemo.common.ir.edge.Stage;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -51,7 +53,7 @@ public final class RuntimeIdManager {
   }
 
   /**
-   * Generates the ID for {@link org.apache.nemo.runtime.common.plan.Stage}.
+   * Generates the ID for {@link Stage}.
    *
    * @param stageId stage ID in numeric form.
    * @return the generated ID

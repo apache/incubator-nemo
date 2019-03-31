@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
-import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.runtime.common.state.StageState;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.PlanStateManager;

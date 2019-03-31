@@ -21,6 +21,8 @@ package org.apache.nemo.runtime.common.plan;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.common.ir.edge.Stage;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -28,17 +28,16 @@ import javax.annotation.Nullable;
 import java.util.Objects;
 
 /**
- * {@link ByteInputContext} and {@link ByteOutputContext}.
  */
-public abstract class ByteTransferContext {
+public abstract class LambdaByteTransferContext {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ByteTransferContext.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LambdaByteTransferContext.class);
 
   private final String remoteExecutorId;
   private final ContextId contextId;
   private final byte[] contextDescriptor;
   private final ChannelWriteFutureListener channelWriteFutureListener = new ChannelWriteFutureListener();
-  private final ContextManager contextManager;
+  private final LambdaContextManager contextManager;
 
   private volatile boolean hasException = false;
   private volatile Throwable exception = null;
@@ -50,10 +49,10 @@ public abstract class ByteTransferContext {
    * @param contextDescriptor   user-provided context descriptor
    * @param contextManager      to de-register context when this context expires
    */
-  public ByteTransferContext(final String remoteExecutorId,
-                      final ContextId contextId,
-                      final byte[] contextDescriptor,
-                      final ContextManager contextManager) {
+  LambdaByteTransferContext(final String remoteExecutorId,
+                            final ContextId contextId,
+                            final byte[] contextDescriptor,
+                            final LambdaContextManager contextManager) {
     this.remoteExecutorId = remoteExecutorId;
     this.contextId = contextId;
     this.contextDescriptor = contextDescriptor;
@@ -127,7 +126,6 @@ public abstract class ByteTransferContext {
   }
 
   /**
-   * De-registers this context from {@link ContextManager}.
    */
   protected final void deregister() {
     contextManager.onContextExpired(this);

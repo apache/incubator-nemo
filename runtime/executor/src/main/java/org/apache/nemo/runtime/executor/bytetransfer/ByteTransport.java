@@ -18,8 +18,10 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.NettyChannelImplementationSelector;
+import org.apache.nemo.offloading.client.NetworkUtils;
+import org.apache.nemo.runtime.executor.datatransfer.NettyChannelImplementationSelector;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -40,11 +42,14 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Bootstraps the server and connects to other servers on demand.
  */
-final class ByteTransport implements AutoCloseable {
+public final class ByteTransport implements AutoCloseable {
 
   private static final Logger LOG = LoggerFactory.getLogger(ByteTransport.class);
   private static final String SERVER_LISTENING = "byte:server:listening";
@@ -59,6 +64,9 @@ final class ByteTransport implements AutoCloseable {
   private final EventLoopGroup clientGroup;
   private final Bootstrap clientBootstrap;
   private final Channel serverListeningChannel;
+  private final String publicAddress;
+  private int bindingPort;
+  private final ConcurrentMap<String, InetSocketAddress> executorAddressMap;
 
   /**
    * Constructs a byte transport and starts listening.
@@ -82,6 +90,7 @@ final class ByteTransport implements AutoCloseable {
       final ByteTransportChannelInitializer channelInitializer,
       final TcpPortProvider tcpPortProvider,
       final LocalAddressProvider localAddressProvider,
+      @Parameter(EvalConf.Ec2.class) final boolean ec2,
       @Parameter(JobConf.PartitionTransportServerPort.class) final int port,
       @Parameter(JobConf.PartitionTransportServerBacklog.class) final int serverBacklog,
       @Parameter(JobConf.PartitionTransportServerNumListeningThreads.class) final int numListeningThreads,
@@ -89,12 +98,26 @@ final class ByteTransport implements AutoCloseable {
       @Parameter(JobConf.PartitionTransportClientNumThreads.class) final int numClientThreads) {
 
     this.nameResolver = nameResolver;
+    this.executorAddressMap = new ConcurrentHashMap<>();
 
     if (port < 0) {
       throw new IllegalArgumentException(String.format("Invalid ByteTransportPort: %d", port));
     }
 
-    final String host = localAddressProvider.getLocalAddress();
+    final String host;
+    try {
+      if (ec2) {
+        this.publicAddress = NetworkUtils.getPublicIP();
+      } else {
+        this.publicAddress = NetworkUtils.getLocalHostLANAddress().getHostAddress();
+      }
+      host = NetworkUtils.getLocalHostLANAddress().getHostAddress();
+    } catch (UnknownHostException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
+    //final String host = localAddressProvider.getLocalAddress();
 
     serverListeningGroup = channelImplSelector.newEventLoopGroup(numListeningThreads,
         new DefaultThreadFactory(SERVER_LISTENING));
@@ -126,6 +149,7 @@ final class ByteTransport implements AutoCloseable {
             LOG.debug("Cannot bind to {}:{}", host, candidatePort);
           } else {
             listeningChannel = future.channel();
+            bindingPort = candidatePort;
             break;
           }
         } catch (final InterruptedException e) {
@@ -142,6 +166,7 @@ final class ByteTransport implements AutoCloseable {
       }
     } else {
       try {
+        bindingPort = port;
         final ChannelFuture future = serverBootstrap.bind(host, port).await();
         if (future.cause() != null) {
           throw future.cause();
@@ -161,15 +186,21 @@ final class ByteTransport implements AutoCloseable {
 
     serverListeningChannel = listeningChannel;
 
+    LOG.info("public address: {}, port: {}, executorId: {}", publicAddress, bindingPort, localExecutorId);
+
     try {
       final ByteTransportIdentifier identifier = new ByteTransportIdentifier(localExecutorId);
-      nameResolver.register(identifier, (InetSocketAddress) listeningChannel.localAddress());
+      nameResolver.register(identifier,new InetSocketAddress(publicAddress, bindingPort));
     } catch (final Exception e) {
       LOG.error("Cannot register ByteTransport listening address to the naming registry", e);
       throw new RuntimeException(e);
     }
 
     LOG.info("ByteTransport server in {} is listening at {}", localExecutorId, listeningChannel.localAddress());
+  }
+
+  public ConcurrentMap<String, InetSocketAddress> getExecutorAddressMap() {
+    return executorAddressMap;
   }
 
   /**
@@ -198,11 +229,13 @@ final class ByteTransport implements AutoCloseable {
    * @return a {@link ChannelFuture} for connecting
    */
   ChannelFuture connectTo(final String remoteExecutorId) {
+
     final InetSocketAddress address;
     try {
       final ByteTransportIdentifier identifier = new ByteTransportIdentifier(remoteExecutorId);
       address = nameResolver.lookup(identifier);
       LOG.info("Address of {}: {}", remoteExecutorId, address);
+      executorAddressMap.put(remoteExecutorId, address);
     } catch (final Exception e) {
       LOG.error(String.format("Cannot lookup ByteTransport listening address of %s", remoteExecutorId), e);
       throw new RuntimeException(e);

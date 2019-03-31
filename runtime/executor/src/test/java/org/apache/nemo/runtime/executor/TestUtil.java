@@ -19,7 +19,7 @@
 package org.apache.nemo.runtime.executor;
 
 import org.apache.nemo.runtime.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.common.ir.edge.Stage;
 
 import java.util.ArrayList;
 import java.util.List;

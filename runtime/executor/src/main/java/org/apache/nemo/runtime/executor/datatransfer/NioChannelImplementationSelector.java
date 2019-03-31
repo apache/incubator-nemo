@@ -16,36 +16,42 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common;
+package org.apache.nemo.runtime.executor.datatransfer;
 
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
-import org.apache.reef.tang.annotations.DefaultImplementation;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
 
+import javax.inject.Inject;
 import java.util.concurrent.ThreadFactory;
 
 /**
- * Selects appropriate {@link io.netty.channel.Channel} implementation.
+ * A {@link NettyChannelImplementationSelector} implementation that prefers nio-based channel implementation.
  */
-@DefaultImplementation(NativeChannelImplementationSelector.class)
-public interface NettyChannelImplementationSelector {
+public final class NioChannelImplementationSelector implements NettyChannelImplementationSelector {
 
   /**
-   * Creates a new {@link EventLoopGroup}.
-   * @param numThreads    the number of threads
-   * @param threadFactory the {@link ThreadFactory}
-   * @return a new {@link EventLoopGroup}
+   * Private constructor.
    */
-  EventLoopGroup newEventLoopGroup(int numThreads, final ThreadFactory threadFactory);
+  @Inject
+  private NioChannelImplementationSelector() {
+  }
 
-  /**
-   * @return class for server channel
-   */
-  Class<? extends ServerChannel> getServerChannelClass();
+  @Override
+  public EventLoopGroup newEventLoopGroup(final int numThreads, final ThreadFactory threadFactory) {
+    return new NioEventLoopGroup(numThreads, threadFactory);
+  }
 
-  /**
-   * @return class for channel
-   */
-  Class<? extends Channel> getChannelClass();
+  @Override
+  public Class<? extends ServerChannel> getServerChannelClass() {
+    return NioServerSocketChannel.class;
+  }
+
+  @Override
+  public Class<? extends Channel> getChannelClass() {
+    return NioSocketChannel.class;
+  }
 }

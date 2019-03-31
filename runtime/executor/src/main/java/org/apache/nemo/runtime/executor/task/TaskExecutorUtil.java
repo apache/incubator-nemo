@@ -11,7 +11,7 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.executor.common.InputWatermarkManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;

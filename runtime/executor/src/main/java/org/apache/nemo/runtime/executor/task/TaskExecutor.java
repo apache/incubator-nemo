@@ -19,21 +19,11 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.PooledByteBufAllocator;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.io.UnboundedSource;
-import org.apache.beam.sdk.io.kafka.KafkaCheckpointMark;
 import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
-import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
-import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
-import org.apache.nemo.offloading.client.StreamingWorkerService;
-import org.apache.nemo.offloading.common.OffloadingWorker;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
@@ -42,6 +32,7 @@ import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.*;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
@@ -52,7 +43,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
@@ -174,6 +165,7 @@ public final class TaskExecutor {
   }
 
   private final AtomicReference<Status> status = new AtomicReference<>(Status.RUNNING);
+  private final ByteTransport byteTransport;
 
   /**
    * Constructor.
@@ -186,7 +178,8 @@ public final class TaskExecutor {
    * @param metricMessageSender    For sending metric with execution stats to the master.
    * @param persistentConnectionToMasterMap For sending messages to the master.
    */
-  public TaskExecutor(final Task task,
+  public TaskExecutor(final ByteTransport byteTransport,
+                      final Task task,
                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                       final TaskStateManager taskStateManager,
                       final IntermediateDataIOFactory intermediateDataIOFactory,
@@ -198,6 +191,7 @@ public final class TaskExecutor {
                       final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
                       final EvalConf evalConf) {
     // Essential information
+    this.byteTransport = byteTransport;
     this.parentDataFetchers = new ArrayList<>();
     this.sourceVertexDataFetchers = new ArrayList<>();
     this.task = task;
@@ -240,6 +234,9 @@ public final class TaskExecutor {
 
     // Prepare data structures
     this.sortedHarnesses = prepare(task, irVertexDag, intermediateDataIOFactory);
+
+
+    LOG.info("Executor address map: {}", byteTransport.getExecutorAddressMap());
 
     pollingTrigger.scheduleAtFixedRate(() -> {
       pollingTime = true;
@@ -388,7 +385,6 @@ public final class TaskExecutor {
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
     final IntermediateDataIOFactory intermediateDataIOFactory) {
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
-
 
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
@@ -802,6 +798,7 @@ public final class TaskExecutor {
 
     if (evalConf.enableOffloading || evalConf.offloadingdebug) {
       kafkaOffloader = Optional.of(new KafkaOffloader(
+        byteTransport.getExecutorAddressMap(),
         serializedDag,
         lambdaOffloadingWorkerFactory,
         taskOutgoingEdges,

@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ClonedSchedulingProper
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
-import org.apache.nemo.runtime.common.plan.Stage;
+import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.common.state.StageState;
 

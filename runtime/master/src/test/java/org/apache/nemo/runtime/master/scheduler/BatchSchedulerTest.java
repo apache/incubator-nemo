@@ -19,6 +19,8 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import org.apache.nemo.common.ir.edge.Stage;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -156,7 +158,7 @@ public final class BatchSchedulerTest {
   }
 
   private List<Stage> filterStagesWithAScheduleGroup(
-      final DAG<Stage, StageEdge> physicalDAG, final int scheduleGroup) {
+    final DAG<Stage, StageEdge> physicalDAG, final int scheduleGroup) {
     final Set<Stage> stageSet = new HashSet<>(physicalDAG.filterVertices(
         stage -> stage.getScheduleGroup() == scheduleGroup));
 

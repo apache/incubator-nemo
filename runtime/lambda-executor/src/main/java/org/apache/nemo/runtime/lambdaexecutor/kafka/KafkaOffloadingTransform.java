@@ -7,10 +7,12 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
@@ -20,15 +22,14 @@ import org.apache.nemo.runtime.lambdaexecutor.OffloadingDataEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingOperatorVertexOutputCollector;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingTransformContextImpl;
+import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.net.InetSocketAddress;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -36,6 +37,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
   private static final Logger LOG = LoggerFactory.getLogger(KafkaOffloadingTransform.class.getName());
 
+  private final String executorId;
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final Map<String, List<String>> taskOutgoingEdges;
 
@@ -47,17 +49,50 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
   private transient HandleDataFetcher dataFetcherExecutor;
   final List<DataFetcher> dataFetchers = new ArrayList<>();
 
+  // next stage address
+  private final Map<String, Serializer> serializerMap;
+  private final Map<String, InetSocketAddress> executorAddressMap;
+  private final Map<Integer, String> dstTaskIndexTargetExecutorMap;
+  private final List<StageEdge> stageEdges;
+
+  private transient PipeManagerWorker pipeManagerWorker;
 
   // TODO: we should get checkpoint mark in constructor!
-  public KafkaOffloadingTransform(final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
-                                  final Map<String, List<String>> taskOutgoingEdges) {
+  public KafkaOffloadingTransform(final String executorId,
+                                  final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
+                                  final Map<String, List<String>> taskOutgoingEdges,
+                                  final Map<String, InetSocketAddress> executorAddressMap,
+                                  final Map<String, Serializer> serializerMap,
+                                  final Map<Integer, String> dstTaskIndexTargetExecutorMap,
+                                  final List<StageEdge> stageEdges) {
+    this.executorId = executorId;
     this.irDag = irDag;
     this.taskOutgoingEdges = taskOutgoingEdges;
+    this.executorAddressMap = executorAddressMap;
+    this.serializerMap = serializerMap;
+    this.dstTaskIndexTargetExecutorMap = dstTaskIndexTargetExecutorMap;
+    this.stageEdges = stageEdges;
+
+    LOG.info("Executor address map: {}", executorAddressMap);
+    LOG.info("TaskIndexTargetExecutorMap: {}", dstTaskIndexTargetExecutorMap);
   }
 
   @Override
   public void prepare(final OffloadingContext context,
                       final OffloadingOutputCollector oc) {
+    // create byte transport
+    final NativeChannelImplementationSelector selector = new NativeChannelImplementationSelector();
+    final LambdaControlFrameEncoder controlFrameEncoder = new LambdaControlFrameEncoder(executorId);
+    final LambdaDataFrameEncoder dataFrameEncoder = new LambdaDataFrameEncoder();
+    final LambdaByteTransportChannelInitializer initializer =
+      new LambdaByteTransportChannelInitializer(controlFrameEncoder, dataFrameEncoder, executorId);
+    final LambdaByteTransport byteTransport = new LambdaByteTransport(
+      executorId, selector, initializer, executorAddressMap);
+    final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
+    pipeManagerWorker = new PipeManagerWorker(executorId, byteTransfer, dstTaskIndexTargetExecutorMap);
+    final IntermediateDataIOFactory intermediateDataIOFactory =
+      new IntermediateDataIOFactory(pipeManagerWorker);
+
     this.outputCollectorMap = new HashMap<>();
     this.operatorVertexMap = new HashMap<>();
     System.out.println("Stateless offloading transform prepare");
@@ -106,9 +141,6 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
       }
     });
 
-
-
-
     reverseTopologicallySorted.forEach(irVertex -> {
 
       // Additional outputs
@@ -124,6 +156,14 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
           operatorVertexMap.put(interOp.getNextOperator().getId(), interOp);
         }
       }
+
+      /*
+      final Map<String, List<PipeOutputWriter>> externalAdditionalOutputMap =
+        getExternalAdditionalOutputMap(
+          irVertex, stageEdges, intermediateDataIOFactory, taskId, outputWriterMap,
+          expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap);
+          */
+
 
       for (final NextIntraTaskOperatorInfo interOp : internalMainOutputs) {
         operatorVertexMap.put(interOp.getNextOperator().getId(), interOp);
@@ -158,7 +198,6 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
         }
       }
     });
-
   }
 
   // receive batch (list) data
@@ -239,6 +278,45 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
         final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
         final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
         return Pair.of(outputTag, new NextIntraTaskOperatorInfo(index, edge, nextOperator, inputWatermarkManager));
+      })
+      .forEach(pair -> {
+        map.putIfAbsent(pair.left(), new ArrayList<>());
+        map.get(pair.left()).add(pair.right());
+      });
+
+    return map;
+  }
+
+  public static Map<String, List<PipeOutputWriter>> getExternalAdditionalOutputMap(
+    final IRVertex irVertex,
+    final List<StageEdge> outEdgesToChildrenTasks,
+    final IntermediateDataIOFactory intermediateDataIOFactory,
+    final Map<String, PipeOutputWriter> outputWriterMap,
+    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
+    final Map<Long, Long> prevWatermarkMap,
+    final Map<Long, Integer> watermarkCounterMap,
+    final Map<String, Serializer> serializerMap) {
+    // Add all inter-task additional tags to additional output map.
+    final Map<String, List<PipeOutputWriter>> map = new HashMap<>();
+
+    outEdgesToChildrenTasks
+      .stream()
+      .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
+      .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+      .map(edge -> {
+        final PipeOutputWriter outputWriter;
+        LOG.info("Set expected watermark map for vertex {}", edge.getDstIRVertex().getId());
+        expectedWatermarkMap.put(edge.getDstIRVertex().getId(), Pair.of(new PriorityQueue<>(), new PriorityQueue<>()));
+
+        // TODO fix
+          outputWriter = intermediateDataIOFactory
+            .createPipeWriter("1", edge, expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap,
+              serializerMap);
+
+        final Pair<String, PipeOutputWriter> pair =
+          Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(), outputWriter);
+        outputWriterMap.put(edge.getDstIRVertex().getId(), pair.right());
+        return pair;
       })
       .forEach(pair -> {
         map.putIfAbsent(pair.left(), new ArrayList<>());

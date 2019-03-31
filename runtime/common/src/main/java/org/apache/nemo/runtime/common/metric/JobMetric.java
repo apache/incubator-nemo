@@ -27,8 +27,8 @@ import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
-import org.apache.nemo.runtime.common.plan.Stage;
-import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.common.ir.edge.Stage;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.runtime.common.state.PlanState;
 
 import java.io.IOException;

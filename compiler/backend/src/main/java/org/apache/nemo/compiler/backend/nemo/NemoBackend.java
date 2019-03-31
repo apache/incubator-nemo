@@ -24,8 +24,8 @@ import org.apache.nemo.compiler.backend.Backend;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.PhysicalPlanGenerator;
-import org.apache.nemo.runtime.common.plan.Stage;
-import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.common.ir.edge.Stage;
+import org.apache.nemo.common.ir.edge.StageEdge;
 
 import javax.inject.Inject;
 

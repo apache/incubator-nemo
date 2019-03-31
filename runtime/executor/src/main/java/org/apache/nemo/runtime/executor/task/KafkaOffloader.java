@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,7 +68,10 @@ public final class KafkaOffloader {
   private final AtomicLong prevOffloadStartTime;
   private final AtomicLong prevOffloadEndTime;
 
-  public KafkaOffloader(final byte[] serializedDag,
+  private final Map<String, InetSocketAddress> executorAddressMap;
+
+  public KafkaOffloader(final Map<String, InetSocketAddress> executorAddressMap,
+                        final byte[] serializedDag,
                         final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
                         final Map<String, List<String>> taskOutgoingEdges,
                         final SerializerManager serializerManager,
@@ -79,13 +83,14 @@ public final class KafkaOffloader {
                         final AtomicReference<TaskExecutor.Status> taskStatus,
                         final AtomicLong prevOffloadStartTime,
                         final AtomicLong prevOffloadEndTime) {
+    this.executorAddressMap = executorAddressMap;
     this.serializedDag = serializedDag;
     this.lambdaOffloadingWorkerFactory = lambdaOffloadingWorkerFactory;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.serializerManager = serializerManager;
     this.offloadingEventQueue = offloadingEventQueue;
     this.sourceVertexDataFetchers = sourceVertexDataFetchers;
-    this. taskId = taskId;
+    this.taskId = taskId;
     this.availableFetchers = availableFetchers;
     this.pendingFetchers = pendingFetchers;
     this.streamingWorkerService = createStreamingWorkerService();
@@ -142,14 +147,17 @@ public final class KafkaOffloader {
     final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
     final UnboundedSource unboundedSource = readable.getUnboundedSource();
 
+    /* TODO FIX
     final StreamingWorkerService streamingWorkerService =
       new StreamingWorkerService(lambdaOffloadingWorkerFactory,
-        new KafkaOffloadingTransform(copyDag, taskOutgoingEdges),
+        new KafkaOffloadingTransform(copyDag, taskOutgoingEdges, executorAddressMap),
         new KafkaOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer,
           unboundedSource.getCheckpointMarkCoder()),
         new StatelessOffloadingEventHandler(offloadingEventQueue));
 
     return streamingWorkerService;
+    */
+    return null;
   }
 
   private KafkaCheckpointMark createMergedCheckpointMarks(

@@ -81,6 +81,9 @@ public final class EvalConf {
   public static final class SourceParallelism implements Name<Integer> {
   }
 
+  @NamedParameter(short_name = "ec2", default_value = "false")
+  public static final class Ec2 implements Name<Boolean> {}
+
   public final boolean enableOffloading;
   public final boolean offloadingdebug;
   public final int poolSize;
@@ -98,6 +101,7 @@ public final class EvalConf {
   public final int sourceParallelism;
   public final int minVmTask;
   public final int eventThreshold;
+  public final boolean ec2;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -106,6 +110,7 @@ public final class EvalConf {
                    @Parameter(FlushCount.class) final int flushCount,
                    @Parameter(FlushPeriod.class) final int flushPeriod,
                    @Parameter(EnableOffloadingDebug.class) final boolean offloadingdebug,
+                   @Parameter(Ec2.class) final boolean ec2,
                    @Parameter(BottleneckDetectionPeriod.class) final long bottleneckDetectionPeriod,
                    @Parameter(BottleneckDetectionConsecutive.class) final int bottleneckDetectionConsecutive,
                    @Parameter(BottleneckDetectionCpuThreshold.class) final double bottleneckDetectionThreshold,
@@ -119,6 +124,7 @@ public final class EvalConf {
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
     this.flushBytes = flushBytes;
+    this.ec2 = ec2;
     this.flushCount = flushCount;
     this.flushPeriod = flushPeriod;
     this.bottleneckDetectionPeriod = bottleneckDetectionPeriod;
@@ -156,6 +162,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(SourceParallelism.class, Integer.toString(sourceParallelism));
     jcb.bindNamedParameter(MinVmTask.class, Integer.toString(minVmTask));
     jcb.bindNamedParameter(EventThreshold.class, Integer.toString(eventThreshold));
+    jcb.bindNamedParameter(Ec2.class, Boolean.toString(ec2));
     return jcb.build();
   }
 
@@ -176,6 +183,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(SourceParallelism.class);
     cl.registerShortNameOfClass(MinVmTask.class);
     cl.registerShortNameOfClass(EventThreshold.class);
+    cl.registerShortNameOfClass(Ec2.class);
   }
 
   @Override
@@ -184,6 +192,7 @@ public final class EvalConf {
     sb.append("----------EvalConf start---------\n");
     sb.append("enableOffloading: "); sb.append(enableOffloading); sb.append("\n");
     sb.append("enableOffloadingDebug: "); sb.append(offloadingdebug); sb.append("\n");
+    sb.append("ec2: "); sb.append(ec2); sb.append("\n");
     sb.append("poolSize: "); sb.append(poolSize); sb.append("\n");
     sb.append("flushBytes: "); sb.append(flushBytes); sb.append("\n");
     sb.append("flushCount: "); sb.append(flushCount); sb.append("\n");

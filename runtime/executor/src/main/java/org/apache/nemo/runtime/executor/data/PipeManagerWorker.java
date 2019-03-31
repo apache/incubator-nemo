@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.data;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.conf.JobConf;
@@ -28,11 +29,11 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,18 +112,14 @@ public final class PipeManagerWorker {
       final String targetExecutorId = responseFromMaster.getPipeLocInfoMsg().getExecutorId();
 
       // Descriptor
-      final ControlMessage.PipeTransferContextDescriptor descriptor =
-        ControlMessage.PipeTransferContextDescriptor.newBuilder()
-          .setRuntimeEdgeId(runtimeEdgeId)
-          .setSrcTaskIndex(srcTaskIndex)
-          .setDstTaskIndex(dstTaskIndex)
-          .setNumPipeToWait(getNumOfInputPipeToWait(runtimeEdge))
-          .build();
+      final PipeTransferContextDescriptor descriptor =
+        new PipeTransferContextDescriptor(runtimeEdgeId,
+          srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
 
       LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
         runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
       // Connect to the executor
-      return byteTransfer.newOutputContext(targetExecutorId, descriptor.toByteArray(), true)
+      return byteTransfer.newOutputContext(targetExecutorId, descriptor.encode(), true)
         .thenApply(context -> context);
     });
   }
@@ -159,16 +156,15 @@ public final class PipeManagerWorker {
       final String targetExecutorId = responseFromMaster.getPipeLocInfoMsg().getExecutorId();
 
       // Descriptor
-      final ControlMessage.PipeTransferContextDescriptor descriptor =
-        ControlMessage.PipeTransferContextDescriptor.newBuilder()
-          .setRuntimeEdgeId(runtimeEdgeId)
-          .setSrcTaskIndex(srcTaskIndex)
-          .setDstTaskIndex(dstTaskIndex)
-          .setNumPipeToWait(getNumOfPipeToWait(runtimeEdge))
-          .build();
+      final PipeTransferContextDescriptor descriptor =
+        new PipeTransferContextDescriptor(
+          runtimeEdgeId,
+          srcTaskIndex,
+          dstTaskIndex,
+          getNumOfPipeToWait(runtimeEdge));
 
       // Connect to the executor
-      return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), true)
+      return byteTransfer.newInputContext(targetExecutorId, descriptor.encode(), true)
         .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
           serializerManager.getSerializer(runtimeEdgeId)));
     });
@@ -253,13 +249,13 @@ public final class PipeManagerWorker {
   public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
     LOG.info("On output context: {}", outputContext);
 
-    final ControlMessage.PipeTransferContextDescriptor descriptor =
-      ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(outputContext.getContextDescriptor());
+    final PipeTransferContextDescriptor descriptor =
+      PipeTransferContextDescriptor.decode(outputContext.getContextDescriptor());
 
     final long srcTaskIndex = descriptor.getSrcTaskIndex();
     final String runtimeEdgeId = descriptor.getRuntimeEdgeId();
     final int dstTaskIndex = (int) descriptor.getDstTaskIndex();
-    final int numPipeToWait = (int) descriptor.getNumPipeToWait();
+    final int numPipeToWait = (int) descriptor.getNumPipe();
     final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, srcTaskIndex);
 
     // First, initialize the pair key
@@ -271,13 +267,13 @@ public final class PipeManagerWorker {
 
   public void onInputContext(final ByteInputContext inputContext) throws InvalidProtocolBufferException {
 
-     final ControlMessage.PipeTransferContextDescriptor descriptor =
-      ControlMessage.PipeTransferContextDescriptor.PARSER.parseFrom(inputContext.getContextDescriptor());
+     final PipeTransferContextDescriptor descriptor =
+      PipeTransferContextDescriptor.decode(inputContext.getContextDescriptor());
 
     final int srcTaskIndex = (int) descriptor.getSrcTaskIndex();
     final String runtimeEdgeId = descriptor.getRuntimeEdgeId();
     final long dstTaskIndex = descriptor.getDstTaskIndex();
-    final int numPipeToWait = (int) descriptor.getNumPipeToWait();
+    final int numPipeToWait = (int) descriptor.getNumPipe();
     final Pair<String, Long> pairKey = Pair.of(runtimeEdgeId, dstTaskIndex);
 
     LOG.info("On input context: {}, srcTaskIndex: {}, runtimeEdge: {}, dstTaskIndex: {}, numPipe: {}",

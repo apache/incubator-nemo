@@ -58,7 +58,7 @@ import javax.inject.Inject;
  * }
  * </pre>
  */
-final class ByteTransportChannelInitializer extends ChannelInitializer<SocketChannel> {
+public final class ByteTransportChannelInitializer extends ChannelInitializer<SocketChannel> {
 
   private final InjectionFuture<PipeManagerWorker> pipeManagerWorker;
   private final InjectionFuture<BlockManagerWorker> blockManagerWorker;

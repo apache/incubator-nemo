@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
@@ -26,16 +26,14 @@ import io.netty.util.Recycler;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 
 import javax.annotation.Nullable;
-import javax.inject.Inject;
 import java.util.List;
 
 /**
  * Encodes a data frame into bytes.
  *
- * @see FrameDecoder
  */
 @ChannelHandler.Sharable
-public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.DataFrame> {
+public final class LambdaDataFrameEncoder extends MessageToMessageEncoder<LambdaDataFrameEncoder.DataFrame> {
 
   private static final int TRANSFER_INDEX_LENGTH = Integer.BYTES;
   private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
@@ -44,8 +42,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
   // the maximum length of a frame body. 2**32 - 1
   static final long LENGTH_MAX = 4294967295L;
 
-  @Inject
-  private DataFrameEncoder() {
+  public LambdaDataFrameEncoder() {
   }
 
   @Override
@@ -89,7 +86,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
     private static final Recycler<DataFrame> RECYCLER = new Recycler<DataFrame>() {
       @Override
-      protected DataFrame newObject(final Recycler.Handle handle) {
+      protected DataFrame newObject(final Handle handle) {
         return new DataFrame(handle);
       }
     };
@@ -104,7 +101,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     }
 
     private final Recycler.Handle handle;
-    private ByteTransferContext.ContextId contextId;
+    private LambdaByteTransferContext.ContextId contextId;
     @Nullable
     private Object body;
     private long length;
@@ -120,7 +117,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
      * @param opensSubStream whether this frame opens a new sub-stream or not
      * @return the {@link DataFrame} object
      */
-    static DataFrame newInstance(final ByteTransferContext.ContextId contextId,
+    static DataFrame newInstance(final LambdaByteTransferContext.ContextId contextId,
                                  @Nullable final Object body,
                                  final long length,
                                  final boolean opensSubStream) {
@@ -138,7 +135,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
      * @param contextId   the context id
      * @return the {@link DataFrame} object
      */
-    static DataFrame newInstance(final ByteTransferContext.ContextId contextId) {
+    static DataFrame newInstance(final LambdaByteTransferContext.ContextId contextId) {
       final DataFrame dataFrame = RECYCLER.get();
       dataFrame.contextId = contextId;
       dataFrame.body = null;

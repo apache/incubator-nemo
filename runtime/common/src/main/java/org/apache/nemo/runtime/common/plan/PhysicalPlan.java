@@ -19,6 +19,8 @@
 package org.apache.nemo.runtime.common.plan;
 
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.common.ir.edge.Stage;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import java.io.Serializable;

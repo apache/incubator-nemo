@@ -19,7 +19,6 @@
 package org.apache.nemo.runtime.executor.data;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransferContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

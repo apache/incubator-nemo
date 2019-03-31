@@ -18,8 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
-import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
-import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferDataDirection;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
@@ -86,10 +85,10 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * @param transferIndex transfer index
    * @return the {@link ByteInputContext} corresponding to the pair of {@code dataDirection} and {@code transferIndex}
    */
-  ByteInputContext getInputContext(final ByteTransferDataDirection dataDirection,
+  ByteInputContext getInputContext(final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
                                    final int transferIndex) {
     final ConcurrentMap<Integer, ByteInputContext> contexts =
-        dataDirection == ByteTransferDataDirection.INITIATOR_SENDS_DATA
+        dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
             ? inputContextsInitiatedByRemote : inputContextsInitiatedByLocal;
     return contexts.get(transferIndex);
   }
@@ -105,14 +104,15 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
       throws Exception {
     setRemoteExecutorId(message.getInitiatorExecutorId());
     byteTransfer.onNewContextByRemoteExecutor(message.getInitiatorExecutorId(), channel);
-    final ByteTransferDataDirection dataDirection = message.getDataDirection();
+    final ByteTransferContextSetupMessage.ByteTransferDataDirection
+      dataDirection = message.getDataDirection();
     final int transferIndex = message.getTransferIndex();
     final boolean isPipe = message.getIsPipe();
     final ByteTransferContext.ContextId contextId =
       new ByteTransferContext.ContextId(remoteExecutorId, localExecutorId, dataDirection, transferIndex, isPipe);
-    final byte[] contextDescriptor = message.getContextDescriptor().toByteArray();
+    final byte[] contextDescriptor = message.getContextDescriptor();
 
-    if (dataDirection == ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
+    if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
       final ByteInputContext context = inputContextsInitiatedByRemote.compute(transferIndex, (index, existing) -> {
         if (existing != null) {
           throw new RuntimeException(String.format("Duplicate ContextId: %s", contextId));
@@ -147,9 +147,9 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
   void onContextExpired(final ByteTransferContext context) {
     final ByteTransferContext.ContextId contextId = context.getContextId();
     final ConcurrentMap<Integer, ? extends ByteTransferContext> contexts = context instanceof ByteInputContext
-        ? (contextId.getDataDirection() == ByteTransferDataDirection.INITIATOR_SENDS_DATA
+        ? (contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
             ? inputContextsInitiatedByRemote : inputContextsInitiatedByLocal)
-        : (contextId.getDataDirection() == ByteTransferDataDirection.INITIATOR_SENDS_DATA
+        : (contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
             ? outputContextsInitiatedByLocal : outputContextsInitiatedByRemote);
     contexts.remove(contextId.getTransferIndex(), context);
   }
@@ -167,7 +167,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    */
   <T extends ByteTransferContext> T newContext(final ConcurrentMap<Integer, T> contexts,
                                                final AtomicInteger transferIndexCounter,
-                                               final ByteTransferDataDirection dataDirection,
+                                               final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
                                                final Function<ByteTransferContext.ContextId, T> contextGenerator,
                                                final String executorId,
                                                final boolean isPipe) {
@@ -180,7 +180,15 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
       }
       return contextGenerator.apply(contextId);
     });
-    channel.writeAndFlush(context).addListener(context.getChannelWriteListener());
+
+    final ByteTransferContextSetupMessage message =
+      new ByteTransferContextSetupMessage(localExecutorId,
+        context.getContextId().getTransferIndex(),
+        context.getContextId().getDataDirection(),
+        context.getContextDescriptor(),
+        context.getContextId().isPipe());
+
+    channel.writeAndFlush(message).addListener(context.getChannelWriteListener());
     return context;
   }
 
@@ -193,7 +201,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    */
   ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
     return newContext(inputContextsInitiatedByLocal, nextInputTransferIndex,
-        ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
+      ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
         contextId -> new ByteInputContext(executorId, contextId, contextDescriptor, this),
         executorId, isPipe);
   }
@@ -207,7 +215,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    */
   ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
     return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
-        ByteTransferDataDirection.INITIATOR_SENDS_DATA,
+      ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
         contextId -> new ByteOutputContext(executorId, contextId, contextDescriptor, this),
         executorId, isPipe);
   }

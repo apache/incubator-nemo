@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.common.plan;
 
 import org.apache.nemo.common.ir.Readable;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;

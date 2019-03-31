@@ -19,11 +19,10 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
-import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferDataDirection;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 
 import java.util.List;
 
@@ -63,7 +62,7 @@ import java.util.List;
  *
  * @see ByteTransportChannelInitializer
  */
-final class FrameDecoder extends ByteToMessageDecoder {
+public final class FrameDecoder extends ByteToMessageDecoder {
 
   private static final int HEADER_LENGTH = 9;
 
@@ -140,8 +139,10 @@ final class FrameDecoder extends ByteToMessageDecoder {
     } else {
       // setup context for reading data frame body
       dataBodyBytesToRead = length;
-      final ByteTransferDataDirection dataDirection = (flags & ((byte) (1 << 2))) == 0
-          ? ByteTransferDataDirection.INITIATOR_SENDS_DATA : ByteTransferDataDirection.INITIATOR_RECEIVES_DATA;
+      final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection =
+        (flags & ((byte) (1 << 2))) == 0
+          ? ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA :
+          ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA;
       final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
       isLastFrame = (flags & ((byte) (1 << 0))) != 0;
       inputContext = contextManager.getInputContext(dataDirection, transferIndex);
@@ -191,8 +192,9 @@ final class FrameDecoder extends ByteToMessageDecoder {
       in.getBytes(in.readerIndex(), bytes, 0, (int) controlBodyBytesToRead);
       offset = 0;
     }
-    final ByteTransferContextSetupMessage controlMessage
-        = ByteTransferContextSetupMessage.PARSER.parseFrom(bytes, offset, (int) controlBodyBytesToRead);
+
+    final ByteTransferContextSetupMessage controlMessage =
+        ByteTransferContextSetupMessage.decode(bytes, offset, (int) controlBodyBytesToRead);
 
     out.add(controlMessage);
     in.skipBytes((int) controlBodyBytesToRead);

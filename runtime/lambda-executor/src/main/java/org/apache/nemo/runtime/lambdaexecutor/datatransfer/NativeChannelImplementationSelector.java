@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common;
+package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
@@ -34,16 +34,14 @@ import java.util.concurrent.ThreadFactory;
 import java.util.function.BiFunction;
 
 /**
- * A {@link NettyChannelImplementationSelector} implementation that prefers native transport if possible.
  * Uses {@link Epoll} if possible (on Linux).
  */
-public final class NativeChannelImplementationSelector implements NettyChannelImplementationSelector {
+public final class NativeChannelImplementationSelector {
 
   /**
    * Private constructor.
    */
-  @Inject
-  private NativeChannelImplementationSelector() {
+  public NativeChannelImplementationSelector() {
   }
 
   // We may want to add selection of KQueue (for BSD). This requires higher version of netty.
@@ -58,17 +56,14 @@ public final class NativeChannelImplementationSelector implements NettyChannelIm
       Epoll.isAvailable() ? EpollSocketChannel.class
           : NioSocketChannel.class;
 
-  @Override
   public EventLoopGroup newEventLoopGroup(final int numThreads, final ThreadFactory threadFactory) {
     return EVENT_LOOP_GROUP_FUNCTION.apply(numThreads, threadFactory);
   }
 
-  @Override
   public Class<? extends ServerChannel> getServerChannelClass() {
     return SERVER_CHANNEL_CLASS;
   }
 
-  @Override
   public Class<? extends Channel> getChannelClass() {
     return CHANNEL_CLASS;
   }

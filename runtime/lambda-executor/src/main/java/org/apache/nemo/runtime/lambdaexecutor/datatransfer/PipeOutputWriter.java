@@ -16,21 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
-import org.apache.nemo.common.punctuation.TimestampAndValue;
-import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
-import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
-import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.ir.edge.StageEdge;
+import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.partitioner.Partitioner;
+import org.apache.nemo.common.punctuation.TimestampAndValue;
+import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,8 +40,8 @@ import java.util.stream.Collectors;
 /**
  * Represents the output data transfer from a task.
  */
-public final class PipeOutputWriter implements OutputWriter {
-  private static final Logger LOG = LoggerFactory.getLogger(OutputWriter.class.getName());
+public final class PipeOutputWriter {
+  private static final Logger LOG = LoggerFactory.getLogger(PipeOutputWriter.class.getName());
 
   private final String srcTaskId;
   private final int srcTaskIndex;
@@ -62,19 +59,13 @@ public final class PipeOutputWriter implements OutputWriter {
   final Map<Long, Integer> watermarkCounterMap;
   private final StageEdge stageEdge;
 
-  /**
-   * Constructor.
-   *
-   * @param srcTaskId           the id of the source task.
-   * @param runtimeEdge         the {@link RuntimeEdge}.
-   * @param pipeManagerWorker   the pipe manager.
-   */
   PipeOutputWriter(final String srcTaskId,
                    final RuntimeEdge runtimeEdge,
                    final PipeManagerWorker pipeManagerWorker,
                    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
                    final Map<Long, Long> prevWatermarkMap,
-                   final Map<Long, Integer> watermarkCounterMap) {
+                   final Map<Long, Integer> watermarkCounterMap,
+                   final Map<String, Serializer> serializerMap) {
     this.stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
     this.srcTaskId = srcTaskId;
@@ -83,12 +74,12 @@ public final class PipeOutputWriter implements OutputWriter {
     this.partitioner = Partitioner
       .getPartitioner(stageEdge.getExecutionProperties(), stageEdge.getDstIRVertex().getExecutionProperties());
     this.runtimeEdge = runtimeEdge;
-    this.srcTaskIndex = RuntimeIdManager.getIndexFromTaskId(srcTaskId);
+    this.srcTaskIndex = getIndexFromTaskId(srcTaskId);
     this.pipeAndStreamMap = new HashMap<>();
     this.expectedWatermarkMap = expectedWatermarkMap;
     this.prevWatermarkMap = prevWatermarkMap;
     this.watermarkCounterMap = watermarkCounterMap;
-    this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
+    this.serializer = serializerMap.get(runtimeEdge.getId());
     this.pipes = doInitialize();
   }
 
@@ -103,12 +94,6 @@ public final class PipeOutputWriter implements OutputWriter {
     });
   }
 
-  /**
-   * Writes output element.
-   * This method is not a thread-safe.
-   * @param element the element to write.
-   */
-  @Override
   public void write(final Object element) {
 
     final TimestampAndValue tis = (TimestampAndValue) element;
@@ -116,7 +101,6 @@ public final class PipeOutputWriter implements OutputWriter {
     writeData(tis, getPipeToWrite(tis), false);
   }
 
-  @Override
   public void writeWatermark(final Watermark watermark) {
 
     //LOG.info("Watermark in output writer from {} to {}", stageEdge.getSrcIRVertex().getId(), stageEdge.getDstIRVertex().getId());
@@ -179,19 +163,7 @@ public final class PipeOutputWriter implements OutputWriter {
     }
   }
 
-  @Override
-  public Optional<Long> getWrittenBytes() {
-    return Optional.empty();
-  }
-
-  @Override
   public void close() {
-    /*
-    if (!initialized) {
-      // In order to "wire-up" with the receivers waiting for us.:w
-      doInitialize();
-    }
-    */
 
     pipes.forEach(pipe -> {
       try {
@@ -206,8 +178,6 @@ public final class PipeOutputWriter implements OutputWriter {
   private List<ByteOutputContext> doInitialize() {
     LOG.info("Start - doInitialize() {}", runtimeEdge);
     initialized = true;
-
-    /**********************************************************/
 
     final Optional<CommunicationPatternProperty.Value> comValue =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
@@ -251,23 +221,6 @@ public final class PipeOutputWriter implements OutputWriter {
       }).collect(Collectors.toList());
 
 
-    /**********************************************************/
-
-    // Blocking call
-    /*
-    this.pipes = pipeManagerWorker.getOutputContexts(runtimeEdge, RuntimeIdManager.getIndexFromTaskId(srcTaskId));
-    this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
-    LOG.info("Finish - doInitialize() {}", runtimeEdge);
-    pipes.forEach(pipe -> {
-      try {
-        final ByteOutputContext.ByteOutputStream bis = pipe.newOutputStream();
-        pipeAndStreamMap.put(pipe, bis);
-      } catch (final IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-    });
-    */
   }
 
   private List<ByteOutputContext> getPipeToWrite(final TimestampAndValue element) {
@@ -281,4 +234,13 @@ public final class PipeOutputWriter implements OutputWriter {
       return Collections.singletonList(pipes.get((int) partitioner.partition(element.value)));
     }
   }
+
+  private static int getIndexFromTaskId(final String taskId) {
+    return Integer.valueOf(split(taskId)[1]);
+  }
+
+  private static String[] split(final String id) {
+    return id.split(SPLITTER);
+  }
+  private static final String SPLITTER = "-";
 }

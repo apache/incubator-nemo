@@ -31,8 +31,8 @@ import org.apache.nemo.common.ir.vertex.executionproperty.IgnoreSchedulingTempDa
 import org.apache.nemo.runtime.common.exception.PlanAppenderException;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.runtime.common.plan.Stage;
-import org.apache.nemo.runtime.common.plan.StageEdge;
+import org.apache.nemo.common.ir.edge.Stage;
+import org.apache.nemo.common.ir.edge.StageEdge;
 
 import java.util.HashMap;
 import java.util.Map;
