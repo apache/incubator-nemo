@@ -59,7 +59,7 @@ public final class TaskIndexMaster {
 
   public void onTaskScheduled(final String taskId) {
     final String stageId  = RuntimeIdManager.getStageIdFromTaskId(taskId);
-    if (stageIndexMap.putIfAbsent(stageId, new AtomicInteger(0)) != null) {
+    if (stageIndexMap.putIfAbsent(stageId, new AtomicInteger(1)) != null) {
       stageIndexMap.get(stageId).getAndIncrement();
     }
   }
