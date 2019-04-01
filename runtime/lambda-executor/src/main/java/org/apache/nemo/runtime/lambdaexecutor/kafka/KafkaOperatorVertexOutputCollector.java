@@ -106,7 +106,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
 
   @Override
   public void emit(final O output) {
-    LOG.info("Operator " + irVertex.getId() + " emit " + output + " to ");
+    LOG.info("Operator " + irVertex.getId() + " emit to ");
     List<String> nextOpIds = null;
 
     for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
@@ -119,7 +119,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
           nextOpIds.add(internalVertex.getNextOperator().getId());
         }
       } else {
-        System.out.print(internalVertex.getNextOperator().getId() + ", ");
+        LOG.info(internalVertex.getNextOperator().getId() + ", ");
         final KafkaOperatorVertexOutputCollector oc =
           outputCollectorMap.get(internalVertex.getNextOperator().getId());
         oc.inputTimestamp = inputTimestamp;
@@ -132,7 +132,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     }
 
     if (nextOpIds != null) {
-      System.out.println("Emit to resultCollector in " + irVertex.getId());
+      LOG.info("Emit to resultCollector in " + irVertex.getId());
       resultCollector.result.add(new Triple<>(
         nextOpIds,
         edge.getId(),
