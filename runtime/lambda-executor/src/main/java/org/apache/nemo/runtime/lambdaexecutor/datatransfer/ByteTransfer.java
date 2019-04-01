@@ -73,7 +73,7 @@ public final class ByteTransfer {
       channelFuture = executorIdToChannelFutureMap.compute(remoteExecutorId, (executorId, cachedChannelFuture) -> {
         if (cachedChannelFuture != null
             && (cachedChannelFuture.channel().isOpen() || cachedChannelFuture.channel().isActive())) {
-          LOG.info("Cached cahnnel of {}/{}", remoteExecutorId, executorId);
+          LOG.info("Cached channel of {}/{}", remoteExecutorId, executorId);
           return cachedChannelFuture;
         } else {
           final ChannelFuture future = byteTransport.connectTo(executorId);
@@ -87,6 +87,7 @@ public final class ByteTransfer {
     }
     channelFuture.addListener(future -> {
       if (future.isSuccess()) {
+        LOG.info("Try to create lambda context executor");
         completableFuture.complete(new LambdaContextManager(
           byteTransport.getChannelGroup(), localExecutorId, channelFuture.channel()));
       } else {

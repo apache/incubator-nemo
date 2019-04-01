@@ -83,7 +83,15 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       }
       return contextGenerator.apply(contextId);
     });
-    channel.writeAndFlush(context).addListener(context.getChannelWriteListener());
+
+    final ByteTransferContextSetupMessage message =
+      new ByteTransferContextSetupMessage(localExecutorId,
+        context.getContextId().getTransferIndex(),
+        context.getContextId().getDataDirection(),
+        context.getContextDescriptor(),
+        context.getContextId().isPipe());
+
+    channel.writeAndFlush(message).addListener(context.getChannelWriteListener());
     return context;
   }
 
