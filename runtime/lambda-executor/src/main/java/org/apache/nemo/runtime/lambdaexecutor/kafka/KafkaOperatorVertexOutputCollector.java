@@ -101,7 +101,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
-    LOG.info("{} process event to {}", vertex.getId(), vertex.getTransform());
+    //LOG.info("{} process event to {}", vertex.getId(), vertex.getTransform());
     try {
       vertex.getTransform().onData(output);
     } catch (final Exception e){
@@ -112,7 +112,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
 
   @Override
   public void emit(final O output) {
-    LOG.info("Operator " + irVertex.getId() + " emit to ");
+    //LOG.info("Operator " + irVertex.getId() + " emit to ");
     List<String> nextOpIds = null;
 
     for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
@@ -125,7 +125,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
           nextOpIds.add(internalVertex.getNextOperator().getId());
         }
       } else {
-        LOG.info(internalVertex.getNextOperator().getId() + ", ");
+        //LOG.info(internalVertex.getNextOperator().getId() + ", ");
         final KafkaOperatorVertexOutputCollector oc =
           outputCollectorMap.get(internalVertex.getNextOperator().getId());
         oc.inputTimestamp = inputTimestamp;
@@ -134,11 +134,12 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     }
 
     for (final PipeOutputWriter outputWriter : externalMainOutputs) {
+      LOG.info("Emit to output writer at {}", irVertex.getId());
       outputWriter.write(output);
     }
 
     if (nextOpIds != null) {
-      LOG.info("Emit to resultCollector in " + irVertex.getId());
+      //LOG.info("Emit to resultCollector in " + irVertex.getId());
       resultCollector.result.add(new Triple<>(
         nextOpIds,
         edge.getId(),
@@ -175,7 +176,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
       }
 
       if (nextOpIds != null) {
-        System.out.println("Emit to resultCollector in " + irVertex.getId());
+        //System.out.println("Emit to resultCollector in " + irVertex.getId());
         resultCollector.result.add(new Triple<>(
           nextOpIds,
           edge.getId(),
@@ -208,13 +209,13 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
 
     // Emit watermarks to output writer
     for (final PipeOutputWriter outputWriter : externalMainOutputs) {
-      LOG.info("Emit watermark to output writer");
+      LOG.info("Emit watermark to output writer at {}", irVertex.getId());
       outputWriter.writeWatermark(watermark);
     }
 
     for (final List<PipeOutputWriter> externalVertices : externalAdditionalOutputs.values()) {
       for (final PipeOutputWriter externalVertex : externalVertices) {
-        LOG.info("Emit watermark to output writer22");
+        LOG.info("Emit watermark to output writer22 at {}", irVertex.getId());
         externalVertex.writeWatermark(watermark);
       }
     }

@@ -202,16 +202,12 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
         final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
           beamUnboundedSourceVertex, edge, null, outputCollector);
         dataFetchers.add(dataFetcher);
-        LOG.info("SourceVertex data fetcher: {}, edge: {}", irVertex.getId(), edge.getId());
       }
 
       final Transform transform;
       if (irVertex instanceof OperatorVertex) {
         transform = ((OperatorVertex) irVertex).getTransform();
         transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
-        LOG.info("Prepare transform of {} / {} / {}", irVertex.getId(), transform, outputCollector);
-      } else {
-        LOG.info("IRVERTEX /??", irVertex);
       }
 
     });
