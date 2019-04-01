@@ -26,9 +26,11 @@ public final class KafkaOffloadingInputDecoder implements OffloadingDecoder<Kafk
 
   @Override
   public KafkaOffloadingInput decode(InputStream inputStream) throws IOException {
-    final int id = new DataInputStream(inputStream).readInt();
+    final DataInputStream dis = new DataInputStream(inputStream);
+    final int id = dis.readInt();
+    final int taskIndex = (int) dis.readLong();
     final UnboundedSource.CheckpointMark checkpointMark = checkpointMarkCoder.decode(inputStream);
     final UnboundedSource unboundedSource = SerializationUtils.deserialize(inputStream);
-    return new KafkaOffloadingInput(id, checkpointMark, unboundedSource);
+    return new KafkaOffloadingInput(id, taskIndex, checkpointMark, unboundedSource);
   }
 }

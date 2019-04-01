@@ -48,12 +48,13 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
   private final Map<String, InetSocketAddress> executorAddressMap;
   private final Map<Integer, String> dstTaskIndexTargetExecutorMap;
   private final List<StageEdge> stageEdges;
-  private final int taskIndex;
   private final Map<String, Double> samplingMap;
+
+  private transient OffloadingContext offloadingContext;
+  private transient OffloadingOutputCollector offloadingOutputCollector;
 
   // TODO: we should get checkpoint mark in constructor!
   public KafkaOffloadingTransform(final String executorId,
-                                  final int taskIndex,
                                   final Map<String, Double> samplingMap,
                                   final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
                                   final Map<String, List<String>> taskOutgoingEdges,
@@ -64,7 +65,6 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
     this.executorId = executorId;
     this.irDag = irDag;
     this.samplingMap = samplingMap;
-    this.taskIndex = taskIndex;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.executorAddressMap = executorAddressMap;
     this.serializerMap = serializerMap;
@@ -75,6 +75,11 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
   @Override
   public void prepare(final OffloadingContext context,
     final OffloadingOutputCollector oc) {
+    this.offloadingContext = context;
+    this.offloadingOutputCollector = oc;
+  }
+
+  private void prep(final int taskIndex) {
 
     System.out.println("TaskIndex: " + taskIndex + ", ExecutorId: " + executorId);
     System.out.println("Executor address map: " + executorAddressMap);
@@ -105,7 +110,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
     System.out.println("Stateless offloading transform prepare");
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irDag.getTopologicalSort());
-    resultCollector = new OffloadingResultCollector(oc);
+    resultCollector = new OffloadingResultCollector(offloadingOutputCollector);
 
     // Build a map for edge as a key and edge index as a value
     // This variable is used for creating NextIntraTaskOperatorInfo
@@ -217,6 +222,8 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
   @Override
   public void onData(final KafkaOffloadingInput input) {
     // TODO: handle multiple data fetchers!!
+
+    prep(input.taskIndex);
 
     final UnboundedSource.CheckpointMark checkpointMark = input.checkpointMark;
     final UnboundedSource unboundedSource = input.unboundedSource;

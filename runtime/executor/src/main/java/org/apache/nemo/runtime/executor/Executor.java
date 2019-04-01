@@ -231,6 +231,7 @@ public final class Executor {
       new TaskExecutor(
         executorId,
         byteTransport,
+        persistentConnectionToMasterMap,
         pipeManagerWorker,
         task,
         irDag,

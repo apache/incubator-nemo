@@ -121,6 +121,8 @@ public abstract class LambdaByteTransferContext {
       return;
     }
     hasException = true;
+    cause.printStackTrace();
+    LOG.error(cause.toString());
     LOG.error(String.format("A channel exception set on %s", toString())); // Not logging throwable, which isn't useful
     exception = cause;
   }

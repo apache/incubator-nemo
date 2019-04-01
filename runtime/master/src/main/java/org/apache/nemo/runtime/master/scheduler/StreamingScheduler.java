@@ -56,18 +56,21 @@ public final class StreamingScheduler implements Scheduler {
   private final ExecutorRegistry executorRegistry;
   private final PlanStateManager planStateManager;
   private final PipeManagerMaster pipeManagerMaster;
+  private final TaskIndexMaster taskIndexMaster;
 
   @Inject
   StreamingScheduler(final TaskDispatcher taskDispatcher,
                      final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                      final ExecutorRegistry executorRegistry,
                      final PlanStateManager planStateManager,
-                     final PipeManagerMaster pipeManagerMaster) {
+                     final PipeManagerMaster pipeManagerMaster,
+                     final TaskIndexMaster taskIndexMaster) {
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.executorRegistry = executorRegistry;
     this.planStateManager = planStateManager;
     this.pipeManagerMaster = pipeManagerMaster;
+    this.taskIndexMaster = taskIndexMaster;
   }
 
   @Override
@@ -94,6 +97,7 @@ public final class StreamingScheduler implements Scheduler {
 
       taskIdsToSchedule.forEach(taskId -> {
         final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
+        taskIndexMaster.onTaskScheduled(taskId);
         stageIncomingEdges.forEach(inEdge ->
           pipeManagerMaster.onTaskScheduled(inEdge.getId(), index));
        // stageOutgoingEdges.forEach(outEdge -> pipeManagerMaster.onTaskScheduled(outEdge.getId(), index));

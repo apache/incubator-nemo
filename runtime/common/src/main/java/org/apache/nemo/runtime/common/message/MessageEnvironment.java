@@ -38,6 +38,8 @@ public interface MessageEnvironment {
   String PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID = "PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID";
   String EXECUTOR_MESSAGE_LISTENER_ID = "EXECUTOR_MESSAGE_LISTENER_ID";
 
+  String SCALEOUT_MESSAGE_LISTENER_ID = "SCALEOUT_MESSAGE_LISTENER_ID";
+
   /**
    * Set up a {@link MessageListener} with a listener id.
    *

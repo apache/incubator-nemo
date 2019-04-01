@@ -169,6 +169,7 @@ public final class TaskExecutor {
   private final ByteTransport byteTransport;
   private final String executorId;
   private final PipeManagerWorker pipeManagerWorker;
+  private final PersistentConnectionToMasterMap toMaster;
 
   /**
    * Constructor.
@@ -183,6 +184,7 @@ public final class TaskExecutor {
    */
   public TaskExecutor(final String executorId,
                       final ByteTransport byteTransport,
+                      final PersistentConnectionToMasterMap toMaster,
                       final PipeManagerWorker pipeManagerWorker,
                       final Task task,
                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
@@ -198,6 +200,7 @@ public final class TaskExecutor {
     // Essential information
     this.executorId = executorId;
     this.byteTransport = byteTransport;
+    this.toMaster = toMaster;
     this.pipeManagerWorker = pipeManagerWorker;
     this.parentDataFetchers = new ArrayList<>();
     this.sourceVertexDataFetchers = new ArrayList<>();
@@ -836,7 +839,8 @@ public final class TaskExecutor {
           pendingFetchers,
           status,
           prevOffloadStartTime,
-          prevOffloadEndTime));
+          prevOffloadEndTime,
+          toMaster));
       } else {
        kafkaOffloader = Optional.empty();
       }

@@ -21,6 +21,9 @@ import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
 import org.apache.nemo.offloading.client.StreamingWorkerService;
 import org.apache.nemo.offloading.common.OffloadingWorker;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
@@ -77,8 +80,8 @@ public final class KafkaOffloader {
   private final String executorId;
   private final Task task;
 
-  private final AtomicInteger offloadedIndex;
   private final EvalConf evalConf;
+  private final PersistentConnectionToMasterMap toMaster;
 
   public KafkaOffloader(final String executorId,
                         final Task task,
@@ -96,10 +99,9 @@ public final class KafkaOffloader {
                         final List<DataFetcher> pendingFetchers,
                         final AtomicReference<TaskExecutor.Status> taskStatus,
                         final AtomicLong prevOffloadStartTime,
-                        final AtomicLong prevOffloadEndTime) {
+                        final AtomicLong prevOffloadEndTime,
+                        final PersistentConnectionToMasterMap toMaster) {
     this.executorId = executorId;
-    this.offloadedIndex = new AtomicInteger(RuntimeIdManager.getIndexFromTaskId(task.getTaskId()));
-    offloadedIndex.getAndIncrement();
     this.task = task;
     this.evalConf = evalConf;
     this.executorAddressMap = executorAddressMap;
@@ -117,6 +119,7 @@ public final class KafkaOffloader {
     this.taskStatus = taskStatus;
     this.prevOffloadEndTime = prevOffloadEndTime;
     this.prevOffloadStartTime = prevOffloadStartTime;
+    this.toMaster = toMaster;
 
     logger.scheduleAtFixedRate(() -> {
 
@@ -171,7 +174,6 @@ public final class KafkaOffloader {
       new StreamingWorkerService(lambdaOffloadingWorkerFactory,
         new KafkaOffloadingTransform(
           executorId,
-          offloadedIndex.getAndIncrement(),
           evalConf.samplingJson,
           copyDag,
           taskOutgoingEdges,
@@ -358,6 +360,20 @@ public final class KafkaOffloader {
     return true;
   }
 
+  private CompletableFuture<ControlMessage.Message> requestTaskIndex() {
+    return toMaster
+      .getMessageSender(MessageEnvironment.SCALEOUT_MESSAGE_LISTENER_ID).request(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.SCALEOUT_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.RequestTaskIndex)
+          .setRequestTaskIndexMsg(ControlMessage.RequestTaskIndexMessage.newBuilder()
+            .setTaskId(taskId)
+            .setExecutorId(executorId)
+            .build())
+          .build());
+  }
+
   public synchronized void handleStartOffloadingKafkaEvent() {
     if (!checkSourceValidation()) {
       return;
@@ -397,15 +413,10 @@ public final class KafkaOffloader {
         final UnboundedSourceReadable readable = (UnboundedSourceReadable) reExecutedFetcher.getReadable();
         final UnboundedSource.CheckpointMark checkpointMark = cMark;
 
-        // 1. remove this data fetcher from current
-        /* do not remove
-        if (!availableFetchers.remove(reExecutedFetcher)) {
-          pendingFetchers.remove(reExecutedFetcher);
-        }
-        */
+        final CompletableFuture<ControlMessage.Message> request = requestTaskIndex();
 
         kafkaOffloadPendingEvents.add(new KafkaOffloadingDataEvent(
-          worker, unboundedSource, sourceId.getAndIncrement(), reExecutedFetcher, checkpointMark));
+          worker, unboundedSource, sourceId.getAndIncrement(), reExecutedFetcher, checkpointMark, request));
 
         if (reExecutedFetcher.isStarted()) {
           closeService.execute(() -> {
@@ -465,8 +476,10 @@ public final class KafkaOffloader {
 
         final OffloadingWorker worker = streamingWorkerService.createStreamWorker();
 
+        final CompletableFuture<ControlMessage.Message> request = requestTaskIndex();
+
         kafkaOffloadPendingEvents.add(new KafkaOffloadingDataEvent(
-          worker, splitSource, sourceId.getAndIncrement(), sourceVertexDataFetcher, splitCheckpointMark));
+          worker, splitSource, sourceId.getAndIncrement(), sourceVertexDataFetcher, splitCheckpointMark, request));
       });
 
       // 6. add it to available fetchers!
@@ -532,11 +545,24 @@ public final class KafkaOffloader {
         }
 
         final Coder<UnboundedSource.CheckpointMark> coder = unboundedSource.getCheckpointMarkCoder();
+        final ControlMessage.Message message;
+        try {
+          LOG.info("Wait taskIndex... {}", taskId);
+          message = event.taskIndexFuture.get();
+          LOG.info("Receive taskIndex... {}/{}", taskId, message.getTaskIndexInfoMsg().getTaskIndex());
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
 
         final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
         final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
         try {
           bos.writeInt(id);
+          bos.writeLong(message.getTaskIndexInfoMsg().getTaskIndex());
           coder.encode(checkpointMark, bos);
           SerializationUtils.serialize(unboundedSource, bos);
           bos.close();
