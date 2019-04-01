@@ -73,6 +73,7 @@ public final class ByteTransfer {
       channelFuture = executorIdToChannelFutureMap.compute(remoteExecutorId, (executorId, cachedChannelFuture) -> {
         if (cachedChannelFuture != null
             && (cachedChannelFuture.channel().isOpen() || cachedChannelFuture.channel().isActive())) {
+          LOG.info("Cached cahnnel of {}/{}", remoteExecutorId, executorId);
           return cachedChannelFuture;
         } else {
           final ChannelFuture future = byteTransport.connectTo(executorId);
