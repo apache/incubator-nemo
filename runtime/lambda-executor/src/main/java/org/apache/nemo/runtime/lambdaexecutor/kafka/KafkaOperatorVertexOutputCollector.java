@@ -187,11 +187,13 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     //System.out.println("Operator " + irVertex.getId() + " emits watermark " + watermark);
     // Emit watermarks to internal vertices
     for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
+      System.out.println("Operator " + irVertex.getId() + " emits watermark to " + internalVertex.getNextOperator().getId());
       internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
     }
 
     for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
+        System.out.println("Operator " + irVertex.getId() + " emits watermark to " + internalVertex.getNextOperator().getId());
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
