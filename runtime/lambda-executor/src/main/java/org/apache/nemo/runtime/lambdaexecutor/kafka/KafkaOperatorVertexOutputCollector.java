@@ -90,6 +90,8 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
       internalMainOutputs.put(info.getNextOperator().getId(), info);
     }
 
+    LOG.info("Sampling rate of vertex " + irVertex.getId() + ": " + samplingRate);
+
     this.internalAdditionalOutputs = internalAdditionalOutputs;
     this.resultCollector = resultCollector;
     this.outputCollectorMap = outputCollectorMap;
@@ -104,7 +106,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
 
   @Override
   public void emit(final O output) {
-    //LOG.info("Operator " + irVertex.getId() + " emit " + output + " to ");
+    LOG.info("Operator " + irVertex.getId() + " emit " + output + " to ");
     List<String> nextOpIds = null;
 
     for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
@@ -117,7 +119,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
           nextOpIds.add(internalVertex.getNextOperator().getId());
         }
       } else {
-        //System.out.print(internalVertex.getNextOperator().getId() + ", ");
+        System.out.print(internalVertex.getNextOperator().getId() + ", ");
         final KafkaOperatorVertexOutputCollector oc =
           outputCollectorMap.get(internalVertex.getNextOperator().getId());
         oc.inputTimestamp = inputTimestamp;
@@ -130,7 +132,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     }
 
     if (nextOpIds != null) {
-      //System.out.println("Emit to resultCollector in " + irVertex.getId());
+      System.out.println("Emit to resultCollector in " + irVertex.getId());
       resultCollector.result.add(new Triple<>(
         nextOpIds,
         edge.getId(),
@@ -167,7 +169,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
       }
 
       if (nextOpIds != null) {
-        //System.out.println("Emit to resultCollector in " + irVertex.getId());
+        System.out.println("Emit to resultCollector in " + irVertex.getId());
         resultCollector.result.add(new Triple<>(
           nextOpIds,
           edge.getId(),
@@ -187,13 +189,13 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     //System.out.println("Operator " + irVertex.getId() + " emits watermark " + watermark);
     // Emit watermarks to internal vertices
     for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
-      System.out.println("Operator " + irVertex.getId() + " emits watermark to " + internalVertex.getNextOperator().getId());
+      //System.out.println("Operator " + irVertex.getId() + " emits watermark to " + internalVertex.getNextOperator().getId());
       internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
     }
 
     for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
-        System.out.println("Operator " + irVertex.getId() + " emits watermark to " + internalVertex.getNextOperator().getId());
+        //System.out.println("Operator " + irVertex.getId() + " emits watermark to " + internalVertex.getNextOperator().getId());
         internalVertex.getWatermarkManager().trackAndEmitWatermarks(internalVertex.getEdgeIndex(), watermark);
       }
     }
