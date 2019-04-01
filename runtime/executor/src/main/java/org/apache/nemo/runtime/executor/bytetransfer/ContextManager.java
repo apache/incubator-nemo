@@ -115,7 +115,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
       final ByteInputContext context = inputContextsInitiatedByRemote.compute(transferIndex, (index, existing) -> {
         if (existing != null) {
-          throw new RuntimeException(String.format("Duplicate ContextId: %s", contextId));
+          throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,
+            transferIndex));
         }
         return new ByteInputContext(remoteExecutorId, contextId, contextDescriptor, this);
       });
