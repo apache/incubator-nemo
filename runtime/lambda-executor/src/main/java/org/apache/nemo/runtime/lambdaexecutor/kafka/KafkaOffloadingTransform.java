@@ -177,41 +177,40 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
       final boolean isSink = irVertex.isSink;
       // skip sink
-      if (!isSink) {
-        System.out.println("vertex " + irVertex.getId() + " outgoing edges: " + irDag.getOutgoingEdgesOf(irVertex)
-          + ", isSink: " + isSink);
-        KafkaOperatorVertexOutputCollector outputCollector =
-          new KafkaOperatorVertexOutputCollector(
-            irVertex,
-            samplingMap.getOrDefault(irVertex.getId(), 1.0),
-            irDag.getOutgoingEdgesOf(irVertex).get(0), /* just use first edge for encoding */
-            internalMainOutputs,
-            internalAdditionalOutputMap,
-            resultCollector,
-            outputCollectorMap,
-            taskOutgoingEdges,
-            externalAdditionalOutputMap,
-            externalMainOutputs);
+      System.out.println("vertex " + irVertex.getId() + " outgoing edges: " + irDag.getOutgoingEdgesOf(irVertex)
+        + ", isSink: " + isSink);
+      KafkaOperatorVertexOutputCollector outputCollector =
+        new KafkaOperatorVertexOutputCollector(
+          irVertex,
+          samplingMap.getOrDefault(irVertex.getId(), 1.0),
+          irDag.getOutgoingEdgesOf(irVertex).get(0), /* just use first edge for encoding */
+          internalMainOutputs,
+          internalAdditionalOutputMap,
+          resultCollector,
+          outputCollectorMap,
+          taskOutgoingEdges,
+          externalAdditionalOutputMap,
+          externalMainOutputs);
 
-        outputCollectorMap.put(irVertex.getId(), outputCollector);
+      outputCollectorMap.put(irVertex.getId(), outputCollector);
 
-        // get source
-        if (irVertex instanceof BeamUnboundedSourceVertex) {
-          final BeamUnboundedSourceVertex beamUnboundedSourceVertex = (BeamUnboundedSourceVertex) irVertex;
-          final RuntimeEdge edge = irDag.getOutgoingEdgesOf(irVertex).get(0);
+      // get source
+      if (irVertex instanceof BeamUnboundedSourceVertex) {
+        final BeamUnboundedSourceVertex beamUnboundedSourceVertex = (BeamUnboundedSourceVertex) irVertex;
+        final RuntimeEdge edge = irDag.getOutgoingEdgesOf(irVertex).get(0);
 
-          final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
-            beamUnboundedSourceVertex, edge, null, outputCollector);
-          dataFetchers.add(dataFetcher);
-          LOG.info("SourceVertex data fetcher: {}, edge: {}", irVertex.getId(), edge.getId());
-        }
-
-        final Transform transform;
-        if (irVertex instanceof OperatorVertex) {
-          transform = ((OperatorVertex) irVertex).getTransform();
-          transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
-        }
+        final SourceVertexDataFetcher dataFetcher = new SourceVertexDataFetcher(
+          beamUnboundedSourceVertex, edge, null, outputCollector);
+        dataFetchers.add(dataFetcher);
+        LOG.info("SourceVertex data fetcher: {}, edge: {}", irVertex.getId(), edge.getId());
       }
+
+      final Transform transform;
+      if (irVertex instanceof OperatorVertex) {
+        transform = ((OperatorVertex) irVertex).getTransform();
+        transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
+      }
+
     });
   }
 
