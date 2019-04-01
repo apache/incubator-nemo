@@ -274,6 +274,9 @@ public final class KafkaOffloader {
   }
 
   public synchronized void handleEndOffloadingKafkaEvent() {
+    if (!checkSourceValidation()) {
+      return;
+    }
     prevOffloadEndTime.set(System.currentTimeMillis());
 
     if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOADED, TaskExecutor.Status.DEOFFLOAD_PENDING)) {
@@ -317,7 +320,23 @@ public final class KafkaOffloader {
     }
   }
 
+  private boolean checkSourceValidation(){
+    if (sourceVertexDataFetchers.size() > 1) {
+      return false;
+    }
+
+    if (!(sourceVertexDataFetchers.get(0) instanceof SourceVertexDataFetcher)) {
+      return false;
+    }
+
+    return true;
+  }
+
   public synchronized void handleStartOffloadingKafkaEvent() {
+    if (!checkSourceValidation()) {
+      return;
+    }
+
     prevOffloadStartTime.set(System.currentTimeMillis());
 
     if (!taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING)) {

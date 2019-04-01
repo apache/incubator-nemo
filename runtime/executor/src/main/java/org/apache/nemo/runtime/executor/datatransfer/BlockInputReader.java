@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
@@ -29,6 +30,7 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.reef.wake.EventHandler;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -74,6 +76,11 @@ public final class BlockInputReader implements InputReader {
   }
 
   @Override
+  public void readAsync(EventHandler<Pair<DataUtil.IteratorWithNumBytes, Integer>> handler) {
+    throw new UnsupportedOperationException("Not support");
+  }
+
+  @Override
   public List<DataUtil.IteratorWithNumBytes> readBlocking() {
     throw new UnsupportedOperationException("Not support");
   }
@@ -81,6 +88,11 @@ public final class BlockInputReader implements InputReader {
   @Override
   public IRVertex getSrcIrVertex() {
     return srcVertex;
+  }
+
+  @Override
+  public int getTaskIndex() {
+    return dstTaskIndex;
   }
 
   /**

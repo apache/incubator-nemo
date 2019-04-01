@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.data;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransferContext;
+import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,9 +47,11 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class PipeContainer<I extends ByteTransferContext> {
   private static final Logger LOG = LoggerFactory.getLogger(PipeContainer.class.getName());
   private final ConcurrentHashMap<Pair<String, Long>, CountBasedBlockingContainer<I>> pipeMap;
+  private final ConcurrentHashMap<Pair<String, Long>, EventHandler<Pair<I, Integer>>> pipeHandlerMap;
 
   PipeContainer() {
     this.pipeMap = new ConcurrentHashMap<>();
+    this.pipeHandlerMap = new ConcurrentHashMap<>();
   }
 
   /**
@@ -125,6 +128,11 @@ public final class PipeContainer<I extends ByteTransferContext> {
     pipeMap.putIfAbsent(pairKey, new CountBasedBlockingContainer(expected));
   }
 
+  synchronized void putPipeHandlerIfAbsent(final Pair<String, Long> pairKey,
+                                           final EventHandler<Pair<I, Integer>> handler) {
+    pipeHandlerMap.putIfAbsent(pairKey, handler);
+  }
+
   /**
    * (SYNCHRONIZATION) CountBasedBlockingContainer takes care of it.
    *
@@ -133,8 +141,10 @@ public final class PipeContainer<I extends ByteTransferContext> {
    * @param context byteinput/output context
    */
   void putPipe(final Pair<String, Long> pairKey, final int taskIndex, final I context) {
-    final CountBasedBlockingContainer<I> container = pipeMap.get(pairKey);
-    container.setValue(taskIndex, context);
+    //final CountBasedBlockingContainer<I> container = pipeMap.get(pairKey);
+    //container.setValue(taskIndex, context);
+    final EventHandler<Pair<I, Integer>> handler = pipeHandlerMap.get(pairKey);
+    handler.onNext(Pair.of(context, taskIndex));
   }
 
   /**

@@ -35,6 +35,7 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.apache.reef.tang.annotations.Parameter;
+import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -216,6 +217,14 @@ public final class PipeManagerWorker {
 
     // Then, do stuff
     return pipeContainer.getPipes(pairKey); // blocking call
+  }
+
+  public void registerInputContextHandler(final RuntimeEdge runtimeEdge,
+                                          final long dstTaskIndex,
+                                          final EventHandler<Pair<ByteInputContext, Integer>> eventHandler) {
+    final Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), dstTaskIndex);
+    pipeContainer.putPipeHandlerIfAbsent(pairKey, eventHandler);
+
   }
 
   /**

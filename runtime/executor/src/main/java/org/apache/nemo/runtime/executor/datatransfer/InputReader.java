@@ -18,9 +18,11 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.reef.wake.EventHandler;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -36,9 +38,15 @@ public interface InputReader {
    */
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read();
 
+
+  // input stream and src task index pair
+  void readAsync(EventHandler<Pair<DataUtil.IteratorWithNumBytes, Integer>> handler);
+
   List<DataUtil.IteratorWithNumBytes> readBlocking();
 
   IRVertex getSrcIrVertex();
+
+  int getTaskIndex();
 
   static int getSourceParallelism(final InputReader inputReader) {
     return inputReader.getSrcIrVertex().getPropertyValue(ParallelismProperty.class)

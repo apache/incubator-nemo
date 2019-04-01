@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -25,6 +26,7 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.reef.wake.EventHandler;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -80,6 +82,16 @@ public final class PipeInputReader implements InputReader {
   }
 
   @Override
+  public void readAsync(EventHandler<Pair<DataUtil.IteratorWithNumBytes, Integer>> handler) {
+    pipeManagerWorker
+      .registerInputContextHandler(runtimeEdge, dstTaskIndex, pair -> {
+        final ByteInputContext context = pair.left();
+        final int srcTaskIndex = pair.right();
+          handler.onNext(Pair.of(new DataUtil.InputStreamIterator(context.getInputStreams(),
+          pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())), srcTaskIndex));
+        });
+  }
+
   public List<DataUtil.IteratorWithNumBytes> readBlocking() {
 
     /**********************************************************/
@@ -102,5 +114,10 @@ public final class PipeInputReader implements InputReader {
   @Override
   public IRVertex getSrcIrVertex() {
     return srcVertex;
+  }
+
+  @Override
+  public int getTaskIndex() {
+    return dstTaskIndex;
   }
 }

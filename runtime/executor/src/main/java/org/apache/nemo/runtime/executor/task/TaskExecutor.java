@@ -430,6 +430,11 @@ public final class TaskExecutor {
 
       if (childVertex instanceof OperatorVertex) {
         final List<Edge> edges = TaskExecutorUtil.getAllIncomingEdges(task, irVertexDag, childVertex);
+        operatorWatermarkManagerMap.putIfAbsent(childVertex,
+          new DynamicInputWatermarkManager(childVertex,
+            new OperatorWatermarkCollector((OperatorVertex) childVertex)));
+
+        /*
         if (edges.size() == 1) {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
             new SingleInputWatermarkManager(
@@ -443,6 +448,7 @@ public final class TaskExecutor {
             new MultiInputWatermarkManager(childVertex, edges.size(),
               new OperatorWatermarkCollector((OperatorVertex) childVertex)));
         }
+        */
       }
     });
 

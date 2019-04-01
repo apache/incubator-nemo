@@ -76,12 +76,12 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     this.firstFetch = true;
     this.elementQueue = new ConcurrentLinkedQueue();
     this.queueInsertionThreads = Executors.newCachedThreadPool();
+    fetchAsync();
   }
 
   @Override
   public Object fetchDataElement() throws IOException, NoSuchElementException {
     if (firstFetch) {
-      fetch();
       //fetchDataLazily();
       firstFetch = false;
     }
@@ -102,7 +102,45 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     }
   }
 
-  private void fetch() {
+  private void fetchAsync() { // 갯수 동적으로 받아야함. handler 같은거 등록하기
+
+    inputWatermarkManager = new DynamicInputWatermarkManager(getDataSource(), new WatermarkCollector());
+    final DynamicInputWatermarkManager watermarkManager = (DynamicInputWatermarkManager) inputWatermarkManager;
+
+    readersForParentTask.readAsync(pair -> {
+      LOG.info("Receive iterator task {} at {} edge {}"
+        , pair.right(), readersForParentTask.getTaskIndex(), edge.getId());
+      final DataUtil.IteratorWithNumBytes iterator = pair.left();
+      final int taskIndex = pair.right();
+      watermarkManager.addEdge(taskIndex);
+
+      queueInsertionThreads.submit(() -> {
+        // Consume this iterator to the end.
+        while (iterator.hasNext()) {
+          // blocked on the iterator.
+          final Object element = iterator.next();
+          if (element instanceof WatermarkWithIndex) {
+            // watermark element
+            // the input watermark manager is accessed by multiple threads
+            // so we should synchronize it
+            final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
+            inputWatermarkManager.trackAndEmitWatermarks(
+              watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
+          } else {
+            // data element
+            elementQueue.offer(element);
+          }
+        }
+
+        // This iterator is finished.
+        LOG.info("Task index {} finished", taskIndex);
+        watermarkManager.removeEdge(taskIndex);
+      });
+    });
+  }
+
+  private void fetchBlocking() {
+    // 갯수 동적으로 받아야함. handler 같은거 등록하기
     final List<DataUtil.IteratorWithNumBytes> inputs = readersForParentTask.readBlocking();
     numOfIterators = inputs.size();
 
