@@ -133,7 +133,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
         }
 
         // This iterator is finished.
-        LOG.info("Task index {} finished", taskIndex);
+        LOG.info("Task index {} finished at {}", taskIndex);
         watermarkManager.removeEdge(taskIndex);
       });
     });
