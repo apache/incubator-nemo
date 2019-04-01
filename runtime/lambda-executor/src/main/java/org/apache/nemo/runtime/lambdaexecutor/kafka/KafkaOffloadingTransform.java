@@ -209,6 +209,8 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
       if (irVertex instanceof OperatorVertex) {
         transform = ((OperatorVertex) irVertex).getTransform();
         transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
+      } else {
+        LOG.info("IRVERTEX ??: {}", irVertex);
       }
 
     });
