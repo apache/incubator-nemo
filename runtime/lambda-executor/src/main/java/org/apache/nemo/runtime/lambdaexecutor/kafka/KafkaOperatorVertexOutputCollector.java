@@ -105,55 +105,73 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   @Override
   public void emit(final O output) {
     //LOG.info("Operator " + irVertex.getId() + " emit " + output + " to ");
-
-    if (irVertex.isSink) {
-      // sampling!
-      if (random.nextDouble() < samplingRate) {
-        resultCollector.result.add(new Triple<>(
-          Collections.singletonList(irVertex.getId()),
-          edge.getId(),
-          new TimestampAndValue(inputTimestamp, output)));
-      }
-    }
+    List<String> nextOpIds = null;
 
     for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
-      //System.out.print(internalVertex.getNextOperator().getId() + ", ");
-      final KafkaOperatorVertexOutputCollector oc =
-        outputCollectorMap.get(internalVertex.getNextOperator().getId());
-      oc.inputTimestamp = inputTimestamp;
-      emit(internalVertex.getNextOperator(), output);
+      if (internalVertex.getNextOperator().isSink) {
+        // sampling!
+        if (random.nextDouble() < samplingRate) {
+          if (nextOpIds == null) {
+            nextOpIds = new LinkedList<>();
+          }
+          nextOpIds.add(internalVertex.getNextOperator().getId());
+        }
+      } else {
+        //System.out.print(internalVertex.getNextOperator().getId() + ", ");
+        final KafkaOperatorVertexOutputCollector oc =
+          outputCollectorMap.get(internalVertex.getNextOperator().getId());
+        oc.inputTimestamp = inputTimestamp;
+        emit(internalVertex.getNextOperator(), output);
+      }
     }
 
     for (final PipeOutputWriter outputWriter : externalMainOutputs) {
       outputWriter.write(output);
+    }
+
+    if (nextOpIds != null) {
+      //System.out.println("Emit to resultCollector in " + irVertex.getId());
+      resultCollector.result.add(new Triple<>(
+        nextOpIds,
+        edge.getId(),
+        new TimestampAndValue(inputTimestamp, output)));
     }
   }
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
     //LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
-
-    if (irVertex.isSink) {
-      // sampling!
-      if (random.nextDouble() < samplingRate) {
-        resultCollector.result.add(new Triple<>(
-          Collections.singletonList(irVertex.getId()),
-          edge.getId(),
-          new TimestampAndValue(inputTimestamp, output)));
-      }
-    }
+    List<String> nextOpIds = null;
 
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-        //System.out.print(internalVertex.getNextOperator().getId() + ", ");
-        outputCollectorMap.get(internalVertex.getNextOperator().getId()).inputTimestamp = inputTimestamp;
-        emit(internalVertex.getNextOperator(), (O) output);
+        if (internalVertex.getNextOperator().isSink) {
+          // sampling!
+          if (random.nextDouble() < samplingRate) {
+            if (nextOpIds == null) {
+              nextOpIds = new LinkedList<>();
+            }
+            nextOpIds.add(internalVertex.getNextOperator().getId());
+          }
+        } else {
+          //System.out.print(internalVertex.getNextOperator().getId() + ", ");
+          outputCollectorMap.get(internalVertex.getNextOperator().getId()).inputTimestamp = inputTimestamp;
+          emit(internalVertex.getNextOperator(), (O) output);
+        }
       }
 
       if (externalAdditionalOutputs.containsKey(dstVertexId)) {
         for (final PipeOutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
           externalWriter.write(new TimestampAndValue<>(inputTimestamp, (O) output));
         }
+      }
+
+      if (nextOpIds != null) {
+        //System.out.println("Emit to resultCollector in " + irVertex.getId());
+        resultCollector.result.add(new Triple<>(
+          nextOpIds,
+          edge.getId(),
+          new TimestampAndValue(inputTimestamp, output)));
       }
     }
 

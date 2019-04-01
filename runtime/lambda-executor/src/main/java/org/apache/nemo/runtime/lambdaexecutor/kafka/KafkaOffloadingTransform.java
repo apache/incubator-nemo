@@ -183,7 +183,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
         new KafkaOperatorVertexOutputCollector(
           irVertex,
           samplingMap.getOrDefault(irVertex.getId(), 1.0),
-          irDag.getOutgoingEdgesOf(irVertex).get(0), /* just use first edge for encoding */
+          irVertex.isSink ? null : irDag.getOutgoingEdgesOf(irVertex).get(0), /* just use first edge for encoding */
           internalMainOutputs,
           internalAdditionalOutputMap,
           resultCollector,
