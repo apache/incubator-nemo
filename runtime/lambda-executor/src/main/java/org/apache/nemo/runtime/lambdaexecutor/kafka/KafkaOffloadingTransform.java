@@ -70,16 +70,17 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
     this.serializerMap = serializerMap;
     this.dstTaskIndexTargetExecutorMap = dstTaskIndexTargetExecutorMap;
     this.stageEdges = stageEdges;
+  }
+
+  @Override
+  public void prepare(final OffloadingContext context,
+    final OffloadingOutputCollector oc) {
 
     System.out.println("TaskIndex: " + taskIndex + ", ExecutorId: " + executorId);
     System.out.println("Executor address map: " + executorAddressMap);
     System.out.println("Stage edges: " + stageEdges);
     System.out.println("TaskIndexTargetExecutorMap: " + dstTaskIndexTargetExecutorMap);
-  }
 
-  @Override
-  public void prepare(final OffloadingContext context,
-                      final OffloadingOutputCollector oc) {
     final IntermediateDataIOFactory intermediateDataIOFactory;
     if (stageEdges.size() > 0) {
       // create byte transport
@@ -114,7 +115,6 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
     reverseTopologicallySorted.forEach(childVertex -> {
 
       if (childVertex instanceof BeamUnboundedSourceVertex) {
-        LOG.info("Beam unbounded source: {}, sourceCnt: {}", childVertex, sourceCnt);
         sourceCnt.getAndIncrement();
       }
 
