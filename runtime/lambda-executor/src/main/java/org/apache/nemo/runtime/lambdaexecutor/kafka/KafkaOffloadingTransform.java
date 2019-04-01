@@ -71,10 +71,10 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
     this.dstTaskIndexTargetExecutorMap = dstTaskIndexTargetExecutorMap;
     this.stageEdges = stageEdges;
 
-    LOG.info("TaskIndex: {}, ExecutorId: {}", taskIndex, executorId);
-    LOG.info("Executor address map: {}", executorAddressMap);
-    LOG.info("Stage edges: {}", stageEdges);
-    LOG.info("TaskIndexTargetExecutorMap: {}", dstTaskIndexTargetExecutorMap);
+    System.out.println("TaskIndex: " + taskIndex + ", ExecutorId: " + executorId);
+    System.out.println("Executor address map: " + executorAddressMap);
+    System.out.println("Stage edges: " + stageEdges);
+    System.out.println("TaskIndexTargetExecutorMap: " + dstTaskIndexTargetExecutorMap);
   }
 
   @Override
