@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +38,8 @@ public final class ByteTransfer {
 
   private final LambdaByteTransport byteTransport;
   private final ConcurrentMap<String, ChannelFuture> executorIdToChannelFutureMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Future, LambdaContextManager> channelAndContextManagerMap =
+    new ConcurrentHashMap<>();
   private final String localExecutorId;
 
   /**
@@ -87,9 +90,10 @@ public final class ByteTransfer {
     }
     channelFuture.addListener(future -> {
       if (future.isSuccess()) {
-        LOG.info("Try to create lambda context executor");
-        completableFuture.complete(new LambdaContextManager(
+        channelAndContextManagerMap.putIfAbsent(future, new LambdaContextManager(
           byteTransport.getChannelGroup(), localExecutorId, channelFuture.channel()));
+        LOG.info("Try to create lambda context executor");
+        completableFuture.complete(channelAndContextManagerMap.get(future));
       } else {
         executorIdToChannelFutureMap.remove(remoteExecutorId, channelFuture);
         completableFuture.completeExceptionally(future.cause());
