@@ -207,7 +207,7 @@ public final class HandleDataFetcher {
       processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
     } else if (event instanceof TimestampAndValue) {
       // Process data element
-      //LOG.info("Data: {}", event);
+      LOG.info("Data: {}", event);
       processElement(dataFetcher.getOutputCollector(), (TimestampAndValue) event);
     } else {
       throw new RuntimeException("Invalid type of event: " + event);
