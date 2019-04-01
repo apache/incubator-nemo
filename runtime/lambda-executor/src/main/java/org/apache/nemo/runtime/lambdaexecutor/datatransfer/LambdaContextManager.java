@@ -23,6 +23,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -33,7 +35,7 @@ import java.util.function.Function;
  * Manages multiple transport contexts for one channel.
  */
 final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransferContextSetupMessage> {
-
+  private static final Logger LOG = LoggerFactory.getLogger(LambdaContextManager.class);
   private final ChannelGroup channelGroup;
   private final String localExecutorId;
   private final Channel channel;
@@ -45,6 +47,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   public LambdaContextManager(final ChannelGroup channelGroup,
                        final String localExecutorId,
                        final Channel channel) {
+    LOG.info("New lambda context manager: {} / {}", localExecutorId, channel);
     this.channelGroup = channelGroup;
     this.localExecutorId = localExecutorId;
     this.channel = channel;
@@ -85,6 +88,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   }
 
   ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
+    LOG.info("LambdaContextManager: {}", executorId);
     return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
         contextId -> new ByteOutputContext(executorId, contextId, contextDescriptor, this),
