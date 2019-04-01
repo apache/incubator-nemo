@@ -38,13 +38,9 @@ public final class IntermediateDataIOFactory {
   }
 
   public PipeOutputWriter createPipeWriter(
-    final String srcTaskId,
+    final int srcTaskIndex,
     final RuntimeEdge<?> runtimeEdge,
-    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
-    final Map<Long, Long> prevWatermarkMap,
-    final Map<Long, Integer> watermarkCounterMap,
     final Map<String, Serializer> serializerMap) {
-    return new PipeOutputWriter(srcTaskId, runtimeEdge, pipeManagerWorker,
-      expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, serializerMap);
+    return new PipeOutputWriter(srcTaskIndex, runtimeEdge, pipeManagerWorker, serializerMap);
   }
 }

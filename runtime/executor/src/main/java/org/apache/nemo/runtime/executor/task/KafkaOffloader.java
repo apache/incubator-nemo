@@ -16,9 +16,13 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
 import org.apache.nemo.offloading.client.StreamingWorkerService;
 import org.apache.nemo.offloading.common.OffloadingWorker;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
@@ -69,8 +73,18 @@ public final class KafkaOffloader {
   private final AtomicLong prevOffloadEndTime;
 
   private final Map<String, InetSocketAddress> executorAddressMap;
+  private final Map<Integer, String> dstTaskIndexTargetExecutorMap;
+  private final String executorId;
+  private final Task task;
 
-  public KafkaOffloader(final Map<String, InetSocketAddress> executorAddressMap,
+  private final AtomicInteger offloadedIndex;
+  private final EvalConf evalConf;
+
+  public KafkaOffloader(final String executorId,
+                        final Task task,
+                        final EvalConf evalConf,
+                        final Map<String, InetSocketAddress> executorAddressMap,
+                        final Map<Integer, String> dstTaskIndexTargetExecutorMap,
                         final byte[] serializedDag,
                         final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
                         final Map<String, List<String>> taskOutgoingEdges,
@@ -83,7 +97,13 @@ public final class KafkaOffloader {
                         final AtomicReference<TaskExecutor.Status> taskStatus,
                         final AtomicLong prevOffloadStartTime,
                         final AtomicLong prevOffloadEndTime) {
+    this.executorId = executorId;
+    this.offloadedIndex = new AtomicInteger(RuntimeIdManager.getIndexFromTaskId(task.getTaskId()));
+    offloadedIndex.getAndIncrement();
+    this.task = task;
+    this.evalConf = evalConf;
     this.executorAddressMap = executorAddressMap;
+    this.dstTaskIndexTargetExecutorMap = dstTaskIndexTargetExecutorMap;
     this.serializedDag = serializedDag;
     this.lambdaOffloadingWorkerFactory = lambdaOffloadingWorkerFactory;
     this.taskOutgoingEdges = taskOutgoingEdges;
@@ -147,17 +167,23 @@ public final class KafkaOffloader {
     final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
     final UnboundedSource unboundedSource = readable.getUnboundedSource();
 
-    /* TODO FIX
     final StreamingWorkerService streamingWorkerService =
       new StreamingWorkerService(lambdaOffloadingWorkerFactory,
-        new KafkaOffloadingTransform(copyDag, taskOutgoingEdges, executorAddressMap),
+        new KafkaOffloadingTransform(
+          executorId,
+          offloadedIndex.getAndIncrement(),
+          evalConf.samplingJson,
+          copyDag,
+          taskOutgoingEdges,
+          executorAddressMap,
+          serializerManager.runtimeEdgeIdToSerializer,
+          dstTaskIndexTargetExecutorMap,
+          task.getTaskOutgoingEdges()),
         new KafkaOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer,
           unboundedSource.getCheckpointMarkCoder()),
         new StatelessOffloadingEventHandler(offloadingEventQueue));
 
     return streamingWorkerService;
-    */
-    return null;
   }
 
   private KafkaCheckpointMark createMergedCheckpointMarks(

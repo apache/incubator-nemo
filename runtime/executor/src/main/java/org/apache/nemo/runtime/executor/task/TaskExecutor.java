@@ -34,6 +34,7 @@ import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -166,6 +167,8 @@ public final class TaskExecutor {
 
   private final AtomicReference<Status> status = new AtomicReference<>(Status.RUNNING);
   private final ByteTransport byteTransport;
+  private final String executorId;
+  private final PipeManagerWorker pipeManagerWorker;
 
   /**
    * Constructor.
@@ -178,7 +181,9 @@ public final class TaskExecutor {
    * @param metricMessageSender    For sending metric with execution stats to the master.
    * @param persistentConnectionToMasterMap For sending messages to the master.
    */
-  public TaskExecutor(final ByteTransport byteTransport,
+  public TaskExecutor(final String executorId,
+                      final ByteTransport byteTransport,
+                      final PipeManagerWorker pipeManagerWorker,
                       final Task task,
                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                       final TaskStateManager taskStateManager,
@@ -191,7 +196,9 @@ public final class TaskExecutor {
                       final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
                       final EvalConf evalConf) {
     // Essential information
+    this.executorId = executorId;
     this.byteTransport = byteTransport;
+    this.pipeManagerWorker = pipeManagerWorker;
     this.parentDataFetchers = new ArrayList<>();
     this.sourceVertexDataFetchers = new ArrayList<>();
     this.task = task;
@@ -760,12 +767,20 @@ public final class TaskExecutor {
         } else if (elem instanceof TimestampAndValue) {
           final TimestampAndValue tsv = (TimestampAndValue) elem;
           //LOG.info("Receive data {}", tsv);
-          collector.setInputTimestamp(tsv.timestamp);
-          interOp.getNextOperator().getTransform().onData(tsv.value);
+          final long currTime = System.currentTimeMillis();
+          final long latency = currTime - tsv.timestamp;
+          LOG.info("Event Latency {} from lambda {} in {}", latency, nextOpId, taskId);
+
+          // do not process these data!!
+          //collector.setInputTimestamp(tsv.timestamp);
+          //interOp.getNextOperator().getTransform().onData(tsv.value);
         } else {
           throw new RuntimeException("Unknown type: " + elem);
         }
       } else {
+        throw new RuntimeException("Unknown type: " + elem);
+
+        /*
         // this is for output writer
         final OutputWriter outputWriter = outputWriterMap.get(nextOpId);
         if (elem instanceof Watermark) {
@@ -775,6 +790,7 @@ public final class TaskExecutor {
         } else {
           throw new RuntimeException("Unknown type: " + elem);
         }
+        */
       }
     }
   }
@@ -792,7 +808,6 @@ public final class TaskExecutor {
    *  If there are no available fetchers but pending fetchers, sleep for pollingPeriod
    *  and retry fetching data from the pendingFetchers.
    *
-   * @param fetchers to handle.
    * @return false if IOException.
    */
   private boolean handleDataFetchers() {
@@ -804,7 +819,11 @@ public final class TaskExecutor {
 
     if (evalConf.enableOffloading || evalConf.offloadingdebug) {
       kafkaOffloader = Optional.of(new KafkaOffloader(
+        executorId,
+        task,
+        evalConf,
         byteTransport.getExecutorAddressMap(),
+        pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),
         serializedDag,
         lambdaOffloadingWorkerFactory,
         taskOutgoingEdges,

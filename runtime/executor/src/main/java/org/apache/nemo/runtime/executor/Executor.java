@@ -44,6 +44,7 @@ import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
+import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.task.TaskExecutor;
@@ -106,6 +107,7 @@ public final class Executor {
   private final TaskOffloader taskOffloader;
 
   private final ByteTransport byteTransport;
+  private final PipeManagerWorker pipeManagerWorker;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -121,11 +123,13 @@ public final class Executor {
                    //final CpuBottleneckDetector bottleneckDetector,
                    final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
                    final EvalConf evalConf,
+                   final PipeManagerWorker pipeManagerWorker,
                    final TaskExecutorMapWrapper taskExecutorMapWrapper) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     this.executorId = executorId;
     this.byteTransport = byteTransport;
+    this.pipeManagerWorker = pipeManagerWorker;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
               .namingPattern("TaskExecutor thread-%d")
               .build());
@@ -224,8 +228,19 @@ public final class Executor {
 
 
       final TaskExecutor taskExecutor =
-      new TaskExecutor(byteTransport, task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-          metricMessageSender, persistentConnectionToMasterMap, serializerManager, serverlessExecutorProvider,
+      new TaskExecutor(
+        executorId,
+        byteTransport,
+        pipeManagerWorker,
+        task,
+        irDag,
+        taskStateManager,
+        intermediateDataIOFactory,
+        broadcastManagerWorker,
+        metricMessageSender,
+        persistentConnectionToMasterMap,
+        serializerManager,
+        serverlessExecutorProvider,
         lambdaOffloadingWorkerFactory,
         evalConf);
 

@@ -43,6 +43,8 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Two threads use this class
@@ -65,6 +67,8 @@ public final class PipeManagerWorker {
 
   private final PersistentConnectionToMasterMap toMaster;
 
+  private final ConcurrentMap<Integer, String> dstTaskIndexTargetExecutorIdMap = new ConcurrentHashMap<>();
+
   @Inject
   private PipeManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                             final ByteTransfer byteTransfer,
@@ -75,6 +79,10 @@ public final class PipeManagerWorker {
     this.serializerManager = serializerManager;
     this.pipeContainer = new PipeContainer();
     this.toMaster = toMaster;
+  }
+
+  public Map<Integer, String> getDstTaskIndexTargetExecutorIdMap() {
+    return dstTaskIndexTargetExecutorIdMap;
   }
 
   public SerializerManager getSerializerManager() {
@@ -116,6 +124,8 @@ public final class PipeManagerWorker {
       final PipeTransferContextDescriptor descriptor =
         new PipeTransferContextDescriptor(runtimeEdgeId,
           srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
+
+      dstTaskIndexTargetExecutorIdMap.put(dstTaskIndex, targetExecutorId);
 
       LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
         runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
