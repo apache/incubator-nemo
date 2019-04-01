@@ -818,24 +818,28 @@ public final class TaskExecutor {
     final Optional<KafkaOffloader> kafkaOffloader;
 
     if (evalConf.enableOffloading || evalConf.offloadingdebug) {
-      kafkaOffloader = Optional.of(new KafkaOffloader(
-        executorId,
-        task,
-        evalConf,
-        byteTransport.getExecutorAddressMap(),
-        pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),
-        serializedDag,
-        lambdaOffloadingWorkerFactory,
-        taskOutgoingEdges,
-        serializerManager,
-        offloadingEventQueue,
-        sourceVertexDataFetchers,
-        taskId,
-        availableFetchers,
-        pendingFetchers,
-        status,
-        prevOffloadStartTime,
-        prevOffloadEndTime));
+      if (sourceVertexDataFetchers.size() == 1 && sourceVertexDataFetchers.get(0) instanceof SourceVertexDataFetcher) {
+        kafkaOffloader = Optional.of(new KafkaOffloader(
+          executorId,
+          task,
+          evalConf,
+          byteTransport.getExecutorAddressMap(),
+          pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),
+          serializedDag,
+          lambdaOffloadingWorkerFactory,
+          taskOutgoingEdges,
+          serializerManager,
+          offloadingEventQueue,
+          sourceVertexDataFetchers,
+          taskId,
+          availableFetchers,
+          pendingFetchers,
+          status,
+          prevOffloadStartTime,
+          prevOffloadEndTime));
+      } else {
+       kafkaOffloader = Optional.empty();
+      }
     } else {
       kafkaOffloader = Optional.empty();
     }
