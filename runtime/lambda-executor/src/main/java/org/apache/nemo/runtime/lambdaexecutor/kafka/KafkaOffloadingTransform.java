@@ -31,7 +31,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
   private static final Logger LOG = LoggerFactory.getLogger(KafkaOffloadingTransform.class.getName());
 
-  private final String executorId;
+  private String executorId;
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final Map<String, List<String>> taskOutgoingEdges;
 
@@ -84,7 +84,8 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
   private void prep(final int taskIndex) {
 
-    System.out.println("TaskIndex: " + taskIndex + ", ExecutorId: " + executorId);
+    System.out.println("TaskIndex: " + taskIndex + ", ExecutorId: " + executorId +",, change to " + executorId + "-" + taskIndex);
+    executorId = executorId + taskIndex;
     System.out.println("Executor address map: " + executorAddressMap);
     System.out.println("Stage edges: " + stageEdges);
     System.out.println("TaskIndexTargetExecutorMap: " + dstTaskIndexTargetExecutorMap);
