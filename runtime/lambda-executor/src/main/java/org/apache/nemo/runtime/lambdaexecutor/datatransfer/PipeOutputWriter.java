@@ -54,13 +54,16 @@ public final class PipeOutputWriter {
   private final List<ByteOutputContext> pipes;
   private final Map<ByteOutputContext, ByteOutputContext.ByteOutputStream> pipeAndStreamMap;
   private final StageEdge stageEdge;
+  private final int originTaskIndex;
 
   PipeOutputWriter(final int srcTaskIndex,
+                   final int originTaskIndex,
                    final RuntimeEdge runtimeEdge,
                    final PipeManagerWorker pipeManagerWorker,
                    final Map<String, Serializer> serializerMap) {
     this.stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
+    this.originTaskIndex = originTaskIndex;
     this.srcTaskIndex = srcTaskIndex;
     this.pipeManagerWorker = pipeManagerWorker;
     //this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), RuntimeIdManager.getIndexFromTaskId(srcTaskId));
@@ -117,8 +120,8 @@ public final class PipeOutputWriter {
     final List<CompletableFuture<ByteOutputContext>> byteOutputContexts;
     if (comValue.get().equals(CommunicationPatternProperty.Value.OneToOne)) {
       byteOutputContexts = Collections.singletonList(
-        pipeManagerWorker.write(srcTaskIndex, runtimeEdge, srcTaskIndex));
-      LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskIndex, srcTaskIndex);
+        pipeManagerWorker.write(srcTaskIndex, runtimeEdge, originTaskIndex));
+      LOG.info("Writing data: edge: {}, Task {}, Dest {}", runtimeEdge.getId(), srcTaskIndex, originTaskIndex);
     } else if (comValue.get().equals(CommunicationPatternProperty.Value.BroadCast)
       || comValue.get().equals(CommunicationPatternProperty.Value.Shuffle)) {
 

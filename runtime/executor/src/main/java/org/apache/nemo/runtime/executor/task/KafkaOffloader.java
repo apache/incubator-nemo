@@ -174,6 +174,7 @@ public final class KafkaOffloader {
       new StreamingWorkerService(lambdaOffloadingWorkerFactory,
         new KafkaOffloadingTransform(
           executorId,
+          RuntimeIdManager.getIndexFromTaskId(taskId),
           evalConf.samplingJson,
           copyDag,
           taskOutgoingEdges,

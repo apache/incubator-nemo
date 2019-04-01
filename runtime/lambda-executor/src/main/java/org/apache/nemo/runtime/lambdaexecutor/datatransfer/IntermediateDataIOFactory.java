@@ -18,15 +18,10 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.common.Serializer;
 
 import java.util.Map;
-import java.util.Optional;
-import java.util.PriorityQueue;
 
 /**
  */
@@ -39,8 +34,9 @@ public final class IntermediateDataIOFactory {
 
   public PipeOutputWriter createPipeWriter(
     final int srcTaskIndex,
+    final int originTaskindex,
     final RuntimeEdge<?> runtimeEdge,
     final Map<String, Serializer> serializerMap) {
-    return new PipeOutputWriter(srcTaskIndex, runtimeEdge, pipeManagerWorker, serializerMap);
+    return new PipeOutputWriter(srcTaskIndex, originTaskindex, runtimeEdge, pipeManagerWorker, serializerMap);
   }
 }

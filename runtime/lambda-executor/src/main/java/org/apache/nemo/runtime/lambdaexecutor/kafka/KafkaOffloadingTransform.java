@@ -52,9 +52,11 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
   private transient OffloadingContext offloadingContext;
   private transient OffloadingOutputCollector offloadingOutputCollector;
+  private final int originTaskIndex;
 
   // TODO: we should get checkpoint mark in constructor!
   public KafkaOffloadingTransform(final String executorId,
+                                  final int originTaskIndex,
                                   final Map<String, Double> samplingMap,
                                   final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
                                   final Map<String, List<String>> taskOutgoingEdges,
@@ -63,6 +65,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
                                   final Map<Integer, String> dstTaskIndexTargetExecutorMap,
                                   final List<StageEdge> stageEdges) {
     this.executorId = executorId;
+    this.originTaskIndex = originTaskIndex;
     this.irDag = irDag;
     this.samplingMap = samplingMap;
     this.taskOutgoingEdges = taskOutgoingEdges;
@@ -169,10 +172,10 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
       final Map<String, List<PipeOutputWriter>> externalAdditionalOutputMap =
         getExternalAdditionalOutputMap(
-          irVertex, stageEdges, intermediateDataIOFactory, taskIndex, serializerMap);
+          irVertex, stageEdges, intermediateDataIOFactory, taskIndex, originTaskIndex, serializerMap);
 
       final List<PipeOutputWriter> externalMainOutputs = getExternalMainOutputs(
-        irVertex, stageEdges, intermediateDataIOFactory, taskIndex, serializerMap);
+        irVertex, stageEdges, intermediateDataIOFactory, taskIndex, originTaskIndex, serializerMap);
 
 
 
@@ -312,6 +315,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
     final List<StageEdge> outEdgesToChildrenTasks,
     final IntermediateDataIOFactory intermediateDataIOFactory,
     final int taskIndex,
+    final int originTaskIndex,
     final Map<String, Serializer> serializerMap) {
     // Add all inter-task additional tags to additional output map.
     final Map<String, List<PipeOutputWriter>> map = new HashMap<>();
@@ -325,7 +329,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
         // TODO fix
           outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, edge, serializerMap);
+            .createPipeWriter(taskIndex, originTaskIndex, edge, serializerMap);
 
         final Pair<String, PipeOutputWriter> pair =
           Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(), outputWriter);
@@ -343,6 +347,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
                                                           final List<StageEdge> outEdgesToChildrenTasks,
                                                           final IntermediateDataIOFactory intermediateDataIOFactory,
                                                           final int taskIndex,
+                                                          final int originTaskIndex,
                                                           final Map<String, Serializer> serializerMap) {
     return outEdgesToChildrenTasks
       .stream()
@@ -351,7 +356,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
       .map(outEdgeForThisVertex -> {
         LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex.getDstIRVertex().getId());
           final PipeOutputWriter outputWriter = intermediateDataIOFactory
-            .createPipeWriter(taskIndex, outEdgeForThisVertex, serializerMap);
+            .createPipeWriter(taskIndex, originTaskIndex, outEdgeForThisVertex, serializerMap);
         return outputWriter;
       })
       .collect(Collectors.toList());
