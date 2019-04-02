@@ -82,6 +82,7 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
 
   @Override
   public synchronized void trackAndEmitWatermarks(final int edgeIndex, final Watermark watermark) {
+    LOG.info("Watermark from {}: {} at {}, min: {}", edgeIndex, watermark, vertex.getId(), currMinWatermark);
 
     if (edgeIndex == minWatermarkIndex) { // update min watermark
       taskWatermarkMap.put(minWatermarkIndex, watermark);

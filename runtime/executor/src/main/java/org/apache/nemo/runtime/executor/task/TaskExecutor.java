@@ -114,7 +114,6 @@ public final class TaskExecutor {
   private final EvalConf evalConf;
   // Variables for offloading - end
 
-  private final ScheduledExecutorService se = Executors.newSingleThreadScheduledExecutor();
   private final ExecutorService offloadingService = Executors.newSingleThreadExecutor();
 
   private final long adjustTime;
@@ -262,21 +261,6 @@ public final class TaskExecutor {
     for (final Pair<OperatorMetricCollector, OutputCollector> metricCollector :
       vertexIdAndCollectorMap.values()) {
       metricCollector.left().setAdjustTime(adjustTime);
-    }
-
-    // For offloading debugging
-    if (evalConf.offloadingdebug) {
-
-      se.scheduleAtFixedRate(() -> {
-        LOG.info("Start offloading kafka");
-        offloadingEventQueue.add(new StartOffloadingKafkaEvent());
-      }, 10, 50, TimeUnit.SECONDS);
-
-      se.scheduleAtFixedRate(() -> {
-        LOG.info("End offloading kafka");
-        offloadingEventQueue.add(new EndOffloadingKafkaEvent());
-      }, 30, 50, TimeUnit.SECONDS);
-
     }
 
     if (evalConf.enableOffloading) {

@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.executor;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.runtime.executor.task.EndOffloadingKafkaEvent;
 import org.apache.nemo.runtime.executor.task.TaskExecutor;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
@@ -38,6 +39,9 @@ public final class TaskOffloader {
   private final DescriptiveStatistics cpuAverage;
   private final DescriptiveStatistics eventAverage;
   private final EvalConf evalConf;
+
+  // DEBUGGIGN
+  final ScheduledExecutorService se = Executors.newSingleThreadScheduledExecutor();
 
   // TODO: high threshold
   // TODO: low threshold ==> threshold 2개 놓기
@@ -141,6 +145,31 @@ public final class TaskOffloader {
       running, offpending, offloaded, deoffpending, taskExecutorMap.size());
 
      return new TaskStatInfo(running, offpending, offloaded, deoffpending);
+  }
+
+  public void startDebugging() {
+    // For offloading debugging
+
+
+    se.scheduleAtFixedRate(() -> {
+      LOG.info("Start offloading kafka");
+      int cnt = 0;
+      final int offloadCnt = taskExecutorMap.keySet().size() - evalConf.minVmTask;
+      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+        if (cnt < offloadCnt) {
+          offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
+          taskExecutor.startOffloading(System.currentTimeMillis());
+        }
+        cnt += 1;
+      }
+    }, 10, 50, TimeUnit.SECONDS);
+
+    se.scheduleAtFixedRate(() -> {
+      LOG.info("End offloading kafka");
+      while (!offloadedExecutors.isEmpty()) {
+        offloadedExecutors.poll().left().endOffloading();
+      }
+    }, 30, 50, TimeUnit.SECONDS);
   }
 
 

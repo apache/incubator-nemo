@@ -47,6 +47,8 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
+import org.apache.nemo.runtime.executor.task.EndOffloadingKafkaEvent;
+import org.apache.nemo.runtime.executor.task.StartOffloadingKafkaEvent;
 import org.apache.nemo.runtime.executor.task.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.common.NemoEventDecoderFactory;
@@ -109,6 +111,8 @@ public final class Executor {
   private final ByteTransport byteTransport;
   private final PipeManagerWorker pipeManagerWorker;
 
+
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -165,7 +169,7 @@ public final class Executor {
       }
 
       if (evalConf.offloadingdebug) {
-
+        taskOffloader.startDebugging();
       }
 
       //bottleneckDetector.setBottleneckHandler(new BottleneckHandler());
