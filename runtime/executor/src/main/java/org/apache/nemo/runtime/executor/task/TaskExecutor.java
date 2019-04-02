@@ -264,20 +264,6 @@ public final class TaskExecutor {
       metricCollector.left().setAdjustTime(adjustTime);
     }
 
-    // For offloading debugging
-    if (evalConf.offloadingdebug) {
-
-      se.scheduleAtFixedRate(() -> {
-        LOG.info("Start offloading kafka");
-        offloadingEventQueue.add(new StartOffloadingKafkaEvent());
-      }, 10, 50, TimeUnit.SECONDS);
-
-      se.scheduleAtFixedRate(() -> {
-        LOG.info("End offloading kafka");
-        offloadingEventQueue.add(new EndOffloadingKafkaEvent());
-      }, 30, 50, TimeUnit.SECONDS);
-    }
-
     if (evalConf.enableOffloading || evalConf.offloadingdebug) {
       offloadingService.execute(() -> {
         try {
