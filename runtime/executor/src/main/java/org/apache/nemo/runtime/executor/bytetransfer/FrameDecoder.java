@@ -23,6 +23,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
+import org.apache.nemo.runtime.executor.task.TaskExecutor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -63,7 +66,7 @@ import java.util.List;
  * @see ByteTransportChannelInitializer
  */
 public final class FrameDecoder extends ByteToMessageDecoder {
-
+  private static final Logger LOG = LoggerFactory.getLogger(FrameDecoder.class.getName());
   private static final int HEADER_LENGTH = 9;
 
   private final ContextManager contextManager;
@@ -235,6 +238,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       inputContext.onContextClose();
     }
     if (isStop) {
+      LOG.info("Context stop {}", inputContext.getContextId());
       inputContext.onContextStop();
     }
     inputContext = null;
