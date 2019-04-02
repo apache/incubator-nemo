@@ -122,6 +122,16 @@ public final class BlockOutputWriter implements OutputWriter {
     blockManagerWorker.writeBlock(blockToWrite, blockStoreValue, getExpectedRead(), persistence);
   }
 
+  @Override
+  public void stop() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void restart() {
+    throw new UnsupportedOperationException();
+  }
+
   public Optional<Long> getWrittenBytes() {
     if (writtenBytes == -1) {
       return Optional.empty();

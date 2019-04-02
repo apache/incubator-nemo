@@ -149,8 +149,6 @@ public final class TaskOffloader {
 
   public void startDebugging() {
     // For offloading debugging
-
-
     se.scheduleAtFixedRate(() -> {
       LOG.info("Start offloading kafka (only first stage)");
       int cnt = 0;
@@ -160,7 +158,7 @@ public final class TaskOffloader {
 
       for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
         if (taskExecutor.getId().startsWith("Stage0") && cnt < offloadCnt) {
-          LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId());
+          LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
           offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
           taskExecutor.startOffloading(System.currentTimeMillis());
           cnt += 1;

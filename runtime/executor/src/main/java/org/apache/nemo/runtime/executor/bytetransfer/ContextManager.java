@@ -161,6 +161,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
             ? inputContextsInitiatedByRemote : inputContextsInitiatedByLocal)
         : (contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
             ? outputContextsInitiatedByLocal : outputContextsInitiatedByRemote);
+
     contexts.remove(contextId.getTransferIndex(), context);
   }
 

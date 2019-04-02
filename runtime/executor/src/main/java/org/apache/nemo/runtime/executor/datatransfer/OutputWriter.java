@@ -45,4 +45,8 @@ public interface OutputWriter {
   Optional<Long> getWrittenBytes();
 
   void close();
+
+  void stop();
+
+  void restart();
 }

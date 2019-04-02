@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.buffer.ByteBufOutputStream;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.FileArea;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
@@ -83,6 +84,29 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
   public Channel getChannel() {
     return channel;
   }
+
+  public void stop() {
+    // just send stop message
+
+    LOG.info("Stop context {}", getContextId());
+
+    channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId()))
+      .addListener(getChannelWriteListener());
+  }
+
+  public void restart() {
+    final ByteTransferContextSetupMessage message =
+      new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
+        getContextId().getTransferIndex(),
+        getContextId().getDataDirection(),
+        getContextDescriptor(),
+        getContextId().isPipe());
+
+    LOG.info("Restart context {}", message);
+
+    channel.writeAndFlush(message).addListener(getChannelWriteListener());
+  }
+
   /**
    * Closes this stream.
    *

@@ -29,6 +29,8 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.executor.datatransfer.PipeOutputWriter;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingTransform;
@@ -82,6 +84,7 @@ public final class KafkaOffloader {
 
   private final EvalConf evalConf;
   private final PersistentConnectionToMasterMap toMaster;
+  private final Collection<OutputWriter> outputWriters;
 
   public KafkaOffloader(final String executorId,
                         final Task task,
@@ -100,7 +103,8 @@ public final class KafkaOffloader {
                         final AtomicReference<TaskExecutor.Status> taskStatus,
                         final AtomicLong prevOffloadStartTime,
                         final AtomicLong prevOffloadEndTime,
-                        final PersistentConnectionToMasterMap toMaster) {
+                        final PersistentConnectionToMasterMap toMaster,
+                        final Collection<OutputWriter> outputWriters) {
     this.executorId = executorId;
     this.task = task;
     this.evalConf = evalConf;
@@ -120,6 +124,7 @@ public final class KafkaOffloader {
     this.prevOffloadEndTime = prevOffloadEndTime;
     this.prevOffloadStartTime = prevOffloadStartTime;
     this.toMaster = toMaster;
+    this.outputWriters = outputWriters;
 
     logger.scheduleAtFixedRate(() -> {
 
@@ -242,6 +247,10 @@ public final class KafkaOffloader {
       if (!taskStatus.compareAndSet(TaskExecutor.Status.DEOFFLOAD_PENDING, TaskExecutor.Status.RUNNING)) {
         throw new RuntimeException("Invalid task status: " + taskStatus);
       }
+
+      // Restart contexts
+      LOG.info("Restart output writers");
+      outputWriters.forEach(OutputWriter::restart);
 
       LOG.info("Merge {} sources into one", reExecutedDataFetchers.size());
       // TODO: merge sources!!
@@ -598,6 +607,10 @@ public final class KafkaOffloader {
     if (kafkaOffloadPendingEvents.isEmpty()) {
       if (!taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.OFFLOADED)) {
         throw new RuntimeException("Invalid task status: " + taskStatus);
+      } else {
+        // we should emit end message
+        LOG.info("Close current output contexts");
+        outputWriters.forEach(OutputWriter::stop);
       }
     }
   }

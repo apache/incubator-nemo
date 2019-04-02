@@ -203,6 +203,20 @@ public final class PipeOutputWriter implements OutputWriter {
     });
   }
 
+  @Override
+  public void stop() {
+    pipes.forEach(pipe -> {
+      pipe.stop();
+    });
+  }
+
+  @Override
+  public void restart() {
+    pipes.forEach(pipe -> {
+      pipe.restart();
+    });
+  }
+
   private List<ByteOutputContext> doInitialize() {
     LOG.info("Start - doInitialize() {}", runtimeEdge);
     initialized = true;
