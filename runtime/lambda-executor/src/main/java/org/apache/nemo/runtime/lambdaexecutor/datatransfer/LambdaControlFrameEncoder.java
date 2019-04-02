@@ -55,7 +55,7 @@ public final class LambdaControlFrameEncoder extends MessageToMessageEncoder<Byt
     out.add(ZEROS.retain());
 
 
-    final ByteBuf data = message.decode();
+    final ByteBuf data = message.encode();
 
     //out.add(ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH)
     //  .writeInt(frameBody.length));

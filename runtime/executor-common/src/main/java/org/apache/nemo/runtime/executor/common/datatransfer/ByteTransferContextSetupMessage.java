@@ -68,7 +68,7 @@ public final class ByteTransferContextSetupMessage {
     return contextDescriptor;
   }
 
-  public ByteBuf decode() {
+  public ByteBuf encode() {
      final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
     final DataOutputStream dos = new DataOutputStream(bos);
