@@ -23,6 +23,8 @@ import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,6 +34,8 @@ import java.util.function.Function;
  * Manages multiple transport contexts for one channel.
  */
 final class ContextManager extends SimpleChannelInboundHandler<ByteTransferContextSetupMessage> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ContextManager.class.getName());
 
   private final PipeManagerWorker pipeManagerWorker;
   private final BlockManagerWorker blockManagerWorker;
@@ -166,9 +170,12 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
   }
 
   void onContextStop(final ByteInputContext context) {
+    LOG.info("context stop!! {}", context.getContextId());
     final ByteTransferContext.ContextId contextId = context.getContextId();
     inputContextsInitiatedByRemote.remove(contextId.getTransferIndex(), context);
-    newInputContext(contextId.getInitiatorExecutorId(), context.getContextDescriptor(), contextId.isPipe());
+    final ByteInputContext newC = new ByteInputContext(
+      contextId.getInitiatorExecutorId(), contextId, context.getContextDescriptor(), this);
+    inputContextsInitiatedByRemote.put(contextId.getTransferIndex(), newC);
   }
 
   /**
