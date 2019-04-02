@@ -95,6 +95,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
   }
 
   public void restart() {
+    /* no need to restart
     final ByteTransferContextSetupMessage message =
       new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
         getContextId().getTransferIndex(),
@@ -105,6 +106,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
     LOG.info("Restart context {}", message);
 
     channel.writeAndFlush(message).addListener(getChannelWriteListener());
+    */
   }
 
   /**
