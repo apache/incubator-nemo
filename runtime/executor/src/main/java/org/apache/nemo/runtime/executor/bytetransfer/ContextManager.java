@@ -126,10 +126,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     final byte[] contextDescriptor = message.getContextDescriptor();
 
     if (message.getIsRestart()) {
-      LOG.info("Context restart !! {}", contextId);
-      final ByteInputContext context = new ByteInputContext(
-        remoteExecutorId, contextId, contextDescriptor, this);
-      inputContextsInitiatedByRemote.put(contextId.getTransferIndex(), context);
+      final ByteInputContext context = inputContextsInitiatedByRemote.get(transferIndex);
+      LOG.info("Context restart !! {}, {}", contextId, context);
 
       if (isPipe) {
         pipeManagerWorker.onInputContext(context);
@@ -185,7 +183,9 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     LOG.info("context stop!! {}", context.getContextId());
     final ByteTransferContext.ContextId contextId = context.getContextId();
     inputContextsInitiatedByRemote.remove(contextId.getTransferIndex(), context);
-
+    final ByteInputContext restartContext = new ByteInputContext(
+      contextId.getInitiatorExecutorId(), contextId, context.getContextDescriptor(), this);
+    inputContextsInitiatedByRemote.put(contextId.getTransferIndex(), restartContext);
   }
 
   /**
