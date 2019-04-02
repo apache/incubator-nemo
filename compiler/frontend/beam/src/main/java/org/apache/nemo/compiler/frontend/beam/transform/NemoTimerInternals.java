@@ -42,6 +42,8 @@ public class NemoTimerInternals<K> implements TimerInternals {
 
   private final K key;
 
+  private int registeredTimers = 0;
+
   public NemoTimerInternals(final K key,
                             final NavigableSet<Pair<K, TimerData>> watermarkTimers,
                             final NavigableSet<Pair<K, TimerData>> processingTimers,
@@ -56,6 +58,14 @@ public class NemoTimerInternals<K> implements TimerInternals {
   @Nullable
   public Instant currentOutputWatermarkTime() {
     return outputWatermarkTime;
+  }
+
+  public boolean hasTimer() {
+    return existingTimers.isEmpty() && registeredTimers == 0;
+  }
+
+  public void decrementRegisteredTimer() {
+    registeredTimers -= 1;
   }
 
   public void setCurrentOutputWatermarkTime(final Instant time) {
@@ -89,6 +99,7 @@ public class NemoTimerInternals<K> implements TimerInternals {
 
     @Nullable
     TimerInternals.TimerData existing = existingTimers.get(timerData.getNamespace(), timerData.getTimerId());
+    registeredTimers += 1;
     if (existing == null) {
       existingTimers.put(timerData.getNamespace(), timerData.getTimerId(), timerData);
       timersForDomain(timerData.getDomain()).add(Pair.of(key, timerData));

@@ -848,19 +848,8 @@ public final class TaskExecutor {
       kafkaOffloader = Optional.empty();
     }
 
-    long a = System.currentTimeMillis();
-    long b = System.currentTimeMillis();
-    long c = System.currentTimeMillis();
-
     // empty means we've consumed all task-external input data
     while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty() || kafkaOffloader.isPresent()) {
-
-      final long curTime = System.currentTimeMillis();
-      if (curTime - a >= 5000) {
-        LOG.info("Hello...^^");
-        a = curTime;
-      }
-
 
       // handling control event
       while (!controlEventQueue.isEmpty()) {
@@ -924,12 +913,6 @@ public final class TaskExecutor {
 
       while (availableIterator.hasNext()) {
 
-        final long cTime = System.currentTimeMillis();
-        if (cTime - b >= 5000) {
-          LOG.info("How are you...^^");
-          b = cTime;
-        }
-
         final DataFetcher dataFetcher = availableIterator.next();
         try {
           //final long a = System.currentTimeMillis();
@@ -965,13 +948,6 @@ public final class TaskExecutor {
         pollingTime = false;
 
         while (pendingIterator.hasNext()) {
-
-          final long dTime = System.currentTimeMillis();
-          if (dTime - c >= 5000) {
-            LOG.info("Fine thankyou...^^");
-            c = dTime;
-          }
-
           final DataFetcher dataFetcher = pendingIterator.next();
           try {
             //final long a = System.currentTimeMillis();

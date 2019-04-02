@@ -24,8 +24,7 @@ import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -49,6 +48,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
   private final AtomicInteger nextInputTransferIndex = new AtomicInteger(0);
   private final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
 
+  private final ScheduledExecutorService flusher;
+
   /**
    * Creates context manager for this channel.
    * @param pipeManagerWorker   provides handler for new contexts by remote executors
@@ -70,6 +71,14 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     this.channelGroup = channelGroup;
     this.localExecutorId = localExecutorId;
     this.channel = channel;
+    this.flusher = Executors.newSingleThreadScheduledExecutor();
+    flusher.scheduleAtFixedRate(() -> {
+
+      if (channel.isOpen()) {
+        channel.flush();
+      }
+
+    }, 2, 2, TimeUnit.SECONDS);
   }
 
   /**

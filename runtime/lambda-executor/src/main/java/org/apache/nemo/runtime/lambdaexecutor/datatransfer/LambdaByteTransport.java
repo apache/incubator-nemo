@@ -65,7 +65,6 @@ public final class LambdaByteTransport {//implements AutoCloseable {
   }
 
   public void close() {
-
     final ChannelGroupFuture channelGroupCloseFuture = channelGroup.close();
     final Future clientGroupCloseFuture = clientGroup.shutdownGracefully();
     channelGroupCloseFuture.awaitUninterruptibly();
