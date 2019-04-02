@@ -124,17 +124,16 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
           }
           nextOpIds.add(internalVertex.getNextOperator().getId());
         }
-      } else {
-        //LOG.info(internalVertex.getNextOperator().getId() + ", ");
-        final KafkaOperatorVertexOutputCollector oc =
-          outputCollectorMap.get(internalVertex.getNextOperator().getId());
-        oc.inputTimestamp = inputTimestamp;
-        emit(internalVertex.getNextOperator(), output);
       }
+      //LOG.info(internalVertex.getNextOperator().getId() + ", ");
+      final KafkaOperatorVertexOutputCollector oc =
+        outputCollectorMap.get(internalVertex.getNextOperator().getId());
+      oc.inputTimestamp = inputTimestamp;
+      emit(internalVertex.getNextOperator(), output);
     }
 
     for (final PipeOutputWriter outputWriter : externalMainOutputs) {
-      LOG.info("Emit to output writer at {}", irVertex.getId());
+      //LOG.info("Emit to output writer at {}", irVertex.getId());
       outputWriter.write(new TimestampAndValue<>(inputTimestamp, output));
     }
 
@@ -162,11 +161,10 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
             }
             nextOpIds.add(internalVertex.getNextOperator().getId());
           }
-        } else {
-          //System.out.print(internalVertex.getNextOperator().getId() + ", ");
-          outputCollectorMap.get(internalVertex.getNextOperator().getId()).inputTimestamp = inputTimestamp;
-          emit(internalVertex.getNextOperator(), (O) output);
         }
+        //System.out.print(internalVertex.getNextOperator().getId() + ", ");
+        outputCollectorMap.get(internalVertex.getNextOperator().getId()).inputTimestamp = inputTimestamp;
+        emit(internalVertex.getNextOperator(), (O) output);
       }
 
       if (externalAdditionalOutputs.containsKey(dstVertexId)) {

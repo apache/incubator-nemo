@@ -249,6 +249,8 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
     prep(input.taskIndex);
 
+    LOG.info("Pipe output writers: {}", pipeOutputWriters.size());
+
     final UnboundedSource.CheckpointMark checkpointMark = input.checkpointMark;
     final UnboundedSource unboundedSource = input.unboundedSource;
     LOG.info("Receive checkpointmark: {}", checkpointMark);
