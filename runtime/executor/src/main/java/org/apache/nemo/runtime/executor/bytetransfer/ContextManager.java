@@ -125,31 +125,43 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
       new ByteTransferContext.ContextId(remoteExecutorId, localExecutorId, dataDirection, transferIndex, isPipe);
     final byte[] contextDescriptor = message.getContextDescriptor();
 
-    if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
-      final ByteInputContext context = inputContextsInitiatedByRemote.compute(transferIndex, (index, existing) -> {
-        if (existing != null) {
-          throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,
-            transferIndex));
-        }
-        return new ByteInputContext(remoteExecutorId, contextId, contextDescriptor, this);
-    });
+    if (message.getIsRestart()) {
+      LOG.info("Context restart !! {}", contextId);
+      final ByteInputContext context = new ByteInputContext(
+        remoteExecutorId, contextId, contextDescriptor, this);
+      inputContextsInitiatedByRemote.put(contextId.getTransferIndex(), context);
 
       if (isPipe) {
         pipeManagerWorker.onInputContext(context);
-      } else {
-        blockManagerWorker.onInputContext(context);
       }
     } else {
-      final ByteOutputContext context = outputContextsInitiatedByRemote.compute(transferIndex, (idx, existing) -> {
-        if (existing != null) {
-          throw new RuntimeException(String.format("Duplicate ContextId: %s", contextId));
+
+      if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
+        final ByteInputContext context = inputContextsInitiatedByRemote.compute(transferIndex, (index, existing) -> {
+          if (existing != null) {
+            throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,
+              transferIndex));
+          }
+          return new ByteInputContext(remoteExecutorId, contextId, contextDescriptor, this);
+        });
+
+        if (isPipe) {
+          pipeManagerWorker.onInputContext(context);
+        } else {
+          blockManagerWorker.onInputContext(context);
         }
-        return new ByteOutputContext(remoteExecutorId, contextId, contextDescriptor, this);
-      });
-      if (isPipe) {
-        pipeManagerWorker.onOutputContext(context);
       } else {
-        blockManagerWorker.onOutputContext(context);
+        final ByteOutputContext context = outputContextsInitiatedByRemote.compute(transferIndex, (idx, existing) -> {
+          if (existing != null) {
+            throw new RuntimeException(String.format("Duplicate ContextId: %s", contextId));
+          }
+          return new ByteOutputContext(remoteExecutorId, contextId, contextDescriptor, this);
+        });
+        if (isPipe) {
+          pipeManagerWorker.onOutputContext(context);
+        } else {
+          blockManagerWorker.onOutputContext(context);
+        }
       }
     }
   }
@@ -173,9 +185,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     LOG.info("context stop!! {}", context.getContextId());
     final ByteTransferContext.ContextId contextId = context.getContextId();
     inputContextsInitiatedByRemote.remove(contextId.getTransferIndex(), context);
-    final ByteInputContext newC = new ByteInputContext(
-      contextId.getInitiatorExecutorId(), contextId, context.getContextDescriptor(), this);
-    inputContextsInitiatedByRemote.put(contextId.getTransferIndex(), newC);
+
   }
 
   /**

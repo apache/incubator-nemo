@@ -18,6 +18,7 @@ public final class ByteTransferContextSetupMessage {
   private final ByteTransferDataDirection dataDirection;
   private final byte[] contextDescriptor;
   private final boolean isPipe;
+  private final boolean restart;
 
   public ByteTransferContextSetupMessage(
     final String initiatorExecutorId,
@@ -25,11 +26,22 @@ public final class ByteTransferContextSetupMessage {
     final ByteTransferDataDirection dataDirection,
     final byte[] contextDescriptor,
     final boolean isPipe) {
+    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, false);
+  }
+
+  public ByteTransferContextSetupMessage(
+    final String initiatorExecutorId,
+    final int transferIndex,
+    final ByteTransferDataDirection dataDirection,
+    final byte[] contextDescriptor,
+    final boolean isPipe,
+    final boolean restart) {
     this.initiatorExecutorId = initiatorExecutorId;
     this.transferIndex = transferIndex;
     this.dataDirection = dataDirection;
     this.contextDescriptor = contextDescriptor;
     this.isPipe = isPipe;
+    this.restart = restart;
   }
 
   public String getInitiatorExecutorId() {
@@ -42,6 +54,10 @@ public final class ByteTransferContextSetupMessage {
 
   public int getTransferIndex() {
     return transferIndex;
+  }
+
+  public boolean getIsRestart() {
+    return restart;
   }
 
   public boolean getIsPipe() {
@@ -63,6 +79,7 @@ public final class ByteTransferContextSetupMessage {
       dos.writeInt(contextDescriptor.length);
       dos.write(contextDescriptor);
       dos.writeBoolean(isPipe);
+      dos.writeBoolean(restart);
 
       dos.close();
       bos.close();
@@ -90,9 +107,10 @@ public final class ByteTransferContextSetupMessage {
         throw new RuntimeException("Invalid byte read: " + l + ", " + size);
       }
       final boolean isPipe = dis.readBoolean();
+      final boolean isRestart = dis.readBoolean();
 
       return new ByteTransferContextSetupMessage(
-        localExecutorId, transferIndex, direction, contextDescriptor, isPipe);
+        localExecutorId, transferIndex, direction, contextDescriptor, isPipe, isRestart);
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -103,6 +121,6 @@ public final class ByteTransferContextSetupMessage {
   @Override
   public String toString() {
     return "InitExecutor: " + initiatorExecutorId + ", TransferIndex: " + transferIndex
-      + ", " + "Direction: " + dataDirection + ", ";
+      + ", " + "Direction: " + dataDirection + ", " + ", restart: " + restart;
   }
 }
