@@ -53,7 +53,7 @@ public final class EvalConf {
   public final class BurstyOperatorString implements Name<String> {
   }
 
-  @NamedParameter(short_name = "bottleneck_detection_period", default_value = "1000")
+  @NamedParameter(short_name = "bottleneck_detection_period", default_value = "2000")
   public static final class BottleneckDetectionPeriod implements Name<Long> {
   }
 

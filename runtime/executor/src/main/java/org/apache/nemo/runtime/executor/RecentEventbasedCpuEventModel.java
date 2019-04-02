@@ -8,7 +8,7 @@ import javax.inject.Inject;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
-public final class RecentEventbasedCpuEventModel implements CpuEventModel {
+public final class RecentEventbasedCpuEventModel implements CpuEventModel<Integer> {
 
   private double recentCpuLoad;
   private int recentProcessedCnt;
@@ -17,15 +17,14 @@ public final class RecentEventbasedCpuEventModel implements CpuEventModel {
   private RecentEventbasedCpuEventModel() {
   }
 
-  public synchronized void add(final double cpuLoad,
-                               final int processedCnt) {
 
+  @Override
+  public void add(double cpuLoad, Integer processedCnt) {
     recentCpuLoad = cpuLoad;
     recentProcessedCnt = processedCnt;
-
   }
 
-  public synchronized int desirableCountForLoad(final double targetLoad) {
+  public synchronized Integer desirableMetricForLoad(final double targetLoad) {
     final double slope = recentProcessedCnt / recentCpuLoad;
     return (int) (targetLoad * slope);
   }

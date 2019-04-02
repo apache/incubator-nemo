@@ -8,32 +8,33 @@ import javax.inject.Inject;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
-public final class PolynomialCpuEventModel implements CpuEventModel {
+public final class PolynomialCpuTimeModel implements CpuEventModel<Long> {
 
 
-  private final int length = 30;
-  private final int poly = 3;
-  private final Queue<Pair<Double, Integer>> data = new ArrayDeque<>(length);
+  private final int length = 100;
+  private final int poly = 2;
+  private final Queue<Pair<Double, Long>> data = new ArrayDeque<>(length);
   private final WeightedObservedPoints obs = new WeightedObservedPoints();
   final PolynomialCurveFitter fitter = PolynomialCurveFitter.create(poly);
 
   @Inject
-  private PolynomialCpuEventModel() {
+  private PolynomialCpuTimeModel() {
   }
 
   public synchronized void add(final double cpuLoad,
-                               final int processedCnt) {
+                               final Long processedCnt) {
 
     if (data.size() == length) {
-      final Pair<Double, Integer> event = data.poll();
+      final Pair<Double, Long> event = data.poll();
     }
 
     data.add(Pair.of(cpuLoad, processedCnt));
   }
 
-  public synchronized int desirableCountForLoad(final double targetLoad) {
+  @Override
+  public synchronized Long desirableMetricForLoad(final double targetLoad) {
 
-    for (final Pair<Double, Integer> d : data) {
+    for (final Pair<Double, Long> d : data) {
       obs.add(d.left(), d.right());
     }
 
@@ -43,12 +44,12 @@ public final class PolynomialCpuEventModel implements CpuEventModel {
     return calculateTargetCount(targetLoad, coef);
   }
 
-  private int calculateTargetCount(final double targetLoad, final double[] coeff) {
+  private long calculateTargetCount(final double targetLoad, final double[] coeff) {
     double sum = 0;
     for (int i = 0; i < coeff.length; i++) {
       sum += coeff[i] * Math.pow(targetLoad, i);
     }
 
-    return (int)sum;
+    return (long)sum;
   }
 }

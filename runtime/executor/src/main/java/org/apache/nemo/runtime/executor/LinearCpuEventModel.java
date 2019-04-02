@@ -7,7 +7,7 @@ import javax.inject.Inject;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
-public final class LinearCpuEventModel implements CpuEventModel {
+public final class LinearCpuEventModel implements CpuEventModel<Integer> {
 
   private final SimpleRegression regression;
 
@@ -20,7 +20,7 @@ public final class LinearCpuEventModel implements CpuEventModel {
   }
 
   public synchronized void add(final double cpuLoad,
-                  final int processedCnt) {
+                  final Integer processedCnt) {
 
     if (data.size() == length) {
       final Pair<Double, Integer> event = data.poll();
@@ -31,7 +31,7 @@ public final class LinearCpuEventModel implements CpuEventModel {
     regression.addData(cpuLoad, processedCnt);
   }
 
-  public synchronized int desirableCountForLoad(final double targetLoad) {
+  public synchronized Integer desirableMetricForLoad(final double targetLoad) {
     return (int) regression.predict(targetLoad);
   }
 }

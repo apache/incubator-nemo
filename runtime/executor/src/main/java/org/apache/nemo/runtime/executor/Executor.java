@@ -233,6 +233,7 @@ public final class Executor {
 
       final TaskExecutor taskExecutor =
       new TaskExecutor(
+        Thread.currentThread().getId(),
         executorId,
         byteTransport,
         persistentConnectionToMasterMap,
@@ -361,7 +362,7 @@ public final class Executor {
               started = true;
 
               // estimate desirable events
-              final int desirableEvents = cpuEventModel.desirableCountForLoad(cpuThreshold);
+              final int desirableEvents = cpuEventModel.desirableMetricForLoad(cpuThreshold);
 
               final double ratio = desirableEvents / (double) event.processedEvents;
               final int numExecutors = taskExecutorMap.keySet().size();

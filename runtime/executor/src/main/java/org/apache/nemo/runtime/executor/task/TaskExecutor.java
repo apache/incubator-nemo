@@ -171,6 +171,8 @@ public final class TaskExecutor {
   private final PipeManagerWorker pipeManagerWorker;
   private final PersistentConnectionToMasterMap toMaster;
 
+  private final long threadId;
+
   /**
    * Constructor.
    *
@@ -182,7 +184,8 @@ public final class TaskExecutor {
    * @param metricMessageSender    For sending metric with execution stats to the master.
    * @param persistentConnectionToMasterMap For sending messages to the master.
    */
-  public TaskExecutor(final String executorId,
+  public TaskExecutor(final long threadId,
+                      final String executorId,
                       final ByteTransport byteTransport,
                       final PersistentConnectionToMasterMap toMaster,
                       final PipeManagerWorker pipeManagerWorker,
@@ -198,6 +201,7 @@ public final class TaskExecutor {
                       final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
                       final EvalConf evalConf) {
     // Essential information
+    this.threadId = threadId;
     this.executorId = executorId;
     this.byteTransport = byteTransport;
     this.toMaster = toMaster;
@@ -274,6 +278,10 @@ public final class TaskExecutor {
         }
       });
     }
+  }
+
+  public long getThreadId() {
+    return threadId;
   }
 
   public boolean isRunning() {
@@ -585,6 +593,7 @@ public final class TaskExecutor {
             //metricCollectors.add(Pair.of(omc, outputCollector));
 
             if (parentTaskReader instanceof PipeInputReader) {
+              isStateless = false;
               parentDataFetchers.add(
                 new MultiThreadParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),

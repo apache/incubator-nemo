@@ -4,9 +4,9 @@ package org.apache.nemo.runtime.executor;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 @DefaultImplementation(RecentEventbasedCpuEventModel.class)
-public interface CpuEventModel {
+public interface CpuEventModel<T> {
   void add(final double cpuLoad,
-                  final int processedCnt);
+                  final T processedCnt);
 
-  int desirableCountForLoad(final double targetLoad);
+  T desirableMetricForLoad(final double targetLoad);
 }
