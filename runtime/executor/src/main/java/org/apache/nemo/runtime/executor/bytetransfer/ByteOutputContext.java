@@ -90,7 +90,7 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
     LOG.info("Stop context {}", getContextId());
 
-    channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId()))
+    channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstanceForStop(getContextId()))
       .addListener(getChannelWriteListener());
   }
 

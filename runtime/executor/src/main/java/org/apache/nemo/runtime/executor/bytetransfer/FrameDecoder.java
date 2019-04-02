@@ -54,8 +54,8 @@ import java.util.List;
  * {@literal
  *   <---------------------------------- HEADER ---------------------------------------------------> <----- BODY ----->
  *   +-------+-------+-------------------+------------------+---------------+-------------+---------+-------...-------+
- *   | Zeros |   1   | DataDirectionFlag | NewSubStreamFlag | LastFrameFlag | TransferIdx | Length  |       Body      |
- *   | 4 bit | 1 bit |       1 bit       |      1 bit       |     1 bit     |   4 bytes   | 4 bytes | Variable length |
+ *   | Zeros |  Stop/Restart  | DataDirectionFlag | NewSubStreamFlag | LastFrameFlag | TransferIdx | Length  |       Body      |
+ *   | 4 bit |     1 bit      |       1 bit       |      1 bit       |     1 bit     |   4 bytes   | 4 bytes | Variable length |
  *   +-------+-------+-------------------+------------------+---------------+-------------+---------+-------...-------+
  * }
  * </pre>
@@ -87,6 +87,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
    * Whether or not the data frame currently being read is the last frame of a data message.
    */
   private boolean isLastFrame;
+  private boolean isStop;
 
   FrameDecoder(final ContextManager contextManager) {
     this.contextManager = contextManager;
@@ -145,6 +146,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
           ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA;
       final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
       isLastFrame = (flags & ((byte) (1 << 0))) != 0;
+      isStop = (flags & ((byte) (1 << 4))) != 0;
       inputContext = contextManager.getInputContext(dataDirection, transferIndex);
       if (inputContext == null) {
         throw new IllegalStateException(String.format("Transport context for %s:%d was not found between the local"
@@ -231,6 +233,9 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private void onDataFrameEnd() {
     if (isLastFrame) {
       inputContext.onContextClose();
+    }
+    if (isStop) {
+      inputContext.onContextStop();
     }
     inputContext = null;
   }

@@ -128,7 +128,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
             transferIndex));
         }
         return new ByteInputContext(remoteExecutorId, contextId, contextDescriptor, this);
-      });
+    });
 
       if (isPipe) {
         pipeManagerWorker.onInputContext(context);

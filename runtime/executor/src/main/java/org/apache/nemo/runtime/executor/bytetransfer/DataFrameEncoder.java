@@ -53,6 +53,11 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     // encode header
     final ByteBuf header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
     byte flags = (byte) 0;
+
+    if (in.stopContext) {
+      flags |= (byte) (1 << 4);
+    }
+
     flags |= (byte) (1 << 3);
     if (in.contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA) {
       flags |= (byte) (1 << 2);
@@ -110,6 +115,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     private long length;
     private boolean opensSubStream;
     private boolean closesContext;
+    private boolean stopContext;
 
     /**
      * Creates a {@link DataFrame} to supply content to sub-stream.
@@ -130,6 +136,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
       dataFrame.length = length;
       dataFrame.opensSubStream = opensSubStream;
       dataFrame.closesContext = false;
+      dataFrame.stopContext = false;
       return dataFrame;
     }
 
@@ -145,9 +152,20 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
       dataFrame.length = 0;
       dataFrame.opensSubStream = false;
       dataFrame.closesContext = true;
+      dataFrame.stopContext = false;
       return dataFrame;
     }
 
+    static DataFrame newInstanceForStop(final ByteTransferContext.ContextId contextId) {
+      final DataFrame dataFrame = RECYCLER.get();
+      dataFrame.contextId = contextId;
+      dataFrame.body = null;
+      dataFrame.length = 0;
+      dataFrame.opensSubStream = false;
+      dataFrame.closesContext = false;
+      dataFrame.stopContext = true;
+      return dataFrame;
+    }
     /**
      * Recycles this object.
      */
