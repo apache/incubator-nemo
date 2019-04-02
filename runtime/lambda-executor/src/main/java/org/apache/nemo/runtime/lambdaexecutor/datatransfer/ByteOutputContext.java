@@ -188,7 +188,7 @@ public final class ByteOutputContext extends LambdaByteTransferContext implement
 
     @Override
     public void flush() {
-      channel.flush();
+      //channel.flush();
     }
 
     /**
@@ -203,7 +203,7 @@ public final class ByteOutputContext extends LambdaByteTransferContext implement
       if (closed) {
         throw new IOException("Stream already closed.");
       }
-      channel.writeAndFlush(LambdaDataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
+      channel.write(LambdaDataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
         .addListener(getChannelWriteListener());
     }
   }

@@ -61,7 +61,6 @@ public final class LambdaByteTransport {//implements AutoCloseable {
         .channel(channelImplSelector.getChannelClass())
         .handler(channelInitializer)
         .option(ChannelOption.SO_REUSEADDR, true);
-
   }
 
   public void close() {

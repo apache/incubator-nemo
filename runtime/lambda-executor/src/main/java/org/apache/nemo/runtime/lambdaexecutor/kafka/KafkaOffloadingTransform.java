@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor.kafka;
 
 import avro.shaded.com.google.common.collect.Lists;
+import io.netty.channel.socket.SocketChannel;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -55,6 +57,8 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
   private final int originTaskIndex;
   private transient Set<PipeOutputWriter> pipeOutputWriters;
   private transient LambdaByteTransport byteTransport;
+  private transient ConcurrentMap<SocketChannel, Boolean> channels;
+  private transient ScheduledExecutorService scheduledExecutorService;
 
   // TODO: we should get checkpoint mark in constructor!
   public KafkaOffloadingTransform(final String executorId,
@@ -99,8 +103,23 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
       final NativeChannelImplementationSelector selector = new NativeChannelImplementationSelector();
       final LambdaControlFrameEncoder controlFrameEncoder = new LambdaControlFrameEncoder(executorId);
       final LambdaDataFrameEncoder dataFrameEncoder = new LambdaDataFrameEncoder();
+      channels = new ConcurrentHashMap<>();
+
+      scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+      scheduledExecutorService.scheduleAtFixedRate(() -> {
+        LOG.info("Flush {} channels: {}", channels.size(), channels.keySet());
+
+        for (final SocketChannel channel : channels.keySet()) {
+          if (channel.isOpen()) {
+            channel.flush();
+          }
+        }
+      }, 1, 1, TimeUnit.SECONDS);
+
       final LambdaByteTransportChannelInitializer initializer =
-        new LambdaByteTransportChannelInitializer(controlFrameEncoder, dataFrameEncoder, executorId);
+        new LambdaByteTransportChannelInitializer(controlFrameEncoder, dataFrameEncoder, channels, executorId);
+
+
       byteTransport = new LambdaByteTransport(
         executorId, selector, initializer, executorAddressMap);
       final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
@@ -251,11 +270,18 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
   public void close() {
     try {
       dataFetcherExecutor.close();
+
+      if (channels != null) {
+        scheduledExecutorService.shutdown();
+      }
+
       for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
         outputWriter.close();
       }
 
-      byteTransport.close();
+      if (byteTransport != null) {
+        byteTransport.close();
+      }
       // TODO: we send checkpoint mark to vm
     } catch (Exception e) {
       e.printStackTrace();

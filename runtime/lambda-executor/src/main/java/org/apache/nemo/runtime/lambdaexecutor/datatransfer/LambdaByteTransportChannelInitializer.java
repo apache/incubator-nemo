@@ -21,6 +21,8 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 
+import java.util.concurrent.ConcurrentMap;
+
 /**
  *
  * <h3>Inbound pipeline:</h3>
@@ -55,17 +57,21 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
   private final LambdaControlFrameEncoder controlFrameEncoder;
   private final LambdaDataFrameEncoder dataFrameEncoder;
   private final String localExecutorId;
+  private final ConcurrentMap<SocketChannel, Boolean> channels;
 
   public LambdaByteTransportChannelInitializer(final LambdaControlFrameEncoder controlFrameEncoder,
                                                final LambdaDataFrameEncoder dataFrameEncoder,
+                                               final ConcurrentMap<SocketChannel, Boolean> channels,
                                                final String localExecutorId) {
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
     this.localExecutorId = localExecutorId;
+    this.channels = channels;
   }
 
   @Override
   protected void initChannel(final SocketChannel ch) {
+    channels.put(ch, true);
     ch.pipeline()
         // outbound
         .addLast(controlFrameEncoder)
