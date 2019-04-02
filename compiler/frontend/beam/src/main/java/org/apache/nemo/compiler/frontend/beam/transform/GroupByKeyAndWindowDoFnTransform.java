@@ -306,11 +306,13 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // but this windowed value is actually not used in the ReduceFnRunner internal.
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
 
+      /*
       timerInternals.decrementRegisteredTimer();
       if (!timerInternals.hasTimer()) {
         LOG.info("Remove key: {}", timer.left());
         inMemoryTimerInternalsFactory.timerInternalsMap.remove(timer.left());
       }
+      */
     }
 
     // TODO: send end event

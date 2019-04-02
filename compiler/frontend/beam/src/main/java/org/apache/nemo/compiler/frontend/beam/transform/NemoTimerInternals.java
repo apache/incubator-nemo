@@ -60,6 +60,7 @@ public class NemoTimerInternals<K> implements TimerInternals {
     return outputWatermarkTime;
   }
 
+  /*
   public boolean hasTimer() {
     return existingTimers.isEmpty() && registeredTimers == 0;
   }
@@ -67,6 +68,7 @@ public class NemoTimerInternals<K> implements TimerInternals {
   public void decrementRegisteredTimer() {
     registeredTimers -= 1;
   }
+  */
 
   public void setCurrentOutputWatermarkTime(final Instant time) {
     outputWatermarkTime = time;
