@@ -60,6 +60,10 @@ public abstract class ByteTransferContext {
     this.contextManager = contextManager;
   }
 
+  protected ContextManager getContextManager() {
+    return contextManager;
+  }
+
   /**
    * @return the remote executor id.
    */

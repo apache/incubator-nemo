@@ -145,6 +145,7 @@ public final class ByteInputContext extends ByteTransferContext {
     }
     byteBufInputStreams.close();
     completedFuture.complete(inputStreams);
+    getContextManager().onContextStop(this);
   }
 
   @Override

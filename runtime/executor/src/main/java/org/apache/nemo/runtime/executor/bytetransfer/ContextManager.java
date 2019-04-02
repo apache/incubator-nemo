@@ -165,6 +165,12 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     contexts.remove(contextId.getTransferIndex(), context);
   }
 
+  void onContextStop(final ByteInputContext context) {
+    final ByteTransferContext.ContextId contextId = context.getContextId();
+    inputContextsInitiatedByRemote.remove(contextId.getTransferIndex(), context);
+    newInputContext(contextId.getInitiatorExecutorId(), context.getContextDescriptor(), contextId.isPipe());
+  }
+
   /**
    * Initiates a context and stores to the specified map.
    * @param contexts map for storing context
