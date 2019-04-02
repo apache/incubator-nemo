@@ -157,6 +157,7 @@ public final class TaskOffloader {
       final int offloadCnt = taskExecutorMap.keySet().size() - evalConf.minVmTask;
       for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
         if (cnt < offloadCnt) {
+          LOG.info("Offload task {}", taskExecutor.getId());
           offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
           taskExecutor.startOffloading(System.currentTimeMillis());
         }
@@ -167,7 +168,9 @@ public final class TaskOffloader {
     se.scheduleAtFixedRate(() -> {
       LOG.info("End offloading kafka");
       while (!offloadedExecutors.isEmpty()) {
-        offloadedExecutors.poll().left().endOffloading();
+        final TaskExecutor endTask = offloadedExecutors.poll().left();
+        LOG.info("End task {}", endTask);
+        endTask.endOffloading();
       }
     }, 30, 50, TimeUnit.SECONDS);
   }
