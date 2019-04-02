@@ -59,6 +59,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private final WindowingStrategy windowingStrategy;
   private Watermark inputWatermark;
 
+  private final Map<K, List<WindowedValue<InputT>>> keyToValues;
+
   int numProcessedData = 0;
 
   /**
@@ -85,6 +87,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     this.inputWatermark = new Watermark(Long.MIN_VALUE);
     this.keyAndWatermarkHoldMap = new HashMap<>();
     this.windowingStrategy = windowingStrategy;
+    this.keyToValues = new HashMap<>();
   }
 
   /**
@@ -125,7 +128,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     // drop late data
     if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
-      checkAndInvokeBundle();
       // We can call Beam's DoFnRunner#processElement here,
       // but it may generate some overheads if we call the method for each data.
       // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
@@ -133,8 +135,11 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // TODO #250: if the watermark is not triggered for a long time.
 
       final KV<K, InputT> kv = element.getValue();
-      //keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
-      //keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
+      keyToValues.putIfAbsent(kv.getKey(), new ArrayList<>());
+      keyToValues.get(kv.getKey()).add(element.withValue(kv.getValue()));
+
+      /*
+      checkAndInvokeBundle();
       final KeyedWorkItem<K, InputT> keyedWorkItem =
         KeyedWorkItems.elementsWorkItem(kv.getKey(),
           Collections.singletonList(element.withValue(kv.getValue())));
@@ -143,6 +148,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
       // but this windowed value is actually not used in the ReduceFnRunner internal.
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
       checkAndFinishBundle();
+      */
     }
   }
 
@@ -156,7 +162,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
     final long st = System.currentTimeMillis();
     int numOfProcessedKeys = 0;
 
-    /*
     final Iterator<Map.Entry<K, List<WindowedValue<InputT>>>> iterator = keyToValues.entrySet().iterator();
     while (iterator.hasNext()) {
       final Map.Entry<K, List<WindowedValue<InputT>>> entry = iterator.next();
@@ -177,7 +182,6 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
       iterator.remove();
     }
-    */
 
     final long e = System.currentTimeMillis();
 
