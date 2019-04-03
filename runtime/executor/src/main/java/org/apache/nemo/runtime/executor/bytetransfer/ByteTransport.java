@@ -68,6 +68,8 @@ public final class ByteTransport implements AutoCloseable {
   private int bindingPort;
   private final ConcurrentMap<String, InetSocketAddress> executorAddressMap;
 
+  private final String localExecutorId;
+
   /**
    * Constructs a byte transport and starts listening.
    * @param nameResolver          provides naming registry
@@ -97,6 +99,7 @@ public final class ByteTransport implements AutoCloseable {
       @Parameter(JobConf.PartitionTransportServerNumWorkingThreads.class) final int numWorkingThreads,
       @Parameter(JobConf.PartitionTransportClientNumThreads.class) final int numClientThreads) {
 
+    this.localExecutorId = localExecutorId;
     this.nameResolver = nameResolver;
     this.executorAddressMap = new ConcurrentHashMap<>();
 
@@ -223,6 +226,20 @@ public final class ByteTransport implements AutoCloseable {
     clientGroupCloseFuture.awaitUninterruptibly();
   }
 
+  public InetSocketAddress getAndPutInetAddress(final String remoteExecutorId) {
+    final InetSocketAddress address;
+    try {
+      final ByteTransportIdentifier identifier = new ByteTransportIdentifier(remoteExecutorId);
+      address = nameResolver.lookup(identifier);
+      LOG.info("Address of {}: {}", remoteExecutorId, address);
+      executorAddressMap.put(remoteExecutorId, address);
+      return address;
+    } catch (final Exception e) {
+      LOG.error(String.format("Cannot lookup ByteTransport listening address of %s", remoteExecutorId), e);
+      throw new RuntimeException(e);
+    }
+  }
+
   /**
    * Connect to the {@link ByteTransport} server of the specified executor.
    * @param remoteExecutorId  the id of the executor
@@ -230,16 +247,7 @@ public final class ByteTransport implements AutoCloseable {
    */
   ChannelFuture connectTo(final String remoteExecutorId) {
 
-    final InetSocketAddress address;
-    try {
-      final ByteTransportIdentifier identifier = new ByteTransportIdentifier(remoteExecutorId);
-      address = nameResolver.lookup(identifier);
-      LOG.info("Address of {}: {}", remoteExecutorId, address);
-      executorAddressMap.put(remoteExecutorId, address);
-    } catch (final Exception e) {
-      LOG.error(String.format("Cannot lookup ByteTransport listening address of %s", remoteExecutorId), e);
-      throw new RuntimeException(e);
-    }
+    final InetSocketAddress address = getAndPutInetAddress(remoteExecutorId);
     final ChannelFuture connectFuture = clientBootstrap.connect(address);
     connectFuture.addListener(future -> {
       if (future.isSuccess()) {

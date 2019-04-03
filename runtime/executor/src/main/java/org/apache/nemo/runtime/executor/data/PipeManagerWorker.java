@@ -130,7 +130,8 @@ public final class PipeManagerWorker {
       LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
         runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
       // Connect to the executor
-      return byteTransfer.newOutputContext(targetExecutorId, descriptor.encode(), true)
+      return byteTransfer.newOutputContext(targetExecutorId, descriptor.encode(), true,
+        executorId.equals(targetExecutorId))
         .thenApply(context -> context);
     });
   }

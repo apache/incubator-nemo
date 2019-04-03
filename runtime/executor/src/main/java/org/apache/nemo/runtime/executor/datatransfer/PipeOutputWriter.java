@@ -99,7 +99,12 @@ public final class PipeOutputWriter implements OutputWriter {
       //LOG.info("Write element at {}/{}", srcTaskId, runtimeEdge.getSrc().getId());
       stream.writeElement(element, serializer);
       if (flush) {
-        stream.flush();
+        try {
+          stream.flush();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
       }
     });
   }
@@ -198,7 +203,8 @@ public final class PipeOutputWriter implements OutputWriter {
       try {
         pipeAndStreamMap.get(pipe).close();
         pipe.close();
-      } catch (IOException e) {
+      } catch (Exception e) {
+        e.printStackTrace();
         throw new RuntimeException(e);
       }
     });

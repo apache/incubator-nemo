@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.bytetransfer;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.*;
@@ -26,6 +27,7 @@ import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -85,6 +87,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     }, 2, 2, TimeUnit.SECONDS);
   }
 
+
   /**
    * @return channel for this context manager.
    */
@@ -140,7 +143,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
             throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,
               transferIndex));
           }
-          return new ByteInputContext(remoteExecutorId, contextId, contextDescriptor, this);
+          return new RemoteByteInputContext(remoteExecutorId, contextId, contextDescriptor, this);
         });
 
         if (isPipe) {
@@ -153,7 +156,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
           if (existing != null) {
             throw new RuntimeException(String.format("Duplicate ContextId: %s", contextId));
           }
-          return new ByteOutputContext(remoteExecutorId, contextId, contextDescriptor, this);
+          return new RemoteByteOutputContext(remoteExecutorId, contextId, contextDescriptor, this);
         });
         if (isPipe) {
           pipeManagerWorker.onOutputContext(context);
@@ -179,11 +182,38 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     contexts.remove(contextId.getTransferIndex(), context);
   }
 
+  public void onContextCloseLocal(
+    final int transferIndex) {
+    final ByteInputContext localInputContext = inputContextsInitiatedByRemote.get(transferIndex);
+    inputContextsInitiatedByRemote.remove(transferIndex);
+    localInputContext.onContextClose();
+  }
+
+  public void onContextRestartLocal(
+    final int transferIndex) {
+    final ByteInputContext localInputContext = inputContextsInitiatedByRemote.get(transferIndex);
+    LOG.info("local context restart!! {}", localInputContext.getContextId());
+    localInputContext.onContextRestart();
+    try {
+      pipeManagerWorker.onInputContext(localInputContext);
+    } catch (InvalidProtocolBufferException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
+
+  public void onContextStopLocal(
+    final int transferIndex) {
+    final ByteInputContext localInputContext = inputContextsInitiatedByRemote.get(transferIndex);
+    LOG.info("local context stop!! {}", localInputContext.getContextId());
+    localInputContext.onContextStop();
+  }
+
   void onContextStop(final ByteInputContext context) {
     LOG.info("context stop!! {}", context.getContextId());
     final ByteTransferContext.ContextId contextId = context.getContextId();
     inputContextsInitiatedByRemote.remove(contextId.getTransferIndex(), context);
-    final ByteInputContext restartContext = new ByteInputContext(
+    final ByteInputContext restartContext = new RemoteByteInputContext(
       contextId.getInitiatorExecutorId(), contextId, context.getContextDescriptor(), this);
     inputContextsInitiatedByRemote.put(contextId.getTransferIndex(), restartContext);
   }
@@ -204,7 +234,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
                                                final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
                                                final Function<ByteTransferContext.ContextId, T> contextGenerator,
                                                final String executorId,
-                                               final boolean isPipe) {
+                                               final boolean isPipe,
+                                               final boolean isLocal) {
     setRemoteExecutorId(executorId);
     final int transferIndex = transferIndexCounter.getAndIncrement();
     final ByteTransferContext.ContextId contextId = new ByteTransferContext.ContextId(localExecutorId, executorId, dataDirection, transferIndex, isPipe);
@@ -222,7 +253,11 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
         context.getContextDescriptor(),
         context.getContextId().isPipe());
 
-    channel.writeAndFlush(message).addListener(context.getChannelWriteListener());
+    if (isLocal) {
+      // do nothing
+    } else {
+      channel.writeAndFlush(message).addListener(context.getChannelWriteListener());
+    }
     return context;
   }
 
@@ -236,8 +271,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
   ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
     return newContext(inputContextsInitiatedByLocal, nextInputTransferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
-        contextId -> new ByteInputContext(executorId, contextId, contextDescriptor, this),
-        executorId, isPipe);
+        contextId -> new RemoteByteInputContext(executorId, contextId, contextDescriptor, this),
+        executorId, isPipe, false);
   }
 
   /**
@@ -248,10 +283,33 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * @return new {@link ByteOutputContext}
    */
   ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
-    return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
-      ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
-        contextId -> new ByteOutputContext(executorId, contextId, contextDescriptor, this),
-        executorId, isPipe);
+    if (localExecutorId.equals(executorId)) {
+      // TODO: create local output context
+      final Queue<Object> queue = new ConcurrentLinkedQueue<>();
+      return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
+        ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
+        contextId -> {
+        final LocalByteInputContext localByteInputContext =
+          new LocalByteInputContext(executorId, contextId, contextDescriptor, this, queue);
+
+          inputContextsInitiatedByRemote.put(contextId.getTransferIndex(), localByteInputContext);
+          try {
+            pipeManagerWorker.onInputContext(localByteInputContext);
+          } catch (InvalidProtocolBufferException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+          }
+
+          return new LocalByteOutputContext(executorId, contextId, contextDescriptor, this, queue);
+        },
+        executorId, isPipe, true);
+
+    } else {
+      return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
+        ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
+        contextId -> new RemoteByteOutputContext(executorId, contextId, contextDescriptor, this),
+        executorId, isPipe, false);
+    }
   }
 
   /**

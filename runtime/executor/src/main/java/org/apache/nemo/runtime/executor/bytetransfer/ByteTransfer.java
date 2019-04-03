@@ -19,7 +19,11 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.channel.*;
+import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
+import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.reef.tang.InjectionFuture;
+import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,14 +43,28 @@ public final class ByteTransfer {
 
   private final ByteTransport byteTransport;
   private final ConcurrentMap<String, ChannelFuture> executorIdToChannelFutureMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, ContextManager> executorIdLocalContextManagerMap = new ConcurrentHashMap<>();
+
+  private final InjectionFuture<PipeManagerWorker> pipeManagerWorker;
+  private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
+  private final InjectionFuture<ByteTransfer> byteTransfer;
+  private final String localExecutorId;
 
   /**
    * Creates a byte transfer.
    * @param byteTransport provides channels to other executors
    */
   @Inject
-  private ByteTransfer(final ByteTransport byteTransport) {
+  private ByteTransfer(final ByteTransport byteTransport,
+                       @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
+                       final InjectionFuture<PipeManagerWorker> pipeManagerWorker,
+                       final InjectionFuture<BlockManagerWorker> blockManagerWorker,
+                       final InjectionFuture<ByteTransfer> byteTransfer) {
     this.byteTransport = byteTransport;
+    this.localExecutorId = localExecutorId;
+    this.pipeManagerWorker = pipeManagerWorker;
+    this.blockManagerWorker = blockManagerWorker;
+    this.byteTransfer = byteTransfer;
   }
 
   /**
@@ -71,9 +89,21 @@ public final class ByteTransfer {
    */
   public CompletableFuture<ByteOutputContext> newOutputContext(final String executorId,
                                                                final byte[] contextDescriptor,
-                                                               final boolean isPipe) {
-    LOG.info("New output context: {}", executorId);
-    return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
+                                                               final boolean isPipe,
+                                                               final boolean isLocal) {
+    if (isLocal) {
+      LOG.info("New local output context: {}", executorId);
+      byteTransport.getAndPutInetAddress(executorId);
+      executorIdLocalContextManagerMap.putIfAbsent(executorId,
+        new ContextManager(pipeManagerWorker.get(), blockManagerWorker.get(),
+          byteTransfer.get(), null, localExecutorId, null));
+      final ContextManager contextManager = executorIdLocalContextManagerMap.get(executorId);
+      return CompletableFuture.completedFuture(
+        contextManager.newOutputContext(executorId, contextDescriptor, isPipe));
+    } else {
+      LOG.info("New remote output context: {}", executorId);
+      return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
+    }
   }
 
   /**

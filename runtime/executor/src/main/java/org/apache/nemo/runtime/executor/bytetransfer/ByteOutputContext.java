@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import java.io.Flushable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.channels.FileChannel;
@@ -43,106 +44,16 @@ import java.nio.file.Paths;
  * <p>Public methods are thread safe,
  * although the execution order may not be linearized if they were called from different threads.</p>
  */
-public final class ByteOutputContext extends ByteTransferContext implements AutoCloseable {
-  private static final Logger LOG = LoggerFactory.getLogger(ByteOutputContext.class.getName());
-
-  private final Channel channel;
-
-  private volatile boolean closed = false;
-
-  /**
-   * Creates a output context.
-   *
-   * @param remoteExecutorId    id of the remote executor
-   * @param contextId           identifier for this context
-   * @param contextDescriptor   user-provided context descriptor
-   * @param contextManager      {@link ContextManager} for the channel
-   */
-  ByteOutputContext(final String remoteExecutorId,
-                    final ContextId contextId,
-                    final byte[] contextDescriptor,
-                    final ContextManager contextManager) {
-    super(remoteExecutorId, contextId, contextDescriptor, contextManager);
-    this.channel = contextManager.getChannel();
-  }
-
-  /**
-   * Closes existing sub-stream (if any) and create a new sub-stream.
-   * @return new {@link ByteOutputStream}
-   * @throws IOException if an exception was set or this context was closed.
-   */
-  public ByteOutputStream newOutputStream() throws IOException {
-    ensureNoException();
-    if (closed) {
-      throw new IOException("Context already closed.");
-    }
-
-    return new ByteOutputStream();
-  }
+public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
 
 
-  public Channel getChannel() {
-    return channel;
-  }
+  ByteOutputStream newOutputStream() throws IOException;
 
-  public void stop() {
-    // just send stop message
+  void stop();
 
-    LOG.info("Stop context {}", getContextId());
+  void restart();
 
-    channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstanceForStop(getContextId()))
-      .addListener(getChannelWriteListener());
-  }
-
-  public void restart() {
-    final ByteTransferContextSetupMessage message =
-      new ByteTransferContextSetupMessage(getContextId().getInitiatorExecutorId(),
-        getContextId().getTransferIndex(),
-        getContextId().getDataDirection(),
-        getContextDescriptor(),
-        getContextId().isPipe(),
-        true);
-
-    LOG.info("Restart context {}", message);
-
-    channel.writeAndFlush(message).addListener(getChannelWriteListener());
-  }
-
-  /**
-   * Closes this stream.
-   *
-   * @throws IOException if an exception was set
-   */
-  @Override
-  public void close() throws IOException {
-    ensureNoException();
-    if (closed) {
-      return;
-    }
-    channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId()))
-      .addListener(getChannelWriteListener());
-    deregister();
-    closed = true;
-  }
-
-  @Override
-  public void onChannelError(@Nullable final Throwable cause) {
-    setChannelError(cause);
-    channel.close();
-  }
-
-  /**
-   * @throws IOException when a channel exception has been set.
-   */
-  void ensureNoException() throws IOException {
-    if (hasException()) {
-      if (getException() == null) {
-        throw new IOException();
-      } else {
-        throw new IOException(getException());
-      }
-    }
-  }
+  void onChannelError(@Nullable final Throwable cause);
 
   /**
    * An {@link OutputStream} implementation which buffers data to {@link ByteBuf}s.
@@ -150,40 +61,13 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
    * <p>Public methods are thread safe,
    * although the execution order may not be linearized if they were called from different threads.</p>
    */
-  public final class ByteOutputStream extends OutputStream {
+  public interface ByteOutputStream extends AutoCloseable, Flushable {
 
-    private volatile boolean newSubStream = true;
-    private volatile boolean closed = false;
+    void write(final int i) throws IOException;
 
-    public Channel getChannel() {
-      return channel;
-    }
+    void write(final byte[] bytes, final int offset, final int length) throws IOException;
 
-    @Override
-    public void write(final int i) throws IOException {
-      final ByteBuf byteBuf = channel.alloc().ioBuffer(1, 1);
-      byteBuf.writeByte(i);
-      writeByteBuf(byteBuf);
-    }
-
-    @Override
-    public void write(final byte[] bytes, final int offset, final int length) throws IOException {
-      final ByteBuf byteBuf = channel.alloc().ioBuffer(length, length);
-      byteBuf.writeBytes(bytes, offset, length);
-      writeByteBuf(byteBuf);
-    }
-
-    /**
-     * Writes {@link SerializedPartition}.
-     * @param serializedPartition {@link SerializedPartition} to write.
-     * @return {@code this}
-     * @throws IOException when an exception has been set or this stream was closed
-     */
-    public ByteOutputStream writeSerializedPartition(final SerializedPartition serializedPartition)
-      throws IOException {
-      write(serializedPartition.getData(), 0, serializedPartition.getLength());
-      return this;
-    }
+    ByteOutputStream writeSerializedPartition(final SerializedPartition serializedPartition)  throws IOException;
 
     /**
      * Writes a data frame from {@link FileArea}.
@@ -192,88 +76,9 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
      * @return {@code this}
      * @throws IOException when failed to open the file, an exception has been set, or this stream was closed
      */
-    public ByteOutputStream writeFileArea(final FileArea fileArea) throws IOException {
-      final Path path = Paths.get(fileArea.getPath());
-      long cursor = fileArea.getPosition();
-      long bytesToSend = fileArea.getCount();
-      boolean init = true;
-      while (bytesToSend > 0) {
-        final long size = Math.min(bytesToSend, DataFrameEncoder.LENGTH_MAX);
-        final FileRegion fileRegion = new DefaultFileRegion(FileChannel.open(path), cursor, size);
-        writeDataFrame(fileRegion, size, init);
-        cursor += size;
-        bytesToSend -= size;
-        init = false;
-      }
-      return this;
-    }
+    ByteOutputStream writeFileArea(final FileArea fileArea) throws IOException;
 
-    @Override
-    public void close() throws IOException {
-      if (closed) {
-        return;
-      }
-      if (newSubStream) {
-        // to emit a frame with new sub-stream flag
-        writeDataFrame(null, 0, true);
-      }
-
-      channel.flush();
-      closed = true;
-    }
-
-    /**
-     * Writes a data frame, from {@link ByteBuf}.
-     * @param byteBuf {@link ByteBuf} to write.
-     */
-    private void writeByteBuf(final ByteBuf byteBuf) throws IOException {
-      if (byteBuf.readableBytes() > 0) {
-        writeDataFrame(byteBuf, byteBuf.readableBytes(), true);
-      }
-    }
-
-    /**
-     * Write an element to the channel.
-     * @param element element
-     * @param serializer serializer
-     */
-    public void writeElement(final Object element,
-                             final Serializer serializer) {
-      final ByteBuf byteBuf = channel.alloc().ioBuffer();
-      final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
-      try {
-        final OutputStream wrapped =
-          DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
-        final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
-        //LOG.info("Element encoder: {}", encoder);
-        encoder.encode(element);
-        wrapped.close();
-
-        writeByteBuf(byteBuf);
-      } catch (final IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    @Override
-    public void flush() {
-      //channel.flush();
-    }
-
-    /**
-     * Writes a data frame.
-     * @param body        the body or {@code null}
-     * @param length      the length of the body, in bytes
-     * @throws IOException when an exception has been set or this stream was closed
-     */
-    private void writeDataFrame(
-      final Object body, final long length, final boolean openSubStream) throws IOException {
-      ensureNoException();
-      if (closed) {
-        throw new IOException("Stream already closed.");
-      }
-      channel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
-        .addListener(getChannelWriteListener());
-    }
+    void writeElement(final Object element,
+                      final Serializer serializer);
   }
 }

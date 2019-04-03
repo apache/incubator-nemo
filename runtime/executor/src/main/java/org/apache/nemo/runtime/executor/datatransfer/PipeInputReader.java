@@ -24,6 +24,8 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
+import org.apache.nemo.runtime.executor.bytetransfer.LocalByteInputContext;
+import org.apache.nemo.runtime.executor.bytetransfer.RemoteByteInputContext;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.reef.wake.EventHandler;
@@ -87,9 +89,14 @@ public final class PipeInputReader implements InputReader {
       .registerInputContextHandler(runtimeEdge, dstTaskIndex, pair -> {
         final ByteInputContext context = pair.left();
         final int srcTaskIndex = pair.right();
+        if (context instanceof LocalByteInputContext) {
+          final LocalByteInputContext localByteInputContext = (LocalByteInputContext) context;
+          handler.onNext(Pair.of(localByteInputContext.getIteratorWithNumBytes(), srcTaskIndex));
+        } else if (context instanceof RemoteByteInputContext) {
           handler.onNext(Pair.of(new DataUtil.InputStreamIterator(context.getInputStreams(),
-          pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())), srcTaskIndex));
-        });
+            pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())), srcTaskIndex));
+        }
+      });
   }
 
   public List<DataUtil.IteratorWithNumBytes> readBlocking() {

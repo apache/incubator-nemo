@@ -362,7 +362,8 @@ public final class BlockManagerWorker {
             // We don't have the block here...
             throw new RuntimeException(String.format("Block %s not found in local BlockManagerWorker", blockId));
           }
-        } catch (final IOException | BlockFetchException e) {
+        } catch (final Exception e) {
+          e.printStackTrace();
           LOG.error("Closing a block request exceptionally", e);
           outputContext.onChannelError(e);
         }
