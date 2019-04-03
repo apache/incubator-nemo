@@ -287,6 +287,9 @@ public final class TaskOffloader {
 
               final long cpuTimeOfThisTask = deltaMap.get(taskExecutor);
 
+                LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
+              currCpuTimeSum, taskExecutor.getId(), cpuTimeOfThisTask, targetCpuTime);
+
               if (currTime - offloadingTime >= slackTime) {
                 LOG.info("Deoffloading task {}, currCpuTime: {}, cpuTimeOfTask: {}",
                   taskExecutor.getId(), currCpuTimeSum, cpuTimeOfThisTask);

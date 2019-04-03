@@ -50,6 +50,11 @@ public final class StreamTransform<T> implements Transform<T, T> {
   }
 
   @Override
+  public void flush() {
+
+  }
+
+  @Override
   public void onWatermark(final Watermark watermark) {
     outputCollector.emitWatermark(watermark);
   }

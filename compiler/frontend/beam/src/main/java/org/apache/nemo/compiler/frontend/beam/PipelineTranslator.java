@@ -28,6 +28,7 @@ import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.display.HasDisplayData;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
+import org.apache.beam.sdk.util.AppliedCombineFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.compiler.frontend.beam.source.BeamBoundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
@@ -267,7 +268,12 @@ final class PipelineTranslator {
   private static void groupByKeyTranslator(final PipelineTranslationContext ctx,
                                            final TransformHierarchy.Node beamNode,
                                            final GroupByKey<?, ?> transform) {
-    final IRVertex vertex = new OperatorVertex(createGBKTransform(ctx, beamNode));
+    final AppliedPTransform pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
+    final PCollection<?> mainInput = (PCollection<?>)
+      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+
+    final IRVertex vertex = new OperatorVertex(
+      createGBKTransform(pTransform, mainInput, ctx, beamNode, SystemReduceFn.buffering(mainInput.getCoder())));
     vertex.isStateful = true;
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
@@ -349,13 +355,81 @@ final class PipelineTranslator {
     final TransformHierarchy.Node beamNode,
     final PTransform<?, ?> transform) {
 
+    final Combine.PerKey perKey = (Combine.PerKey) transform;
+
     // Check if the partial combining optimization can be applied.
     // If not, simply use the default Combine implementation by entering into it.
     if (!(isMainInputBounded(beamNode, ctx.getPipeline()) && isGlobalWindow(beamNode, ctx.getPipeline()))) {
+
       // TODO #263: Partial Combining for Beam Streaming
-      return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
+      final CombineFnBase.GlobalCombineFn combineFn = perKey.getFn();
+      final AppliedPTransform pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
+      final PCollection<?> mainInput = (PCollection<?>)
+        Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+      final TupleTag mainOutputTag = new TupleTag<>();
+
+      final PCollection inputs = (PCollection) Iterables.getOnlyElement(
+        TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
+      final KvCoder inputCoder = (KvCoder) inputs.getCoder();
+
+      final Combine.CombineFn partialCombineFn  = new PartialCombineFn((Combine.CombineFn) combineFn);
+      final SystemReduceFn partialSystemReduceFn =
+        SystemReduceFn.combining(
+          inputCoder.getKeyCoder(),
+          AppliedCombineFn.withInputCoder(partialCombineFn, ctx.getPipeline().getCoderRegistry(), inputCoder));
+
+      // (stage 1) partial combine
+      final GBKPartialTransform gbkPartial =
+        new GBKPartialTransform<>(
+        getOutputCoders(pTransform),
+        mainOutputTag,
+        mainInput.getWindowingStrategy(),
+        ctx.getPipelineOptions(),
+          partialSystemReduceFn,
+        DisplayData.from(beamNode.getTransform()));
+
+      final IRVertex partialCombine = new OperatorVertex(gbkPartial);
+      ctx.addVertex(partialCombine);
+      beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
+
+
+      // (Stage 2) final combine
+      final Combine.CombineFn finalCombineFn = new FinalCombineFn((Combine.CombineFn) combineFn);
+      final SystemReduceFn finalSystemReduceFn =
+        SystemReduceFn.combining(
+          inputCoder.getKeyCoder(),
+          AppliedCombineFn.withInputCoder(finalCombineFn, ctx.getPipeline().getCoderRegistry(), inputCoder));
+
+      final GBKFinalTransform gbkFinalTransform =
+        new GBKFinalTransform(
+          getOutputCoders(pTransform),
+          mainOutputTag,
+          mainInput.getWindowingStrategy(),
+          ctx.getPipelineOptions(),
+          finalSystemReduceFn,
+          DisplayData.from(beamNode.getTransform()));
+
+      final Coder accumulatorCoder;
+      try {
+        accumulatorCoder =
+          combineFn.getAccumulatorCoder(ctx.getPipeline().getCoderRegistry(), inputCoder.getValueCoder());
+      } catch (CannotProvideCoderException e) {
+        throw new RuntimeException(e);
+      }
+      final IRVertex finalCombine = new OperatorVertex(gbkFinalTransform);
+      ctx.addVertex(finalCombine);
+      final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, partialCombine, finalCombine);
+      ctx.addEdge(
+        edge,
+        KvCoder.of(inputCoder.getKeyCoder(), accumulatorCoder),
+        inputs.getWindowingStrategy().getWindowFn().windowCoder());
+
+      // (Step 3) To Combine Output
+      beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, finalCombine, output));
+
+      return Pipeline.PipelineVisitor.CompositeBehavior.DO_NOT_ENTER_TRANSFORM;
     }
-    final Combine.PerKey perKey = (Combine.PerKey) transform;
+
     if (!perKey.getSideInputs().isEmpty()) {
       // TODO #264: Partial Combining with Beam SideInputs
       return Pipeline.PipelineVisitor.CompositeBehavior.ENTER_TRANSFORM;
@@ -511,11 +585,12 @@ final class PipelineTranslator {
    * @return group by key transform
    */
   private static Transform createGBKTransform(
+    final AppliedPTransform pTransform,
+    final PCollection mainInput,
     final PipelineTranslationContext ctx,
-    final TransformHierarchy.Node beamNode) {
-    final AppliedPTransform pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
-    final PCollection<?> mainInput = (PCollection<?>)
-      Iterables.getOnlyElement(TransformInputs.nonAdditionalInputs(pTransform));
+    final TransformHierarchy.Node beamNode,
+    final SystemReduceFn systemReduceFn) {
+
     final TupleTag mainOutputTag = new TupleTag<>();
 
     if (isGlobalWindow(beamNode, ctx.getPipeline())) {
@@ -526,7 +601,8 @@ final class PipelineTranslator {
         mainOutputTag,
         mainInput.getWindowingStrategy(),
         ctx.getPipelineOptions(),
-        SystemReduceFn.buffering(mainInput.getCoder()),
+        systemReduceFn,
+        //SystemReduceFn.buffering(mainInput.getCoder()),
         DisplayData.from(beamNode.getTransform()));
     }
   }

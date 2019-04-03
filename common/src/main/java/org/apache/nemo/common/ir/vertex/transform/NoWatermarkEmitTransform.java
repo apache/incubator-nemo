@@ -36,4 +36,8 @@ public abstract class NoWatermarkEmitTransform<I, O> implements Transform<I, O> 
     // do nothing
   }
 
+  public void flush() {
+
+  }
+
 }

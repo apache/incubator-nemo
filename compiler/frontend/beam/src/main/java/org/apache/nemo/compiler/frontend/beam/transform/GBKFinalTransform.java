@@ -28,9 +28,9 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowTracing;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
-import org.apache.beam.sdk.values.KV;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -47,9 +47,9 @@ import java.util.*;
  * @param <K> key type.
  * @param <InputT> input type.
  */
-public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
+public final class GBKFinalTransform<K, InputT>
   extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> {
-  private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyAndWindowDoFnTransform.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(GBKFinalTransform.class.getName());
 
   private final SystemReduceFn reduceFn; //private final Map<K, List<WindowedValue<InputT>>> keyToValues;
   private transient InMemoryTimerInternalsFactory inMemoryTimerInternalsFactory;
@@ -66,12 +66,12 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   /**
    * GroupByKey constructor.
    */
-  public GroupByKeyAndWindowDoFnTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
-                                          final TupleTag<KV<K, Iterable<InputT>>> mainOutputTag,
-                                          final WindowingStrategy<?, ?> windowingStrategy,
-                                          final PipelineOptions options,
-                                          final SystemReduceFn reduceFn,
-                                          final DisplayData displayData) {
+  public GBKFinalTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
+                           final TupleTag<KV<K, Iterable<InputT>>> mainOutputTag,
+                           final WindowingStrategy<?, ?> windowingStrategy,
+                           final PipelineOptions options,
+                           final SystemReduceFn reduceFn,
+                           final DisplayData displayData) {
     super(null, /* doFn */
       null, /* inputCoder */
       outputCoders,
@@ -121,20 +121,26 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
   /**
    * It collects data for each key.
-   * The collected data are emitted at {@link GroupByKeyAndWindowDoFnTransform#onWatermark(Watermark)}
+   * The collected data are emitted at {@link GBKFinalTransform#onWatermark(Watermark)}
    * @param element data element
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
+
+    //LOG.info("Final input receive: {}, timestamp: {}, inputWatermark: {}", element,
+    //  element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
+
     // drop late data
     if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
+      //LOG.info("Final input process: {}", element);
+
+      //LOG.info("Final input!!: {}", element);
       // We can call Beam's DoFnRunner#processElement here,
       // but it may generate some overheads if we call the method for each data.
       // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
       // TODO #250: But, this approach can delay the event processing in streaming,
       // TODO #250: if the watermark is not triggered for a long time.
       final KV<K, InputT> kv = element.getValue();
-
       checkAndInvokeBundle();
       final KeyedWorkItem<K, InputT> keyedWorkItem =
         KeyedWorkItems.elementsWorkItem(kv.getKey(),
@@ -155,6 +161,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private void processElementsAndTriggerTimers(final Instant processingTime,
                                                final Instant synchronizedTime) {
 
+
     // Trigger timers
 
     final int triggeredKeys = triggerTimers(processingTime, synchronizedTime);
@@ -172,7 +179,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private void emitOutputWatermark() {
     // Find min watermark hold
     final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
-      ? new Watermark(Long.MAX_VALUE) // set this to MAX, in order to just use the input watermark.
+      ? new Watermark(Long.MIN_VALUE) // set this to MAX, in order to just use the input watermark.
       : Collections.min(keyAndWatermarkHoldMap.values());
     final Watermark outputWatermarkCandidate = new Watermark(
       Math.max(prevOutputWatermark.getTimestamp(),
@@ -202,6 +209,7 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   @Override
   public void onWatermark(final Watermark watermark) {
 
+    //LOG.info("Final watermark receive: {}", new Instant(watermark.getTimestamp()));
     //LOG.info("Watermark at GBKW: {}", watermark);
     checkAndInvokeBundle();
     inputWatermark = watermark;

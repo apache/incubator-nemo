@@ -175,6 +175,11 @@ public final class EmptyComponents {
     }
 
     @Override
+    public void flush() {
+
+    }
+
+    @Override
     public void close() {
     }
   }

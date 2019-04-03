@@ -80,6 +80,11 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
   }
 
   @Override
+  public void flush() {
+
+  }
+
+  @Override
   public void onWatermark(final Watermark inputWatermark) {
     // If no data, just forwards the watermark
     if (windowListMap.size() == 0 && currentOutputWatermark < inputWatermark.getTimestamp()) {

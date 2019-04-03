@@ -12,8 +12,11 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.conf.EvalConf;
@@ -85,6 +88,7 @@ public final class KafkaOffloader {
   private final EvalConf evalConf;
   private final PersistentConnectionToMasterMap toMaster;
   private final Collection<OutputWriter> outputWriters;
+  final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
 
   public KafkaOffloader(final String executorId,
                         final Task task,
@@ -104,7 +108,8 @@ public final class KafkaOffloader {
                         final AtomicLong prevOffloadStartTime,
                         final AtomicLong prevOffloadEndTime,
                         final PersistentConnectionToMasterMap toMaster,
-                        final Collection<OutputWriter> outputWriters) {
+                        final Collection<OutputWriter> outputWriters,
+                        final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
     this.executorId = executorId;
     this.task = task;
     this.evalConf = evalConf;
@@ -125,6 +130,7 @@ public final class KafkaOffloader {
     this.prevOffloadStartTime = prevOffloadStartTime;
     this.toMaster = toMaster;
     this.outputWriters = outputWriters;
+    this.irVertexDag = irVertexDag;
 
     logger.scheduleAtFixedRate(() -> {
 
@@ -609,7 +615,14 @@ public final class KafkaOffloader {
         throw new RuntimeException("Invalid task status: " + taskStatus);
       } else {
         // we should emit end message
+        irVertexDag.getTopologicalSort().stream().forEach(irVertex -> {
+          if (irVertex instanceof OperatorVertex) {
+            final Transform transform = ((OperatorVertex) irVertex).getTransform();
+            transform.flush();
+          }
+        });
         LOG.info("Close current output contexts");
+
         outputWriters.forEach(OutputWriter::stop);
       }
     }

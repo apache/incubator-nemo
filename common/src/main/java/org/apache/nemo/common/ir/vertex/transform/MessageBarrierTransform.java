@@ -60,6 +60,11 @@ public final class MessageBarrierTransform<I, K, V> extends NoWatermarkEmitTrans
   }
 
   @Override
+  public void flush() {
+
+  }
+
+  @Override
   public void close() {
     holder.forEach((k, v) -> {
       final Pair<K, V> pairData = Pair.of(k, v);

@@ -60,6 +60,11 @@ public final class MessageAggregatorTransform<K, V, O> extends NoWatermarkEmitTr
   }
 
   @Override
+  public void flush() {
+
+  }
+
+  @Override
   public void close() {
     outputCollector.emit(aggregatedDynOptData);
   }

@@ -835,7 +835,8 @@ public final class TaskExecutor {
           prevOffloadStartTime,
           prevOffloadEndTime,
           toMaster,
-          outputWriterMap.values()));
+          outputWriterMap.values(),
+          irVertexDag));
       } else {
        kafkaOffloader = Optional.empty();
       }

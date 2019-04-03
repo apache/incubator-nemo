@@ -288,6 +288,10 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
       : SimplePushbackSideInputDoFnRunner.<InterT, OutputT>create(doFnRunner, sideInputs.values(), sideInputReader);
   }
 
+  public void flush() {
+
+  }
+
   /**
    * Getter function for output collector.
    * @return output collector.

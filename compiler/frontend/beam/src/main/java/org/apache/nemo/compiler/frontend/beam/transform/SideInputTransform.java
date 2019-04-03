@@ -52,6 +52,11 @@ public final class SideInputTransform<T> implements Transform<WindowedValue<T>, 
   }
 
   @Override
+  public void flush() {
+
+  }
+
+  @Override
   public void onWatermark(final Watermark watermark) {
     outputCollector.emitWatermark(watermark);
   }

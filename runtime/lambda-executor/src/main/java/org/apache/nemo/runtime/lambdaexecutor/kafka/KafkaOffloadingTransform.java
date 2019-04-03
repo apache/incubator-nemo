@@ -273,6 +273,15 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
     try {
       dataFetcherExecutor.close();
 
+
+      // flush transforms
+      irDag.getTopologicalSort().stream().forEach(irVertex -> {
+        if (irVertex instanceof OperatorVertex) {
+          final Transform transform = ((OperatorVertex) irVertex).getTransform();
+          transform.flush();
+        }
+      });
+
       if (channels != null) {
         scheduledExecutorService.shutdown();
       }
