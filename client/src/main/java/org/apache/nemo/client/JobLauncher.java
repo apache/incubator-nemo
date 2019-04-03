@@ -172,6 +172,7 @@ public final class JobLauncher {
     // Launch driver
     LOG.info("Launching driver");
     driverReadyLatch = new CountDownLatch(1);
+    jobDoneLatch = new CountDownLatch(1);
     driverLauncher = DriverLauncher.getLauncher(deployModeConf);
     driverLauncher.submit(jobAndDriverConf, 500);
     // When the driver is up and the resource is ready, the DriverReady message is delivered.
@@ -205,6 +206,8 @@ public final class JobLauncher {
     final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
     if (possibleError.isPresent()) {
       throw new RuntimeException(possibleError.get());
+    } else if (jobDoneLatch.getCount() > 0) {
+      LOG.info("Job cancelled");
     } else {
       LOG.info("Job successfully completed");
     }
@@ -259,7 +262,9 @@ public final class JobLauncher {
 
     LOG.info("Launching DAG...");
     serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
-    jobDoneLatch = new CountDownLatch(1);
+    if (jobDoneLatch == null || jobDoneLatch.getCount() == 0) {
+      jobDoneLatch = new CountDownLatch(1);
+    }
 
     driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
       .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)

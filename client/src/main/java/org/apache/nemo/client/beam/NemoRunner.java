@@ -27,6 +27,8 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.apache.nemo.compiler.frontend.beam.PipelineVisitor;
 
+import java.util.concurrent.CompletableFuture;
+
 /**
  * Runner class for BEAM programs.
  */
@@ -84,7 +86,9 @@ public final class NemoRunner extends PipelineRunner<NemoPipelineResult> {
     final PipelineVisitor pipelineVisitor = new PipelineVisitor(pipeline, nemoPipelineOptions);
     pipeline.traverseTopologically(pipelineVisitor);
     final NemoPipelineResult nemoPipelineResult = new NemoPipelineResult();
-    JobLauncher.launchDAG(pipelineVisitor.getConvertedPipeline(), nemoPipelineOptions.getJobName());
+    CompletableFuture.runAsync(() ->
+      JobLauncher.launchDAG(pipelineVisitor.getConvertedPipeline(), nemoPipelineOptions.getJobName()))
+      .thenRun(nemoPipelineResult::setJobDone);
     return nemoPipelineResult;
   }
 }

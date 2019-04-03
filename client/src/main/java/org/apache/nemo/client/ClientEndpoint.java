@@ -90,7 +90,12 @@ public abstract class ClientEndpoint {
     try {
       if (driverEndpoint.get() == null) {
         // If the driver endpoint is not connected, wait.
-        return driverConnected.await(timeout, unit);
+        if (timeout < 1) {
+          driverConnected.await();
+          return true;
+        } else {
+          return driverConnected.await(timeout, unit);
+        }
       } else {
         return true;
       }
@@ -109,20 +114,7 @@ public abstract class ClientEndpoint {
    * @return {@code true} if the manager set.
    */
   private boolean waitUntilConnected() {
-    connectionLock.lock();
-    try {
-      if (driverEndpoint.get() == null) {
-        // If the driver endpoint is not connected, wait.
-        driverConnected.await();
-      }
-      return true;
-    } catch (final InterruptedException e) {
-      e.printStackTrace(System.err);
-      Thread.currentThread().interrupt();
-      return false;
-    } finally {
-      connectionLock.unlock();
-    }
+    return waitUntilConnected(0, TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -154,7 +146,7 @@ public abstract class ClientEndpoint {
       // The driver endpoint is not connected yet.
       final long currentNano = System.nanoTime();
       final boolean driverIsConnected;
-      if (DEFAULT_DRIVER_WAIT_IN_MILLIS < unit.toMillis(timeout)) {
+      if (timeout > 0 && DEFAULT_DRIVER_WAIT_IN_MILLIS < unit.toMillis(timeout)) {
         driverIsConnected = waitUntilConnected(DEFAULT_DRIVER_WAIT_IN_MILLIS, TimeUnit.MILLISECONDS);
       } else {
         driverIsConnected = waitUntilConnected(timeout, unit);
@@ -165,7 +157,8 @@ public abstract class ClientEndpoint {
         return stateTranslator.translateState(driverEndpoint.get().
           waitUntilFinish(timeout - unit.convert(consumedTime, TimeUnit.NANOSECONDS), unit));
       } else {
-        return PlanState.State.READY;
+        // Driver is not connected.
+        return stateTranslator.translateState(PlanState.State.READY);
       }
     }
   }
@@ -176,17 +169,6 @@ public abstract class ClientEndpoint {
    * @return the final state of this job.
    */
   public final Enum waitUntilJobFinish() {
-    if (driverEndpoint.get() != null) {
-      return stateTranslator.translateState(driverEndpoint.get().waitUntilFinish());
-    } else {
-      // The driver endpoint is not connected yet.
-      final boolean driverIsConnected = waitUntilConnected();
-
-      if (driverIsConnected) {
-        return stateTranslator.translateState(driverEndpoint.get().waitUntilFinish());
-      } else {
-        return PlanState.State.READY;
-      }
-    }
+    return waitUntilJobFinish(0, TimeUnit.MILLISECONDS);
   }
 }

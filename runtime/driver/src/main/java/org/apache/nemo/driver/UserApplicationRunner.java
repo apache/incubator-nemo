@@ -27,6 +27,7 @@ import org.apache.nemo.compiler.optimizer.Optimizer;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
+import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.reef.tang.annotations.Parameter;
@@ -97,14 +98,15 @@ public final class UserApplicationRunner {
       // Wait for the job to finish and stop logging
       final PlanStateManager planStateManager = executionResult.left();
       final ScheduledExecutorService dagLoggingExecutor = executionResult.right();
+      final PlanState.State state;
       try {
-        planStateManager.waitUntilFinish();
+        state = planStateManager.waitUntilFinish();
         dagLoggingExecutor.shutdown();
       } finally {
         planStateManager.storeJSON("final");
       }
 
-      LOG.info("{} is complete!", physicalPlan.getPlanId());
+      LOG.info("{} is complete, with final status {}!", physicalPlan.getPlanId(), state);
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }

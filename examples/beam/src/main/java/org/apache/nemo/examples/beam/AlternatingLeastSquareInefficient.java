@@ -159,7 +159,7 @@ public final class AlternatingLeastSquareInefficient {
       itemMatrix = itemMatrix.apply(new UpdateUserAndItemMatrix(numFeatures, lambda, rawData, parsedItemData));
     }
 
-    p.run();
+    p.run().waitUntilFinish();
     LOG.info("JCT " + (System.currentTimeMillis() - start));
   }
 }

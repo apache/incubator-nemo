@@ -66,6 +66,6 @@ public final class WordCount {
         }
       }));
     GenericSourceSink.write(result, outputFilePath);
-    p.run();
+    p.run().waitUntilFinish();
   }
 }
