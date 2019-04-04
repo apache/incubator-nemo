@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * OffloadingOutputCollector implementation.
@@ -64,6 +65,8 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
 
   private final double samplingRate;
   private final Random random = new Random();
+
+  private final Edge encodingEdge;
 
   /**
    * Constructor of the output collector.
@@ -98,6 +101,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
     this.externalMainOutputs = externalMainOutputs;
+    this.encodingEdge = getEncodingEdge();
   }
 
   private void emit(final OperatorVertex vertex, final O output) {
@@ -110,21 +114,40 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     }
   }
 
+  private Edge getEncodingEdge() {
+    if (externalMainOutputs.size() > 0) {
+      return externalMainOutputs.get(0).getEdge();
+    } else if (externalAdditionalOutputs.size() > 0) {
+      return externalAdditionalOutputs.values().stream()
+        .collect(Collectors.toList()).get(0).get(0).getEdge();
+    } else {
+      return edge;
+    }
+  }
+
   @Override
   public void emit(final O output) {
-    //LOG.info("Operator " + irVertex.getId() + " emit to ");
     List<String> nextOpIds = null;
 
-    for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
-      if (internalVertex.getNextOperator().isSink) {
-        // sampling!
-        if (random.nextDouble() < samplingRate) {
-          if (nextOpIds == null) {
-            nextOpIds = new LinkedList<>();
-          }
-          nextOpIds.add(internalVertex.getNextOperator().getId());
+    if (irVertex.isSink) {
+      if (random.nextDouble() < samplingRate) {
+        if (nextOpIds == null) {
+          nextOpIds = new LinkedList<>();
         }
+        nextOpIds.add(irVertex.getId());
       }
+
+      if (nextOpIds != null) {
+        resultCollector.result.add(new Triple<>(
+          nextOpIds,
+          encodingEdge.getId(),
+          new TimestampAndValue(inputTimestamp, output)));
+      }
+    }
+
+    //LOG.info("Operator " + irVertex.getId() + " emit to ");
+
+    for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
       //LOG.info(internalVertex.getNextOperator().getId() + ", ");
       final KafkaOperatorVertexOutputCollector oc =
         outputCollectorMap.get(internalVertex.getNextOperator().getId());
@@ -136,14 +159,6 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
       //LOG.info("Emit to output writer at {}", irVertex.getId());
       outputWriter.write(new TimestampAndValue<>(inputTimestamp, output));
     }
-
-    if (nextOpIds != null) {
-      //LOG.info("Emit to resultCollector in " + irVertex.getId());
-      resultCollector.result.add(new Triple<>(
-        nextOpIds,
-        edge.getId(),
-        new TimestampAndValue(inputTimestamp, output)));
-    }
   }
 
   @Override
@@ -151,18 +166,25 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     //LOG.info("{} emits {} to {}", irVertex.getId(), output, dstVertexId);
     List<String> nextOpIds = null;
 
+    if (irVertex.isSink) {
+      if (random.nextDouble() < samplingRate) {
+        if (nextOpIds == null) {
+          nextOpIds = new LinkedList<>();
+        }
+        nextOpIds.add(irVertex.getId());
+      }
+
+      if (nextOpIds != null) {
+        resultCollector.result.add(new Triple<>(
+          nextOpIds,
+          encodingEdge.getId(),
+          new TimestampAndValue(inputTimestamp, output)));
+      }
+    }
+
     if (internalAdditionalOutputs.containsKey(dstVertexId)) {
       for (final NextIntraTaskOperatorInfo internalVertex : internalAdditionalOutputs.get(dstVertexId)) {
-        if (internalVertex.getNextOperator().isSink) {
-          // sampling!
-          if (random.nextDouble() < samplingRate) {
-            if (nextOpIds == null) {
-              nextOpIds = new LinkedList<>();
-            }
-            nextOpIds.add(internalVertex.getNextOperator().getId());
-          }
-        }
-        //System.out.print(internalVertex.getNextOperator().getId() + ", ");
+       //System.out.print(internalVertex.getNextOperator().getId() + ", ");
         outputCollectorMap.get(internalVertex.getNextOperator().getId()).inputTimestamp = inputTimestamp;
         emit(internalVertex.getNextOperator(), (O) output);
       }
@@ -171,14 +193,6 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
         for (final PipeOutputWriter externalWriter : externalAdditionalOutputs.get(dstVertexId)) {
           externalWriter.write(new TimestampAndValue<>(inputTimestamp, (O) output));
         }
-      }
-
-      if (nextOpIds != null) {
-        //System.out.println("Emit to resultCollector in " + irVertex.getId());
-        resultCollector.result.add(new Triple<>(
-          nextOpIds,
-          edge.getId(),
-          new TimestampAndValue(inputTimestamp, output)));
       }
     }
 

@@ -89,6 +89,15 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
     pipeOutputWriters = new HashSet<>();
   }
 
+  private RuntimeEdge<IRVertex> getEdge(final DAG<IRVertex, RuntimeEdge<IRVertex>> dag,
+                                        final IRVertex vertex) {
+    if (dag.getOutgoingEdgesOf(vertex).size() == 0) {
+      return dag.getIncomingEdgesOf(vertex).get(0);
+    } else {
+      return dag.getOutgoingEdgesOf(vertex).get(0);
+    }
+  }
+
   private void prep(final int taskIndex) {
 
     System.out.println("TaskIndex: " + taskIndex + ", ExecutorId: " + executorId +",, change to " + executorId + "-" + taskIndex);
@@ -208,11 +217,13 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
       // skip sink
       System.out.println("vertex " + irVertex.getId() + " outgoing edges: " + irDag.getOutgoingEdgesOf(irVertex)
         + ", isSink: " + isSink);
+
+      final RuntimeEdge<IRVertex> e = getEdge(irDag, irVertex);
       KafkaOperatorVertexOutputCollector outputCollector =
         new KafkaOperatorVertexOutputCollector(
           irVertex,
           samplingMap.getOrDefault(irVertex.getId(), 1.0),
-          irVertex.isSink ? null : irDag.getOutgoingEdgesOf(irVertex).get(0), /* just use first edge for encoding */
+          e, /* just use first edge for encoding */
           internalMainOutputs,
           internalAdditionalOutputMap,
           resultCollector,

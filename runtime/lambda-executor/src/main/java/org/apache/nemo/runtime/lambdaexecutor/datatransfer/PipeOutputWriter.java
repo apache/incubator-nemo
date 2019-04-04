@@ -56,6 +56,7 @@ public final class PipeOutputWriter {
   private final StageEdge stageEdge;
   private final int originTaskIndex;
 
+
   PipeOutputWriter(final int srcTaskIndex,
                    final int originTaskIndex,
                    final RuntimeEdge runtimeEdge,
@@ -84,6 +85,10 @@ public final class PipeOutputWriter {
         stream.flush();
       }
     });
+  }
+
+  public RuntimeEdge getEdge() {
+    return runtimeEdge;
   }
 
   public void write(final Object element) {
