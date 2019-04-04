@@ -43,10 +43,13 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
   private Watermark currMinWatermark = new Watermark(Long.MIN_VALUE);
   private String sourceId;
   private final IRVertex vertex;
+  private final String taskId;
 
-  public DynamicInputWatermarkManager(final IRVertex vertex,
+  public DynamicInputWatermarkManager(final String taskId,
+                                      final IRVertex vertex,
                                       final OutputCollector<?> watermarkCollector) {
     super();
+    this.taskId = taskId;
     this.vertex = vertex;
     this.taskWatermarkMap = new ConcurrentHashMap<>();
     this.watermarkCollector = watermarkCollector;
@@ -66,7 +69,7 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
   }
 
   public synchronized void addEdge(final int index) {
-    LOG.info("{} edge index added {} at {}", vertex.getId(), index);
+    LOG.info("{} edge index added {} at {}", vertex.getId(), index, taskId);
     minWatermarkIndex = index;
   }
 

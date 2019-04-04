@@ -66,12 +66,15 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   // A watermark manager
   private InputWatermarkManager inputWatermarkManager;
 
+  private final String taskId;
 
-  MultiThreadParentTaskDataFetcher(final IRVertex dataSource,
+  MultiThreadParentTaskDataFetcher(final String taskId,
+                                   final IRVertex dataSource,
                                    final RuntimeEdge edge,
                                    final InputReader readerForParentTask,
                                    final OutputCollector outputCollector) {
     super(dataSource, edge, outputCollector);
+    this.taskId = taskId;
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
     this.elementQueue = new ConcurrentLinkedQueue();
@@ -104,7 +107,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   private void fetchAsync() { // 갯수 동적으로 받아야함. handler 같은거 등록하기
 
-    inputWatermarkManager = new DynamicInputWatermarkManager(getDataSource(), new WatermarkCollector());
+    inputWatermarkManager = new DynamicInputWatermarkManager(taskId, getDataSource(), new WatermarkCollector());
     final DynamicInputWatermarkManager watermarkManager = (DynamicInputWatermarkManager) inputWatermarkManager;
 
     readersForParentTask.readAsync(pair -> {
