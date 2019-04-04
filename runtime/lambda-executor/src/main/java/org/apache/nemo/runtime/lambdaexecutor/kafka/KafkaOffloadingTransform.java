@@ -83,8 +83,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
   @Override
   public void prepare(final OffloadingContext context,
-    final OffloadingOutputCollector oc) {
-    this.offloadingContext = context;
+    final OffloadingOutputCollector oc) { this.offloadingContext = context;
     this.offloadingOutputCollector = oc;
     pipeOutputWriters = new HashSet<>();
   }
@@ -284,6 +283,8 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
     try {
       dataFetcherExecutor.close();
 
+      Thread.sleep(1000);
+
       if (channels != null) {
         scheduledExecutorService.shutdown();
       }
@@ -291,6 +292,8 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
       for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
         outputWriter.close();
       }
+
+      Thread.sleep(3000);
 
       if (byteTransport != null) {
         byteTransport.close();

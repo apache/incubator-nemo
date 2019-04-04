@@ -284,26 +284,49 @@ public final class TaskOffloader {
           if (!offloadedExecutors.isEmpty()) {
             final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
-            long currCpuTimeSum = elapsedCpuTimeSum;
-            final long avgCpuTimeSum = elapsedCpuTimeSum / taskStatInfo.running;
 
-            while (!offloadedExecutors.isEmpty() && currCpuTimeSum < targetCpuTime) {
-              final Pair<TaskExecutor, Long> pair = offloadedExecutors.peek();
-              final TaskExecutor taskExecutor = pair.left();
-              final Long offloadingTime = pair.right();
+            if (taskStatInfo.running == 0) {
+              // special case!
+              final int offloadCnt = offloadedExecutors.size() / 2;
+              int cnt = 0;
+              while (cnt < offloadCnt) {
+                final Pair<TaskExecutor, Long> pair = offloadedExecutors.peek();
+                final TaskExecutor taskExecutor = pair.left();
+                final Long offloadingTime = pair.right();
+
+                if (currTime - offloadingTime >= slackTime) {
+                  LOG.info("Deoffloading task {}",
+                    taskExecutor.getId());
+                  offloadedExecutors.poll();
+                  taskExecutor.endOffloading();
+                  prevOffloadingTime = System.currentTimeMillis();
+                  cnt += 1;
+                } else {
+                  break;
+                }
+              }
+            } else {
+
+              long currCpuTimeSum = elapsedCpuTimeSum;
+              final long avgCpuTimeSum = elapsedCpuTimeSum / taskStatInfo.running;
+              while (!offloadedExecutors.isEmpty() && currCpuTimeSum < targetCpuTime) {
+                final Pair<TaskExecutor, Long> pair = offloadedExecutors.peek();
+                final TaskExecutor taskExecutor = pair.left();
+                final Long offloadingTime = pair.right();
 
                 LOG.info("CurrCpuSum: {}, Task {} avg cpu sum: {}, targetSum: {}",
-              currCpuTimeSum, taskExecutor.getId(), avgCpuTimeSum, targetCpuTime);
+                  currCpuTimeSum, taskExecutor.getId(), avgCpuTimeSum, targetCpuTime);
 
-              if (currTime - offloadingTime >= slackTime) {
-                LOG.info("Deoffloading task {}, currCpuTime: {}, avgCpuSUm: {}",
-                  taskExecutor.getId(), currCpuTimeSum, avgCpuTimeSum);
-                offloadedExecutors.poll();
-                taskExecutor.endOffloading();
-                currCpuTimeSum += avgCpuTimeSum;
-                prevOffloadingTime = System.currentTimeMillis();
-              } else {
-                break;
+                if (currTime - offloadingTime >= slackTime) {
+                  LOG.info("Deoffloading task {}, currCpuTime: {}, avgCpuSUm: {}",
+                    taskExecutor.getId(), currCpuTimeSum, avgCpuTimeSum);
+                  offloadedExecutors.poll();
+                  taskExecutor.endOffloading();
+                  currCpuTimeSum += avgCpuTimeSum;
+                  prevOffloadingTime = System.currentTimeMillis();
+                } else {
+                  break;
+                }
               }
             }
           }
