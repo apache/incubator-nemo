@@ -263,7 +263,12 @@ public final class TaskOffloader {
           if (System.currentTimeMillis() - prevOffloadingTime >= slackTime) {
             final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
-            long currCpuTimeSum = elapsedCpuTimeSum;
+            // Adjust current cpu time
+            // Minus the pending tasks!
+            long currCpuTimeSum = elapsedCpuTimeSum -
+              deltaMap.entrySet().stream().filter(entry -> entry.getKey().isOffloadPending())
+              .map(entry -> entry.getValue()).reduce(0L, (x,y) -> x+y);
+
             LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
             for (final TaskExecutor runningTask : taskStatInfo.runningTasks) {
               final long cpuTimeOfThisTask = deltaMap.get(runningTask);
@@ -283,7 +288,6 @@ public final class TaskOffloader {
         } else if (cpuLowMean < threshold - 0.2 &&  observedCnt >= observeWindow) {
           if (!offloadedExecutors.isEmpty()) {
             final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
-
 
             if (taskStatInfo.running == 0) {
               // special case!
@@ -307,8 +311,12 @@ public final class TaskOffloader {
               }
             } else {
 
-              long currCpuTimeSum = elapsedCpuTimeSum;
-              final long avgCpuTimeSum = elapsedCpuTimeSum / taskStatInfo.running;
+              long currCpuTimeSum = elapsedCpuTimeSum +
+                deltaMap.entrySet().stream().filter(entry -> entry.getKey().isDeoffloadPending())
+              .map(entry -> entry.getValue()).reduce(0L, (x,y) -> x+y);
+
+              final long avgCpuTimeSum = elapsedCpuTimeSum / (taskStatInfo.running + taskStatInfo.offload_pending);
+
               while (!offloadedExecutors.isEmpty() && currCpuTimeSum < targetCpuTime) {
                 final Pair<TaskExecutor, Long> pair = offloadedExecutors.peek();
                 final TaskExecutor taskExecutor = pair.left();
