@@ -159,6 +159,9 @@ public final class RemoteByteInputContext extends AbstractByteTransferContext im
 
   @Override
   public void onChannelError(@Nullable final Throwable cause) {
+    cause.printStackTrace();
+    throw new RuntimeException(cause);
+    /*
     setChannelError(cause);
 
     if (currentByteBufInputStream != null) {
@@ -167,6 +170,7 @@ public final class RemoteByteInputContext extends AbstractByteTransferContext im
     byteBufInputStreams.closeExceptionally(cause);
     completedFuture.completeExceptionally(cause);
     deregister();
+    */
   }
 
   /**
