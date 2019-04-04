@@ -234,7 +234,7 @@ public final class TaskOffloader {
         final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x, y) -> x + y);
 
         // calculate stable cpu time
-        if (cpuLoad >= 0.15 && cpuLoad <= 0.6) {
+        if (cpuLoad >= 0.15 && cpuLoad <= 0.8) {
           cpuLoadStable += 1;
           if (cpuLoadStable >= 2) {
             observedCnt += 1;
