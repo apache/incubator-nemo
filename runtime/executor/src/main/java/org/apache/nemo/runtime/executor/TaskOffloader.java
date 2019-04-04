@@ -30,7 +30,7 @@ public final class TaskOffloader {
   private final Queue<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
-  private long slackTime = 7000;
+  private long slackTime = 5000;
   private long deoffloadSlackTime = 20000;
 
 
@@ -262,7 +262,7 @@ public final class TaskOffloader {
         if (cpuHighMean > threshold && observedCnt >= observeWindow) {
 
           if (System.currentTimeMillis() - prevOffloadingTime >= slackTime) {
-            final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
+            final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(0.5);
 
             // Adjust current cpu time
             // Minus the pending tasks!
@@ -290,7 +290,7 @@ public final class TaskOffloader {
           if (!offloadedExecutors.isEmpty()) {
             final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
-            if (taskStatInfo.running == 0) {
+            if (taskStatInfo.running == 0 && taskStatInfo.deoffloaded == 0) {
               // special case!
               final int offloadCnt = offloadedExecutors.size() / 2;
               int cnt = 0;
@@ -310,8 +310,10 @@ public final class TaskOffloader {
                   break;
                 }
               }
+            } else if (taskStatInfo.running == 0 && taskStatInfo.deoffloaded > 0) {
+              // waiting
+              LOG.info("Deoffload waiting... {}", taskStatInfo.deoffloaded);
             } else {
-
               long currCpuTimeSum = elapsedCpuTimeSum +
                 deltaMap.entrySet().stream().filter(entry -> entry.getKey().isDeoffloadPending())
               .map(entry -> entry.getValue()).reduce(0L, (x,y) -> x+y);
