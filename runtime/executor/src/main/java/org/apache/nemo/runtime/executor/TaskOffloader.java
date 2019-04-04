@@ -31,6 +31,7 @@ public final class TaskOffloader {
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
   private long slackTime = 7000;
+  private long deoffloadSlackTime = 15000;
 
 
   private final int windowSize = 5;
@@ -298,7 +299,7 @@ public final class TaskOffloader {
                 final TaskExecutor taskExecutor = pair.left();
                 final Long offloadingTime = pair.right();
 
-                if (currTime - offloadingTime >= slackTime) {
+                if (currTime - offloadingTime >= deoffloadSlackTime) {
                   LOG.info("Deoffloading task {}",
                     taskExecutor.getId());
                   offloadedExecutors.poll();
@@ -325,7 +326,7 @@ public final class TaskOffloader {
                 LOG.info("CurrCpuSum: {}, Task {} avg cpu sum: {}, targetSum: {}",
                   currCpuTimeSum, taskExecutor.getId(), avgCpuTimeSum, targetCpuTime);
 
-                if (currTime - offloadingTime >= slackTime) {
+                if (currTime - offloadingTime >= deoffloadSlackTime) {
                   LOG.info("Deoffloading task {}, currCpuTime: {}, avgCpuSUm: {}",
                     taskExecutor.getId(), currCpuTimeSum, avgCpuTimeSum);
                   offloadedExecutors.poll();
