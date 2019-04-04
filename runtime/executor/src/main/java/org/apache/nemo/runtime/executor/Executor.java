@@ -111,6 +111,8 @@ public final class Executor {
   private final ByteTransport byteTransport;
   private final PipeManagerWorker pipeManagerWorker;
 
+  private ScheduledExecutorService scheduledExecutorService;
+
 
 
   @Inject
@@ -127,6 +129,7 @@ public final class Executor {
                    //final CpuBottleneckDetector bottleneckDetector,
                    final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
                    final EvalConf evalConf,
+                   final SystemLoadProfiler profiler,
                    final PipeManagerWorker pipeManagerWorker,
                    final TaskExecutorMapWrapper taskExecutorMapWrapper) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
@@ -143,6 +146,11 @@ public final class Executor {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.taskOffloader = taskOffloader;
     this.metricMessageSender = metricMessageSender;
+    this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+    scheduledExecutorService.scheduleAtFixedRate(() -> {
+      LOG.info("Cpu load: {}", profiler.getCpuLoad());
+    }, 1, 1, TimeUnit.SECONDS);
+
     this.evalConf = evalConf;
     LOG.info("\n{}", evalConf);
     this.serverlessExecutorProvider = serverlessExecutorProvider;
