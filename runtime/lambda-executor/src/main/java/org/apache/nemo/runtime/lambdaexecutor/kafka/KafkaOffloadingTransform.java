@@ -275,7 +275,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
     dataFetcher.setReadable(readable);
 
-    dataFetcherExecutor = new HandleDataFetcher(input.id, dataFetchers, resultCollector, checkpointMark);
+    dataFetcherExecutor = new HandleDataFetcher(input.id, irDag, dataFetchers, resultCollector, checkpointMark);
     dataFetcherExecutor.start();
   }
 
@@ -283,15 +283,6 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
   public void close() {
     try {
       dataFetcherExecutor.close();
-
-
-      // flush transforms
-      irDag.getTopologicalSort().stream().forEach(irVertex -> {
-        if (irVertex instanceof OperatorVertex) {
-          final Transform transform = ((OperatorVertex) irVertex).getTransform();
-          transform.flush();
-        }
-      });
 
       if (channels != null) {
         scheduledExecutorService.shutdown();

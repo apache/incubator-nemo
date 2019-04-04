@@ -2,7 +2,12 @@ package org.apache.nemo.runtime.lambdaexecutor.kafka;
 
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
@@ -39,12 +44,16 @@ public final class HandleDataFetcher {
 
   private final UnboundedSource.CheckpointMark startCheckpointMark;
 
+  private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
+
   public HandleDataFetcher(final int id,
+                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
                            final List<DataFetcher> fetchers,
                            final OffloadingResultCollector resultCollector,
                            final UnboundedSource.CheckpointMark startCheckpointMark) {
     LOG.info("Handle data fetcher start");
     this.id = id;
+    this.irDag = irDag;
     this.executorService = Executors.newSingleThreadExecutor();
     this.resultCollector = resultCollector;
     this.fetchers = fetchers;
@@ -170,6 +179,16 @@ public final class HandleDataFetcher {
 
 
       // Close all data fetchers
+
+
+      // flush transforms
+      irDag.getTopologicalSort().stream().forEach(irVertex -> {
+        if (irVertex instanceof OperatorVertex) {
+          final Transform transform = ((OperatorVertex) irVertex).getTransform();
+          transform.flush();
+        }
+      });
+
       fetchers.forEach(fetcher -> {
         try {
           fetcher.close();

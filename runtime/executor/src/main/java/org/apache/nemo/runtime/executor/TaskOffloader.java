@@ -30,7 +30,7 @@ public final class TaskOffloader {
   private final Queue<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
-  private long slackTime = 5000;
+  private long slackTime = 10000;
 
 
   private final int windowSize = 5;
@@ -52,6 +52,8 @@ public final class TaskOffloader {
 
   private int observedCnt = 0;
   private final int observeWindow = 5;
+
+  private long prevOffloadingTime = System.currentTimeMillis();
 
   @Inject
   private TaskOffloader(
@@ -257,22 +259,25 @@ public final class TaskOffloader {
           cpuHighMean, cpuLowMean, taskStatInfo.running, threshold, observedCnt);
 
         if (cpuHighMean > threshold && observedCnt >= observeWindow) {
-          final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
-          long currCpuTimeSum = elapsedCpuTimeSum;
-          LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
-          for (final TaskExecutor runningTask : taskStatInfo.runningTasks) {
-            final long cpuTimeOfThisTask = deltaMap.get(runningTask);
+          if (System.currentTimeMillis() - prevOffloadingTime >= slackTime) {
+            final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
 
-            LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
-              currCpuTimeSum, runningTask.getId(), cpuTimeOfThisTask, targetCpuTime);
+            long currCpuTimeSum = elapsedCpuTimeSum;
+            LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
+            for (final TaskExecutor runningTask : taskStatInfo.runningTasks) {
+              final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
-            if (currCpuTimeSum - cpuTimeOfThisTask >= targetCpuTime) {
-              // offload this task!
-              LOG.info("Offloading task {}", runningTask.getId());
-              runningTask.startOffloading(currTime);
-              offloadedExecutors.add(Pair.of(runningTask, currTime));
-              currCpuTimeSum -= cpuTimeOfThisTask;
+              LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
+                currCpuTimeSum, runningTask.getId(), cpuTimeOfThisTask, targetCpuTime);
+
+              if (currCpuTimeSum - cpuTimeOfThisTask >= targetCpuTime) {
+                // offload this task!
+                LOG.info("Offloading task {}", runningTask.getId());
+                runningTask.startOffloading(currTime);
+                offloadedExecutors.add(Pair.of(runningTask, currTime));
+                currCpuTimeSum -= cpuTimeOfThisTask;
+              }
             }
           }
         } else if (cpuLowMean < threshold - 0.2 &&  observedCnt >= observeWindow) {
@@ -296,6 +301,7 @@ public final class TaskOffloader {
                 offloadedExecutors.poll();
                 taskExecutor.endOffloading();
                 currCpuTimeSum += cpuTimeOfThisTask;
+                prevOffloadingTime = System.currentTimeMillis();
               }
             }
           }
