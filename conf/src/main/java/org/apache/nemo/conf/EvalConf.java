@@ -53,7 +53,7 @@ public final class EvalConf {
   public final class BurstyOperatorString implements Name<String> {
   }
 
-  @NamedParameter(short_name = "bottleneck_detection_period", default_value = "2000")
+  @NamedParameter(short_name = "bottleneck_detection_period", default_value = "1000")
   public static final class BottleneckDetectionPeriod implements Name<Long> {
   }
 
@@ -61,7 +61,7 @@ public final class EvalConf {
   public static final class BottleneckDetectionConsecutive implements Name<Integer> {
   }
 
-  @NamedParameter(short_name = "bottleneck_detection_threshold", default_value = "0.7")
+  @NamedParameter(short_name = "bottleneck_detection_threshold", default_value = "0.72")
   public static final class BottleneckDetectionCpuThreshold implements Name<Double> {
   }
 
