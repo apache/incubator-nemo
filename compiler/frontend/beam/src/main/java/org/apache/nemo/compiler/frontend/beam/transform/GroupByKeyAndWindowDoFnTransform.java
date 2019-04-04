@@ -178,7 +178,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
   private void emitOutputWatermark(final Watermark inputWatermark) {
     // Find min watermark hold
     final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
-      ? new Watermark(Long.MAX_VALUE) // set this to MAX, in order to just use the input watermark.
+       // set this to MIN, in order not to emit input watermark when there are no outputs.
+      ? new Watermark(Long.MIN_VALUE)
       : Collections.min(keyAndWatermarkHoldMap.values());
     final Watermark outputWatermarkCandidate = new Watermark(
       Math.max(prevOutputWatermark.getTimestamp(),
