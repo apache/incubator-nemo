@@ -302,6 +302,8 @@ public final class TaskOffloader {
                 taskExecutor.endOffloading();
                 currCpuTimeSum += avgCpuTimeSum;
                 prevOffloadingTime = System.currentTimeMillis();
+              } else {
+                break;
               }
             }
           }
