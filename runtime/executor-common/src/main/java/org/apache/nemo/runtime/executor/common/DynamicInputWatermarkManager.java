@@ -127,7 +127,7 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
             LOG.debug("Emit watermark {}", currMinWatermark);
           }
 
-          LOG.info("Emit watermark dynamic watermark {}/{}, {}", vertex.getId(), taskId, currMinWatermark);
+          //LOG.info("Emit watermark dynamic watermark {}/{}, {}", vertex.getId(), taskId, currMinWatermark);
           watermarkCollector.emitWatermark(currMinWatermark);
         }
       }

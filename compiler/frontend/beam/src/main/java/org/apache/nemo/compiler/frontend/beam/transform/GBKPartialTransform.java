@@ -131,25 +131,25 @@ public final class GBKPartialTransform<K, InputT>
     dataReceived = true;
 
     // drop late data
-    if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
-      // We can call Beam's DoFnRunner#processElement here,
-      // but it may generate some overheads if we call the method for each data.
-      // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
-      // TODO #250: But, this approach can delay the event processing in streaming,
-      // TODO #250: if the watermark is not triggered for a long time.
+    //if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
+    // We can call Beam's DoFnRunner#processElement here,
+    // but it may generate some overheads if we call the method for each data.
+    // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
+    // TODO #250: But, this approach can delay the event processing in streaming,
+    // TODO #250: if the watermark is not triggered for a long time.
 
-      final KV<K, InputT> kv = element.getValue();
+    final KV<K, InputT> kv = element.getValue();
 
-      checkAndInvokeBundle();
-      final KeyedWorkItem<K, InputT> keyedWorkItem =
-        KeyedWorkItems.elementsWorkItem(kv.getKey(),
-          Collections.singletonList(element.withValue(kv.getValue())));
-      numProcessedData += 1;
-      // The DoFnRunner interface requires WindowedValue,
-      // but this windowed value is actually not used in the ReduceFnRunner internal.
-      getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
-      checkAndFinishBundle();
-    }
+    checkAndInvokeBundle();
+    final KeyedWorkItem<K, InputT> keyedWorkItem =
+      KeyedWorkItems.elementsWorkItem(kv.getKey(),
+        Collections.singletonList(element.withValue(kv.getValue())));
+    numProcessedData += 1;
+    // The DoFnRunner interface requires WindowedValue,
+    // but this windowed value is actually not used in the ReduceFnRunner internal.
+    getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
+    checkAndFinishBundle();
+    //}
   }
 
   /**

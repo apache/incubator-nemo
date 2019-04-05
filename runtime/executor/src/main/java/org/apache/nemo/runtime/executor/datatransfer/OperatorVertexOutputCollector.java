@@ -30,7 +30,6 @@ import org.apache.nemo.runtime.executor.task.ControlEvent;
 import org.apache.nemo.runtime.executor.task.OffloadingContext;
 import org.apache.nemo.runtime.executor.task.OffloadingControlEvent;
 import org.apache.nemo.runtime.executor.task.OperatorMetricCollector;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -267,9 +266,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
   @Override
   public void emitWatermark(final Watermark watermark) {
 
-    if (irVertex.getId().equals("vertex16") || irVertex.getId().equals("vertex15")) {
-      LOG.info("Emit watermark {}/{} from {}", new Instant(watermark.getTimestamp()), watermark.getTimestamp(), irVertex.getId());
-    }
+    //LOG.info("Emit watermark {} from {}", watermark, irVertex.getId());
 
     if (offloading) {
       prevWatermarkMap.put(watermark.getTimestamp(), currWatermark);
