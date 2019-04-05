@@ -38,6 +38,7 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
   private static final Logger LOG = LoggerFactory.getLogger(DynamicInputWatermarkManager.class.getName());
 
   private final ConcurrentMap<Integer, Watermark> taskWatermarkMap;
+  private final ConcurrentMap<Integer, Watermark> prevWatermarkMap;
   private final OutputCollector<?> watermarkCollector;
   private int minWatermarkIndex;
   private Watermark currMinWatermark = new Watermark(Long.MIN_VALUE);
@@ -52,6 +53,7 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
     this.taskId = taskId;
     this.vertex = vertex;
     this.taskWatermarkMap = new ConcurrentHashMap<>();
+    this.prevWatermarkMap = new ConcurrentHashMap<>();
     this.watermarkCollector = watermarkCollector;
     this.minWatermarkIndex = 0;
   }
@@ -69,14 +71,22 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
   }
 
   public synchronized void addEdge(final int index) {
-    taskWatermarkMap.put(index, new Watermark(-1));
+    if (prevWatermarkMap.containsKey(index)) {
+      taskWatermarkMap.put(index, prevWatermarkMap.get(index));
+      minWatermarkIndex = findNextMinWatermarkIndex();
+    } else {
+      taskWatermarkMap.put(index, new Watermark(-1));
+      minWatermarkIndex = index;
+    }
     LOG.info("{} edge index added {} at {}, number of edges: {}", vertex.getId(), index, taskId,
       taskWatermarkMap.size());
-    minWatermarkIndex = index;
   }
 
   public synchronized void removeEdge(final int index) {
-    taskWatermarkMap.remove(index);
+    if (taskWatermarkMap.containsKey(index)) {
+      prevWatermarkMap.put(index, taskWatermarkMap.remove(index));
+    }
+
     LOG.info("{} edge index removed {} at {}, number of edges: {}", vertex.getId(), index,
       taskId, taskWatermarkMap.size());
 
@@ -92,26 +102,32 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
     //LOG.info("Watermark from {}: {} at {}, min: {}", edgeIndex, watermark, vertex.getId(), currMinWatermark);
 
     if (edgeIndex == minWatermarkIndex) { // update min watermark
-      taskWatermarkMap.put(minWatermarkIndex, watermark);
-       // find min watermark
-      final int nextMinWatermarkIndex = findNextMinWatermarkIndex();
-      final Watermark nextMinWatermark = taskWatermarkMap.get(nextMinWatermarkIndex);
+      if (taskWatermarkMap.get(edgeIndex).getTimestamp() > watermark.getTimestamp()) {
+        LOG.warn(
+          "The recent watermark timestamp cannot be less than the previous one "
+            + "because watermark is monotonically increasing..." + " , " + "recent: " + watermark + ", prev: " + taskWatermarkMap.get(edgeIndex));
+      } else {
+        taskWatermarkMap.put(minWatermarkIndex, watermark);
+        // find min watermark
+        final int nextMinWatermarkIndex = findNextMinWatermarkIndex();
+        final Watermark nextMinWatermark = taskWatermarkMap.get(nextMinWatermarkIndex);
 
-      if (nextMinWatermark.getTimestamp() < currMinWatermark.getTimestamp()) {
-        // it is possible
-        minWatermarkIndex = nextMinWatermarkIndex;
-        LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
-          vertex.getId(), currMinWatermark, nextMinWatermark);
-      } else if (nextMinWatermark.getTimestamp() > currMinWatermark.getTimestamp()) {
-        // Watermark timestamp progress!
-        // Emit the min watermark
-        minWatermarkIndex = nextMinWatermarkIndex;
-        currMinWatermark = nextMinWatermark;
+        if (nextMinWatermark.getTimestamp() < currMinWatermark.getTimestamp()) {
+          // it is possible
+          minWatermarkIndex = nextMinWatermarkIndex;
+          LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
+            vertex.getId(), currMinWatermark, nextMinWatermark);
+        } else if (nextMinWatermark.getTimestamp() > currMinWatermark.getTimestamp()) {
+          // Watermark timestamp progress!
+          // Emit the min watermark
+          minWatermarkIndex = nextMinWatermarkIndex;
+          currMinWatermark = nextMinWatermark;
 
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Emit watermark {}", currMinWatermark);
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Emit watermark {}", currMinWatermark);
+          }
+          watermarkCollector.emitWatermark(currMinWatermark);
         }
-        watermarkCollector.emitWatermark(currMinWatermark);
       }
     } else {
       // The recent watermark timestamp cannot be less than the previous one
