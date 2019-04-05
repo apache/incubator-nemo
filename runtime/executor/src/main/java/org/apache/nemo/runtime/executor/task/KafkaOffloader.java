@@ -487,6 +487,7 @@ public final class KafkaOffloader {
       LOG.info("Finished offloading at {}", taskId);
 
 
+      LOG.info("Before setting offloaded status: " + taskStatus);
       if (!taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.OFFLOADED)) {
         throw new RuntimeException("Invalid task status: " + taskStatus);
       } else {
