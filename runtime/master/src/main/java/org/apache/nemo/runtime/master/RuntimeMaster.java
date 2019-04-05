@@ -104,6 +104,7 @@ public final class RuntimeMaster {
   private final ObjectMapper objectMapper;
   private final String jobId;
   private final String dagDirectory;
+  private final Boolean dbEnabled;
   private final String dbAddress;
   private final String dbId;
   private final String dbPassword;
@@ -125,6 +126,7 @@ public final class RuntimeMaster {
    * @param clientRPC                the RPC channel to communicate with the client.
    * @param planStateManager         the manager that keeps track of the plan state.
    * @param jobId                    the Job ID, provided by the user.
+   * @param dbEnabled                whether or not the DB is enabled, provided by the user.
    * @param dbAddress                the DB Address, provided by the user.
    * @param dbId                     the ID for the given DB.
    * @param dbPassword               the password for the given DB.
@@ -139,6 +141,7 @@ public final class RuntimeMaster {
                         final ClientRPC clientRPC,
                         final PlanStateManager planStateManager,
                         @Parameter(JobConf.JobId.class) final String jobId,
+                        @Parameter(JobConf.DBEnabled.class) final Boolean dbEnabled,
                         @Parameter(JobConf.DBAddress.class) final String dbAddress,
                         @Parameter(JobConf.DBId.class) final String dbId,
                         @Parameter(JobConf.DBPasswd.class) final String dbPassword,
@@ -169,6 +172,7 @@ public final class RuntimeMaster {
     this.metricManagerMaster = metricManagerMaster;
     this.jobId = jobId;
     this.dagDirectory = dagDirectory;
+    this.dbEnabled = dbEnabled;
     this.dbAddress = dbAddress;
     this.dbId = dbId;
     this.dbPassword = dbPassword;
@@ -225,7 +229,9 @@ public final class RuntimeMaster {
 
     metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
       "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
-    metricStore.saveOptimizationMetricsToDB(dbAddress, jobId, dbId, dbPassword);
+    if (this.dbEnabled) {
+      metricStore.saveOptimizationMetricsToDB(dbAddress, jobId, dbId, dbPassword);
+    }
   }
 
   /**
