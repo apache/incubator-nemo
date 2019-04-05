@@ -87,7 +87,7 @@ public final class TaskExecutorUtil {
                                                           final List<StageEdge> outEdgesToChildrenTasks,
                                                           final IntermediateDataIOFactory intermediateDataIOFactory,
                                                           final String taskId,
-                                                          final Map<String, OutputWriter> outputWriterMap,
+                                                          final Set<OutputWriter> outputWriterMap,
                                                           final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
                                                           final Map<Long, Long> prevWatermarkMap,
                                                           final Map<Long, Integer> watermarkCounterMap) {
@@ -107,7 +107,7 @@ public final class TaskExecutorUtil {
           outputWriter = intermediateDataIOFactory
             .createWriter(taskId, outEdgeForThisVertex);
         }
-        outputWriterMap.put(outEdgeForThisVertex.getDstIRVertex().getId(), outputWriter);
+        outputWriterMap.add(outputWriter);
         return outputWriter;
       })
       .collect(Collectors.toList());
@@ -125,7 +125,7 @@ public final class TaskExecutorUtil {
     final List<StageEdge> outEdgesToChildrenTasks,
     final IntermediateDataIOFactory intermediateDataIOFactory,
     final String taskId,
-    final Map<String, OutputWriter> outputWriterMap,
+    final Set<OutputWriter> outputWriterMap,
     final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
     final Map<Long, Long> prevWatermarkMap,
     final Map<Long, Integer> watermarkCounterMap) {
@@ -151,7 +151,7 @@ public final class TaskExecutorUtil {
 
         final Pair<String, OutputWriter> pair =
         Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(), outputWriter);
-        outputWriterMap.put(edge.getDstIRVertex().getId(), pair.right());
+        outputWriterMap.add(pair.right());
         return pair;
       })
       .forEach(pair -> {

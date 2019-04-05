@@ -108,7 +108,7 @@ public final class TaskExecutor {
   private final ServerlessExecutorProvider serverlessExecutorProvider;
   private final OutputFluctuationDetector detector;
   private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap;
-  private final Map<String, OutputWriter> outputWriterMap;
+  private final Set<OutputWriter> outputWriterMap;
   private final Map<String, List<String>> taskOutgoingEdges;
   private final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap = new HashMap<>();
   private final EvalConf evalConf;
@@ -216,7 +216,7 @@ public final class TaskExecutor {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.lambdaOffloadingWorkerFactory = lambdaOffloadingWorkerFactory;
     this.vertexIdAndCollectorMap = new HashMap<>();
-    this.outputWriterMap = new HashMap<>();
+    this.outputWriterMap = new HashSet<>();
     this.taskOutgoingEdges = new HashMap<>();
     task.getTaskOutgoingEdges().forEach(edge -> {
       final IRVertex src = edge.getSrcIRVertex();
@@ -831,7 +831,7 @@ public final class TaskExecutor {
           prevOffloadStartTime,
           prevOffloadEndTime,
           toMaster,
-          outputWriterMap.values(),
+          outputWriterMap,
           irVertexDag));
       } else {
        kafkaOffloader = Optional.empty();
