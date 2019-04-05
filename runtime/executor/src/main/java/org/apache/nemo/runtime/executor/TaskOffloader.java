@@ -30,7 +30,7 @@ public final class TaskOffloader {
   private final Queue<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
-  private long slackTime = 5000;
+  private long slackTime = 14000;
   private long deoffloadSlackTime = 20000;
 
 
@@ -262,7 +262,7 @@ public final class TaskOffloader {
         if (cpuHighMean > threshold && observedCnt >= observeWindow) {
 
           if (System.currentTimeMillis() - prevOffloadingTime >= slackTime) {
-            final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(0.5);
+            final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 1);
 
             // Adjust current cpu time
             // Minus the pending tasks!
