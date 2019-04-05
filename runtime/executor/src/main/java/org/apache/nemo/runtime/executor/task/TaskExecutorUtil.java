@@ -96,7 +96,7 @@ public final class TaskExecutorUtil {
       .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
       .filter(edge -> !edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
       .map(outEdgeForThisVertex -> {
-        LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex.getDstIRVertex().getId());
+        LOG.info("Set expected watermark map for vertex {}", outEdgeForThisVertex);
         expectedWatermarkMap.put(outEdgeForThisVertex.getDstIRVertex().getId(), Pair.of(new PriorityQueue<>(), new PriorityQueue<>()));
 
         final OutputWriter outputWriter;
@@ -138,7 +138,7 @@ public final class TaskExecutorUtil {
       .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
       .map(edge -> {
         final OutputWriter outputWriter;
-        LOG.info("Set expected watermark map for vertex {}", edge.getDstIRVertex().getId());
+        LOG.info("Set expected watermark map for vertex {}", edge);
         expectedWatermarkMap.put(edge.getDstIRVertex().getId(), Pair.of(new PriorityQueue<>(), new PriorityQueue<>()));
 
         if (isPipe(edge)) {
