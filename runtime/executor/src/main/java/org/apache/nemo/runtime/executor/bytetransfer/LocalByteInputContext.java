@@ -136,6 +136,11 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
     private Object nextData;
 
     @Override
+    public boolean isFinished() {
+      return isFinished;
+    }
+
+    @Override
     public long getNumSerializedBytes() throws NumBytesNotSupportedException {
       return 0;
     }
@@ -147,6 +152,12 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
 
     @Override
     public boolean hasNext() {
+      if (objectQueue.isEmpty() || isFinished) {
+        return false;
+      }
+
+      return true;
+      /*
       while (!isFinished) {
         if (!objectQueue.isEmpty()) {
           final Object data = objectQueue.poll();
@@ -161,11 +172,12 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
         }
       }
       return false;
+      */
     }
 
     @Override
     public Object next() {
-      return nextData;
+      return objectQueue.poll();
     }
   }
 }

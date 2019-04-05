@@ -284,6 +284,11 @@ public final class DataUtil {
     }
 
     @Override
+    public boolean isFinished() {
+      return false;
+    }
+
+    @Override
     public long getNumSerializedBytes() {
       if (hasNext()) {
         throw new IllegalStateException("Iteration not completed.");
@@ -347,12 +352,18 @@ public final class DataUtil {
     /**
      * Create an {@link IteratorWithNumBytes}, with no information about the number of bytes.
      *
-     * @param innerIterator {@link Iterator} to wrap
-     * @param <E>           the type of decoded object
      * @return an {@link IteratorWithNumBytes}, with no information about the number of bytes
      */
+
+    boolean isFinished();
+
     static <E> IteratorWithNumBytes<E> of(final Iterator<E> innerIterator) {
       return new IteratorWithNumBytes<E>() {
+        @Override
+        public boolean isFinished() {
+          return false;
+        }
+
         @Override
         public long getNumSerializedBytes() throws NumBytesNotSupportedException {
           throw new NumBytesNotSupportedException();
@@ -373,6 +384,7 @@ public final class DataUtil {
           return innerIterator.next();
         }
       };
+
     }
 
     /**
@@ -388,6 +400,11 @@ public final class DataUtil {
                                           final long numSerializedBytes,
                                           final long numEncodedBytes) {
       return new IteratorWithNumBytes<E>() {
+        @Override
+        public boolean isFinished() {
+          return false;
+        }
+
         @Override
         public long getNumSerializedBytes() {
           return numSerializedBytes;

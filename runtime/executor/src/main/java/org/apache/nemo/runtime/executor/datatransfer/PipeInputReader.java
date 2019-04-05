@@ -26,6 +26,7 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.LocalByteInputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.RemoteByteInputContext;
+import org.apache.nemo.runtime.executor.bytetransfer.StreamRemoteByteInputContext;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.reef.wake.EventHandler;
@@ -95,6 +96,10 @@ public final class PipeInputReader implements InputReader {
         } else if (context instanceof RemoteByteInputContext) {
           handler.onNext(Pair.of(new DataUtil.InputStreamIterator(context.getInputStreams(),
             pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())), srcTaskIndex));
+        } else if (context instanceof StreamRemoteByteInputContext) {
+          handler.onNext(Pair.of(((StreamRemoteByteInputContext) context).getInputIterator(
+            pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())),
+            srcTaskIndex));
         }
       });
   }

@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.*;
@@ -50,12 +51,12 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(MultiThreadParentTaskDataFetcher.class);
 
   private final InputReader readersForParentTask;
-  private final ExecutorService queueInsertionThreads;
+  //private final ExecutorService queueInsertionThreads;
 
   // Non-finals (lazy fetching)
   private boolean firstFetch = true;
 
-  private final ConcurrentLinkedQueue elementQueue;
+  private final ConcurrentLinkedQueue<Watermark> watermarkQueue;
 
   private long serBytes = 0;
   private long encodedBytes = 0;
@@ -68,6 +69,16 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   private final String taskId;
 
+  private final List<DataUtil.IteratorWithNumBytes> iterators;
+
+  private final List<DataUtil.IteratorWithNumBytes> newIterators;
+
+  private int iteratorIndex = 0;
+
+  private final ConcurrentMap<DataUtil.IteratorWithNumBytes, Integer> iteratorTaskIndexMap;
+  private final ExecutorService queueInsertionThreads;
+  private final ConcurrentLinkedQueue elementQueue;
+
   MultiThreadParentTaskDataFetcher(final String taskId,
                                    final IRVertex dataSource,
                                    final RuntimeEdge edge,
@@ -77,9 +88,16 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     this.taskId = taskId;
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
+    this.watermarkQueue = new ConcurrentLinkedQueue<>();
     this.elementQueue = new ConcurrentLinkedQueue();
+
+    //this.queueInsertionThreads = Executors.newCachedThreadPool();
+    this.iterators = new ArrayList<>();
+    this.newIterators = new ArrayList<>();
+    this.iteratorTaskIndexMap = new ConcurrentHashMap<>();
     this.queueInsertionThreads = Executors.newCachedThreadPool();
-    fetchAsync();
+
+    fetchNonBlocking();
   }
 
   @Override
@@ -89,21 +107,75 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       firstFetch = false;
     }
 
-    while (true) {
-      final Object element = elementQueue.poll();
-      if (element == null) {
-        throw new NoSuchElementException();
-      } else if (element instanceof Finishmark) {
-        numOfFinishMarks++;
-        if (numOfFinishMarks == numOfIterators) {
-          return Finishmark.getInstance();
-        }
-        // else try again.
-      } else {
-        return element;
+    if (!newIterators.isEmpty()) {
+      LOG.info("Add new iterators {}", newIterators.size());
+      iterators.addAll(newIterators);
+      synchronized (newIterators) {
+        newIterators.clear();
       }
     }
+
+
+    if (!watermarkQueue.isEmpty()) {
+      return watermarkQueue.poll();
+    }
+
+    int cnt = 0;
+    while (cnt < iterators.size()) {
+      final DataUtil.IteratorWithNumBytes iterator = iterators.get(iteratorIndex);
+
+      if (iterator.isFinished()) {
+
+        final DynamicInputWatermarkManager watermarkManager = (DynamicInputWatermarkManager) inputWatermarkManager;
+        iterators.remove(iteratorIndex);
+        final Integer taskIndex = iteratorTaskIndexMap.remove(iterator);
+        LOG.info("Task index {} finished at {}", taskIndex);
+        watermarkManager.removeEdge(taskIndex);
+
+      } else if (iterator.hasNext()) {
+        iteratorIndex = (iteratorIndex + 1) % iterators.size();
+        final Object element = iterator.next();
+
+        if (element instanceof WatermarkWithIndex) {
+          // watermark element
+          // the input watermark manager is accessed by multiple threads
+          // so we should synchronize it
+          final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
+          inputWatermarkManager.trackAndEmitWatermarks(
+            watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
+        } else {
+          // data element
+          return element;
+        }
+      } else {
+        iteratorIndex = (iteratorIndex + 1) % iterators.size();
+      }
+
+      cnt += 1;
+    }
+
+    throw new NoSuchElementException();
   }
+
+  private void fetchNonBlocking() { // 갯수 동적으로 받아야함. handler 같은거 등록하기
+    inputWatermarkManager = new DynamicInputWatermarkManager(taskId, getDataSource(), new WatermarkCollector());
+    final DynamicInputWatermarkManager watermarkManager = (DynamicInputWatermarkManager) inputWatermarkManager;
+
+    readersForParentTask.readAsync(pair -> {
+
+      LOG.info("Receive iterator task {} at {} edge {}"
+        , pair.right(), readersForParentTask.getTaskIndex(), edge.getId());
+      final DataUtil.IteratorWithNumBytes iterator = pair.left();
+      final int taskIndex = pair.right();
+      iteratorTaskIndexMap.put(iterator, taskIndex);
+      watermarkManager.addEdge(taskIndex);
+
+      synchronized (newIterators) {
+        newIterators.add(iterator);
+      }
+    });
+  }
+
 
   private void fetchAsync() { // 갯수 동적으로 받아야함. handler 같은거 등록하기
 
@@ -269,7 +341,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     }
     @Override
     public void emitWatermark(final Watermark watermark) {
-      elementQueue.offer(watermark);
+      watermarkQueue.offer(watermark);
     }
     @Override
     public void emit(final String dstVertexId, final Object output) {
