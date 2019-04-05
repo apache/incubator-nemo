@@ -281,6 +281,7 @@ public final class KafkaOffloader {
       runningWorkers.clear();
 
     } else if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.DEOFFLOAD_PENDING)) {
+      LOG.info("Get end offloading kafka event: {}", taskStatus);
       // It means that this is not initialized yet
       // just finish this worker!
       for (final KafkaOffloadingRequestEvent event : kafkaOffloadPendingEvents) {
@@ -391,7 +392,7 @@ public final class KafkaOffloader {
 
     if (checkIsAllPendingReady()) {
       // 1. split source
-      LOG.info("Ready to offloading !!: {}", taskId);
+      LOG.info("Ready to offloading !!: {}. status: {}", taskId, taskStatus);
 
       final SourceVertexDataFetcher dataFetcher = sourceVertexDataFetchers.get(0);
       final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
@@ -441,7 +442,7 @@ public final class KafkaOffloader {
         final SourceVertexDataFetcher sourceVertexDataFetcher =
           new SourceVertexDataFetcher(sourceVertex, dataFetcher.edge, newReadable, dataFetcher.getOutputCollector());
 
-        final Coder<UnboundedSource.CheckpointMark> coder = unboundedSource.getCheckpointMarkCoder();
+        final Coder<UnboundedSource.CheckpointMark> coder = splitSource.getCheckpointMarkCoder();
         final ControlMessage.Message message;
         try {
           LOG.info("Wait taskIndex... {}", taskId);
@@ -461,7 +462,7 @@ public final class KafkaOffloader {
           bos.writeInt(event.id);
           bos.writeLong(message.getTaskIndexInfoMsg().getTaskIndex());
           coder.encode(splitCheckpointMark, bos);
-          SerializationUtils.serialize(unboundedSource, bos);
+          SerializationUtils.serialize(splitSource, bos);
           bos.close();
         } catch (IOException e) {
           e.printStackTrace();
@@ -485,6 +486,7 @@ public final class KafkaOffloader {
       }
 
       LOG.info("Finished offloading at {}", taskId);
+      kafkaOffloadPendingEvents.clear();
 
 
       LOG.info("Before setting offloaded status: " + taskStatus);
