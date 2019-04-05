@@ -178,7 +178,28 @@ public final class OffloadingHandler {
     System.out.println("Data processing cnt: " + dataProcessingCnt
       + ", Write handshake: " + (System.currentTimeMillis() - st));
     byte[] bytes = ByteBuffer.allocate(4).putInt(dataProcessingCnt).array();
+
+    ChannelFuture channelFuture =
     opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
+
+    while (!channelFuture.isSuccess()) {
+      while (!channelFuture.isDone()) {
+        LOG.info("Waiting client handshake done..");
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      if (!channelFuture.isSuccess()) {
+        LOG.info("Re-sending handshake..");
+        channelFuture =
+          opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
+      } else {
+        break;
+      }
+    }
 
     // ready state
     //opendChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.READY, new byte[0], 0));

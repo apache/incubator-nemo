@@ -63,6 +63,8 @@ public final class GBKPartialTransform<K, InputT>
 
   int numProcessedData = 0;
 
+  private boolean dataReceived = false;
+
   /**
    * GroupByKey constructor.
    */
@@ -126,6 +128,8 @@ public final class GBKPartialTransform<K, InputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
+    dataReceived = true;
+
     // drop late data
     if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
       // We can call Beam's DoFnRunner#processElement here,
@@ -173,7 +177,7 @@ public final class GBKPartialTransform<K, InputT>
   private void emitOutputWatermark() {
     // Find min watermark hold
     final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
-      ? new Watermark(Long.MIN_VALUE) // set this to MAX, in order to just use the input watermark.
+      ? new Watermark(dataReceived ? Long.MAX_VALUE : Long.MIN_VALUE)
       : Collections.min(keyAndWatermarkHoldMap.values());
     final Watermark outputWatermarkCandidate = new Watermark(
       Math.max(prevOutputWatermark.getTimestamp(),

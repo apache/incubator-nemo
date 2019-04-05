@@ -62,7 +62,7 @@ public final class GBKFinalTransform<K, InputT>
   private final Map<K, List<WindowedValue<InputT>>> keyToValues;
 
   int numProcessedData = 0;
-
+  private boolean dataReceived = false;
   /**
    * GroupByKey constructor.
    */
@@ -126,7 +126,7 @@ public final class GBKFinalTransform<K, InputT>
    */
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
-
+    dataReceived = true;
     //LOG.info("Final input receive: {}, timestamp: {}, inputWatermark: {}", element,
     //  element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
 
@@ -179,7 +179,7 @@ public final class GBKFinalTransform<K, InputT>
   private void emitOutputWatermark() {
     // Find min watermark hold
     final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
-      ? new Watermark(Long.MIN_VALUE) // set this to MAX, in order to just use the input watermark.
+      ? new Watermark(dataReceived ? Long.MAX_VALUE : Long.MIN_VALUE)
       : Collections.min(keyAndWatermarkHoldMap.values());
     final Watermark outputWatermarkCandidate = new Watermark(
       Math.max(prevOutputWatermark.getTimestamp(),
