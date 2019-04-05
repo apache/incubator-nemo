@@ -69,13 +69,17 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
   }
 
   public synchronized void addEdge(final int index) {
-    LOG.info("{} edge index added {} at {}", vertex.getId(), index, taskId);
+    taskWatermarkMap.put(index, new Watermark(-1));
+    LOG.info("{} edge index added {} at {}, number of edges: {}", vertex.getId(), index, taskId,
+      taskWatermarkMap.size());
     minWatermarkIndex = index;
   }
 
   public synchronized void removeEdge(final int index) {
-    LOG.info("{} edge index removed {}", vertex.getId(), index);
     taskWatermarkMap.remove(index);
+    LOG.info("{} edge index removed {} at {}, number of edges: {}", vertex.getId(), index,
+      taskId, taskWatermarkMap.size());
+
     if (minWatermarkIndex == index) {
       minWatermarkIndex = findNextMinWatermarkIndex();
       LOG.info("{} min index changed from {} to {}, watermark {}", vertex.getId(), index, minWatermarkIndex, currMinWatermark);
@@ -97,7 +101,7 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
         // it is possible
         minWatermarkIndex = nextMinWatermarkIndex;
         LOG.warn("{} watermark less than prev: {}, {} maybe due to the new edge index",
-          vertex .getId(), currMinWatermark, nextMinWatermark);
+          vertex.getId(), currMinWatermark, nextMinWatermark);
       } else if (nextMinWatermark.getTimestamp() > currMinWatermark.getTimestamp()) {
         // Watermark timestamp progress!
         // Emit the min watermark
