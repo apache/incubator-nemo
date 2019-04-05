@@ -623,7 +623,10 @@ public final class KafkaOffloader {
         });
         LOG.info("Close current output contexts");
 
-        outputWriters.forEach(OutputWriter::stop);
+        outputWriters.forEach(writer -> {
+          LOG.info("Stopping writer {}", writer);
+          writer.stop();
+        });
       }
     }
   }

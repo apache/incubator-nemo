@@ -109,6 +109,11 @@ public final class PipeOutputWriter implements OutputWriter {
     });
   }
 
+  @Override
+  public String toString() {
+    return runtimeEdge.toString();
+  }
+
   /**
    * Writes output element.
    * This method is not a thread-safe.
