@@ -83,6 +83,14 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class EnvironmentType implements Name<String> {
   }
 
+  ///////////////////////// DB Configurations
+  /**
+   * Specified whether or not to enable writing metrics to DB or not.
+   */
+  @NamedParameter(doc = "Boolean flag for enabling DB metrics", short_name = "db_enabled", default_value = "false")
+  public final class DBEnabled implements Name<Boolean> {
+  }
+
   /**
    * Address pointing to the DB for saving metrics.
    */

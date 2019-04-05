@@ -285,7 +285,7 @@ under the License.
           <execution>
             <id>test-javadoc</id>
             <goals>
-              <goal>javadoc</goal>
+              <goal>test-aggregate</goal>
             </goals>
             <phase>validate</phase>
           </execution>
