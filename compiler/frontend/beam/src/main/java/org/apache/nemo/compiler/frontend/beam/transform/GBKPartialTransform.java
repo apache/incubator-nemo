@@ -177,7 +177,7 @@ public final class GBKPartialTransform<K, InputT>
   private void emitOutputWatermark() {
     // Find min watermark hold
     final Watermark minWatermarkHold = keyAndWatermarkHoldMap.isEmpty()
-      ? new Watermark(dataReceived ? Long.MAX_VALUE : Long.MIN_VALUE)
+      ? new Watermark(dataReceived ? Long.MIN_VALUE : Long.MAX_VALUE)
       : Collections.min(keyAndWatermarkHoldMap.values());
     final Watermark outputWatermarkCandidate = new Watermark(
       Math.max(prevOutputWatermark.getTimestamp(),
