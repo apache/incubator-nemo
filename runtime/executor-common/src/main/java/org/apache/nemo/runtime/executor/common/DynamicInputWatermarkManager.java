@@ -118,11 +118,12 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
       // because watermark is monotonically increasing.
       if (taskWatermarkMap.getOrDefault(edgeIndex, new Watermark(-1))
         .getTimestamp() > watermark.getTimestamp()) {
-        throw new IllegalStateException(
+        LOG.warn(
           "The recent watermark timestamp cannot be less than the previous one "
-            + "because watermark is monotonically increasing.");
+            + "because watermark is monotonically increasing..." + " , " + "recent: " + watermark + ", prev: " + taskWatermarkMap.get(edgeIndex));
+      } else {
+        taskWatermarkMap.put(edgeIndex, watermark);
       }
-      taskWatermarkMap.put(edgeIndex, watermark);
     }
   }
 
