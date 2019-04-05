@@ -197,7 +197,7 @@ public final class TaskOffloader {
           cnt += 1;
         }
       }
-    }, 10, 50, TimeUnit.SECONDS);
+    }, 25, 50, TimeUnit.SECONDS);
 
     se.scheduleAtFixedRate(() -> {
       LOG.info("End offloading kafka");
@@ -206,7 +206,7 @@ public final class TaskOffloader {
         LOG.info("End task {}", endTask);
         endTask.endOffloading();
       }
-    }, 30, 50, TimeUnit.SECONDS);
+    }, 40, 50, TimeUnit.SECONDS);
   }
 
 
