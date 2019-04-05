@@ -64,6 +64,8 @@ public interface ByteInputContext extends ByteTransferContext {
    */
   void onByteBuf(final ByteBuf byteBuf);
 
+  boolean isFinished();
+
   /**
    * Called when {@link #onByteBuf(ByteBuf)} event is no longer expected.
    */

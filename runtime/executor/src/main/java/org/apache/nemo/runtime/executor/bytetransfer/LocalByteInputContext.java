@@ -107,6 +107,11 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public boolean isFinished() {
+    return isFinished;
+  }
+
   /**
    * Called when {@link #onByteBuf(ByteBuf)} event is no longer expected.
    */
@@ -117,6 +122,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
 
   @Override
   public void onContextStop() {
+    LOG.info("Local context finished true {}", getContextId());
     isFinished = true;
   }
 

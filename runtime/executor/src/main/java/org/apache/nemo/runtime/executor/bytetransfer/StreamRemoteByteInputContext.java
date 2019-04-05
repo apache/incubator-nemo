@@ -108,6 +108,11 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
     }
   }
 
+  @Override
+  public boolean isFinished() {
+    return isFinished;
+  }
+
   /**
    * Called when {@link #onByteBuf(ByteBuf)} event is no longer expected.
    */

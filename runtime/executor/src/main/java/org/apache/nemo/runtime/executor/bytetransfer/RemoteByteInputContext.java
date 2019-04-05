@@ -129,6 +129,11 @@ public final class RemoteByteInputContext extends AbstractByteTransferContext im
     }
   }
 
+  @Override
+  public boolean isFinished() {
+    return false;
+  }
+
   /**
    * Called when {@link #onByteBuf(ByteBuf)} event is no longer expected.
    */
