@@ -131,6 +131,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
         final Integer taskIndex = iteratorTaskIndexMap.remove(iterator);
         LOG.info("Task index {} finished at {}", taskIndex);
         watermarkManager.removeEdge(taskIndex);
+        iteratorIndex = iteratorIndex % iterators.size();
 
       } else if (iterator.hasNext()) {
         iteratorIndex = (iteratorIndex + 1) % iterators.size();
