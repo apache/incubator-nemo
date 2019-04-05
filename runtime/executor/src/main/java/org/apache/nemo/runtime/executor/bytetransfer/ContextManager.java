@@ -193,16 +193,15 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     final int transferIndex) {
     final ByteInputContext localInputContext = inputContextsInitiatedByRemote.get(transferIndex);
     LOG.info("local context restart!! {}", localInputContext.getContextId());
-    if (localInputContext.isFinished()) {
-      LOG.info("Finish is not processed yet... we just set finish false: {}", localInputContext.getContextId());
-      localInputContext.onContextRestart();
-    } else {
-      try {
-        pipeManagerWorker.onInputContext(localInputContext);
-      } catch (InvalidProtocolBufferException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
+    final ByteInputContext localByteInputContext = new LocalByteInputContext(
+      localInputContext.getRemoteExecutorId(), localInputContext.getContextId(),
+      localInputContext.getContextDescriptor(),
+      this, ((LocalByteInputContext)localInputContext).getQueue());
+    try {
+      pipeManagerWorker.onInputContext(localByteInputContext);
+    } catch (InvalidProtocolBufferException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 

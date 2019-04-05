@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -71,13 +72,15 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   private final List<DataUtil.IteratorWithNumBytes> iterators;
 
-  private final List<DataUtil.IteratorWithNumBytes> newIterators;
-
   private int iteratorIndex = 0;
 
   private final ConcurrentMap<DataUtil.IteratorWithNumBytes, Integer> iteratorTaskIndexMap;
+  private final ConcurrentMap<Integer, DataUtil.IteratorWithNumBytes> taskIndexIteratorMap;
+
   private final ExecutorService queueInsertionThreads;
   private final ConcurrentLinkedQueue elementQueue;
+
+  private final ConcurrentLinkedQueue<Pair<DataUtil.IteratorWithNumBytes, Integer>> taskAddPairQueue;
 
   MultiThreadParentTaskDataFetcher(final String taskId,
                                    final IRVertex dataSource,
@@ -93,9 +96,10 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
     //this.queueInsertionThreads = Executors.newCachedThreadPool();
     this.iterators = new ArrayList<>();
-    this.newIterators = new ArrayList<>();
     this.iteratorTaskIndexMap = new ConcurrentHashMap<>();
+    this.taskIndexIteratorMap = new ConcurrentHashMap<>();
     this.queueInsertionThreads = Executors.newCachedThreadPool();
+    this.taskAddPairQueue = new ConcurrentLinkedQueue<>();
 
     fetchNonBlocking();
   }
@@ -107,12 +111,30 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       firstFetch = false;
     }
 
-    if (!newIterators.isEmpty()) {
-      LOG.info("Add new iterators {}", newIterators.size());
-      iterators.addAll(newIterators);
-      synchronized (newIterators) {
-        newIterators.clear();
+    while (!taskAddPairQueue.isEmpty()) {
+      final Pair<DataUtil.IteratorWithNumBytes, Integer> pair = taskAddPairQueue.poll();
+      LOG.info("Receive iterator task {} at {} edge {}"
+        , pair.right(), readersForParentTask.getTaskIndex(), edge.getId());
+      final DataUtil.IteratorWithNumBytes iterator = pair.left();
+      final int taskIndex = pair.right();
+      final DynamicInputWatermarkManager watermarkManager = (DynamicInputWatermarkManager) inputWatermarkManager;
+
+      if (taskIndexIteratorMap.containsKey(taskIndex)) {
+        // finish the iterator first!
+        final DataUtil.IteratorWithNumBytes finishedIterator = taskIndexIteratorMap.remove(taskIndex);
+        iteratorTaskIndexMap.remove(finishedIterator);
+
+        LOG.info("Task index {} finished at {}", taskIndex);
+        watermarkManager.removeEdge(taskIndex);
+
+        iterators.remove(finishedIterator);
       }
+
+      iteratorTaskIndexMap.put(iterator, taskIndex);
+      taskIndexIteratorMap.put(taskIndex, iterator);
+
+      watermarkManager.addEdge(taskIndex);
+      iterators.add(iterator);
     }
 
 
@@ -129,6 +151,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
         final DynamicInputWatermarkManager watermarkManager = (DynamicInputWatermarkManager) inputWatermarkManager;
         iterators.remove(iteratorIndex);
         final Integer taskIndex = iteratorTaskIndexMap.remove(iterator);
+        taskIndexIteratorMap.remove(taskIndex);
         LOG.info("Task index {} finished at {}", taskIndex);
         watermarkManager.removeEdge(taskIndex);
         iteratorIndex = iterators.size() == 0 ? 0 : iteratorIndex % iterators.size();
@@ -155,6 +178,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       cnt += 1;
     }
 
+
     throw new NoSuchElementException();
   }
 
@@ -163,17 +187,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     final DynamicInputWatermarkManager watermarkManager = (DynamicInputWatermarkManager) inputWatermarkManager;
 
     readersForParentTask.readAsync(pair -> {
-
-      LOG.info("Receive iterator task {} at {} edge {}"
-        , pair.right(), readersForParentTask.getTaskIndex(), edge.getId());
-      final DataUtil.IteratorWithNumBytes iterator = pair.left();
-      final int taskIndex = pair.right();
-      iteratorTaskIndexMap.put(iterator, taskIndex);
-      watermarkManager.addEdge(taskIndex);
-
-      synchronized (newIterators) {
-        newIterators.add(iterator);
-      }
+      taskAddPairQueue.add(pair);
     });
   }
 
