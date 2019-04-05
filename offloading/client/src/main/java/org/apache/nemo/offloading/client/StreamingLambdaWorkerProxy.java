@@ -169,7 +169,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
       //byteBufOutputStream.buffer().release();
       closeThread.execute(() -> {
         try {
-          LOG.info("Send end mesesage to worker {}", workerId);
+          LOG.info("ForceClose: Send end mesesage to worker {}", workerId);
           channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
         } catch (InterruptedException e) {
           e.printStackTrace();
@@ -190,7 +190,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
         }
 
         try {
-          LOG.info("Send end mesesage to worker {}", workerId);
+          LOG.info("ForceClose: Send end mesesage to worker {}", workerId);
           channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
         } catch (InterruptedException e) {
           e.printStackTrace();

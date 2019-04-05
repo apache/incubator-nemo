@@ -13,19 +13,16 @@ public final class KafkaOffloadingDataEvent {
   public final int id;
   public final SourceVertexDataFetcher sourceVertexDataFetcher;
   public final UnboundedSource.CheckpointMark checkpointMark;
-  public final CompletableFuture<ControlMessage.Message> taskIndexFuture;
 
   public KafkaOffloadingDataEvent(final OffloadingWorker offloadingWorker,
                                   final UnboundedSource unboundedSource,
                                   final int id,
                                   final SourceVertexDataFetcher sourceVertexDataFetcher,
-                                  final UnboundedSource.CheckpointMark checkpointMark,
-                                  final CompletableFuture<ControlMessage.Message> taskIndexFuture) {
+                                  final UnboundedSource.CheckpointMark checkpointMark) {
     this.offloadingWorker = offloadingWorker;
     this.unboundedSource = unboundedSource;
     this.id = id;
     this.sourceVertexDataFetcher = sourceVertexDataFetcher;
     this.checkpointMark = checkpointMark;
-    this.taskIndexFuture = taskIndexFuture;
   }
 }
