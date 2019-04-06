@@ -79,6 +79,8 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
     LOG.info("{} edge index removed {} at {}, number of edges: {}", vertex.getId(), index,
       taskId, taskWatermarkMap.size());
 
+    taskWatermarkMap.remove(index);
+
     if (minWatermarkIndex == index) {
       minWatermarkIndex = findNextMinWatermarkIndex();
       LOG.info("{} min index changed from {} to {}, watermark {}", vertex.getId(), index, minWatermarkIndex, currMinWatermark);
