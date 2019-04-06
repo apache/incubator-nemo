@@ -242,6 +242,9 @@ public final class GBKPartialTransform<K, InputT>
     LOG.info("Flush in GBKPartial!");
     processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE,
       new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()));
+
+    processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE,
+      inputWatermark);
   }
 
   /**
