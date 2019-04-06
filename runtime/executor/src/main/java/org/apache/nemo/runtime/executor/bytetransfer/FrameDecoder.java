@@ -27,7 +27,9 @@ import org.apache.nemo.runtime.executor.task.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Interprets inbound byte streams to compose frames.
@@ -92,8 +94,13 @@ public final class FrameDecoder extends ByteToMessageDecoder {
   private boolean isLastFrame;
   private boolean isStop;
 
+  private final Map<Integer, Collection<ByteBuf>> pendingByteBufMap;
+
+  private int currTransferIndex;
+
   FrameDecoder(final ContextManager contextManager) {
     this.contextManager = contextManager;
+    this.pendingByteBufMap = new HashMap<>();
   }
 
   @Override
@@ -151,6 +158,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       isLastFrame = (flags & ((byte) (1 << 0))) != 0;
       isStop = (flags & ((byte) (1 << 4))) != 0;
 
+      currTransferIndex = transferIndex;
       inputContext = contextManager.getInputContext(dataDirection, transferIndex);
       /*
       if (inputContext == null) {
@@ -226,7 +234,18 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     final long length = Math.min(dataBodyBytesToRead, in.readableBytes());
     assert (length <= Integer.MAX_VALUE);
     final ByteBuf body = in.readSlice((int) length).retain();
-    inputContext.onByteBuf(body);
+
+    if (inputContext == null) {
+      pendingByteBufMap.putIfAbsent(currTransferIndex, new LinkedList<>());
+      pendingByteBufMap.get(currTransferIndex).add(body);
+    } else {
+      if (pendingByteBufMap.containsKey(currTransferIndex)) {
+        for (final ByteBuf pendingByte : pendingByteBufMap.remove(currTransferIndex)) {
+          inputContext.onByteBuf(pendingByte);
+        }
+      }
+      inputContext.onByteBuf(body);
+    }
 
     dataBodyBytesToRead -= length;
     if (dataBodyBytesToRead == 0) {
