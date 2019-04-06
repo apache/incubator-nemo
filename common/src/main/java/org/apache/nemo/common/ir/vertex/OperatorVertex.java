@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
  * It is to be constructed in the compiler frontend with language-specific data transform logic.
  */
 public class OperatorVertex extends IRVertex {
-  private final Transform transform;
+  private Transform transform;
 
   /**
    * Constructor of OperatorVertex.
@@ -51,6 +51,10 @@ public class OperatorVertex extends IRVertex {
     return new OperatorVertex(this);
   }
 
+
+  public void setTransform(final Transform tf) {
+    this.transform = tf;
+  }
   /**
    * @return the transform in the OperatorVertex.
    */

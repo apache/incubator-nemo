@@ -19,6 +19,7 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKPartialTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
 import org.apache.nemo.offloading.client.StreamingWorkerService;
@@ -507,7 +508,14 @@ public final class KafkaOffloader {
         irVertexDag.getTopologicalSort().stream().forEach(irVertex -> {
           if (irVertex instanceof OperatorVertex) {
             final Transform transform = ((OperatorVertex) irVertex).getTransform();
-            transform.flush();
+            if (transform instanceof GBKPartialTransform) {
+              final byte[] snapshot = SerializationUtils.serialize(transform);
+              transform.flush();
+              final Transform des = SerializationUtils.deserialize(snapshot);
+              ((OperatorVertex)irVertex).setTransform(des);
+            } else {
+              transform.flush();
+            }
           }
         });
         LOG.info("Close current output contexts");
