@@ -187,8 +187,8 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
         + "inputWatermark: {}, outputWatermark: {}", minWatermarkHold, inputWatermark, prevOutputWatermark);
     }
 
-    LOG.info("GBK watermark candidate: {}, currWatermark: {}/{}",
-      new Instant(outputWatermarkCandidate.getTimestamp()), new Instant(prevOutputWatermark.getTimestamp()), prevOutputWatermark);
+    //LOG.info("GBK watermark candidate: {}, currWatermark: {}/{}",
+    //  new Instant(outputWatermarkCandidate.getTimestamp()), new Instant(prevOutputWatermark.getTimestamp()), prevOutputWatermark);
 
     if (outputWatermarkCandidate.getTimestamp() > prevOutputWatermark.getTimestamp()) {
       // progress!
