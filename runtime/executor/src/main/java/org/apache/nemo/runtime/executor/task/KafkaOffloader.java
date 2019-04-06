@@ -91,9 +91,11 @@ public final class KafkaOffloader {
 
 
   private final List<KafkaOffloadingOutput> kafkaOffloadingOutputs = new ArrayList<>();
+  private final TaskExecutor taskExecutor;
 
   public KafkaOffloader(final String executorId,
                         final Task task,
+                        final TaskExecutor taskExecutor,
                         final EvalConf evalConf,
                         final Map<String, InetSocketAddress> executorAddressMap,
                         final Map<Integer, String> dstTaskIndexTargetExecutorMap,
@@ -114,6 +116,7 @@ public final class KafkaOffloader {
                         final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
     this.executorId = executorId;
     this.task = task;
+    this.taskExecutor = taskExecutor;
     this.evalConf = evalConf;
     this.executorAddressMap = executorAddressMap;
     this.dstTaskIndexTargetExecutorMap = dstTaskIndexTargetExecutorMap;
@@ -237,9 +240,12 @@ public final class KafkaOffloader {
 
     if (offloadedDataFetcherMap.isEmpty()) {
       // It means that offloading finished
+      taskExecutor.getPrevOffloadEndTime().set(System.currentTimeMillis());
+
       if (!taskStatus.compareAndSet(TaskExecutor.Status.DEOFFLOAD_PENDING, TaskExecutor.Status.RUNNING)) {
         throw new RuntimeException("Invalid task status: " + taskStatus);
       }
+
 
       // Restart contexts
       LOG.info("Restart output writers");
@@ -280,7 +286,8 @@ public final class KafkaOffloader {
       }
       runningWorkers.clear();
 
-    } else if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.DEOFFLOAD_PENDING)) {
+    } else if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.RUNNING)) {
+      taskExecutor.getPrevOffloadEndTime().set(System.currentTimeMillis());
       LOG.info("Get end offloading kafka event: {}", taskStatus);
       // It means that this is not initialized yet
       // just finish this worker!
@@ -293,6 +300,7 @@ public final class KafkaOffloader {
       }
 
       kafkaOffloadPendingEvents.clear();
+
 
       if (!runningWorkers.isEmpty()) {
         throw new RuntimeException("Offload pending should not have running workers!: " + runningWorkers.size());
@@ -337,7 +345,8 @@ public final class KafkaOffloader {
     prevOffloadStartTime.set(System.currentTimeMillis());
 
     if (!taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING)) {
-        throw new RuntimeException("Invalid task status: " + taskStatus);
+      LOG.warn("Multiple start request ... just ignore it");
+      throw new RuntimeException("Invalid task status: " + taskStatus);
     }
 
     // KAFKA SOURCE OFFLOADING !!!!
@@ -490,6 +499,7 @@ public final class KafkaOffloader {
 
 
       LOG.info("Before setting offloaded status: " + taskStatus);
+      taskExecutor.getPrevOffloadStartTime().set(System.currentTimeMillis());
       if (!taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.OFFLOADED)) {
         throw new RuntimeException("Invalid task status: " + taskStatus);
       } else {

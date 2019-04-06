@@ -815,6 +815,7 @@ public final class TaskExecutor {
         kafkaOffloader = Optional.of(new KafkaOffloader(
           executorId,
           task,
+          this,
           evalConf,
           byteTransport.getExecutorAddressMap(),
           pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),

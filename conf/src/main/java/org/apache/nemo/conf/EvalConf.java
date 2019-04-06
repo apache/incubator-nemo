@@ -61,8 +61,12 @@ public final class EvalConf {
   public static final class BottleneckDetectionConsecutive implements Name<Integer> {
   }
 
-  @NamedParameter(short_name = "bottleneck_detection_threshold", default_value = "0.72")
+  @NamedParameter(short_name = "bottleneck_detection_threshold", default_value = "0.85")
   public static final class BottleneckDetectionCpuThreshold implements Name<Double> {
+  }
+
+  @NamedParameter(short_name = "deoffloading_threshold", default_value = "0.6")
+  public static final class DeoffloadingThreshold implements Name<Double> {
   }
 
   @NamedParameter(short_name = "event_threshold", default_value = "250000")
@@ -102,6 +106,7 @@ public final class EvalConf {
   public final int minVmTask;
   public final int eventThreshold;
   public final boolean ec2;
+  public final double deoffloadingThreshold;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -119,11 +124,13 @@ public final class EvalConf {
                    @Parameter(IsLocalSource.class) final boolean isLocalSource,
                    @Parameter(SourceParallelism.class) final int sourceParallelism,
                    @Parameter(MinVmTask.class) final int minVmTask,
+                   @Parameter(DeoffloadingThreshold.class) final int deoffloadingThreshold,
                    @Parameter(EventThreshold.class) final int eventThreshold) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
     this.flushBytes = flushBytes;
+    this.deoffloadingThreshold = deoffloadingThreshold;
     this.ec2 = ec2;
     this.flushCount = flushCount;
     this.flushPeriod = flushPeriod;
@@ -163,6 +170,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(MinVmTask.class, Integer.toString(minVmTask));
     jcb.bindNamedParameter(EventThreshold.class, Integer.toString(eventThreshold));
     jcb.bindNamedParameter(Ec2.class, Boolean.toString(ec2));
+    jcb.bindNamedParameter(DeoffloadingThreshold.class, Double.toString(deoffloadingThreshold));
     return jcb.build();
   }
 
@@ -184,6 +192,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(MinVmTask.class);
     cl.registerShortNameOfClass(EventThreshold.class);
     cl.registerShortNameOfClass(Ec2.class);
+    cl.registerShortNameOfClass(DeoffloadingThreshold.class);
   }
 
   @Override
@@ -201,6 +210,7 @@ public final class EvalConf {
     sb.append("bottleneckDetectionPeriod: "); sb.append(bottleneckDetectionPeriod); sb.append("\n");
     sb.append("bottleneckDectionConsectutive: "); sb.append(bottleneckDetectionConsecutive); sb.append("\n");
     sb.append("bottleneckDetectionThreshold: "); sb.append(bottleneckDetectionThreshold); sb.append("\n");
+    sb.append("deoffloadingThreshold: "); sb.append(deoffloadingThreshold); sb.append("\n");
     sb.append("samplingJson: "); sb.append(samplingJsonStr); sb.append("\n");
     sb.append("burstyOps: "); sb.append(burstyOperatorStr); sb.append("\n");
     sb.append("isLocalSource: "); sb.append(isLocalSource); sb.append("\n");
