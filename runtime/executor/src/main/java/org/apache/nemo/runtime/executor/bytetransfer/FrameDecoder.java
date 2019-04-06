@@ -150,7 +150,9 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       final boolean newSubStreamFlag = (flags & ((byte) (1 << 1))) != 0;
       isLastFrame = (flags & ((byte) (1 << 0))) != 0;
       isStop = (flags & ((byte) (1 << 4))) != 0;
+
       inputContext = contextManager.getInputContext(dataDirection, transferIndex);
+      /*
       if (inputContext == null) {
         throw new IllegalStateException(String.format("Transport context for %s:%d was not found between the local"
                 + "address %s and the remote address %s", dataDirection, transferIndex,
@@ -159,6 +161,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       if (newSubStreamFlag) {
         inputContext.onNewStream();
       }
+      */
+
       if (dataBodyBytesToRead == 0) {
         onDataFrameEnd();
       }
