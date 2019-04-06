@@ -163,7 +163,7 @@ public final class GBKPartialTransform<K, InputT>
 
     // Trigger timers
 
-    final int triggeredKeys = triggerTimers(processingTime, synchronizedTime, triggerWatermark);
+    final int triggeredKeys = triggerTimers(processingTime, synchronizedTime, triggerWatermark, false);
     final long triggerTime = System.currentTimeMillis();
 
 //    LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {}", getContext().getIRVertex().getId(),
@@ -240,11 +240,8 @@ public final class GBKPartialTransform<K, InputT>
   @Override
   public void flush() {
     LOG.info("Flush in GBKPartial!");
-    processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE,
-      new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()));
-
-    processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE,
-      inputWatermark);
+    triggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE,
+      new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()), true);
   }
 
   /**
@@ -255,7 +252,8 @@ public final class GBKPartialTransform<K, InputT>
    */
   private int triggerTimers(final Instant processingTime,
                             final Instant synchronizedTime,
-                            final Watermark triggerWatermark) {
+                            final Watermark triggerWatermark,
+                            final boolean isFlush) {
 
     inMemoryTimerInternalsFactory.inputWatermarkTime = new Instant(triggerWatermark.getTimestamp());
     inMemoryTimerInternalsFactory.processingTime = processingTime;
@@ -293,6 +291,10 @@ public final class GBKPartialTransform<K, InputT>
       // but this windowed value is actually not used in the ReduceFnRunner internal.
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(timerWorkItem));
 
+      if (isFlush) {
+        timerInternals.setCurrentSynchronizedProcessingTime(new Instant(inputWatermark.getTimestamp()));
+      }
+
       /*
       timerInternals.decrementRegisteredTimer();
       if (!timerInternals.hasTimer()) {
@@ -300,6 +302,10 @@ public final class GBKPartialTransform<K, InputT>
         inMemoryTimerInternalsFactory.timerInternalsMap.remove(timer.left());
       }
       */
+    }
+
+    if (isFlush) {
+      inMemoryTimerInternalsFactory.inputWatermarkTime = new Instant(inputWatermark.getTimestamp());
     }
 
     // TODO: send end event
