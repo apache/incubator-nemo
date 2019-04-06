@@ -131,7 +131,7 @@ public final class GBKFinalTransform<K, InputT>
     //  element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
 
     // drop late data
-   // if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
+    if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
       //LOG.info("Final input process: {}", element);
 
       //LOG.info("Final input!!: {}", element);
@@ -150,7 +150,7 @@ public final class GBKFinalTransform<K, InputT>
       // but this windowed value is actually not used in the ReduceFnRunner internal.
       getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
       checkAndFinishBundle();
-    //}
+    }
   }
 
   /**

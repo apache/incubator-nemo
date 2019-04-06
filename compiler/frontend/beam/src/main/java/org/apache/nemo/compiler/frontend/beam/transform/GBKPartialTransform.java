@@ -131,7 +131,7 @@ public final class GBKPartialTransform<K, InputT>
     dataReceived = true;
 
     // drop late data
-    //if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
+    if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
     // We can call Beam's DoFnRunner#processElement here,
     // but it may generate some overheads if we call the method for each data.
     // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
@@ -149,7 +149,7 @@ public final class GBKPartialTransform<K, InputT>
     // but this windowed value is actually not used in the ReduceFnRunner internal.
     getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
     checkAndFinishBundle();
-    //}
+    }
   }
 
   /**
