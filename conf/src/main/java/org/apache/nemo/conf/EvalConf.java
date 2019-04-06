@@ -124,7 +124,7 @@ public final class EvalConf {
                    @Parameter(IsLocalSource.class) final boolean isLocalSource,
                    @Parameter(SourceParallelism.class) final int sourceParallelism,
                    @Parameter(MinVmTask.class) final int minVmTask,
-                   @Parameter(DeoffloadingThreshold.class) final int deoffloadingThreshold,
+                   @Parameter(DeoffloadingThreshold.class) final double deoffloadingThreshold,
                    @Parameter(EventThreshold.class) final int eventThreshold) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
