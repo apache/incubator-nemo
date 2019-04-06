@@ -293,9 +293,9 @@ public final class TaskOffloader {
               }
             }
           }
-        } else if (cpuLowMean < threshold - 0.2 &&  observedCnt >= observeWindow) {
+        } else if (cpuLowMean < threshold  &&  observedCnt >= observeWindow) {
           if (!offloadedExecutors.isEmpty()) {
-            final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.1);
+            final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(threshold - 0.05);
 
             if (taskStatInfo.running == 0 && taskStatInfo.deoffloaded == 0) {
               // special case!
