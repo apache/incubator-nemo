@@ -61,11 +61,11 @@ public final class EvalConf {
   public static final class BottleneckDetectionConsecutive implements Name<Integer> {
   }
 
-  @NamedParameter(short_name = "bottleneck_detection_threshold", default_value = "0.85")
+  @NamedParameter(short_name = "bottleneck_detection_threshold", default_value = "0.93")
   public static final class BottleneckDetectionCpuThreshold implements Name<Double> {
   }
 
-  @NamedParameter(short_name = "deoffloading_threshold", default_value = "0.6")
+  @NamedParameter(short_name = "deoffloading_threshold", default_value = "0.7")
   public static final class DeoffloadingThreshold implements Name<Double> {
   }
 
