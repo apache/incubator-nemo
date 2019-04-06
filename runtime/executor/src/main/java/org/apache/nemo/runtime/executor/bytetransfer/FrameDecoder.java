@@ -236,6 +236,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
     final ByteBuf body = in.readSlice((int) length).retain();
 
     if (inputContext == null) {
+      LOG.info("Add bytebuf for null transferIndex {}", currTransferIndex);
       pendingByteBufMap.putIfAbsent(currTransferIndex, new LinkedList<>());
       pendingByteBufMap.get(currTransferIndex).add(body);
     } else {
