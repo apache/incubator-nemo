@@ -158,11 +158,12 @@ public final class GBKPartialTransform<K, InputT>
    * @param synchronizedTime synchronized time
    */
   private void processElementsAndTriggerTimers(final Instant processingTime,
-                                               final Instant synchronizedTime) {
+                                               final Instant synchronizedTime,
+                                               final Watermark triggerWatermark) {
 
     // Trigger timers
 
-    final int triggeredKeys = triggerTimers(processingTime, synchronizedTime);
+    final int triggeredKeys = triggerTimers(processingTime, synchronizedTime, triggerWatermark);
     final long triggerTime = System.currentTimeMillis();
 
 //    LOG.info("{} time to elem: {} trigger: {} triggered: {} triggeredKey: {}", getContext().getIRVertex().getId(),
@@ -212,7 +213,7 @@ public final class GBKPartialTransform<K, InputT>
     inputWatermark = watermark;
 
     final long st = System.currentTimeMillis();
-    processElementsAndTriggerTimers(Instant.now(), Instant.now());
+    processElementsAndTriggerTimers(Instant.now(), Instant.now(), inputWatermark);
     // Emit watermark to downstream operators
 
     emitOutputWatermark();
@@ -233,13 +234,14 @@ public final class GBKPartialTransform<K, InputT>
   protected void beforeClose() {
     // Finish any pending windows by advancing the input watermark to infinity.
     inputWatermark = new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis());
-    processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE);
+    processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE, inputWatermark);
   }
 
   @Override
   public void flush() {
     LOG.info("Flush in GBKPartial!");
-    beforeClose();
+    processElementsAndTriggerTimers(BoundedWindow.TIMESTAMP_MAX_VALUE, BoundedWindow.TIMESTAMP_MAX_VALUE,
+      new Watermark(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis()));
   }
 
   /**
@@ -249,9 +251,10 @@ public final class GBKPartialTransform<K, InputT>
    * @param synchronizedTime synchronized time
    */
   private int triggerTimers(final Instant processingTime,
-                            final Instant synchronizedTime) {
+                            final Instant synchronizedTime,
+                            final Watermark triggerWatermark) {
 
-    inMemoryTimerInternalsFactory.inputWatermarkTime = new Instant(inputWatermark.getTimestamp());
+    inMemoryTimerInternalsFactory.inputWatermarkTime = new Instant(triggerWatermark.getTimestamp());
     inMemoryTimerInternalsFactory.processingTime = processingTime;
     inMemoryTimerInternalsFactory.synchronizedProcessingTime = synchronizedTime;
 
@@ -276,7 +279,7 @@ public final class GBKPartialTransform<K, InputT>
     for (final Pair<K, TimerInternals.TimerData> timer : timers) {
       final NemoTimerInternals timerInternals =
         inMemoryTimerInternalsFactory.timerInternalsMap.get(timer.left());
-      timerInternals.setCurrentInputWatermarkTime(new Instant(inputWatermark.getTimestamp()));
+      timerInternals.setCurrentInputWatermarkTime(new Instant(triggerWatermark.getTimestamp()));
       timerInternals.setCurrentProcessingTime(processingTime);
       timerInternals.setCurrentSynchronizedProcessingTime(synchronizedTime);
 
