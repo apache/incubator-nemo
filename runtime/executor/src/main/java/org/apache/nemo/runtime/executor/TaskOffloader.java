@@ -260,6 +260,19 @@ public final class TaskOffloader {
         LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}, observed: {}",
           cpuHighMean, cpuLowMean, taskStatInfo.running, threshold, observedCnt);
 
+        if (!offloadedExecutors.isEmpty()) {
+          final long cur = System.currentTimeMillis();
+          final Iterator<Pair<TaskExecutor, Long>> it = offloadedExecutors.iterator();
+          while (it.hasNext()) {
+            if (cur - it.next().right() >= TimeUnit.SECONDS.toMillis(120)) {
+              // force close!
+              LOG.info("Force close workers!!");
+              it.next().left().endOffloading();
+              it.remove();
+            }
+          }
+        }
+
         if (cpuHighMean > threshold && observedCnt >= observeWindow) {
 
           if (System.currentTimeMillis() - prevOffloadingTime >= slackTime) {
