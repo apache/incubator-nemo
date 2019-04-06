@@ -38,7 +38,6 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
   private static final Logger LOG = LoggerFactory.getLogger(DynamicInputWatermarkManager.class.getName());
 
   private final ConcurrentMap<Integer, Watermark> taskWatermarkMap;
-  private final ConcurrentMap<Integer, Watermark> prevWatermarkMap;
   private final OutputCollector<?> watermarkCollector;
   private int minWatermarkIndex;
   private Watermark currMinWatermark = new Watermark(Long.MIN_VALUE);
@@ -53,7 +52,6 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
     this.taskId = taskId;
     this.vertex = vertex;
     this.taskWatermarkMap = new ConcurrentHashMap<>();
-    this.prevWatermarkMap = new ConcurrentHashMap<>();
     this.watermarkCollector = watermarkCollector;
     this.minWatermarkIndex = 0;
   }
@@ -71,20 +69,13 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
   }
 
   public synchronized void addEdge(final int index) {
-    if (taskWatermarkMap.containsKey(minWatermarkIndex)) {
-      taskWatermarkMap.put(index, taskWatermarkMap.get(minWatermarkIndex));
-    } else {
-      taskWatermarkMap.put(index, new Watermark(-1));
-    }
+    minWatermarkIndex = index;
+    taskWatermarkMap.put(index, currMinWatermark);
     LOG.info("{} edge index added {} at {}, number of edges: {}", vertex.getId(), index, taskId,
       taskWatermarkMap.size());
   }
 
   public synchronized void removeEdge(final int index) {
-    if (taskWatermarkMap.containsKey(index)) {
-      prevWatermarkMap.put(index, taskWatermarkMap.remove(index));
-    }
-
     LOG.info("{} edge index removed {} at {}, number of edges: {}", vertex.getId(), index,
       taskId, taskWatermarkMap.size());
 
