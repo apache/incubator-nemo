@@ -124,6 +124,23 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
         final DataUtil.IteratorWithNumBytes finishedIterator = taskIndexIteratorMap.remove(taskIndex);
         iteratorTaskIndexMap.remove(finishedIterator);
 
+        // process remaining data!
+        while (finishedIterator.hasNext()) {
+          final Object element = iterator.next();
+
+          if (element instanceof WatermarkWithIndex) {
+            // watermark element
+            // the input watermark manager is accessed by multiple threads
+            // so we should synchronize it
+            final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
+            inputWatermarkManager.trackAndEmitWatermarks(
+              watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
+          } else {
+            // data element
+            return element;
+          }
+        }
+
         LOG.info("Task index {} finished at {}", taskIndex);
         watermarkManager.removeEdge(taskIndex);
 
