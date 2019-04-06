@@ -71,7 +71,11 @@ public final class DynamicInputWatermarkManager implements InputWatermarkManager
   }
 
   public synchronized void addEdge(final int index) {
-    taskWatermarkMap.put(index, taskWatermarkMap.get(minWatermarkIndex));
+    if (taskWatermarkMap.containsKey(minWatermarkIndex)) {
+      taskWatermarkMap.put(index, taskWatermarkMap.get(minWatermarkIndex));
+    } else {
+      taskWatermarkMap.put(index, new Watermark(-1));
+    }
     LOG.info("{} edge index added {} at {}, number of edges: {}", vertex.getId(), index, taskId,
       taskWatermarkMap.size());
   }
