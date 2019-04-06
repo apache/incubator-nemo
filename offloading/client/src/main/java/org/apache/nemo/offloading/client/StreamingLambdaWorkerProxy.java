@@ -164,20 +164,13 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
 
   @Override
-  public void forceClose() {
+  public synchronized void forceClose() {
     if (channel != null) {
       //byteBufOutputStream.buffer().release();
       closeThread.execute(() -> {
-        try {
-          LOG.info("ForceClose: Send end mesesage to worker {}", workerId);
-          channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
+        LOG.info("ForceClose: Send end mesesage to worker {}", workerId);
+        channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
+
       });
     } else {
       closeThread.execute(() -> {
@@ -189,16 +182,9 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
           }
         }
 
-        try {
           LOG.info("ForceClose: Send end mesesage to worker {}", workerId);
-          channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0)).get();
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
+          channel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.END, new byte[0], 0));
+
       });
     }
 
@@ -206,7 +192,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   }
 
   @Override
-  public <T> T finishOffloading() {
+  public synchronized <T> T finishOffloading() {
 
     if (channel != null) {
       //byteBufOutputStream.buffer().release();
