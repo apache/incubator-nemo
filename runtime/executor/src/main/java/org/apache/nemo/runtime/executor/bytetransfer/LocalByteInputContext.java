@@ -31,7 +31,6 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Container for multiple input streams. Represents a transfer context on receiver-side.
@@ -48,7 +47,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
   private final Queue<Object> objectQueue;
   private final DataUtil.IteratorWithNumBytes iteratorWithNumBytes;
 
-  private final AtomicBoolean isFinished = new AtomicBoolean(false);
+  private  boolean isFinished = false;
   /**
    * Creates an input context.
    * @param remoteExecutorId    id of the remote executor
@@ -110,7 +109,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
 
   @Override
   public boolean isFinished() {
-    return isFinished.get();
+    return isFinished;
   }
 
   /**
@@ -118,18 +117,18 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
    */
   @Override
   public void onContextClose() {
-    isFinished.set(true);
+    isFinished = true;
   }
 
   @Override
   public void onContextStop() {
     LOG.info("Local context finished true {}", getContextId());
-    isFinished.set(true);
+    isFinished = true;
   }
 
   @Override
   public void onContextRestart() {
-    isFinished.set(false);
+    isFinished = false;
   }
 
   @Override
@@ -144,7 +143,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
 
     @Override
     public boolean isFinished() {
-      return isFinished.get();
+      return isFinished;
     }
 
     @Override
@@ -159,7 +158,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
 
     @Override
     public boolean hasNext() {
-      if (objectQueue.isEmpty() || isFinished.get()) {
+      if (objectQueue.isEmpty() || isFinished) {
         return false;
       }
 

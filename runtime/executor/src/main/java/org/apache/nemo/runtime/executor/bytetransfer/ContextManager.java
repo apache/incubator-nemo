@@ -197,6 +197,10 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
       localInputContext.getRemoteExecutorId(), localInputContext.getContextId(),
       localInputContext.getContextDescriptor(),
       this, ((LocalByteInputContext)localInputContext).getQueue());
+
+    inputContextsInitiatedByRemote.remove(transferIndex);
+    inputContextsInitiatedByRemote.put(transferIndex, localByteInputContext);
+
     try {
       pipeManagerWorker.onInputContext(localByteInputContext);
     } catch (InvalidProtocolBufferException e) {
