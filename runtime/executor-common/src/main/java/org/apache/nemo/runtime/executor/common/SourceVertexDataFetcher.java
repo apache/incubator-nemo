@@ -48,6 +48,8 @@ public class SourceVertexDataFetcher extends DataFetcher {
 
   private boolean isStarted = false;
 
+  private long prevWatermarkTimestamp = -1L;
+
   public SourceVertexDataFetcher(final SourceVertex dataSource,
                                  final RuntimeEdge edge,
                                  final Readable readable,
@@ -127,7 +129,11 @@ public class SourceVertexDataFetcher extends DataFetcher {
     // Emit watermark
     if (!bounded && isWatermarkTriggerTime()) {
       // index=0 as there is only 1 input stream
-      return new Watermark(readable.readWatermark());
+      final long watermarkTimestamp = readable.readWatermark();
+      if (prevWatermarkTimestamp < watermarkTimestamp) {
+        prevWatermarkTimestamp = watermarkTimestamp;
+        return new Watermark(watermarkTimestamp);
+      }
     }
 
     // Data
