@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 public final class TaskOffloader {
   private static final Logger LOG = LoggerFactory.getLogger(TaskOffloader.class.getName());
@@ -272,7 +273,11 @@ public final class TaskOffloader {
 
             LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
             for (final TaskExecutor runningTask : taskStatInfo.runningTasks) {
-              if (!offloadedExecutors.contains(runningTask)) {
+
+              if (!offloadedExecutors.stream()
+                .map(pair -> pair.left()).collect(Collectors.toSet())
+                .contains(runningTask)) {
+
                 final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
                 LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
