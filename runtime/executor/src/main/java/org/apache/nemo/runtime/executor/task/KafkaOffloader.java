@@ -12,6 +12,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
@@ -29,6 +30,7 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.executor.TransformContextImpl;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
@@ -509,9 +511,12 @@ public final class KafkaOffloader {
           if (irVertex instanceof OperatorVertex) {
             final Transform transform = ((OperatorVertex) irVertex).getTransform();
             if (transform instanceof GBKPartialTransform) {
+              final OutputCollector outputCollector = taskExecutor.vertexIdAndCollectorMap.get(irVertex.getId()).right();
               final byte[] snapshot = SerializationUtils.serialize(transform);
               transform.flush();
               final Transform des = SerializationUtils.deserialize(snapshot);
+              des.prepare(
+                new TransformContextImpl(null, null, null), outputCollector);
               ((OperatorVertex)irVertex).setTransform(des);
             } else {
               transform.flush();

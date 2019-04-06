@@ -107,7 +107,7 @@ public final class TaskExecutor {
   // Variables for offloading - start
   private final ServerlessExecutorProvider serverlessExecutorProvider;
   private final OutputFluctuationDetector detector;
-  private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap;
+  public final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap;
   private final Set<OutputWriter> outputWriterMap;
   private final Map<String, List<String>> taskOutgoingEdges;
   private final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap = new HashMap<>();
