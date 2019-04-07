@@ -109,8 +109,8 @@ public final class VMOffloadingRequester {
             LOG.info("Pending requests...: {}", pendingRequests.get());
             if (!readyVMs.isEmpty()) {
               final Integer offloadingRequest = offloadingRequests.take();
-              if (handledRequestNum % slotPerTask < readyVMs.size()) {
-                final int vmIndex = handledRequestNum % slotPerTask;
+              if (handledRequestNum / slotPerTask < readyVMs.size()) {
+                final int vmIndex = handledRequestNum / slotPerTask;
                 handledRequestNum += 1;
                 pendingRequests.getAndDecrement();
                 final Channel openChannel = readyVMs.get(vmIndex);
