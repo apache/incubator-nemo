@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.nemo.offloading.common.Constants.VM_WORKER_PORT;
 
@@ -58,8 +59,8 @@ public final class VMOffloadingRequester {
 
   private final AtomicBoolean stopped = new AtomicBoolean(true);
 
-  private final List<String> vmAddresses = Arrays.asList("172.31.19.164");
-  private final List<String> instanceIds = Arrays.asList("i-00b2837c7559b8bbd");
+  private final List<String> vmAddresses = Arrays.asList("172.31.16.202");
+  private final List<String> instanceIds = Arrays.asList("i-0707e910d42ab99fb");
 
   /**
    * Netty client bootstrap.
@@ -75,6 +76,7 @@ public final class VMOffloadingRequester {
   final OffloadingEvent requestEvent;
 
   private int vmIndex = 0;
+  private final AtomicInteger pendingRequests = new AtomicInteger(0);
 
   public VMOffloadingRequester(final OffloadingEventHandler nemoEventHandler,
                                final String serverAddress,
@@ -100,8 +102,10 @@ public final class VMOffloadingRequester {
       while (true) {
         try {
           synchronized (readyVMs) {
+            LOG.info("Pending requests...: {}", pendingRequests.get());
             if (!readyVMs.isEmpty()) {
               final Integer offloadingRequest = offloadingRequests.take();
+              pendingRequests.getAndDecrement();
               final Channel openChannel = readyVMs.get(vmIndex);
               openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
               vmIndex = (vmIndex + 1) % readyVMs.size();
@@ -123,8 +127,10 @@ public final class VMOffloadingRequester {
   }
 
   public synchronized void createChannelRequest() {
+    LOG.info("Create request at VMOffloadingREquestor");
     final long waitingTime = 2000;
 
+    pendingRequests.getAndIncrement();
     offloadingRequests.add(1);
 
     if (vmStarted) {
