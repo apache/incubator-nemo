@@ -23,10 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,8 +56,8 @@ public final class VMOffloadingRequester {
 
   private final AtomicBoolean stopped = new AtomicBoolean(true);
 
-  private final List<String> vmAddresses = Arrays.asList("172.31.16.202");
-  private final List<String> instanceIds = Arrays.asList("i-0707e910d42ab99fb");
+  private final List<String> vmAddresses = Arrays.asList("172.31.16.202", "172.31.17.96", "172.31.18.133");
+  private final List<String> instanceIds = Arrays.asList("i-0707e910d42ab99fb", "i-081f578c165a41a7a", "i-0d346bd15aed1a33f");
 
   /**
    * Netty client bootstrap.
@@ -77,6 +74,8 @@ public final class VMOffloadingRequester {
 
   private int vmIndex = 0;
   private final AtomicInteger pendingRequests = new AtomicInteger(0);
+  private final int slotPerTask = 10;
+
 
   public VMOffloadingRequester(final OffloadingEventHandler nemoEventHandler,
                                final String serverAddress,
@@ -126,107 +125,76 @@ public final class VMOffloadingRequester {
 
   public synchronized void createChannelRequest() {
     LOG.info("Create request at VMOffloadingREquestor");
-    final long waitingTime = 2000;
 
-    pendingRequests.getAndIncrement();
+    final int num = pendingRequests.getAndIncrement();
     offloadingRequests.add(1);
 
-    if (vmStarted) {
-      return;
+    final int index = num / slotPerTask;
+    if (num % slotPerTask == 0 && index < instanceIds.size()) {
+      // request another vm!
+      executorService.execute(() -> {
+        startInstance(instanceIds.get(index), vmAddresses.get(index));
+      });
     }
+  }
 
-    vmStarted = true;
+  private Channel startInstance(final String instanceId, final String vmAddress) {
+    final long waitingTime = 2000;
+    DescribeInstancesRequest request = new DescribeInstancesRequest();
+    request.setInstanceIds(Collections.singleton(instanceId));
+    DescribeInstancesResult response = ec2.describeInstances(request);
 
-
-    executorService.execute(() -> {
-      if (stopped.compareAndSet(true, false)) {
-        // 1 start instance
-        DescribeInstancesRequest request = new DescribeInstancesRequest();
-        request.setInstanceIds(instanceIds);
-        DescribeInstancesResult response = ec2.describeInstances(request);
-
-        for(final Reservation reservation : response.getReservations()) {
-          for(final Instance instance : reservation.getInstances()) {
-            while (true) {
-              if (instance.getState().getName().equals("stopped")) {
-                // ready to start
-                final StartInstancesRequest startRequest = new StartInstancesRequest()
-                  .withInstanceIds(instanceIds);
-                LOG.info("Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
-                ec2.startInstances(startRequest);
-                LOG.info("End of Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
-                break;
-              } else if (instance.getState().getName().equals("stopping")) {
-                // waiting...
-                try {
-                  Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                  e.printStackTrace();
-                }
-              } else {
-                throw new RuntimeException("Unsupported state type: " + instance.getState().getName());
-              }
+    for(final Reservation reservation : response.getReservations()) {
+      for(final Instance instance : reservation.getInstances()) {
+        while (true) {
+          if (instance.getState().getName().equals("stopped")) {
+            // ready to start
+            final StartInstancesRequest startRequest = new StartInstancesRequest()
+              .withInstanceIds(instanceIds);
+            LOG.info("Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
+            ec2.startInstances(startRequest);
+            LOG.info("End of Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
+            break;
+          } else if (instance.getState().getName().equals("stopping")) {
+            // waiting...
+            try {
+              Thread.sleep(2000);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
             }
+          } else {
+            throw new RuntimeException("Unsupported state type: " + instance.getState().getName());
           }
-        }
-
-        // 2 connect to the instance
-        for (final String address : vmAddresses) {
-          ChannelFuture channelFuture;
-          while (true) {
-            final long st = System.currentTimeMillis();
-            channelFuture = clientBootstrap.connect(new InetSocketAddress(address, VM_WORKER_PORT));
-            channelFuture.awaitUninterruptibly(waitingTime);
-            assert channelFuture.isDone();
-            if (!channelFuture.isSuccess()) {
-              LOG.warn("A connection failed for " + address + "  waiting...");
-              final long elapsedTime = System.currentTimeMillis() - st;
-              try {
-                Thread.sleep(Math.max(1, waitingTime - elapsedTime));
-              } catch (InterruptedException e) {
-                e.printStackTrace();
-              }
-            } else {
-              break;
-            }
-          }
-
-          final Channel openChannel = channelFuture.channel();
-          LOG.info("Open channel for VM: {}", openChannel);
-          synchronized (readyVMs) {
-            readyVMs.add(openChannel);
-          }
-          LOG.info("Add channel: {}", openChannel);
         }
       }
+    }
 
-      /*
-      Channel requestChannel;
-
-      while (true) {
-        synchronized (readyVMs) {
-          LOG.info("ReadyVM: {} ", readyVMs);
-          if (readyVMs.size() > 0) {
-            final int idx = (channelIndex + 1) % readyVMs.size();
-            requestChannel = readyVMs.get(idx);
-            break;
-          }
-        }
-
+    ChannelFuture channelFuture;
+    while (true) {
+      final long st = System.currentTimeMillis();
+      channelFuture = clientBootstrap.connect(new InetSocketAddress(vmAddress, VM_WORKER_PORT));
+      channelFuture.awaitUninterruptibly(waitingTime);
+      assert channelFuture.isDone();
+      if (!channelFuture.isSuccess()) {
+        LOG.warn("A connection failed for " + vmAddress + "  waiting...");
+        final long elapsedTime = System.currentTimeMillis() - st;
         try {
-          Thread.sleep(1000);
+          Thread.sleep(Math.max(1, waitingTime - elapsedTime));
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
+      } else {
+        break;
       }
+    }
 
-      LOG.info("Request to Channel {}", requestChannel);
-      final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d}",
-        serverAddress, serverPort).getBytes();
-      requestChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
-      */
-
-    });
+    final Channel openChannel = channelFuture.channel();
+    LOG.info("Open channel for VM: {}", openChannel);
+    synchronized (readyVMs) {
+      readyVMs.add(openChannel);
+    }
+    LOG.info("Add channel: {}", openChannel);
+    return openChannel;
   }
 
   public void destroy() {
