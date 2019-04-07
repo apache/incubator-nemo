@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
+import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
 import org.apache.nemo.common.coder.BytesEncoderFactory;
@@ -47,8 +47,6 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
-import org.apache.nemo.runtime.executor.task.EndOffloadingKafkaEvent;
-import org.apache.nemo.runtime.executor.task.StartOffloadingKafkaEvent;
 import org.apache.nemo.runtime.executor.task.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.common.NemoEventDecoderFactory;
@@ -62,13 +60,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.*;
 
-import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,7 +98,7 @@ public final class Executor {
   private final ExecutorService executorService;
 
   private final EvalConf evalConf;
-  private final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory;
+  private final OffloadingWorkerFactory offloadingWorkerFactory;
 
   private final TaskOffloader taskOffloader;
 
@@ -127,7 +121,7 @@ public final class Executor {
                    final TaskOffloader taskOffloader,
                    final ByteTransport byteTransport,
                    //final CpuBottleneckDetector bottleneckDetector,
-                   final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
+                   final OffloadingWorkerFactory offloadingWorkerFactory,
                    final EvalConf evalConf,
                    final SystemLoadProfiler profiler,
                    final PipeManagerWorker pipeManagerWorker,
@@ -154,7 +148,7 @@ public final class Executor {
     this.evalConf = evalConf;
     LOG.info("\n{}", evalConf);
     this.serverlessExecutorProvider = serverlessExecutorProvider;
-    this.lambdaOffloadingWorkerFactory = lambdaOffloadingWorkerFactory;
+    this.offloadingWorkerFactory = offloadingWorkerFactory;
     this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
@@ -255,7 +249,7 @@ public final class Executor {
         persistentConnectionToMasterMap,
         serializerManager,
         serverlessExecutorProvider,
-        lambdaOffloadingWorkerFactory,
+        offloadingWorkerFactory,
         evalConf);
 
       taskExecutorMap.put(taskExecutor, true);

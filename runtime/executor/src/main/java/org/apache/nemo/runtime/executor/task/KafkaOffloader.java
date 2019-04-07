@@ -9,34 +9,30 @@ import org.apache.beam.sdk.io.kafka.KafkaCheckpointMark;
 import org.apache.beam.sdk.io.kafka.KafkaUnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKPartialTransform;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
 import org.apache.nemo.offloading.client.StreamingWorkerService;
 import org.apache.nemo.offloading.common.OffloadingWorker;
+import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.executor.TransformContextImpl;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
-import org.apache.nemo.runtime.executor.datatransfer.PipeOutputWriter;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingTransform;
@@ -58,7 +54,7 @@ public final class KafkaOffloader {
   private final StreamingWorkerService streamingWorkerService;
 
   private final byte[] serializedDag;
-  private final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory;
+  private final OffloadingWorkerFactory offloadingWorkerFactory;
   private final Map<String, List<String>> taskOutgoingEdges;
   private final SerializerManager serializerManager;
   private final ConcurrentLinkedQueue<Object> offloadingEventQueue;
@@ -103,7 +99,7 @@ public final class KafkaOffloader {
                         final Map<String, InetSocketAddress> executorAddressMap,
                         final Map<Integer, String> dstTaskIndexTargetExecutorMap,
                         final byte[] serializedDag,
-                        final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
+                        final OffloadingWorkerFactory offloadingWorkerFactory,
                         final Map<String, List<String>> taskOutgoingEdges,
                         final SerializerManager serializerManager,
                         final ConcurrentLinkedQueue<Object> offloadingEventQueue,
@@ -124,7 +120,7 @@ public final class KafkaOffloader {
     this.executorAddressMap = executorAddressMap;
     this.dstTaskIndexTargetExecutorMap = dstTaskIndexTargetExecutorMap;
     this.serializedDag = serializedDag;
-    this.lambdaOffloadingWorkerFactory = lambdaOffloadingWorkerFactory;
+    this.offloadingWorkerFactory = offloadingWorkerFactory;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.serializerManager = serializerManager;
     this.offloadingEventQueue = offloadingEventQueue;
@@ -190,7 +186,7 @@ public final class KafkaOffloader {
     final UnboundedSource unboundedSource = readable.getUnboundedSource();
 
     final StreamingWorkerService streamingWorkerService =
-      new StreamingWorkerService(lambdaOffloadingWorkerFactory,
+      new StreamingWorkerService(offloadingWorkerFactory,
         new KafkaOffloadingTransform(
           executorId,
           RuntimeIdManager.getIndexFromTaskId(taskId),

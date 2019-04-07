@@ -23,7 +23,7 @@ import org.apache.nemo.common.*;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.client.LambdaOffloadingWorkerFactory;
+import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
@@ -150,7 +150,7 @@ public final class TaskExecutor {
 
   private boolean pollingTime = false;
   private boolean kafkaOffloading = false;
-  private final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory;
+  private final OffloadingWorkerFactory offloadingWorkerFactory;
 
   private final AtomicInteger processedCnt = new AtomicInteger(0);
   private final AtomicLong prevOffloadStartTime = new AtomicLong(System.currentTimeMillis());
@@ -198,7 +198,7 @@ public final class TaskExecutor {
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                       final SerializerManager serializerManager,
                       final ServerlessExecutorProvider serverlessExecutorProvider,
-                      final LambdaOffloadingWorkerFactory lambdaOffloadingWorkerFactory,
+                      final OffloadingWorkerFactory offloadingWorkerFactory,
                       final EvalConf evalConf) {
     // Essential information
     this.threadId = threadId;
@@ -214,7 +214,7 @@ public final class TaskExecutor {
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
-    this.lambdaOffloadingWorkerFactory = lambdaOffloadingWorkerFactory;
+    this.offloadingWorkerFactory = offloadingWorkerFactory;
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.outputWriterMap = new HashSet<>();
     this.taskOutgoingEdges = new HashMap<>();
@@ -820,7 +820,7 @@ public final class TaskExecutor {
           byteTransport.getExecutorAddressMap(),
           pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),
           serializedDag,
-          lambdaOffloadingWorkerFactory,
+          offloadingWorkerFactory,
           taskOutgoingEdges,
           serializerManager,
           offloadingEventQueue,
