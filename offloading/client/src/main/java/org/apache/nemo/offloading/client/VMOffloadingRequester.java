@@ -157,10 +157,10 @@ public final class VMOffloadingRequester {
             if (instance.getState().getName().equals("stopped")) {
               // ready to start
               final StartInstancesRequest startRequest = new StartInstancesRequest()
-                .withInstanceIds(instanceIds);
-              LOG.info("Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
+                .withInstanceIds(instanceId);
+              LOG.info("Starting ec2 instances {}/{}", instanceId, System.currentTimeMillis());
               ec2.startInstances(startRequest);
-              LOG.info("End of Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
+              LOG.info("End of Starting ec2 instances {}/{}", instanceId, System.currentTimeMillis());
               break;
             } else if (instance.getState().getName().equals("stopping")) {
               // waiting...
