@@ -72,11 +72,12 @@ public final class VMOffloadingRequester {
 
   final OffloadingEvent requestEvent;
 
-  private int vmIndex = 0;
   private final AtomicInteger pendingRequests = new AtomicInteger(0);
   private final int slotPerTask = 10;
   private int totalRequest = 0;
   private final DescribeInstancesResult response;
+
+  private int handledRequestNum = 0;
 
 
   public VMOffloadingRequester(final OffloadingEventHandler nemoEventHandler,
@@ -108,10 +109,16 @@ public final class VMOffloadingRequester {
             LOG.info("Pending requests...: {}", pendingRequests.get());
             if (!readyVMs.isEmpty()) {
               final Integer offloadingRequest = offloadingRequests.take();
-              pendingRequests.getAndDecrement();
-              final Channel openChannel = readyVMs.get(vmIndex);
-              openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
-              vmIndex = (vmIndex + 1) % readyVMs.size();
+              if (handledRequestNum % slotPerTask < readyVMs.size()) {
+                final int vmIndex = handledRequestNum % slotPerTask;
+                handledRequestNum += 1;
+                pendingRequests.getAndDecrement();
+                final Channel openChannel = readyVMs.get(vmIndex);
+                openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
+              } else {
+                offloadingRequests.add(1);
+                Thread.sleep(1000);
+              }
             } else {
               Thread.sleep(1000);
             }
