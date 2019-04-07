@@ -19,6 +19,7 @@
 package org.apache.nemo.driver;
 
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.offloading.client.VMOffloadingWorkerFactory;
 import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.ir.IdManager;
@@ -269,7 +270,9 @@ public final class NemoDriver {
         .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
         .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
       .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-      .bindImplementation(OffloadingWorkerFactory.class, LambdaOffloadingWorkerFactory.class) // TODO: fix
+      .bindImplementation(OffloadingWorkerFactory.class,
+        evalConf.offloadingType.equals("vm")
+        ? VMOffloadingWorkerFactory.class : LambdaOffloadingWorkerFactory.class)
       .bindImplementation(ServerlessExecutorProvider.class, ServerlessExecutorProviderImpl.class) // TODO: fix
         .build();
   }

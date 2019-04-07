@@ -1,4 +1,4 @@
-package org.apache.nemo.offloading.workers.vm;
+package org.apache.nemo.offloading.client;
 
 public interface OffloadingRequester {
   void start();

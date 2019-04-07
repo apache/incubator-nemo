@@ -40,7 +40,7 @@ public class VMWorker {
       serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
         new DefaultThreadFactory(CLASS_NAME + "SourceServerWorker"));
 
-      final OffloadingHandler handler = new OffloadingHandler();
+      final BlockingQueue<OffloadingHandler> handlers = new LinkedBlockingQueue<>();
 
     final BlockingQueue<OffloadingEvent> requestQueue = new LinkedBlockingQueue<>();
     singleThread.execute(() -> {
@@ -48,11 +48,22 @@ public class VMWorker {
         try {
           final OffloadingEvent event = requestQueue.take();
           executorService.execute(() -> {
-            final String str = new String(event.getBytes());
-            System.out.println("Receive request " + str);
-            final JSONObject jsonObj = new JSONObject(str);
-            final Map<String, Object> map = VMWorkerUtils.jsonToMap(jsonObj);
-            handler.handleRequest(map);
+            switch (event.getType()) {
+              case CLIENT_HANDSHAKE: {
+                final OffloadingHandler handler = new OffloadingHandler();
+                handlers.add(handler);
+                final byte[] bytes = new byte[event.getByteBuf().readableBytes()];
+                event.getByteBuf().readBytes(bytes);
+
+                final String str = new String(bytes);
+                System.out.println("Receive request " + str);
+                final JSONObject jsonObj = new JSONObject(str);
+                final Map<String, Object> map = VMWorkerUtils.jsonToMap(jsonObj);
+                handler.handleRequest(map);
+                break;
+              }
+            }
+
           });
         } catch (InterruptedException e) {
           e.printStackTrace();
