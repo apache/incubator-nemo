@@ -65,6 +65,7 @@ public final class VMOffloadingWorkerFactory implements OffloadingWorkerFactory 
   public OffloadingWorker createStreamingWorker(final ByteBuf workerInitBuffer,
                                                 final OffloadingSerializer offloadingSerializer,
                                                 final EventHandler eventHandler) {
+    LOG.info("Create streaming worker request!");
     createChannelRequest();
     final Future<Pair<Channel, OffloadingEvent>> channelFuture = new Future<Pair<Channel, OffloadingEvent>>() {
 
