@@ -73,7 +73,7 @@ public final class VMOffloadingRequester {
   final OffloadingEvent requestEvent;
 
   private final AtomicInteger pendingRequests = new AtomicInteger(0);
-  private final int slotPerTask = 10;
+  private final int slotPerTask = 8;
   private int totalRequest = 0;
   private final DescribeInstancesResult response;
 
@@ -151,6 +151,11 @@ public final class VMOffloadingRequester {
       executorService.execute(() -> {
         startInstance(instanceIds.get(index), vmAddresses.get(index));
       });
+    } else if (requestNum % slotPerTask == 0 && index > instanceIds.size()) {
+      // round robin
+      synchronized (readyVMs) {
+        readyVMs.add(readyVMs.get(index % instanceIds.size()));
+      }
     }
   }
 
