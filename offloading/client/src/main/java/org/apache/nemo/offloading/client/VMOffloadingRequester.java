@@ -75,6 +75,8 @@ public final class VMOffloadingRequester {
   private int vmIndex = 0;
   private final AtomicInteger pendingRequests = new AtomicInteger(0);
   private final int slotPerTask = 10;
+  private int totalRequest = 0;
+  private final DescribeInstancesResult response;
 
 
   public VMOffloadingRequester(final OffloadingEventHandler nemoEventHandler,
@@ -96,6 +98,9 @@ public final class VMOffloadingRequester {
     final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d}",
       serverAddress, serverPort).getBytes();
     this.requestEvent = new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length);
+    DescribeInstancesRequest request = new DescribeInstancesRequest();
+    request.setInstanceIds(instanceIds);
+    this.response = ec2.describeInstances(request);
 
     createChannelExecutor.execute(() -> {
       while (true) {
@@ -126,12 +131,16 @@ public final class VMOffloadingRequester {
   public synchronized void createChannelRequest() {
     LOG.info("Create request at VMOffloadingREquestor");
 
-    final int num = pendingRequests.getAndIncrement();
+    pendingRequests.getAndIncrement();
     offloadingRequests.add(1);
 
-    final int index = num / slotPerTask;
-    if (num % slotPerTask == 0 && index < instanceIds.size()) {
+    final int requestNum = totalRequest;
+    totalRequest += 1;
+
+    final int index = requestNum / slotPerTask;
+    if (requestNum % slotPerTask == 0 && index < instanceIds.size()) {
       // request another vm!
+      LOG.info("Request VM!!");
       executorService.execute(() -> {
         startInstance(instanceIds.get(index), vmAddresses.get(index));
       });
@@ -140,30 +149,29 @@ public final class VMOffloadingRequester {
 
   private Channel startInstance(final String instanceId, final String vmAddress) {
     final long waitingTime = 2000;
-    DescribeInstancesRequest request = new DescribeInstancesRequest();
-    request.setInstanceIds(Collections.singleton(instanceId));
-    DescribeInstancesResult response = ec2.describeInstances(request);
 
     for(final Reservation reservation : response.getReservations()) {
       for(final Instance instance : reservation.getInstances()) {
-        while (true) {
-          if (instance.getState().getName().equals("stopped")) {
-            // ready to start
-            final StartInstancesRequest startRequest = new StartInstancesRequest()
-              .withInstanceIds(instanceIds);
-            LOG.info("Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
-            ec2.startInstances(startRequest);
-            LOG.info("End of Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
-            break;
-          } else if (instance.getState().getName().equals("stopping")) {
-            // waiting...
-            try {
-              Thread.sleep(2000);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
+        if (instance.getInstanceId().equals(instanceId)) {
+          while (true) {
+            if (instance.getState().getName().equals("stopped")) {
+              // ready to start
+              final StartInstancesRequest startRequest = new StartInstancesRequest()
+                .withInstanceIds(instanceIds);
+              LOG.info("Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
+              ec2.startInstances(startRequest);
+              LOG.info("End of Starting ec2 instances {}/{}", instanceIds, System.currentTimeMillis());
+              break;
+            } else if (instance.getState().getName().equals("stopping")) {
+              // waiting...
+              try {
+                Thread.sleep(2000);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+            } else {
+              throw new RuntimeException("Unsupported state type: " + instance.getState().getName());
             }
-          } else {
-            throw new RuntimeException("Unsupported state type: " + instance.getState().getName());
           }
         }
       }
