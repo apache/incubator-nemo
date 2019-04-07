@@ -101,7 +101,6 @@ public final class VMOffloadingRequester {
     createChannelExecutor.execute(() -> {
       while (true) {
         try {
-          synchronized (readyVMs) {
             LOG.info("Pending requests...: {}", pendingRequests.get());
             if (!readyVMs.isEmpty()) {
               final Integer offloadingRequest = offloadingRequests.take();
@@ -112,7 +111,6 @@ public final class VMOffloadingRequester {
             } else {
               Thread.sleep(1000);
             }
-          }
         } catch (InterruptedException e) {
           e.printStackTrace();
           throw new RuntimeException(e);
