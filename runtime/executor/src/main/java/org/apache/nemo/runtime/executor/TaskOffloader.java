@@ -31,7 +31,7 @@ public final class TaskOffloader {
   private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
-  private long slackTime = 12000;
+  private long slackTime = 10000;
   private long deoffloadSlackTime = 12000;
 
 
@@ -282,7 +282,7 @@ public final class TaskOffloader {
         if (cpuHighMean > threshold && observedCnt >= observeWindow) {
 
           final long targetCpuTime = cpuTimeModel
-            .desirableMetricForLoad((threshold + evalConf.deoffloadingThreshold)/2);
+            .desirableMetricForLoad(threshold - 0.05);
 
           // Adjust current cpu time
           // Minus the pending tasks!
@@ -290,26 +290,34 @@ public final class TaskOffloader {
             deltaMap.entrySet().stream().filter(entry -> entry.getKey().isOffloadPending())
               .map(entry -> entry.getValue()).reduce(0L, (x,y) -> x+y);
 
+          final long avgCpuTimePerTask = currCpuTimeSum / (taskStatInfo.running);
+
           LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
           final List<TaskExecutor> runningTasks = runningTasksInDeoffloadTimeOrder(taskStatInfo.runningTasks);
           final long curr = System.currentTimeMillis();
+          int cnt = 0;
           for (final TaskExecutor runningTask : runningTasks) {
+            if (cnt < runningTasks.size() - 1) {
 
-            if (curr - runningTask.getPrevOffloadEndTime().get() > slackTime) {
-              final long cpuTimeOfThisTask = deltaMap.get(runningTask);
+              if (curr - runningTask.getPrevOffloadEndTime().get() > slackTime) {
+                //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
-              LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
-                currCpuTimeSum, runningTask.getId(), cpuTimeOfThisTask, targetCpuTime);
+                LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
+                  currCpuTimeSum, runningTask.getId(), avgCpuTimePerTask, targetCpuTime);
 
-              if (currCpuTimeSum - cpuTimeOfThisTask >= targetCpuTime) {
-                // offload this task!
-                LOG.info("Offloading task {}", runningTask.getId());
-                runningTask.startOffloading(currTime);
-                offloadedExecutors.add(Pair.of(runningTask, currTime));
-                currCpuTimeSum -= cpuTimeOfThisTask;
+                if (currCpuTimeSum - avgCpuTimePerTask >= targetCpuTime) {
+                  // offload this task!
+                  LOG.info("Offloading task {}", runningTask.getId());
+                  runningTask.startOffloading(currTime);
+                  offloadedExecutors.add(Pair.of(runningTask, currTime));
+                  currCpuTimeSum -= avgCpuTimePerTask;
+
+                  cnt += 1;
+                }
               }
             }
           }
+
         } else if (cpuLowMean < evalConf.deoffloadingThreshold  &&  observedCnt >= observeWindow) {
           if (!offloadedExecutors.isEmpty()) {
             final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(evalConf.deoffloadingThreshold);
