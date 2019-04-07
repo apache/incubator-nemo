@@ -54,12 +54,6 @@
 
     <dependency>
       <groupId>org.apache.nemo</groupId>
-      <artifactId>nemo-compiler-frontend-beam</artifactId>
-      <version>0.2-SNAPSHOT</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.nemo</groupId>
       <artifactId>nexmark</artifactId>
       <version>0.2-SNAPSHOT</version>
     </dependency>
@@ -67,6 +61,13 @@
     <dependency>
       <groupId>org.apache.nemo</groupId>
       <artifactId>offloading-worker-common</artifactId>
+      <version>0.2-SNAPSHOT</version>
+    </dependency>
+
+
+    <dependency>
+      <groupId>org.apache.nemo</groupId>
+      <artifactId>nemo-lambda-executor</artifactId>
       <version>0.2-SNAPSHOT</version>
     </dependency>
   </dependencies>
