@@ -147,9 +147,14 @@ public final class VMOffloadingRequester {
     final int index = requestNum / slotPerTask;
     if (requestNum % slotPerTask == 0 && index < instanceIds.size()) {
       // request another vm!
-      LOG.info("Request VM!!");
+      LOG.info("Request VM!! {}/{}", requestNum, index);
       executorService.execute(() -> {
-        startInstance(instanceIds.get(index), vmAddresses.get(index));
+        try {
+          startInstance(instanceIds.get(index), vmAddresses.get(index));
+        } catch (final Exception e) {
+          e.printStackTrace();;
+          throw new RuntimeException(e);
+        }
       });
     } else if (requestNum % slotPerTask == 0 && index > instanceIds.size()) {
       // round robin
