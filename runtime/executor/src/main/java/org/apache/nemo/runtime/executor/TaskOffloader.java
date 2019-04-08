@@ -282,7 +282,7 @@ public final class TaskOffloader {
         if (cpuHighMean > threshold && observedCnt >= observeWindow) {
 
           final long targetCpuTime = cpuTimeModel
-            .desirableMetricForLoad(threshold - 0.05);
+            .desirableMetricForLoad((threshold + evalConf.deoffloadingThreshold) / 2.0);
 
           // Adjust current cpu time
           // Minus the pending tasks!
