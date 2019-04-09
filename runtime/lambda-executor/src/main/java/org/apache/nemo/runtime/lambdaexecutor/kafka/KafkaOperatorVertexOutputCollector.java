@@ -130,7 +130,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   @Override
   public void emit(final O output) {
     List<String> nextOpIds = null;
-    LOG.info("Output from {}, isSink: {}: {}", irVertex.getId(), irVertex.isSink, output);
+    //LOG.info("Output from {}, isSink: {}: {}", irVertex.getId(), irVertex.isSink, output);
 
     if (irVertex.isSink) {
       if (random.nextDouble() < samplingRate) {
@@ -141,7 +141,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
       }
 
       if (nextOpIds != null) {
-        LOG.info("Emit sampling data at {}", irVertex.getId());
+        //LOG.info("Emit sampling data at {}", irVertex.getId());
         for (final String nextOpId : nextOpIds){
           offloadingOutputCollector.emit(new OffloadingResultTimestampEvent(nextOpId, inputTimestamp, 0));
         }
