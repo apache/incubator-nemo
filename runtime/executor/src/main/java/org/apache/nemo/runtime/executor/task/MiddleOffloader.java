@@ -237,7 +237,7 @@ public final class MiddleOffloader implements Offloader {
       LOG.info("Restart output writers");
       outputWriters.forEach(OutputWriter::restart);
 
-      taskStatus.set(TaskExecutor.Status.DEOFFLOAD_PENDING);
+      taskStatus.set(TaskExecutor.Status.RUNNING);
 
     } else if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.RUNNING)) {
       taskExecutor.getPrevOffloadEndTime().set(System.currentTimeMillis());
