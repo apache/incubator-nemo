@@ -16,4 +16,9 @@ public final class OffloadingResultTimestampEvent {
     this.timestamp = timestamp;
     this.watermark = watermark;
   }
+
+  @Override
+  public String toString() {
+    return "vertex: " + vertexId + ", timestamp: " + timestamp;
+  }
 }

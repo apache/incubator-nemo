@@ -400,7 +400,7 @@ public final class OffloadingHandler {
 
     @Override
     public void emit(Object output) {
-      //System.out.println("Emit output of data " + dataId);
+      System.out.println("Emit output of data " + output.toString());
       result.add(Pair.of(output, dataId));
       hasDataReceived = true;
     }
