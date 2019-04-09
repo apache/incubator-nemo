@@ -919,6 +919,12 @@ public final class TaskExecutor {
               //LOG.info("Data {}, {}, {}", triple.first, triple.second, triple.third);
               handleOffloadingEvent(triple);
             }
+          }  else if (data instanceof OffloadingResultTimestampEvent) {
+            final OffloadingResultTimestampEvent event = (OffloadingResultTimestampEvent) data;
+            final long currTime = System.currentTimeMillis();
+            final long latency = currTime - event.timestamp;
+            LOG.info("Event Latency {} from lambda {} in {}", latency, event.vertexId, taskId);
+
           } else if (data instanceof KafkaOffloadingOutput) {
 
             if (offloader.isPresent()) {

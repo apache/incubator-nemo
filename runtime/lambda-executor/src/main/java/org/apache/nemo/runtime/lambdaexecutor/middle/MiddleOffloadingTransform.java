@@ -226,7 +226,7 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
           e, /* just use first edge for encoding */
           internalMainOutputs,
           internalAdditionalOutputMap,
-          resultCollector,
+          offloadingOutputCollector,
           outputCollectorMap,
           taskOutgoingEdges,
           externalAdditionalOutputMap,

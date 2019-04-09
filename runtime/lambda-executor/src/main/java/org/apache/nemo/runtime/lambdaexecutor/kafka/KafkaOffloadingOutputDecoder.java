@@ -5,6 +5,7 @@ import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
 import org.apache.nemo.runtime.lambdaexecutor.Triple;
 
 import java.io.DataInputStream;
@@ -32,6 +33,13 @@ public final class KafkaOffloadingOutputDecoder implements OffloadingDecoder<Obj
 
       switch (type) {
         case KafkaOffloadingOutputEncoder.OFFLOADING_RESULT: {
+
+          final String vertexId = dis.readUTF();
+          final long timestamp = dis.readLong();
+          final long watermark = dis.readLong();
+          return new OffloadingResultTimestampEvent(vertexId, timestamp, watermark);
+
+          /*
           final int length = dis.readInt();
           final long watermark = dis.readLong();
           //System.out.println("Decoding " + length + " events");
@@ -48,6 +56,7 @@ public final class KafkaOffloadingOutputDecoder implements OffloadingDecoder<Obj
             data.add(new Triple<>(nextVertices, edgeId, object));
           }
           return new OffloadingResultEvent(data, watermark);
+          */
         }
         case KafkaOffloadingOutputEncoder.KAFKA_CHECKPOINT: {
           final int id = new DataInputStream(inputStream).readInt();

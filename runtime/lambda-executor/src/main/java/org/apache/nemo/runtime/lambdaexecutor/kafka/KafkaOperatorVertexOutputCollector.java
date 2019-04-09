@@ -24,8 +24,10 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.runtime.executor.common.NextIntraTaskOperatorInfo;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
 import org.apache.nemo.runtime.lambdaexecutor.Triple;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.PipeOutputWriter;
 import org.slf4j.Logger;
@@ -55,7 +57,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   private final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs;
   private final Map<String, List<String>> taskOutgoingEdges;
 
-  private final OffloadingResultCollector resultCollector;
+  private final OffloadingOutputCollector offloadingOutputCollector;
   private final Edge edge;
   private final Map<String, KafkaOperatorVertexOutputCollector> outputCollectorMap;
   private final Map<String, List<PipeOutputWriter>> externalAdditionalOutputs;
@@ -79,7 +81,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     final Edge edge,
     final List<NextIntraTaskOperatorInfo> nextOperators,
     final Map<String, List<NextIntraTaskOperatorInfo>> internalAdditionalOutputs,
-    final OffloadingResultCollector resultCollector,
+    final OffloadingOutputCollector offloadingOutputCollector,
     final Map<String, KafkaOperatorVertexOutputCollector> outputCollectorMap,
     final Map<String, List<String>> taskOutgoingEdges,
     final Map<String, List<PipeOutputWriter>> externalAdditionalOutputs,
@@ -96,7 +98,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     LOG.info("Sampling rate of vertex " + irVertex.getId() + ": " + samplingRate);
 
     this.internalAdditionalOutputs = internalAdditionalOutputs;
-    this.resultCollector = resultCollector;
+    this.offloadingOutputCollector = offloadingOutputCollector;
     this.outputCollectorMap = outputCollectorMap;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.externalAdditionalOutputs = externalAdditionalOutputs;
@@ -128,6 +130,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   @Override
   public void emit(final O output) {
     List<String> nextOpIds = null;
+    LOG.info("Output from {}, isSink: {}: {}", irVertex.getId(), irVertex.isSink, output);
 
     if (irVertex.isSink) {
       if (random.nextDouble() < samplingRate) {
@@ -138,10 +141,16 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
       }
 
       if (nextOpIds != null) {
+        LOG.info("Emit sampling data at {}", irVertex.getId());
+        for (final String nextOpId : nextOpIds){
+          offloadingOutputCollector.emit(new OffloadingResultTimestampEvent(nextOpId, inputTimestamp, 0));
+        }
+        /*
         resultCollector.result.add(new Triple<>(
           nextOpIds,
           encodingEdge.getId(),
           new TimestampAndValue(inputTimestamp, output)));
+          */
       }
     }
 
@@ -175,10 +184,15 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
       }
 
       if (nextOpIds != null) {
+        for (final String nextOpId : nextOpIds){
+          offloadingOutputCollector.emit(new OffloadingResultTimestampEvent(nextOpId, inputTimestamp, 0));
+        }
+        /*
         resultCollector.result.add(new Triple<>(
           nextOpIds,
           encodingEdge.getId(),
           new TimestampAndValue(inputTimestamp, output)));
+          */
       }
     }
 

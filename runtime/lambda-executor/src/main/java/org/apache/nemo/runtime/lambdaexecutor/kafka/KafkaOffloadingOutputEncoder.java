@@ -5,6 +5,7 @@ import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.offloading.common.OffloadingEncoder;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
 import org.apache.nemo.runtime.lambdaexecutor.Triple;
 
 import java.io.DataOutputStream;
@@ -31,7 +32,15 @@ public final class KafkaOffloadingOutputEncoder implements OffloadingEncoder<Obj
   @Override
   public void encode(Object data, OutputStream outputStream) throws IOException {
 
-    if (data instanceof OffloadingResultEvent) {
+    if (data instanceof OffloadingResultTimestampEvent) {
+      final DataOutputStream dos = new DataOutputStream(outputStream);
+      final OffloadingResultTimestampEvent element = (OffloadingResultTimestampEvent) data;
+      dos.writeChar(OFFLOADING_RESULT);
+      dos.writeUTF(element.vertexId);
+      dos.writeLong(element.timestamp);
+      dos.writeLong(element.watermark);
+    } else if (data instanceof OffloadingResultEvent) {
+      // TODO: unuseed code
       final OffloadingResultEvent element = (OffloadingResultEvent) data;
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeChar(OFFLOADING_RESULT);

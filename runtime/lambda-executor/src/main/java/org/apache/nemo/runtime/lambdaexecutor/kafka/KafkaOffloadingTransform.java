@@ -225,7 +225,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
           e, /* just use first edge for encoding */
           internalMainOutputs,
           internalAdditionalOutputMap,
-          resultCollector,
+          offloadingOutputCollector,
           outputCollectorMap,
           taskOutgoingEdges,
           externalAdditionalOutputMap,
