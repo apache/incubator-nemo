@@ -232,6 +232,11 @@ public final class MiddleOffloader implements Offloader {
       }
       runningWorkers.clear();
 
+
+      // Restart contexts
+      LOG.info("Restart output writers");
+      outputWriters.forEach(OutputWriter::restart);
+
     } else if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.RUNNING)) {
       taskExecutor.getPrevOffloadEndTime().set(System.currentTimeMillis());
       LOG.info("Get end offloading kafka event: {}", taskStatus);
@@ -246,6 +251,10 @@ public final class MiddleOffloader implements Offloader {
       }
 
       kafkaOffloadPendingEvents.clear();
+
+      // Restart contexts
+      LOG.info("Restart output writers");
+      outputWriters.forEach(OutputWriter::restart);
 
 
       if (!runningWorkers.isEmpty()) {
