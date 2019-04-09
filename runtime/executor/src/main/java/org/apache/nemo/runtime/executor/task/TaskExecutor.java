@@ -173,6 +173,11 @@ public final class TaskExecutor {
 
   private final long threadId;
 
+  final List<DataFetcher> availableFetchers;
+  final List<DataFetcher> pendingFetchers;
+  final Optional<Offloader> offloader;
+
+
   /**
    * Constructor.
    *
@@ -248,7 +253,11 @@ public final class TaskExecutor {
 
     // Prepare data structures
     this.sortedHarnesses = prepare(task, irVertexDag, intermediateDataIOFactory);
+    this.availableFetchers = new LinkedList<>(sourceVertexDataFetchers);
+    availableFetchers.addAll(parentDataFetchers);
+    this.pendingFetchers = new LinkedList<>();
 
+    this.offloader = getOffloader();
 
     LOG.info("Executor address map: {}", byteTransport.getExecutorAddressMap());
 
@@ -278,6 +287,69 @@ public final class TaskExecutor {
         }
       });
     }
+  }
+
+  private Optional<Offloader> getOffloader() {
+
+    final Optional<Offloader> offloader;
+
+    if (evalConf.enableOffloading || evalConf.offloadingdebug) {
+      if (sourceVertexDataFetchers.size() == 1 && sourceVertexDataFetchers.get(0) instanceof SourceVertexDataFetcher) {
+        offloader = Optional.of(new KafkaOffloader(
+          executorId,
+          task,
+          this,
+          evalConf,
+          byteTransport.getExecutorAddressMap(),
+          pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),
+          serializedDag,
+          offloadingWorkerFactory,
+          taskOutgoingEdges,
+          serializerManager,
+          offloadingEventQueue,
+          sourceVertexDataFetchers,
+          taskId,
+          availableFetchers,
+          pendingFetchers,
+          status,
+          prevOffloadStartTime,
+          prevOffloadEndTime,
+          toMaster,
+          outputWriterMap,
+          irVertexDag));
+      } else {
+        if (evalConf.middleParallelism > 0) {
+          offloader = Optional.of(new MiddleOffloader(
+            executorId,
+            task,
+            this,
+            evalConf,
+            byteTransport.getExecutorAddressMap(),
+            pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),
+            serializedDag,
+            offloadingWorkerFactory,
+            taskOutgoingEdges,
+            serializerManager,
+            offloadingEventQueue,
+            sourceVertexDataFetchers,
+            taskId,
+            availableFetchers,
+            pendingFetchers,
+            status,
+            prevOffloadStartTime,
+            prevOffloadEndTime,
+            toMaster,
+            outputWriterMap,
+            irVertexDag));
+        } else {
+          offloader = Optional.empty();
+        }
+      }
+    } else {
+      offloader = Optional.empty();
+    }
+
+    return offloader;
   }
 
   public long getThreadId() {
@@ -511,6 +583,14 @@ public final class TaskExecutor {
             watermarkCounterMap,
             samplingMap,
             taskId);
+
+
+          outputCollector = new OperatorVertexOutputCollector(
+            vertexIdAndCollectorMap,
+            irVertex, internalMainOutputs, internalAdditionalOutputMap,
+            externalMainOutputs, externalAdditionalOutputMap, omc,
+            prevWatermarkMap, expectedWatermarkMap, this, edges.get(0).getId());
+
         } else {
           omc = new OperatorMetricCollector(irVertex,
             dstVertices,
@@ -520,14 +600,13 @@ public final class TaskExecutor {
             watermarkCounterMap,
             samplingMap,
             taskId);
+
+          outputCollector = new OperatorVertexOutputCollector(
+            vertexIdAndCollectorMap,
+            irVertex, internalMainOutputs, internalAdditionalOutputMap,
+            externalMainOutputs, externalAdditionalOutputMap, omc,
+            prevWatermarkMap, expectedWatermarkMap, this, null);
         }
-
-        outputCollector = new OperatorVertexOutputCollector(
-          vertexIdAndCollectorMap,
-          irVertex, internalMainOutputs, internalAdditionalOutputMap,
-          externalMainOutputs, externalAdditionalOutputMap, omc,
-          prevWatermarkMap, expectedWatermarkMap);
-
 
         vertexIdAndCollectorMap.put(irVertex.getId(), Pair.of(omc, outputCollector));
       }
@@ -693,6 +772,13 @@ public final class TaskExecutor {
     finalizeOutputWriters(vertexHarness);
   }
 
+  public void sendToServerless(final Object event,
+                               final List<String> nextOperatorIds,
+                               final long wm,
+                               final String edgeId) {
+    offloader.get().offloadingData(event, nextOperatorIds, wm, edgeId);
+  }
+
   /**
    * Process an event generated from the dataFetcher.
    * If the event is an instance of Finishmark, we remove the dataFetcher from the current list.
@@ -804,45 +890,11 @@ public final class TaskExecutor {
    * @return false if IOException.
    */
   private boolean handleDataFetchers() {
-    final List<DataFetcher> availableFetchers = new LinkedList<>(sourceVertexDataFetchers);
-    availableFetchers.addAll(parentDataFetchers);
-    final List<DataFetcher> pendingFetchers = new LinkedList<>();
 
-    final Optional<KafkaOffloader> kafkaOffloader;
 
-    if (evalConf.enableOffloading || evalConf.offloadingdebug) {
-      if (sourceVertexDataFetchers.size() == 1 && sourceVertexDataFetchers.get(0) instanceof SourceVertexDataFetcher) {
-        kafkaOffloader = Optional.of(new KafkaOffloader(
-          executorId,
-          task,
-          this,
-          evalConf,
-          byteTransport.getExecutorAddressMap(),
-          pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),
-          serializedDag,
-          offloadingWorkerFactory,
-          taskOutgoingEdges,
-          serializerManager,
-          offloadingEventQueue,
-          sourceVertexDataFetchers,
-          taskId,
-          availableFetchers,
-          pendingFetchers,
-          status,
-          prevOffloadStartTime,
-          prevOffloadEndTime,
-          toMaster,
-          outputWriterMap,
-          irVertexDag));
-      } else {
-       kafkaOffloader = Optional.empty();
-      }
-    } else {
-      kafkaOffloader = Optional.empty();
-    }
 
     // empty means we've consumed all task-external input data
-    while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty() || kafkaOffloader.isPresent()) {
+    while (!availableFetchers.isEmpty() || !pendingFetchers.isEmpty() || offloader.isPresent()) {
 
       // handling control event
       while (!controlEventQueue.isEmpty()) {
@@ -869,23 +921,23 @@ public final class TaskExecutor {
             }
           } else if (data instanceof KafkaOffloadingOutput) {
 
-            if (kafkaOffloader.isPresent()) {
-              kafkaOffloader.get().handleKafkaOffloadingOutput((KafkaOffloadingOutput) data);
+            if (offloader.isPresent()) {
+              offloader.get().handleOffloadingOutput((KafkaOffloadingOutput) data);
             }
 
           } else if (data instanceof EndOffloadingKafkaEvent) {
 
-            if (kafkaOffloader.isPresent()) {
+            if (offloader.isPresent()) {
               LOG.info("Start -- Receive end offloading event {}", taskId);
-              kafkaOffloader.get().handleEndOffloadingKafkaEvent();
+              offloader.get().handleEndOffloadingEvent();
               LOG.info("End -- Receive end offloading event {}", taskId);
             }
 
           } else if (data instanceof StartOffloadingKafkaEvent) {
 
-            if (kafkaOffloader.isPresent()) {
+            if (offloader.isPresent()) {
               LOG.info("Start -- handle start offloading kafka event {}", taskId);
-              kafkaOffloader.get().handleStartOffloadingKafkaEvent();
+              offloader.get().handleStartOffloadingEvent();
               LOG.info("End -- handle start offloading kafka event {}", taskId);
             }
           } else {
@@ -895,9 +947,9 @@ public final class TaskExecutor {
       }
 
       // handle pending workers here!
-      if (kafkaOffloader.isPresent()) {
-        if (kafkaOffloader.get().hasPendingStraemingWorkers()) {
-          kafkaOffloader.get().handlePendingStreamingWorkers();
+      if (offloader.isPresent()) {
+        if (offloader.get().hasPendingStraemingWorkers()) {
+          offloader.get().handlePendingStreamingWorkers();
         }
       }
 

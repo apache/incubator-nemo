@@ -89,6 +89,10 @@ public final class EvalConf {
   public static final class SourceParallelism implements Name<Integer> {
   }
 
+  @NamedParameter(short_name = "middle_parallelism", default_value = "1")
+  public static final class MiddleParallelism implements Name<Integer> {
+  }
+
   @NamedParameter(short_name = "ec2", default_value = "false")
   public static final class Ec2 implements Name<Boolean> {}
 
@@ -112,6 +116,7 @@ public final class EvalConf {
   public final boolean ec2;
   public final double deoffloadingThreshold;
   public final String offloadingType;
+  public final int middleParallelism;
 
   @Inject
   private EvalConf(@Parameter(EnableOffloading.class) final boolean enableOffloading,
@@ -131,7 +136,8 @@ public final class EvalConf {
                    @Parameter(MinVmTask.class) final int minVmTask,
                    @Parameter(DeoffloadingThreshold.class) final double deoffloadingThreshold,
                    @Parameter(EventThreshold.class) final int eventThreshold,
-                   @Parameter(OffloadingType.class) final String offloadingType) throws IOException {
+                   @Parameter(OffloadingType.class) final String offloadingType,
+                   @Parameter(MiddleParallelism.class) final int middleParallelism) throws IOException {
     this.enableOffloading = enableOffloading;
     this.offloadingdebug = offloadingdebug;
     this.poolSize = poolSize;
@@ -150,6 +156,7 @@ public final class EvalConf {
     this.minVmTask = minVmTask;
     this.eventThreshold = eventThreshold;
     this.offloadingType = offloadingType;
+    this.middleParallelism = middleParallelism;
 
     if (!samplingJsonStr.isEmpty()) {
       this.samplingJson = new ObjectMapper().readValue(samplingJsonStr, new TypeReference<Map<String, Double>>(){});
@@ -179,6 +186,7 @@ public final class EvalConf {
     jcb.bindNamedParameter(Ec2.class, Boolean.toString(ec2));
     jcb.bindNamedParameter(DeoffloadingThreshold.class, Double.toString(deoffloadingThreshold));
     jcb.bindNamedParameter(OffloadingType.class, offloadingType);
+    jcb.bindNamedParameter(MiddleParallelism.class, Integer.toString(middleParallelism));
     return jcb.build();
   }
 
@@ -202,6 +210,7 @@ public final class EvalConf {
     cl.registerShortNameOfClass(Ec2.class);
     cl.registerShortNameOfClass(DeoffloadingThreshold.class);
     cl.registerShortNameOfClass(OffloadingType.class);
+    cl.registerShortNameOfClass(MiddleParallelism.class);
   }
 
   @Override
@@ -227,6 +236,7 @@ public final class EvalConf {
     sb.append("minVmTask: "); sb.append(minVmTask); sb.append("\n");
     sb.append("eventThreshold: "); sb.append(eventThreshold); sb.append("\n");
     sb.append("offloadingType: "); sb.append(offloadingType); sb.append("\n");
+    sb.append("middleParallelism: "); sb.append(middleParallelism); sb.append("\n");
     sb.append("-----------EvalConf end----------\n");
 
     return sb.toString();

@@ -36,6 +36,8 @@ import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingTransform;
+import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingSerializer;
+import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,8 +50,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-public final class KafkaOffloader implements Offloader {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaOffloader.class.getName());
+public final class MiddleOffloader implements Offloader {
+  private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloader.class.getName());
 
   private final StreamingWorkerService streamingWorkerService;
 
@@ -60,8 +62,6 @@ public final class KafkaOffloader implements Offloader {
   private final ConcurrentLinkedQueue<Object> offloadingEventQueue;
   private final List<SourceVertexDataFetcher> sourceVertexDataFetchers;
   private final String taskId;
-  private final List<DataFetcher> availableFetchers;
-  private final List<DataFetcher> pendingFetchers;
   final ExecutorService closeService = Executors.newSingleThreadExecutor();
 
 
@@ -92,27 +92,29 @@ public final class KafkaOffloader implements Offloader {
   private final List<KafkaOffloadingOutput> kafkaOffloadingOutputs = new ArrayList<>();
   private final TaskExecutor taskExecutor;
 
-  public KafkaOffloader(final String executorId,
-                        final Task task,
-                        final TaskExecutor taskExecutor,
-                        final EvalConf evalConf,
-                        final Map<String, InetSocketAddress> executorAddressMap,
-                        final Map<Integer, String> dstTaskIndexTargetExecutorMap,
-                        final byte[] serializedDag,
-                        final OffloadingWorkerFactory offloadingWorkerFactory,
-                        final Map<String, List<String>> taskOutgoingEdges,
-                        final SerializerManager serializerManager,
-                        final ConcurrentLinkedQueue<Object> offloadingEventQueue,
-                        final List<SourceVertexDataFetcher> sourceVertexDataFetchers,
-                        final String taskId,
-                        final List<DataFetcher> availableFetchers,
-                        final List<DataFetcher> pendingFetchers,
-                        final AtomicReference<TaskExecutor.Status> taskStatus,
-                        final AtomicLong prevOffloadStartTime,
-                        final AtomicLong prevOffloadEndTime,
-                        final PersistentConnectionToMasterMap toMaster,
-                        final Collection<OutputWriter> outputWriters,
-                        final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
+  private int offloadingDataCnt = 0;
+
+  public MiddleOffloader(final String executorId,
+                         final Task task,
+                         final TaskExecutor taskExecutor,
+                         final EvalConf evalConf,
+                         final Map<String, InetSocketAddress> executorAddressMap,
+                         final Map<Integer, String> dstTaskIndexTargetExecutorMap,
+                         final byte[] serializedDag,
+                         final OffloadingWorkerFactory offloadingWorkerFactory,
+                         final Map<String, List<String>> taskOutgoingEdges,
+                         final SerializerManager serializerManager,
+                         final ConcurrentLinkedQueue<Object> offloadingEventQueue,
+                         final List<SourceVertexDataFetcher> sourceVertexDataFetchers,
+                         final String taskId,
+                         final List<DataFetcher> availableFetchers,
+                         final List<DataFetcher> pendingFetchers,
+                         final AtomicReference<TaskExecutor.Status> taskStatus,
+                         final AtomicLong prevOffloadStartTime,
+                         final AtomicLong prevOffloadEndTime,
+                         final PersistentConnectionToMasterMap toMaster,
+                         final Collection<OutputWriter> outputWriters,
+                         final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
     this.executorId = executorId;
     this.task = task;
     this.taskExecutor = taskExecutor;
@@ -126,8 +128,6 @@ public final class KafkaOffloader implements Offloader {
     this.offloadingEventQueue = offloadingEventQueue;
     this.sourceVertexDataFetchers = sourceVertexDataFetchers;
     this.taskId = taskId;
-    this.availableFetchers = availableFetchers;
-    this.pendingFetchers = pendingFetchers;
     this.streamingWorkerService = createStreamingWorkerService();
     this.taskStatus = taskStatus;
     this.prevOffloadEndTime = prevOffloadEndTime;
@@ -141,27 +141,6 @@ public final class KafkaOffloader implements Offloader {
       LOG.info("Pending offloaded ids at {}: {}", taskId, offloadedDataFetcherMap.keySet());
 
     }, 2, 2, TimeUnit.SECONDS);
-  }
-
-  public static KafkaCheckpointMark createCheckpointMarkForSource(
-    final KafkaUnboundedSource kafkaUnboundedSource,
-    final KafkaCheckpointMark checkpointMark) {
-
-    if (kafkaUnboundedSource.getTopicPartitions().size() > 1) {
-      throw new RuntimeException("Kafka has > 1 partitions...");
-    }
-
-    final TopicPartition topicPartition = (TopicPartition)
-      kafkaUnboundedSource.getTopicPartitions().get(0);
-
-    for (final KafkaCheckpointMark.PartitionMark partitionMark : checkpointMark.getPartitions()) {
-      if (partitionMark.getPartition() == topicPartition.partition()) {
-        return new KafkaCheckpointMark(Collections.singletonList(
-          partitionMark), Optional.empty());
-      }
-    }
-
-    throw new RuntimeException("Cannot find partitionMark " + topicPartition);
   }
 
   private StreamingWorkerService createStreamingWorkerService() {
@@ -181,13 +160,9 @@ public final class KafkaOffloader implements Offloader {
       }
     });
 
-    final SourceVertexDataFetcher dataFetcher = sourceVertexDataFetchers.get(0);
-    final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
-    final UnboundedSource unboundedSource = readable.getUnboundedSource();
-
     final StreamingWorkerService streamingWorkerService =
       new StreamingWorkerService(offloadingWorkerFactory,
-        new KafkaOffloadingTransform(
+        new MiddleOffloadingTransform(
           executorId,
           RuntimeIdManager.getIndexFromTaskId(taskId),
           evalConf.samplingJson,
@@ -197,89 +172,53 @@ public final class KafkaOffloader implements Offloader {
           serializerManager.runtimeEdgeIdToSerializer,
           dstTaskIndexTargetExecutorMap,
           task.getTaskOutgoingEdges()),
-        new KafkaOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer,
-          unboundedSource.getCheckpointMarkCoder()),
+        new MiddleOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
         new StatelessOffloadingEventHandler(offloadingEventQueue));
 
     return streamingWorkerService;
   }
 
-  private KafkaCheckpointMark createMergedCheckpointMarks(
-    final List<KafkaOffloadingOutput> list) {
-    final List<KafkaCheckpointMark.PartitionMark> partitionMarks =
-      list.stream()
-        .map(offloadingOutput -> {
-          final KafkaCheckpointMark cmark = (KafkaCheckpointMark) offloadingOutput.checkpointMark;
-          return cmark.getPartitions().get(0);
-        })
-        .collect(Collectors.toList());
-
-    partitionMarks.sort((o1, o2) -> {
-        return o1.getPartition() - o2.getPartition();
-    });
-
-    return new KafkaCheckpointMark(partitionMarks, Optional.empty());
+  @Override
+  public void handleOffloadingOutput(KafkaOffloadingOutput output) {
+    throw new RuntimeException("Unsupported op: " + output);
   }
 
   @Override
-  public synchronized void handleOffloadingOutput(final KafkaOffloadingOutput output) {
-    // handling checkpoint mark to resume the kafka source reading
-    // Serverless -> VM
-    // we start to read kafka events again
-    final int id = output.id;
-    final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) output.checkpointMark;
-    LOG.info("Receive checkpoint mark for source {} in VM: {}", id, checkpointMark);
-
-    if (!offloadedDataFetcherMap.containsKey(id)) {
-      throw new RuntimeException("Source " + id + " is not offloaded yet!");
-    }
-
-    kafkaOffloadingOutputs.add(output);
-
-    offloadedDataFetcherMap.remove(id);
-
-    if (offloadedDataFetcherMap.isEmpty()) {
-      // It means that offloading finished
-      taskExecutor.getPrevOffloadEndTime().set(System.currentTimeMillis());
-
-      if (!taskStatus.compareAndSet(TaskExecutor.Status.DEOFFLOAD_PENDING, TaskExecutor.Status.RUNNING)) {
-        throw new RuntimeException("Invalid task status: " + taskStatus);
-      }
-
-
-      // Restart contexts
-      LOG.info("Restart output writers");
-      outputWriters.forEach(OutputWriter::restart);
-
-      LOG.info("Merge {} sources into one", kafkaOffloadingOutputs.size());
-      // TODO: merge sources!!
-      // 1) merge all of them into one!
-      final UnboundedSource.CheckpointMark mergedCheckpoint = createMergedCheckpointMarks(kafkaOffloadingOutputs);
-      final SourceVertexDataFetcher oSourceVertexDataFetcher = sourceVertexDataFetchers.get(0);
-      final BeamUnboundedSourceVertex oSourceVertex = (BeamUnboundedSourceVertex) oSourceVertexDataFetcher.getDataSource();
-      final UnboundedSource oSource = oSourceVertex.getUnboundedSource();
-
-      final UnboundedSourceReadable newReadable =
-        new UnboundedSourceReadable(oSource, null, mergedCheckpoint);
-
-      oSourceVertexDataFetcher.setReadable(newReadable);
-      availableFetchers.add(oSourceVertexDataFetcher);
-
-      kafkaOffloadingOutputs.clear();
-    }
-  }
-
-  @Override
-  public void offloadingData(Object event, List<String> nextOperatorIds, long wm,
+  public void offloadingData(final Object event,
+                             final List<String> nextOperatorIds,
+                             final long wm,
                              final String edgeId) {
-    throw new RuntimeException("Not supported");
+    if (!taskStatus.get().equals(TaskExecutor.Status.OFFLOADED)) {
+      throw new RuntimeException("Invalid status while offloading data: " + taskStatus.get());
+    }
+
+    LOG.info("Offloading data to serverless: {}, {}, {} at {}", nextOperatorIds, wm, edgeId, taskId);
+
+    final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
+    final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
+
+    try {
+      bos.writeBoolean(false);
+      bos.writeLong(wm);
+      bos.writeInt(nextOperatorIds.size());
+      for (int i = 0; i < nextOperatorIds.size(); i++) {
+        bos.writeUTF(nextOperatorIds.get(i));
+      }
+      bos.writeUTF(edgeId);
+      serializerManager.getSerializer(edgeId).getEncoderFactory().create(bos).encode(event);
+
+      final int workerIndex = offloadingDataCnt % runningWorkers.size();
+      offloadingDataCnt += 1;
+      final OffloadingWorker worker = runningWorkers.get(workerIndex);
+      worker.execute(byteBuf, 10, false);
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public synchronized void handleEndOffloadingEvent() {
-    if (!checkSourceValidation()) {
-      return;
-    }
     prevOffloadEndTime.set(System.currentTimeMillis());
 
     if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOADED, TaskExecutor.Status.DEOFFLOAD_PENDING)) {
@@ -318,18 +257,6 @@ public final class KafkaOffloader implements Offloader {
     }
   }
 
-  private boolean checkSourceValidation(){
-    if (sourceVertexDataFetchers.size() > 1) {
-      return false;
-    }
-
-    if (!(sourceVertexDataFetchers.get(0) instanceof SourceVertexDataFetcher)) {
-      return false;
-    }
-
-    return true;
-  }
-
   private CompletableFuture<ControlMessage.Message> requestTaskIndex() {
     return toMaster
       .getMessageSender(MessageEnvironment.SCALEOUT_MESSAGE_LISTENER_ID).request(
@@ -346,21 +273,12 @@ public final class KafkaOffloader implements Offloader {
 
   @Override
   public synchronized void handleStartOffloadingEvent() {
-    if (!checkSourceValidation()) {
-      return;
-    }
 
     prevOffloadStartTime.set(System.currentTimeMillis());
 
     if (!taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING)) {
       LOG.warn("Multiple start request ... just ignore it");
       throw new RuntimeException("Invalid task status: " + taskStatus);
-    }
-
-    // KAFKA SOURCE OFFLOADING !!!!
-    // VM -> Serverless
-    if (sourceVertexDataFetchers.size() > 1) {
-      throw new RuntimeException("Unsupport > 1 size sources");
     }
 
     if (!kafkaOffloadPendingEvents.isEmpty()) {
@@ -370,16 +288,7 @@ public final class KafkaOffloader implements Offloader {
       return;
     }
 
-
-    final SourceVertexDataFetcher dataFetcher = sourceVertexDataFetchers.get(0);
-    final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
-    final KafkaUnboundedSource unboundedSource = (KafkaUnboundedSource) readable.getUnboundedSource();
-
-    final int splitNum = unboundedSource.getTopicPartitions().size();
-
-    LOG.info("# of split: {}", splitNum);
-
-    for (int i = 0; i < splitNum; i++) {
+    for (int i = 0; i < evalConf.middleParallelism; i++) {
       final OffloadingWorker worker = streamingWorkerService.createStreamWorker();
       final CompletableFuture<ControlMessage.Message> request = requestTaskIndex();
       kafkaOffloadPendingEvents.add(new KafkaOffloadingRequestEvent(
@@ -387,7 +296,6 @@ public final class KafkaOffloader implements Offloader {
     }
   }
 
-  @Override
   public boolean hasPendingStraemingWorkers() {
     return !kafkaOffloadPendingEvents.isEmpty();
   }
@@ -401,7 +309,6 @@ public final class KafkaOffloader implements Offloader {
     return true;
   }
 
-  @Override
   public synchronized void handlePendingStreamingWorkers() {
 
     if (kafkaOffloadPendingEvents.isEmpty()) {
@@ -413,55 +320,9 @@ public final class KafkaOffloader implements Offloader {
       // 1. split source
       LOG.info("Ready to offloading !!: {}. status: {}", taskId, taskStatus);
 
-      final SourceVertexDataFetcher dataFetcher = sourceVertexDataFetchers.get(0);
-      final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
-      final KafkaUnboundedSource unboundedSource = (KafkaUnboundedSource) readable.getUnboundedSource();
-
-      final BeamUnboundedSourceVertex beamUnboundedSourceVertex = ((BeamUnboundedSourceVertex) dataFetcher.getDataSource());
-      beamUnboundedSourceVertex.setUnboundedSource(unboundedSource);
-
-      // 1. remove this data fetcher from current
-      if (!availableFetchers.remove(dataFetcher)) {
-        pendingFetchers.remove(dataFetcher);
-      }
-
-      // 2. get checkpoint mark
-      final KafkaCheckpointMark unSplitCheckpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
-      // 3. split sources and create new source vertex data fetcher
-      final List<KafkaUnboundedSource> splitSources;
-      try {
-        splitSources = unboundedSource.split(1000, null);
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-
-      if (splitSources.size() != kafkaOffloadPendingEvents.size()) {
-        throw new RuntimeException("Split num != pending event num: " + splitSources.size() + " , " + kafkaOffloadPendingEvents.size());
-      }
-
-      // 4. send to serverless
-      LOG.info("Splitting source at {}, size: {}", taskId, splitSources.size());
-      LOG.info("Execute streaming worker at {}!", taskId);
-
       // 5. Split checkpoint mark!!
       int index = 0;
       for (final KafkaOffloadingRequestEvent event : kafkaOffloadPendingEvents) {
-        final KafkaUnboundedSource splitSource = splitSources.get(index);
-
-        final BeamUnboundedSourceVertex sourceVertex =
-          new BeamUnboundedSourceVertex(splitSource, null);
-
-        final UnboundedSource.CheckpointMark splitCheckpointMark =
-          createCheckpointMarkForSource(splitSource, unSplitCheckpointMark);
-
-        final UnboundedSourceReadable newReadable =
-          new UnboundedSourceReadable(splitSource, null, splitCheckpointMark);
-
-        final SourceVertexDataFetcher sourceVertexDataFetcher =
-          new SourceVertexDataFetcher(sourceVertex, dataFetcher.edge, newReadable, dataFetcher.getOutputCollector());
-
-        final Coder<UnboundedSource.CheckpointMark> coder = splitSource.getCheckpointMarkCoder();
         final ControlMessage.Message message;
         try {
           LOG.info("Wait taskIndex... {}", taskId);
@@ -478,35 +339,21 @@ public final class KafkaOffloader implements Offloader {
         final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
         final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
         try {
-          bos.writeInt(event.id);
+          bos.writeBoolean(true);
           bos.writeLong(message.getTaskIndexInfoMsg().getTaskIndex());
-          coder.encode(splitCheckpointMark, bos);
-          SerializationUtils.serialize(splitSource, bos);
           bos.close();
         } catch (IOException e) {
           e.printStackTrace();
           throw new RuntimeException(e);
         }
 
-        LOG.info("Offloading source id: {} for {} write: {} ... pending: {}", event.id, taskId, splitCheckpointMark);
-
-        // put
-        offloadedDataFetcherMap.put(event.id, new KafkaOffloadingDataEvent(
-          event.offloadingWorker,
-          splitSource,
-          event.id,
-          sourceVertexDataFetcher,
-          splitCheckpointMark));
-
         event.offloadingWorker.execute(byteBuf, 0, false);
         runningWorkers.add(event.offloadingWorker);
-
         index += 1;
       }
 
       LOG.info("Finished offloading at {}", taskId);
       kafkaOffloadPendingEvents.clear();
-
 
       LOG.info("Before setting offloaded status: " + taskStatus);
       taskExecutor.getPrevOffloadStartTime().set(System.currentTimeMillis());

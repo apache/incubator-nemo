@@ -152,8 +152,8 @@ public final class TaskOffloader {
     int stateless = 0;
     final List<TaskExecutor> runningTasks = new ArrayList<>(taskExecutorMap.size());
      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-       if (taskExecutor.isStateless()) {
-         stateless += 1;
+       //if (taskExecutor.isStateless()) {
+       //  stateless += 1;
          if (taskExecutor.isRunning()) {
            runningTasks.add(taskExecutor);
            running += 1;
@@ -164,7 +164,7 @@ public final class TaskOffloader {
          } else if (taskExecutor.isDeoffloadPending()) {
            deoffpending += 1;
          }
-       }
+      // }
     }
 
     LOG.info("Stateless Task running {}, offload_pending: {}, offloaded: {}, deoffload_pending: {}, total: {}",
@@ -179,11 +179,12 @@ public final class TaskOffloader {
       LOG.info("Start offloading kafka (only first stage)");
       int cnt = 0;
 
-      final int offloadCnt = taskExecutorMap.keySet().stream()
-        .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
+      //final int offloadCnt = taskExecutorMap.keySet().stream()
+      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
+      final int offloadCnt = taskExecutorMap.size();
 
       for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (taskExecutor.getId().startsWith("Stage0") && cnt < offloadCnt) {
+        if (cnt < offloadCnt) {
           LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
           offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
           taskExecutor.startOffloading(System.currentTimeMillis());
@@ -235,7 +236,6 @@ public final class TaskOffloader {
     this.monitorThread.scheduleAtFixedRate(() -> {
 
       try {
-
         final double cpuLoad = profiler.getCpuLoad();
         final Map<TaskExecutor, Long> currTaskCpuTimeMap = profiler.getTaskExecutorCpuTimeMap();
         final Map<TaskExecutor, Long> deltaMap = calculateCpuTimeDelta(prevTaskCpuTimeMap, currTaskCpuTimeMap);
@@ -287,30 +287,31 @@ public final class TaskOffloader {
           // Adjust current cpu time
           // Minus the pending tasks!
           long currCpuTimeSum = elapsedCpuTimeSum -
-            deltaMap.entrySet().stream().filter(entry -> entry.getKey().isOffloadPending())
+            deltaMap.entrySet().stream()//.filter(entry -> entry.getKey().isOffloadPending())
               .map(entry -> entry.getValue()).reduce(0L, (x,y) -> x+y);
 
-          final long avgCpuTimePerTask = currCpuTimeSum / (taskStatInfo.running);
+          //final long avgCpuTimePerTask = currCpuTimeSum / (taskStatInfo.running);
 
           LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
           final List<TaskExecutor> runningTasks = runningTasksInDeoffloadTimeOrder(taskStatInfo.runningTasks);
           final long curr = System.currentTimeMillis();
           int cnt = 0;
           for (final TaskExecutor runningTask : runningTasks) {
+            final long currTaskCpuTime = deltaMap.get(runningTask);
             if (cnt < runningTasks.size() - 1) {
 
               if (curr - runningTask.getPrevOffloadEndTime().get() > slackTime) {
                 //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
                 LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
-                  currCpuTimeSum, runningTask.getId(), avgCpuTimePerTask, targetCpuTime);
+                  currCpuTimeSum, runningTask.getId(), currTaskCpuTime, targetCpuTime);
 
-                if (currCpuTimeSum - avgCpuTimePerTask >= targetCpuTime) {
+                if (currCpuTimeSum - currTaskCpuTime >= targetCpuTime) {
                   // offload this task!
                   LOG.info("Offloading task {}", runningTask.getId());
                   runningTask.startOffloading(currTime);
                   offloadedExecutors.add(Pair.of(runningTask, currTime));
-                  currCpuTimeSum -= avgCpuTimePerTask;
+                  currCpuTimeSum -= currTaskCpuTime;
 
                   cnt += 1;
                 }

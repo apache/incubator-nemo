@@ -331,6 +331,7 @@ final class PipelineTranslator {
                                         final TransformHierarchy.Node beamNode,
                                         final Flatten.PCollections<?> transform) {
     final IRVertex vertex = new OperatorVertex(new FlattenTransform());
+    vertex.isStateful = true;
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
@@ -392,7 +393,6 @@ final class PipelineTranslator {
       ctx.addVertex(partialCombine);
       beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
 
-
       // (Stage 2) final combine
       final Combine.CombineFn finalCombineFn = new FinalCombineFn((Combine.CombineFn) combineFn);
       final SystemReduceFn finalSystemReduceFn =
@@ -417,6 +417,7 @@ final class PipelineTranslator {
         throw new RuntimeException(e);
       }
       final IRVertex finalCombine = new OperatorVertex(gbkFinalTransform);
+      finalCombine.isStateful = true;
       ctx.addVertex(finalCombine);
       final IREdge edge = new IREdge(CommunicationPatternProperty.Value.Shuffle, partialCombine, finalCombine);
       ctx.addEdge(
