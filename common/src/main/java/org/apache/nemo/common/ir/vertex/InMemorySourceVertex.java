@@ -88,6 +88,11 @@ public final class InMemorySourceVertex<T> extends SourceVertex<T> {
   }
 
   @Override
+  public String getSourceName() {
+    return "InMemorySource";
+  }
+
+  @Override
   public long getEstimatedSizeBytes() {
     final ArrayList<Long> list = new ArrayList<>();
     initializedSourceData.spliterator().forEachRemaining(obj -> list.add(Util.getObjectSize(obj)));

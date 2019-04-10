@@ -218,15 +218,6 @@ public final class EmptyComponents {
     }
 
     @Override
-    public String toString() {
-      final StringBuilder sb = new StringBuilder();
-      sb.append(super.toString());
-      sb.append(", name: ");
-      sb.append(name);
-      return sb.toString();
-    }
-
-    @Override
     public ObjectNode getPropertiesAsJsonNode() {
       final ObjectNode node = getIRVertexPropertiesAsJsonNode();
       node.put("source", "EmptySourceVertex(" + name + " / minNumReadables: " + minNumReadables + ")");
@@ -245,6 +236,11 @@ public final class EmptyComponents {
         list.add(new EmptyReadable<>());
       }
       return list;
+    }
+
+    @Override
+    public String getSourceName() {
+      return "EmptySource{" + name + "}";
     }
 
     @Override

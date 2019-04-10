@@ -29,7 +29,6 @@ import sqlite3 as sq
 import xgboost as xgb
 from sklearn import preprocessing
 
-
 # import matplotlib.pyplot as plt
 
 # ########################################################
@@ -180,6 +179,8 @@ class Node:
 
   value = None
 
+  reachable = None  # Dynamic programming
+
   def __init__(self, parent):
     self.parent = parent
 
@@ -212,15 +213,48 @@ class Node:
   def getMissing(self):
     return self.missing
 
+  def isReachable(self):  # Is the node reachable from the root, following the given conditions?
+    if self.reachable is not None:  # dynamic programming
+      return self.reachable
+    elif self.isRoot():
+      self.reachable = True
+      return self.reachable
+    elif not self.parent.isReachable():
+      self.reachable = False
+      return self.reachable
+    else:
+      feature = self.parent.feature  # feature to look at
+      conditions = []
+      p = self.parent
+      while not p.isRoot():  # aggregate the conditions of the parents for the given feature
+        if p.parent.feature is feature:
+          is_less_than = False if p is p.parent.getRight() else True
+          conditions.append((is_less_than, p.parent.split))
+        p = p.parent
+      must_be_greater_than = None
+      must_be_less_than = None
+      for condition in conditions:  # check conditions of the parents for the given feature
+        if condition[0] and (not must_be_less_than or condition[1] < must_be_less_than):  # less than split: find min
+          must_be_less_than = condition[1]
+        elif not condition[1] and (not must_be_greater_than or condition[1] > must_be_greater_than):  # gt split: find max
+          must_be_greater_than = condition[1]
+      is_less_than = False if self is self.parent.getRight() else True  # see if it meets the given condition
+      if (is_less_than and must_be_greater_than and self.parent.split < must_be_greater_than) or (not is_less_than and must_be_less_than and self.parent.split > must_be_less_than) or (must_be_less_than and must_be_greater_than and must_be_greater_than > must_be_less_than):
+        self.reachable = False
+        return self.reachable
+      else:
+        self.reachable = True
+        return self.reachable
+
   def getApprox(self):
     if self.isLeaf():
       return self.value
     else:
       lapprox = self.left.getApprox()
       rapprox = self.right.getApprox()
-      if rapprox != 0 and abs(lapprox / rapprox) < 0.04:  # smaller than 4% then ignore
+      if not self.left.isReachable():
         return rapprox
-      elif lapprox != 0 and abs(rapprox / lapprox) < 0.04:
+      elif not self.right.isReachable():
         return lapprox
       else:
         return (lapprox + rapprox) / 2
@@ -229,7 +263,7 @@ class Node:
     lapprox = self.left.getApprox()
     rapprox = self.right.getApprox()
     if (rapprox != 0 and abs(lapprox / rapprox) < 0.04) or (lapprox != 0 and abs(rapprox / lapprox) < 0.04):
-      return 0  # ignore
+      return 0  # ignore: too much difference (4%) - dangerous for skews
     return lapprox - rapprox
 
   def importanceDict(self):

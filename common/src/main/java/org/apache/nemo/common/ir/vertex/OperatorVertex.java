@@ -60,10 +60,22 @@ public class OperatorVertex extends IRVertex {
     return transform;
   }
 
+  /**
+   * @return the simple class name of the transform.
+   */
+  public final String getTransformName() {
+    return transform.getClass().getSimpleName();
+  }
+
   @Override
   public final ObjectNode getPropertiesAsJsonNode() {
     final ObjectNode node = getIRVertexPropertiesAsJsonNode();
     node.put("transform", transform.toString());
     return node;
+  }
+
+  @Override
+  public final String toString() {
+    return "OperatorVertex{" + getTransformName() + '}';
   }
 }

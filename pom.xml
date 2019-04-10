@@ -340,6 +340,8 @@ under the License.
             <exclude>**/docs/**</exclude>
             <!-- dag files -->
             <exclude>**/dag/**</exclude>
+            <exclude>**/MANIFEST.MF</exclude>
+            <exclude>**/*.proto</exclude>
           </excludes>
         </configuration>
       </plugin>

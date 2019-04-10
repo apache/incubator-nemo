@@ -60,6 +60,11 @@ public abstract class SourceVertex<O> extends IRVertex {
   public abstract List<Readable<O>> getReadables(int desiredNumOfSplits) throws Exception;
 
   /**
+   * @return the simple class name of the source.
+   */
+  public abstract String getSourceName();
+
+  /**
    * Gets the estimated size of bytes. Returns 0L if not applicable.
    *
    * @return size of input bytes.
@@ -74,4 +79,9 @@ public abstract class SourceVertex<O> extends IRVertex {
    * to ensure consistent use of the same IRVertex object across the compiler, the master, and the executors.
    */
   public abstract void clearInternalStates();
+
+  @Override
+  public final String toString() {
+    return "SourceVertex{" + getSourceName() + "}";
+  }
 }

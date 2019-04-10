@@ -73,6 +73,16 @@ public final class WordCountITCase {
   }
 
   @Test(timeout = ExampleTestArgs.TIMEOUT)
+  public void testDBEnabled() throws Exception {
+    JobLauncher.main(builder
+      .addResourceJson(executorResourceFileName)
+      .addEnableDB()
+      .addJobId(WordCountITCase.class.getSimpleName() + "_dbEnabled")
+      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+      .build());
+  }
+
+  @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testLargeShuffle() throws Exception {
     JobLauncher.main(builder
       .addResourceJson(executorResourceFileName)

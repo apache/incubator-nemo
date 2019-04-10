@@ -73,6 +73,11 @@ public final class CachedSourceVertex<T> extends SourceVertex<T> {
   }
 
   @Override
+  public String getSourceName() {
+    return "CachedSource";
+  }
+
+  @Override
   public long getEstimatedSizeBytes() {
     return 0L;
   }

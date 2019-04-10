@@ -668,6 +668,11 @@ public final class TaskExecutorTest {
     }
 
     @Override
+    public String getSourceName() {
+      return "TestUnboundedSource";
+    }
+
+    @Override
     public long getEstimatedSizeBytes() {
       return 0L;
     }

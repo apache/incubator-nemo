@@ -77,29 +77,39 @@ public final class XGBoostPass extends AnnotatingPass {
         List<Map<String, String>> listOfMap =
           mapper.readValue(message, new TypeReference<List<Map<String, String>>>() {
           });
-        // Formatted into 9 digits: 0:vertex/edge 1-5:ID 5-9:EP Index.
-        listOfMap.stream().filter(m -> m.get("feature").length() == 9).forEach(m -> {
-          final Pair<String, Integer> idAndEPKey = OptimizerUtils.stringToIdAndEPKeyIndex(m.get("feature"));
+        listOfMap.forEach(m -> {
+          final Pair<List<Object>, Integer> objAndEPKey;
+          if (m.get("feature").length() == 10) {  // get by pattern.
+            // Formatted into 10 digits: 0:pattern(1) 1-3:pattern ID 4-5:vtx/edge index 6-9:EP Index.
+            objAndEPKey = OptimizerUtils.patternStringToObjsAndEPKeyIndex(m.get("feature"), dag);
+          } else if (m.get("feature").length() == 9) {  // get by id.
+            // Formatted into 9 digits: 0:vertex(2)/edge(3) 1-4:vtx/edge ID 5-8:EP Index.
+            objAndEPKey = OptimizerUtils.stringToObjsAndEPKeyIndex(m.get("feature"), dag);
+          } else {  // doesn't support yet.
+            return;
+          }
           LOG.info("Tuning: {} of {} should be {} than {}",
-            idAndEPKey.right(), idAndEPKey.left(), m.get("val"), m.get("split"));
-          final ExecutionProperty<? extends Serializable> newEP = MetricUtils.keyAndValueToEP(idAndEPKey.right(),
+            objAndEPKey.right(), objAndEPKey.left(), m.get("val"), m.get("split"));
+          final ExecutionProperty<? extends Serializable> newEP = MetricUtils.keyAndValueToEP(objAndEPKey.right(),
             Double.valueOf(m.get("split")), Double.valueOf(m.get("val")));
           try {
-            if (idAndEPKey.left().startsWith("vertex")) {
-              final IRVertex v = dag.getVertexById(idAndEPKey.left());
-              final VertexExecutionProperty<?> originalEP = v.getExecutionProperties().stream()
-                .filter(ep -> ep.getClass().isAssignableFrom(newEP.getClass())).findFirst().orElse(null);
-              v.setProperty((VertexExecutionProperty) newEP);
-              if (!dag.checkIntegrity().isPassed()) {
-                v.setProperty(originalEP);
-              }
-            } else if (idAndEPKey.left().startsWith("edge")) {
-              final IREdge e = dag.getEdgeById(idAndEPKey.left());
-              final EdgeExecutionProperty<?> originalEP = e.getExecutionProperties().stream()
-                .filter(ep -> ep.getClass().isAssignableFrom(newEP.getClass())).findFirst().orElse(null);
-              e.setProperty((EdgeExecutionProperty) newEP);
-              if (!dag.checkIntegrity().isPassed()) {
-                e.setProperty(originalEP);
+            for (final Object obj: objAndEPKey.left()) {
+              if (obj instanceof IRVertex) {
+                final IRVertex v = (IRVertex) obj;
+                final VertexExecutionProperty<?> originalEP = v.getExecutionProperties().stream()
+                  .filter(ep -> ep.getClass().isAssignableFrom(newEP.getClass())).findFirst().orElse(null);
+                v.setProperty((VertexExecutionProperty) newEP);
+                if (!dag.checkIntegrity().isPassed()) {
+                  v.setProperty(originalEP);
+                }
+              } else if (obj instanceof IREdge) {
+                final IREdge e = (IREdge) obj;
+                final EdgeExecutionProperty<?> originalEP = e.getExecutionProperties().stream()
+                  .filter(ep -> ep.getClass().isAssignableFrom(newEP.getClass())).findFirst().orElse(null);
+                e.setProperty((EdgeExecutionProperty) newEP);
+                if (!dag.checkIntegrity().isPassed()) {
+                  e.setProperty(originalEP);
+                }
               }
             }
           } catch (IllegalVertexOperationException | IllegalEdgeOperationException e) {

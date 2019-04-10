@@ -20,14 +20,18 @@
 package org.apache.nemo.runtime.common.metric;
 
 import com.google.common.collect.HashBiMap;
+import org.apache.commons.lang3.SerializationException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.common.dag.DAGBuilder;
 import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,9 +39,9 @@ import java.io.ByteArrayInputStream;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.sql.*;
-import java.util.Arrays;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
@@ -51,6 +55,7 @@ public final class MetricUtils {
   private static final CountDownLatch METADATA_LOADED = new CountDownLatch(1);
   private static final CountDownLatch MUST_UPDATE_EP_KEY_METADATA = new CountDownLatch(1);
   private static final CountDownLatch MUST_UPDATE_EP_METADATA = new CountDownLatch(1);
+  private static final CountDownLatch MUST_UPDATE_PATTERN_METADATA = new CountDownLatch(1);
 
   // BiMap of (1) INDEX and (2) the Execution Property class and the value type class.
   static final HashBiMap<Integer, Pair<Class<? extends ExecutionProperty>, Class<? extends Serializable>>>
@@ -58,6 +63,8 @@ public final class MetricUtils {
   // BiMap of (1) the Execution Property class INDEX and the value INDEX pair and (2) the Execution Property value.
   private static final HashBiMap<Pair<Integer, Integer>, ExecutionProperty<? extends Serializable>>
     EP_METADATA = HashBiMap.create();
+  // BiMap of (1) INDEX and (2) the sub-IRDAG corresponding to the pattern.
+  private static final HashBiMap<Integer, IRDAG> PATTERN_METADATA = HashBiMap.create();
 
   static {
     try {
@@ -72,7 +79,8 @@ public final class MetricUtils {
     "jdbc:sqlite:" + Util.fetchProjectRootPath() + "/optimization_db.sqlite3";
   public static final String POSTGRESQL_METADATA_DB_NAME =
     "jdbc:postgresql://nemo-optimization.cabbufr3evny.us-west-2.rds.amazonaws.com:5432/nemo_optimization";
-  private static final String METADATA_TABLE_NAME = "nemo_optimization_meta";
+  private static final String EP_METADATA_TABLE_NAME = "ep_meta";
+  private static final String PATTERN_METADATA_TABLE_NAME = "pattern_meta";
 
   /**
    * Private constructor.
@@ -92,27 +100,53 @@ public final class MetricUtils {
         statement.setQueryTimeout(30);  // set timeout to 30 sec.
 
         statement.executeUpdate(
-          "CREATE TABLE IF NOT EXISTS " + METADATA_TABLE_NAME
+          "CREATE TABLE IF NOT EXISTS " + EP_METADATA_TABLE_NAME
             + " (type TEXT NOT NULL, key INT NOT NULL UNIQUE, value BYTEA NOT NULL, "
             + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);");
 
-        final ResultSet rsl = statement.executeQuery(
-          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE type='EP_KEY_METADATA';");
-        LOG.info("Metadata can be successfully loaded.");
-        while (rsl.next()) {
-          EP_KEY_METADATA.put(rsl.getInt("key"),
-            SerializationUtils.deserialize(rsl.getBytes("value")));
-        }
-        rsl.close();
+        statement.executeUpdate(
+          "CREATE TABLE IF NOT EXISTS " + PATTERN_METADATA_TABLE_NAME
+            + " (key INT NOT NULL UNIQUE, value BYTEA NOT NULL, "
+            + "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);");
 
-        final ResultSet rsr = statement.executeQuery(
-          "SELECT * FROM " + METADATA_TABLE_NAME + " WHERE type='EP_METADATA';");
-        while (rsr.next()) {
-          final Integer l = rsr.getInt("key");
-          EP_METADATA.put(Pair.of(l / 10000, 1 % 10000),
-            SerializationUtils.deserialize(rsr.getBytes("value")));
+        try (ResultSet rs1 = statement.executeQuery(
+          "SELECT * FROM " + EP_METADATA_TABLE_NAME + " WHERE type='EP_KEY_METADATA';")) {
+          LOG.info("Metadata can be successfully loaded.");
+          while (rs1.next()) {
+            try {
+              EP_KEY_METADATA.put(rs1.getInt("key"),
+                SerializationUtils.deserialize(rs1.getBytes("value")));
+            } catch (SerializationException e) {
+              LOG.warn("Couldn't deserialize EP_KEY and continuing: {}", rs1.getInt("key"));
+            }
+          }
         }
-        rsr.close();
+
+        try (ResultSet rs2 = statement.executeQuery(
+          "SELECT * FROM " + EP_METADATA_TABLE_NAME + " WHERE type='EP_METADATA';")) {
+          while (rs2.next()) {
+            final Integer l = rs2.getInt("key");
+            try {
+              EP_METADATA.put(Pair.of(l / 10000, 1 % 10000),
+                SerializationUtils.deserialize(rs2.getBytes("value")));
+            } catch (SerializationException e) {
+              LOG.warn("Couldn't deserialize EP and continuing: {}:{}", l / 10000, l % 10000);
+            }
+          }
+        }
+
+        try (ResultSet rs3 = statement.executeQuery(
+          "SELECT * FROM " + PATTERN_METADATA_TABLE_NAME + ";")) {
+          while (rs3.next()) {
+            try {
+              final Integer l = rs3.getInt("key");
+              PATTERN_METADATA.put(l, SerializationUtils.deserialize(rs3.getBytes("value")));
+            } catch (SerializationException e) {
+              LOG.warn("Couldn't deserialize PATTERN and continuing: {}", rs3.getInt("key"));
+            }
+          }
+        }
+
         METADATA_LOADED.countDown();
         LOG.info("Metadata successfully loaded from DB.");
       } catch (Exception e) {
@@ -132,10 +166,12 @@ public final class MetricUtils {
    */
   private static void updateMetaData() {
     if (!metaDataLoaded()
-      || (MUST_UPDATE_EP_METADATA.getCount() + MUST_UPDATE_EP_KEY_METADATA.getCount() == 2)) {
+      || (MUST_UPDATE_EP_METADATA.getCount() + MUST_UPDATE_EP_KEY_METADATA.getCount()
+      + MUST_UPDATE_PATTERN_METADATA.getCount() == 3)) {
       // no need to update
-      LOG.info("Not saving Metadata: metadata loaded: {}, Index-EP data: {}, Index-EP Key data: {}",
-        metaDataLoaded(), MUST_UPDATE_EP_METADATA.getCount() == 0, MUST_UPDATE_EP_KEY_METADATA.getCount() == 0);
+      LOG.info("Not saving Metadata: metadata loaded: {}, Index-EP data: {}, Index-EP Key data: {}, Pattern data: {}",
+        metaDataLoaded(), MUST_UPDATE_EP_METADATA.getCount() == 0, MUST_UPDATE_EP_KEY_METADATA.getCount() == 0,
+        MUST_UPDATE_PATTERN_METADATA.getCount() == 0);
       return;
     }
     LOG.info("Saving Metadata..");
@@ -166,6 +202,17 @@ public final class MetricUtils {
           });
           LOG.info("EP Metadata saved to DB.");
         }
+
+        if (MUST_UPDATE_PATTERN_METADATA.getCount() == 0) {
+          PATTERN_METADATA.forEach((l, r) -> {
+            try {
+              insertOrUpdateMetadata(c, PATTERN_METADATA_TABLE_NAME, l, r);
+            } catch (SQLException e) {
+              LOG.warn("Saving of Metadata to DB failed: ", e);
+            }
+          });
+          LOG.info("PATTERN Metadata saved to DB.");
+        }
       }
     } catch (SQLException e) {
       LOG.warn("Saving of Metadata to DB failed: ", e);
@@ -176,39 +223,117 @@ public final class MetricUtils {
    * Utility method to save key, value to the metadata table.
    *
    * @param c     the connection to the DB.
-   * @param type  the key to write to the DB metadata table.
+   * @param type  the key to write to the DB metadata table, or the DB name to write the data on.
    * @param key   the key to write to the DB metadata table (integer).
    * @param value the value to write to the DB metadata table (object).
    * @throws SQLException SQLException on the way.
    */
   private static void insertOrUpdateMetadata(final Connection c, final String type,
                                              final Integer key, final Serializable value) throws SQLException {
-    try (PreparedStatement pstmt = c.prepareStatement(
-      "INSERT INTO " + METADATA_TABLE_NAME + " (type, key, value) "
-        + "VALUES ('" + type + "', " + key + ", ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value;")) {
-      pstmt.setBinaryStream(1, new ByteArrayInputStream(SerializationUtils.serialize(value)));
-      pstmt.executeUpdate();
+    if (type.equals(PATTERN_METADATA_TABLE_NAME)) {
+      try (PreparedStatement pstmt = c.prepareStatement("INSERT INTO " + PATTERN_METADATA_TABLE_NAME
+        + " (key, value) VALUES (" + key + ", ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value;")) {
+        pstmt.setBinaryStream(1, new ByteArrayInputStream(SerializationUtils.serialize(value)));
+        pstmt.executeUpdate();
+      }
+    } else {
+      try (PreparedStatement pstmt = c.prepareStatement(
+        "INSERT INTO " + EP_METADATA_TABLE_NAME + " (type, key, value) "
+          + "VALUES ('" + type + "', " + key + ", ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value;")) {
+        pstmt.setBinaryStream(1, new ByteArrayInputStream(SerializationUtils.serialize(value)));
+        pstmt.executeUpdate();
+      }
     }
   }
 
   /**
    * Stringify execution properties of an IR DAG.
    *
-   * @param irdag IR DAG to observe.
-   * @return the pair of stringified execution properties. Left is for vertices, right is for edges.
+   * @param irdag the IR DAG to observe.
+   * @return stringified execution properties, grouped as patterns. Left is for vertices, right is for edges.
    */
   public static Pair<String, String> stringifyIRDAGProperties(final IRDAG irdag) {
+    return stringifyIRDAGProperties(irdag, 0);  // pattern recording is default
+  }
+
+  /**
+   * Stringify execution properties of an IR DAG.
+   *
+   * @param irdag IR DAG to observe.
+   * @param mode 0: record metrics by patterns, 1: record metrics with vertex or edge IDs.
+   * @return the pair of stringified execution properties. Left is for vertices, right is for edges.
+   */
+  public static Pair<String, String> stringifyIRDAGProperties(final IRDAG irdag, final Integer mode) {
     final StringBuilder vStringBuilder = new StringBuilder();
     final StringBuilder eStringBuilder = new StringBuilder();
 
-    irdag.getVertices().forEach(v ->
-      v.getExecutionProperties().forEachProperties(ep ->
-        epFormatter(vStringBuilder, 1, v.getNumericId(), ep)));
+    if (mode == 0) {  // Patterns
+      LOG.info("Vertices list: {}", irdag.getTopologicalSort());
+      for (final IRVertex v: irdag.getTopologicalSort()) {
+        final List<IREdge> incomingEdges = irdag.getIncomingEdgesOf(v);
 
-    irdag.getVertices().forEach(v ->
-      irdag.getIncomingEdgesOf(v).forEach(e ->
-        e.getExecutionProperties().forEachProperties(ep ->
-          epFormatter(eStringBuilder, 2, e.getNumericId(), ep))));
+        final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+        builder.addVertex(v);
+        incomingEdges.forEach(e ->
+          builder.addVertex(e.getSrc()).connectVertices(e));
+        final IRDAG subDAG = new IRDAG(builder.buildWithoutSourceSinkCheck());
+
+        // Get the index from the DAG components.
+        final Integer index;
+        final Optional<IRDAG> metaIRDAG = PATTERN_METADATA.values().stream()
+          .filter(ird -> ird.getVertices().size() == subDAG.getVertices().size())  // same number of vertices
+          .filter(ird -> {  // same topological signature
+            final Iterator<IRVertex> it1 = ird.getTopologicalSort().iterator();
+            final Iterator<IRVertex> it2 = subDAG.getTopologicalSort().iterator();
+            while (it1.hasNext() && it2.hasNext()) {
+              final String str1 = it1.next().toString();
+              final String str2 = it2.next().toString();
+              if (!str1.equals(str2)) {
+                return false;
+              }
+            }
+            return true;
+          })
+          .findFirst();
+
+        if (metaIRDAG.isPresent()) {
+          index = PATTERN_METADATA.inverse().get(metaIRDAG.get());
+        } else {
+          index = PATTERN_METADATA.keySet().stream().mapToInt(i -> i).max().orElse(-1) + 1;
+          LOG.info("Inserting new pattern for {}({}), at index {}", v, v.getId(), index);
+          PATTERN_METADATA.putIfAbsent(index, subDAG);
+          MUST_UPDATE_PATTERN_METADATA.countDown();
+        }
+
+        // Let's now add the execution properties of the given pattern.
+        final AtomicInteger idx = new AtomicInteger(0);
+
+        // The vertex itself
+        v.getExecutionProperties().forEachProperties(ep ->
+          epFormatter(vStringBuilder, 1, index * 100 + idx.get(), ep));
+        // Main incoming edges & vertex
+        idx.getAndIncrement();
+        incomingEdges.stream()
+          .sorted(Comparator.comparing(e -> e.getSrc().toString()))
+          .forEachOrdered(e -> {
+            e.getExecutionProperties().forEachProperties(ep ->
+              epFormatter(eStringBuilder, 1, index * 100 + idx.get(), ep));
+            idx.getAndIncrement();
+            e.getSrc().getExecutionProperties().forEachProperties(ep ->
+              epFormatter(vStringBuilder, 1, index * 100 + idx.get(), ep));
+            idx.getAndIncrement();
+          });
+      }
+    } else {  // By Vertex / Edge IDs.
+      irdag.getVertices().forEach(v ->
+        v.getExecutionProperties().forEachProperties(ep ->
+          epFormatter(vStringBuilder, 2, v.getNumericId(), ep)));
+
+      irdag.getVertices().forEach(v ->
+        irdag.getIncomingEdgesOf(v).forEach(e ->
+          e.getExecutionProperties().forEachProperties(ep ->
+            epFormatter(eStringBuilder, 3, e.getNumericId(), ep))));
+    }
 
     // Update the metric metadata if new execution property key / values have been discovered and updates are required.
     updateMetaData();
@@ -219,7 +344,7 @@ public final class MetricUtils {
    * Formatter for execution properties. It updates the metadata for the metrics if new EP key / values are discovered.
    *
    * @param builder   string builder to append the metrics to.
-   * @param idx       index specifying whether it's a vertex or an edge. This should be one digit.
+   * @param idx       index specifying whether it's a pattern, a vertex or an edge. This should be one digit.
    * @param numericId numeric ID of the vertex or the edge.
    * @param ep        the execution property.
    */
@@ -227,7 +352,12 @@ public final class MetricUtils {
                                   final Integer numericId, final ExecutionProperty<?> ep) {
     // Formatted into 9 digits: 0:vertex/edge 1-5:ID 5-9:EP Index.
     builder.append(idx);
-    builder.append(String.format("%04d", numericId));
+    if (idx == 1) {  // pattern.
+      builder.append(String.format("%05d", numericId));  // Pattern ID (3digit) and then index (2digit) (ID + 1: vertex,
+      // 2: main incoming edge, 3: main incoming vertex, 4,6,8...: side-input edge, 5,7,9...: side-input vertex)
+    } else if (idx == 2 || idx == 3) {  // vertex or edge ID.
+      builder.append(String.format("%04d", numericId));  // ID in 4 digits
+    }
     final Integer epKeyIndex = getEpKeyIndex(ep);
     builder.append(String.format("%04d", epKeyIndex));
 
@@ -248,7 +378,7 @@ public final class MetricUtils {
     return EP_KEY_METADATA.inverse()
       .computeIfAbsent(Pair.of(ep.getClass(), getParameterType(ep.getClass(), ep.getValue().getClass())),
         epClassPair -> {
-          final Integer idx = EP_KEY_METADATA.keySet().stream().mapToInt(i -> i).max().orElse(0) + 1;
+          final Integer idx = EP_KEY_METADATA.keySet().stream().mapToInt(i -> i).max().orElse(-1) + 1;
           LOG.info("New EP Key Index: {} for {}", idx, epClassPair.left().getSimpleName());
           // Update the metadata if new EP key has been discovered.
           MUST_UPDATE_EP_KEY_METADATA.countDown();
@@ -307,6 +437,16 @@ public final class MetricUtils {
   }
 
   /**
+   * Return the sub DAG from the index.
+   *
+   * @param index the index of the sub-DAG.
+   * @return the sub DAG of the corresponding pattern ID.
+   */
+  public static IRDAG getSubDAGFromIndex(final Integer index) {
+    return PATTERN_METADATA.get(index);
+  }
+
+  /**
    * Helper method to convert Execution Property value objects to an integer index.
    * It updates the metadata for the metrics if new EP values are discovered.
    *
@@ -340,7 +480,7 @@ public final class MetricUtils {
       } else {
         final Integer valueIndex = EP_METADATA.keySet().stream()
           .filter(pair -> pair.left().equals(epKeyIndex))
-          .mapToInt(Pair::right).max().orElse(0) + 1;
+          .mapToInt(Pair::right).max().orElse(-1) + 1;
         // Update the metadata if new EP value has been discovered.
         EP_METADATA.put(Pair.of(epKeyIndex, valueIndex), ep);
         LOG.info("New EP Index: ({}, {}) for {}", epKeyIndex, valueIndex, ep);

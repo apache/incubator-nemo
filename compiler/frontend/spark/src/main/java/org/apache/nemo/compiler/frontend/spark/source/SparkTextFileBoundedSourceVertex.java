@@ -91,6 +91,11 @@ public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String>
   }
 
   @Override
+  public String getSourceName() {
+    return "SparkTextFileSource";
+  }
+
+  @Override
   public long getEstimatedSizeBytes() {
     return this.estimatedSizeBytes;
   }

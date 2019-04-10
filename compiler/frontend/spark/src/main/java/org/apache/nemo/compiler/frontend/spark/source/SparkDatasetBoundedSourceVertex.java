@@ -90,6 +90,11 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
   }
 
   @Override
+  public String getSourceName() {
+    return "SparkDatasetSource";
+  }
+
+  @Override
   public long getEstimatedSizeBytes() {
     return this.estimatedByteSize;
   }

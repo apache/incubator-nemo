@@ -111,6 +111,14 @@ public final class ArgBuilder {
   }
 
   /**
+   * @return the argbuilder with the db writing enabled.
+   */
+  public ArgBuilder addEnableDB() {
+    args.add(Arrays.asList("-db_enabled", "true"));
+    return this;
+  }
+
+  /**
    * @return the built arguments.
    */
   public String[] build() {

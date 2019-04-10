@@ -400,6 +400,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.UserMainArguments.class);
     cl.registerShortNameOfClass(JobConf.DAGDirectory.class);
     cl.registerShortNameOfClass(JobConf.OptimizationPolicy.class);
+    cl.registerShortNameOfClass(JobConf.EnvironmentType.class);
     cl.registerShortNameOfClass(JobConf.DeployMode.class);
     cl.registerShortNameOfClass(JobConf.DriverMemMb.class);
     cl.registerShortNameOfClass(JobConf.ExecutorJSONPath.class);
@@ -416,6 +417,10 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.PartitionTransportClientNumThreads.class);
     cl.registerShortNameOfClass(JobConf.MaxNumDownloadsForARuntimeEdge.class);
     cl.registerShortNameOfClass(JobConf.SchedulerImplClassName.class);
+    cl.registerShortNameOfClass(JobConf.DBEnabled.class);
+    cl.registerShortNameOfClass(JobConf.DBAddress.class);
+    cl.registerShortNameOfClass(JobConf.DBId.class);
+    cl.registerShortNameOfClass(JobConf.DBPasswd.class);
     cl.processCommandLine(args);
     return confBuilder.build();
   }

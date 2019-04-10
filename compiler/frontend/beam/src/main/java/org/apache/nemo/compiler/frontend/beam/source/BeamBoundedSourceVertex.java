@@ -108,6 +108,15 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<WindowedValue
   }
 
   @Override
+  public String getSourceName() {
+    if (this.source != null) {
+      return this.source.getClass().getSimpleName();
+    } else {
+      return "None";
+    }
+  }
+
+  @Override
   public long getEstimatedSizeBytes() {
     return this.estimatedSizeBytes;
   }

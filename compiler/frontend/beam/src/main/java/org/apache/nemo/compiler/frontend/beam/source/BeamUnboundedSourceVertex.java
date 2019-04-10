@@ -98,6 +98,11 @@ public final class BeamUnboundedSourceVertex<O, M extends UnboundedSource.Checkp
   }
 
   @Override
+  public String getSourceName() {
+    return this.source.getClass().getSimpleName();
+  }
+
+  @Override
   public long getEstimatedSizeBytes() {
     return 0L;
   }
