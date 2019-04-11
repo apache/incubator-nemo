@@ -22,17 +22,17 @@ package org.apache.nemo.common;
 import java.io.OutputStream;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 
 /**
- * 
+ *
  */
 public class DirectByteBufferOutputStream extends OutputStream {
 
   private ByteBuffer buf;
-  private List<ByteBuffer> dataList;
+  private LinkedList<ByteBuffer> dataList = new LinkedList<>();
   private static final int pageSize = 4096;
 
   public DirectByteBufferOutputStream(){
@@ -45,7 +45,6 @@ public class DirectByteBufferOutputStream extends OutputStream {
         + size);
     }
     this.buf = ByteBuffer.allocateDirect(size);
-    this.dataList = new ArrayList<>();
   }
 
   @Override
