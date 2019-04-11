@@ -23,7 +23,6 @@ import java.io.OutputStream;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
-import java.util.List;
 
 
 /**
@@ -31,28 +30,27 @@ import java.util.List;
  */
 public class DirectByteBufferOutputStream extends OutputStream {
 
-  private ByteBuffer buf;
   private LinkedList<ByteBuffer> dataList = new LinkedList<>();
   private static final int pageSize = 4096;
+  private int writePos = 0;
 
   public DirectByteBufferOutputStream(){
-    this(pageSize);
   }
 
-  public DirectByteBufferOutputStream(int size){
-    if (size < 0) {
-      throw new IllegalArgumentException("Negative initial size: "
-        + size);
-    }
-    this.buf = ByteBuffer.allocateDirect(size);
+  public void newLastBuffer() {
+    dataList.addLast(ByteBuffer.allocateDirect(pageSize));
+    writePos = 0;
   }
 
   @Override
-  public void write(int b){
-    if (!buf.hasRemaining()) {
-      throw new BufferOverflowException();
+  public void write(int b) {
+    ByteBuffer currentBuf = (dataList.isEmpty() ? null: dataList.getLast());
+    if (currentBuf == null || writePos == pageSize){
+      newLastBuffer();
+      currentBuf = dataList.getLast();
     }
-    buf.put((byte) b);
+    currentBuf.put((byte)b);
+    writePos += 1;
   }
 
   /**
@@ -60,24 +58,8 @@ public class DirectByteBufferOutputStream extends OutputStream {
    * @param b
    */
   @Override
-  public void write(byte[] b){
-    //TODO: Has to be implemented using list appending.
-
-    int length = b.length;
-    int offset = 0;
-
-    buf.put(b, offset, pageSize);
-    dataList.add(buf);
-    offset += pageSize;
-    length -= pageSize;
-
-    while(length > 0){
-      ByteBuffer temp = ByteBuffer.allocateDirect(pageSize);
-      temp.put(b, offset, pageSize);
-      offset += pageSize;
-      length -= pageSize;
-      dataList.add(temp);
-    }
+  public void write(byte[] b) {
+    write(b, 0, b.length);
   }
 
   /**
@@ -88,32 +70,29 @@ public class DirectByteBufferOutputStream extends OutputStream {
    */
   @Override
   public void write(byte[] b, int off, int len){
-    //TODO: Has to be implemented using list appending.
-
-    int length = len;
+    int byteToWrite = len;
     int offset = off;
 
-    buf.put(b, off, len);
-    dataList.add(buf);
-    offset += len;
-    length -= len;
-
-    while(length > 0){
-      ByteBuffer temp = ByteBuffer.allocateDirect(pageSize);
-      temp.put(b, offset, pageSize);
-      offset += pageSize;
-      length -= pageSize;
-      dataList.add(temp);
+    ByteBuffer currentBuf = (dataList.isEmpty() ? null: dataList.getLast());
+    while(byteToWrite > 0) {
+      if (currentBuf == null || writePos >= pageSize){
+        newLastBuffer();
+        currentBuf = dataList.getLast();
+      }
+      final int remaining = pageSize - writePos;
+      if (remaining < byteToWrite) {
+        currentBuf.put(b, offset, remaining);
+        writePos += remaining;
+        offset += remaining;
+        byteToWrite -= remaining;
+      }
+      else {
+        currentBuf.put(b, offset, byteToWrite);
+        writePos += byteToWrite;
+        offset += byteToWrite;
+        byteToWrite = 0;
+      }
     }
-  }
-
-  /**
-   *
-   */
-  public void grow(){
-
-    //TODO: Fill up the code to implement the mechanism of adding up the byte buffer when one is full.
-
   }
 
   /**
@@ -121,6 +100,10 @@ public class DirectByteBufferOutputStream extends OutputStream {
    * @return
    */
   public byte[] toByteArray(){
+    if(dataList.isEmpty()){
+      throw new NullPointerException();
+    }
+
     byte[] byteArray = new byte[pageSize * dataList.size()];
     int start = 0;
 
@@ -136,6 +119,6 @@ public class DirectByteBufferOutputStream extends OutputStream {
    *
    * @return
    */
-  public ByteBuffer getByteBuffer() { return buf; }
+  //public ByteBuffer getByteBuffer() { return buf; }
 
 }
