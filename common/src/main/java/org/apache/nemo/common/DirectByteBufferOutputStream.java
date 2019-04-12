@@ -26,7 +26,7 @@ import java.util.LinkedList;
 
 
 /**
- *
+ * OutputStream implementation backed by java.nio.ByteBuffer
  */
 public class DirectByteBufferOutputStream extends OutputStream {
 
@@ -45,7 +45,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
   @Override
   public void write(int b) {
     ByteBuffer currentBuf = (dataList.isEmpty() ? null: dataList.getLast());
-    if (currentBuf == null || writePos == pageSize){
+    if (currentBuf == null || writePos >= pageSize){
       newLastBuffer();
       currentBuf = dataList.getLast();
     }
@@ -79,12 +79,12 @@ public class DirectByteBufferOutputStream extends OutputStream {
         newLastBuffer();
         currentBuf = dataList.getLast();
       }
-      final int remaining = pageSize - writePos;
-      if (remaining < byteToWrite) {
-        currentBuf.put(b, offset, remaining);
-        writePos += remaining;
-        offset += remaining;
-        byteToWrite -= remaining;
+      final int bufRemaining = pageSize - writePos;
+      if (bufRemaining < byteToWrite) {
+        currentBuf.put(b, offset, bufRemaining);
+        writePos += bufRemaining;
+        offset += bufRemaining;
+        byteToWrite -= bufRemaining;
       }
       else {
         currentBuf.put(b, offset, byteToWrite);
@@ -99,26 +99,27 @@ public class DirectByteBufferOutputStream extends OutputStream {
    *
    * @return
    */
-  public byte[] toByteArray(){
-    if(dataList.isEmpty()){
-      throw new NullPointerException();
+  public byte[] toByteArray() {
+    if (dataList.isEmpty()) {
+      throw new IllegalStateException();
     }
-
-    byte[] byteArray = new byte[pageSize * dataList.size()];
+    int arraySize = pageSize * (dataList.size() - 1) + writePos;
+    byte[] byteArray = new byte[arraySize];
     int start = 0;
+    ByteBuffer temp;
 
-    while(!dataList.isEmpty()){
-      ByteBuffer temp = dataList.remove(0);
-      temp.get(byteArray, start, pageSize);
-      start += pageSize;
+    while (!dataList.isEmpty()) {
+      if(dataList.size()==1){
+        temp = dataList.poll();
+        temp.get(byteArray, start, writePos);
+        start += writePos;
+      }
+      else{
+        temp = dataList.poll();
+        temp.get(byteArray, start, pageSize);
+        start += pageSize;
+      }
     }
     return byteArray;
   }
-
-  /**
-   *
-   * @return
-   */
-  //public ByteBuffer getByteBuffer() { return buf; }
-
 }
