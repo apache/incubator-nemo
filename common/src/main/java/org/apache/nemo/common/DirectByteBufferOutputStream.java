@@ -20,7 +20,6 @@ package org.apache.nemo.common;
 
 
 import java.io.OutputStream;
-import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 
@@ -32,25 +31,22 @@ public class DirectByteBufferOutputStream extends OutputStream {
 
   private LinkedList<ByteBuffer> dataList = new LinkedList<>();
   private static final int pageSize = 4096;
-  private int writePos = 0;
 
   public DirectByteBufferOutputStream(){
   }
 
   public void newLastBuffer() {
     dataList.addLast(ByteBuffer.allocateDirect(pageSize));
-    writePos = 0;
   }
 
   @Override
   public void write(int b) {
     ByteBuffer currentBuf = (dataList.isEmpty() ? null: dataList.getLast());
-    if (currentBuf == null || writePos >= pageSize){
+    if (currentBuf == null || currentBuf.position() >= pageSize){
       newLastBuffer();
       currentBuf = dataList.getLast();
     }
     currentBuf.put((byte)b);
-    writePos += 1;
   }
 
   /**
@@ -75,20 +71,18 @@ public class DirectByteBufferOutputStream extends OutputStream {
 
     ByteBuffer currentBuf = (dataList.isEmpty() ? null: dataList.getLast());
     while(byteToWrite > 0) {
-      if (currentBuf == null || writePos >= pageSize){
+      if (currentBuf == null || currentBuf.position() >= pageSize){
         newLastBuffer();
         currentBuf = dataList.getLast();
       }
-      final int bufRemaining = pageSize - writePos;
+      final int bufRemaining = pageSize - currentBuf.position();
       if (bufRemaining < byteToWrite) {
         currentBuf.put(b, offset, bufRemaining);
-        writePos += bufRemaining;
         offset += bufRemaining;
         byteToWrite -= bufRemaining;
       }
       else {
         currentBuf.put(b, offset, byteToWrite);
-        writePos += byteToWrite;
         offset += byteToWrite;
         byteToWrite = 0;
       }
@@ -101,25 +95,22 @@ public class DirectByteBufferOutputStream extends OutputStream {
    */
   public byte[] toByteArray() {
     if (dataList.isEmpty()) {
-      throw new IllegalStateException();
+      byte[] byteArray = new byte[0];
+      return byteArray;
     }
-    int arraySize = pageSize * (dataList.size() - 1) + writePos;
+    int arraySize = pageSize * (dataList.size() - 1) + dataList.getLast().position();
     byte[] byteArray = new byte[arraySize];
     int start = 0;
-    ByteBuffer temp;
+    int byteToWrite;
 
-    while (!dataList.isEmpty()) {
-      if(dataList.size()==1){
-        temp = dataList.poll();
-        temp.get(byteArray, start, writePos);
-        start += writePos;
-      }
-      else{
-        temp = dataList.poll();
-        temp.get(byteArray, start, pageSize);
-        start += pageSize;
-      }
+    for(ByteBuffer temp : dataList) {
+      temp.flip();
+      byteToWrite = temp.remaining();
+      temp.get(byteArray, start, byteToWrite);
+      start += byteToWrite;
     }
+    dataList.getLast().limit(pageSize);
+
     return byteArray;
   }
 }
