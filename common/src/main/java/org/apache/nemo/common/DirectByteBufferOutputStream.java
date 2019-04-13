@@ -19,36 +19,57 @@
 package org.apache.nemo.common;
 
 
+import com.sun.istack.NotNull;
+
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 
 
 /**
- * OutputStream implementation backed by java.nio.ByteBuffer
+ * This class is a customized output stream implementation backed by
+ * {@link ByteBuffer}, which utilizes off heap memory when writing the data.
+ * Memory is allocated when needed by the specified {@code pageSize}.
  */
 public class DirectByteBufferOutputStream extends OutputStream {
 
-  private LinkedList<ByteBuffer> dataList = new LinkedList<>();
+  private final LinkedList<ByteBuffer> dataList = new LinkedList<>();
   private final int pageSize;
 
+  /**
+   * Default constructor.
+   * Sets the {@code pageSize} as default size of 4KB.
+   */
   public DirectByteBufferOutputStream(){
     pageSize = 4096;
   }
 
-  public DirectByteBufferOutputStream(int pageSize){
-    if(pageSize < 4096 || (pageSize & (pageSize -1)) != 0){
+  /**
+   * Constructor specifying the {@code pageSize}.
+   *
+   * @param pageSize should be greater than 4KB and power of 2.
+   */
+  public DirectByteBufferOutputStream(final int pageSize){
+    if(pageSize < 4096 || (pageSize & (pageSize - 1)) != 0){
       throw new IllegalArgumentException("Invalid pageSize");
     }
     this.pageSize = pageSize;
   }
 
+  /**
+   * Allocates new {@link ByteBuffer} with the capacity equal to {@code pageSize}.
+   */
   public void newLastBuffer() {
     dataList.addLast(ByteBuffer.allocateDirect(pageSize));
   }
 
+  /**
+   * Writes the specified byte to this output stream.
+   *
+   * @param   b   the byte to be written.
+   */
   @Override
-  public void write(int b) {
+  public void write(final int b) {
     ByteBuffer currentBuf = (dataList.isEmpty() ? null: dataList.getLast());
     if (currentBuf == null || currentBuf.remaining() <= 0){
       newLastBuffer();
@@ -58,22 +79,26 @@ public class DirectByteBufferOutputStream extends OutputStream {
   }
 
   /**
+   * Writes {@code b.length} bytes from the specified byte array
+   * to this output stream.
    *
-   * @param b
+   * @param b the byte to be written.
    */
   @Override
-  public void write(byte[] b) {
+  public void write(final byte[] b) {
     write(b, 0, b.length);
   }
 
   /**
+   * Writes {@code len} bytes from the specified byte array
+   * starting at offset {@code off} to this output stream.
    *
-   * @param b
-   * @param off
-   * @param len
+   * @param   b     the data.
+   * @param   off   the start offset in the data.
+   * @param   len   the number of bytes to write.
    */
   @Override
-  public void write(byte[] b, int off, int len){
+  public void write(final byte[] b, final int off, final int len){
     int byteToWrite = len;
     int offset = off;
 
@@ -98,27 +123,47 @@ public class DirectByteBufferOutputStream extends OutputStream {
   }
 
   /**
+   * Creates a byte array that contains the whole content
+   * written in this output stream.
    *
-   * @return
+   * @return the current contents of this output stream, as byte array.
    */
   public byte[] toByteArray() {
     if (dataList.isEmpty()) {
-      byte[] byteArray = new byte[0];
+      final byte[] byteArray = new byte[0];
       return byteArray;
     }
-    int arraySize = pageSize * (dataList.size() - 1) + dataList.getLast().position();
-    byte[] byteArray = new byte[arraySize];
+
+    ByteBuffer lastBuf = dataList.getLast();
+    // pageSize equals the size of the data filled in the ByteBuffers
+    // except for the last ByteBuffer. The size of the data in the last ByteBuffer
+    // can be obtained by calling ByteBuffer.position().
+    final int arraySize = pageSize * (dataList.size() - 1) + lastBuf.position();
+    final byte[] byteArray = new byte[arraySize];
     int start = 0;
     int byteToWrite;
 
     for(ByteBuffer temp : dataList) {
+      // ByteBuffer has to be shifted to read mode by calling ByteBuffer.flip(),
+      // which sets its limit to the current position and sets the position to 0.
+      // Note that capacity remains the same.
       temp.flip();
       byteToWrite = temp.remaining();
       temp.get(byteArray, start, byteToWrite);
       start += byteToWrite;
     }
-    dataList.getLast().limit(dataList.getLast().capacity());
+    // The limit of the last buffer has to be set to the capacity for re-write.
+    lastBuf.limit(lastBuf.capacity());
 
     return byteArray;
+  }
+
+  /**
+   * Closes this output stream and releases resources.
+   *
+   */
+  @Override
+  public void close() {
+    dataList.clear();
   }
 }
