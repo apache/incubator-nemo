@@ -30,9 +30,17 @@ import java.util.LinkedList;
 public class DirectByteBufferOutputStream extends OutputStream {
 
   private LinkedList<ByteBuffer> dataList = new LinkedList<>();
-  private static final int pageSize = 4096;
+  private final int pageSize;
 
   public DirectByteBufferOutputStream(){
+    pageSize = 4096;
+  }
+
+  public DirectByteBufferOutputStream(int pageSize){
+    if(pageSize < 4096 || (pageSize & (pageSize -1)) != 0){
+      throw new IllegalArgumentException("Invalid pageSize");
+    }
+    this.pageSize = pageSize;
   }
 
   public void newLastBuffer() {
@@ -42,7 +50,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
   @Override
   public void write(int b) {
     ByteBuffer currentBuf = (dataList.isEmpty() ? null: dataList.getLast());
-    if (currentBuf == null || currentBuf.position() >= pageSize){
+    if (currentBuf == null || currentBuf.remaining() <= 0){
       newLastBuffer();
       currentBuf = dataList.getLast();
     }
@@ -71,11 +79,11 @@ public class DirectByteBufferOutputStream extends OutputStream {
 
     ByteBuffer currentBuf = (dataList.isEmpty() ? null: dataList.getLast());
     while(byteToWrite > 0) {
-      if (currentBuf == null || currentBuf.position() >= pageSize){
+      if (currentBuf == null || currentBuf.remaining() <= 0){
         newLastBuffer();
         currentBuf = dataList.getLast();
       }
-      final int bufRemaining = pageSize - currentBuf.position();
+      final int bufRemaining = currentBuf.remaining();
       if (bufRemaining < byteToWrite) {
         currentBuf.put(b, offset, bufRemaining);
         offset += bufRemaining;
@@ -109,7 +117,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
       temp.get(byteArray, start, byteToWrite);
       start += byteToWrite;
     }
-    dataList.getLast().limit(pageSize);
+    dataList.getLast().limit(dataList.getLast().capacity());
 
     return byteArray;
   }
