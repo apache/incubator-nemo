@@ -26,10 +26,9 @@ import static org.junit.Assert.assertEquals;
 
 /**
  * Tests {@link DirectByteBufferOutputStream}.
- * This class tests basic operations of OutputStream
  */
 public class BBOutputStreamTest {
-  DirectByteBufferOutputStream outputStream;
+  private DirectByteBufferOutputStream outputStream;
 
   @Before
   public void setup(){
@@ -37,7 +36,10 @@ public class BBOutputStreamTest {
   }
 
   @Test
-  public void testIntWrite() {
+  public void testSingleWrite() {
+    int value = 1;
+    outputStream.write(value);
+    assertEquals(value, 1);
   }
 
   @Test
@@ -61,7 +63,7 @@ public class BBOutputStreamTest {
   public void testReRead() {
     String value = "value";
     outputStream.write(value.getBytes());
-    assertEquals("value", new String(outputStream.toByteArray()));
+    assertEquals(value, new String(outputStream.toByteArray()));
     assertEquals(value, new String(outputStream.toByteArray()));
   }
 
