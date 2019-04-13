@@ -18,13 +18,9 @@
  */
 package org.apache.nemo.common;
 
-
-import com.sun.istack.NotNull;
-
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
-
 
 /**
  * This class is a customized output stream implementation backed by
