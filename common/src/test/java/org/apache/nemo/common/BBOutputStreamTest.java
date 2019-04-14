@@ -39,7 +39,7 @@ public class BBOutputStreamTest {
   public void testSingleWrite() {
     int value = 1;
     outputStream.write(value);
-    assertEquals(value, 1);
+    assertEquals(value, outputStream.toByteArray()[0]);
   }
 
   @Test

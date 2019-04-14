@@ -55,7 +55,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
   /**
    * Allocates new {@link ByteBuffer} with the capacity equal to {@code pageSize}.
    */
-  public void newLastBuffer() {
+  private void newLastBuffer() {
     dataList.addLast(ByteBuffer.allocateDirect(pageSize));
   }
 
