@@ -142,7 +142,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
     for(ByteBuffer temp : dataList) {
       // ByteBuffer has to be shifted to read mode by calling ByteBuffer.flip(),
       // which sets its limit to the current position and sets the position to 0.
-      // Note that capacity remains the same.
+      // Note that capacity remains unchanged.
       temp.flip();
       byteToWrite = temp.remaining();
       temp.get(byteArray, start, byteToWrite);
