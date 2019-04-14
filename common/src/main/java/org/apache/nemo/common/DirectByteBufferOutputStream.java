@@ -43,13 +43,13 @@ public class DirectByteBufferOutputStream extends OutputStream {
   /**
    * Constructor specifying the {@code pageSize}.
    *
-   * @param pageSize should be a power of 2 and greater than 4KB.
+   * @param size should be a power of 2 and greater than 4KB.
    */
-  public DirectByteBufferOutputStream(final int pageSize) {
-    if (pageSize < 4096 || (pageSize & (pageSize - 1)) != 0) {
+  public DirectByteBufferOutputStream(final int size) {
+    if (size < 4096 || (size & (size - 1)) != 0) {
       throw new IllegalArgumentException("Invalid pageSize");
     }
-    this.pageSize = pageSize;
+    pageSize = size;
   }
 
   /**
@@ -109,8 +109,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
         currentBuf.put(b, offset, bufRemaining);
         offset += bufRemaining;
         byteToWrite -= bufRemaining;
-      }
-      else {
+      } else {
         currentBuf.put(b, offset, byteToWrite);
         offset += byteToWrite;
         byteToWrite = 0;
