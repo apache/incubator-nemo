@@ -43,7 +43,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
   /**
    * Constructor specifying the {@code pageSize}.
    *
-   * @param pageSize should be greater than 4KB and power of 2.
+   * @param pageSize should be a power of 2 and greater than 4KB.
    */
   public DirectByteBufferOutputStream(final int pageSize){
     if(pageSize < 4096 || (pageSize & (pageSize - 1)) != 0){
@@ -120,7 +120,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
 
   /**
    * Creates a byte array that contains the whole content
-   * written in this output stream.
+   * currently written in this output stream.
    *
    * @return the current contents of this output stream, as byte array.
    */
@@ -156,7 +156,6 @@ public class DirectByteBufferOutputStream extends OutputStream {
 
   /**
    * Closes this output stream and releases resources.
-   *
    */
   @Override
   public void close() {
