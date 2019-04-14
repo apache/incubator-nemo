@@ -27,23 +27,25 @@ import java.util.LinkedList;
  * {@link ByteBuffer}, which utilizes off heap memory when writing the data.
  * Memory is allocated when needed by the specified {@code pageSize}.
  */
-public class DirectByteBufferOutputStream extends OutputStream {
+public final class DirectByteBufferOutputStream extends OutputStream {
 
   private final LinkedList<ByteBuffer> dataList = new LinkedList<>();
-  private final int pageSize;
+  private static int pageSize = 4096;
+  private ByteBuffer currentBuf;
 
   /**
    * Default constructor.
    * Sets the {@code pageSize} as default size of 4KB.
    */
   public DirectByteBufferOutputStream() {
-    pageSize = 4096;
+    this(pageSize);
   }
 
   /**
-   * Constructor specifying the {@code pageSize}.
+   * Constructor specifying the {@code size}.
+   * Sets the {@code pageSize} as {@code size}.
    *
-   * @param size should be a power of 2 and greater than 4KB.
+   * @param size should be a power of 2 and greater than or equal to 4096.
    */
   public DirectByteBufferOutputStream(final int size) {
     if (size < 4096 || (size & (size - 1)) != 0) {
@@ -67,7 +69,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
    */
   @Override
   public void write(final int b) {
-    ByteBuffer currentBuf = (dataList.isEmpty() ? null : dataList.getLast());
+    currentBuf = (dataList.isEmpty() ? null : dataList.getLast());
     if (currentBuf == null || currentBuf.remaining() <= 0) {
       newLastBuffer();
       currentBuf = dataList.getLast();
@@ -76,8 +78,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
   }
 
   /**
-   * Writes {@code b.length} bytes from the specified byte array
-   * to this output stream.
+   * Writes {@code b.length} bytes from the specified byte array to this output stream.
    *
    * @param b the byte to be written.
    */
@@ -98,7 +99,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
   public void write(final byte[] b, final int off, final int len) {
     int byteToWrite = len;
     int offset = off;
-    ByteBuffer currentBuf = (dataList.isEmpty() ? null : dataList.getLast());
+    currentBuf = (dataList.isEmpty() ? null : dataList.getLast());
     while (byteToWrite > 0) {
       if (currentBuf == null || currentBuf.remaining() <= 0) {
         newLastBuffer();
@@ -118,8 +119,8 @@ public class DirectByteBufferOutputStream extends OutputStream {
   }
 
   /**
-   * Creates a byte array that contains the whole content
-   * currently written in this output stream.
+   * Creates a byte array that contains the whole content currently written in this output stream.
+   * Note that this method causes array copy which could degrade the overall performance.
    *
    * @return the current contents of this output stream, as byte array.
    */
@@ -138,7 +139,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
     int start = 0;
     int byteToWrite;
 
-    for (ByteBuffer temp : dataList) {
+    for (final ByteBuffer temp : dataList) {
       // ByteBuffer has to be shifted to read mode by calling ByteBuffer.flip(),
       // which sets limit to the current position and sets the position to 0.
       // Note that capacity remains unchanged.
@@ -147,7 +148,7 @@ public class DirectByteBufferOutputStream extends OutputStream {
       temp.get(byteArray, start, byteToWrite);
       start += byteToWrite;
     }
-    // The limit of the last buffer has to be set to the capacity for re-write.
+    // The limit of the last buffer has to be set to the capacity for additional write.
     lastBuf.limit(lastBuf.capacity());
 
     return byteArray;
