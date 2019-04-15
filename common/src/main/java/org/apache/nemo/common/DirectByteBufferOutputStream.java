@@ -55,6 +55,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
       throw new IllegalArgumentException("Invalid pageSize");
     }
     this.pageSize = size;
+    newLastBuffer();
   }
 
   /**
@@ -71,8 +72,8 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    */
   @Override
   public void write(final int b) {
-    currentBuf = (dataList.isEmpty() ? null : dataList.getLast());
-    if (currentBuf == null || currentBuf.remaining() <= 0) {
+    currentBuf = dataList.getLast();
+    if (currentBuf.remaining() <= 0) {
       newLastBuffer();
       currentBuf = dataList.getLast();
     }
@@ -101,9 +102,9 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   public void write(final byte[] b, final int off, final int len) {
     int byteToWrite = len;
     int offset = off;
-    currentBuf = (dataList.isEmpty() ? null : dataList.getLast());
+    currentBuf = dataList.getLast();
     while (byteToWrite > 0) {
-      if (currentBuf == null || currentBuf.remaining() <= 0) {
+      if (currentBuf.remaining() <= 0) {
         newLastBuffer();
         currentBuf = dataList.getLast();
       }
