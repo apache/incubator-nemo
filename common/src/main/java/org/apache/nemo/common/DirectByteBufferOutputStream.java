@@ -25,41 +25,40 @@ import java.util.LinkedList;
 /**
  * This class is a customized output stream implementation backed by
  * {@link ByteBuffer}, which utilizes off heap memory when writing the data.
- * Memory is allocated when needed by the specified {@code pageSize}.
+ * Memory is allocated when needed by the specified {@code PAGE_SIZE}.
  */
 public final class DirectByteBufferOutputStream extends OutputStream {
 
   private final LinkedList<ByteBuffer> dataList = new LinkedList<>();
-  private static int pageSize = 4096;
+  private static int PAGE_SIZE = 4096;
   private ByteBuffer currentBuf;
 
   /**
    * Default constructor.
-   * Sets the {@code pageSize} as default size of 4KB.
+   * Sets the {@code PAGE_SIZE} as default size of 4096 bytes.
    */
   public DirectByteBufferOutputStream() {
-    this(pageSize);
+    this(PAGE_SIZE);
   }
 
   /**
    * Constructor specifying the {@code size}.
-   * Sets the {@code pageSize} as {@code size}.
+   * Sets the {@code PAGE_SIZE} as {@code size}.
    *
    * @param size should be a power of 2 and greater than or equal to 4096.
    */
   public DirectByteBufferOutputStream(final int size) {
     if (size < 4096 || (size & (size - 1)) != 0) {
-      throw new IllegalArgumentException("Invalid pageSize");
+      throw new IllegalArgumentException("Invalid PAGE_SIZE");
     }
-    pageSize = size;
+    PAGE_SIZE = size;
   }
 
   /**
-   * Allocates new {@link ByteBuffer} with the capacity equal to
-   * {@code pageSize}.
+   * Allocates new {@link ByteBuffer} with the capacity equal to {@code PAGE_SIZE}.
    */
   private void newLastBuffer() {
-    dataList.addLast(ByteBuffer.allocateDirect(pageSize));
+    dataList.addLast(ByteBuffer.allocateDirect(PAGE_SIZE));
   }
 
   /**
@@ -120,7 +119,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
 
   /**
    * Creates a byte array that contains the whole content currently written in this output stream.
-   * Note that this method causes array copy which could degrade the overall performance.
+   * Note that this method causes array copy which could degrade performance.
    *
    * @return the current contents of this output stream, as byte array.
    */
@@ -131,10 +130,10 @@ public final class DirectByteBufferOutputStream extends OutputStream {
     }
 
     ByteBuffer lastBuf = dataList.getLast();
-    // pageSize equals the size of the data filled in the ByteBuffers
+    // PAGE_SIZE equals the size of the data filled in the ByteBuffers
     // except for the last ByteBuffer. The size of the data in the
     // ByteBuffer can be obtained by calling ByteBuffer.position().
-    final int arraySize = pageSize * (dataList.size() - 1) + lastBuf.position();
+    final int arraySize = PAGE_SIZE * (dataList.size() - 1) + lastBuf.position();
     final byte[] byteArray = new byte[arraySize];
     int start = 0;
     int byteToWrite;
@@ -155,10 +154,18 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   }
 
   /**
-   * Closes this output stream and releases resources.
+   * Returns the list of {@code ByteBuffer}s that contains the written data.
+   * Note that the returned {@code ByteBuffer}s are in write mode.
+   *
+   * @return the {@code LinkedList} of {@code ByteBuffer}s.
    */
-  @Override
+  public LinkedList<ByteBuffer> getBufferList() {
+    return dataList;
+  }
+
+  /**
+   * Closing this output stream has no effect.
+   */
   public void close() {
-    dataList.clear();
   }
 }
