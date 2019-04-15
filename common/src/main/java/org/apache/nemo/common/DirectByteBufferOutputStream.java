@@ -31,15 +31,17 @@ import java.util.List;
 public final class DirectByteBufferOutputStream extends OutputStream {
 
   private LinkedList<ByteBuffer> dataList = new LinkedList<>();
-  private static int pageSize = 4096;
+  private static final int DEFAULT_PAGE_SIZE = 4096;
+  private int pageSize;
   private ByteBuffer currentBuf;
+
 
   /**
    * Default constructor.
    * Sets the {@code pageSize} as default size of 4096 bytes.
    */
   public DirectByteBufferOutputStream() {
-    this(pageSize);
+    this(DEFAULT_PAGE_SIZE);
   }
 
   /**
@@ -49,7 +51,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    * @param size should be a power of 2 and greater than or equal to 4096.
    */
   public DirectByteBufferOutputStream(final int size) {
-    if (size < 4096 || (size & (size - 1)) != 0) {
+    if (size < DEFAULT_PAGE_SIZE || (size & (size - 1)) != 0) {
       throw new IllegalArgumentException("Invalid pageSize");
     }
     pageSize = size;
