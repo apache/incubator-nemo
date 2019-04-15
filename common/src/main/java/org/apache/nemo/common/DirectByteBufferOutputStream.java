@@ -32,7 +32,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
 
   private LinkedList<ByteBuffer> dataList = new LinkedList<>();
   private static final int DEFAULT_PAGE_SIZE = 4096;
-  private int pageSize;
+  private final int pageSize;
   private ByteBuffer currentBuf;
 
 
@@ -54,7 +54,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
     if (size < DEFAULT_PAGE_SIZE || (size & (size - 1)) != 0) {
       throw new IllegalArgumentException("Invalid pageSize");
     }
-    pageSize = size;
+    this.pageSize = size;
   }
 
   /**
