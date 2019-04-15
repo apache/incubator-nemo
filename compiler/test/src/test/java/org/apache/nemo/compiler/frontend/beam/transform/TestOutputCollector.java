@@ -29,7 +29,7 @@ import java.util.List;
 /**
  * Test output collector that collects data and watermarks.
  *
- * @param <T>
+ * @param <T> type of the output.
  */
 final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> {
   public final List<WindowedValue<T>> outputs;

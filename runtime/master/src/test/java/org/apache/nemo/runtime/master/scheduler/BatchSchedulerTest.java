@@ -119,6 +119,8 @@ public final class BatchSchedulerTest {
   /**
    * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchScheduler}.
    * Task state changes are explicitly submitted to scheduler instead of executor messages.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testPull() throws Exception {
@@ -129,6 +131,8 @@ public final class BatchSchedulerTest {
   /**
    * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchScheduler}.
    * Task state changes are explicitly submitted to scheduler instead of executor messages.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testPush() throws Exception {
