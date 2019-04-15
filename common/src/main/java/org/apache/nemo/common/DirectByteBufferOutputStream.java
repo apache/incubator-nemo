@@ -56,6 +56,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
     }
     this.pageSize = size;
     newLastBuffer();
+    currentBuf = dataList.getLast();
   }
 
   /**
@@ -72,7 +73,6 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    */
   @Override
   public void write(final int b) {
-    currentBuf = dataList.getLast();
     if (currentBuf.remaining() <= 0) {
       newLastBuffer();
       currentBuf = dataList.getLast();
@@ -102,7 +102,6 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   public void write(final byte[] b, final int off, final int len) {
     int byteToWrite = len;
     int offset = off;
-    currentBuf = dataList.getLast();
     while (byteToWrite > 0) {
       if (currentBuf.remaining() <= 0) {
         newLastBuffer();
