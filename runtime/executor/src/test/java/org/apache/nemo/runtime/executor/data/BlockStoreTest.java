@@ -115,6 +115,8 @@ public final class BlockStoreTest {
 
   /**
    * Generates the ids and the data which will be used for the block store tests.
+   *
+   * @throws Exception exception on the way.
    */
   @Before
   public void setUp() throws Exception {
@@ -220,6 +222,8 @@ public final class BlockStoreTest {
 
   /**
    * Test {@link MemoryStore}.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testMemoryStore() throws Exception {
@@ -233,6 +237,8 @@ public final class BlockStoreTest {
 
   /**
    * Test {@link SerializedMemoryStore}.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testSerMemoryStore() throws Exception {
@@ -246,6 +252,8 @@ public final class BlockStoreTest {
 
   /**
    * Test {@link LocalFileStore}.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testLocalFileStore() throws Exception {
@@ -265,6 +273,8 @@ public final class BlockStoreTest {
    * Test {@link GlusterFileStore}.
    * Actually, we cannot create a virtual GFS volume in here.
    * Instead, this test mimics the GFS circumstances by doing the read and write on separate file stores.
+   *
+   * @throws Exception exception on the way.
    */
   @Test(timeout = 10000)
   public void testGlusterFileStore() throws Exception {
