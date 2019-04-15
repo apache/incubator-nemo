@@ -23,23 +23,18 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.LambdaPass
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /*
  * Lambda Policy
  * Maintainer: Gao Zhiyuan
- * Description: A part of lambda executor, to support Lambda pass.
+ * Description: A part of lambda executor, to support Lambda policy.
  */
 public final class LambdaPolicy implements Policy {
   private final Policy policy;
-  private static final Logger LOG = LoggerFactory.getLogger(LambdaPolicy.class.getName());
 
   /**
    * Default constructor.
    */
   public LambdaPolicy() {
-    LOG.info("LambdaPolicy!!!!!");
     final PolicyBuilder builder = new PolicyBuilder();
     builder.registerCompileTimePass(new DefaultCompositePass());
     builder.registerCompileTimePass(new LambdaPass());

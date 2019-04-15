@@ -19,12 +19,9 @@
 package org.apache.nemo.common.ir.vertex.executionproperty;
 
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 public final class ResourceLambdaProperty extends VertexExecutionProperty<ResourceLambdaProperty.Value>{
-  private static final Logger LOG = LoggerFactory.getLogger(ResourceLambdaProperty.class.getName());
   /**
    * Constructor.
    *
@@ -32,7 +29,6 @@ public final class ResourceLambdaProperty extends VertexExecutionProperty<Resour
    */
   private ResourceLambdaProperty(final ResourceLambdaProperty.Value value) {
     super(value);
-    LOG.info("LambdaProperty Instantiated");
   }
 
   /**

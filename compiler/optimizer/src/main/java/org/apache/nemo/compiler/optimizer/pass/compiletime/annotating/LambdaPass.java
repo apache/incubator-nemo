@@ -20,28 +20,18 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceLambdaProperty;
-import org.apache.nemo.common.ir.executionproperty.ExecutionProperty;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
-import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-
-import org.apache.nemo.compiler.optimizer.policy.LambdaPolicy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /*
- * Lambda Policy
+ * Lambda Pass
  * Maintainer: Gao Zhiyuan
  * Description: A part of lambda executor, assigning LambdaResourceProperty
  */
 
 @Annotates(ResourceLambdaProperty.class)
 public final class LambdaPass extends AnnotatingPass {
-  private static final Logger LOG = LoggerFactory.getLogger(LambdaPolicy.class.getName());
 
   public LambdaPass() {
     super(LambdaPass.class);
-    LOG.info("LambdaPass initialized");
   }
 
   @Override
