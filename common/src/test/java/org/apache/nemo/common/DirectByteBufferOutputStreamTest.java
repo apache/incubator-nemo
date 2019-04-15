@@ -22,12 +22,16 @@ import org.apache.commons.lang.RandomStringUtils;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
 
 /**
  * Tests {@link DirectByteBufferOutputStream}.
  */
-public class BBOutputStreamTest {
+public class DirectByteBufferOutputStreamTest {
   private DirectByteBufferOutputStream outputStream;
 
   @Before
@@ -90,5 +94,23 @@ public class BBOutputStreamTest {
     outputStream.write(value.getBytes());
     assertEquals(value, new String(outputStream.toByteArray()));
     assertEquals(value, new String(outputStream.toByteArray()));
+  }
+
+  @Test
+  public void testGetBufferList() {
+    String value = RandomStringUtils.randomAlphanumeric(10000);
+    outputStream.write(value.getBytes());
+    byte[] totalOutput = outputStream.toByteArray();
+    List<ByteBuffer> bufList = outputStream.getBufferList();
+    int offset = 0;
+    int byteToRead;
+    for (final ByteBuffer temp : bufList) {
+      byteToRead = temp.remaining();
+      byte[] output = new byte[byteToRead];
+      temp.get(output, 0, byteToRead);
+      byte[] expected = Arrays.copyOfRange(totalOutput, offset, offset+byteToRead);
+      assertEquals(new String(expected), new String(output));
+      offset += byteToRead;
+    }
   }
 }

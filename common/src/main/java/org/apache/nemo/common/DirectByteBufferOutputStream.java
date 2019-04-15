@@ -21,6 +21,7 @@ package org.apache.nemo.common;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
+import java.util.List;
 
 /**
  * This class is a customized output stream implementation backed by
@@ -29,7 +30,7 @@ import java.util.LinkedList;
  */
 public final class DirectByteBufferOutputStream extends OutputStream {
 
-  private final LinkedList<ByteBuffer> dataList = new LinkedList<>();
+  private LinkedList<ByteBuffer> dataList = new LinkedList<>();
   private static int pageSize = 4096;
   private ByteBuffer currentBuf;
 
@@ -156,12 +157,17 @@ public final class DirectByteBufferOutputStream extends OutputStream {
 
   /**
    * Returns the list of {@code ByteBuffer}s that contains the written data.
-   * Note that the returned {@code ByteBuffer}s are in write mode.
+   * Note that by calling this method, the existing list of {@code ByteBuffer}s is cleared.
    *
    * @return the {@code LinkedList} of {@code ByteBuffer}s.
    */
-  public LinkedList<ByteBuffer> getBufferList() {
-    return dataList;
+  public List<ByteBuffer> getBufferList() {
+    List<ByteBuffer> result = dataList;
+    dataList = new LinkedList<>();
+    for (final ByteBuffer buffer : result) {
+      buffer.flip();
+    }
+    return result;
   }
 
   /**
