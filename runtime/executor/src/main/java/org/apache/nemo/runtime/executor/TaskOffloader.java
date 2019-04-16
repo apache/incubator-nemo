@@ -151,11 +151,17 @@ public final class TaskOffloader {
     int offloaded = 0;
     int deoffpending = 0;
     int stateless = 0;
+    int stateful = 0;
     final List<TaskExecutor> runningTasks = new ArrayList<>(taskExecutorMap.size());
      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
        //if (taskExecutor.isStateless()) {
        //  stateless += 1;
          if (taskExecutor.isRunning()) {
+           if (taskExecutor.isStateless()) {
+             stateless += 1;
+           } else {
+             stateful += 1;
+           }
            runningTasks.add(taskExecutor);
            running += 1;
          } else if (taskExecutor.isOffloadPending()) {
@@ -168,8 +174,8 @@ public final class TaskOffloader {
       // }
     }
 
-    LOG.info("Stateless Task running {}, offload_pending: {}, offloaded: {}, deoffload_pending: {}, total: {}",
-      running, offpending, offloaded, deoffpending, stateless);
+    LOG.info("Stateless Task running {}, Stateful running {}, offload_pending: {}, offloaded: {}, deoffload_pending: {}, total: {}",
+      stateless, stateful, offpending, offloaded, deoffpending, taskExecutorMap.size());
 
      return new StatelessTaskStatInfo(running, offpending, offloaded, deoffpending, stateless, runningTasks);
   }
