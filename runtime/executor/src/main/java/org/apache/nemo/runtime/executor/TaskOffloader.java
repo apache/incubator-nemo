@@ -31,7 +31,7 @@ public final class TaskOffloader {
   private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
-  private long slackTime = 10000;
+  private long slackTime = 15000;
   private long deoffloadSlackTime = 10000;
 
 
