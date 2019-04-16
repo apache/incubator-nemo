@@ -239,6 +239,26 @@ public final class TaskOffloader {
     return tasks;
   }
 
+
+  private List<TaskExecutor> runningTasksInCpuTimeOrder(
+    final List<TaskExecutor> runningTasks,
+    final Map<TaskExecutor, Long> deltaMap) {
+
+    final List<TaskExecutor> tasks = runningTasks
+      .stream().filter(runningTask -> {
+        return !offloadedExecutors.stream().map(Pair::left).collect(Collectors.toSet()).contains(runningTask);
+      }).collect(Collectors.toList());
+
+    tasks.sort(new Comparator<TaskExecutor>() {
+      @Override
+      public int compare(TaskExecutor o1, TaskExecutor o2) {
+        return (int) (deltaMap.get(o2) - deltaMap.get(o1));
+      }
+    });
+
+    return tasks;
+  }
+
   public void start() {
     this.monitorThread.scheduleAtFixedRate(() -> {
 
@@ -309,7 +329,8 @@ public final class TaskOffloader {
           //final long avgCpuTimePerTask = currCpuTimeSum / (taskStatInfo.running);
 
           LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
-          final List<TaskExecutor> runningTasks = runningTasksInDeoffloadTimeOrder(taskStatInfo.runningTasks);
+          //final List<TaskExecutor> runningTasks = runningTasksInDeoffloadTimeOrder(taskStatInfo.runningTasks);
+          final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.runningTasks, deltaMap);
           final long curr = System.currentTimeMillis();
           int cnt = 0;
           for (final TaskExecutor runningTask : runningTasks) {
