@@ -32,7 +32,7 @@ public final class TaskOffloader {
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
   private long slackTime = 10000;
-  private long deoffloadSlackTime = 12000;
+  private long deoffloadSlackTime = 10000;
 
 
   private final int windowSize = 5;
@@ -244,7 +244,7 @@ public final class TaskOffloader {
         final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x, y) -> x + y);
 
         // calculate stable cpu time
-        if (cpuLoad >= 0.15 && cpuLoad <= 0.8) {
+        if (cpuLoad >= 0.15 && cpuLoad <= 0.9) {
           cpuLoadStable += 1;
           if (cpuLoadStable >= 2) {
             observedCnt += 1;
