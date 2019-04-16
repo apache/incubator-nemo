@@ -242,7 +242,7 @@ public final class TaskOffloader {
         final Map<TaskExecutor, Long> deltaMap = calculateCpuTimeDelta(prevTaskCpuTimeMap, currTaskCpuTimeMap);
         prevTaskCpuTimeMap = currTaskCpuTimeMap;
 
-        final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x, y) -> x + y);
+        final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x, y) -> x/100000 + y/100000);
 
         // calculate stable cpu time
         if (cpuLoad >= 0.35 && cpuLoad <= 0.9) {
@@ -303,7 +303,7 @@ public final class TaskOffloader {
           final long curr = System.currentTimeMillis();
           int cnt = 0;
           for (final TaskExecutor runningTask : runningTasks) {
-            final long currTaskCpuTime = deltaMap.get(runningTask);
+            final long currTaskCpuTime = deltaMap.get(runningTask) / 100000;
             if (cnt < runningTasks.size() - 1) {
 
               if (curr - runningTask.getPrevOffloadEndTime().get() > slackTime) {
@@ -339,16 +339,18 @@ public final class TaskOffloader {
                 final Long offloadingTime = taskExecutor.getPrevOffloadStartTime().get();
                 final long avgCpuTimeSum = taskExecutor.calculateOffloadedTaskTime();
 
-                LOG.info("Deoff] CurrCpuSum: {}, Task {} avg cpu sum: {}, targetSum: {}",
-                  currCpuTimeSum, taskExecutor.getId(), avgCpuTimeSum, targetCpuTime);
+                if (avgCpuTimeSum > 0) {
+                  LOG.info("Deoff] CurrCpuSum: {}, Task {} avg cpu sum: {}, targetSum: {}",
+                    currCpuTimeSum, taskExecutor.getId(), avgCpuTimeSum, targetCpuTime);
 
-                if (currTime - offloadingTime >= deoffloadSlackTime) {
-                  LOG.info("Deoffloading task {}, currCpuTime: {}, avgCpuSUm: {}",
-                    taskExecutor.getId(), currCpuTimeSum, avgCpuTimeSum);
-                  iterator.remove();
-                  taskExecutor.endOffloading();
-                  currCpuTimeSum += avgCpuTimeSum;
-                  prevDeOffloadingTime = System.currentTimeMillis();
+                  if (currTime - offloadingTime >= deoffloadSlackTime) {
+                    LOG.info("Deoffloading task {}, currCpuTime: {}, avgCpuSUm: {}",
+                      taskExecutor.getId(), currCpuTimeSum, avgCpuTimeSum);
+                    iterator.remove();
+                    taskExecutor.endOffloading();
+                    currCpuTimeSum += avgCpuTimeSum;
+                    prevDeOffloadingTime = System.currentTimeMillis();
+                  }
                 }
               } else if (taskExecutor.isOffloadPending()) {
                 // pending means that it is not offloaded yet.
