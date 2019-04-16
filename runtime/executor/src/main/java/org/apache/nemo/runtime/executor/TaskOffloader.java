@@ -53,7 +53,7 @@ public final class TaskOffloader {
   private final PolynomialCpuTimeModel cpuTimeModel;
 
   private int observedCnt = 0;
-  private final int observeWindow = 5;
+  private final int observeWindow = 10;
 
 
   private long prevDeOffloadingTime = System.currentTimeMillis();
@@ -245,7 +245,7 @@ public final class TaskOffloader {
         final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x, y) -> x + y);
 
         // calculate stable cpu time
-        if (cpuLoad >= 0.15 && cpuLoad <= 0.9) {
+        if (cpuLoad >= 0.25 && cpuLoad <= 0.9) {
           cpuLoadStable += 1;
           if (cpuLoadStable >= 2) {
             observedCnt += 1;
