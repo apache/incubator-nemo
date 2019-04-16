@@ -196,7 +196,7 @@ public final class MiddleOffloader implements Offloader {
       throw new RuntimeException("Invalid status while offloading data: " + taskStatus.get());
     }
 
-    LOG.info("Offloading data to serverless: {}, {}, {} at {}", nextOperatorIds, wm, edgeId, taskId);
+    //LOG.info("Offloading data to serverless: {}, {}, {} at {}", nextOperatorIds, wm, edgeId, taskId);
 
     final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);

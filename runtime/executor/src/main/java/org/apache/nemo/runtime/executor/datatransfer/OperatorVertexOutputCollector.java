@@ -191,7 +191,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     // offloading
     if (taskExecutor.isOffloaded() && !offloadingMainIds.isEmpty()) {
-      LOG.info("Offloading data to serverless: {} at {}", output, taskExecutor.getId());
+      //LOG.info("Offloading data to serverless: {} at {}", output, taskExecutor.getId());
       taskExecutor.sendToServerless(
         new TimestampAndValue<>(inputTimestamp, output), offloadingMainIds, currWatermark, edgeId);
       return;
@@ -260,7 +260,7 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
     // offloading
     if (taskExecutor.isOffloaded() && !offloadingAdditionalIds.isEmpty()) {
-      LOG.info("Offloading data to serverless: {} at {}", output, taskExecutor.getId());
+      //LOG.info("Offloading data to serverless: {} at {}", output, taskExecutor.getId());
       taskExecutor.sendToServerless(
         new TimestampAndValue<>(inputTimestamp, output), offloadingAdditionalIds, currWatermark, edgeId);
       return;
