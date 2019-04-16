@@ -329,8 +329,8 @@ public final class OffloadingHandler {
         case DATA: {
           final long st = System.currentTimeMillis();
           Thread.currentThread().setContextClassLoader(classLoader);
-          System.out.println("Worker init -> data time: " + (st - workerFinishTime) +
-            " databytes: " + nemoEvent.getByteBuf().readableBytes());
+          //System.out.println("Worker init -> data time: " + (st - workerFinishTime) +
+          // " databytes: " + nemoEvent.getByteBuf().readableBytes());
 
 
           final ByteBufInputStream bis = new ByteBufInputStream(nemoEvent.getByteBuf());
@@ -339,7 +339,7 @@ public final class OffloadingHandler {
             final int dataId = bis.readInt();
             outputCollector.setDataId(dataId);
 
-            System.out.println("Read data " + dataId);
+            //System.out.println("Read data " + dataId);
 
             //System.out.println("Receive data: " + data);
             offloadingTransform.onData(data);
@@ -359,7 +359,7 @@ public final class OffloadingHandler {
             }
           }
 
-          System.out.println("Data processing done: " + (System.currentTimeMillis() - st));
+          //System.out.println("Data processing done: " + (System.currentTimeMillis() - st));
           dataProcessingCnt += 1;
 
           nemoEvent.getByteBuf().release();

@@ -153,7 +153,7 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
           final List<String> nextOps = input.left();
           final Object d = input.right();
           for (final String nextOpId : nextOps) {
-            LOG.info("Receive input for {}, {}", nextOpId, d);
+            //LOG.info("Receive input for {}, {}", nextOpId, d);
             final NextIntraTaskOperatorInfo nextOp = operatorVertexMap.get(nextOpId);
             if (d instanceof Watermark) {
               final Watermark watermark = (Watermark) d;
