@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.lambdaexecutor.kafka;
 
+import com.sun.management.OperatingSystemMXBean;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.dag.DAG;
@@ -14,12 +15,15 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -33,6 +37,7 @@ public final class HandleDataFetcher {
   private final ExecutorService executorService;
   private final List<DataFetcher> fetchers;
   private boolean pollingTime;
+  private boolean cpuTimeFlushTime;
   private final int pollingInterval = 400; // ms
 
   private boolean closed = false;
@@ -46,21 +51,38 @@ public final class HandleDataFetcher {
 
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
 
+  private final OperatingSystemMXBean operatingSystemMXBean;
+  private final ThreadMXBean threadMXBean;
+
+  private final int taskIndex;
+
+
   public HandleDataFetcher(final int id,
+                           final int taskIndex,
                            final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
                            final List<DataFetcher> fetchers,
                            final OffloadingResultCollector resultCollector,
                            final UnboundedSource.CheckpointMark startCheckpointMark) {
     LOG.info("Handle data fetcher start");
     this.id = id;
+    this.taskIndex = taskIndex;
     this.irDag = irDag;
     this.executorService = Executors.newSingleThreadExecutor();
     this.resultCollector = resultCollector;
     this.fetchers = fetchers;
     this.startCheckpointMark = startCheckpointMark;
+
+    this.operatingSystemMXBean =
+      (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    this.threadMXBean = ManagementFactory.getThreadMXBean();
+
     this.pollingTrigger.scheduleAtFixedRate(() -> {
       pollingTime = true;
     }, pollingInterval, pollingInterval, TimeUnit.MILLISECONDS);
+
+    this.pollingTrigger.scheduleAtFixedRate(() -> {
+      cpuTimeFlushTime = true;
+    }, 1, 1, TimeUnit.SECONDS);
   }
 
   public void start() {
@@ -72,12 +94,25 @@ public final class HandleDataFetcher {
     executorService.execute(() -> {
       final List<DataFetcher> availableFetchers = new LinkedList<>(fetchers);
       final List<DataFetcher> pendingFetchers = new LinkedList<>();
+      final long tid = Thread.currentThread().getId();
+      long prevTime = 0;
 
       // empty means we've consumed all task-external input data
       while (!closed) {
 
         // We first fetch data from available data fetchers
         final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
+
+        if (cpuTimeFlushTime) {
+          // calculate time
+          cpuTimeFlushTime = false;
+          final long tTime = threadMXBean.getThreadCpuTime(tid);
+          final long elapsedTime = tTime - prevTime;
+          LOG.info("Flush elapsed time: {}", elapsedTime);
+          resultCollector.collector.emit(new OffloadingHeartbeatEvent(taskIndex, elapsedTime));
+
+          prevTime = tTime;
+        }
 
         while (availableIterator.hasNext()) {
 

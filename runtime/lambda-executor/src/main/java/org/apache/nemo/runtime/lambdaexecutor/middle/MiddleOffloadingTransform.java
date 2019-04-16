@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor.middle;
 
 import avro.shaded.com.google.common.collect.Lists;
+import com.sun.management.OperatingSystemMXBean;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
@@ -19,6 +20,7 @@ import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingDataEvent;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingTransformContextImpl;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
@@ -28,6 +30,8 @@ import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOperatorVertexOutputCol
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
@@ -65,6 +69,14 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
   private transient ConcurrentMap<SocketChannel, Boolean> channels;
   private transient ScheduledExecutorService scheduledExecutorService;
 
+  private transient OperatingSystemMXBean operatingSystemMXBean;
+  private transient ThreadMXBean threadMXBean;
+
+  private transient Queue<MiddleOffloadingDataEvent> dataQueue;
+
+  private transient ExecutorService executorService;
+  private boolean closed = false;
+
   // TODO: we should get checkpoint mark in constructor!
   public MiddleOffloadingTransform(final String executorId,
                                    final int originTaskIndex,
@@ -91,6 +103,13 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
     final OffloadingOutputCollector oc) { this.offloadingContext = context;
     this.offloadingOutputCollector = oc;
     pipeOutputWriters = new HashSet<>();
+    this.dataQueue = new LinkedBlockingQueue<>();
+    this.executorService = Executors.newSingleThreadExecutor();
+
+
+    this.operatingSystemMXBean =
+      (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    this.threadMXBean = ManagementFactory.getThreadMXBean();
   }
 
   private RuntimeEdge<IRVertex> getEdge(final DAG<IRVertex, RuntimeEdge<IRVertex>> dag,
@@ -109,6 +128,50 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
     System.out.println("Executor address map: " + executorAddressMap);
     System.out.println("Stage edges: " + stageEdges);
     System.out.println("TaskIndexTargetExecutorMap: " + dstTaskIndexTargetExecutorMap);
+
+    executorService.execute(() -> {
+      final long threadId = Thread.currentThread().getId();
+      long prevTime = System.currentTimeMillis();
+      long prevMeasureTime = System.currentTimeMillis();
+
+      while (!closed) {
+
+        if (!dataQueue.isEmpty()) {
+          final long currtime = System.currentTimeMillis();
+          if (currtime - prevMeasureTime > 1000) {
+            prevMeasureTime = currtime;
+            final long tTime = threadMXBean.getThreadCpuTime(threadId);
+            final long elapsedTime = tTime - prevTime;
+            LOG.info("Flush elapsed time: {}", elapsedTime);
+            resultCollector.collector.emit(new OffloadingHeartbeatEvent(taskIndex, elapsedTime));
+          }
+          final MiddleOffloadingDataEvent element = dataQueue.poll();
+          // data processing
+          final Pair<List<String>, Object> input  = element.data;
+          final List<String> nextOps = input.left();
+          final Object d = input.right();
+          for (final String nextOpId : nextOps) {
+            LOG.info("Receive input for {}, {}", nextOpId, d);
+            final NextIntraTaskOperatorInfo nextOp = operatorVertexMap.get(nextOpId);
+            if (d instanceof Watermark) {
+              final Watermark watermark = (Watermark) d;
+              nextOp.getWatermarkManager()
+                .trackAndEmitWatermarks(nextOp.getEdgeIndex(), watermark);
+            } else {
+              final TimestampAndValue tsv = (TimestampAndValue) d;
+              outputCollectorMap.get(nextOpId).setInputTimestamp(tsv.timestamp);
+              nextOp.getNextOperator().getTransform().onData(tsv.value);
+            }
+          }
+        } else {
+          try {
+            Thread.sleep(250);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+    });
 
     final IntermediateDataIOFactory intermediateDataIOFactory;
     if (stageEdges.size() > 0) {
@@ -253,8 +316,11 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
       prep(((MiddleOffloadingPrepEvent)elem).taskIndex);
       LOG.info("Pipe output writers: {}", pipeOutputWriters.size());
     } else {
-      // data processing
+
       final MiddleOffloadingDataEvent element = (MiddleOffloadingDataEvent) elem;
+      dataQueue.add(element);
+
+      // data processing
       final Pair<List<String>, Object> input  = element.data;
       final List<String> nextOps = input.left();
       final Object d = input.right();
@@ -277,6 +343,7 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
   @Override
   public void close() {
     try {
+      closed = true;
 
       if (channels != null) {
         scheduledExecutorService.shutdown();

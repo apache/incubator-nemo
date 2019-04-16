@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor.kafka;
 
 import avro.shaded.com.google.common.collect.Lists;
+import com.sun.management.OperatingSystemMXBean;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
@@ -23,6 +24,8 @@ import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
@@ -60,6 +63,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
   private transient ConcurrentMap<SocketChannel, Boolean> channels;
   private transient ScheduledExecutorService scheduledExecutorService;
 
+
   // TODO: we should get checkpoint mark in constructor!
   public KafkaOffloadingTransform(final String executorId,
                                   final int originTaskIndex,
@@ -79,6 +83,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
     this.serializerMap = serializerMap;
     this.dstTaskIndexTargetExecutorMap = dstTaskIndexTargetExecutorMap;
     this.stageEdges = stageEdges;
+
   }
 
   @Override
@@ -274,7 +279,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
     dataFetcher.setReadable(readable);
 
-    dataFetcherExecutor = new HandleDataFetcher(input.id, irDag, dataFetchers, resultCollector, checkpointMark);
+    dataFetcherExecutor = new HandleDataFetcher(input.id, input.taskIndex, irDag, dataFetchers, resultCollector, checkpointMark);
     dataFetcherExecutor.start();
   }
 

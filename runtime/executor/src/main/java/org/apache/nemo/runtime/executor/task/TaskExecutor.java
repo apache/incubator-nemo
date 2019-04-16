@@ -177,6 +177,8 @@ public final class TaskExecutor {
   final List<DataFetcher> pendingFetchers;
   final Optional<Offloader> offloader;
 
+  private final ConcurrentMap<Integer, Long> offloadedTaskTimeMap = new ConcurrentHashMap<>();
+
 
   /**
    * Constructor.
@@ -289,6 +291,10 @@ public final class TaskExecutor {
     }
   }
 
+  public long calculateOffloadedTaskTime() {
+    return offloadedTaskTimeMap.values().stream().reduce(0L, (x,y) -> x+y);
+  }
+
   private Optional<Offloader> getOffloader() {
 
     final Optional<Offloader> offloader;
@@ -316,7 +322,8 @@ public final class TaskExecutor {
           prevOffloadEndTime,
           toMaster,
           outputWriterMap,
-          irVertexDag));
+          irVertexDag,
+          offloadedTaskTimeMap));
       } else {
         if (evalConf.middleParallelism > 0) {
           offloader = Optional.of(new MiddleOffloader(
@@ -340,7 +347,8 @@ public final class TaskExecutor {
             prevOffloadEndTime,
             toMaster,
             outputWriterMap,
-            irVertexDag));
+            irVertexDag,
+            offloadedTaskTimeMap));
         } else {
           offloader = Optional.empty();
         }

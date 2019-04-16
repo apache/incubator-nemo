@@ -4,6 +4,7 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.offloading.common.OffloadingEncoder;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
 import org.apache.nemo.runtime.lambdaexecutor.Triple;
@@ -20,6 +21,7 @@ public final class KafkaOffloadingOutputEncoder implements OffloadingEncoder<Obj
 
   public static final char OFFLOADING_RESULT = 0;
   public static final char KAFKA_CHECKPOINT = 1;
+  public static final char HEARTBEAT = 2;
 
   private final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
 
@@ -32,7 +34,13 @@ public final class KafkaOffloadingOutputEncoder implements OffloadingEncoder<Obj
   @Override
   public void encode(Object data, OutputStream outputStream) throws IOException {
 
-    if (data instanceof OffloadingResultTimestampEvent) {
+    if (data instanceof OffloadingHeartbeatEvent) {
+      final DataOutputStream dos = new DataOutputStream(outputStream);
+      final OffloadingHeartbeatEvent element = (OffloadingHeartbeatEvent) data;
+      dos.writeChar(HEARTBEAT);
+      dos.writeInt(element.taskIndex);
+      dos.writeLong(element.time);
+    } else if (data instanceof OffloadingResultTimestampEvent) {
       final DataOutputStream dos = new DataOutputStream(outputStream);
       final OffloadingResultTimestampEvent element = (OffloadingResultTimestampEvent) data;
       dos.writeChar(OFFLOADING_RESULT);

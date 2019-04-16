@@ -111,7 +111,7 @@ public final class OffloadingContext {
       serverlessExecutorService = serverlessExecutorProvider.
         newCachedPool(new StatelessOffloadingTransform(copyDag, taskOutgoingEdges),
           new StatelessOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
-          new StatelessOffloadingEventHandler(offloadingEventQueue));
+          new StatelessOffloadingEventHandler(offloadingEventQueue, new ConcurrentHashMap<>()));
 
       final List<Pair<OperatorMetricCollector, OutputCollector>> ops = new ArrayList<>(burstyOperators.size());
       for (final Pair<OperatorMetricCollector, OutputCollector> op : burstyOperators) {

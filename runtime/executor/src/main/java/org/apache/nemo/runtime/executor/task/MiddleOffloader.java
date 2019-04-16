@@ -94,6 +94,8 @@ public final class MiddleOffloader implements Offloader {
 
   private int offloadingDataCnt = 0;
 
+  private final ConcurrentMap<Integer, Long> taskTimeMap;
+
   public MiddleOffloader(final String executorId,
                          final Task task,
                          final TaskExecutor taskExecutor,
@@ -114,7 +116,8 @@ public final class MiddleOffloader implements Offloader {
                          final AtomicLong prevOffloadEndTime,
                          final PersistentConnectionToMasterMap toMaster,
                          final Collection<OutputWriter> outputWriters,
-                         final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
+                         final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+                         final ConcurrentMap<Integer, Long> taskTimeMap) {
     this.executorId = executorId;
     this.task = task;
     this.taskExecutor = taskExecutor;
@@ -135,6 +138,7 @@ public final class MiddleOffloader implements Offloader {
     this.toMaster = toMaster;
     this.outputWriters = outputWriters;
     this.irVertexDag = irVertexDag;
+    this.taskTimeMap = taskTimeMap;
 
     logger.scheduleAtFixedRate(() -> {
 
@@ -173,7 +177,7 @@ public final class MiddleOffloader implements Offloader {
           dstTaskIndexTargetExecutorMap,
           task.getTaskOutgoingEdges()),
         new MiddleOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
-        new StatelessOffloadingEventHandler(offloadingEventQueue));
+        new StatelessOffloadingEventHandler(offloadingEventQueue, taskTimeMap));
 
     return streamingWorkerService;
   }
@@ -237,7 +241,9 @@ public final class MiddleOffloader implements Offloader {
       LOG.info("Restart output writers");
       outputWriters.forEach(OutputWriter::restart);
 
+
       taskStatus.set(TaskExecutor.Status.RUNNING);
+      taskTimeMap.clear();
 
     } else if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.RUNNING)) {
       taskExecutor.getPrevOffloadEndTime().set(System.currentTimeMillis());
@@ -253,6 +259,7 @@ public final class MiddleOffloader implements Offloader {
       }
 
       kafkaOffloadPendingEvents.clear();
+      taskTimeMap.clear();
 
       // Restart contexts
       LOG.info("Restart output writers");
@@ -291,6 +298,8 @@ public final class MiddleOffloader implements Offloader {
       LOG.warn("Multiple start request ... just ignore it");
       throw new RuntimeException("Invalid task status: " + taskStatus);
     }
+
+    taskTimeMap.clear();
 
     if (!kafkaOffloadPendingEvents.isEmpty()) {
       LOG.warn("Task {} received start offloading, but it still offloads sources {}",

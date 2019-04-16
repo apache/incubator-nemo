@@ -4,6 +4,7 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
 import org.apache.nemo.runtime.lambdaexecutor.Triple;
@@ -32,6 +33,11 @@ public final class KafkaOffloadingOutputDecoder implements OffloadingDecoder<Obj
       final char type = dis.readChar();
 
       switch (type) {
+        case KafkaOffloadingOutputEncoder.HEARTBEAT: {
+          final Integer taskId = dis.readInt();
+          final Long time = dis.readLong();
+          return new OffloadingHeartbeatEvent(taskId, time);
+        }
         case KafkaOffloadingOutputEncoder.OFFLOADING_RESULT: {
 
           final String vertexId = dis.readUTF();
