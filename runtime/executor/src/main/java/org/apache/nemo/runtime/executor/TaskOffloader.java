@@ -325,7 +325,7 @@ public final class TaskOffloader {
 
         } else if (cpuLowMean < evalConf.deoffloadingThreshold  &&  observedCnt >= observeWindow) {
           if (!offloadedExecutors.isEmpty()) {
-            final long targetCpuTime = cpuTimeModel.desirableMetricForLoad(evalConf.deoffloadingThreshold);
+            final long targetCpuTime = cpuTimeModel.desirableMetricForLoad((threshold + evalConf.deoffloadingThreshold) / 2.0);
 
             if (taskStatInfo.running == 0 && taskStatInfo.deoffloaded == 0) {
               // special case!
