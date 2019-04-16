@@ -55,7 +55,8 @@ public final class TaskOffloader {
   private int observedCnt = 0;
   private final int observeWindow = 5;
 
-  private long prevOffloadingTime = System.currentTimeMillis();
+
+  private long prevDeOffloadingTime = System.currentTimeMillis();
 
   @Inject
   private TaskOffloader(
@@ -279,7 +280,8 @@ public final class TaskOffloader {
           }
         }
 
-        if (cpuHighMean > threshold && observedCnt >= observeWindow) {
+        if (cpuHighMean > threshold && observedCnt >= observeWindow &&
+          System.currentTimeMillis() - prevDeOffloadingTime >= slackTime) {
 
           final long targetCpuTime = cpuTimeModel
             .desirableMetricForLoad((threshold + evalConf.deoffloadingThreshold) / 2.0);
@@ -343,7 +345,7 @@ public final class TaskOffloader {
                       taskExecutor.getId());
                     iterator.remove();
                     taskExecutor.endOffloading();
-                    prevOffloadingTime = System.currentTimeMillis();
+                    prevDeOffloadingTime = System.currentTimeMillis();
                     cnt += 1;
                   }
                 }
@@ -376,7 +378,7 @@ public final class TaskOffloader {
                     iterator.remove();
                     taskExecutor.endOffloading();
                     currCpuTimeSum += avgCpuTimeSum;
-                    prevOffloadingTime = System.currentTimeMillis();
+                    prevDeOffloadingTime = System.currentTimeMillis();
                   }
                 } else if (taskExecutor.isOffloadPending()) {
                   // pending means that it is not offloaded yet.
