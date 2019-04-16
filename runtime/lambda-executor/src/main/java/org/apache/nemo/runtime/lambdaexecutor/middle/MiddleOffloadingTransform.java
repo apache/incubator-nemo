@@ -131,7 +131,7 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
 
     executorService.execute(() -> {
       final long threadId = Thread.currentThread().getId();
-      long prevTime = System.currentTimeMillis();
+      long prevTime = threadMXBean.getThreadCpuTime(threadId);
       long prevMeasureTime = System.currentTimeMillis();
 
       while (!closed) {
@@ -142,6 +142,8 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
             prevMeasureTime = currtime;
             final long tTime = threadMXBean.getThreadCpuTime(threadId);
             final long elapsedTime = tTime - prevTime;
+            prevTime = tTime;
+
             LOG.info("Flush elapsed time: {}", elapsedTime);
             resultCollector.collector.emit(new OffloadingHeartbeatEvent(taskIndex, elapsedTime));
           }
@@ -319,24 +321,6 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
 
       final MiddleOffloadingDataEvent element = (MiddleOffloadingDataEvent) elem;
       dataQueue.add(element);
-
-      // data processing
-      final Pair<List<String>, Object> input  = element.data;
-      final List<String> nextOps = input.left();
-      final Object d = input.right();
-      for (final String nextOpId : nextOps) {
-        LOG.info("Receive input for {}, {}", nextOpId, d);
-        final NextIntraTaskOperatorInfo nextOp = operatorVertexMap.get(nextOpId);
-        if (d instanceof Watermark) {
-          final Watermark watermark = (Watermark) d;
-          nextOp.getWatermarkManager()
-            .trackAndEmitWatermarks(nextOp.getEdgeIndex(), watermark);
-        } else {
-          final TimestampAndValue tsv = (TimestampAndValue) d;
-          outputCollectorMap.get(nextOpId).setInputTimestamp(tsv.timestamp);
-          nextOp.getNextOperator().getTransform().onData(tsv.value);
-        }
-      }
     }
   }
 

@@ -95,7 +95,7 @@ public final class HandleDataFetcher {
       final List<DataFetcher> availableFetchers = new LinkedList<>(fetchers);
       final List<DataFetcher> pendingFetchers = new LinkedList<>();
       final long tid = Thread.currentThread().getId();
-      long prevTime = 0;
+      long prevTime = threadMXBean.getThreadCpuTime(tid);
 
       // empty means we've consumed all task-external input data
       while (!closed) {
