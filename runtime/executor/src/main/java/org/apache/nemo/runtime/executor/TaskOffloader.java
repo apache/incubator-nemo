@@ -283,7 +283,7 @@ public final class TaskOffloader {
           while (it.hasNext()) {
             if (cur - it.next().right() >= TimeUnit.SECONDS.toMillis(100)) {
               // force close!
-              LOG.info("Force close workers!!");
+              LOG.info("Force close workers !! {}, {}", it.next().left(), it.next().right());
               it.next().left().endOffloading();
               it.remove();
             }
