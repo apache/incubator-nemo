@@ -248,7 +248,7 @@ public final class TaskOffloader {
         final Map<TaskExecutor, Long> deltaMap = calculateCpuTimeDelta(prevTaskCpuTimeMap, currTaskCpuTimeMap);
         prevTaskCpuTimeMap = currTaskCpuTimeMap;
 
-        final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x, y) -> x/100000 + y/100000);
+        final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x, y) -> x/1000 + y/1000);
 
         // calculate stable cpu time
         if (cpuLoad >= 0.35 && cpuLoad <= 0.9) {
@@ -309,7 +309,7 @@ public final class TaskOffloader {
           final long curr = System.currentTimeMillis();
           int cnt = 0;
           for (final TaskExecutor runningTask : runningTasks) {
-            final long currTaskCpuTime = deltaMap.get(runningTask) / 100000;
+            final long currTaskCpuTime = deltaMap.get(runningTask) / 1000;
             if (cnt < runningTasks.size() - 1) {
 
               if (curr - runningTask.getPrevOffloadEndTime().get() > slackTime) {
