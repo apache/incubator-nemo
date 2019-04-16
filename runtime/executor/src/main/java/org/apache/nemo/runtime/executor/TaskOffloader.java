@@ -286,9 +286,13 @@ public final class TaskOffloader {
 
           // Adjust current cpu time
           // Minus the pending tasks!
+          long currCpuTimeSum = elapsedCpuTimeSum;
+
+          /*
           long currCpuTimeSum = elapsedCpuTimeSum -
-            deltaMap.entrySet().stream()//.filter(entry -> entry.getKey().isOffloadPending())
+            deltaMap.entrySet().stream().filter(entry -> entry.getKey().isOffloadPending())
               .map(entry -> entry.getValue()).reduce(0L, (x,y) -> x+y);
+          */
 
           //final long avgCpuTimePerTask = currCpuTimeSum / (taskStatInfo.running);
 
