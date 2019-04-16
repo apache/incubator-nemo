@@ -120,6 +120,7 @@ public final class MiddleOffloader implements Offloader {
                          final ConcurrentMap<Integer, Long> taskTimeMap) {
     this.executorId = executorId;
     this.task = task;
+    this.taskTimeMap = taskTimeMap;
     this.taskExecutor = taskExecutor;
     this.evalConf = evalConf;
     this.executorAddressMap = executorAddressMap;
@@ -138,7 +139,6 @@ public final class MiddleOffloader implements Offloader {
     this.toMaster = toMaster;
     this.outputWriters = outputWriters;
     this.irVertexDag = irVertexDag;
-    this.taskTimeMap = taskTimeMap;
 
     logger.scheduleAtFixedRate(() -> {
 

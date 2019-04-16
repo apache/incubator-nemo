@@ -116,6 +116,7 @@ public final class KafkaOffloader implements Offloader {
                         final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                         final ConcurrentMap<Integer, Long> taskTimeMap) {
     this.executorId = executorId;
+    this.taskTimeMap = taskTimeMap;
     this.task = task;
     this.taskExecutor = taskExecutor;
     this.evalConf = evalConf;
@@ -137,7 +138,6 @@ public final class KafkaOffloader implements Offloader {
     this.toMaster = toMaster;
     this.outputWriters = outputWriters;
     this.irVertexDag = irVertexDag;
-    this.taskTimeMap = taskTimeMap;
 
     logger.scheduleAtFixedRate(() -> {
 
