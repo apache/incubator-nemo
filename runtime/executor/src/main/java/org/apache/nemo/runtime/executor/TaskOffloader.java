@@ -248,10 +248,14 @@ public final class TaskOffloader {
         final Map<TaskExecutor, Long> deltaMap = calculateCpuTimeDelta(prevTaskCpuTimeMap, currTaskCpuTimeMap);
         prevTaskCpuTimeMap = currTaskCpuTimeMap;
 
-        final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x, y) -> x/1000 + y/1000);
+        //final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x, y) -> x + y) / 1000;
+        long elapsedCpuTimeSum = 0L;
+        for (final Long val : deltaMap.values()) {
+          elapsedCpuTimeSum += (val / 1000);
+        }
 
         // calculate stable cpu time
-        if (cpuLoad >= 0.35 && cpuLoad <= 0.9) {
+        if (cpuLoad >= 0.28 && cpuLoad <= 0.9) {
           cpuLoadStable += 1;
           if (cpuLoadStable >= 2) {
             observedCnt += 1;
@@ -277,7 +281,7 @@ public final class TaskOffloader {
           final long cur = System.currentTimeMillis();
           final Iterator<Pair<TaskExecutor, Long>> it = offloadedExecutors.iterator();
           while (it.hasNext()) {
-            if (cur - it.next().right() >= TimeUnit.SECONDS.toMillis(120)) {
+            if (cur - it.next().right() >= TimeUnit.SECONDS.toMillis(100)) {
               // force close!
               LOG.info("Force close workers!!");
               it.next().left().endOffloading();

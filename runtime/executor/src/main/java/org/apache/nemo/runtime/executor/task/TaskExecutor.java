@@ -292,7 +292,12 @@ public final class TaskExecutor {
   }
 
   public long calculateOffloadedTaskTime() {
-    return offloadedTaskTimeMap.values().stream().reduce(0L, (x,y) -> x/1000+y/1000);
+    long sum = 0L;
+    for (final Long val : offloadedTaskTimeMap.values()) {
+      sum += (val / 1000);
+    }
+    //return offloadedTaskTimeMap.values().stream().reduce(0L, (x,y) -> x/1000+y/1000);
+    return sum;
   }
 
   private Optional<Offloader> getOffloader() {
