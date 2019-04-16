@@ -127,17 +127,24 @@ public final class TaskOffloader {
     public final int deoffloaded;
     public final int totalStateless;
     public final List<TaskExecutor> runningTasks;
+    public final List<TaskExecutor> statelessRunningTasks;
+    public final List<TaskExecutor> statefulRunningTasks;
+
 
     public StatelessTaskStatInfo(
       final int running, final int offload_pending, final int offloaded, final int deoffloaded,
       final int totalStateless,
-      final List<TaskExecutor> runningTasks) {
+      final List<TaskExecutor> runningTasks,
+      final List<TaskExecutor> statelessRunningTasks,
+      final List<TaskExecutor> statefulRunningTasks) {
       this.running = running;
       this.offload_pending = offload_pending;
       this.offloaded = offloaded;
       this.deoffloaded = deoffloaded;
       this.totalStateless = totalStateless;
       this.runningTasks = runningTasks;
+      this.statelessRunningTasks = statelessRunningTasks;
+      this.statefulRunningTasks = statefulRunningTasks;
     }
 
     public List<TaskExecutor> getRunningStatelessTasks() {
@@ -153,14 +160,18 @@ public final class TaskOffloader {
     int stateless = 0;
     int stateful = 0;
     final List<TaskExecutor> runningTasks = new ArrayList<>(taskExecutorMap.size());
+    final List<TaskExecutor> statelessRunningTasks = new ArrayList<>(taskExecutorMap.size());
+    final List<TaskExecutor> statefulRunningTasks = new ArrayList<>(taskExecutorMap.size());
      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
        //if (taskExecutor.isStateless()) {
        //  stateless += 1;
          if (taskExecutor.isRunning()) {
            if (taskExecutor.isStateless()) {
              stateless += 1;
+             statelessRunningTasks.add(taskExecutor);
            } else {
              stateful += 1;
+             statefulRunningTasks.add(taskExecutor);
            }
            runningTasks.add(taskExecutor);
            running += 1;
@@ -177,7 +188,7 @@ public final class TaskOffloader {
     LOG.info("Stateless Task running {}, Stateful running {}, offload_pending: {}, offloaded: {}, deoffload_pending: {}, total: {}",
       stateless, stateful, offpending, offloaded, deoffpending, taskExecutorMap.size());
 
-     return new StatelessTaskStatInfo(running, offpending, offloaded, deoffpending, stateless, runningTasks);
+     return new StatelessTaskStatInfo(running, offpending, offloaded, deoffpending, stateless, runningTasks, statelessRunningTasks, statefulRunningTasks);
   }
 
   public void startDebugging() {
@@ -330,7 +341,7 @@ public final class TaskOffloader {
 
           LOG.info("currCpuTimeSum: {}, runningTasks: {}", currCpuTimeSum, taskStatInfo.runningTasks.size());
           //final List<TaskExecutor> runningTasks = runningTasksInDeoffloadTimeOrder(taskStatInfo.runningTasks);
-          final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.runningTasks, deltaMap);
+          final List<TaskExecutor> runningTasks = runningTasksInCpuTimeOrder(taskStatInfo.statelessRunningTasks, deltaMap);
           final long curr = System.currentTimeMillis();
           int cnt = 0;
           for (final TaskExecutor runningTask : runningTasks) {
