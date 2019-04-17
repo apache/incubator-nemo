@@ -69,7 +69,7 @@ public final class EvalConf {
   public static final class BottleneckDetectionCpuThreshold implements Name<Double> {
   }
 
-  @NamedParameter(short_name = "deoffloading_threshold", default_value = "0.65")
+  @NamedParameter(short_name = "deoffloading_threshold", default_value = "0.7")
   public static final class DeoffloadingThreshold implements Name<Double> {
   }
 

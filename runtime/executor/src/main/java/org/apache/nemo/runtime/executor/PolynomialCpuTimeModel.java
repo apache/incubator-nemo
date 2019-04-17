@@ -12,7 +12,7 @@ public final class PolynomialCpuTimeModel implements CpuEventModel<Long> {
 
 
   private final int length = 100;
-  private final int poly = 2;
+  private final int poly = 1;
   private final Queue<Pair<Double, Long>> data = new ArrayDeque<>(length);
   private final WeightedObservedPoints obs = new WeightedObservedPoints();
   final PolynomialCurveFitter fitter = PolynomialCurveFitter.create(poly);
