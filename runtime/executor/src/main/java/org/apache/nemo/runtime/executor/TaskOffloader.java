@@ -329,7 +329,14 @@ public final class TaskOffloader {
 
           // Adjust current cpu time
           // Minus the pending tasks!
-          long currCpuTimeSum = elapsedCpuTimeSum;
+          long currCpuTimeSum = 0;
+          // correct
+          // jst running worker
+          for (final Map.Entry<TaskExecutor, Long> entry : deltaMap.entrySet()) {
+            if (entry.getKey().isRunning()) {
+              currCpuTimeSum  += entry.getValue() / 1000;
+            }
+          }
 
           /*
           long currCpuTimeSum = elapsedCpuTimeSum -
@@ -371,7 +378,18 @@ public final class TaskOffloader {
           if (!offloadedExecutors.isEmpty()) {
             final long targetCpuTime = cpuTimeModel.desirableMetricForLoad((threshold + evalConf.deoffloadingThreshold) / 2.0);
 
-            long currCpuTimeSum = elapsedCpuTimeSum;
+            long currCpuTimeSum = 0;
+            // correct
+            // jst running worker
+            for (final Map.Entry<TaskExecutor, Long> entry : deltaMap.entrySet()) {
+              if (entry.getKey().isRunning()) {
+                currCpuTimeSum  += entry.getValue() / 1000;
+              } else if (entry.getKey().isDeoffloadPending()) {
+                currCpuTimeSum  += entry.getKey().calculateOffloadedTaskTime();
+              }
+            }
+
+            // add deoffload pending
 
             final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
             while (iterator.hasNext() && currCpuTimeSum < targetCpuTime) {
