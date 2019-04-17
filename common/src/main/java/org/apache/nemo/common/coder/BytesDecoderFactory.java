@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.common.coder;
 
-import org.apache.nemo.common.DirectByteArrayOutputStream;
+import org.apache.nemo.common.DirectByteBufferOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +82,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
     public byte[] decode() throws IOException {
       // We cannot use inputStream.available() to know the length of bytes to read.
       // The available method only returns the number of bytes can be read without blocking.
-      final DirectByteArrayOutputStream byteOutputStream = new DirectByteArrayOutputStream();
+      final DirectByteBufferOutputStream byteOutputStream = new DirectByteBufferOutputStream();
       int b = inputStream.read();
       while (b != -1) {
         byteOutputStream.write(b);

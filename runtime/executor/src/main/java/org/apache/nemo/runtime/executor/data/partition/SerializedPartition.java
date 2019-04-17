@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data.partition;
 
-import org.apache.nemo.common.DirectByteArrayOutputStream;
+import org.apache.nemo.common.DirectByteBufferOutputStream;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
@@ -45,7 +45,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   private volatile boolean committed;
   // Will be null when the partition is committed when it is constructed.
   @Nullable
-  private final DirectByteArrayOutputStream bytesOutputStream;
+  private final DirectByteBufferOutputStream bytesOutputStream;
   @Nullable
   private final OutputStream wrappedStream;
   @Nullable
@@ -65,7 +65,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     this.serializedData = new byte[0];
     this.length = 0;
     this.committed = false;
-    this.bytesOutputStream = new DirectByteArrayOutputStream();
+    this.bytesOutputStream = new DirectByteBufferOutputStream();
     this.wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
     this.encoder = serializer.getEncoderFactory().create(wrappedStream);
   }
@@ -120,7 +120,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
       // inner buffer directly, which can be an unfinished(not flushed) buffer.
       wrappedStream.close();
-      this.serializedData = bytesOutputStream.getBufDirectly();
+      this.serializedData = bytesOutputStream.toByteArray();
 
       this.length = bytesOutputStream.size();
       this.committed = true;

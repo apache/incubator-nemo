@@ -173,6 +173,15 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   }
 
   /**
+   * Returns the size of the data written in this output stream.
+   *
+   * @return the size of the data
+   */
+  public int size() {
+    return pageSize * (dataList.size() - 1) + dataList.getLast().position();
+  }
+
+  /**
    * Closing this output stream has no effect.
    */
   public void close() {

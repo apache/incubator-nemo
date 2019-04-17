@@ -19,7 +19,7 @@
 package org.apache.nemo.runtime.executor.data;
 
 import com.google.common.io.CountingInputStream;
-import org.apache.nemo.common.DirectByteArrayOutputStream;
+import org.apache.nemo.common.DirectByteBufferOutputStream;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
@@ -112,8 +112,8 @@ public final class DataUtil {
     final List<SerializedPartition<K>> serializedPartitions = new ArrayList<>();
     for (final NonSerializedPartition<K> partitionToConvert : partitionsToConvert) {
       try (
-        DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
-        OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
+        DirectByteBufferOutputStream bytesOutputStream = new DirectByteBufferOutputStream();
+        OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers())
       ) {
         serializePartition(serializer.getEncoderFactory(), partitionToConvert, wrappedStream);
         // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
@@ -121,7 +121,7 @@ public final class DataUtil {
         wrappedStream.close();
         // Note that serializedBytes include invalid bytes.
         // So we have to use it with the actualLength by using size() whenever needed.
-        final byte[] serializedBytes = bytesOutputStream.getBufDirectly();
+        final byte[] serializedBytes = bytesOutputStream.toByteArray();
         final int actualLength = bytesOutputStream.size();
         serializedPartitions.add(
           new SerializedPartition<>(partitionToConvert.getKey(), serializedBytes, actualLength));
