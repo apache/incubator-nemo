@@ -20,8 +20,11 @@ package org.apache.nemo.common.ir.vertex.executionproperty;
 
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
-
-public final class ResourceLambdaProperty extends VertexExecutionProperty<ResourceLambdaProperty.Value>{
+/**
+ * Maintainer: Gao Zhiyuan<alapha23@gmail.com>.
+ * Resource property supporting Lambda Pass
+ */
+public final class ResourceLambdaProperty extends VertexExecutionProperty<ResourceLambdaProperty.Value> {
   /**
    * Constructor.
    *

@@ -23,9 +23,9 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.LambdaPass
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
-/*
+/**
  * Lambda Policy
- * Maintainer: Gao Zhiyuan
+ * Maintainer: Gao Zhiyuan<alapha23@gmail.com>.
  * Description: A part of lambda executor, to support Lambda policy.
  */
 public final class LambdaPolicy implements Policy {

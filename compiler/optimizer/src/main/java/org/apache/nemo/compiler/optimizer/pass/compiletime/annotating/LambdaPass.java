@@ -21,12 +21,11 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceLambdaProperty;
 
-/*
+/**
  * Lambda Pass
- * Maintainer: Gao Zhiyuan
+ * Maintainer: Gao Zhiyuan<alapha23@gmail.com>.
  * Description: A part of lambda executor, assigning LambdaResourceProperty
  */
-
 @Annotates(ResourceLambdaProperty.class)
 public final class LambdaPass extends AnnotatingPass {
 
