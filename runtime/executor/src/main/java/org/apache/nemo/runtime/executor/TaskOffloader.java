@@ -305,17 +305,18 @@ public final class TaskOffloader {
         final long currTime = System.currentTimeMillis();
 
         final StatelessTaskStatInfo taskStatInfo = measureTaskStatInfo();
-        LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}, observed: {}",
+        LOG.info("CpuHighMean: {}, CpuLowMean: {}, runningTask {}, threshold: {}, observed: {}, offloaded: {}",
           cpuHighMean, cpuLowMean, taskStatInfo.running, threshold, observedCnt);
 
         if (!offloadedExecutors.isEmpty()) {
           final long cur = System.currentTimeMillis();
           final Iterator<Pair<TaskExecutor, Long>> it = offloadedExecutors.iterator();
           while (it.hasNext()) {
-            if (cur - it.next().right() >= TimeUnit.SECONDS.toMillis(100)) {
+            final Pair<TaskExecutor, Long> elem = it.next();
+            if (cur - elem.right() >= TimeUnit.SECONDS.toMillis(100)) {
               // force close!
-              LOG.info("Force close workers !! {}, {}", it.next().left(), it.next().right());
-              it.next().left().endOffloading();
+              LOG.info("Force close workers !! {}, {}", elem.left(), elem.right());
+              elem.left().endOffloading();
               it.remove();
             }
           }
