@@ -318,6 +318,7 @@ public final class TaskOffloader {
               LOG.info("Force close workers !! {}, {}", elem.left(), elem.right());
               elem.left().endOffloading();
               it.remove();
+              prevDeOffloadingTime = System.currentTimeMillis();
             }
           }
         }
@@ -354,27 +355,27 @@ public final class TaskOffloader {
           int cnt = 0;
           for (final TaskExecutor runningTask : runningTasks) {
             final long currTaskCpuTime = deltaMap.get(runningTask) / 1000;
-            if (cnt < runningTasks.size() - 1) {
+            //if (cnt < runningTasks.size() - 1) {
 
-              if (curr - runningTask.getPrevOffloadEndTime().get() > slackTime) {
-                //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
+            if (curr - runningTask.getPrevOffloadEndTime().get() > slackTime) {
+              //final long cpuTimeOfThisTask = deltaMap.get(runningTask);
 
-                LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
-                  currCpuTimeSum, runningTask.getId(), currTaskCpuTime, targetCpuTime);
+              LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
+                currCpuTimeSum, runningTask.getId(), currTaskCpuTime, targetCpuTime);
 
-                  // offload this task!
-                  LOG.info("Offloading task {}", runningTask.getId());
-                  runningTask.startOffloading(currTime);
-                  offloadedExecutors.add(Pair.of(runningTask, currTime));
-                  currCpuTimeSum -= currTaskCpuTime;
+              // offload this task!
+              LOG.info("Offloading task {}", runningTask.getId());
+              runningTask.startOffloading(currTime);
+              offloadedExecutors.add(Pair.of(runningTask, currTime));
+              currCpuTimeSum -= currTaskCpuTime;
 
-                  cnt += 1;
+              cnt += 1;
 
-                if (currCpuTimeSum <= targetCpuTime) {
-                  break;
-                }
+              if (currCpuTimeSum <= targetCpuTime) {
+                break;
               }
             }
+            //}
           }
 
         } else if (cpuLowMean < evalConf.deoffloadingThreshold  &&  observedCnt >= observeWindow) {
