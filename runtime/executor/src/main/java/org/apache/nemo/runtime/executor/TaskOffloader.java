@@ -370,7 +370,7 @@ public final class TaskOffloader {
 
                   cnt += 1;
 
-                if (currCpuTimeSum - currTaskCpuTime >= targetCpuTime) {
+                if (currCpuTimeSum <= targetCpuTime) {
                   break;
                 }
               }
