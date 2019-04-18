@@ -65,7 +65,7 @@ public final class EvalConf {
   public static final class BottleneckDetectionConsecutive implements Name<Integer> {
   }
 
-  @NamedParameter(short_name = "bottleneck_detection_threshold", default_value = "0.92")
+  @NamedParameter(short_name = "bottleneck_detection_threshold", default_value = "0.9")
   public static final class BottleneckDetectionCpuThreshold implements Name<Double> {
   }
 

@@ -31,7 +31,7 @@ public final class TaskOffloader {
   private final List<Pair<TaskExecutor, Long>> offloadedExecutors;
   private final ConcurrentMap<TaskExecutor, Boolean> taskExecutorMap;
   private long prevDecisionTime = System.currentTimeMillis();
-  private long slackTime = 15000;
+  private long slackTime = 10000;
   private long deoffloadSlackTime = 10000;
 
 
@@ -362,7 +362,6 @@ public final class TaskOffloader {
                 LOG.info("CurrCpuSum: {}, Task {} cpu sum: {}, targetSum: {}",
                   currCpuTimeSum, runningTask.getId(), currTaskCpuTime, targetCpuTime);
 
-                if (currCpuTimeSum - currTaskCpuTime >= targetCpuTime) {
                   // offload this task!
                   LOG.info("Offloading task {}", runningTask.getId());
                   runningTask.startOffloading(currTime);
@@ -370,6 +369,9 @@ public final class TaskOffloader {
                   currCpuTimeSum -= currTaskCpuTime;
 
                   cnt += 1;
+
+                if (currCpuTimeSum - currTaskCpuTime >= targetCpuTime) {
+                  break;
                 }
               }
             }
