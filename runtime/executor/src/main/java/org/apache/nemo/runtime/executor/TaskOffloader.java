@@ -313,7 +313,7 @@ public final class TaskOffloader {
           final Iterator<Pair<TaskExecutor, Long>> it = offloadedExecutors.iterator();
           while (it.hasNext()) {
             final Pair<TaskExecutor, Long> elem = it.next();
-            if (cur - elem.right() >= TimeUnit.SECONDS.toMillis(100)) {
+            if (cur - elem.right() >= TimeUnit.SECONDS.toMillis(1000)) {
               // force close!
               LOG.info("Force close workers !! {}, {}", elem.left(), elem.right());
               elem.left().endOffloading();
