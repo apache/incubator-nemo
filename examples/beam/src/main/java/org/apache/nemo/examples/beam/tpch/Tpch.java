@@ -118,6 +118,7 @@ public final class Tpch {
         final PCollection<Row> table = GenericSourceSink.read(pipeline, filePattern)
           .apply("StringToRow", new TextTableProvider.CsvToRow(tableSchema.getValue(), csvFormat))
           .setCoder(RowCoder.of(tableSchema.getValue()))
+          .setRowSchema(tableSchema.getValue())
           .setName(tableSchema.getKey());
         tables = tables.and(new TupleTag<>(tableSchema.getKey()), table);
 
