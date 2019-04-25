@@ -18,6 +18,7 @@ package org.apache.nemo.examples.beam.tpch;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.RowCoder;
 import org.apache.beam.sdk.extensions.sql.SqlTransform;
 import org.apache.beam.sdk.extensions.sql.meta.provider.text.TextTableProvider;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -116,7 +117,7 @@ public final class Tpch {
         final String filePattern = inputDirectory + tableSchema.getKey() + ".tbl*";
         final PCollection<Row> table = GenericSourceSink.read(pipeline, filePattern)
           .apply("StringToRow", new TextTableProvider.CsvToRow(tableSchema.getValue(), csvFormat))
-          .setCoder(tableSchema.getValue().getRowCoder())
+          .setCoder(RowCoder.of(tableSchema.getValue()))
           .setName(tableSchema.getKey());
         tables = tables.and(new TupleTag<>(tableSchema.getKey()), table);
 
