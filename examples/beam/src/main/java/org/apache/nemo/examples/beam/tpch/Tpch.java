@@ -29,7 +29,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.*;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
-import org.apache.nemo.compiler.frontend.beam.NemoRunner;
+import org.apache.nemo.client.beam.NemoRunner;
 import org.apache.nemo.examples.beam.GenericSourceSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
