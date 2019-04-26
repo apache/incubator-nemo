@@ -121,6 +121,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       // inner buffer directly, which can be an unfinished(not flushed) buffer.
       wrappedStream.close();
       this.serializedData = bytesOutputStream.toByteArray();
+      LOG.info("Just used ByteBufferOutputStream");
 
       this.length = bytesOutputStream.size();
       this.committed = true;

@@ -99,6 +99,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
         }
       }
       final byte[] resultBytes = byteOutputStream.toByteArray();
+      LOG.info("Just used ByteBufferOutputstream");
 
       returnedArray = true;
       return resultBytes;
