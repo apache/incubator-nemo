@@ -34,10 +34,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This class represents a metadata for a remote file block.
- * Because the data is stored in a remote file and globally accessed by multiple nodes,
+ * This class represents a metadata for a file block in CrailFileSystem.
+ * Because the data is stored in a CrailFileSystem and globally accessed by multiple nodes,
  * each read, or deletion for a block needs one instance of this metadata.
- * The metadata is store in and read from a file (after a remote file block is committed).
+ * The metadata is stored in and read from a CrailFile (after a CrailFile block is committed).
  * @param <K> the key type of its partitions.
  */
 @ThreadSafe
@@ -47,7 +47,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
   private static CrailStore fs;
 
   /**
-   * Constructor for creating a non-committed new file metadata.
+   * Constructor for creating a non-committed new CrailFile metadata.
    *
    * @param metaFilePath the metadata file path.
    */
@@ -58,10 +58,11 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
   }
 
   /**
-   * Constructor for opening a existing file metadata.
+   * Constructor for opening a existing CrailFile metadata.
    *
    * @param metaFilePath          the metadata file path.
    * @param partitionMetadataList the partition metadata list.
+   * @param fs                    the CrailStore instance.
    */
   private CrailFileMetadata(final String metaFilePath,
                             final List<PartitionMetadata<K>> partitionMetadataList, CrailStore fs) {

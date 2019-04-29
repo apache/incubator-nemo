@@ -39,7 +39,7 @@ import java.io.*;
 import java.util.*;
 
 /**
- * This class represents a block which is stored in (local or remote) file.
+ * This class represents a block which is stored in CrailStore.
  * Concurrent read is supported, but concurrent write is not supported.
  *
  * @param <K> the key type of its partitions.

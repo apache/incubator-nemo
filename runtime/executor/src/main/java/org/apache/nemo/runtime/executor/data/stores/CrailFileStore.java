@@ -44,11 +44,11 @@ import java.io.Serializable;
 import java.util.Optional;
 
 /**
- * Stores blocks in a mounted GlusterFS volume.
- * Because the data is stored in remote files and globally accessed by multiple nodes,
- * each read, or deletion for a file needs one instance of {@link FileBlock}.
- * When a remote file block is created, it's metadata is maintained in memory until the block is committed.
- * After the block is committed, the metadata is store in and read from a file.
+ * Stores blocks in CrailStore.
+ * Since the data is stored in CrailStore and globally accessed by multiple nodes,
+ * each read, or deletion for a file needs one instance of {@link CrailFileBlock}.
+ * When CrailFileBlock is created, it's metadata is maintained in memory until the block is committed.
+ * After the block is committed, the metadata is stored in and read from a CrailStore.
  */
 @ThreadSafe
 public final class CrailFileStore extends AbstractBlockStore implements RemoteFileStore {
@@ -60,7 +60,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
   /**
    * Constructor.
    *
-   * //@param volumeDirectory   the remote volume directory which will contain the files.
+   * @param volumeDirectory   the CrailStore directory which will contain the files.
    * @param jobId             the job id.
    * @param serializerManager the serializer manager.
    */
@@ -99,7 +99,7 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
     } else if (!block.isCommitted()) {
       throw new BlockWriteException(new Throwable("The block " + block.getId() + "is not committed yet."));
     }
-    // Do nothing. The block have to be written in the remote file during commit.
+    // Do nothing. The block have to be written in CrailStore file during commit.
   }
 
   /**
@@ -161,14 +161,14 @@ public final class CrailFileStore extends AbstractBlockStore implements RemoteFi
   }
 
   /**
-   * Gets a {@link FileBlock} from the block and it's metadata file.
-   * Because the data is stored in remote files and globally accessed by multiple nodes,
-   * each read, or deletion for a file needs one instance of {@link FileBlock},
+   * Gets a {@link CrailFileBlock} from the block and it's metadata file.
+   * Because the data is stored in CrailStore and globally accessed by multiple nodes,
+   * each read, or deletion for a file needs one instance of {@link CrailFileBlock},
    * and the temporary block will not be maintained by this executor.
    *
    * @param blockId the ID of the block to get.
    * @param <K>     the type of the key of the block.
-   * @return the {@link FileBlock} gotten.
+   * @return the {@link CrailFileBlock} gotten.
    * @throws IOException if fail to get.
    */
   private <K extends Serializable> CrailFileBlock<K> getBlockFromFile(final String blockId) throws Exception {
