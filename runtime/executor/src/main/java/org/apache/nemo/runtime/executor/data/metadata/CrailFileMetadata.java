@@ -20,16 +20,11 @@ package org.apache.nemo.runtime.executor.data.metadata;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.crail.*;
-import org.apache.crail.conf.CrailConfiguration;
-import org.apache.nemo.common.exception.BlockFetchException;
-import org.apache.nemo.runtime.executor.data.stores.CrailFileStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,8 +45,9 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    * Constructor for creating a non-committed new CrailFile metadata.
    *
    * @param metaFilePath the metadata file path.
+   * @param fs           the CrailStore instance.
    */
-  private CrailFileMetadata(final String metaFilePath, CrailStore fs) {
+  private CrailFileMetadata(final String metaFilePath, final CrailStore fs) {
     super();
     this.metaFilePath = metaFilePath;
     this.fs = fs;
@@ -65,7 +61,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    * @param fs                    the CrailStore instance.
    */
   private CrailFileMetadata(final String metaFilePath,
-                            final List<PartitionMetadata<K>> partitionMetadataList, CrailStore fs) {
+                            final List<PartitionMetadata<K>> partitionMetadataList, final CrailStore fs) {
     super(partitionMetadataList);
     this.metaFilePath = metaFilePath;
     this.fs = fs;
@@ -92,8 +88,10 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
   public synchronized void commitBlock() throws IOException {
     LOG.info("HY: metadata commit for block {}", metaFilePath);
     final Iterable<PartitionMetadata<K>> partitionMetadataItr = getPartitionMetadataList();
-    try{
-      CrailBufferedOutputStream metaFileOutputstream =fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile().getBufferedOutputStream(0);
+    try {
+      CrailBufferedOutputStream metaFileOutputstream =
+        fs.create(metaFilePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true)
+          .get().asFile().getBufferedOutputStream(0);
       for (PartitionMetadata<K> partitionMetadata : partitionMetadataItr) {
         final byte[] key = SerializationUtils.serialize(partitionMetadata.getKey());
         metaFileOutputstream.writeInt(key.length);
@@ -102,8 +100,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
         metaFileOutputstream.writeLong(partitionMetadata.getOffset());
       }
       metaFileOutputstream.close();
-    }
-    catch(Exception e){
+    } catch (Exception e) {
       LOG.info("HY: CrailBufferedOutputStream exception occurred");
       e.printStackTrace();
     }
@@ -114,10 +111,11 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    * Creates a new block metadata.
    *
    * @param metaFilePath the path of the file to write metadata.
+   * @param fs           the CrailStore instance.
    * @param <T>          the key type of the block's partitions.
    * @return the created block metadata.
    */
-  public static <T extends Serializable> CrailFileMetadata<T> create(final String metaFilePath, CrailStore fs) {
+  public static <T extends Serializable> CrailFileMetadata<T> create(final String metaFilePath, final CrailStore fs) {
     return new CrailFileMetadata<>(metaFilePath, fs);
   }
 
@@ -125,11 +123,13 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
    * Opens a existing block metadata in file.
    *
    * @param metaFilePath the path of the file to write metadata.
+   * @param fs           the CrailStore instance
    * @param <T>          the key type of the block's partitions.
    * @return the created block metadata.
    * @throws IOException if fail to open.
    */
-  public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath, CrailStore fs) throws Exception{
+  public static <T extends Serializable> CrailFileMetadata<T> open(final String metaFilePath,
+                                                                   final CrailStore fs) throws IOException {
     LOG.info("HY: metafilePath {}", metaFilePath);
     final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();
     try {
@@ -149,7 +149,7 @@ public final class CrailFileMetadata<K extends Serializable> extends FileMetadat
         partitionMetadataList.add(partitionMetadata);
       }
     } catch (Exception e) {
-      throw new IOException("HY: File "+metaFilePath+ " does not exist!");
+      throw new IOException("HY: File " + metaFilePath + " does not exist!");
     }
     return new CrailFileMetadata<>(metaFilePath, partitionMetadataList, fs);
   }

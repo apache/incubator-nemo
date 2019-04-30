@@ -45,15 +45,15 @@ import java.util.*;
  * @param <K> the key type of its partitions.
  */
 @NotThreadSafe
-public final class CrailFileBlock<K extends Serializable> implements Block<K>{
+public final class CrailFileBlock<K extends Serializable> implements Block<K> {
   private static final Logger LOG = LoggerFactory.getLogger(CrailFileBlock.class.getName());
   private final String id;
   private final Map<K, SerializedPartition<K>> nonCommittedPartitionsMap;
   private final Serializer serializer;
   private final String filePath;
   private final FileMetadata<K> metadata;
-  CrailStore fs = null;
-  CrailFile file = null;
+  private CrailStore fs = null;
+  private CrailFile file = null;
 
   /**
    * Constructor.
@@ -69,7 +69,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                         final Serializer serializer,
                         final String filePath,
                         final FileMetadata<K> metadata,
-                        CrailStore fs) {
+                        final CrailStore fs) {
     this.id = blockId;
     this.nonCommittedPartitionsMap = new HashMap<>();
     this.serializer = serializer;
@@ -78,16 +78,17 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
       try {
         LOG.info("HY: FileBlock entered");
         this.fs = fs;
-        this.file = fs.create(filePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true).get().asFile();
+        this.file =
+          fs.create(filePath, CrailNodeType.DATAFILE, CrailStorageClass.DEFAULT, CrailLocationClass.DEFAULT, true)
+            .get().asFile();
         file.syncDir();
         LOG.info("HY: crail file block created");
       } catch (Exception e1) {
-        try{
+        try {
           this.fs = fs;
           this.file = fs.lookup(filePath).get().asFile();
           LOG.info("HY: {} fetched", blockId);
-        }
-        catch(Exception e2){
+        } catch (Exception e2) {
           LOG.info("HY: {} fetch failed");
         }
       }
@@ -99,11 +100,11 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
    * Invariant: This method does not support concurrent write.
    *
    * @param serializedPartitions the iterable of the serialized partitions to write.
-   * @throws IOException if fail to write.
+   * @throws Exception if fail to write.
    */
   private void writeToFile(final Iterable<SerializedPartition<K>> serializedPartitions) throws Exception {
     final CrailBufferedOutputStream fileOutputStream = file.getBufferedOutputStream(0);
-    for(final SerializedPartition<K> serializedPartition : serializedPartitions){
+    for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
       metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
       fileOutputStream.write(serializedPartition.getData(), 0, serializedPartition.getLength());
       LOG.info(String.format("HY: Expected write = %d, actual write = %d", serializedPartition.getLength(), serializedPartition.getData().length));
@@ -200,7 +201,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
       final List<NonSerializedPartition<K>> deserializedPartitions = new ArrayList<>();
       try {
         final List<Pair<K, byte[]>> partitionKeyBytesPairs = new ArrayList<>();
-        try (final CrailBufferedInputStream fileStream = file.getBufferedInputStream(file.getCapacity())){
+        try (final CrailBufferedInputStream fileStream = file.getBufferedInputStream(file.getCapacity())) {
           for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataList()) {
               final K key = partitionMetadata.getKey();
               if (keyRange.includes(key)) {
@@ -208,7 +209,7 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 final byte[] partitionBytes = new byte[partitionMetadata.getPartitionSize()];
                 LOG.info("HY: partition length of the block to read {}", partitionMetadata.getPartitionSize());
                 int readBytes = fileStream.read(partitionBytes, 0, partitionMetadata.getPartitionSize());
-                LOG.info("HY: readBytes: {}",readBytes);
+                LOG.info("HY: readBytes: {}", readBytes);
                 partitionKeyBytesPairs.add(Pair.of(key, partitionBytes));
               } else {
                 // Have to skip this partition.
@@ -216,9 +217,9 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
                 LOG.info("HY: partition skipped");
               }
             }
-        }catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
-          }
+        }
         for (final Pair<K, byte[]> partitionKeyBytes : partitionKeyBytesPairs) {
           final NonSerializedPartition<K> deserializePartition =
               DataUtil.deserializePartition(
@@ -266,9 +267,9 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
               skipBytes(fileStream, partitionmetadata.getPartitionSize());
             }
           }
-        }catch (final IOException e) {
+        } catch (final IOException e) {
         throw new BlockFetchException(e);
-      } catch (final Exception e2){
+      } catch (final Exception e2) {
         e2.printStackTrace();
       }
 
@@ -325,12 +326,12 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
   public void deleteFile() throws IOException {
     metadata.deleteMetadata();
     try {
-      if(fs.lookup(filePath).get()!=null)
+      if (fs.lookup(filePath).get() != null) {
         fs.delete(filePath, true);
-    }catch (IOException e){
+      }
+    } catch (IOException e) {
       e.printStackTrace();
-    }
-    catch (Exception e){
+    } catch (Exception e) {
       LOG.info("HY: deleteFile failed");
       e.printStackTrace();
     }
@@ -393,7 +394,9 @@ public final class CrailFileBlock<K extends Serializable> implements Block<K>{
    * @return the ID of this block.
    */
   @Override
-  public String getId() { return id; }
+  public String getId() {
+    return id;
+  }
 
   /**
    * @return whether this block is committed or not.
