@@ -46,7 +46,7 @@ public final class ExecutorThread {
     executorService.execute(() -> {
       while (!finished) {
 
-        if (!newTasks.isEmpty()) {
+        while (!newTasks.isEmpty()) {
           final TaskExecutor newTask = newTasks.poll();
           availableTasks.add(newTask);
         }
@@ -62,6 +62,12 @@ public final class ExecutorThread {
               //LOG.info("Process event of {} at {}", availableTask.getId(), executorThreadName);
             }
           }
+        }
+
+        try {
+          Thread.sleep(300);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
         }
 
         if (isPollingTime.get()) {
