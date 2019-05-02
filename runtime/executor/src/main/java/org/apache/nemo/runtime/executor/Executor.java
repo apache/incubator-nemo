@@ -109,15 +109,11 @@ public final class Executor {
   private final PipeManagerWorker pipeManagerWorker;
 
   private ScheduledExecutorService scheduledExecutorService;
-
-  private final ConcurrentLinkedQueue<TaskExecutor> newTasks;
-  private final List<TaskExecutor> availableTasks;
-  private final List<TaskExecutor> pendingTasks;
-
-
-  private volatile boolean finished = false;
-  private final AtomicBoolean isPollingTime = new AtomicBoolean(false);
   private final ExecutorService taskEventExecutorService;
+
+  private final List<ExecutorThread> executorThreads;
+
+  private final AtomicInteger numReceivedTasks = new AtomicInteger(0);
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -142,9 +138,6 @@ public final class Executor {
     this.byteTransport = byteTransport;
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskEventExecutorService = Executors.newSingleThreadExecutor();
-    this.newTasks = new ConcurrentLinkedQueue<>();
-    this.availableTasks = new LinkedList<>();
-    this.pendingTasks = new LinkedList<>();
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
               .namingPattern("TaskExecutor thread-%d")
               .build());
@@ -159,11 +152,6 @@ public final class Executor {
       LOG.info("Cpu load: {}", profiler.getCpuLoad());
     }, 1, 1, TimeUnit.SECONDS);
 
-    // Polling time
-    scheduledExecutorService.scheduleAtFixedRate(() -> {
-      isPollingTime.set(true);
-    }, 500, 500, TimeUnit.MILLISECONDS);
-
     this.evalConf = evalConf;
     LOG.info("\n{}", evalConf);
     this.serverlessExecutorProvider = serverlessExecutorProvider;
@@ -171,35 +159,11 @@ public final class Executor {
     this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
 
-
-    // Executing lots of tiny tasks!
-    taskEventExecutorService.execute(() -> {
-      while (!finished) {
-
-        if (!newTasks.isEmpty()) {
-          final TaskExecutor newTask = newTasks.poll();
-          availableTasks.add(newTask);
-        }
-
-        while (!availableTasks.isEmpty()) {
-          final Iterator<TaskExecutor> iterator = availableTasks.iterator();
-          while (iterator.hasNext()) {
-            final TaskExecutor availableTask = iterator.next();
-            if (!availableTask.handleData()) {
-              iterator.remove();
-              pendingTasks.add(availableTask);
-            }
-          }
-        }
-
-        if (isPollingTime.get()) {
-          isPollingTime.set(false);
-          // how to check whether the task is ready or not?
-          availableTasks.addAll(pendingTasks);
-          pendingTasks.clear();
-        }
-      }
-    });
+    this.executorThreads = new ArrayList<>(evalConf.executorThreadNum);
+    for (int i = 0; i < evalConf.executorThreadNum; i++) {
+      executorThreads.add(new ExecutorThread(scheduledExecutorService, i, executorId));
+      executorThreads.get(i).start();
+    }
   }
 
   public String getExecutorId() {
@@ -302,7 +266,9 @@ public final class Executor {
         evalConf);
 
       taskExecutorMap.put(taskExecutor, true);
-      newTasks.add(taskExecutor);
+      final int numTask = numReceivedTasks.getAndIncrement();
+      final int index = numTask % evalConf.executorThreadNum;
+      executorThreads.get(index).addNewTask(taskExecutor);
       //taskExecutor.execute();
       taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
 
@@ -353,7 +319,7 @@ public final class Executor {
 
   public void terminate() {
     try {
-      finished = true;
+      executorThreads.forEach(ExecutorThread::close);
       metricMessageSender.close();
     } catch (final UnknownFailureCauseException e) {
       throw new UnknownFailureCauseException(
