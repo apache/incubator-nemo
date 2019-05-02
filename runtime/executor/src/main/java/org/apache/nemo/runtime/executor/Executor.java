@@ -43,6 +43,7 @@ import org.apache.nemo.runtime.common.message.MessageListener;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
@@ -60,8 +61,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.Base64;
+import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,7 +110,14 @@ public final class Executor {
 
   private ScheduledExecutorService scheduledExecutorService;
 
+  private final ConcurrentLinkedQueue<TaskExecutor> newTasks;
+  private final List<TaskExecutor> availableTasks;
+  private final List<TaskExecutor> pendingTasks;
 
+
+  private volatile boolean finished = false;
+  private final AtomicBoolean isPollingTime = new AtomicBoolean(false);
+  private final ExecutorService taskEventExecutorService;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -131,6 +141,10 @@ public final class Executor {
     this.executorId = executorId;
     this.byteTransport = byteTransport;
     this.pipeManagerWorker = pipeManagerWorker;
+    this.taskEventExecutorService = Executors.newSingleThreadExecutor();
+    this.newTasks = new ConcurrentLinkedQueue<>();
+    this.availableTasks = new LinkedList<>();
+    this.pendingTasks = new LinkedList<>();
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
               .namingPattern("TaskExecutor thread-%d")
               .build());
@@ -145,12 +159,47 @@ public final class Executor {
       LOG.info("Cpu load: {}", profiler.getCpuLoad());
     }, 1, 1, TimeUnit.SECONDS);
 
+    // Polling time
+    scheduledExecutorService.scheduleAtFixedRate(() -> {
+      isPollingTime.set(true);
+    }, 500, 500, TimeUnit.MILLISECONDS);
+
     this.evalConf = evalConf;
     LOG.info("\n{}", evalConf);
     this.serverlessExecutorProvider = serverlessExecutorProvider;
     this.offloadingWorkerFactory = offloadingWorkerFactory;
     this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
+
+
+    // Executing lots of tiny tasks!
+    taskEventExecutorService.execute(() -> {
+      while (!finished) {
+
+        if (!newTasks.isEmpty()) {
+          final TaskExecutor newTask = newTasks.poll();
+          availableTasks.add(newTask);
+        }
+
+        while (!availableTasks.isEmpty()) {
+          final Iterator<TaskExecutor> iterator = availableTasks.iterator();
+          while (iterator.hasNext()) {
+            final TaskExecutor availableTask = iterator.next();
+            if (!availableTask.handleData()) {
+              iterator.remove();
+              pendingTasks.add(availableTask);
+            }
+          }
+        }
+
+        if (isPollingTime.get()) {
+          isPollingTime.set(false);
+          // how to check whether the task is ready or not?
+          availableTasks.addAll(pendingTasks);
+          pendingTasks.clear();
+        }
+      }
+    });
   }
 
   public String getExecutorId() {
@@ -253,7 +302,9 @@ public final class Executor {
         evalConf);
 
       taskExecutorMap.put(taskExecutor, true);
-      taskExecutor.execute();
+      newTasks.add(taskExecutor);
+      //taskExecutor.execute();
+      taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
 
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
@@ -302,6 +353,7 @@ public final class Executor {
 
   public void terminate() {
     try {
+      finished = true;
       metricMessageSender.close();
     } catch (final UnknownFailureCauseException e) {
       throw new UnknownFailureCauseException(

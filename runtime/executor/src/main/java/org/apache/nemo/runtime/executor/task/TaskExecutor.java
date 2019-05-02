@@ -888,6 +888,152 @@ public final class TaskExecutor {
   }
 
   /**
+   * This method is non-blocking call and only process one event.
+   * Executor should call this function.
+   * @return true if an event is processed
+   */
+  public boolean handleData() {
+    // handling control event
+    boolean dataProcessed = false;
+    if (!controlEventQueue.isEmpty()) {
+      final ControlEvent event = controlEventQueue.poll();
+      final OperatorVertexOutputCollector oc = (OperatorVertexOutputCollector)
+        vertexIdAndCollectorMap.get(event.getDstVertexId()).right();
+      oc.handleControlMessage(event);
+      dataProcessed = true;
+    }
+
+    if (evalConf.enableOffloading || evalConf.offloadingdebug) {
+
+      // check offloading queue to process events
+      if (!offloadingEventQueue.isEmpty()) {
+        dataProcessed = true;
+        // fetch events
+        final Object data = offloadingEventQueue.poll();
+
+        if (data instanceof OffloadingResultEvent) {
+          final OffloadingResultEvent msg = (OffloadingResultEvent) data;
+          LOG.info("Result processed in executor: cnt {}, watermark: {}", msg.data.size(), msg.watermark);
+
+          for (final Triple<List<String>, String, Object> triple : msg.data) {
+            //LOG.info("Data {}, {}, {}", triple.first, triple.second, triple.third);
+            handleOffloadingEvent(triple);
+          }
+        }  else if (data instanceof OffloadingResultTimestampEvent) {
+          final OffloadingResultTimestampEvent event = (OffloadingResultTimestampEvent) data;
+          final long currTime = System.currentTimeMillis();
+          final long latency = currTime - event.timestamp;
+          LOG.info("Event Latency {} from lambda {} in {}", latency, event.vertexId, taskId);
+
+        } else if (data instanceof KafkaOffloadingOutput) {
+
+          if (offloader.isPresent()) {
+            offloader.get().handleOffloadingOutput((KafkaOffloadingOutput) data);
+          }
+
+        } else if (data instanceof EndOffloadingKafkaEvent) {
+
+          if (offloader.isPresent()) {
+            LOG.info("Start -- Receive end offloading event {}", taskId);
+            offloader.get().handleEndOffloadingEvent();
+            LOG.info("End -- Receive end offloading event {}", taskId);
+          }
+
+        } else if (data instanceof StartOffloadingKafkaEvent) {
+
+          if (offloader.isPresent()) {
+            LOG.info("Start -- handle start offloading kafka event {}", taskId);
+            offloader.get().handleStartOffloadingEvent();
+            LOG.info("End -- handle start offloading kafka event {}", taskId);
+          }
+        } else {
+          throw new RuntimeException("Unsupported type: " + data);
+        }
+
+      }
+    }
+
+    // handle pending workers here!
+    if (offloader.isPresent()) {
+      if (offloader.get().hasPendingStraemingWorkers()) {
+        offloader.get().handlePendingStreamingWorkers();
+        dataProcessed = true;
+      }
+    }
+
+    // We first fetch data from available data fetchers
+    final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
+    while (availableIterator.hasNext()) {
+
+      final DataFetcher dataFetcher = availableIterator.next();
+      try {
+        //final long a = System.currentTimeMillis();
+        final Object element = dataFetcher.fetchDataElement();
+
+        //fetchTime += (System.currentTimeMillis() - a);
+
+        //final long b = System.currentTimeMillis();
+        onEventFromDataFetcher(element, dataFetcher);
+        //processingTime += (System.currentTimeMillis() - b);
+        dataProcessed = true;
+
+        if (element instanceof Finishmark) {
+          availableIterator.remove();
+        }
+      } catch (final NoSuchElementException e) {
+        // No element in current data fetcher, fetch data from next fetcher
+        // move current data fetcher to pending.
+        availableIterator.remove();
+        pendingFetchers.add(dataFetcher);
+      } catch (final IOException e) {
+        // IOException means that this task should be retried.
+        taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
+          Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
+        LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
+        return false;
+      }
+    }
+
+    final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
+
+    if (pollingTime) {
+      // We check pending data every polling interval
+      pollingTime = false;
+
+      while (pendingIterator.hasNext()) {
+        final DataFetcher dataFetcher = pendingIterator.next();
+        try {
+          //final long a = System.currentTimeMillis();
+          final Object element = dataFetcher.fetchDataElement();
+          //fetchTime += (System.currentTimeMillis() - a);
+
+          //final long b = System.currentTimeMillis();
+          onEventFromDataFetcher(element, dataFetcher);
+          // processingTime += (System.currentTimeMillis() - b);
+
+          // We processed data. This means the data fetcher is now available.
+          // Add current data fetcher to available
+          pendingIterator.remove();
+          if (!(element instanceof Finishmark)) {
+            availableFetchers.add(dataFetcher);
+          }
+
+        } catch (final NoSuchElementException e) {
+          // The current data fetcher is still pending.. try next data fetcher
+        } catch (final IOException e) {
+          // IOException means that this task should be retried.
+          taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
+            Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
+          LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e);
+          return false;
+        }
+      }
+    }
+
+    return dataProcessed;
+  }
+
+  /**
    * This retrieves data from data fetchers and process them.
    * It maintains two lists:
    *  -- availableFetchers: maintain data fetchers that currently have data elements to retreive
