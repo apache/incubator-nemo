@@ -31,7 +31,7 @@ import java.util.List;
 public final class DirectByteBufferOutputStream extends OutputStream {
 
   private LinkedList<ByteBuffer> dataList = new LinkedList<>();
-  private static final int DEFAULT_PAGE_SIZE = 4096;
+  private static final int DEFAULT_PAGE_SIZE = 32768; //32KB
   private final int pageSize;
   private ByteBuffer currentBuf;
 
