@@ -132,20 +132,20 @@ public final class DownstreamTaskOffloader implements Offloader {
     this.offloadingEventQueue = offloadingEventQueue;
     this.sourceVertexDataFetchers = sourceVertexDataFetchers;
     this.taskId = taskId;
+    this.toMaster = toMaster;
+    this.taskStatus = taskStatus;
+    this.prevOffloadEndTime = prevOffloadEndTime;
+    this.prevOffloadStartTime = prevOffloadStartTime;
+    this.outputWriters = outputWriters;
+    this.irVertexDag = irVertexDag;
+    this.taskInputContextMap = taskInputContextMap;
+
     try {
       this.streamingWorkerService = createStreamingWorkerService();
     } catch (final Exception e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
-
-    this.taskStatus = taskStatus;
-    this.prevOffloadEndTime = prevOffloadEndTime;
-    this.prevOffloadStartTime = prevOffloadStartTime;
-    this.toMaster = toMaster;
-    this.outputWriters = outputWriters;
-    this.irVertexDag = irVertexDag;
-    this.taskInputContextMap = taskInputContextMap;
 
     logger.scheduleAtFixedRate(() -> {
 
@@ -170,6 +170,7 @@ public final class DownstreamTaskOffloader implements Offloader {
         vertex.isOffloading = true;
       }
     });
+
     final CompletableFuture<ControlMessage.Message> request = requestTaskIndex();
 
     final StreamingWorkerService streamingWorkerService =
