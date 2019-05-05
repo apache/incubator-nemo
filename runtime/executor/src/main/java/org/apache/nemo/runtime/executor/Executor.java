@@ -174,7 +174,8 @@ public final class Executor {
       }
 
       if (evalConf.offloadingdebug) {
-        taskOffloader.startDebugging();
+        taskOffloader.startDownstreamDebugging();
+        //taskOffloader.startDebugging();
       }
 
       //bottleneckDetector.setBottleneckHandler(new BottleneckHandler());

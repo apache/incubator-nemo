@@ -191,6 +191,27 @@ public final class TaskOffloader {
      return new StatelessTaskStatInfo(running, offpending, offloaded, deoffpending, stateless, runningTasks, statelessRunningTasks, statefulRunningTasks);
   }
 
+  public void startDownstreamDebugging() {
+    // For offloading debugging
+    se.schedule(() -> {
+      LOG.info("Start offloading kafka (only stage1)");
+      int cnt = 0;
+
+      //final int offloadCnt = taskExecutorMap.keySet().stream()
+      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
+      final int offloadCnt = taskExecutorMap.size();
+
+      for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
+        if (taskExecutor.getId().contains("Stage1")) {
+          LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
+          offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
+          taskExecutor.startOffloading(System.currentTimeMillis());
+          cnt += 1;
+        }
+      }
+    }, 50, TimeUnit.SECONDS);
+  }
+
   public void startDebugging() {
     // For offloading debugging
     se.scheduleAtFixedRate(() -> {
