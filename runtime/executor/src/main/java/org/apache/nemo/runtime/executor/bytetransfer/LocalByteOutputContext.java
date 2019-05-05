@@ -255,6 +255,10 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
         //LOG.info("Element encoder: {}", encoder);
         encoder.encode(element);
         wrapped.close();
+
+        // DATA ID
+        byteBufOutputStream.writeInt(0);
+
       } catch (final Exception e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -344,6 +348,6 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
     final CompositeByteBuf compositeByteBuf =
       vmChannel.alloc().compositeBuffer(2).addComponents(
         true, buf, (ByteBuf) byteBuf);
-    vmChannel.write(new OffloadingEvent(OffloadingEvent.Type.DATA, compositeByteBuf));
+    vmChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, compositeByteBuf));
   }
 }

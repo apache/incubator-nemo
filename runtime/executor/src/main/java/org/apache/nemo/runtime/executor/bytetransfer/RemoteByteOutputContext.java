@@ -398,6 +398,10 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
           final ByteBufOutputStream bos = new ByteBufOutputStream(buf);
           final DataOutputStream dos = new DataOutputStream(bos);
           dos.writeUTF(vmTaskId);
+          final ByteBuf bb = (ByteBuf) body;
+          // DATA ID
+          bb.writeInt(0);
+
           final CompositeByteBuf compositeByteBuf =
             vmChannel.alloc().compositeBuffer(2).addComponents(
               true, buf, (ByteBuf) body);
