@@ -28,6 +28,7 @@ import io.netty.channel.FileRegion;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
@@ -119,7 +120,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   public void scaleoutToVm(String address, String taskId) {
     final String[] split = address.split(":");
     final ChannelFuture channelFuture =
-      vmScalingClientTransport.connectTo(split[0], Integer.valueOf(split[1]));
+      vmScalingClientTransport.connectTo(split[0], Constants.VM_WORKER_PORT);
 
     if (channelFuture.isDone()) {
       vmChannel = channelFuture.channel();
@@ -306,11 +307,24 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
      */
     @Override
     public void writeElement(final Object element,
-                             final Serializer serializer) {
-
+                             final Serializer serializer,
+                             final String edgeId,
+                             final String opId) {
 
       final ByteBuf byteBuf = channel.alloc().ioBuffer();
       final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
+
+      if (sendDataTo.equals(SCALE_VM)) {
+        try {
+          byteBufOutputStream.writeBoolean(false);
+          byteBufOutputStream.writeUTF(edgeId);
+          byteBufOutputStream.writeUTF(opId);
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }
+
       try {
         final OutputStream wrapped =
           DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
@@ -318,7 +332,12 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
         //LOG.info("Element encoder: {}", encoder);
         encoder.encode(element);
         wrapped.close();
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
 
+      try {
         if (isPending) {
           // If it is pending, buffer data
           if (pendingByteBufs.isEmpty() && sendDataTo.equals(SCALE_VM)) {
@@ -332,8 +351,11 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
             LOG.info("Ack pending {}", message);
             channel.writeAndFlush(message).addListener(getChannelWriteListener());
           }
+
           pendingByteBufs.add(byteBuf);
+
         } else {
+
           if (!pendingByteBufs.isEmpty()) {
             for (final ByteBuf pendingByteBuf : pendingByteBufs) {
               writeByteBuf(pendingByteBuf);

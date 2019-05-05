@@ -1,4 +1,4 @@
-package org.apache.nemo.offloading.workers.common;
+package org.apache.nemo.offloading.common;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -13,7 +13,6 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.apache.nemo.offloading.common.*;
 
 import java.io.*;
 import java.net.InetSocketAddress;

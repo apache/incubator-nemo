@@ -11,7 +11,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.offloading.common.*;
-import org.apache.nemo.offloading.workers.common.OffloadingHandler;
+import org.apache.nemo.offloading.common.OffloadingHandler;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,6 +79,7 @@ public class VMWorker {
                 final DataInputStream dataInputStream = new DataInputStream(bis);
                 try {
                   final String taskId = dataInputStream.readUTF();
+                  LOG.info("Receive data for task {}", taskId);
                   lambdaEventHandlerMap.get(taskId).onNext(event);
                 } catch (IOException e) {
                   e.printStackTrace();

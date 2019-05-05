@@ -29,6 +29,7 @@ import io.netty.channel.FileRegion;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
@@ -126,7 +127,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
   public void scaleoutToVm(String address, String taskId) {
     final String[] split = address.split(":");
     final ChannelFuture channelFuture =
-      vmScalingClientTransport.connectTo(split[0], Integer.valueOf(split[1]));
+      vmScalingClientTransport.connectTo(split[0], Constants.VM_WORKER_PORT);
 
     if (channelFuture.isDone()) {
       vmChannel = channelFuture.channel();
@@ -233,11 +234,17 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
       // do nothing
     }
 
-    private ByteBuf serializeElement(final Object element, Serializer serializer) {
+    private ByteBuf serializeElement(final Object element,
+                                     final Serializer serializer,
+                                     final String edgeId,
+                                     final String opId) {
       final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
 
       try {
         final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
+        byteBufOutputStream.writeBoolean(false);
+        byteBufOutputStream.writeUTF(edgeId);
+        byteBufOutputStream.writeUTF(opId);
         final OutputStream wrapped =
           DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
         final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
@@ -257,8 +264,11 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
      * @param element element
      * @param serializer serializer
      */
+    @Override
     public void writeElement(final Object element,
-                             final Serializer serializer) {
+                             final Serializer serializer,
+                             final String edgeId,
+                             final String opId) {
       if (isPending) {
         // buffer data..
         // because currently the data processing is pending
@@ -271,7 +281,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
               localByteInputContext.receivePendingAck();
             }
 
-            pendingByteBufData.add(serializeElement(element ,serializer));
+            pendingByteBufData.add(serializeElement(element, serializer, edgeId, opId));
             break;
 
           case VM:
@@ -298,7 +308,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
 
         switch (sendDataTo) {
           case SCALE_VM:
-            sendByteBufToRemote(serializeElement(element, serializer));
+            sendByteBufToRemote(serializeElement(element, serializer, edgeId, opId));
             break;
           case VM:
             objectQueue.add(element);

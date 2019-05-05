@@ -98,6 +98,13 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
    * @return {@code true} if and only if the source and the destination vertex of the edge can be merged into one stage.
    */
   private boolean testMergeability(final IREdge edge, final IRDAG dag) {
+
+    // TODO:remove
+      // QUERY0 test!!!
+    if (edge.getDst().getId().equals("vertex6")) {
+      return false;
+    }
+
     // If the destination vertex has multiple inEdges, return false
     if (dag.getIncomingEdgesOf(edge.getDst()).size() > 1) {
       return false;

@@ -30,6 +30,8 @@ import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextS
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
+import org.apache.nemo.runtime.lambdaexecutor.downstream.DownstreamOffloadingSerializer;
+import org.apache.nemo.runtime.lambdaexecutor.downstream.DownstreamOffloadingTransform;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingTransform;
@@ -165,8 +167,9 @@ public final class DownstreamTaskOffloader implements Offloader {
 
     final StreamingWorkerService streamingWorkerService =
       new StreamingWorkerService(offloadingWorkerFactory,
-        new MiddleOffloadingTransform(
+        new DownstreamOffloadingTransform(
           executorId,
+          taskId,
           RuntimeIdManager.getIndexFromTaskId(taskId),
           evalConf.samplingJson,
           copyDag,
@@ -175,7 +178,7 @@ public final class DownstreamTaskOffloader implements Offloader {
           serializerManager.runtimeEdgeIdToSerializer,
           dstTaskIndexTargetExecutorMap,
           task.getTaskOutgoingEdges()),
-        new MiddleOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
+        new DownstreamOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
         new StatelessOffloadingEventHandler(offloadingEventQueue, taskTimeMap));
 
     return streamingWorkerService;
@@ -365,6 +368,19 @@ public final class DownstreamTaskOffloader implements Offloader {
           final String vmAddress =
             event.offloadingWorker.getChannel().remoteAddress().toString();
           LOG.info("VM Address: {}", vmAddress);
+
+          final ByteTransferContextSetupMessage scaleoutMsg =
+          new ByteTransferContextSetupMessage(byteInputContext.getRemoteExecutorId(),
+            byteInputContext.getContextId().getTransferIndex(),
+            byteInputContext.getContextId().getDataDirection(),
+            byteInputContext.getContextDescriptor(),
+            byteInputContext.getContextId().isPipe(),
+            ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEOUT_VM,
+            vmAddress, taskId);
+          byteInputContext.sendMessage(scaleoutMsg, (n) -> {});
+
+          LOG.info("Send scaleout message");
+
           //byteInputContext.sendMessage();
           throw new RuntimeException("TODO");
         });

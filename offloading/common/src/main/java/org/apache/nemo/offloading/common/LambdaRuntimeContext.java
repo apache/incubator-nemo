@@ -1,7 +1,5 @@
-package org.apache.nemo.offloading.workers.common;
+package org.apache.nemo.offloading.common;
 
-
-import org.apache.nemo.offloading.common.OffloadingTransform;
 
 import java.util.Map;
 

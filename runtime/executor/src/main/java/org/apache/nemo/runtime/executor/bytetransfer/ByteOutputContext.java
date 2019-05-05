@@ -86,6 +86,8 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
     ByteOutputStream writeFileArea(final FileArea fileArea) throws IOException;
 
     void writeElement(final Object element,
-                      final Serializer serializer);
+                      final Serializer serializer,
+                      final String edgeId,
+                      final String nextOpId);
   }
 }

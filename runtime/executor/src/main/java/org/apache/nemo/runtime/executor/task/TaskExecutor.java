@@ -333,6 +333,32 @@ public final class TaskExecutor {
           irVertexDag,
           offloadedTaskTimeMap));
       } else {
+        offloader = Optional.of(new DownstreamTaskOffloader(
+          executorId,
+          task,
+          this,
+          evalConf,
+          byteTransport.getExecutorAddressMap(),
+          pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),
+          serializedDag,
+          offloadingWorkerFactory,
+          taskOutgoingEdges,
+          serializerManager,
+          offloadingEventQueue,
+          sourceVertexDataFetchers,
+          taskId,
+          availableFetchers,
+          pendingFetchers,
+          status,
+          prevOffloadStartTime,
+          prevOffloadEndTime,
+          toMaster,
+          outputWriterMap,
+          irVertexDag,
+          offloadedTaskTimeMap,
+          taskInputContextMap));
+
+        /*
         if (evalConf.middleParallelism > 0) {
           offloader = Optional.of(new MiddleOffloader(
             executorId,
@@ -360,6 +386,7 @@ public final class TaskExecutor {
         } else {
           offloader = Optional.empty();
         }
+        */
       }
     } else {
       offloader = Optional.empty();

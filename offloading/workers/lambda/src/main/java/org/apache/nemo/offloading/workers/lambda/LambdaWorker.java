@@ -8,14 +8,8 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 //import com.amazonaws.services.s3.model.S3Object;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.nemo.offloading.workers.common.OffloadingHandler;
+import org.apache.nemo.offloading.common.OffloadingHandler;
 
-import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 

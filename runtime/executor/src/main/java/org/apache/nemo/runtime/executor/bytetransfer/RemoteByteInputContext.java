@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.buffer.ByteBuf;
+import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,7 +115,12 @@ public final class RemoteByteInputContext extends AbstractByteTransferContext im
   }
 
   @Override
-  public void sendMessage(ByteTransferContextSetupMessage message) {
+  public void sendMessage(ByteTransferContextSetupMessage message, EventHandler<Integer> pendingAckHandler) {
+    throw new RuntimeException("This should not be used");
+  }
+
+  @Override
+  public void receivePendingAck() {
     throw new RuntimeException("This should not be used");
   }
 
