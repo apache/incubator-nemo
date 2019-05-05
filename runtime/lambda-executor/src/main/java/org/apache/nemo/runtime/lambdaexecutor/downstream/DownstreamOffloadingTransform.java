@@ -77,11 +77,13 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
   private boolean closed = false;
 
   private final String taskId;
+  private final int newTaskIndex;
 
   // TODO: we should get checkpoint mark in constructor!
   public DownstreamOffloadingTransform(final String executorId,
                                        final String taskId,
                                        final int originTaskIndex,
+                                       final int newTaskIndex,
                                        final Map<String, Double> samplingMap,
                                        final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
                                        final Map<String, List<String>> taskOutgoingEdges,
@@ -92,6 +94,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
     this.executorId = executorId;
     this.originTaskIndex = originTaskIndex;
     this.irDag = irDag;
+    this.newTaskIndex = newTaskIndex;
     this.samplingMap = samplingMap;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.executorAddressMap = executorAddressMap;
@@ -122,6 +125,8 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
     this.operatingSystemMXBean =
       (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     this.threadMXBean = ManagementFactory.getThreadMXBean();
+
+    prep(newTaskIndex);
   }
 
   private RuntimeEdge<IRVertex> getEdge(final DAG<IRVertex, RuntimeEdge<IRVertex>> dag,

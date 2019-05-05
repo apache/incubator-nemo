@@ -132,7 +132,13 @@ public final class DownstreamTaskOffloader implements Offloader {
     this.offloadingEventQueue = offloadingEventQueue;
     this.sourceVertexDataFetchers = sourceVertexDataFetchers;
     this.taskId = taskId;
-    this.streamingWorkerService = createStreamingWorkerService();
+    try {
+      this.streamingWorkerService = createStreamingWorkerService();
+    } catch (final Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
     this.taskStatus = taskStatus;
     this.prevOffloadEndTime = prevOffloadEndTime;
     this.prevOffloadStartTime = prevOffloadStartTime;
@@ -148,7 +154,7 @@ public final class DownstreamTaskOffloader implements Offloader {
     }, 2, 2, TimeUnit.SECONDS);
   }
 
-  private StreamingWorkerService createStreamingWorkerService() {
+  private StreamingWorkerService createStreamingWorkerService() throws ExecutionException, InterruptedException {
     // build DAG
     final DAG<IRVertex, Edge<IRVertex>> copyDag = SerializationUtils.deserialize(serializedDag);
 
@@ -164,12 +170,14 @@ public final class DownstreamTaskOffloader implements Offloader {
         vertex.isOffloading = true;
       }
     });
+    final CompletableFuture<ControlMessage.Message> request = requestTaskIndex();
 
     final StreamingWorkerService streamingWorkerService =
       new StreamingWorkerService(offloadingWorkerFactory,
         new DownstreamOffloadingTransform(
           executorId,
           taskId,
+          (int) request.get().getTaskIndexInfoMsg().getTaskIndex(),
           RuntimeIdManager.getIndexFromTaskId(taskId),
           evalConf.samplingJson,
           copyDag,
@@ -285,9 +293,9 @@ public final class DownstreamTaskOffloader implements Offloader {
     }
 
     final OffloadingWorker worker = streamingWorkerService.createStreamWorker();
-    final CompletableFuture<ControlMessage.Message> request = requestTaskIndex();
+
     kafkaOffloadPendingEvents.add(new KafkaOffloadingRequestEvent(
-      worker, sourceId.getAndIncrement(), request));
+      worker, sourceId.getAndIncrement(), null));
   }
 
   public boolean hasPendingStraemingWorkers() {
@@ -335,31 +343,14 @@ public final class DownstreamTaskOffloader implements Offloader {
             throw new RuntimeException("We just offload one task!");
           }
 
-          final ControlMessage.Message message;
-          try {
-            LOG.info("Wait taskIndex... {}", taskId);
-            message = event.taskIndexFuture.get();
-            LOG.info("Receive taskIndex... {}/{}", taskId, message.getTaskIndexInfoMsg().getTaskIndex());
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          } catch (ExecutionException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
+          while (!event.offloadingWorker.isReady()) {
+            try {
+              Thread.sleep(200);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
           }
 
-          final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
-          final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
-          try {
-            bos.writeBoolean(true);
-            bos.writeLong(message.getTaskIndexInfoMsg().getTaskIndex());
-            bos.close();
-          } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-          }
-
-          event.offloadingWorker.execute(byteBuf, 0, false);
           runningWorkers.add(event.offloadingWorker);
 
           taskExecutor.getPrevOffloadStartTime().set(System.currentTimeMillis());

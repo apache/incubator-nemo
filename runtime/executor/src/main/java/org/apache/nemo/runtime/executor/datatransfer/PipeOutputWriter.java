@@ -100,7 +100,7 @@ public final class PipeOutputWriter implements OutputWriter {
       stream.writeElement(element,
         serializer,
         runtimeEdge.getId(),
-        runtimeEdge.getDst().getId());
+        stageEdge.getDstIRVertex().getId());
 
       if (flush) {
         try {
