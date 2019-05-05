@@ -49,7 +49,7 @@ public final class KafkaOffloadingOutputDecoder implements OffloadingDecoder<Obj
           final int length = dis.readInt();
           final long watermark = dis.readLong();
           //System.out.println("Decoding " + length + " events");
-          final List<Triple<List<String>, String, Object>> data = new ArrayList<>(length);
+          final List<NemoTriple<List<String>, String, Object>> data = new ArrayList<>(length);
           for (int i = 0; i < length; i++) {
             final int numOfNextVertices = dis.readInt();
             final List<String> nextVertices = new ArrayList<>(numOfNextVertices);
@@ -59,7 +59,7 @@ public final class KafkaOffloadingOutputDecoder implements OffloadingDecoder<Obj
             final String edgeId = dis.readUTF();
             final Serializer serializer = serializerMap.get(edgeId);
             final Object object = serializer.getDecoderFactory().create(dis).decode();
-            data.add(new Triple<>(nextVertices, edgeId, object));
+            data.add(new NemoTriple<>(nextVertices, edgeId, object));
           }
           return new OffloadingResultEvent(data, watermark);
           */

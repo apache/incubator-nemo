@@ -179,6 +179,7 @@ public final class TaskExecutor {
 
   private final ConcurrentMap<Integer, Long> offloadedTaskTimeMap = new ConcurrentHashMap<>();
 
+  private final TaskInputContextMap taskInputContextMap;
 
   /**
    * Constructor.
@@ -206,7 +207,8 @@ public final class TaskExecutor {
                       final SerializerManager serializerManager,
                       final ServerlessExecutorProvider serverlessExecutorProvider,
                       final OffloadingWorkerFactory offloadingWorkerFactory,
-                      final EvalConf evalConf) {
+                      final EvalConf evalConf,
+                      final TaskInputContextMap taskInputContextMap) {
     // Essential information
     this.threadId = threadId;
     this.executorId = executorId;
@@ -225,6 +227,7 @@ public final class TaskExecutor {
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.outputWriterMap = new HashSet<>();
     this.taskOutgoingEdges = new HashMap<>();
+    this.taskInputContextMap = taskInputContextMap;
     task.getTaskOutgoingEdges().forEach(edge -> {
       final IRVertex src = edge.getSrcIRVertex();
       final IRVertex dst = edge.getDstIRVertex();
@@ -687,7 +690,8 @@ public final class TaskExecutor {
                   parentTaskReader.getSrcIrVertex(),
                   edge,
                   parentTaskReader,
-                  dataFetcherOutputCollector));
+                  dataFetcherOutputCollector,
+                  taskInputContextMap));
             } else {
               parentDataFetchers.add(
                 new ParentTaskDataFetcher(

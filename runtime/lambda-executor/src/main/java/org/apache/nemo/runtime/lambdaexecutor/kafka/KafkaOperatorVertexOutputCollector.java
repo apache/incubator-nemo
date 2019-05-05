@@ -146,7 +146,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
           offloadingOutputCollector.emit(new OffloadingResultTimestampEvent(nextOpId, inputTimestamp, 0));
         }
         /*
-        resultCollector.result.add(new Triple<>(
+        resultCollector.result.add(new NemoTriple<>(
           nextOpIds,
           encodingEdge.getId(),
           new TimestampAndValue(inputTimestamp, output)));
@@ -188,7 +188,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
           offloadingOutputCollector.emit(new OffloadingResultTimestampEvent(nextOpId, inputTimestamp, 0));
         }
         /*
-        resultCollector.result.add(new Triple<>(
+        resultCollector.result.add(new NemoTriple<>(
           nextOpIds,
           encodingEdge.getId(),
           new TimestampAndValue(inputTimestamp, output)));

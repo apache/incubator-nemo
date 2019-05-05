@@ -57,8 +57,11 @@ public final class OffloadingHandler {
 
   private int dataProcessingCnt = 0;
 
-	public OffloadingHandler() {
+  private final Map<String, LambdaEventHandler> lambdaEventHandlerMap;
+
+	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap) {
     Logger.getRootLogger().setLevel(Level.INFO);
+    this.lambdaEventHandlerMap = lambdaEventHandlerMap;
 
 
 		LOG.info("Handler is created!");
@@ -153,6 +156,7 @@ public final class OffloadingHandler {
     if (opendChannel == null) {
       opendChannel = channelOpen(input);
     }
+
     map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
 
     System.out.println("Open channel: " + opendChannel);
@@ -272,7 +276,7 @@ public final class OffloadingHandler {
     return null;
 	}
 
-  final class LambdaEventHandler implements EventHandler<OffloadingEvent> {
+  public final class LambdaEventHandler implements EventHandler<OffloadingEvent> {
 
     private final BlockingQueue<Integer> endBlockingQueue = new LinkedBlockingQueue<>();
     private final Channel opendChannel;
@@ -305,6 +309,7 @@ public final class OffloadingHandler {
             decoder = (OffloadingDecoder) ois.readObject();
             outputEncoder = (OffloadingEncoder) ois.readObject();
 
+
             System.out.println("OffloadingTransform: " + offloadingTransform);
 
             ois.close();
@@ -319,8 +324,12 @@ public final class OffloadingHandler {
           }
 
           outputCollector = new LambdaOutputHandler(result);
+
+          // TODO: OffloadingTransform that receives data from parent tasks should register its id
+          // to lambdaEventHandlerMap
           offloadingTransform.prepare(
-            new LambdaRuntimeContext(), outputCollector);
+            new LambdaRuntimeContext(lambdaEventHandlerMap, this), outputCollector);
+
           System.out.println("End of worker init: " + (System.currentTimeMillis() - st));
 
           workerFinishTime = System.currentTimeMillis();
@@ -331,8 +340,6 @@ public final class OffloadingHandler {
           Thread.currentThread().setContextClassLoader(classLoader);
           //System.out.println("Worker init -> data time: " + (st - workerFinishTime) +
           // " databytes: " + nemoEvent.getByteBuf().readableBytes());
-
-
           final ByteBufInputStream bis = new ByteBufInputStream(nemoEvent.getByteBuf());
           try {
             final Object data = decoder.decode(bis);

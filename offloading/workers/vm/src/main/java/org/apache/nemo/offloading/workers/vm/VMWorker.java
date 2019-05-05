@@ -1,6 +1,8 @@
 package org.apache.nemo.offloading.workers.vm;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
@@ -14,6 +16,8 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
@@ -21,7 +25,7 @@ import java.util.concurrent.*;
 public class VMWorker {
   private static final Logger LOG = LoggerFactory.getLogger(VMWorker.class.getName());
   private static final int SERVER_BOSS_NUM_THREADS = 3;
-  private static final int SERVER_WORKER_NUM_THREADS = 10;
+  private static final int SERVER_WORKER_NUM_THREADS = 15;
   private static final String CLASS_NAME = VMWorker.class.getName();
 
   private static final String ADDRESS = "0.0.0.0";
@@ -32,9 +36,14 @@ public class VMWorker {
   private Channel acceptor;
   private Map<Channel, EventHandler> channelEventHandlerMap;
 
+  private final Map<String, OffloadingHandler.LambdaEventHandler> lambdaEventHandlerMap;
+
     private final ExecutorService executorService = Executors.newCachedThreadPool();
     private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
   private VMWorker() {
+
+    this.lambdaEventHandlerMap = new ConcurrentHashMap<>();
+
       serverBossGroup = new NioEventLoopGroup(SERVER_BOSS_NUM_THREADS,
         new DefaultThreadFactory(CLASS_NAME + "SourceServerBoss"));
       serverWorkerGroup = new NioEventLoopGroup(SERVER_WORKER_NUM_THREADS,
@@ -50,7 +59,7 @@ public class VMWorker {
           executorService.execute(() -> {
             switch (event.getType()) {
               case CLIENT_HANDSHAKE: {
-                final OffloadingHandler handler = new OffloadingHandler();
+                final OffloadingHandler handler = new OffloadingHandler(lambdaEventHandlerMap);
                 handlers.add(handler);
                 final byte[] bytes = new byte[event.getByteBuf().readableBytes()];
                 event.getByteBuf().readBytes(bytes);
@@ -62,6 +71,23 @@ public class VMWorker {
                 handler.handleRequest(map);
                 break;
               }
+              case DATA: {
+                // It receives data from upstream tasks
+                // We first retrieve taskId
+                final ByteBuf byteBuf = event.getByteBuf();
+                final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
+                final DataInputStream dataInputStream = new DataInputStream(bis);
+                try {
+                  final String taskId = dataInputStream.readUTF();
+                  lambdaEventHandlerMap.get(taskId).onNext(event);
+                } catch (IOException e) {
+                  e.printStackTrace();
+                  throw new RuntimeException(e);
+                }
+                break;
+              }
+              default:
+                throw new RuntimeException("unsupported type: " + event.getType());
             }
 
           });

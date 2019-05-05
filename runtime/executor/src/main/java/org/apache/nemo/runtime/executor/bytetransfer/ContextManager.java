@@ -24,6 +24,7 @@ import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.datatransfer.VMScalingClientTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +56,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
   private final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
 
   private final ScheduledExecutorService flusher;
+  private final VMScalingClientTransport vmScalingClientTransport;
+  private final AckScheduledService ackScheduledService;
 
   /**
    * Creates context manager for this channel.
@@ -70,12 +73,16 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
                  final ByteTransfer byteTransfer,
                  final ChannelGroup channelGroup,
                  final String localExecutorId,
-                 final Channel channel) {
+                 final Channel channel,
+                 final VMScalingClientTransport vmScalingClientTransport,
+                 final AckScheduledService ackScheduledService) {
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
     this.channelGroup = channelGroup;
     this.localExecutorId = localExecutorId;
+    this.vmScalingClientTransport = vmScalingClientTransport;
+    this.ackScheduledService = ackScheduledService;
     this.channel = channel;
     this.flusher = Executors.newSingleThreadScheduledExecutor();
     flusher.scheduleAtFixedRate(() -> {
@@ -128,42 +135,70 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
       new ByteTransferContext.ContextId(remoteExecutorId, localExecutorId, dataDirection, transferIndex, isPipe);
     final byte[] contextDescriptor = message.getContextDescriptor();
 
-    if (message.getIsRestart()) {
-      final ByteInputContext context = inputContextsInitiatedByRemote.get(transferIndex);
-      LOG.info("Context restart !! {}, {}", contextId, context);
-
-      if (isPipe) {
-        pipeManagerWorker.onInputContext(context);
+    switch (message.getMessageType()) {
+      case ACK_PENDING: {
+        final ByteInputContext context = inputContextsInitiatedByLocal.get(transferIndex);
+        LOG.info("ACK_PENDING");
+        context.receivePendingAck();
+        break;
       }
-    } else {
-
-      if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
-        final ByteInputContext context = inputContextsInitiatedByRemote.compute(transferIndex, (index, existing) -> {
-          if (existing != null) {
-            throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,
-              transferIndex));
-          }
-          return new StreamRemoteByteInputContext(remoteExecutorId, contextId, contextDescriptor, this);
-        });
+      case PENDING_FOR_SCALEOUT_VM: {
+        // this means that the downstream task will be moved to another machine
+        // so we should stop sending data to the downstream task
+        final ByteOutputContext outputContext = outputContextsInitiatedByLocal.get(transferIndex);
+        outputContext.pending(true);
+        break;
+      }
+      case RESUME_AFTER_SCALEOUT_VM: {
+        final String address = message.getMovedAddress();
+        final String taskId = message.getTaskId();
+        final ByteOutputContext outputContext = outputContextsInitiatedByLocal.get(transferIndex);
+        outputContext.scaleoutToVm(address, taskId);
+      }
+      case RESTART: {
+        final ByteInputContext context = inputContextsInitiatedByRemote.get(transferIndex);
+        LOG.info("Context restart !! {}, {}", contextId, context);
 
         if (isPipe) {
           pipeManagerWorker.onInputContext(context);
-        } else {
-          blockManagerWorker.onInputContext(context);
         }
-      } else {
-        final ByteOutputContext context = outputContextsInitiatedByRemote.compute(transferIndex, (idx, existing) -> {
-          if (existing != null) {
-            throw new RuntimeException(String.format("Duplicate ContextId: %s", contextId));
-          }
-          return new RemoteByteOutputContext(remoteExecutorId, contextId, contextDescriptor, this);
-        });
-        if (isPipe) {
-          pipeManagerWorker.onOutputContext(context);
-        } else {
-          blockManagerWorker.onOutputContext(context);
-        }
+        break;
       }
+      case CONTROL: {
+
+        if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
+          final ByteInputContext context = inputContextsInitiatedByRemote.compute(transferIndex, (index, existing) -> {
+            if (existing != null) {
+              throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,
+                transferIndex));
+            }
+            return new StreamRemoteByteInputContext(
+              remoteExecutorId, contextId, contextDescriptor, this, ackScheduledService.ackService);
+          });
+
+          if (isPipe) {
+            pipeManagerWorker.onInputContext(context);
+          } else {
+            blockManagerWorker.onInputContext(context);
+          }
+        } else {
+          final ByteOutputContext context = outputContextsInitiatedByRemote.compute(transferIndex, (idx, existing) -> {
+            if (existing != null) {
+              throw new RuntimeException(String.format("Duplicate ContextId: %s", contextId));
+            }
+            return new RemoteByteOutputContext(remoteExecutorId, contextId,
+              contextDescriptor, this, vmScalingClientTransport);
+          });
+          if (isPipe) {
+            pipeManagerWorker.onOutputContext(context);
+          } else {
+            blockManagerWorker.onOutputContext(context);
+          }
+        }
+        break;
+      }
+      default:
+        throw new RuntimeException("Unsupported type: " + message.getMessageType());
     }
   }
 
@@ -194,9 +229,13 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     final ByteInputContext localInputContext = inputContextsInitiatedByRemote.get(transferIndex);
     LOG.info("local context restart!! {}", localInputContext.getContextId());
     final ByteInputContext localByteInputContext = new LocalByteInputContext(
-      localInputContext.getRemoteExecutorId(), localInputContext.getContextId(),
+      localInputContext.getRemoteExecutorId(),
+      localInputContext.getContextId(),
       localInputContext.getContextDescriptor(),
-      this, ((LocalByteInputContext)localInputContext).getQueue());
+      this,
+      ((LocalByteInputContext)localInputContext).getQueue(),
+      ((LocalByteInputContext)localInputContext).getLocalByteOutputContext(),
+      ackScheduledService.ackService);
 
     inputContextsInitiatedByRemote.remove(transferIndex);
     inputContextsInitiatedByRemote.put(transferIndex, localByteInputContext);
@@ -221,7 +260,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     final ByteTransferContext.ContextId contextId = context.getContextId();
     inputContextsInitiatedByRemote.remove(contextId.getTransferIndex(), context);
     final ByteInputContext restartContext = new StreamRemoteByteInputContext(
-      contextId.getInitiatorExecutorId(), contextId, context.getContextDescriptor(), this);
+      contextId.getInitiatorExecutorId(), contextId, context.getContextDescriptor(), this, ackScheduledService.ackService);
     inputContextsInitiatedByRemote.put(contextId.getTransferIndex(), restartContext);
   }
 
@@ -278,7 +317,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
   ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
     return newContext(inputContextsInitiatedByLocal, nextInputTransferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
-        contextId -> new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor, this),
+        contextId -> new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor, this, ackScheduledService.ackService),
         executorId, isPipe, false);
   }
 
@@ -296,8 +335,14 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
       return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
         contextId -> {
+        final LocalByteOutputContext localByteOutputContext =
+          new LocalByteOutputContext(executorId, contextId,
+            contextDescriptor, this, queue, vmScalingClientTransport);
+
         final LocalByteInputContext localByteInputContext =
-          new LocalByteInputContext(executorId, contextId, contextDescriptor, this, queue);
+          new LocalByteInputContext(executorId, contextId, contextDescriptor, this, queue, localByteOutputContext, ackScheduledService.ackService);
+
+        localByteOutputContext.setLocalByteInputContext(localByteInputContext);
 
           inputContextsInitiatedByRemote.put(contextId.getTransferIndex(), localByteInputContext);
           try {
@@ -307,14 +352,15 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
             throw new RuntimeException(e);
           }
 
-          return new LocalByteOutputContext(executorId, contextId, contextDescriptor, this, queue);
+          return localByteOutputContext;
         },
         executorId, isPipe, true);
 
     } else {
       return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
-        contextId -> new RemoteByteOutputContext(executorId, contextId, contextDescriptor, this),
+        contextId -> new RemoteByteOutputContext(executorId, contextId,
+          contextDescriptor, this, vmScalingClientTransport),
         executorId, isPipe, false);
     }
   }

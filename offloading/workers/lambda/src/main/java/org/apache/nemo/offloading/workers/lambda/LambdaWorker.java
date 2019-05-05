@@ -16,6 +16,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.Map;
 
 public class LambdaWorker implements RequestHandler<Map<String, Object>, Object> {
@@ -61,7 +62,7 @@ public class LambdaWorker implements RequestHandler<Map<String, Object>, Object>
   }
 
 	public LambdaWorker() {
-    this.offloadingHandler = new OffloadingHandler();
+    this.offloadingHandler = new OffloadingHandler(new HashMap<>());
 	}
 
 

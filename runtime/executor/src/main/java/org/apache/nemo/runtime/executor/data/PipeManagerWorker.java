@@ -34,6 +34,7 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
+import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;

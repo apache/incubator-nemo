@@ -47,6 +47,7 @@ import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
+import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
 import org.apache.nemo.runtime.executor.task.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.common.NemoEventDecoderFactory;
@@ -107,7 +108,7 @@ public final class Executor {
 
   private ScheduledExecutorService scheduledExecutorService;
 
-
+  private final TaskInputContextMap taskInputContextMap;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -125,12 +126,14 @@ public final class Executor {
                    final EvalConf evalConf,
                    final SystemLoadProfiler profiler,
                    final PipeManagerWorker pipeManagerWorker,
-                   final TaskExecutorMapWrapper taskExecutorMapWrapper) {
+                   final TaskExecutorMapWrapper taskExecutorMapWrapper,
+                   final TaskInputContextMap taskInputContextMap) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     this.executorId = executorId;
     this.byteTransport = byteTransport;
     this.pipeManagerWorker = pipeManagerWorker;
+    this.taskInputContextMap = taskInputContextMap;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
               .namingPattern("TaskExecutor thread-%d")
               .build());
@@ -250,7 +253,8 @@ public final class Executor {
         serializerManager,
         serverlessExecutorProvider,
         offloadingWorkerFactory,
-        evalConf);
+        evalConf,
+        taskInputContextMap);
 
       taskExecutorMap.put(taskExecutor, true);
       taskExecutor.execute();

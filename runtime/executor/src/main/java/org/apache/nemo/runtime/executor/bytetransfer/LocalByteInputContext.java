@@ -19,6 +19,8 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.buffer.ByteBuf;
+import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +33,8 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Container for multiple input streams. Represents a transfer context on receiver-side.
@@ -46,8 +50,12 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
   private static final Logger LOG = LoggerFactory.getLogger(LocalByteInputContext.class.getName());
   private final Queue<Object> objectQueue;
   private final DataUtil.IteratorWithNumBytes iteratorWithNumBytes;
+  private final LocalByteOutputContext localByteOutputContext;
 
   private  boolean isFinished = false;
+  private EventHandler<Integer> ackHandler;
+  private final ScheduledExecutorService ackService;
+
   /**
    * Creates an input context.
    * @param remoteExecutorId    id of the remote executor
@@ -59,10 +67,18 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
                         final ContextId contextId,
                         final byte[] contextDescriptor,
                         final ContextManager contextManager,
-                        final Queue<Object> objectQueue) {
+                        final Queue<Object> objectQueue,
+                        final LocalByteOutputContext localByteOutputContext,
+                        final ScheduledExecutorService ackService) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     this.objectQueue = objectQueue;
     this.iteratorWithNumBytes = new QueueIteratorWithNumBytes();
+    this.localByteOutputContext = localByteOutputContext;
+    this.ackService = ackService;
+  }
+
+  public LocalByteOutputContext getLocalByteOutputContext() {
+    return localByteOutputContext;
   }
 
   /**
@@ -96,6 +112,36 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
   @Override
   public void onNewStream() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void sendMessage(ByteTransferContextSetupMessage message,
+                          final EventHandler<Integer> handler) {
+    ackHandler = handler;
+
+    switch (message.getMessageType()) {
+      case PENDING_FOR_SCALEOUT_VM: {
+        localByteOutputContext.pending(true);
+        break;
+      }
+      case RESUME_AFTER_SCALEOUT_VM: {
+        localByteOutputContext.scaleoutToVm(message.getMovedAddress(), message.getTaskId());
+        break;
+      }
+      default: {
+        throw new UnsupportedOperationException("Not supported type: " + message.getMessageType());
+      }
+    }
+  }
+
+  @Override
+  public void receivePendingAck() {
+    if (objectQueue.isEmpty()) {
+      ackHandler.onNext(1);
+    } else {
+      // check ack
+      ackService.schedule(new AckRunner(), 500, TimeUnit.MILLISECONDS);
+    }
   }
 
   /**
@@ -184,6 +230,19 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
     @Override
     public Object next() {
       return objectQueue.poll();
+    }
+  }
+
+
+  final class AckRunner implements Runnable {
+
+    @Override
+    public void run() {
+      if (objectQueue.isEmpty()) {
+        ackHandler.onNext(1);
+      } else {
+        ackService.schedule(new AckRunner(), 500, TimeUnit.MILLISECONDS);
+      }
     }
   }
 }

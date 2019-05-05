@@ -28,6 +28,7 @@ import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
+import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,17 +83,21 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   private final ConcurrentLinkedQueue<Pair<DataUtil.IteratorWithNumBytes, Integer>> taskAddPairQueue;
 
+  private final TaskInputContextMap taskInputContextMap;
+
   MultiThreadParentTaskDataFetcher(final String taskId,
                                    final IRVertex dataSource,
                                    final RuntimeEdge edge,
                                    final InputReader readerForParentTask,
-                                   final OutputCollector outputCollector) {
+                                   final OutputCollector outputCollector,
+                                   final TaskInputContextMap taskInputContextMap) {
     super(dataSource, edge, outputCollector);
     this.taskId = taskId;
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
     this.watermarkQueue = new ConcurrentLinkedQueue<>();
     this.elementQueue = new ConcurrentLinkedQueue();
+    this.taskInputContextMap = taskInputContextMap;
 
     //this.queueInsertionThreads = Executors.newCachedThreadPool();
     this.iterators = new ArrayList<>();
@@ -203,7 +208,13 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     inputWatermarkManager = new DynamicInputWatermarkManager(taskId, getDataSource(), new WatermarkCollector());
     final DynamicInputWatermarkManager watermarkManager = (DynamicInputWatermarkManager) inputWatermarkManager;
 
-    readersForParentTask.readAsync(pair -> {
+    readersForParentTask.readAsync(triple -> {
+      final Pair<DataUtil.IteratorWithNumBytes, Integer> pair =
+        Pair.of(triple.first, triple.second);
+
+      // add taskId-byteInputContext to taskInputContextMap
+      taskInputContextMap.put(taskId, triple.third);
+
       taskAddPairQueue.add(pair);
     });
   }
@@ -214,7 +225,10 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     inputWatermarkManager = new DynamicInputWatermarkManager(taskId, getDataSource(), new WatermarkCollector());
     final DynamicInputWatermarkManager watermarkManager = (DynamicInputWatermarkManager) inputWatermarkManager;
 
-    readersForParentTask.readAsync(pair -> {
+    readersForParentTask.readAsync(triple -> {
+      final Pair<DataUtil.IteratorWithNumBytes, Integer> pair =
+        Pair.of(triple.first, triple.second);
+
       LOG.info("Receive iterator task {} at {} edge {}"
         , pair.right(), readersForParentTask.getTaskIndex(), edge.getId());
       final DataUtil.IteratorWithNumBytes iterator = pair.left();

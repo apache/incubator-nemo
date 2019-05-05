@@ -22,6 +22,7 @@ import io.netty.channel.*;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.datatransfer.VMScalingClientTransport;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -48,6 +49,8 @@ public final class ByteTransfer {
   private final InjectionFuture<PipeManagerWorker> pipeManagerWorker;
   private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
   private final InjectionFuture<ByteTransfer> byteTransfer;
+  private final InjectionFuture<VMScalingClientTransport> vmScalingClientTransport;
+  private final InjectionFuture<AckScheduledService> ackScheduledService;
   private final String localExecutorId;
 
   /**
@@ -59,12 +62,16 @@ public final class ByteTransfer {
                        @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
                        final InjectionFuture<PipeManagerWorker> pipeManagerWorker,
                        final InjectionFuture<BlockManagerWorker> blockManagerWorker,
-                       final InjectionFuture<ByteTransfer> byteTransfer) {
+                       final InjectionFuture<ByteTransfer> byteTransfer,
+                       final InjectionFuture<VMScalingClientTransport> vmScalingClientTransport,
+                       final InjectionFuture<AckScheduledService> ackScheduledService) {
     this.byteTransport = byteTransport;
     this.localExecutorId = localExecutorId;
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
+    this.vmScalingClientTransport = vmScalingClientTransport;
+    this.ackScheduledService = ackScheduledService;
   }
 
   /**
@@ -95,8 +102,14 @@ public final class ByteTransfer {
       LOG.info("New local output context: {}", executorId);
       byteTransport.getAndPutInetAddress(executorId);
       executorIdLocalContextManagerMap.putIfAbsent(executorId,
-        new ContextManager(pipeManagerWorker.get(), blockManagerWorker.get(),
-          byteTransfer.get(), null, localExecutorId, null));
+        new ContextManager(pipeManagerWorker.get(),
+          blockManagerWorker.get(),
+          byteTransfer.get(),
+          null,
+          localExecutorId,
+          null,
+          vmScalingClientTransport.get(),
+          ackScheduledService.get()));
       final ContextManager contextManager = executorIdLocalContextManagerMap.get(executorId);
       return CompletableFuture.completedFuture(
         contextManager.newOutputContext(executorId, contextDescriptor, isPipe));

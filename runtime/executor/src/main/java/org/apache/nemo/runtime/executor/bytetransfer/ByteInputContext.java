@@ -19,6 +19,8 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.buffer.ByteBuf;
+import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +59,11 @@ public interface ByteInputContext extends ByteTransferContext {
    * Called when a punctuation for sub-stream incarnation is detected.
    */
   void onNewStream();
+
+  void sendMessage(final ByteTransferContextSetupMessage message,
+                   final EventHandler<Integer> pendingAckHandler);
+
+  void receivePendingAck();
 
   /**
    * Called when {@link ByteBuf} is supplied to this context.

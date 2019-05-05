@@ -19,26 +19,39 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.DefaultFileRegion;
 import io.netty.channel.FileRegion;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.nemo.common.coder.EncoderFactory;
+import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.FileArea;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
+import org.apache.nemo.runtime.executor.datatransfer.VMScalingClientTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Queue;
+
+import static org.apache.nemo.runtime.executor.bytetransfer.LocalByteOutputContext.SendDataTo.SCALE_VM;
+import static org.apache.nemo.runtime.executor.bytetransfer.LocalByteOutputContext.SendDataTo.VM;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -55,6 +68,21 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
 
   private final Queue<Object> objectQueue;
 
+    private volatile boolean isPending = false;
+
+  public enum SendDataTo {
+    VM,
+    SCALE_VM,
+    SCALE_SF
+  }
+
+  private SendDataTo sendDataTo = VM;
+  private final VMScalingClientTransport vmScalingClientTransport;
+  private Channel vmChannel;
+  private String vmTaskId;
+
+  private ByteInputContext localByteInputContext;
+
   /**
    * Creates a output context.
    *
@@ -67,10 +95,16 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
                          final ContextId contextId,
                          final byte[] contextDescriptor,
                          final ContextManager contextManager,
-                         final Queue<Object> objectQueue) {
+                         final Queue<Object> objectQueue,
+                         final VMScalingClientTransport vmScalingClientTransport) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     this.channel = contextManager.getChannel();
     this.objectQueue = objectQueue;
+    this.vmScalingClientTransport = vmScalingClientTransport;
+  }
+
+  public void setLocalByteInputContext(final ByteInputContext byteInputContext) {
+    localByteInputContext = byteInputContext;
   }
 
   /**
@@ -80,6 +114,39 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
    */
   public ByteOutputStream newOutputStream() throws IOException {
     return new LocalByteOutputStream();
+  }
+
+  @Override
+  public void pending(final boolean scaleout) {
+    sendDataTo = scaleout ? SCALE_VM : VM;
+    isPending = true;
+  }
+
+  @Override
+  public void scaleoutToVm(String address, String taskId) {
+    final String[] split = address.split(":");
+    final ChannelFuture channelFuture =
+      vmScalingClientTransport.connectTo(split[0], Integer.valueOf(split[1]));
+
+    if (channelFuture.isDone()) {
+      vmChannel = channelFuture.channel();
+      vmTaskId = taskId;
+      isPending = false;
+    } else {
+      channelFuture.addListener(new GenericFutureListener<Future<? super Void>>() {
+        @Override
+        public void operationComplete(Future<? super Void> future) throws Exception {
+          vmChannel = channelFuture.channel();
+          vmTaskId = taskId;
+          isPending = false;
+        }
+      });
+    }
+  }
+
+  @Override
+  public void scaleInToVm() {
+    throw new UnsupportedOperationException("Not supported yet");
   }
 
 
@@ -123,7 +190,8 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
 
     private volatile boolean newSubStream = true;
     private volatile boolean closed = false;
-
+    private final List<Object> pendingData = new ArrayList<>();
+    private final List<ByteBuf> pendingByteBufData = new ArrayList<>();
     public Channel getChannel() {
       return channel;
     }
@@ -165,6 +233,25 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
       // do nothing
     }
 
+    private ByteBuf serializeElement(final Object element, Serializer serializer) {
+      final ByteBuf byteBuf = ByteBufAllocator.DEFAULT.buffer();
+
+      try {
+        final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
+        final OutputStream wrapped =
+          DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
+        final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
+        //LOG.info("Element encoder: {}", encoder);
+        encoder.encode(element);
+        wrapped.close();
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      return byteBuf;
+    }
+
     /**
      * Write an element to the channel.
      * @param element element
@@ -172,12 +259,75 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
      */
     public void writeElement(final Object element,
                              final Serializer serializer) {
-      objectQueue.add(element);
+      if (isPending) {
+        // buffer data..
+        // because currently the data processing is pending
+        switch (sendDataTo) {
+          case SCALE_VM:
+            final boolean isEmpty = pendingData.isEmpty();
+
+            if (isEmpty) {
+              // ACK!!
+              localByteInputContext.receivePendingAck();
+            }
+
+            pendingByteBufData.add(serializeElement(element ,serializer));
+            break;
+
+          case VM:
+            pendingData.add(element);
+            break;
+          default:
+            throw new UnsupportedOperationException("Unsupported type " + sendDataTo);
+        }
+      } else {
+        // if there are pending data,
+        if (!pendingData.isEmpty()) {
+          // just add it to objectQueue
+          objectQueue.addAll(pendingData);
+          pendingData.clear();
+
+        } else if (!pendingByteBufData.isEmpty()) {
+          // send it to remote VM
+          for (final ByteBuf byteBuf : pendingByteBufData) {
+            sendByteBufToRemote(byteBuf);
+          }
+          pendingByteBufData.clear();
+
+        }
+
+        switch (sendDataTo) {
+          case SCALE_VM:
+            sendByteBufToRemote(serializeElement(element, serializer));
+            break;
+          case VM:
+            objectQueue.add(element);
+            break;
+          default:
+            throw new RuntimeException("Not supported type: " + sendDataTo);
+        }
+      }
     }
 
     @Override
     public void flush() {
       //channel.flush();
     }
+  }
+
+  private void sendByteBufToRemote(final ByteBuf byteBuf) {
+    final ByteBuf buf = vmChannel.alloc().buffer();
+    final ByteBufOutputStream bos = new ByteBufOutputStream(buf);
+    final DataOutputStream dos = new DataOutputStream(bos);
+    try {
+      dos.writeUTF(vmTaskId);
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+    final CompositeByteBuf compositeByteBuf =
+      vmChannel.alloc().compositeBuffer(2).addComponents(
+        true, buf, (ByteBuf) byteBuf);
+    vmChannel.write(new OffloadingEvent(OffloadingEvent.Type.DATA, compositeByteBuf));
   }
 }
