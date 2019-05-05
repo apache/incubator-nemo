@@ -119,6 +119,9 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
                           final EventHandler<Integer> handler) {
     ackHandler = handler;
 
+    LOG.info("Send message: {} at {}", message.getMessageType(),
+      getContextId().getTransferIndex());
+
     switch (message.getMessageType()) {
       case PENDING_FOR_SCALEOUT_VM: {
         localByteOutputContext.pending(true);

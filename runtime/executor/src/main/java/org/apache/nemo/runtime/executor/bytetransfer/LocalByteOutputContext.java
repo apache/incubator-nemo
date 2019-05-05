@@ -119,12 +119,16 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
 
   @Override
   public void pending(final boolean scaleout) {
+    LOG.info("LocalByteOutputContext pending: {}", getContextId().getTransferIndex());
     sendDataTo = scaleout ? SCALE_VM : VM;
     isPending = true;
   }
 
   @Override
   public void scaleoutToVm(String address, String taskId) {
+        LOG.info("LocalByteOutputContext scaleout to {}/{}: {}",
+          address, taskId, getContextId().getTransferIndex());
+
     final String[] split = address.split(":");
     final ChannelFuture channelFuture =
       vmScalingClientTransport.connectTo(split[0], Constants.VM_WORKER_PORT);

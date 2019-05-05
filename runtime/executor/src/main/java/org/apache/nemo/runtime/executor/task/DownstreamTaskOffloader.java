@@ -366,7 +366,8 @@ public final class DownstreamTaskOffloader implements Offloader {
 
           // 3. send address to the upstream task
           final String vmAddress =
-            event.offloadingWorker.getChannel().remoteAddress().toString();
+            event.offloadingWorker.getChannel().remoteAddress().toString().replace("/", "");
+
           LOG.info("VM Address: {}", vmAddress);
 
           final ByteTransferContextSetupMessage scaleoutMsg =
