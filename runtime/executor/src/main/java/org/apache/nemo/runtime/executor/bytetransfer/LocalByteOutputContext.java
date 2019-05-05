@@ -330,6 +330,8 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
   }
 
   private void sendByteBufToRemote(final ByteBuf byteBuf) {
+    LOG.info("Scaling: Send to {}", vmTaskId);
+
     final ByteBuf buf = vmChannel.alloc().buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(buf);
     final DataOutputStream dos = new DataOutputStream(bos);

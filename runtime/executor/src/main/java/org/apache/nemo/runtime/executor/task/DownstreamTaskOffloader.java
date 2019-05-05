@@ -383,7 +383,7 @@ public final class DownstreamTaskOffloader implements Offloader {
           LOG.info("Send scaleout message");
 
           //byteInputContext.sendMessage();
-          throw new RuntimeException("TODO");
+          //throw new RuntimeException("TODO");
         });
       }
     }
