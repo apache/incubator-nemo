@@ -45,7 +45,7 @@ public final class VMScalingClientTransport {
   public void disconnect(final String address, final int port) {
     final String key = address + ":" + port;
     final AtomicInteger counter = channelCounterMap.get(key);
-    if (counter.decrementAndGet() == 0) {
+    if (counter != null && counter.decrementAndGet() == 0) {
       // close channel
       LOG.info("Close channel... {}", address);
       channelMap.remove(key).channel().close().awaitUninterruptibly();
@@ -72,6 +72,7 @@ public final class VMScalingClientTransport {
         throw new RuntimeException(sb.toString());
       }
       channelMap.put(key, channelFuture);
+      LOG.info("Get new channel {}", address);
       return channelFuture;
     } else {
       channelCounterMap.get(key).getAndIncrement();
@@ -82,6 +83,7 @@ public final class VMScalingClientTransport {
           e.printStackTrace();
         }
       }
+      LOG.info("Get cached channel {}", address);
       return channelMap.get(key);
     }
   }
