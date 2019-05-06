@@ -335,9 +335,12 @@ public final class DownstreamTaskOffloader implements Offloader {
             byteInputContext.getContextId().isPipe(),
             ByteTransferContextSetupMessage.MessageType.PENDING_FOR_SCALEOUT_VM);
 
+        LOG.info("Send message {}", pendingMsg);
+
         byteInputContext.sendMessage(pendingMsg, (m) -> {
           // ack handler!
           // this guarantees that we received all events from upstream tasks
+
 
           // 2. offload downstream tasks
           final KafkaOffloadingRequestEvent event = kafkaOffloadPendingEvents.poll();
@@ -372,7 +375,7 @@ public final class DownstreamTaskOffloader implements Offloader {
           LOG.info("VM Address: {}", vmAddress);
 
           final ByteTransferContextSetupMessage scaleoutMsg =
-          new ByteTransferContextSetupMessage(byteInputContext.getRemoteExecutorId(),
+          new ByteTransferContextSetupMessage(executorId,
             byteInputContext.getContextId().getTransferIndex(),
             byteInputContext.getContextId().getDataDirection(),
             byteInputContext.getContextDescriptor(),
