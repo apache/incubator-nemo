@@ -328,7 +328,7 @@ public final class DownstreamTaskOffloader implements Offloader {
       for (final ByteInputContext byteInputContext : byteInputContexts) {
 
         final ByteTransferContextSetupMessage pendingMsg =
-          new ByteTransferContextSetupMessage(byteInputContext.getRemoteExecutorId(),
+          new ByteTransferContextSetupMessage(executorId,
             byteInputContext.getContextId().getTransferIndex(),
             byteInputContext.getContextId().getDataDirection(),
             byteInputContext.getContextDescriptor(),
