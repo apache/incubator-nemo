@@ -58,6 +58,7 @@ public final class VMScalingClientTransport {
   public synchronized ChannelFuture connectTo(final String address, final int port) {
     final String key = address + ":" + port;
     if (channelMap.containsKey(key)) {
+      channelCounterMap.get(key).getAndIncrement();
       LOG.info("Get cached channel {}", address);
       return channelMap.get(key);
     }
