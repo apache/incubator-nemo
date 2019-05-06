@@ -216,17 +216,54 @@ public final class DownstreamTaskOffloader implements Offloader {
 
       // We will wait for the checkpoint mark of these workers
       // and restart the workers
-      for (final OffloadingWorker runningWorker : runningWorkers) {
-        LOG.info("Closing running worker {} at {}", runningWorker.getId(), taskId);
-        runningWorker.forceClose();
-      }
+      final OffloadingWorker runningWorker = runningWorkers.get(0);
       runningWorkers.clear();
 
+      // 1. send message to upstream tasks
+      final List<ByteInputContext> byteInputContexts = taskInputContextMap
+        .getTaskInputContextMap().get(taskId);
 
-      // Restart contexts
-      LOG.info("Restart output writers");
-      outputWriters.forEach(OutputWriter::restart);
+      final AtomicInteger ackCount = new AtomicInteger(byteInputContexts.size());
 
+      for (final ByteInputContext byteInputContext : byteInputContexts) {
+
+        final ByteTransferContextSetupMessage pendingMsg =
+          new ByteTransferContextSetupMessage(executorId,
+            byteInputContext.getContextId().getTransferIndex(),
+            byteInputContext.getContextId().getDataDirection(),
+            byteInputContext.getContextDescriptor(),
+            byteInputContext.getContextId().isPipe(),
+            ByteTransferContextSetupMessage.MessageType.PENDING_FOR_SCALEIN_VM);
+
+        LOG.info("Send message {}", pendingMsg);
+
+        byteInputContext.sendMessage(pendingMsg, (m) -> {
+          // ack handler!
+          // this guarantees that we received all events from upstream tasks
+
+          final int cnt = ackCount.decrementAndGet();
+
+          if (cnt == 0) {
+            // close worker!
+            // TODO: move states !!
+            runningWorker.forceClose();
+
+            final ByteTransferContextSetupMessage scaleInMsg =
+              new ByteTransferContextSetupMessage(executorId,
+                byteInputContext.getContextId().getTransferIndex(),
+                byteInputContext.getContextId().getDataDirection(),
+                byteInputContext.getContextDescriptor(),
+                byteInputContext.getContextId().isPipe(),
+                ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_VM);
+            byteInputContext.sendMessage(scaleInMsg, (n) -> {});
+
+            LOG.info("Send scalein message");
+          }
+
+          //byteInputContext.sendMessage();
+          //throw new RuntimeException("TODO");
+        });
+      }
 
       taskStatus.set(TaskExecutor.Status.RUNNING);
       taskTimeMap.clear();
@@ -343,6 +380,8 @@ public final class DownstreamTaskOffloader implements Offloader {
 
         LOG.info("Send message {}", pendingMsg);
 
+        runningWorkers.add(event.offloadingWorker);
+
         byteInputContext.sendMessage(pendingMsg, (m) -> {
           // ack handler!
           // this guarantees that we received all events from upstream tasks
@@ -361,8 +400,6 @@ public final class DownstreamTaskOffloader implements Offloader {
           } catch (InterruptedException e) {
             e.printStackTrace();
           }
-
-          runningWorkers.add(event.offloadingWorker);
 
           taskExecutor.getPrevOffloadStartTime().set(System.currentTimeMillis());
 

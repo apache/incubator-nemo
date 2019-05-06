@@ -131,6 +131,14 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
         localByteOutputContext.scaleoutToVm(message.getMovedAddress(), message.getTaskId());
         break;
       }
+      case PENDING_FOR_SCALEIN_VM: {
+        localByteOutputContext.pending(false);
+        break;
+      }
+      case RESUME_AFTER_SCALEIN_VM: {
+        localByteOutputContext.scaleInToVm();
+        break;
+      }
       default: {
         throw new UnsupportedOperationException("Not supported type: " + message.getMessageType());
       }

@@ -156,6 +156,19 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
         LOG.info("Resume {} to {}/{}", transferIndex, address, taskId);
         final ByteOutputContext outputContext = outputContextsInitiatedByLocal.get(transferIndex);
         outputContext.scaleoutToVm(address, taskId);
+        break;
+      }
+      case PENDING_FOR_SCALEIN_VM: {
+        LOG.info("SCALEIN pending {}", transferIndex);
+        final ByteOutputContext outputContext = outputContextsInitiatedByLocal.get(transferIndex);
+        outputContext.pending(false);
+        break;
+      }
+      case RESUME_AFTER_SCALEIN_VM: {
+        LOG.info("Resume scaling {}", transferIndex);
+        final ByteOutputContext outputContext = outputContextsInitiatedByLocal.get(transferIndex);
+        outputContext.scaleInToVm();
+        break;
       }
       case RESTART: {
         final ByteInputContext context = inputContextsInitiatedByRemote.get(transferIndex);

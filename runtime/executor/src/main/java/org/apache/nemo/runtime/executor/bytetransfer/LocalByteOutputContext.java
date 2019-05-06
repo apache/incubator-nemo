@@ -151,7 +151,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
 
   @Override
   public void scaleInToVm() {
-    throw new UnsupportedOperationException("Not supported yet");
+    isPending = false;
   }
 
 
@@ -293,6 +293,11 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
             break;
 
           case VM:
+            if (pendingData.isEmpty()) {
+              // close channnel!
+              vmChannel.close().awaitUninterruptibly();
+              localByteInputContext.receivePendingAck();
+            }
             pendingData.add(element);
             break;
           default:
