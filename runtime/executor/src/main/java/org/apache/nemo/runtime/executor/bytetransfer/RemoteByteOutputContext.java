@@ -77,7 +77,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   private SendDataTo sendDataTo = VM;
   private final VMScalingClientTransport vmScalingClientTransport;
 
-  private String address;
+  private String remoteAddress;
 
   /**
    * Creates a output context.
@@ -124,7 +124,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
     final ChannelFuture channelFuture =
       vmScalingClientTransport.connectTo(split[0], Constants.VM_WORKER_PORT);
 
-    address = split[0];
+    remoteAddress = split[0];
 
     if (channelFuture.isDone()) {
       vmChannel = channelFuture.channel();
@@ -364,7 +364,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
                 getContextId().isPipe(),
                 ByteTransferContextSetupMessage.MessageType.ACK_PENDING);
             LOG.info("Closing vm channel {}", message);
-            vmScalingClientTransport.disconnect(address, Constants.VM_WORKER_PORT);
+            vmScalingClientTransport.disconnect(remoteAddress, Constants.VM_WORKER_PORT);
 
             LOG.info("Ack VM scaling pending {}", message);
           }
