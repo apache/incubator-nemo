@@ -407,7 +407,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
           final CompositeByteBuf compositeByteBuf =
             vmChannel.alloc().compositeBuffer(2).addComponents(
               true, buf, (ByteBuf) body);
-          vmChannel.write(new OffloadingEvent(OffloadingEvent.Type.DATA, compositeByteBuf));
+          vmChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, compositeByteBuf));
           break;
         default:
           throw new RuntimeException("Unsupported type: " + sendDataTo);
