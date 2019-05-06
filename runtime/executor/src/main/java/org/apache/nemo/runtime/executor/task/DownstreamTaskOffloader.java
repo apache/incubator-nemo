@@ -315,6 +315,7 @@ public final class DownstreamTaskOffloader implements Offloader {
   @Override
   public synchronized void handleStartOffloadingEvent() {
 
+
     prevOffloadStartTime.set(System.currentTimeMillis());
 
     if (!taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING)) {
