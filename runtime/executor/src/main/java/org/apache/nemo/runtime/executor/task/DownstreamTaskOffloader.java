@@ -360,6 +360,11 @@ public final class DownstreamTaskOffloader implements Offloader {
     if (checkIsAllPendingReady()) {
       // Get event!!
       final KafkaOffloadingRequestEvent event = kafkaOffloadPendingEvents.poll();
+
+      if (!taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.OFFLOADED)) {
+        throw new RuntimeException("Invalid status: " + taskStatus);
+      }
+
       if (!kafkaOffloadPendingEvents.isEmpty()) {
         throw new RuntimeException("We just offload one task!");
       }
