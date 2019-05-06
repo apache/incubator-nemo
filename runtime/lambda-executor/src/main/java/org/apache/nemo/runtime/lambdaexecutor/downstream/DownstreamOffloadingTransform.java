@@ -170,6 +170,8 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
           final String nextOpId = element.nextOpId;
 
           final NextIntraTaskOperatorInfo nextOp = operatorVertexMap.get(nextOpId);
+          LOG.info("NexOpId: {}, nextOp: {}", nextOpId, nextOp);
+
           if (d instanceof WatermarkWithIndex) {
             final Watermark watermark = ((WatermarkWithIndex) d).getWatermark();
             nextOp.getWatermarkManager()
@@ -387,6 +389,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
         final int index = edgeIndexMap.get(edge);
         final OperatorVertex nextOperator = (OperatorVertex) edge.getDst();
         final InputWatermarkManager inputWatermarkManager = operatorWatermarkManagerMap.get(nextOperator);
+        LOG.info("NextIntraTaskOperatorInfo for {}", nextOperator.getId());
         return new NextIntraTaskOperatorInfo(index, edge, nextOperator, inputWatermarkManager);
       })
       .collect(Collectors.toList());
