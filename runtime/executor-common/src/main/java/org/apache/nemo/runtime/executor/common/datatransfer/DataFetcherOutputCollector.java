@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import org.apache.nemo.runtime.executor.common.InputWatermarkManager;
 import org.apache.nemo.common.ir.AbstractOutputCollector;

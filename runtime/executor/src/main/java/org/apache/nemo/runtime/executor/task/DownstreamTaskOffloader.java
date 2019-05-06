@@ -186,7 +186,8 @@ public final class DownstreamTaskOffloader implements Offloader {
           executorAddressMap,
           serializerManager.runtimeEdgeIdToSerializer,
           dstTaskIndexTargetExecutorMap,
-          task.getTaskOutgoingEdges()),
+          task.getTaskOutgoingEdges(),
+          task.getTaskIncomingEdges()),
         new DownstreamOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),
         new StatelessOffloadingEventHandler(offloadingEventQueue, taskTimeMap));
 

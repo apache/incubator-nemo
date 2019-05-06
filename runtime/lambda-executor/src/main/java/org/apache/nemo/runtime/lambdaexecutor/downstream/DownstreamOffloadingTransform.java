@@ -6,6 +6,7 @@ import io.netty.channel.socket.SocketChannel;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
@@ -19,14 +20,13 @@ import org.apache.nemo.offloading.common.OffloadingHandler;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.datatransfer.DataFetcherOutputCollector;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingTransformContextImpl;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.HandleDataFetcher;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOperatorVertexOutputCollector;
-import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingDataEvent;
-import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingPrepEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +57,8 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
   private final Map<String, Serializer> serializerMap;
   private final Map<String, InetSocketAddress> executorAddressMap;
   private final Map<Integer, String> dstTaskIndexTargetExecutorMap;
-  private final List<StageEdge> stageEdges;
+  private final List<StageEdge> outgoingEdges;
+  private final List<StageEdge> incomingEdges;
   private final Map<String, Double> samplingMap;
 
   private transient OffloadingContext offloadingContext;
@@ -79,6 +80,8 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
   private final String taskId;
   private final int newTaskIndex;
 
+  private final Map<String, OutputCollector> dataFetcherCollector;
+
   // TODO: we should get checkpoint mark in constructor!
   public DownstreamOffloadingTransform(final String executorId,
                                        final String taskId,
@@ -90,7 +93,8 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
                                        final Map<String, InetSocketAddress> executorAddressMap,
                                        final Map<String, Serializer> serializerMap,
                                        final Map<Integer, String> dstTaskIndexTargetExecutorMap,
-                                       final List<StageEdge> stageEdges) {
+                                       final List<StageEdge> outgoingEdges,
+                                       final List<StageEdge> incomingEdges) {
     this.executorId = executorId;
     this.originTaskIndex = originTaskIndex;
     this.irDag = irDag;
@@ -100,8 +104,10 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
     this.executorAddressMap = executorAddressMap;
     this.serializerMap = serializerMap;
     this.dstTaskIndexTargetExecutorMap = dstTaskIndexTargetExecutorMap;
-    this.stageEdges = stageEdges;
+    this.outgoingEdges = outgoingEdges;
+    this.incomingEdges = incomingEdges;
     this.taskId = taskId;
+    this.dataFetcherCollector = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -143,7 +149,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
     System.out.println("TaskIndex: " + taskIndex + ", ExecutorId: " + executorId +",, change to " + executorId + "-" + taskIndex);
     executorId = executorId + taskIndex;
     System.out.println("Executor address map: " + executorAddressMap);
-    System.out.println("Stage edges: " + stageEdges);
+    System.out.println("Stage edges: " + outgoingEdges);
     System.out.println("TaskIndexTargetExecutorMap: " + dstTaskIndexTargetExecutorMap);
 
     executorService.execute(() -> {
@@ -169,19 +175,17 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
           final Object d = element.data;
           final String nextOpId = element.nextOpId;
 
-          final NextIntraTaskOperatorInfo nextOp = operatorVertexMap.get(nextOpId);
-          LOG.info("NexOpId: {}, nextOp: {}", nextOpId, nextOp);
+          final OutputCollector oc = dataFetcherCollector.get(nextOpId);
+          LOG.info("NexOpId: {}, oc: {}", nextOpId, oc);
 
           if (d instanceof WatermarkWithIndex) {
             final Watermark watermark = ((WatermarkWithIndex) d).getWatermark();
-            nextOp.getWatermarkManager()
-              .trackAndEmitWatermarks(nextOp.getEdgeIndex(), watermark);
+            oc.emitWatermark(watermark);
           } else {
             final TimestampAndValue tsv = (TimestampAndValue) d;
-            outputCollectorMap.get(nextOpId).setInputTimestamp(tsv.timestamp);
-            nextOp.getNextOperator().getTransform().onData(tsv.value);
+            oc.setInputTimestamp(tsv.timestamp);
+            oc.emit(tsv.value);
           }
-
         } else {
           try {
             Thread.sleep(250);
@@ -193,7 +197,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
     });
 
     final IntermediateDataIOFactory intermediateDataIOFactory;
-    if (stageEdges.size() > 0) {
+    if (outgoingEdges.size() > 0) {
       // create byte transport
       final NativeChannelImplementationSelector selector = new NativeChannelImplementationSelector();
       final LambdaControlFrameEncoder controlFrameEncoder = new LambdaControlFrameEncoder(executorId);
@@ -240,7 +244,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
     reverseTopologicallySorted.forEach(childVertex -> {
 
 
-      final List<Edge> edges = getAllIncomingEdges(irDag, childVertex);
+      final List<Edge> edges = getAllIncomingEdges(irDag, childVertex, incomingEdges);
       for (int edgeIndex = 0; edgeIndex < edges.size(); edgeIndex++) {
         final Edge edge = edges.get(edgeIndex);
         edgeIndexMap.putIfAbsent(edge, edgeIndex);
@@ -254,7 +258,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
     reverseTopologicallySorted.forEach(childVertex -> {
 
       if (childVertex instanceof OperatorVertex) {
-        final List<Edge> edges = getAllIncomingEdges(irDag, childVertex);
+        final List<Edge> edges = getAllIncomingEdges(irDag, childVertex, incomingEdges);
         if (edges.size() == 1) {
           operatorWatermarkManagerMap.putIfAbsent(childVertex,
             new SingleInputWatermarkManager(
@@ -286,10 +290,10 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
 
       final Map<String, List<PipeOutputWriter>> externalAdditionalOutputMap =
         getExternalAdditionalOutputMap(
-          irVertex, stageEdges, intermediateDataIOFactory, taskIndex, originTaskIndex, serializerMap, pipeOutputWriters);
+          irVertex, outgoingEdges, intermediateDataIOFactory, taskIndex, originTaskIndex, serializerMap, pipeOutputWriters);
 
       final List<PipeOutputWriter> externalMainOutputs = getExternalMainOutputs(
-        irVertex, stageEdges, intermediateDataIOFactory, taskIndex, originTaskIndex, serializerMap, pipeOutputWriters);
+        irVertex, outgoingEdges, intermediateDataIOFactory, taskIndex, originTaskIndex, serializerMap, pipeOutputWriters);
 
       for (final NextIntraTaskOperatorInfo interOp : internalMainOutputs) {
         operatorVertexMap.put(interOp.getNextOperator().getId(), interOp);
@@ -321,6 +325,23 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
         transform = ((OperatorVertex) irVertex).getTransform();
         transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
       }
+
+
+      // task incoming edges!!
+      incomingEdges
+        .stream()
+        .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId()))
+        .forEach(incomingEdge -> {
+          if (irVertex instanceof OperatorVertex) {
+            final StageEdge edge = incomingEdge;
+            final int edgeIndex = edgeIndexMap.get(edge);
+            final InputWatermarkManager watermarkManager = operatorWatermarkManagerMap.get(irVertex);
+            final OutputCollector dataFetcherOutputCollector =
+              new DataFetcherOutputCollector(edge.getSrcIRVertex(), (OperatorVertex) irVertex,
+                outputCollector, edgeIndex, watermarkManager);
+            dataFetcherCollector.put(irVertex.getId(), dataFetcherOutputCollector);
+          }
+        });
 
     });
   }
@@ -370,9 +391,14 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
   // Get all of the intra-task edges
   private static List<Edge> getAllIncomingEdges(
     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-    final IRVertex childVertex) {
+    final IRVertex childVertex,
+    final List<StageEdge> incomingEdges) {
     final List<Edge> edges = new ArrayList<>();
     edges.addAll(irVertexDag.getIncomingEdgesOf(childVertex));
+    final List<StageEdge> taskEdges = incomingEdges.stream()
+      .filter(edge -> edge.getDstIRVertex().getId().equals(childVertex.getId()))
+      .collect(Collectors.toList());
+    edges.addAll(taskEdges);
     return edges;
   }
 
