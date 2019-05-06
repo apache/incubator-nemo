@@ -321,6 +321,12 @@ public final class DownstreamTaskOffloader implements Offloader {
     }
 
     if (checkIsAllPendingReady()) {
+      // Get event!!
+      final KafkaOffloadingRequestEvent event = kafkaOffloadPendingEvents.poll();
+      if (!kafkaOffloadPendingEvents.isEmpty()) {
+        throw new RuntimeException("We just offload one task!");
+      }
+
       // 1. send message to upstream tasks
       final List<ByteInputContext> byteInputContexts = taskInputContextMap
         .getTaskInputContextMap().get(taskId);
@@ -341,13 +347,6 @@ public final class DownstreamTaskOffloader implements Offloader {
           // ack handler!
           // this guarantees that we received all events from upstream tasks
 
-
-          // 2. offload downstream tasks
-          final KafkaOffloadingRequestEvent event = kafkaOffloadPendingEvents.poll();
-          if (!kafkaOffloadPendingEvents.isEmpty()) {
-            throw new RuntimeException("We just offload one task!");
-          }
-
           while (!event.offloadingWorker.isReady()) {
             try {
               Thread.sleep(200);
@@ -355,7 +354,6 @@ public final class DownstreamTaskOffloader implements Offloader {
               e.printStackTrace();
             }
           }
-
 
           try {
             Thread.sleep(2000);
