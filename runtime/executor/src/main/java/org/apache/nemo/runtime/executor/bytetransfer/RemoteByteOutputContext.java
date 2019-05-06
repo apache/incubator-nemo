@@ -394,6 +394,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
             .addListener(getChannelWriteListener());
           break;
         case SCALE_VM:
+          LOG.info("Scaling: Send to {}", vmTaskId);
+
           final ByteBuf buf = vmChannel.alloc().buffer();
           final ByteBufOutputStream bos = new ByteBufOutputStream(buf);
           final DataOutputStream dos = new DataOutputStream(bos);

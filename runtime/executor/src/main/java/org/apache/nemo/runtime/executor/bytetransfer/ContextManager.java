@@ -145,6 +145,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
       case PENDING_FOR_SCALEOUT_VM: {
         // this means that the downstream task will be moved to another machine
         // so we should stop sending data to the downstream task
+        LOG.info("SCALEOUT pending {}", transferIndex);
         final ByteOutputContext outputContext = outputContextsInitiatedByLocal.get(transferIndex);
         outputContext.pending(true);
         break;
@@ -152,6 +153,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
       case RESUME_AFTER_SCALEOUT_VM: {
         final String address = message.getMovedAddress();
         final String taskId = message.getTaskId();
+        LOG.info("Resume {} to {}/{}", transferIndex, address, taskId);
         final ByteOutputContext outputContext = outputContextsInitiatedByLocal.get(transferIndex);
         outputContext.scaleoutToVm(address, taskId);
       }
