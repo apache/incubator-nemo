@@ -72,9 +72,10 @@ public final class VMScalingClientTransport {
         throw new RuntimeException(sb.toString());
       }
       channelMap.put(key, channelFuture);
-      LOG.info("Get new channel {}", address);
+      LOG.info("Get new channel {} / {}", address, key);
       return channelFuture;
     } else {
+      LOG.info("Trying to get cached channel {} / {}", address, key);
       channelCounterMap.get(key).getAndIncrement();
       while (!channelMap.containsKey(key)) {
         try {
