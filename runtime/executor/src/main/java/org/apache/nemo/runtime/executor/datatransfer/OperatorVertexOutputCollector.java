@@ -190,12 +190,14 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
     }
 
     // offloading
+    /* TODO: for middleOffloader
     if (taskExecutor.isOffloaded() && !offloadingMainIds.isEmpty()) {
       //LOG.info("Offloading data to serverless: {} at {}", output, taskExecutor.getId());
       taskExecutor.sendToServerless(
         new TimestampAndValue<>(inputTimestamp, output), offloadingMainIds, currWatermark, edgeId);
       return;
     }
+    */
 
     /*
     if (endOffloading) {
@@ -259,12 +261,14 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
 
     // offloading
+    /* TODO: for middle offloader
     if (taskExecutor.isOffloaded() && !offloadingAdditionalIds.isEmpty()) {
       //LOG.info("Offloading data to serverless: {} at {}", output, taskExecutor.getId());
       taskExecutor.sendToServerless(
         new TimestampAndValue<>(inputTimestamp, output), offloadingAdditionalIds, currWatermark, edgeId);
       return;
     }
+    */
 
 
     List<String> offloadingIds = null;
@@ -303,12 +307,14 @@ public final class OperatorVertexOutputCollector<O> extends AbstractOutputCollec
 
 
     // offloading
+    /* TODO: for middle offloader
     if (taskExecutor.isOffloaded() && !offloadingIds.isEmpty()) {
       LOG.info("Offloading watermark to serverless: {} at {}", watermark, taskExecutor.getId());
       taskExecutor.sendToServerless(
         watermark, offloadingIds, currWatermark, edgeId);
       return;
     }
+    */
 
     //LOG.info("Emit watermark {} from {}", watermark, irVertex.getId());
 
