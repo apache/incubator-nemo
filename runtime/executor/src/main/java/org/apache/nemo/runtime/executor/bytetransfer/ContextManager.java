@@ -137,8 +137,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
 
     switch (message.getMessageType()) {
       case ACK_PENDING: {
-        final ByteInputContext context = inputContextsInitiatedByLocal.get(transferIndex);
-        LOG.info("ACK_PENDING");
+        final ByteInputContext context = inputContextsInitiatedByRemote.get(transferIndex);
+        LOG.info("ACK_PENDING: {}", transferIndex);
         context.receivePendingAck();
         break;
       }

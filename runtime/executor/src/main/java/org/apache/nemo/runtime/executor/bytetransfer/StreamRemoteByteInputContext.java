@@ -102,6 +102,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
   @Override
   public void sendMessage(final ByteTransferContextSetupMessage message,
                           final EventHandler<Integer> handler) {
+    LOG.info("Send message to remote: {}", message);
     ackHandler = handler;
     // send message to the upstream task!
     getContextManager().getChannel().writeAndFlush(message);
