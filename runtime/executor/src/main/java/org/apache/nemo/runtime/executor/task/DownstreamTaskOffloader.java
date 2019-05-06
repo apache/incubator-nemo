@@ -352,6 +352,14 @@ public final class DownstreamTaskOffloader implements Offloader {
             }
           }
 
+
+          try {
+            Thread.sleep(2000);
+            // Waiting for preparing
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+
           runningWorkers.add(event.offloadingWorker);
 
           taskExecutor.getPrevOffloadStartTime().set(System.currentTimeMillis());

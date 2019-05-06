@@ -40,6 +40,7 @@ public class VMWorker {
 
     private final ExecutorService executorService = Executors.newCachedThreadPool();
     private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
+
   private VMWorker() {
 
     this.lambdaEventHandlerMap = new ConcurrentHashMap<>();
@@ -80,6 +81,7 @@ public class VMWorker {
                 try {
                   final String taskId = dataInputStream.readUTF();
                   LOG.info("Receive data for task {}", taskId);
+
                   lambdaEventHandlerMap.get(taskId).onNext(event);
                 } catch (IOException e) {
                   e.printStackTrace();
