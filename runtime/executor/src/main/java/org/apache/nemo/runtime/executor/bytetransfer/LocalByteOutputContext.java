@@ -84,6 +84,8 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
 
   private ByteInputContext localByteInputContext;
 
+  private String address;
+
   /**
    * Creates a output context.
    *
@@ -132,6 +134,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
     final String[] split = address.split(":");
     final ChannelFuture channelFuture =
       vmScalingClientTransport.connectTo(split[0], Constants.VM_WORKER_PORT);
+    address = split[0];
 
     if (channelFuture.isDone()) {
       vmChannel = channelFuture.channel();
@@ -295,7 +298,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
           case VM:
             if (pendingData.isEmpty()) {
               // close channnel!
-              vmChannel.close().awaitUninterruptibly();
+              vmScalingClientTransport.disconnect(address, Constants.VM_WORKER_PORT);
               localByteInputContext.receivePendingAck();
             }
             pendingData.add(element);
