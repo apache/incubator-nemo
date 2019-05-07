@@ -6,6 +6,8 @@ import io.netty.buffer.PooledByteBufAllocator;
 
 import java.io.*;
 
+import static org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage.MessageType.*;
+
 public final class ByteTransferContextSetupMessage {
 
   public enum ByteTransferDataDirection {
@@ -13,12 +15,24 @@ public final class ByteTransferContextSetupMessage {
     INITIATOR_RECEIVES_DATA
   }
 
+  public enum MessageType {
+    CONTROL,
+    RESTART,
+    PENDING_FOR_SCALEOUT_VM,
+    PENDING_FOR_SCALEIN_VM,
+    ACK_PENDING,
+    RESUME_AFTER_SCALEOUT_VM,
+    RESUME_AFTER_SCALEIN_VM,
+  }
+
   private final String initiatorExecutorId;
   private final int transferIndex;
   private final ByteTransferDataDirection dataDirection;
   private final byte[] contextDescriptor;
   private final boolean isPipe;
-  private final boolean restart;
+  private final String address;
+  private final String taskId;
+  private final MessageType messageType;
 
   public ByteTransferContextSetupMessage(
     final String initiatorExecutorId,
@@ -26,7 +40,7 @@ public final class ByteTransferContextSetupMessage {
     final ByteTransferDataDirection dataDirection,
     final byte[] contextDescriptor,
     final boolean isPipe) {
-    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, false);
+    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, CONTROL);
   }
 
   public ByteTransferContextSetupMessage(
@@ -35,13 +49,27 @@ public final class ByteTransferContextSetupMessage {
     final ByteTransferDataDirection dataDirection,
     final byte[] contextDescriptor,
     final boolean isPipe,
-    final boolean restart) {
+    final MessageType messageType) {
+    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, messageType, "", "");
+  }
+
+  public ByteTransferContextSetupMessage(
+    final String initiatorExecutorId,
+    final int transferIndex,
+    final ByteTransferDataDirection dataDirection,
+    final byte[] contextDescriptor,
+    final boolean isPipe,
+    final MessageType messageType,
+    final String address,
+    final String taskId) {
     this.initiatorExecutorId = initiatorExecutorId;
     this.transferIndex = transferIndex;
     this.dataDirection = dataDirection;
     this.contextDescriptor = contextDescriptor;
     this.isPipe = isPipe;
-    this.restart = restart;
+    this.messageType = messageType;
+    this.address = address;
+    this.taskId = taskId;
   }
 
   public String getInitiatorExecutorId() {
@@ -56,8 +84,16 @@ public final class ByteTransferContextSetupMessage {
     return transferIndex;
   }
 
-  public boolean getIsRestart() {
-    return restart;
+  public MessageType getMessageType () {
+    return messageType;
+  }
+
+  public String getMovedAddress() {
+    return address;
+  }
+
+  public String getTaskId() {
+    return taskId;
   }
 
   public boolean getIsPipe() {
@@ -79,7 +115,9 @@ public final class ByteTransferContextSetupMessage {
       dos.writeInt(contextDescriptor.length);
       dos.write(contextDescriptor);
       dos.writeBoolean(isPipe);
-      dos.writeBoolean(restart);
+      dos.writeInt(messageType.ordinal());
+      dos.writeUTF(address);
+      dos.writeUTF(taskId);
 
       dos.close();
       bos.close();
@@ -107,10 +145,14 @@ public final class ByteTransferContextSetupMessage {
         throw new RuntimeException("Invalid byte read: " + l + ", " + size);
       }
       final boolean isPipe = dis.readBoolean();
-      final boolean isRestart = dis.readBoolean();
+      final int ordinal = dis.readInt();
+      final MessageType type = MessageType.values()[ordinal];
+      final String moveAddrss = dis.readUTF();
+      final String taskId = dis.readUTF();
 
       return new ByteTransferContextSetupMessage(
-        localExecutorId, transferIndex, direction, contextDescriptor, isPipe, isRestart);
+        localExecutorId, transferIndex, direction, contextDescriptor, isPipe, type, moveAddrss, taskId);
+
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -121,6 +163,6 @@ public final class ByteTransferContextSetupMessage {
   @Override
   public String toString() {
     return "InitExecutor: " + initiatorExecutorId + ", TransferIndex: " + transferIndex
-      + ", " + "Direction: " + dataDirection + ", " + ", restart: " + restart;
+      + ", " + "Direction: " + dataDirection + ", " + ", Type: " + messageType;
   }
 }

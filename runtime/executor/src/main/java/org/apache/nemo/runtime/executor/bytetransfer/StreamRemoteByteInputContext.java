@@ -20,7 +20,9 @@ package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.coder.DecoderFactory;
+import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,9 +34,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 import java.util.Queue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 
 /**
  * Container for multiple input streams. Represents a transfer context on receiver-side.
@@ -54,6 +54,9 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
   private final ByteBufInputStream currentByteBufInputStream = new ByteBufInputStream();
   private volatile boolean isFinished = false;
 
+  private EventHandler<Integer> ackHandler;
+  private final ScheduledExecutorService ackService;
+
 
   /**
    * Creates an input context.
@@ -65,8 +68,10 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
   StreamRemoteByteInputContext(final String remoteExecutorId,
                                final ContextId contextId,
                                final byte[] contextDescriptor,
-                               final ContextManager contextManager) {
+                               final ContextManager contextManager,
+                               final ScheduledExecutorService ackService) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
+    this.ackService = ackService;
   }
 
   public <T> DataUtil.IteratorWithNumBytes<T>  getInputIterator(
@@ -92,6 +97,25 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
   public void onNewStream() {
     //currentByteBufInputStream = new ByteBufInputStream();
     //byteBufInputStreams.add(currentByteBufInputStream);
+  }
+
+  @Override
+  public void sendMessage(final ByteTransferContextSetupMessage message,
+                          final EventHandler<Integer> handler) {
+    LOG.info("Send message to remote: {}", message);
+    ackHandler = handler;
+    // send message to the upstream task!
+    getContextManager().getChannel().writeAndFlush(message);
+  }
+
+  @Override
+  public void receivePendingAck() {
+    if (currentByteBufInputStream.byteBufQueue.isEmpty()) {
+      ackHandler.onNext(1);
+    } else {
+      // check ack
+      ackService.schedule(new AckRunner(), 500, TimeUnit.MILLISECONDS);
+    }
   }
 
   /**
@@ -309,6 +333,18 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
       } catch (IOException e) {
         e.printStackTrace();
         throw new RuntimeException(e);
+      }
+    }
+  }
+
+  final class AckRunner implements Runnable {
+
+    @Override
+    public void run() {
+      if (currentByteBufInputStream.byteBufQueue.isEmpty()) {
+        ackHandler.onNext(1);
+      } else {
+        ackService.schedule(new AckRunner(), 500, TimeUnit.MILLISECONDS);
       }
     }
   }

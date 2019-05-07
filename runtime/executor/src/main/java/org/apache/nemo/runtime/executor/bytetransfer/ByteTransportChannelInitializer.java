@@ -23,6 +23,7 @@ import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.datatransfer.VMScalingClientTransport;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -64,6 +65,8 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
   private final InjectionFuture<ByteTransfer> byteTransfer;
   private final InjectionFuture<ByteTransport> byteTransport;
+  private final InjectionFuture<VMScalingClientTransport> vmScalingClientTransport;
+  private final InjectionFuture<AckScheduledService> ackScheduledService;
   private final ControlFrameEncoder controlFrameEncoder;
   private final DataFrameEncoder dataFrameEncoder;
   private final String localExecutorId;
@@ -84,6 +87,8 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
                                           final InjectionFuture<BlockManagerWorker> blockManagerWorker,
                                           final InjectionFuture<ByteTransfer> byteTransfer,
                                           final InjectionFuture<ByteTransport> byteTransport,
+                                          final InjectionFuture<VMScalingClientTransport> vmScalingClientTransport,
+                                          final InjectionFuture<AckScheduledService> ackScheduledService,
                                           final ControlFrameEncoder controlFrameEncoder,
                                           final DataFrameEncoder dataFrameEncoder,
                                           @Parameter(JobConf.ExecutorId.class) final String localExecutorId) {
@@ -94,12 +99,21 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
     this.localExecutorId = localExecutorId;
+    this.vmScalingClientTransport = vmScalingClientTransport;
+    this.ackScheduledService = ackScheduledService;
   }
 
   @Override
   protected void initChannel(final SocketChannel ch) {
-    final ContextManager contextManager = new ContextManager(pipeManagerWorker.get(), blockManagerWorker.get(),
-      byteTransfer.get(), byteTransport.get().getChannelGroup(), localExecutorId, ch);
+    final ContextManager contextManager = new ContextManager(
+      pipeManagerWorker.get(),
+      blockManagerWorker.get(),
+      byteTransfer.get(),
+      byteTransport.get().getChannelGroup(),
+      localExecutorId,
+      ch,
+      vmScalingClientTransport.get(),
+      ackScheduledService.get());
     ch.pipeline()
         // inbound
         .addLast(new FrameDecoder(contextManager))

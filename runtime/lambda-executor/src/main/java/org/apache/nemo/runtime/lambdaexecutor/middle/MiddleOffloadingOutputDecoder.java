@@ -36,7 +36,7 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
           final String vertexId = dis.readUTF();
           final long timestamp = dis.readLong();
           final long watermark = dis.readLong();
-          LOG.info("Decode element: {}, {}, {}", vertexId, timestamp, watermark);
+          //LOG.info("Decode element: {}, {}, {}", vertexId, timestamp, watermark);
           return new OffloadingResultTimestampEvent(vertexId, timestamp, watermark);
         }
         case HEARTBEAT: {

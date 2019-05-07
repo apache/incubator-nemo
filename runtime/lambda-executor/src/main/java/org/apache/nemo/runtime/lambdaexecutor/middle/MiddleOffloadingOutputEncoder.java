@@ -24,7 +24,7 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
 
     if (data instanceof OffloadingResultTimestampEvent) {
       final OffloadingResultTimestampEvent element = (OffloadingResultTimestampEvent) data;
-      LOG.info("Encode elment: {}, {}, {}", element.vertexId, element.timestamp, element.watermark);
+      //LOG.info("Encode elment: {}, {}, {}", element.vertexId, element.timestamp, element.watermark);
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeChar(OFFLOADING_RESULT);
       dos.writeUTF(element.vertexId);

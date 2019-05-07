@@ -34,6 +34,7 @@ import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.datatransfer.DataFetcherOutputCollector;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
@@ -179,6 +180,7 @@ public final class TaskExecutor {
 
   private final ConcurrentMap<Integer, Long> offloadedTaskTimeMap = new ConcurrentHashMap<>();
 
+  private final TaskInputContextMap taskInputContextMap;
 
   /**
    * Constructor.
@@ -206,7 +208,8 @@ public final class TaskExecutor {
                       final SerializerManager serializerManager,
                       final ServerlessExecutorProvider serverlessExecutorProvider,
                       final OffloadingWorkerFactory offloadingWorkerFactory,
-                      final EvalConf evalConf) {
+                      final EvalConf evalConf,
+                      final TaskInputContextMap taskInputContextMap) {
     // Essential information
     this.threadId = threadId;
     this.executorId = executorId;
@@ -225,6 +228,7 @@ public final class TaskExecutor {
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.outputWriterMap = new HashSet<>();
     this.taskOutgoingEdges = new HashMap<>();
+    this.taskInputContextMap = taskInputContextMap;
     task.getTaskOutgoingEdges().forEach(edge -> {
       final IRVertex src = edge.getSrcIRVertex();
       final IRVertex dst = edge.getDstIRVertex();
@@ -330,6 +334,32 @@ public final class TaskExecutor {
           irVertexDag,
           offloadedTaskTimeMap));
       } else {
+        offloader = Optional.of(new DownstreamTaskOffloader(
+          executorId,
+          task,
+          this,
+          evalConf,
+          byteTransport.getExecutorAddressMap(),
+          pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),
+          serializedDag,
+          offloadingWorkerFactory,
+          taskOutgoingEdges,
+          serializerManager,
+          offloadingEventQueue,
+          sourceVertexDataFetchers,
+          taskId,
+          availableFetchers,
+          pendingFetchers,
+          status,
+          prevOffloadStartTime,
+          prevOffloadEndTime,
+          toMaster,
+          outputWriterMap,
+          irVertexDag,
+          offloadedTaskTimeMap,
+          taskInputContextMap));
+
+        /*
         if (evalConf.middleParallelism > 0) {
           offloader = Optional.of(new MiddleOffloader(
             executorId,
@@ -357,6 +387,7 @@ public final class TaskExecutor {
         } else {
           offloader = Optional.empty();
         }
+        */
       }
     } else {
       offloader = Optional.empty();
@@ -687,7 +718,8 @@ public final class TaskExecutor {
                   parentTaskReader.getSrcIrVertex(),
                   edge,
                   parentTaskReader,
-                  dataFetcherOutputCollector));
+                  dataFetcherOutputCollector,
+                  taskInputContextMap));
             } else {
               parentDataFetchers.add(
                 new ParentTaskDataFetcher(

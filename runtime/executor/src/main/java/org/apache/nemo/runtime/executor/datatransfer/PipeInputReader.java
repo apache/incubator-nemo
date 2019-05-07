@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -85,21 +85,21 @@ public final class PipeInputReader implements InputReader {
   }
 
   @Override
-  public void readAsync(EventHandler<Pair<DataUtil.IteratorWithNumBytes, Integer>> handler) {
+  public void readAsync(final EventHandler<NemoTriple<DataUtil.IteratorWithNumBytes, Integer, ByteInputContext>> handler) {
     pipeManagerWorker
       .registerInputContextHandler(runtimeEdge, dstTaskIndex, pair -> {
         final ByteInputContext context = pair.left();
         final int srcTaskIndex = pair.right();
         if (context instanceof LocalByteInputContext) {
           final LocalByteInputContext localByteInputContext = (LocalByteInputContext) context;
-          handler.onNext(Pair.of(localByteInputContext.getIteratorWithNumBytes(), srcTaskIndex));
+          handler.onNext(new NemoTriple<>(localByteInputContext.getIteratorWithNumBytes(), srcTaskIndex, localByteInputContext));
         } else if (context instanceof RemoteByteInputContext) {
-          handler.onNext(Pair.of(new DataUtil.InputStreamIterator(context.getInputStreams(),
-            pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())), srcTaskIndex));
+          handler.onNext(new NemoTriple<>(new DataUtil.InputStreamIterator(context.getInputStreams(),
+            pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())), srcTaskIndex, context));
         } else if (context instanceof StreamRemoteByteInputContext) {
-          handler.onNext(Pair.of(((StreamRemoteByteInputContext) context).getInputIterator(
+          handler.onNext(new NemoTriple<>(((StreamRemoteByteInputContext) context).getInputIterator(
             pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())),
-            srcTaskIndex));
+            srcTaskIndex, context));
         }
       });
   }

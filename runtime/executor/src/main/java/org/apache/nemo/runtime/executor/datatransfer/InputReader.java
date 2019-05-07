@@ -18,9 +18,10 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.Pair;
+import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.reef.wake.EventHandler;
 
@@ -40,7 +41,7 @@ public interface InputReader {
 
 
   // input stream and src task index pair
-  void readAsync(EventHandler<Pair<DataUtil.IteratorWithNumBytes, Integer>> handler);
+  void readAsync(EventHandler<NemoTriple<DataUtil.IteratorWithNumBytes, Integer, ByteInputContext>> handler);
 
   List<DataUtil.IteratorWithNumBytes> readBlocking();
 

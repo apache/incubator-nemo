@@ -49,6 +49,13 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
 
   ByteOutputStream newOutputStream() throws IOException;
 
+  // pending for moving downstream tasks
+  void pending(final boolean scaleout);
+
+  // resume after moving downstream tasks
+  void scaleoutToVm(final String address, final String taskId);
+  void scaleInToVm();
+
   void stop();
 
   void restart();
@@ -79,6 +86,8 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
     ByteOutputStream writeFileArea(final FileArea fileArea) throws IOException;
 
     void writeElement(final Object element,
-                      final Serializer serializer);
+                      final Serializer serializer,
+                      final String edgeId,
+                      final String nextOpId);
   }
 }

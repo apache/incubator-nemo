@@ -97,7 +97,11 @@ public final class PipeOutputWriter implements OutputWriter {
     pipeList.forEach(pipe -> {
       final ByteOutputContext.ByteOutputStream stream = pipeAndStreamMap.get(pipe);
       //LOG.info("Write element at {}/{}", srcTaskId, runtimeEdge.getSrc().getId());
-      stream.writeElement(element, serializer);
+      stream.writeElement(element,
+        serializer,
+        runtimeEdge.getId(),
+        stageEdge.getDstIRVertex().getId());
+
       if (flush) {
         try {
           stream.flush();
