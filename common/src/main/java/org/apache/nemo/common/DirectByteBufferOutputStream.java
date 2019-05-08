@@ -164,9 +164,8 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    * @return the {@code LinkedList} of {@code ByteBuffer}s.
    */
   public List<ByteBuffer> getBufferListAndClear() {
-    List<ByteBuffer> result = new LinkedList<>();
-    result.addAll(dataList);
-    dataList = new LinkedList<>();
+    List<ByteBuffer> result = dataList;
+    //dataList = new LinkedList<>(); //disable clearing for now
     for (final ByteBuffer buffer : result) {
       buffer.flip();
     }
