@@ -34,9 +34,13 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+
+import static io.netty.buffer.Unpooled.wrappedBuffer;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -150,6 +154,11 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       writeByteBuf(byteBuf);
     }
 
+
+    public void writeBuffer(final List<ByteBuffer> bufList) throws IOException {
+      final ByteBuf byteBuf = wrappedBuffer(bufList.stream().toArray(ByteBuffer[]::new));
+      writeByteBuf(byteBuf);
+    }
     /**
      * Writes {@link SerializedPartition}.
      *
@@ -163,6 +172,11 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
       return this;
     }
 
+    public ByteOutputStream writeSerializedPartitionBuffer(final SerializedPartition serializedPartition)
+      throws IOException {
+      writeBuffer(serializedPartition.getBuffer());
+      return this;
+    }
     /**
      * Writes a data frame from {@link FileArea}.
      *

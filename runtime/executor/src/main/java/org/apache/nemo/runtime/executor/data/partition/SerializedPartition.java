@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.List;
 
 import static org.apache.nemo.runtime.executor.data.DataUtil.buildOutputStream;
 
@@ -50,6 +52,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   private final OutputStream wrappedStream;
   @Nullable
   private final EncoderFactory.Encoder encoder;
+  private volatile List<ByteBuffer> dataList;
 
   /**
    * Creates a serialized {@link Partition} without actual data.
@@ -120,7 +123,8 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
       // inner buffer directly, which can be an unfinished(not flushed) buffer.
       wrappedStream.close();
-      this.serializedData = bytesOutputStream.toByteArray();
+      //this.serializedData = bytesOutputStream.toByteArray();
+      this.dataList = bytesOutputStream.getBufferListAndClear();
       LOG.info("Just used ByteBufferOutputStream");
 
       this.length = bytesOutputStream.size();
@@ -154,6 +158,14 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       throw new IOException("The partition is not committed yet!");
     } else {
       return serializedData;
+    }
+  }
+
+  public List<ByteBuffer> getBuffer() throws IOException {
+    if (!committed) {
+      throw new IOException("The partition is not committed yet!");
+    } else {
+      return dataList;
     }
   }
 
