@@ -39,7 +39,7 @@ public final class DefaultDataStorePass extends AnnotatingPass {
       dag.getIncomingEdgesOf(vertex).stream()
         .filter(edge -> !edge.getPropertyValue(DataStoreProperty.class).isPresent())
         .forEach(edge -> edge.setProperty(
-          DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore)));
+          DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore)));
     });
     return dag;
   }
