@@ -156,7 +156,8 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
 
 
     public void writeBuffer(final List<ByteBuffer> bufList) throws IOException {
-      final ByteBuf byteBuf = wrappedBuffer(bufList.stream().toArray(ByteBuffer[]::new));
+      //final ByteBuf byteBuf = wrappedBuffer(bufList.stream().toArray(ByteBuffer[]::new));
+      final ByteBuf byteBuf = wrappedBuffer(bufList.toArray(new ByteBuffer[bufList.size()]));
       writeByteBuf(byteBuf);
     }
     /**
