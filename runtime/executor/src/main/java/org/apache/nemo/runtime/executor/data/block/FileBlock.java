@@ -88,29 +88,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
         // Reserve a partition write and get the metadata.
         metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
-        LinkedList<ByteBuffer> bufList = (LinkedList) serializedPartition.getBuffer();
-        ByteBuffer lastBuf = bufList.getLast();
-        // pageSize equals the size of the data filled in the ByteBuffers
-        // except for the last ByteBuffer. The size of the data in the
-        // ByteBuffer can be obtained by calling ByteBuffer.position().
-        final int arraySize = 32768 * (bufList.size() - 1) + lastBuf.position();
-        final byte[] byteArray = new byte[arraySize];
-        int start = 0;
-        int byteToWrite;
-
-        for (final ByteBuffer temp : bufList) {
-          // ByteBuffer has to be shifted to read mode by calling ByteBuffer.flip(),
-          // which sets limit to the current position and sets the position to 0.
-          // Note that capacity remains unchanged.
-          temp.flip();
-          byteToWrite = temp.remaining();
-          temp.get(byteArray, start, byteToWrite);
-          start += byteToWrite;
-        }
-        // The limit of the last buffer has to be set to the capacity for additional write.
-        lastBuf.limit(lastBuf.capacity());
-
-        fileOutputStream.write(byteArray);
+        fileOutputStream.write(serializedPartition.getData(), 0, serializedPartition.getLength());
       }
     }
   }
