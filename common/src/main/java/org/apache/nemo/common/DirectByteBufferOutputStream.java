@@ -20,6 +20,7 @@ package org.apache.nemo.common;
 
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -163,11 +164,13 @@ public final class DirectByteBufferOutputStream extends OutputStream {
    *
    * @return the {@code LinkedList} of {@code ByteBuffer}s.
    */
-  public List<ByteBuffer> getBufferListAndClear() {
-    List<ByteBuffer> result = dataList;
+  public List<ByteBuffer> getBufferList() {
+    List<ByteBuffer> result = new ArrayList<>(dataList.size());
     //dataList = new LinkedList<>(); //disable clearing for now
     for (final ByteBuffer buffer : result) {
-      buffer.flip();
+      final ByteBuffer dupBuffer = buffer.duplicate();
+      dupBuffer.flip();
+      result.add(dupBuffer);
     }
     return result;
   }
