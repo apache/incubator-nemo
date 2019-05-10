@@ -167,7 +167,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   public List<ByteBuffer> getBufferList() {
     List<ByteBuffer> result = new ArrayList<>(dataList.size());
     //dataList = new LinkedList<>(); //disable clearing for now
-    for (final ByteBuffer buffer : result) {
+    for (final ByteBuffer buffer : dataList) {
       final ByteBuffer dupBuffer = buffer.duplicate();
       dupBuffer.flip();
       result.add(dupBuffer);
