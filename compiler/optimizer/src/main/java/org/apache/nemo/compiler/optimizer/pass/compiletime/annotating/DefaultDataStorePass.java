@@ -38,10 +38,11 @@ public final class DefaultDataStorePass extends AnnotatingPass {
 
   @Override
   public IRDAG apply(final IRDAG dag) {
-    dag.getVertices().forEach(vertex -> { // Initialize the DataStore of the DAG with GlusterFileStore.
-      final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      inEdges.forEach(edge ->
-        edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore)));
+    dag.getVertices().forEach(vertex -> {
+      dag.getIncomingEdgesOf(vertex).stream()
+        .filter(edge -> !edge.getPropertyValue(DataStoreProperty.class).isPresent())
+        .forEach(edge -> edge.setProperty(
+          DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore)));
     });
     return dag;
   }
