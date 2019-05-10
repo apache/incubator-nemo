@@ -141,19 +141,19 @@ public final class DirectByteBufferOutputStream extends OutputStream {
     final int arraySize = pageSize * (dataList.size() - 1) + lastBuf.position();
     final byte[] byteArray = new byte[arraySize];
     int start = 0;
-    int byteToWrite;
 
-    for (final ByteBuffer temp : dataList) {
+    for (final ByteBuffer buffer : dataList) {
       // ByteBuffer has to be shifted to read mode by calling ByteBuffer.flip(),
       // which sets limit to the current position and sets the position to 0.
       // Note that capacity remains unchanged.
-      temp.flip();
-      byteToWrite = temp.remaining();
-      temp.get(byteArray, start, byteToWrite);
+      final ByteBuffer dupBuffer = buffer.duplicate();
+      dupBuffer.flip();
+      final int byteToWrite = dupBuffer.remaining();
+      dupBuffer.get(byteArray, start, byteToWrite);
       start += byteToWrite;
     }
     // The limit of the last buffer has to be set to the capacity for additional write.
-    lastBuf.limit(lastBuf.capacity());
+    // lastBuf.limit(lastBuf.capacity());
 
     return byteArray;
   }
