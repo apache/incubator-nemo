@@ -34,16 +34,18 @@ public final class KafkaOffloadingOutputDecoder implements OffloadingDecoder<Obj
 
       switch (type) {
         case KafkaOffloadingOutputEncoder.HEARTBEAT: {
-          final Integer taskId = dis.readInt();
+          final String taskId = dis.readUTF();
+          final Integer taskIndex = dis.readInt();
           final Long time = dis.readLong();
-          return new OffloadingHeartbeatEvent(taskId, time);
+          return new OffloadingHeartbeatEvent(taskId, taskIndex, time);
         }
         case KafkaOffloadingOutputEncoder.OFFLOADING_RESULT: {
 
+          final String taskId = dis.readUTF();
           final String vertexId = dis.readUTF();
           final long timestamp = dis.readLong();
           final long watermark = dis.readLong();
-          return new OffloadingResultTimestampEvent(vertexId, timestamp, watermark);
+          return new OffloadingResultTimestampEvent(taskId, vertexId, timestamp, watermark);
 
           /*
           final int length = dis.readInt();
@@ -65,9 +67,11 @@ public final class KafkaOffloadingOutputDecoder implements OffloadingDecoder<Obj
           */
         }
         case KafkaOffloadingOutputEncoder.KAFKA_CHECKPOINT: {
-          final int id = new DataInputStream(inputStream).readInt();
+          final DataInputStream dd = new DataInputStream(inputStream);
+          final String task = dd.readUTF();
+          final int id = dd.readInt();
           final UnboundedSource.CheckpointMark checkpointMark = coder.decode(inputStream);
-          return new KafkaOffloadingOutput(id, checkpointMark);
+          return new KafkaOffloadingOutput(task, id, checkpointMark);
         }
         default: {
           throw new RuntimeException("Unsupported type: " + type);

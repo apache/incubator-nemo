@@ -1,7 +1,6 @@
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
 
 import javax.inject.Inject;
 import java.util.ArrayList;

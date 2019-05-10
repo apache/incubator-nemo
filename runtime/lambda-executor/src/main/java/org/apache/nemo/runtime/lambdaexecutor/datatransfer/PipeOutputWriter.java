@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -28,6 +27,7 @@ import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,9 +80,14 @@ public final class PipeOutputWriter {
                          final List<ByteOutputContext> pipeList, final boolean flush) {
     pipeList.forEach(pipe -> {
       final ByteOutputContext.ByteOutputStream stream = pipeAndStreamMap.get(pipe);
-      stream.writeElement(element, serializer);
+      stream.writeElement(element, serializer, runtimeEdge.getId(), stageEdge.getDstIRVertex().getId());
       if (flush) {
-        stream.flush();
+        try {
+          stream.flush();
+        } catch (IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
       }
     });
   }
@@ -110,6 +115,9 @@ public final class PipeOutputWriter {
         pipeAndStreamMap.get(pipe).close();
         pipe.close();
       } catch (IOException e) {
+        throw new RuntimeException(e);
+      } catch (Exception e) {
+        e.printStackTrace();
         throw new RuntimeException(e);
       }
     });
@@ -159,7 +167,6 @@ public final class PipeOutputWriter {
           throw new RuntimeException(e);
         }
       }).collect(Collectors.toList());
-
 
   }
 

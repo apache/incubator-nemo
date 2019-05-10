@@ -1,26 +1,23 @@
-package org.apache.nemo.runtime.lambdaexecutor.downstream;
+package org.apache.nemo.runtime.lambdaexecutor.general;
 
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.offloading.common.OffloadingEncoder;
 import org.apache.nemo.offloading.common.OffloadingSerializer;
-import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingInputDecoder;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingOutputDecoder;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingOutputEncoder;
 
-import java.util.Map;
-
-public class DownstreamOffloadingSerializer implements OffloadingSerializer {
-
+public class OffloadingExecutorSerializer implements OffloadingSerializer {
 
   private final OffloadingDecoder inputDecoder;
   private final OffloadingEncoder outputEncoder;
   private final OffloadingDecoder outputDecoder;
 
-  public DownstreamOffloadingSerializer(final Map<String, Serializer> serializerMap) {
-    this.inputDecoder = new DownstreamOffloadingInputDecoder(serializerMap);
-    this.outputEncoder = new MiddleOffloadingOutputEncoder(null);
-    this.outputDecoder = new MiddleOffloadingOutputDecoder(null);
+  public OffloadingExecutorSerializer(final Coder<UnboundedSource.CheckpointMark> coder) {
+    this.inputDecoder = new OffloadingExecutorInputDecoder(coder);
+    this.outputEncoder = new MiddleOffloadingOutputEncoder(coder);
+    this.outputDecoder = new MiddleOffloadingOutputDecoder(coder);
   }
 
   @Override

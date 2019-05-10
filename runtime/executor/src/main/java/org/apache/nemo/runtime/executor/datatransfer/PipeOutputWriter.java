@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -291,7 +291,7 @@ public final class PipeOutputWriter implements OutputWriter {
     LOG.info("Finish - doInitialize() {}", runtimeEdge);
     pipes.forEach(pipe -> {
       try {
-        final ByteOutputContext.ByteOutputStream bis = pipe.newOutputStream();
+        final LambdaByteOutputContext.ByteOutputStream bis = pipe.newOutputStream();
         pipeAndStreamMap.put(pipe, bis);
       } catch (final IOException e) {
         e.printStackTrace();

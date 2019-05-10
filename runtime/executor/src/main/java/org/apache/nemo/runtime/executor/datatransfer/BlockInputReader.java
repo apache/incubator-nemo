@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.HashRange;
 import org.apache.nemo.common.KeyRange;
-import org.apache.nemo.common.NemoTriple;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.BlockFetchException;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.*;
@@ -28,9 +28,9 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
-import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.reef.wake.EventHandler;
 
 import java.util.*;
@@ -61,7 +61,7 @@ public final class BlockInputReader implements InputReader {
   }
 
   @Override
-  public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
+  public List<CompletableFuture<IteratorWithNumBytes>> read() {
     final Optional<CommunicationPatternProperty.Value> comValue =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
 
@@ -77,12 +77,12 @@ public final class BlockInputReader implements InputReader {
   }
 
   @Override
-  public void readAsync(EventHandler<NemoTriple<DataUtil.IteratorWithNumBytes, Integer, ByteInputContext>> handler) {
+  public void readAsync(String taskId, EventHandler<Pair<IteratorWithNumBytes, Integer>> handler) {
     throw new UnsupportedOperationException("Not support");
   }
 
   @Override
-  public List<DataUtil.IteratorWithNumBytes> readBlocking() {
+  public List<IteratorWithNumBytes> readBlocking() {
     throw new UnsupportedOperationException("Not support");
   }
 
@@ -111,19 +111,19 @@ public final class BlockInputReader implements InputReader {
     return RuntimeIdManager.generateBlockIdWildcard(duplicateEdgeId, producerTaskIndex);
   }
 
-  private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
+  private CompletableFuture<IteratorWithNumBytes> readOneToOne() {
     final String blockIdWildcard = generateWildCardBlockId(dstTaskIndex);
     final Optional<DataStoreProperty.Value> dataStoreProperty
       = runtimeEdge.getPropertyValue(DataStoreProperty.class);
     return blockManagerWorker.readBlock(blockIdWildcard, runtimeEdge.getId(), dataStoreProperty.get(), HashRange.all());
   }
 
-  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
+  private List<CompletableFuture<IteratorWithNumBytes>> readBroadcast() {
     final int numSrcTasks = InputReader.getSourceParallelism(this);
     final Optional<DataStoreProperty.Value> dataStoreProperty
       = runtimeEdge.getPropertyValue(DataStoreProperty.class);
 
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
+    final List<CompletableFuture<IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
       futures.add(blockManagerWorker.readBlock(
@@ -138,7 +138,7 @@ public final class BlockInputReader implements InputReader {
    *
    * @return the list of the completable future of the data.
    */
-  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
+  private List<CompletableFuture<IteratorWithNumBytes>> readDataInRange() {
     assert (runtimeEdge instanceof StageEdge);
     final Optional<DataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(DataStoreProperty.class);
     final List<KeyRange> keyRangeList = ((StageEdge) runtimeEdge).getKeyRanges();
@@ -148,7 +148,7 @@ public final class BlockInputReader implements InputReader {
         new Throwable("The hash range to read is not assigned to " + dstTaskIndex + "'th task"));
     }
     final int numSrcTasks = InputReader.getSourceParallelism(this);
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
+    final List<CompletableFuture<IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
       futures.add(

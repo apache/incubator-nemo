@@ -88,7 +88,8 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
 
   @Override
   public void prepare(final OffloadingContext context,
-    final OffloadingOutputCollector oc) { this.offloadingContext = context;
+    final OffloadingOutputCollector oc) {
+    this.offloadingContext = context;
     this.offloadingOutputCollector = oc;
     pipeOutputWriters = new HashSet<>();
   }
@@ -114,6 +115,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
     if (stageEdges.size() > 0) {
       // create byte transport
       final NativeChannelImplementationSelector selector = new NativeChannelImplementationSelector();
+      /*
       final LambdaControlFrameEncoder controlFrameEncoder = new LambdaControlFrameEncoder(executorId);
       final LambdaDataFrameEncoder dataFrameEncoder = new LambdaDataFrameEncoder();
       channels = new ConcurrentHashMap<>();
@@ -140,6 +142,8 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
         new PipeManagerWorker(executorId, byteTransfer, dstTaskIndexTargetExecutorMap);
       intermediateDataIOFactory =
         new IntermediateDataIOFactory(pipeManagerWorker);
+        */
+      intermediateDataIOFactory = null;
     } else {
       intermediateDataIOFactory = null;
     }
@@ -225,6 +229,7 @@ public final class KafkaOffloadingTransform<O> implements OffloadingTransform<Ka
       final RuntimeEdge<IRVertex> e = getEdge(irDag, irVertex);
       KafkaOperatorVertexOutputCollector outputCollector =
         new KafkaOperatorVertexOutputCollector(
+          "task",
           irVertex,
           samplingMap.getOrDefault(irVertex.getId(), 1.0),
           e, /* just use first edge for encoding */

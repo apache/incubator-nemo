@@ -20,9 +20,9 @@ package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.channel.*;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.datatransfer.VMScalingClientTransport;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -102,7 +102,7 @@ public final class ByteTransfer {
       LOG.info("New local output context: {}", executorId);
       byteTransport.getAndPutInetAddress(executorId);
       executorIdLocalContextManagerMap.putIfAbsent(executorId,
-        new ContextManager(pipeManagerWorker.get(),
+        new DefaultContextManagerImpl(pipeManagerWorker.get(),
           blockManagerWorker.get(),
           byteTransfer.get(),
           null,

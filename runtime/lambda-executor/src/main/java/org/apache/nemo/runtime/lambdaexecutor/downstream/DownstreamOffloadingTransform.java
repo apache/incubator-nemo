@@ -168,7 +168,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
             prevTime = tTime;
 
             LOG.info("Flush elapsed time: {}", elapsedTime);
-            resultCollector.collector.emit(new OffloadingHeartbeatEvent(taskIndex, elapsedTime));
+            resultCollector.collector.emit(new OffloadingHeartbeatEvent("no", taskIndex, elapsedTime));
           }
           final DownstreamOffloadingDataEvent element = dataQueue.poll();
           // data processing
@@ -200,8 +200,8 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
     if (outgoingEdges.size() > 0) {
       // create byte transport
       final NativeChannelImplementationSelector selector = new NativeChannelImplementationSelector();
-      final LambdaControlFrameEncoder controlFrameEncoder = new LambdaControlFrameEncoder(executorId);
-      final LambdaDataFrameEncoder dataFrameEncoder = new LambdaDataFrameEncoder();
+      //final LambdaControlFrameEncoder controlFrameEncoder = new LambdaControlFrameEncoder(executorId);
+     // final LambdaDataFrameEncoder dataFrameEncoder = new LambdaDataFrameEncoder();
       channels = new ConcurrentHashMap<>();
 
       scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -215,17 +215,18 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
         }
       }, 1, 1, TimeUnit.SECONDS);
 
-      final LambdaByteTransportChannelInitializer initializer =
-        new LambdaByteTransportChannelInitializer(controlFrameEncoder, dataFrameEncoder, channels, executorId);
+      //final LambdaByteTransportChannelInitializer initializer =
+      //  new LambdaByteTransportChannelInitializer(controlFrameEncoder, dataFrameEncoder, channels, executorId);
 
 
-      byteTransport = new LambdaByteTransport(
-        executorId, selector, initializer, executorAddressMap);
+     // byteTransport = new LambdaByteTransport(
+     //   executorId, selector, initializer, executorAddressMap);
       final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
-      final PipeManagerWorker pipeManagerWorker =
-        new PipeManagerWorker(executorId, byteTransfer, dstTaskIndexTargetExecutorMap);
-      intermediateDataIOFactory =
-        new IntermediateDataIOFactory(pipeManagerWorker);
+     // final PipeManagerWorker pipeManagerWorker =
+     //   new PipeManagerWorker(executorId, byteTransfer, dstTaskIndexTargetExecutorMap);
+     // intermediateDataIOFactory =
+     //   new IntermediateDataIOFactory(pipeManagerWorker);
+      intermediateDataIOFactory = null;
     } else {
       intermediateDataIOFactory = null;
     }
@@ -307,6 +308,7 @@ public final class DownstreamOffloadingTransform<O> implements OffloadingTransfo
       final RuntimeEdge<IRVertex> e = getEdge(irDag, irVertex);
       KafkaOperatorVertexOutputCollector outputCollector =
         new KafkaOperatorVertexOutputCollector(
+          taskId,
           irVertex,
           samplingMap.getOrDefault(irVertex.getId(), 1.0),
           e, /* just use first edge for encoding */

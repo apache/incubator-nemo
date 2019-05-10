@@ -16,21 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
-import org.apache.nemo.runtime.executor.bytetransfer.LocalByteInputContext;
-import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RemoteByteInputContext;
-import org.apache.nemo.runtime.executor.common.datatransfer.StreamRemoteByteInputContext;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
-import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.reef.wake.EventHandler;
 
 import java.util.ArrayList;
@@ -38,12 +32,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 /**
  * Represents the input data transfer to a task.
  */
-public final class PipeInputReader implements InputReader {
+public final class LambdaPipeInputReader implements InputReader {
   private final PipeManagerWorker pipeManagerWorker;
 
   private final int dstTaskIndex;
@@ -53,19 +46,15 @@ public final class PipeInputReader implements InputReader {
    */
   private final IRVertex srcVertex;
   private final RuntimeEdge runtimeEdge;
-  private final TaskInputContextMap taskInputContextMap;
 
-  PipeInputReader(final int dstTaskIdx,
-                  final IRVertex srcIRVertex,
-                  final RuntimeEdge runtimeEdge,
-                  final PipeManagerWorker pipeManagerWorker,
-                  final TaskInputContextMap taskInputContextMap) {
+  LambdaPipeInputReader(final int dstTaskIdx,
+                        final IRVertex srcIRVertex,
+                        final RuntimeEdge runtimeEdge,
+                        final PipeManagerWorker pipeManagerWorker) {
     this.dstTaskIndex = dstTaskIdx;
     this.srcVertex = srcIRVertex;
-    this.taskInputContextMap = taskInputContextMap;
     this.runtimeEdge = runtimeEdge;
     this.pipeManagerWorker = pipeManagerWorker;
-    this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), dstTaskIdx);
   }
 
 
@@ -92,43 +81,11 @@ public final class PipeInputReader implements InputReader {
   @Override
   public void readAsync(final String taskId,
                         final EventHandler<Pair<IteratorWithNumBytes, Integer>> handler) {
-    pipeManagerWorker
-      .registerInputContextHandler(runtimeEdge, dstTaskIndex, pair -> {
-        final ByteInputContext context = pair.left();
-        taskInputContextMap.put(taskId, context);
-
-        final int srcTaskIndex = pair.right();
-        if (context instanceof LocalByteInputContext) {
-          final LocalByteInputContext localByteInputContext = (LocalByteInputContext) context;
-          handler.onNext(Pair.of(localByteInputContext.getIteratorWithNumBytes(), srcTaskIndex));
-        } else if (context instanceof RemoteByteInputContext) {
-          handler.onNext(Pair.of(new DataUtil.InputStreamIterator(context.getInputStreams(),
-            pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())), srcTaskIndex));
-        } else if (context instanceof StreamRemoteByteInputContext) {
-          handler.onNext(Pair.of(((StreamRemoteByteInputContext) context).getInputIterator(
-            pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())),
-            srcTaskIndex));
-        }
-      });
+    throw new RuntimeException("Unsupported");
   }
 
   public List<IteratorWithNumBytes> readBlocking() {
-
-    /**********************************************************/
-    /* 여기서 pipe container 같은거 사용하기
-    /**********************************************************/
-    final List<ByteInputContext> byteInputContexts = pipeManagerWorker.getInputContexts(runtimeEdge, dstTaskIndex);
-
-    return byteInputContexts.stream()
-      .map(context -> {
-        return new DataUtil.InputStreamIterator(context.getInputStreams(),
-          pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId()));
-      })
-      .collect(Collectors.toList());
-
-
-    /**********************************************************/
-    /**********************************************************/
+    throw new RuntimeException("Unsupported");
   }
 
   @Override

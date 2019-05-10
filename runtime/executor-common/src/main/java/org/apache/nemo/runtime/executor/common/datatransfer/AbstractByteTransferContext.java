@@ -16,16 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.util.Objects;
 
 /**
  * {@link ByteInputContext} and {@link ByteOutputContext}.
@@ -127,6 +125,8 @@ public abstract class AbstractByteTransferContext implements ByteTransferContext
       return;
     }
     hasException = true;
+    cause.printStackTrace();
+    LOG.error(cause.toString());
     LOG.error(String.format("A channel exception set on %s", toString())); // Not logging throwable, which isn't useful
     exception = cause;
   }

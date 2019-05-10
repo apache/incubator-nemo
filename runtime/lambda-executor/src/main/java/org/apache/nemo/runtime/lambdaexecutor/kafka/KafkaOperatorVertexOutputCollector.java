@@ -69,6 +69,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
   private final Random random = new Random();
 
   private final Edge encodingEdge;
+  private final String taskId;
 
   /**
    * Constructor of the output collector.
@@ -76,6 +77,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
    * @param internalAdditionalOutputs internal additional outputs
    */
   public KafkaOperatorVertexOutputCollector(
+    final String taskId,
     final IRVertex irVertex,
     final double samplingRate,
     final Edge edge,
@@ -86,6 +88,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     final Map<String, List<String>> taskOutgoingEdges,
     final Map<String, List<PipeOutputWriter>> externalAdditionalOutputs,
     final List<PipeOutputWriter> externalMainOutputs) {
+    this.taskId = taskId;
     this.irVertex = irVertex;
     this.samplingRate = samplingRate;
     this.edge = edge;
@@ -143,7 +146,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
       if (nextOpIds != null) {
         //LOG.info("Emit sampling data at {}", irVertex.getId());
         for (final String nextOpId : nextOpIds){
-          offloadingOutputCollector.emit(new OffloadingResultTimestampEvent(nextOpId, inputTimestamp, 0));
+          offloadingOutputCollector.emit(new OffloadingResultTimestampEvent(taskId, nextOpId, inputTimestamp, 0));
         }
         /*
         resultCollector.result.add(new NemoTriple<>(
@@ -185,7 +188,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
 
       if (nextOpIds != null) {
         for (final String nextOpId : nextOpIds){
-          offloadingOutputCollector.emit(new OffloadingResultTimestampEvent(nextOpId, inputTimestamp, 0));
+          offloadingOutputCollector.emit(new OffloadingResultTimestampEvent(taskId, nextOpId, inputTimestamp, 0));
         }
         /*
         resultCollector.result.add(new NemoTriple<>(

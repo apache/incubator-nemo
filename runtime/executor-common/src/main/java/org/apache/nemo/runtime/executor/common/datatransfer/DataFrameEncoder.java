@@ -16,16 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import io.netty.util.Recycler;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 
 import javax.annotation.Nullable;
+import javax.inject.Inject;
 import java.util.List;
 
 /**
@@ -33,7 +33,7 @@ import java.util.List;
  *
  */
 @ChannelHandler.Sharable
-public final class LambdaDataFrameEncoder extends MessageToMessageEncoder<LambdaDataFrameEncoder.DataFrame> {
+public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.DataFrame> {
 
   private static final int TRANSFER_INDEX_LENGTH = Integer.BYTES;
   private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
@@ -42,7 +42,8 @@ public final class LambdaDataFrameEncoder extends MessageToMessageEncoder<Lambda
   // the maximum length of a frame body. 2**32 - 1
   static final long LENGTH_MAX = 4294967295L;
 
-  public LambdaDataFrameEncoder() {
+  @Inject
+  public DataFrameEncoder() {
   }
 
   @Override
@@ -50,6 +51,11 @@ public final class LambdaDataFrameEncoder extends MessageToMessageEncoder<Lambda
     // encode header
     final ByteBuf header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
     byte flags = (byte) 0;
+
+    if (in.stopContext) {
+      flags |= (byte) (1 << 4);
+    }
+
     flags |= (byte) (1 << 3);
     if (in.contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA) {
       flags |= (byte) (1 << 2);
@@ -82,11 +88,11 @@ public final class LambdaDataFrameEncoder extends MessageToMessageEncoder<Lambda
   /**
    * Data frame representation.
    */
-  static final class DataFrame {
+  public static final class DataFrame {
 
     private static final Recycler<DataFrame> RECYCLER = new Recycler<DataFrame>() {
       @Override
-      protected DataFrame newObject(final Handle handle) {
+      protected DataFrame newObject(final Recycler.Handle handle) {
         return new DataFrame(handle);
       }
     };
@@ -101,12 +107,13 @@ public final class LambdaDataFrameEncoder extends MessageToMessageEncoder<Lambda
     }
 
     private final Recycler.Handle handle;
-    private LambdaByteTransferContext.ContextId contextId;
+    private ByteTransferContext.ContextId contextId;
     @Nullable
     private Object body;
     private long length;
     private boolean opensSubStream;
     private boolean closesContext;
+    private boolean stopContext;
 
     /**
      * Creates a {@link DataFrame} to supply content to sub-stream.
@@ -117,7 +124,7 @@ public final class LambdaDataFrameEncoder extends MessageToMessageEncoder<Lambda
      * @param opensSubStream whether this frame opens a new sub-stream or not
      * @return the {@link DataFrame} object
      */
-    static DataFrame newInstance(final LambdaByteTransferContext.ContextId contextId,
+    public static DataFrame newInstance(final ByteTransferContext.ContextId contextId,
                                  @Nullable final Object body,
                                  final long length,
                                  final boolean opensSubStream) {
@@ -127,6 +134,7 @@ public final class LambdaDataFrameEncoder extends MessageToMessageEncoder<Lambda
       dataFrame.length = length;
       dataFrame.opensSubStream = opensSubStream;
       dataFrame.closesContext = false;
+      dataFrame.stopContext = false;
       return dataFrame;
     }
 
@@ -135,16 +143,27 @@ public final class LambdaDataFrameEncoder extends MessageToMessageEncoder<Lambda
      * @param contextId   the context id
      * @return the {@link DataFrame} object
      */
-    static DataFrame newInstance(final LambdaByteTransferContext.ContextId contextId) {
+    public static DataFrame newInstance(final ByteTransferContext.ContextId contextId) {
       final DataFrame dataFrame = RECYCLER.get();
       dataFrame.contextId = contextId;
       dataFrame.body = null;
       dataFrame.length = 0;
       dataFrame.opensSubStream = false;
       dataFrame.closesContext = true;
+      dataFrame.stopContext = false;
       return dataFrame;
     }
 
+    public static DataFrame newInstanceForStop(final ByteTransferContext.ContextId contextId) {
+      final DataFrame dataFrame = RECYCLER.get();
+      dataFrame.contextId = contextId;
+      dataFrame.body = null;
+      dataFrame.length = 0;
+      dataFrame.opensSubStream = false;
+      dataFrame.closesContext = false;
+      dataFrame.stopContext = true;
+      return dataFrame;
+    }
     /**
      * Recycles this object.
      */

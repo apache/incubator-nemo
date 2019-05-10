@@ -86,7 +86,7 @@ public final class LambdaByteTransport {//implements AutoCloseable {
     return connectFuture;
   }
 
-  ChannelGroup getChannelGroup() {
+  public ChannelGroup getChannelGroup() {
     return channelGroup;
   }
 }

@@ -19,41 +19,53 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
-import org.apache.nemo.common.*;
-import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
-import org.apache.nemo.common.punctuation.TimestampAndValue;
-import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
-import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
+import org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.common.ir.vertex.*;
+import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.common.ir.edge.StageEdge;
+import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
+import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
-import org.apache.nemo.runtime.executor.common.*;
-import org.apache.nemo.runtime.executor.common.datatransfer.DataFetcherOutputCollector;
-import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.datatransfer.*;
-import org.apache.nemo.runtime.executor.data.SerializerManager;
-import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.common.punctuation.TimestampAndValue;
+import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
+import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.common.ir.edge.StageEdge;
-import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.TaskStateManager;
 import org.apache.nemo.runtime.executor.TransformContextImpl;
+import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
+import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.datatransfer.DataFetcherOutputCollector;
+import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
+import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.data.SerializerManager;
+import org.apache.nemo.runtime.executor.datatransfer.*;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
+import org.apache.nemo.runtime.lambdaexecutor.Triple;
+import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import javax.annotation.concurrent.NotThreadSafe;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -61,24 +73,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.SerializationUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.nemo.runtime.lambdaexecutor.*;
-import org.apache.nemo.runtime.executor.datatransfer.RunTimeMessageOutputCollector;
-import org.apache.nemo.runtime.executor.datatransfer.OperatorVertexOutputCollector;
-import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.annotation.concurrent.NotThreadSafe;
-
 /**
  * Executes a task.
  * Should be accessed by a single thread.
  */
 @NotThreadSafe
-public final class TaskExecutor {
-  private static final Logger LOG = LoggerFactory.getLogger(TaskExecutor.class.getName());
+public final class DefaultTaskExecutorImpl implements TaskExecutor {
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultTaskExecutorImpl.class.getName());
 
   // Essential information
   private boolean isExecuted;
@@ -108,7 +109,7 @@ public final class TaskExecutor {
   // Variables for offloading - start
   private final ServerlessExecutorProvider serverlessExecutorProvider;
   private final OutputFluctuationDetector detector;
-  public final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap;
+  private final Map<String, Pair<OperatorMetricCollector, OutputCollector>> vertexIdAndCollectorMap;
   private final Set<OutputWriter> outputWriterMap;
   private final Map<String, List<String>> taskOutgoingEdges;
   private final Map<String, NextIntraTaskOperatorInfo> operatorInfoMap = new HashMap<>();
@@ -159,13 +160,6 @@ public final class TaskExecutor {
 
   private boolean isStateless = true;
 
-  public enum Status {
-    RUNNING,
-    OFFLOAD_PENDING,
-    OFFLOADED,
-    DEOFFLOAD_PENDING
-  }
-
   private final AtomicReference<Status> status = new AtomicReference<>(Status.RUNNING);
   private final ByteTransport byteTransport;
   private final String executorId;
@@ -178,9 +172,12 @@ public final class TaskExecutor {
   final List<DataFetcher> pendingFetchers;
   final Optional<Offloader> offloader;
 
-  private final ConcurrentMap<Integer, Long> offloadedTaskTimeMap = new ConcurrentHashMap<>();
 
   private final TaskInputContextMap taskInputContextMap;
+
+  public final AtomicLong taskExecutionTime = new AtomicLong(0);
+
+  private long offloadedExecutionTime = 0;
 
   /**
    * Constructor.
@@ -193,23 +190,23 @@ public final class TaskExecutor {
    * @param metricMessageSender    For sending metric with execution stats to the master.
    * @param persistentConnectionToMasterMap For sending messages to the master.
    */
-  public TaskExecutor(final long threadId,
-                      final String executorId,
-                      final ByteTransport byteTransport,
-                      final PersistentConnectionToMasterMap toMaster,
-                      final PipeManagerWorker pipeManagerWorker,
-                      final Task task,
-                      final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-                      final TaskStateManager taskStateManager,
-                      final IntermediateDataIOFactory intermediateDataIOFactory,
-                      final BroadcastManagerWorker broadcastManagerWorker,
-                      final MetricMessageSender metricMessageSender,
-                      final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-                      final SerializerManager serializerManager,
-                      final ServerlessExecutorProvider serverlessExecutorProvider,
-                      final OffloadingWorkerFactory offloadingWorkerFactory,
-                      final EvalConf evalConf,
-                      final TaskInputContextMap taskInputContextMap) {
+  public DefaultTaskExecutorImpl(final long threadId,
+                                 final String executorId,
+                                 final ByteTransport byteTransport,
+                                 final PersistentConnectionToMasterMap toMaster,
+                                 final PipeManagerWorker pipeManagerWorker,
+                                 final Task task,
+                                 final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+                                 final TaskStateManager taskStateManager,
+                                 final IntermediateDataIOFactory intermediateDataIOFactory,
+                                 final BroadcastManagerWorker broadcastManagerWorker,
+                                 final MetricMessageSender metricMessageSender,
+                                 final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                                 final SerializerManager serializerManager,
+                                 final ServerlessExecutorProvider serverlessExecutorProvider,
+                                 final OffloadingWorkerFactory offloadingWorkerFactory,
+                                 final EvalConf evalConf,
+                                 final TaskInputContextMap taskInputContextMap) {
     // Essential information
     this.threadId = threadId;
     this.executorId = executorId;
@@ -295,13 +292,36 @@ public final class TaskExecutor {
     }
   }
 
+  @Override
+  public void setOffloadedTaskTime(long t) {
+    offloadedExecutionTime = t;
+  }
+
+  @Override
+  public ConcurrentLinkedQueue<Object> getOffloadingQueue() {
+    return offloadingEventQueue;
+  }
+
+  @Override
+  public AtomicLong getTaskExecutionTime() {
+    return taskExecutionTime;
+  }
+
+  @Override
+  public OutputCollector getVertexOutputCollector(final String vertexId) {
+    return vertexIdAndCollectorMap.get(vertexId).right();
+  }
+
   public long calculateOffloadedTaskTime() {
+    return offloadedExecutionTime;
+    /*
     long sum = 0L;
     for (final Long val : offloadedTaskTimeMap.values()) {
       sum += (val / 1000);
     }
     //return offloadedTaskTimeMap.values().stream().reduce(0L, (x,y) -> x/1000+y/1000);
     return sum;
+    */
   }
 
   private Optional<Offloader> getOffloader() {
@@ -309,6 +329,9 @@ public final class TaskExecutor {
     final Optional<Offloader> offloader;
 
     if (evalConf.enableOffloading || evalConf.offloadingdebug) {
+
+
+
       if (sourceVertexDataFetchers.size() == 1 && sourceVertexDataFetchers.get(0) instanceof SourceVertexDataFetcher) {
         offloader = Optional.of(new KafkaOffloader(
           executorId,
@@ -316,7 +339,7 @@ public final class TaskExecutor {
           this,
           evalConf,
           byteTransport.getExecutorAddressMap(),
-          pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),
+          pipeManagerWorker.getTaskExecutorIdMap(),
           serializedDag,
           offloadingWorkerFactory,
           taskOutgoingEdges,
@@ -332,7 +355,7 @@ public final class TaskExecutor {
           toMaster,
           outputWriterMap,
           irVertexDag,
-          offloadedTaskTimeMap));
+          null));
       } else {
         offloader = Optional.of(new DownstreamTaskOffloader(
           executorId,
@@ -340,7 +363,7 @@ public final class TaskExecutor {
           this,
           evalConf,
           byteTransport.getExecutorAddressMap(),
-          pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),
+          pipeManagerWorker.getTaskExecutorIdMap(),
           serializedDag,
           offloadingWorkerFactory,
           taskOutgoingEdges,
@@ -356,7 +379,7 @@ public final class TaskExecutor {
           toMaster,
           outputWriterMap,
           irVertexDag,
-          offloadedTaskTimeMap,
+          null,
           taskInputContextMap));
 
         /*
@@ -367,7 +390,7 @@ public final class TaskExecutor {
             this,
             evalConf,
             byteTransport.getExecutorAddressMap(),
-            pipeManagerWorker.getDstTaskIndexTargetExecutorIdMap(),
+            pipeManagerWorker.getTaskExecutorIdMap(),
             serializedDag,
             offloadingWorkerFactory,
             taskOutgoingEdges,
@@ -396,42 +419,43 @@ public final class TaskExecutor {
     return offloader;
   }
 
+  @Override
   public long getThreadId() {
     return threadId;
   }
-
+  @Override
   public boolean isRunning() {
     return status.get() == Status.RUNNING;
   }
-
+  @Override
   public boolean isOffloadPending() {
     return status.get() == Status.OFFLOAD_PENDING;
   }
-
+  @Override
   public boolean isOffloaded() {
     return status.get() == Status.OFFLOADED;
   }
-
+  @Override
   public boolean isDeoffloadPending() {
     return status.get() == Status.DEOFFLOAD_PENDING;
   }
-
+  @Override
   public String getId() {
     return taskId;
   }
-
+  @Override
   public boolean isStateless() {
     return isStateless;
   }
-
+  @Override
   public AtomicInteger getProcessedCnt() {
     return processedCnt;
   }
-
+  @Override
   public AtomicLong getPrevOffloadStartTime() {
     return prevOffloadStartTime;
   }
-
+  @Override
   public AtomicLong getPrevOffloadEndTime() {
     return prevOffloadEndTime;
   }
@@ -467,11 +491,11 @@ public final class TaskExecutor {
       }
     }
   }
-
+  @Override
   public void startOffloading(final long baseTime) {
     offloadingRequestQueue.add(new OffloadingRequestEvent(true, baseTime));
   }
-
+  @Override
   public void endOffloading() {
     offloadingRequestQueue.add(new OffloadingRequestEvent(false, 0));
   }
@@ -718,8 +742,7 @@ public final class TaskExecutor {
                   parentTaskReader.getSrcIrVertex(),
                   edge,
                   parentTaskReader,
-                  dataFetcherOutputCollector,
-                  taskInputContextMap));
+                  dataFetcherOutputCollector));
             } else {
               parentDataFetchers.add(
                 new ParentTaskDataFetcher(
@@ -760,6 +783,7 @@ public final class TaskExecutor {
   /**
    * Execute a task, while handling unrecoverable errors and exceptions.
    */
+  @Override
   public void execute() {
     try {
       doExecute();
@@ -816,7 +840,7 @@ public final class TaskExecutor {
     closeTransform(vertexHarness);
     finalizeOutputWriters(vertexHarness);
   }
-
+  @Override
   public void sendToServerless(final Object event,
                                final List<String> nextOperatorIds,
                                final long wm,
@@ -924,6 +948,7 @@ public final class TaskExecutor {
    * Executor should call this function.
    * @return true if an event is processed
    */
+  @Override
   public boolean handleData() {
     // handling control event
     boolean dataProcessed = false;
@@ -1358,4 +1383,8 @@ public final class TaskExecutor {
   }
 
 
+  @Override
+  public void close() throws Exception {
+
+  }
 }

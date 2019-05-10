@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -26,7 +25,10 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
+import org.apache.nemo.runtime.executor.common.datatransfer.StreamRemoteByteInputContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,39 +47,91 @@ public final class PipeManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(PipeManagerWorker.class.getName());
 
   private final String executorId;
-  private final Map<Integer, String> dstTaskIndexTargetExecutorMap;
+  private final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap;
 
   // To-Executor connections
   private final ByteTransfer byteTransfer;
 
+  private final Map<String, Serializer> serializerMap;
+
   public PipeManagerWorker(final String executorId,
                            final ByteTransfer byteTransfer,
-                           final Map<Integer, String> dstTaskIndexTargetExecutorMap) {
+                           final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap,
+                           final Map<String, Serializer> serializerMap) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
-    this.dstTaskIndexTargetExecutorMap = dstTaskIndexTargetExecutorMap;
+    this.taskExecutorIdMap = taskExecutorIdMap;
+    this.serializerMap = serializerMap;
   }
 
 
+  private boolean isExecutorInSF(final String targetExecutorId) {
+    // TODO..
+    return false;
+  }
+
   public CompletableFuture<ByteOutputContext> write(final int srcTaskIndex,
-                    final RuntimeEdge runtimeEdge,
-                    final int dstTaskIndex) {
+                                                    final RuntimeEdge runtimeEdge,
+                                                    final int dstTaskIndex) {
     final String runtimeEdgeId = runtimeEdge.getId();
-    final String targetExecutorId = dstTaskIndexTargetExecutorMap.get(dstTaskIndex);
+    // TODO: check whether it is in SF or not
+    final String targetExecutorId = taskExecutorIdMap.get(Pair.of(runtimeEdge, dstTaskIndex));
 
-    // Descriptor
-    final PipeTransferContextDescriptor descriptor =
-      new PipeTransferContextDescriptor(
-        runtimeEdgeId,
-        srcTaskIndex,
-        dstTaskIndex,
-        getNumOfInputPipeToWait(runtimeEdge));
+    if (isExecutorInSF(targetExecutorId)) {
+      // Connect to the relay server!
+      // TODO
+      throw new UnsupportedOperationException("Not supported yet");
+    } else {
+      // The executor is in VM, just connects to the VM server
+      // Descriptor
+      final PipeTransferContextDescriptor descriptor =
+        new PipeTransferContextDescriptor(
+          runtimeEdgeId,
+          srcTaskIndex,
+          dstTaskIndex,
+          getNumOfInputPipeToWait(runtimeEdge));
 
-    LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
-      runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
-    // Connect to the executor
-    return byteTransfer.newOutputContext(targetExecutorId, descriptor.encode(), true)
-      .thenApply(context -> context);
+      LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
+        runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
+      // Connect to the executor
+      return byteTransfer.newOutputContext(targetExecutorId, descriptor.encode(), true)
+        .thenApply(context -> context);
+    }
+  }
+
+  public CompletableFuture<IteratorWithNumBytes> read(final int srcTaskIndex,
+                                                      final RuntimeEdge runtimeEdge,
+                                                      final int dstTaskIndex) {
+    final String runtimeEdgeId = runtimeEdge.getId();
+    final String srcExecutorId = taskExecutorIdMap.get(Pair.of(runtimeEdge, srcTaskIndex));
+
+    if (isExecutorInSF(srcExecutorId)) {
+       // Connect to the relay server!
+      // TODO
+      throw new UnsupportedOperationException("Not supported yet");
+    } else {
+      // Descriptor
+      final PipeTransferContextDescriptor descriptor =
+        new PipeTransferContextDescriptor(
+          runtimeEdgeId,
+          srcTaskIndex,
+          dstTaskIndex,
+          getNumOfOutputPipeToWait(runtimeEdge));
+
+      // Connect to the executor
+      return byteTransfer.newInputContext(srcExecutorId, descriptor.encode(), true)
+        .thenApply(context -> ((StreamRemoteByteInputContext) context).getInputIterator(
+          serializerMap.get(runtimeEdgeId)));
+    }
+  }
+
+  private int getNumOfOutputPipeToWait(final RuntimeEdge runtimeEdge) {
+    final int srcParallelism = ((StageEdge) runtimeEdge).getDst().getPropertyValue(ParallelismProperty.class)
+      .orElseThrow(() -> new IllegalStateException());
+    final CommunicationPatternProperty.Value commPattern = ((StageEdge) runtimeEdge)
+      .getPropertyValue(CommunicationPatternProperty.class)
+      .orElseThrow(() -> new IllegalStateException());
+    return commPattern.equals(CommunicationPatternProperty.Value.OneToOne) ? 1 : srcParallelism;
   }
 
   private int getNumOfInputPipeToWait(final RuntimeEdge runtimeEdge) {

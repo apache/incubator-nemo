@@ -20,19 +20,16 @@ package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -49,7 +46,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
 
   private static final Logger LOG = LoggerFactory.getLogger(LocalByteInputContext.class.getName());
   private final Queue<Object> objectQueue;
-  private final DataUtil.IteratorWithNumBytes iteratorWithNumBytes;
+  private final IteratorWithNumBytes iteratorWithNumBytes;
   private final LocalByteOutputContext localByteOutputContext;
 
   private  boolean isFinished = false;
@@ -90,7 +87,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
     throw new UnsupportedOperationException();
   }
 
-  public DataUtil.IteratorWithNumBytes getIteratorWithNumBytes() {
+  public IteratorWithNumBytes getIteratorWithNumBytes() {
     return iteratorWithNumBytes;
   }
 
@@ -194,7 +191,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
     throw new RuntimeException(cause);
   }
 
-  final class QueueIteratorWithNumBytes implements DataUtil.IteratorWithNumBytes<Object> {
+  final class QueueIteratorWithNumBytes implements IteratorWithNumBytes<Object> {
 
     private Object nextData;
 

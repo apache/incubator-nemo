@@ -16,27 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
-import io.netty.buffer.ByteBufOutputStream;
-import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
-import org.apache.nemo.runtime.executor.data.DataUtil;
-import org.apache.nemo.runtime.executor.data.FileArea;
-import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.*;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.Flushable;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.channels.FileChannel;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -73,17 +61,6 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
     void write(final int i) throws IOException;
 
     void write(final byte[] bytes, final int offset, final int length) throws IOException;
-
-    ByteOutputStream writeSerializedPartition(final SerializedPartition serializedPartition)  throws IOException;
-
-    /**
-     * Writes a data frame from {@link FileArea}.
-     *
-     * @param fileArea the {@link FileArea} to transfer
-     * @return {@code this}
-     * @throws IOException when failed to open the file, an exception has been set, or this stream was closed
-     */
-    ByteOutputStream writeFileArea(final FileArea fileArea) throws IOException;
 
     void writeElement(final Object element,
                       final Serializer serializer,

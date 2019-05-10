@@ -24,19 +24,14 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.DefaultFileRegion;
-import io.netty.channel.FileRegion;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.DataUtil;
-import org.apache.nemo.runtime.executor.data.FileArea;
-import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
-import org.apache.nemo.runtime.executor.datatransfer.VMScalingClientTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,9 +39,6 @@ import javax.annotation.Nullable;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.channels.FileChannel;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -211,28 +203,6 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
 
     @Override
     public void write(final byte[] bytes, final int offset, final int length) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Writes {@link SerializedPartition}.
-     * @param serializedPartition {@link SerializedPartition} to write.
-     * @return {@code this}
-     * @throws IOException when an exception has been set or this stream was closed
-     */
-    public ByteOutputStream writeSerializedPartition(final SerializedPartition serializedPartition)
-      throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Writes a data frame from {@link FileArea}.
-     *
-     * @param fileArea the {@link FileArea} to transfer
-     * @return {@code this}
-     * @throws IOException when failed to open the file, an exception has been set, or this stream was closed
-     */
-    public ByteOutputStream writeFileArea(final FileArea fileArea) throws IOException {
       throw new UnsupportedOperationException();
     }
 

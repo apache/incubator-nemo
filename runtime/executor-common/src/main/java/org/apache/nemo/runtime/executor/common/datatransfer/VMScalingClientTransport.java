@@ -1,4 +1,4 @@
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
@@ -6,16 +6,11 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.nemo.offloading.common.NettyChannelInitializer;
-import org.apache.nemo.offloading.common.NettyLambdaInboundHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
-import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.net.InetSocketAddress;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,7 +24,7 @@ public final class VMScalingClientTransport {
   private final ConcurrentMap<String, AtomicInteger> channelCounterMap;
 
   @Inject
-  private VMScalingClientTransport() {
+  public VMScalingClientTransport() {
               this.clientWorkerGroup = new NioEventLoopGroup(10,
         new DefaultThreadFactory("VMScalingClient"));
     this.clientBootstrap = new Bootstrap();

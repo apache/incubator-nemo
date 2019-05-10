@@ -16,20 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
-import org.apache.nemo.runtime.executor.task.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * Interprets inbound byte streams to compose frames.
@@ -65,7 +61,6 @@ import java.util.concurrent.ConcurrentMap;
  * }
  * </pre>
  *
- * @see ByteTransportChannelInitializer
  */
 public final class FrameDecoder extends ByteToMessageDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(FrameDecoder.class.getName());
@@ -98,7 +93,7 @@ public final class FrameDecoder extends ByteToMessageDecoder {
 
   private int currTransferIndex;
 
-  FrameDecoder(final ContextManager contextManager) {
+  public FrameDecoder(final ContextManager contextManager) {
     this.contextManager = contextManager;
     this.pendingByteBufMap = new HashMap<>();
   }

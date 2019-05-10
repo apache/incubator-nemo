@@ -19,7 +19,9 @@
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.socket.SocketChannel;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 
 import java.util.concurrent.ConcurrentMap;
 
@@ -54,28 +56,45 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class LambdaByteTransportChannelInitializer extends ChannelInitializer<SocketChannel> {
 
-  private final LambdaControlFrameEncoder controlFrameEncoder;
-  private final LambdaDataFrameEncoder dataFrameEncoder;
+  private final ControlFrameEncoder controlFrameEncoder;
+  private final DataFrameEncoder dataFrameEncoder;
   private final String localExecutorId;
   private final ConcurrentMap<SocketChannel, Boolean> channels;
+  private final ChannelGroup channelGroup;
+  private final VMScalingClientTransport clientTransport;
+  private final AckScheduledService ackScheduledService;
 
-  public LambdaByteTransportChannelInitializer(final LambdaControlFrameEncoder controlFrameEncoder,
-                                               final LambdaDataFrameEncoder dataFrameEncoder,
+  public LambdaByteTransportChannelInitializer(final ChannelGroup channelGroup,
+                                               final ControlFrameEncoder controlFrameEncoder,
+                                               final DataFrameEncoder dataFrameEncoder,
                                                final ConcurrentMap<SocketChannel, Boolean> channels,
-                                               final String localExecutorId) {
+                                               final String localExecutorId,
+                                               final VMScalingClientTransport clientTransport,
+                                               final AckScheduledService ackScheduledService) {
+    this.channelGroup = channelGroup;
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
     this.localExecutorId = localExecutorId;
     this.channels = channels;
+    this.clientTransport = clientTransport;
+    this.ackScheduledService = ackScheduledService;
   }
 
   @Override
   protected void initChannel(final SocketChannel ch) {
+
+    final ContextManager contextManager = new LambdaContextManager(
+      channelGroup, localExecutorId, ch, clientTransport, ackScheduledService);
+
     channels.put(ch, true);
+
     ch.pipeline()
         // outbound
         .addLast(controlFrameEncoder)
-        .addLast(dataFrameEncoder);
+        .addLast(dataFrameEncoder)
+        // inbound
+        .addLast(new FrameDecoder(contextManager))
+        .addLast(contextManager);
   }
 
 }

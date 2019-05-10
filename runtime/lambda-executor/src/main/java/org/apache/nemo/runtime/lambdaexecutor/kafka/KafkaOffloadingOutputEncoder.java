@@ -44,6 +44,7 @@ public final class KafkaOffloadingOutputEncoder implements OffloadingEncoder<Obj
       final DataOutputStream dos = new DataOutputStream(outputStream);
       final OffloadingResultTimestampEvent element = (OffloadingResultTimestampEvent) data;
       dos.writeChar(OFFLOADING_RESULT);
+      dos.writeUTF(element.taskId);
       dos.writeUTF(element.vertexId);
       dos.writeLong(element.timestamp);
       dos.writeLong(element.watermark);

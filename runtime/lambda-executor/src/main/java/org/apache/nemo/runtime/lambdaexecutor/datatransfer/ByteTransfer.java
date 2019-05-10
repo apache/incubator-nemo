@@ -18,9 +18,12 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.util.concurrent.Future;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.ContextManager;
+import org.apache.nemo.runtime.executor.common.datatransfer.VMScalingClientTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,9 +41,10 @@ public final class ByteTransfer {
 
   private final LambdaByteTransport byteTransport;
   private final ConcurrentMap<String, ChannelFuture> executorIdToChannelFutureMap = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Future, LambdaContextManager> channelAndContextManagerMap =
+  private final ConcurrentMap<Future, ContextManager> channelAndContextManagerMap =
     new ConcurrentHashMap<>();
   private final String localExecutorId;
+  private final VMScalingClientTransport clientTransport;
 
   /**
    * Creates a byte transfer.
@@ -50,6 +54,21 @@ public final class ByteTransfer {
                       final String localExecutorId) {
     this.byteTransport = byteTransport;
     this.localExecutorId = localExecutorId;
+    this.clientTransport = new VMScalingClientTransport();
+  }
+
+
+  /**
+   * Initiate a transfer context to receive data.
+   * @param executorId        the id of the remote executor
+   * @param contextDescriptor user-provided descriptor for the new context
+   * @param isPipe            is pipe
+   */
+  public CompletableFuture<ByteInputContext> newInputContext(final String executorId,
+                                                             final byte[] contextDescriptor,
+                                                             final boolean isPipe) {
+    LOG.info("New remote input context: {}", executorId);
+    return connectTo(executorId).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
   }
 
   /**
@@ -57,7 +76,7 @@ public final class ByteTransfer {
    * @param executorId         the id of the remote executor
    * @param contextDescriptor  user-provided descriptor for the new context
    * @param isPipe            is pipe
-   * @return a {@link ByteOutputContext} to which data can be written
+   * @return a {@link } to which data can be written
    */
   public CompletableFuture<ByteOutputContext> newOutputContext(final String executorId,
                                                                final byte[] contextDescriptor,
@@ -69,8 +88,8 @@ public final class ByteTransfer {
   /**
    * @param remoteExecutorId id of the remote executor
    */
-  private CompletableFuture<LambdaContextManager> connectTo(final String remoteExecutorId) {
-    final CompletableFuture<LambdaContextManager> completableFuture = new CompletableFuture<>();
+  private CompletableFuture<ContextManager> connectTo(final String remoteExecutorId) {
+    final CompletableFuture<ContextManager> completableFuture = new CompletableFuture<>();
     final ChannelFuture channelFuture;
     try {
       channelFuture = executorIdToChannelFutureMap.compute(remoteExecutorId, (executorId, cachedChannelFuture) -> {
@@ -90,10 +109,13 @@ public final class ByteTransfer {
     }
     channelFuture.addListener(future -> {
       if (future.isSuccess()) {
+        completableFuture.complete(channelFuture.channel().pipeline().get(ContextManager.class));
+        /*
         channelAndContextManagerMap.putIfAbsent(future, new LambdaContextManager(
-          byteTransport.getChannelGroup(), localExecutorId, channelFuture.channel()));
+          byteTransport.getChannelGroup(), localExecutorId, channelFuture.channel(), clientTransport));
         LOG.info("Try to create lambda context executor");
         completableFuture.complete(channelAndContextManagerMap.get(future));
+        */
       } else {
         executorIdToChannelFutureMap.remove(remoteExecutorId, channelFuture);
         completableFuture.completeExceptionally(future.cause());

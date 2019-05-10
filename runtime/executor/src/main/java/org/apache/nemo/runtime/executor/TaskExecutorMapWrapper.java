@@ -1,6 +1,6 @@
 package org.apache.nemo.runtime.executor;
 
-import org.apache.nemo.runtime.executor.task.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 
 import javax.inject.Inject;
 import java.util.concurrent.ConcurrentHashMap;

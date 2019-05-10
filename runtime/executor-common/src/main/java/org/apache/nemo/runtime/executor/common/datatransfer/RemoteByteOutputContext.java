@@ -16,26 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.DefaultFileRegion;
-import io.netty.channel.FileRegion;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
-import org.apache.nemo.runtime.executor.data.DataUtil;
-import org.apache.nemo.runtime.executor.data.FileArea;
-import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
-import org.apache.nemo.runtime.executor.datatransfer.VMScalingClientTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,14 +36,11 @@ import javax.annotation.Nullable;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.channels.FileChannel;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.nemo.runtime.executor.bytetransfer.RemoteByteOutputContext.SendDataTo.SCALE_VM;
-import static org.apache.nemo.runtime.executor.bytetransfer.RemoteByteOutputContext.SendDataTo.VM;
+import static org.apache.nemo.runtime.executor.common.datatransfer.RemoteByteOutputContext.SendDataTo.SCALE_VM;
+import static org.apache.nemo.runtime.executor.common.datatransfer.RemoteByteOutputContext.SendDataTo.VM;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -87,7 +77,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
    * @param contextDescriptor   user-provided context descriptor
    * @param contextManager      {@link ContextManager} for the channel
    */
-  RemoteByteOutputContext(final String remoteExecutorId,
+  public RemoteByteOutputContext(final String remoteExecutorId,
                           final ContextId contextId,
                           final byte[] contextDescriptor,
                           final ContextManager contextManager,
@@ -249,20 +239,20 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
      * @return {@code this}
      * @throws IOException when an exception has been set or this stream was closed
      */
-    @Override
+    /*
     public ByteOutputStream writeSerializedPartition(final SerializedPartition serializedPartition)
       throws IOException {
       write(serializedPartition.getData(), 0, serializedPartition.getLength());
       return this;
     }
+    */
 
     /**
-     * Writes a data frame from {@link FileArea}.
      *
-     * @param fileArea the {@link FileArea} to transfer
      * @return {@code this}
      * @throws IOException when failed to open the file, an exception has been set, or this stream was closed
      */
+    /*
     @Override
     public ByteOutputStream writeFileArea(final FileArea fileArea) throws IOException {
       final Path path = Paths.get(fileArea.getPath());
@@ -279,6 +269,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
       }
       return this;
     }
+    */
 
     @Override
     public void close() throws IOException {
@@ -330,8 +321,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
       }
 
       try {
-        final OutputStream wrapped =
-          DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
+        final OutputStream wrapped = byteBufOutputStream;
+          //DataUtil.buildOutputStream(byteBufOutputStream, serializer.getEncodeStreamChainers());
         final EncoderFactory.Encoder encoder = serializer.getEncoderFactory().create(wrapped);
         //LOG.info("Element encoder: {}", encoder);
         encoder.encode(element);

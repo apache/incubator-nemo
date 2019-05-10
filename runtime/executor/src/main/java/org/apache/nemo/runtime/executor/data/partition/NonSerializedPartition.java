@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.data.partition;
 
-import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.data.block.Block;
 
 import java.io.IOException;
@@ -96,24 +96,24 @@ public final class NonSerializedPartition<K> implements Partition<Iterable, K> {
 
   /**
    * @return the number of bytes in serialized form (which is, for example, encoded and compressed)
-   * @throws DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException
+   * @throws IteratorWithNumBytes.NumBytesNotSupportedException
    *         when then information is not available
    */
-  public long getNumSerializedBytes() throws DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException {
+  public long getNumSerializedBytes() throws IteratorWithNumBytes.NumBytesNotSupportedException {
     if (numSerializedBytes == -1) {
-      throw new DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException();
+      throw new IteratorWithNumBytes.NumBytesNotSupportedException();
     }
     return numSerializedBytes;
   }
 
   /**
    * @return the number of bytes in encoded form (which is ready to be decoded)
-   * @throws DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException
+   * @throws IteratorWithNumBytes.NumBytesNotSupportedException
    *         when then information is not available
    */
-  public long getNumEncodedBytes() throws DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException {
+  public long getNumEncodedBytes() throws IteratorWithNumBytes.NumBytesNotSupportedException {
     if (numEncodedBytes == -1) {
-      throw new DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException();
+      throw new IteratorWithNumBytes.NumBytesNotSupportedException();
     }
     return numEncodedBytes;
   }

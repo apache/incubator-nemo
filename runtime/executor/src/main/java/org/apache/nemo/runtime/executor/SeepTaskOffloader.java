@@ -3,7 +3,7 @@ package org.apache.nemo.runtime.executor;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.runtime.executor.task.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

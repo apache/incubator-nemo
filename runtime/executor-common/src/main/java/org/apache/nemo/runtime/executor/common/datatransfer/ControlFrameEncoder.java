@@ -16,16 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
-import org.apache.nemo.conf.JobConf;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -41,14 +38,12 @@ public final class ControlFrameEncoder extends MessageToMessageEncoder<ByteTrans
   private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
   private static final ByteBuf ZEROS = Unpooled.directBuffer(ZEROS_LENGTH, ZEROS_LENGTH).writeZero(ZEROS_LENGTH);
 
-  private final String localExecutorId;
 
   /**
    * Private constructor.
    */
   @Inject
-  public ControlFrameEncoder(@Parameter(JobConf.ExecutorId.class) final String localExecutorId) {
-    this.localExecutorId = localExecutorId;
+  public ControlFrameEncoder() {
   }
 
   @Override

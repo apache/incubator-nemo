@@ -3,7 +3,7 @@ package org.apache.nemo.runtime.executor;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.runtime.executor.task.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -312,9 +312,20 @@ public final class TaskOffloader {
 
       try {
         final double cpuLoad = profiler.getCpuLoad();
+
+        final Map<TaskExecutor, Long> deltaMap =
+          taskExecutorMap.keySet().stream()
+          .map(taskExecutor -> {
+            final long executionTime = taskExecutor.getTaskExecutionTime().get();
+            taskExecutor.getTaskExecutionTime().getAndAdd(-executionTime);
+            return Pair.of(taskExecutor, executionTime);
+            }).collect(Collectors.toMap(Pair::left, Pair::right));
+
+        /*
         final Map<TaskExecutor, Long> currTaskCpuTimeMap = profiler.getTaskExecutorCpuTimeMap();
         final Map<TaskExecutor, Long> deltaMap = calculateCpuTimeDelta(prevTaskCpuTimeMap, currTaskCpuTimeMap);
         prevTaskCpuTimeMap = currTaskCpuTimeMap;
+        */
 
         //final Long elapsedCpuTimeSum = deltaMap.values().stream().reduce(0L, (x, y) -> x + y) / 1000;
         long elapsedCpuTimeSum = 0L;

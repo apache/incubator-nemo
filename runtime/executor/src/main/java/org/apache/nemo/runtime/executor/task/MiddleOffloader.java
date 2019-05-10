@@ -3,12 +3,7 @@ package org.apache.nemo.runtime.executor.task;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.io.UnboundedSource;
-import org.apache.beam.sdk.io.kafka.KafkaCheckpointMark;
-import org.apache.beam.sdk.io.kafka.KafkaUnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
@@ -17,7 +12,6 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
-import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKPartialTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.StreamingWorkerService;
@@ -31,11 +25,10 @@ import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.executor.TransformContextImpl;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
-import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingSerializer;
-import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingTransform;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingTransform;
 import org.slf4j.Logger;
@@ -48,7 +41,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 public final class MiddleOffloader implements Offloader {
   private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloader.class.getName());
@@ -385,7 +377,7 @@ public final class MiddleOffloader implements Offloader {
           if (irVertex instanceof OperatorVertex) {
             final Transform transform = ((OperatorVertex) irVertex).getTransform();
             if (transform instanceof GBKPartialTransform) {
-              final OutputCollector outputCollector = taskExecutor.vertexIdAndCollectorMap.get(irVertex.getId()).right();
+              final OutputCollector outputCollector = taskExecutor.getVertexOutputCollector(irVertex.getId());
               final byte[] snapshot = SerializationUtils.serialize(transform);
               transform.flush();
               final Transform des = SerializationUtils.deserialize(snapshot);

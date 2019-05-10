@@ -29,12 +29,12 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
-import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
@@ -68,7 +68,7 @@ public final class PipeManagerWorker {
 
   private final PersistentConnectionToMasterMap toMaster;
 
-  private final ConcurrentMap<Integer, String> dstTaskIndexTargetExecutorIdMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap = new ConcurrentHashMap<>();
 
   @Inject
   private PipeManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -82,8 +82,8 @@ public final class PipeManagerWorker {
     this.toMaster = toMaster;
   }
 
-  public Map<Integer, String> getDstTaskIndexTargetExecutorIdMap() {
-    return dstTaskIndexTargetExecutorIdMap;
+  public Map<Pair<RuntimeEdge, Integer>, String> getTaskExecutorIdMap() {
+    return taskExecutorIdMap;
   }
 
   public SerializerManager getSerializerManager() {
@@ -126,7 +126,7 @@ public final class PipeManagerWorker {
         new PipeTransferContextDescriptor(runtimeEdgeId,
           srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
 
-      dstTaskIndexTargetExecutorIdMap.put(dstTaskIndex, targetExecutorId);
+      taskExecutorIdMap.put(Pair.of(runtimeEdge, dstTaskIndex), targetExecutorId);
 
       LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
         runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
@@ -137,9 +137,9 @@ public final class PipeManagerWorker {
     });
   }
 
-  public CompletableFuture<DataUtil.IteratorWithNumBytes> read(final int srcTaskIndex,
-                                                               final RuntimeEdge runtimeEdge,
-                                                               final int dstTaskIndex) {
+  public CompletableFuture<IteratorWithNumBytes> read(final int srcTaskIndex,
+                                                      final RuntimeEdge runtimeEdge,
+                                                      final int dstTaskIndex) {
     final String runtimeEdgeId = runtimeEdge.getId();
     // Get the location of the src task (blocking call)
     final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = toMaster
@@ -235,7 +235,20 @@ public final class PipeManagerWorker {
                                           final long dstTaskIndex,
                                           final EventHandler<Pair<ByteInputContext, Integer>> eventHandler) {
     final Pair<String, Long> pairKey = Pair.of(runtimeEdge.getId(), dstTaskIndex);
-    pipeContainer.putPipeHandlerIfAbsent(pairKey, eventHandler);
+    pipeContainer.putPipeHandlerIfAbsent(pairKey, new EventHandler<Pair>() {
+      @Override
+      public void onNext(Pair value) {
+        final ByteInputContext byteInputContext = (ByteInputContext) value.left();
+        final PipeTransferContextDescriptor descriptor =
+          PipeTransferContextDescriptor.decode(byteInputContext.getContextDescriptor());
+
+        // ADD source task-executor id
+        taskExecutorIdMap.put(Pair.of(runtimeEdge, (int) descriptor.getSrcTaskIndex()),
+          byteInputContext.getRemoteExecutorId());
+
+        eventHandler.onNext(value);
+      }
+    });
 
   }
 

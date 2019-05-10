@@ -29,12 +29,16 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
+import org.apache.nemo.runtime.executor.TinyTaskOffloadingWorkerManager;
 import org.apache.nemo.runtime.executor.TransformContextImpl;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
+import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingTransform;
@@ -50,20 +54,15 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-public final class KafkaOffloader implements Offloader {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaOffloader.class.getName());
-
-  private final StreamingWorkerService streamingWorkerService;
+public final class TinyTaskOffloader implements Offloader {
+  private static final Logger LOG = LoggerFactory.getLogger(TinyTaskOffloader.class.getName());
 
   private final byte[] serializedDag;
-  private final OffloadingWorkerFactory offloadingWorkerFactory;
   private final Map<String, List<String>> taskOutgoingEdges;
   private final SerializerManager serializerManager;
   private final ConcurrentLinkedQueue<Object> offloadingEventQueue;
   private final List<SourceVertexDataFetcher> sourceVertexDataFetchers;
   private final String taskId;
-  private final List<DataFetcher> availableFetchers;
-  private final List<DataFetcher> pendingFetchers;
   final ExecutorService closeService = Executors.newSingleThreadExecutor();
 
 
@@ -93,47 +92,44 @@ public final class KafkaOffloader implements Offloader {
 
   private final List<KafkaOffloadingOutput> kafkaOffloadingOutputs = new ArrayList<>();
   private final TaskExecutor taskExecutor;
-  final ConcurrentMap<Integer, Long> taskTimeMap;
 
-  public KafkaOffloader(final String executorId,
-                        final Task task,
-                        final TaskExecutor taskExecutor,
-                        final EvalConf evalConf,
-                        final Map<String, InetSocketAddress> executorAddressMap,
-                        final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap,
-                        final byte[] serializedDag,
-                        final OffloadingWorkerFactory offloadingWorkerFactory,
-                        final Map<String, List<String>> taskOutgoingEdges,
-                        final SerializerManager serializerManager,
-                        final ConcurrentLinkedQueue<Object> offloadingEventQueue,
-                        final List<SourceVertexDataFetcher> sourceVertexDataFetchers,
-                        final String taskId,
-                        final List<DataFetcher> availableFetchers,
-                        final List<DataFetcher> pendingFetchers,
-                        final AtomicReference<TaskExecutor.Status> taskStatus,
-                        final AtomicLong prevOffloadStartTime,
-                        final AtomicLong prevOffloadEndTime,
-                        final PersistentConnectionToMasterMap toMaster,
-                        final Collection<OutputWriter> outputWriters,
-                        final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
-                        final ConcurrentMap<Integer, Long> taskTimeMap) {
+  private final TinyTaskOffloadingWorkerManager tinyWorkerManager;
+  private final SourceVertexDataFetcher sourceVertexDataFetcher;
+
+  public TinyTaskOffloader(final String executorId,
+                           final Task task,
+                           final TaskExecutor taskExecutor,
+                           final EvalConf evalConf,
+                           final Map<String, InetSocketAddress> executorAddressMap,
+                           final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap,
+                           final byte[] serializedDag,
+                           final TinyTaskOffloadingWorkerManager tinyWorkerManager,
+                           final Map<String, List<String>> taskOutgoingEdges,
+                           final SerializerManager serializerManager,
+                           final ConcurrentLinkedQueue<Object> offloadingEventQueue,
+                           final List<SourceVertexDataFetcher> sourceVertexDataFetchers,
+                           final String taskId,
+                           final SourceVertexDataFetcher sourceDataFetcher,
+                           final AtomicReference<TaskExecutor.Status> taskStatus,
+                           final AtomicLong prevOffloadStartTime,
+                           final AtomicLong prevOffloadEndTime,
+                           final PersistentConnectionToMasterMap toMaster,
+                           final Collection<OutputWriter> outputWriters,
+                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
     this.executorId = executorId;
-    this.taskTimeMap = taskTimeMap;
     this.task = task;
     this.taskExecutor = taskExecutor;
     this.evalConf = evalConf;
     this.executorAddressMap = executorAddressMap;
     this.taskExecutorIdMap = taskExecutorIdMap;
     this.serializedDag = serializedDag;
-    this.offloadingWorkerFactory = offloadingWorkerFactory;
+    this.tinyWorkerManager = tinyWorkerManager;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.serializerManager = serializerManager;
+    this.sourceVertexDataFetcher = sourceDataFetcher;
     this.offloadingEventQueue = offloadingEventQueue;
     this.sourceVertexDataFetchers = sourceVertexDataFetchers;
     this.taskId = taskId;
-    this.availableFetchers = availableFetchers;
-    this.pendingFetchers = pendingFetchers;
-    this.streamingWorkerService = createStreamingWorkerService();
     this.taskStatus = taskStatus;
     this.prevOffloadEndTime = prevOffloadEndTime;
     this.prevOffloadStartTime = prevOffloadStartTime;
@@ -167,63 +163,6 @@ public final class KafkaOffloader implements Offloader {
     }
 
     throw new RuntimeException("Cannot find partitionMark " + topicPartition);
-  }
-
-  private StreamingWorkerService createStreamingWorkerService() {
-    // build DAG
-    final DAG<IRVertex, Edge<IRVertex>> copyDag = SerializationUtils.deserialize(serializedDag);
-
-    copyDag.getVertices().forEach(vertex -> {
-      if (vertex instanceof BeamUnboundedSourceVertex) {
-        // TODO: we should send unbounded source
-        ((BeamUnboundedSourceVertex) vertex).setUnboundedSource(null);
-      }
-      // this edge can be offloaded
-      if (vertex.isSink) {
-        vertex.isOffloading = false;
-      } else {
-        vertex.isOffloading = true;
-      }
-    });
-
-    final SourceVertexDataFetcher dataFetcher = sourceVertexDataFetchers.get(0);
-    final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
-    final UnboundedSource unboundedSource = readable.getUnboundedSource();
-
-    final StreamingWorkerService streamingWorkerService =
-      new StreamingWorkerService(offloadingWorkerFactory,
-        new KafkaOffloadingTransform(
-          executorId,
-          RuntimeIdManager.getIndexFromTaskId(taskId),
-          evalConf.samplingJson,
-          copyDag,
-          taskOutgoingEdges,
-          executorAddressMap,
-          serializerManager.runtimeEdgeIdToSerializer,
-          taskExecutorIdMap,
-          task.getTaskOutgoingEdges()),
-        new KafkaOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer,
-          unboundedSource.getCheckpointMarkCoder()),
-        new StatelessOffloadingEventHandler(offloadingEventQueue, taskTimeMap));
-
-    return streamingWorkerService;
-  }
-
-  private KafkaCheckpointMark createMergedCheckpointMarks(
-    final List<KafkaOffloadingOutput> list) {
-    final List<KafkaCheckpointMark.PartitionMark> partitionMarks =
-      list.stream()
-        .map(offloadingOutput -> {
-          final KafkaCheckpointMark cmark = (KafkaCheckpointMark) offloadingOutput.checkpointMark;
-          return cmark.getPartitions().get(0);
-        })
-        .collect(Collectors.toList());
-
-    partitionMarks.sort((o1, o2) -> {
-        return o1.getPartition() - o2.getPartition();
-    });
-
-    return new KafkaCheckpointMark(partitionMarks, Optional.empty());
   }
 
   @Override
@@ -358,42 +297,50 @@ public final class KafkaOffloader implements Offloader {
       return;
     }
 
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> copyDag = SerializationUtils.deserialize(serializedDag);
+
+    final OffloadingTask offloadingTask;
+    if (sourceVertexDataFetcher != null) {
+      final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
+      final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
+      final KafkaUnboundedSource unboundedSource = (KafkaUnboundedSource) readable.getUnboundedSource();
+      final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = unboundedSource.getCheckpointMarkCoder();
+
+      offloadingTask = new OffloadingTask(
+        executorId,
+        taskId,
+        RuntimeIdManager.getIndexFromTaskId(taskId),
+        evalConf.samplingJson,
+        copyDag,
+        taskOutgoingEdges,
+        task.getTaskOutgoingEdges(),
+        task.getTaskIncomingEdges(),
+        checkpointMark,
+        unboundedSource);
+    } else {
+      offloadingTask = new OffloadingTask(
+        executorId,
+        taskId,
+        RuntimeIdManager.getIndexFromTaskId(taskId),
+        evalConf.samplingJson,
+        copyDag,
+        taskOutgoingEdges,
+        task.getTaskOutgoingEdges(),
+        task.getTaskIncomingEdges(),
+        null,
+        null);
+    }
+
+    // TODO: 1) Remove available and pending fetchers!!
+    // Stop sources and output emission!!
+
+    tinyWorkerManager.sendTask(offloadingTask, taskExecutor);
+
     prevOffloadStartTime.set(System.currentTimeMillis());
 
-    if (!taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING)) {
+    if (!taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOADED)) {
       LOG.warn("Multiple start request ... just ignore it");
       throw new RuntimeException("Invalid task status: " + taskStatus);
-    }
-
-    taskTimeMap.clear();
-
-    // KAFKA SOURCE OFFLOADING !!!!
-    // VM -> Serverless
-    if (sourceVertexDataFetchers.size() > 1) {
-      throw new RuntimeException("Unsupport > 1 size sources");
-    }
-
-    if (!kafkaOffloadPendingEvents.isEmpty()) {
-      LOG.warn("Task {} received start offloading, but it still offloads sources {}",
-        taskId, kafkaOffloadPendingEvents.size());
-      // still offloading data fetchers.. skip
-      return;
-    }
-
-
-    final SourceVertexDataFetcher dataFetcher = sourceVertexDataFetchers.get(0);
-    final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
-    final KafkaUnboundedSource unboundedSource = (KafkaUnboundedSource) readable.getUnboundedSource();
-
-    final int splitNum = unboundedSource.getTopicPartitions().size();
-
-    LOG.info("# of split: {}", splitNum);
-
-    for (int i = 0; i < splitNum; i++) {
-      final OffloadingWorker worker = streamingWorkerService.createStreamWorker();
-      final CompletableFuture<ControlMessage.Message> request = requestTaskIndex();
-      kafkaOffloadPendingEvents.add(new KafkaOffloadingRequestEvent(
-        worker, sourceId.getAndIncrement(), request));
     }
   }
 
@@ -413,6 +360,7 @@ public final class KafkaOffloader implements Offloader {
 
   @Override
   public synchronized void handlePendingStreamingWorkers() {
+    throw new RuntimeException("Cannot have pending worker!");
 
     if (kafkaOffloadPendingEvents.isEmpty()) {
       LOG.warn("HandlePendingStreamingWorker should be called with hasPendingStreamingWorker");

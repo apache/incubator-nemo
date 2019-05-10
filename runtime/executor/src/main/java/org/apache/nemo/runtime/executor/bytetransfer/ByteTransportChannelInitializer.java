@@ -19,11 +19,11 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.datatransfer.VMScalingClientTransport;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -105,7 +105,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
 
   @Override
   protected void initChannel(final SocketChannel ch) {
-    final ContextManager contextManager = new ContextManager(
+    final ContextManager contextManager = new DefaultContextManagerImpl(
       pipeManagerWorker.get(),
       blockManagerWorker.get(),
       byteTransfer.get(),

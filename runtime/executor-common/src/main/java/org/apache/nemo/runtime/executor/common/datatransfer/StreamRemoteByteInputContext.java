@@ -16,14 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
-import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,9 +29,6 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.NoSuchElementException;
-import java.util.Queue;
 import java.util.concurrent.*;
 
 /**
@@ -65,7 +60,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
    * @param contextDescriptor   user-provided context descriptor
    * @param contextManager      {@link ContextManager} for the channel
    */
-  StreamRemoteByteInputContext(final String remoteExecutorId,
+  public StreamRemoteByteInputContext(final String remoteExecutorId,
                                final ContextId contextId,
                                final byte[] contextDescriptor,
                                final ContextManager contextManager,
@@ -74,7 +69,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
     this.ackService = ackService;
   }
 
-  public <T> DataUtil.IteratorWithNumBytes<T>  getInputIterator(
+  public <T> IteratorWithNumBytes<T> getInputIterator(
     final Serializer<?, T> serializer) {
     return new InputStreamIterator<>(serializer);
   }
@@ -287,7 +282,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
     }
   }
 
-  public final class InputStreamIterator<T> implements DataUtil.IteratorWithNumBytes<T> {
+  public final class InputStreamIterator<T> implements IteratorWithNumBytes<T> {
 
     private final Serializer<?, T> serializer;
     private volatile T next;

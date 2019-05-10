@@ -32,9 +32,10 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransfer;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.data.block.FileBlock;
 import org.apache.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import org.apache.nemo.runtime.executor.data.partition.SerializedPartition;
@@ -146,7 +147,7 @@ public final class BlockManagerWorker {
    * @param keyRange        the key range descriptor
    * @return the {@link CompletableFuture} of the block.
    */
-  public CompletableFuture<DataUtil.IteratorWithNumBytes> readBlock(
+  public CompletableFuture<IteratorWithNumBytes> readBlock(
       final String blockIdWildcard,
       final String runtimeEdgeId,
       final DataStoreProperty.Value blockStore,
@@ -344,14 +345,16 @@ public final class BlockManagerWorker {
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
-                  os.writeFileArea(fileArea);
+                  //os.writeFileArea(fileArea);
+                  throw new RuntimeException("Not support batch");
                 }
               }
             } else {
               final Iterable<SerializedPartition> partitions = optionalBlock.get().readSerializedPartitions(keyRange);
               for (final SerializedPartition partition : partitions) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
-                  os.writeSerializedPartition(partition);
+                  //os.writeSerializedPartition(partition);
+                  throw new RuntimeException("Not support batch");
                 }
               }
             }
@@ -393,7 +396,7 @@ public final class BlockManagerWorker {
    * @param keyRange   the key range descriptor.
    * @return the result data in the block.
    */
-  private CompletableFuture<DataUtil.IteratorWithNumBytes> getDataFromLocalBlock(
+  private CompletableFuture<IteratorWithNumBytes> getDataFromLocalBlock(
       final String blockId,
       final DataStoreProperty.Value blockStore,
       final KeyRange keyRange) {
@@ -417,10 +420,10 @@ public final class BlockManagerWorker {
             numEncodedBytes += partition.getNumEncodedBytes();
           }
 
-          return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator, numSerializedBytes,
+          return CompletableFuture.completedFuture(IteratorWithNumBytes.of(innerIterator, numSerializedBytes,
               numEncodedBytes));
-        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-          return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator));
+        } catch (final IteratorWithNumBytes.NumBytesNotSupportedException e) {
+          return CompletableFuture.completedFuture(IteratorWithNumBytes.of(innerIterator));
         }
       } catch (final IOException e) {
         throw new BlockFetchException(e);

@@ -1,18 +1,12 @@
 package org.apache.nemo.runtime.executor.task;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
-import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
-import org.apache.nemo.compiler.frontend.beam.transform.GBKPartialTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.StreamingWorkerService;
 import org.apache.nemo.offloading.common.OffloadingWorker;
@@ -22,10 +16,10 @@ import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.Task;
-import org.apache.nemo.runtime.executor.TransformContextImpl;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
@@ -33,12 +27,9 @@ import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.DownstreamOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.DownstreamOffloadingTransform;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
-import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingSerializer;
-import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
@@ -77,7 +68,7 @@ public final class DownstreamTaskOffloader implements Offloader {
   private final AtomicLong prevOffloadEndTime;
 
   private final Map<String, InetSocketAddress> executorAddressMap;
-  private final Map<Integer, String> dstTaskIndexTargetExecutorMap;
+  private final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap;
   private final String executorId;
   private final Task task;
 
@@ -100,7 +91,7 @@ public final class DownstreamTaskOffloader implements Offloader {
                                  final TaskExecutor taskExecutor,
                                  final EvalConf evalConf,
                                  final Map<String, InetSocketAddress> executorAddressMap,
-                                 final Map<Integer, String> dstTaskIndexTargetExecutorMap,
+                                 final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap,
                                  final byte[] serializedDag,
                                  final OffloadingWorkerFactory offloadingWorkerFactory,
                                  final Map<String, List<String>> taskOutgoingEdges,
@@ -124,7 +115,7 @@ public final class DownstreamTaskOffloader implements Offloader {
     this.taskExecutor = taskExecutor;
     this.evalConf = evalConf;
     this.executorAddressMap = executorAddressMap;
-    this.dstTaskIndexTargetExecutorMap = dstTaskIndexTargetExecutorMap;
+    this.taskExecutorIdMap = taskExecutorIdMap;
     this.serializedDag = serializedDag;
     this.offloadingWorkerFactory = offloadingWorkerFactory;
     this.taskOutgoingEdges = taskOutgoingEdges;
@@ -185,7 +176,7 @@ public final class DownstreamTaskOffloader implements Offloader {
           taskOutgoingEdges,
           executorAddressMap,
           serializerManager.runtimeEdgeIdToSerializer,
-          dstTaskIndexTargetExecutorMap,
+          taskExecutorIdMap,
           task.getTaskOutgoingEdges(),
           task.getTaskIncomingEdges()),
         new DownstreamOffloadingSerializer(serializerManager.runtimeEdgeIdToSerializer),

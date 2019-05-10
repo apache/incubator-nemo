@@ -19,6 +19,8 @@ import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.*;
+import org.apache.nemo.runtime.executor.common.datatransfer.ControlFrameEncoder;
+import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingDataEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
@@ -145,7 +147,8 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
             prevTime = tTime;
 
             LOG.info("Flush elapsed time: {}", elapsedTime);
-            resultCollector.collector.emit(new OffloadingHeartbeatEvent(taskIndex, elapsedTime));
+            resultCollector.collector.emit(
+              new OffloadingHeartbeatEvent("no", taskIndex, elapsedTime));
           }
           final MiddleOffloadingDataEvent element = dataQueue.poll();
           // data processing
@@ -179,8 +182,8 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
     if (stageEdges.size() > 0) {
       // create byte transport
       final NativeChannelImplementationSelector selector = new NativeChannelImplementationSelector();
-      final LambdaControlFrameEncoder controlFrameEncoder = new LambdaControlFrameEncoder(executorId);
-      final LambdaDataFrameEncoder dataFrameEncoder = new LambdaDataFrameEncoder();
+      final ControlFrameEncoder controlFrameEncoder = new ControlFrameEncoder();
+      final DataFrameEncoder dataFrameEncoder = new DataFrameEncoder();
       channels = new ConcurrentHashMap<>();
 
       scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -194,17 +197,18 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
         }
       }, 1, 1, TimeUnit.SECONDS);
 
-      final LambdaByteTransportChannelInitializer initializer =
-        new LambdaByteTransportChannelInitializer(controlFrameEncoder, dataFrameEncoder, channels, executorId);
+      //final LambdaByteTransportChannelInitializer initializer =
+      //  new LambdaByteTransportChannelInitializer(controlFrameEncoder, dataFrameEncoder, channels, executorId);
 
 
-      byteTransport = new LambdaByteTransport(
-        executorId, selector, initializer, executorAddressMap);
+     // byteTransport = new LambdaByteTransport(
+     //   executorId, selector, initializer, executorAddressMap);
       final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
-      final PipeManagerWorker pipeManagerWorker =
-        new PipeManagerWorker(executorId, byteTransfer, dstTaskIndexTargetExecutorMap);
-      intermediateDataIOFactory =
-        new IntermediateDataIOFactory(pipeManagerWorker);
+     // final PipeManagerWorker pipeManagerWorker =
+     //   new PipeManagerWorker(executorId, byteTransfer, dstTaskIndexTargetExecutorMap);
+     // intermediateDataIOFactory =
+     //   new IntermediateDataIOFactory(pipeManagerWorker);
+      intermediateDataIOFactory = null;
     } else {
       intermediateDataIOFactory = null;
     }
@@ -286,6 +290,7 @@ public final class MiddleOffloadingTransform<O> implements OffloadingTransform<O
       final RuntimeEdge<IRVertex> e = getEdge(irDag, irVertex);
       KafkaOperatorVertexOutputCollector outputCollector =
         new KafkaOperatorVertexOutputCollector(
+          "no",
           irVertex,
           samplingMap.getOrDefault(irVertex.getId(), 1.0),
           e, /* just use first edge for encoding */

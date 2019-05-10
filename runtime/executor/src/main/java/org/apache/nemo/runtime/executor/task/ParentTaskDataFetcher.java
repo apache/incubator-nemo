@@ -23,7 +23,8 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
-import org.apache.nemo.runtime.executor.datatransfer.InputReader;
+import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   // Non-finals (lazy fetching)
   private boolean firstFetch;
   private int expectedNumOfIterators;
-  private DataUtil.IteratorWithNumBytes currentIterator;
+  private IteratorWithNumBytes currentIterator;
   private int currentIteratorIndex;
   private long serBytes = 0;
   private long encodedBytes = 0;
@@ -117,13 +118,13 @@ class ParentTaskDataFetcher extends DataFetcher {
       throw new IOException((Throwable) iteratorOrThrowable);
     } else {
       // This iterator is valid. Do advance.
-      this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrThrowable;
+      this.currentIterator = (IteratorWithNumBytes) iteratorOrThrowable;
       this.currentIteratorIndex++;
     }
   }
 
   private void fetchDataLazily() throws IOException {
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
+    final List<CompletableFuture<IteratorWithNumBytes>> futures = readersForParentTask.read();
     this.expectedNumOfIterators = futures.size();
 
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
@@ -148,17 +149,17 @@ class ParentTaskDataFetcher extends DataFetcher {
     return encodedBytes;
   }
 
-  private void countBytes(final DataUtil.IteratorWithNumBytes iterator) {
+  private void countBytes(final IteratorWithNumBytes iterator) {
     try {
       serBytes += iterator.getNumSerializedBytes();
-    } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+    } catch (final IteratorWithNumBytes.NumBytesNotSupportedException e) {
       serBytes = -1;
     } catch (final IllegalStateException e) {
       LOG.error("Failed to get the number of bytes of serialized data - the data is not ready yet ", e);
     }
     try {
       encodedBytes += iterator.getNumEncodedBytes();
-    } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+    } catch (final IteratorWithNumBytes.NumBytesNotSupportedException e) {
       encodedBytes = -1;
     } catch (final IllegalStateException e) {
       LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);

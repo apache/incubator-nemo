@@ -45,16 +45,18 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
+import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
-import org.apache.nemo.runtime.executor.task.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.common.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.common.NemoEventEncoderFactory;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -64,7 +66,6 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -252,7 +253,7 @@ public final class Executor {
 
 
       final TaskExecutor taskExecutor =
-      new TaskExecutor(
+      new DefaultTaskExecutorImpl(
         Thread.currentThread().getId(),
         executorId,
         byteTransport,
@@ -274,6 +275,9 @@ public final class Executor {
       taskExecutorMap.put(taskExecutor, true);
       final int numTask = numReceivedTasks.getAndIncrement();
       final int index = numTask % evalConf.executorThreadNum;
+
+      LOG.info("Add Task {} to {} thread of {}", taskExecutor.getId(), index, executorId);
+
       executorThreads.get(index).addNewTask(taskExecutor);
       //taskExecutor.execute();
       taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());

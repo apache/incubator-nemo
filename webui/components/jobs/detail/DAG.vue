@@ -236,7 +236,7 @@ export default {
     /**
      * array of stage edge id inside of dag.
      */
-    stageEdges() {
+    outgoingEdges() {
       if (!this.dag) {
         return undefined;
       }
@@ -651,7 +651,7 @@ export default {
         });
       });
 
-      this.stageEdges.forEach(stageEdge => {
+      this.outgoingEdges.forEach(stageEdge => {
         g.setEdge(stageEdge.src, stageEdge.dst, {
           label: stageEdge.properties.runtimeEdgeId,
           width: 10,

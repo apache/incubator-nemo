@@ -109,7 +109,7 @@ public final class HandleDataFetcher {
           final long tTime = threadMXBean.getThreadCpuTime(tid);
           final long elapsedTime = tTime - prevTime;
           LOG.info("Flush elapsed time: {}", elapsedTime);
-          resultCollector.collector.emit(new OffloadingHeartbeatEvent(taskIndex, elapsedTime));
+          resultCollector.collector.emit(new OffloadingHeartbeatEvent("no", taskIndex, elapsedTime));
 
           prevTime = tTime;
         }
@@ -206,10 +206,10 @@ public final class HandleDataFetcher {
         final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
         final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
         LOG.info("Send checkpointmark {} to vm: {}", checkpointMark, id);
-        resultCollector.collector.emit(new KafkaOffloadingOutput(id, checkpointMark));
+        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, checkpointMark));
       } else {
         LOG.info("Send checkpointmark {} to vm: {}", startCheckpointMark, id);
-        resultCollector.collector.emit(new KafkaOffloadingOutput(id, startCheckpointMark));
+        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, startCheckpointMark));
       }
 
 

@@ -16,13 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
-import org.apache.nemo.common.NemoTriple;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import org.apache.nemo.runtime.executor.bytetransfer.ByteInputContext;
-import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.reef.wake.EventHandler;
 
 import java.util.*;
@@ -37,13 +35,14 @@ public interface InputReader {
    *
    * @return the read data.
    */
-  List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read();
+  List<CompletableFuture<IteratorWithNumBytes>> read();
 
 
   // input stream and src task index pair
-  void readAsync(EventHandler<NemoTriple<DataUtil.IteratorWithNumBytes, Integer, ByteInputContext>> handler);
+  void readAsync(String taskId,
+                 EventHandler<Pair<IteratorWithNumBytes, Integer>> handler);
 
-  List<DataUtil.IteratorWithNumBytes> readBlocking();
+  List<IteratorWithNumBytes> readBlocking();
 
   IRVertex getSrcIrVertex();
 

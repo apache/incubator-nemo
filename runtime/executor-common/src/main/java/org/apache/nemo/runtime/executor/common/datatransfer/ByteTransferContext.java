@@ -16,127 +16,63 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
 
 /**
  */
-public abstract class LambdaByteTransferContext {
+public interface ByteTransferContext {
 
-  private static final Logger LOG = LoggerFactory.getLogger(LambdaByteTransferContext.class);
+  ContextManager getContextManager();
 
-  private final String remoteExecutorId;
-  private final ContextId contextId;
-  private final byte[] contextDescriptor;
-  private final ChannelWriteFutureListener channelWriteFutureListener = new ChannelWriteFutureListener();
-  private final LambdaContextManager contextManager;
-
-  private volatile boolean hasException = false;
-  private volatile Throwable exception = null;
-
-  /**
-   * Creates a transfer context.
-   * @param remoteExecutorId    id of the remote executor
-   * @param contextId           identifier for this context
-   * @param contextDescriptor   user-provided context descriptor
-   * @param contextManager      to de-register context when this context expires
-   */
-  LambdaByteTransferContext(final String remoteExecutorId,
-                            final ContextId contextId,
-                            final byte[] contextDescriptor,
-                            final LambdaContextManager contextManager) {
-    this.remoteExecutorId = remoteExecutorId;
-    this.contextId = contextId;
-    this.contextDescriptor = contextDescriptor;
-    this.contextManager = contextManager;
-  }
-
-  /**
-   * @return the remote executor id.
-   */
-  public final String getRemoteExecutorId() {
-    return remoteExecutorId;
-  }
+  String getRemoteExecutorId();
 
   /**
    * @return the identifier for this transfer context.
    */
-  public final ContextId getContextId() {
-    return contextId;
-  }
+  ContextId getContextId();
 
   /**
    * @return user-provided context descriptor.
    */
-  public final byte[] getContextDescriptor() {
-    return contextDescriptor;
-  }
+  byte[] getContextDescriptor();
 
   /**
    * @return  Whether this context has exception or not.
    */
-  public final boolean hasException() {
-    return hasException;
-  }
+  boolean hasException();
 
   /**
    * @return  The exception involved with this context, or {@code null}.
    */
-  public final Throwable getException() {
-    return exception;
-  }
-
-  @Override
-  public final String toString() {
-    return contextId.toString();
-  }
-
-  /**
-   * @return Listener for channel write.
-   */
-  final ChannelFutureListener getChannelWriteListener() {
-    return channelWriteFutureListener;
-  }
+  Throwable getException();
+  ChannelFutureListener getChannelWriteListener();
 
   /**
    * Handles exception.
    * @param cause the cause of exception handling
    */
-  public abstract void onChannelError(@Nullable final Throwable cause);
+  void onChannelError(@Nullable final Throwable cause);
 
   /**
    * Sets exception.
    * @param cause the exception to set
    */
-  protected final void setChannelError(@Nullable final Throwable cause) {
-    if (hasException) {
-      return;
-    }
-    hasException = true;
-    cause.printStackTrace();
-    LOG.error(cause.toString());
-    LOG.error(String.format("A channel exception set on %s", toString())); // Not logging throwable, which isn't useful
-    exception = cause;
-  }
+  void setChannelError(@Nullable final Throwable cause);
 
   /**
+   * De-registers this context from {@link ContextManager}.
    */
-  protected final void deregister() {
-    contextManager.onContextExpired(this);
-  }
+  void deregister();
 
   /**
    * Globally unique identifier of transfer context.
    */
-  static final class ContextId {
+  public static final class ContextId {
     private final String initiatorExecutorId;
     private final String partnerExecutorId;
     private final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection;
@@ -151,7 +87,7 @@ public abstract class LambdaByteTransferContext {
      * @param transferIndex       an index issued by the initiator
      * @param isPipe              is a pipe context
      */
-    ContextId(final String initiatorExecutorId,
+    public ContextId(final String initiatorExecutorId,
               final String partnerExecutorId,
               final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
               final int transferIndex,
@@ -210,19 +146,6 @@ public abstract class LambdaByteTransferContext {
     @Override
     public int hashCode() {
       return Objects.hash(initiatorExecutorId, partnerExecutorId, dataDirection, transferIndex);
-    }
-  }
-
-  /**
-   * Listener for channel write.
-   */
-  private final class ChannelWriteFutureListener implements ChannelFutureListener {
-    @Override
-    public void operationComplete(final ChannelFuture future) {
-      if (future.isSuccess()) {
-        return;
-      }
-      onChannelError(future.cause());
     }
   }
 }

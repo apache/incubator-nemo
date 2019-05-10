@@ -24,6 +24,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.ir.edge.StageEdge;
+import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 
@@ -38,12 +39,15 @@ import java.util.PriorityQueue;
 public final class IntermediateDataIOFactory {
   private final PipeManagerWorker pipeManagerWorker;
   private final BlockManagerWorker blockManagerWorker;
+  private final TaskInputContextMap taskInputContextMap;
 
   @Inject
   private IntermediateDataIOFactory(final BlockManagerWorker blockManagerWorker,
-                                    final PipeManagerWorker pipeManagerWorker) {
+                                    final PipeManagerWorker pipeManagerWorker,
+                                    final TaskInputContextMap taskInputContextMap) {
     this.blockManagerWorker = blockManagerWorker;
     this.pipeManagerWorker = pipeManagerWorker;
+    this.taskInputContextMap = taskInputContextMap;
   }
 
   /**
@@ -81,7 +85,7 @@ public final class IntermediateDataIOFactory {
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge) {
     if (isPipe(runtimeEdge)) {
-      return new PipeInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker);
+      return new PipeInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker, taskInputContextMap);
     } else {
       return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
     }

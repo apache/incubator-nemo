@@ -16,19 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.bytetransfer;
+package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
-import javax.annotation.Nullable;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 
 /**

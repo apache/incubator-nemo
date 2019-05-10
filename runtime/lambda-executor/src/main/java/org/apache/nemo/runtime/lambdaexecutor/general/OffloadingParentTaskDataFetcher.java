@@ -16,18 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.task;
+package org.apache.nemo.runtime.lambdaexecutor.general;
 
 import org.apache.nemo.common.Pair;
-import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.Watermark;
-import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
+import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
+import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,15 +41,15 @@ import java.util.concurrent.*;
 /**
  * Task thread -> fetchDataElement() -> (((QUEUE))) <- List of iterators <- queueInsertionThreads
  *
- * Unlike, where the task thread directly consumes (and blocks on) iterators one by one,
+ OffloadingParentTaskDataFetcher
  * this class spawns threads that each forwards elements from an iterator to a global queue.
  *
  * This class should be used when dealing with unbounded data streams, as we do not want to be blocked on a
  * single unbounded iterator forever.
  */
 @NotThreadSafe
-public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
-  private static final Logger LOG = LoggerFactory.getLogger(MultiThreadParentTaskDataFetcher.class);
+class OffloadingParentTaskDataFetcher extends DataFetcher {
+  private static final Logger LOG = LoggerFactory.getLogger(OffloadingParentTaskDataFetcher.class);
 
   private final InputReader readersForParentTask;
   //private final ExecutorService queueInsertionThreads;
@@ -82,11 +82,11 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   private final ConcurrentLinkedQueue<Pair<IteratorWithNumBytes, Integer>> taskAddPairQueue;
 
-  public MultiThreadParentTaskDataFetcher(final String taskId,
-                                   final IRVertex dataSource,
-                                   final RuntimeEdge edge,
-                                   final InputReader readerForParentTask,
-                                   final OutputCollector outputCollector) {
+  OffloadingParentTaskDataFetcher(final String taskId,
+                                  final IRVertex dataSource,
+                                  final RuntimeEdge edge,
+                                  final InputReader readerForParentTask,
+                                  final OutputCollector outputCollector) {
     super(dataSource, edge, outputCollector);
     this.taskId = taskId;
     this.readersForParentTask = readerForParentTask;
@@ -333,11 +333,11 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     }));
   }
 
-  public final long getSerializedBytes() {
+  final long getSerializedBytes() {
     return serBytes;
   }
 
-  public final long getEncodedBytes() {
+  final long getEncodedBytes() {
     return encodedBytes;
   }
 

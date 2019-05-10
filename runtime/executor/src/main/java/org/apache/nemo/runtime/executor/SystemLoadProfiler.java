@@ -1,7 +1,7 @@
 package org.apache.nemo.runtime.executor;
 
 import com.sun.management.OperatingSystemMXBean;
-import org.apache.nemo.runtime.executor.task.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.TaskExecutor;
 
 import javax.inject.Inject;
 import java.lang.management.ManagementFactory;

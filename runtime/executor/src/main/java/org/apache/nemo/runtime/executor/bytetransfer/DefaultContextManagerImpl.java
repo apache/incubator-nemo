@@ -19,12 +19,14 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
-import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
-import org.apache.nemo.runtime.executor.datatransfer.VMScalingClientTransport;
+import org.apache.nemo.runtime.executor.common.datatransfer.VMScalingClientTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,9 +38,9 @@ import java.util.function.Function;
 /**
  * Manages multiple transport contexts for one channel.
  */
-final class ContextManager extends SimpleChannelInboundHandler<ByteTransferContextSetupMessage> {
+final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTransferContextSetupMessage> implements ContextManager {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ContextManager.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultContextManagerImpl.class.getName());
 
   private final PipeManagerWorker pipeManagerWorker;
   private final BlockManagerWorker blockManagerWorker;
@@ -68,14 +70,14 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * @param localExecutorId     local executor id
    * @param channel             the {@link Channel} to manage
    */
-  ContextManager(final PipeManagerWorker pipeManagerWorker,
-                 final BlockManagerWorker blockManagerWorker,
-                 final ByteTransfer byteTransfer,
-                 final ChannelGroup channelGroup,
-                 final String localExecutorId,
-                 final Channel channel,
-                 final VMScalingClientTransport vmScalingClientTransport,
-                 final AckScheduledService ackScheduledService) {
+  DefaultContextManagerImpl(final PipeManagerWorker pipeManagerWorker,
+                            final BlockManagerWorker blockManagerWorker,
+                            final ByteTransfer byteTransfer,
+                            final ChannelGroup channelGroup,
+                            final String localExecutorId,
+                            final Channel channel,
+                            final VMScalingClientTransport vmScalingClientTransport,
+                            final AckScheduledService ackScheduledService) {
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
@@ -98,7 +100,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
   /**
    * @return channel for this context manager.
    */
-  Channel getChannel() {
+  @Override
+  public Channel getChannel() {
     return channel;
   }
 
@@ -108,7 +111,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * @param transferIndex transfer index
    * @return the {@link ByteInputContext} corresponding to the pair of {@code dataDirection} and {@code transferIndex}
    */
-  ByteInputContext getInputContext(final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
+  @Override
+  public ByteInputContext getInputContext(final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
                                    final int transferIndex) {
     final ConcurrentMap<Integer, ByteInputContext> contexts =
         dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
@@ -221,7 +225,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * Removes the specified contexts from map.
    * @param context the {@link ByteTransferContext} to remove.
    */
-  void onContextExpired(final ByteTransferContext context) {
+  @Override
+  public void onContextExpired(final ByteTransferContext context) {
     final ByteTransferContext.ContextId contextId = context.getContextId();
     final ConcurrentMap<Integer, ? extends ByteTransferContext> contexts = context instanceof ByteInputContext
         ? (contextId.getDataDirection() == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
@@ -232,6 +237,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     contexts.remove(contextId.getTransferIndex(), context);
   }
 
+  @Override
   public void onContextCloseLocal(
     final int transferIndex) {
     final ByteInputContext localInputContext = inputContextsInitiatedByRemote.get(transferIndex);
@@ -239,6 +245,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     localInputContext.onContextClose();
   }
 
+  @Override
   public void onContextRestartLocal(
     final int transferIndex) {
     final ByteInputContext localInputContext = inputContextsInitiatedByRemote.get(transferIndex);
@@ -263,6 +270,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     }
   }
 
+  @Override
   public void onContextStopLocal(
     final int transferIndex) {
     final ByteInputContext localInputContext = inputContextsInitiatedByRemote.get(transferIndex);
@@ -270,7 +278,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
     localInputContext.onContextStop();
   }
 
-  void onContextStop(final ByteInputContext context) {
+  @Override
+  public void onContextStop(final ByteInputContext context) {
     LOG.info("context stop!! {}", context.getContextId());
     final ByteTransferContext.ContextId contextId = context.getContextId();
     inputContextsInitiatedByRemote.remove(contextId.getTransferIndex(), context);
@@ -329,7 +338,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * @param isPipe            is pipe
    * @return new {@link ByteInputContext}
    */
-  ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
+  @Override
+  public ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
     return newContext(inputContextsInitiatedByLocal, nextInputTransferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
         contextId -> new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor, this, ackScheduledService.ackService),
@@ -343,7 +353,8 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
    * @param isPipe            is pipe
    * @return new {@link ByteOutputContext}
    */
-  ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
+  @Override
+  public ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
     if (localExecutorId.equals(executorId)) {
       // TODO: create local output context
       final Queue<Object> queue = new ConcurrentLinkedQueue<>();
