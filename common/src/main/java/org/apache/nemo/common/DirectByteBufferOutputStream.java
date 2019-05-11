@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * This class is a customized output stream implementation backed by
@@ -35,7 +36,14 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   private static final int DEFAULT_PAGE_SIZE = 32768; //32KB
   private final int pageSize;
   private ByteBuffer currentBuf;
-
+  static ConcurrentLinkedQueue<ByteBuffer> queue = new ConcurrentLinkedQueue<>();
+  static {
+    int cnt = 1000;
+    while(cnt > 0) {
+      queue.add(ByteBuffer.allocateDirect(DEFAULT_PAGE_SIZE));
+      cnt -= 1;
+    }
+  }
 
   /**
    * Default constructor.
@@ -60,11 +68,18 @@ public final class DirectByteBufferOutputStream extends OutputStream {
     currentBuf = dataList.getLast();
   }
 
+  public void finalize() {
+    for(final ByteBuffer buf: dataList) {
+      buf.position(0);
+      queue.add(buf);
+    }
+  }
   /**
    * Allocates new {@link ByteBuffer} with the capacity equal to {@code pageSize}.
    */
   private void newLastBuffer() {
-    dataList.addLast(ByteBuffer.allocateDirect(pageSize));
+    //dataList.addLast(ByteBuffer.allocateDirect(pageSize));
+    dataList.addLast(queue.poll());
   }
 
   /**
