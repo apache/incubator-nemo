@@ -38,7 +38,7 @@ public final class DirectByteBufferOutputStream extends OutputStream {
   private ByteBuffer currentBuf;
   static ConcurrentLinkedQueue<ByteBuffer> queue = new ConcurrentLinkedQueue<>();
   static {
-    int cnt = 1000;
+    int cnt = 500;
     while(cnt > 0) {
       queue.add(ByteBuffer.allocateDirect(DEFAULT_PAGE_SIZE));
       cnt -= 1;
