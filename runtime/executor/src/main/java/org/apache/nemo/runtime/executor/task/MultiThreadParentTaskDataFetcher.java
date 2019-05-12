@@ -26,6 +26,7 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.slf4j.Logger;
@@ -199,6 +200,11 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     throw new NoSuchElementException();
   }
 
+  @Override
+  public Future<Integer> stop() {
+    return readersForParentTask.stop();
+  }
+
   private void fetchNonBlocking() { // 갯수 동적으로 받아야함. handler 같은거 등록하기
     inputWatermarkManager = new DynamicInputWatermarkManager(taskId, getDataSource(), new WatermarkCollector());
     final DynamicInputWatermarkManager watermarkManager = (DynamicInputWatermarkManager) inputWatermarkManager;
@@ -357,6 +363,8 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
       LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
     }
   }
+
+
 
   @Override
   public void close() throws Exception {

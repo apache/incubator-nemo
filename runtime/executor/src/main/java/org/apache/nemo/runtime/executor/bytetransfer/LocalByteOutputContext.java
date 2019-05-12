@@ -107,6 +107,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
    * @return new {@link ByteOutputStream}
    * @throws IOException if an exception was set or this context was closed.
    */
+  @Override
   public ByteOutputStream newOutputStream() throws IOException {
     return new LocalByteOutputStream();
   }

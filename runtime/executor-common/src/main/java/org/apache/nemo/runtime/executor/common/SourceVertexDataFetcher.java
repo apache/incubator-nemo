@@ -104,6 +104,11 @@ public class SourceVertexDataFetcher extends DataFetcher {
     }
   }
 
+  @Override
+  public void stop() {
+    // do nothing
+  }
+
   public final long getBoundedSourceReadTime() {
     return boundedSourceReadTime;
   }

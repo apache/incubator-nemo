@@ -57,6 +57,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   public OffloadingExecutor(final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
                             final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap,
+                            final Map<Pair<String, Integer>, Integer> taskTransferIndexMap,
                             final boolean isInVm) {
     this.channels = new ConcurrentHashMap<>();
     this.executorId = "lambdaExecutor";
@@ -116,7 +117,8 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     final LambdaByteTransportChannelInitializer initializer =
       new LambdaByteTransportChannelInitializer(byteTransport.getChannelGroup(),
-        controlFrameEncoder, dataFrameEncoder, channels, executorId, clientTransport, ackScheduledService);
+        controlFrameEncoder, dataFrameEncoder, channels, executorId, clientTransport, ackScheduledService,
+        taskTransferIndexMap);
 
     byteTransport = new LambdaByteTransport(
       executorId, selector, initializer, executorAddressMap);

@@ -25,11 +25,15 @@ import org.apache.reef.wake.EventHandler;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 /**
  * Represents the input data transfer to a task.
  */
 public interface InputReader {
+
+  Future<Integer> stop();
+
   /**
    * Reads input data depending on the communication pattern of the srcVertex.
    *

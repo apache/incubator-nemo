@@ -21,9 +21,12 @@ package org.apache.nemo.runtime.executor.common;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.Future;
 
 /**
  * An abstraction for fetching data from task-external sources.
@@ -60,4 +63,6 @@ public abstract class DataFetcher implements AutoCloseable {
   public IRVertex getDataSource() {
     return dataSource;
   }
+
+  public abstract Future<Integer> stop();
 }

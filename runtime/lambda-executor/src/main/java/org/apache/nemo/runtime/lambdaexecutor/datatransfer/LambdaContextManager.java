@@ -22,10 +22,12 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -49,17 +51,21 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   private final VMScalingClientTransport vmScalingClientTransport;
   private final AckScheduledService ackScheduledService;
 
+  private final Map<Pair<String, Integer>, Integer> taskTransferIndexMap;
+
   public LambdaContextManager(final ChannelGroup channelGroup,
                        final String localExecutorId,
                        final Channel channel,
                        final VMScalingClientTransport vmScalingClientTransport,
-                       final AckScheduledService ackScheduledService) {
+                       final AckScheduledService ackScheduledService,
+                       final Map<Pair<String, Integer>, Integer> taskTransferIndexMap) {
     LOG.info("New lambda context manager: {} / {}", localExecutorId, channel);
     this.channelGroup = channelGroup;
     this.localExecutorId = localExecutorId;
     this.channel = channel;
     this.vmScalingClientTransport = vmScalingClientTransport;
     this.ackScheduledService = ackScheduledService;
+    this.taskTransferIndexMap = taskTransferIndexMap;
   }
 
   @Override
@@ -74,7 +80,12 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
   @Override
   public ByteInputContext newInputContext(String executorId, byte[] contextDescriptor, boolean isPipe) {
-    return newContext(inputContextsInitiatedByLocal, nextInputTransferIndex,
+    // TODO: fix
+    final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+    final Pair<String, Integer> key = Pair.of(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex());
+    final int transferIndex = taskTransferIndexMap.get(key);
+
+    return newContext(inputContextsInitiatedByLocal, transferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
       contextId -> new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor, this,
         ackScheduledService.ackService),
@@ -116,13 +127,12 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   }
 
   <T extends ByteTransferContext> T newContext(final ConcurrentMap<Integer, T> contexts,
-                                               final AtomicInteger transferIndexCounter,
+                                               final int transferIndex,
                                                final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
                                                final Function<ByteTransferContext.ContextId, T> contextGenerator,
                                                final String executorId,
                                                final boolean isPipe) {
     setRemoteExecutorId(executorId);
-    final int transferIndex = transferIndexCounter.getAndIncrement();
     LOG.info("Output context: srcExecutor: {}, remoteExecutor: {}, transferIndex: {}",
       localExecutorId, executorId, transferIndex);
     final ByteTransferContext.ContextId contextId = new ByteTransferContext.ContextId(localExecutorId, executorId, dataDirection, transferIndex, isPipe);
@@ -147,7 +157,11 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   @Override
   public ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
     LOG.info("LambdaContextManager: {}", executorId);
-    return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
+    final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+    final Pair<String, Integer> key = Pair.of(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex());
+    final int transferIndex = taskTransferIndexMap.get(key);
+
+    return newContext(outputContextsInitiatedByLocal, transferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
         contextId -> new RemoteByteOutputContext(executorId, contextId, contextDescriptor, this, vmScalingClientTransport),
         executorId, isPipe);

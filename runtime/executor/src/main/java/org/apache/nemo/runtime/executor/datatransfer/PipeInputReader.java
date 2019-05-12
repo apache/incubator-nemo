@@ -23,27 +23,28 @@ import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.bytetransfer.LocalByteInputContext;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RemoteByteInputContext;
-import org.apache.nemo.runtime.executor.common.datatransfer.StreamRemoteByteInputContext;
-import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.DataUtil;
-import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.reef.wake.EventHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
  * Represents the input data transfer to a task.
  */
 public final class PipeInputReader implements InputReader {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PipeInputReader.class.getName());
+
   private final PipeManagerWorker pipeManagerWorker;
 
   private final int dstTaskIndex;
@@ -55,19 +56,89 @@ public final class PipeInputReader implements InputReader {
   private final RuntimeEdge runtimeEdge;
   private final TaskInputContextMap taskInputContextMap;
 
-  PipeInputReader(final int dstTaskIdx,
+  private final Set<ByteInputContext> byteInputContexts;
+
+  private final String executorId;
+
+  PipeInputReader(final String executorId,
+                  final int dstTaskIdx,
                   final IRVertex srcIRVertex,
                   final RuntimeEdge runtimeEdge,
                   final PipeManagerWorker pipeManagerWorker,
                   final TaskInputContextMap taskInputContextMap) {
+    this.executorId = executorId;
     this.dstTaskIndex = dstTaskIdx;
     this.srcVertex = srcIRVertex;
     this.taskInputContextMap = taskInputContextMap;
     this.runtimeEdge = runtimeEdge;
     this.pipeManagerWorker = pipeManagerWorker;
+    this.byteInputContexts = new HashSet<>();
     this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), dstTaskIdx);
   }
 
+
+  @Override
+  public Future<Integer> stop() {
+    final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
+
+    for (final ByteInputContext byteInputContext : byteInputContexts) {
+      final ByteTransferContextSetupMessage pendingMsg =
+        new ByteTransferContextSetupMessage(executorId,
+          byteInputContext.getContextId().getTransferIndex(),
+          byteInputContext.getContextId().getDataDirection(),
+          byteInputContext.getContextDescriptor(),
+          byteInputContext.getContextId().isPipe(),
+          ByteTransferContextSetupMessage.MessageType.PENDING_FOR_SCALEOUT_VM);
+
+      LOG.info("Send message {}", pendingMsg);
+
+      byteInputContext.sendMessage(pendingMsg, (m) -> {
+
+        LOG.info("receive ack!!");
+        atomicInteger.decrementAndGet();
+
+        //byteInputContext.sendMessage();
+        //throw new RuntimeException("TODO");
+      });
+
+    }
+
+    return new Future<Integer>() {
+      @Override
+      public boolean cancel(boolean mayInterruptIfRunning) {
+        return false;
+      }
+
+      @Override
+      public boolean isCancelled() {
+        return false;
+      }
+
+      @Override
+      public boolean isDone() {
+        return atomicInteger.get() == 0;
+      }
+
+      @Override
+      public Integer get() throws InterruptedException, ExecutionException {
+        return byteInputContexts.size();
+      }
+
+      @Override
+      public Integer get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        final long st = System.currentTimeMillis();
+        while (System.currentTimeMillis() - st < unit.toMillis(timeout)) {
+          if (isDone()) {
+            return get();
+          } else {
+            Thread.sleep(200);
+          }
+        }
+
+        throw new TimeoutException();
+      }
+    };
+  }
 
   @Override
   public List<CompletableFuture<IteratorWithNumBytes>> read() {
@@ -96,6 +167,8 @@ public final class PipeInputReader implements InputReader {
       .registerInputContextHandler(runtimeEdge, dstTaskIndex, pair -> {
         final ByteInputContext context = pair.left();
         taskInputContextMap.put(taskId, context);
+
+        byteInputContexts.add(context);
 
         final int srcTaskIndex = pair.right();
         if (context instanceof LocalByteInputContext) {
@@ -140,4 +213,5 @@ public final class PipeInputReader implements InputReader {
   public int getTaskIndex() {
     return dstTaskIndex;
   }
+
 }

@@ -23,6 +23,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
@@ -30,6 +31,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.VMScalingClientTrans
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -60,6 +62,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   private final ScheduledExecutorService flusher;
   private final VMScalingClientTransport vmScalingClientTransport;
   private final AckScheduledService ackScheduledService;
+  private final Map<Pair<String, Integer>, Integer> taskTransferIndexMap;
 
   /**
    * Creates context manager for this channel.
@@ -77,7 +80,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
                             final String localExecutorId,
                             final Channel channel,
                             final VMScalingClientTransport vmScalingClientTransport,
-                            final AckScheduledService ackScheduledService) {
+                            final AckScheduledService ackScheduledService,
+                            final Map<Pair<String, Integer>, Integer> taskTransferIndexMap) {
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
@@ -85,6 +89,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     this.localExecutorId = localExecutorId;
     this.vmScalingClientTransport = vmScalingClientTransport;
     this.ackScheduledService = ackScheduledService;
+    this.taskTransferIndexMap = taskTransferIndexMap;
     this.channel = channel;
     this.flusher = Executors.newSingleThreadScheduledExecutor();
     flusher.scheduleAtFixedRate(() -> {
@@ -188,31 +193,54 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
           final ByteInputContext context = inputContextsInitiatedByRemote.compute(transferIndex, (index, existing) -> {
             if (existing != null) {
-              throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,
-                transferIndex));
+              //throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,
+              //  transferIndex));
+              LOG.warn("Duplicate ContextId: %s, transferIndex: %d due to the remote channel", contextId,
+                transferIndex);
+              return existing;
+            } else {
+              final ByteInputContext c = new StreamRemoteByteInputContext(
+                remoteExecutorId, contextId, contextDescriptor, this, ackScheduledService.ackService);
+              if (isPipe) {
+                try {
+                  pipeManagerWorker.onInputContext(c);
+                } catch (InvalidProtocolBufferException e) {
+                  e.printStackTrace();
+                  throw new RuntimeException(e);
+                }
+              } else {
+                blockManagerWorker.onInputContext(c);
+              }
+              return c;
             }
-            return new StreamRemoteByteInputContext(
-              remoteExecutorId, contextId, contextDescriptor, this, ackScheduledService.ackService);
           });
 
-          if (isPipe) {
-            pipeManagerWorker.onInputContext(context);
-          } else {
-            blockManagerWorker.onInputContext(context);
-          }
         } else {
           final ByteOutputContext context = outputContextsInitiatedByRemote.compute(transferIndex, (idx, existing) -> {
             if (existing != null) {
-              throw new RuntimeException(String.format("Duplicate ContextId: %s", contextId));
+              //throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,
+              //  transferIndex));
+              LOG.warn("Duplicate ContextId: %s, transferIndex: %d due to the remote channel", contextId,
+                transferIndex);
+              return existing;
+            } else {
+              final ByteOutputContext c = new RemoteByteOutputContext(remoteExecutorId, contextId,
+                contextDescriptor, this, vmScalingClientTransport);
+              try {
+                if (isPipe) {
+                  pipeManagerWorker.onOutputContext(c);
+                } else {
+                  blockManagerWorker.onOutputContext(c);
+                }
+                return c;
+
+              } catch (InvalidProtocolBufferException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+              }
             }
-            return new RemoteByteOutputContext(remoteExecutorId, contextId,
-              contextDescriptor, this, vmScalingClientTransport);
           });
-          if (isPipe) {
-            pipeManagerWorker.onOutputContext(context);
-          } else {
-            blockManagerWorker.onOutputContext(context);
-          }
+
         }
         break;
       }
@@ -291,7 +319,6 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   /**
    * Initiates a context and stores to the specified map.
    * @param contexts map for storing context
-   * @param transferIndexCounter counter for generating transfer index
    * @param dataDirection data direction to include in the context id
    * @param contextGenerator a function that returns context from context id
    * @param executorId id of the remote executor
@@ -300,14 +327,13 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
    * @return generated context
    */
   <T extends ByteTransferContext> T newContext(final ConcurrentMap<Integer, T> contexts,
-                                               final AtomicInteger transferIndexCounter,
+                                               final int transferIndex,
                                                final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
                                                final Function<ByteTransferContext.ContextId, T> contextGenerator,
                                                final String executorId,
                                                final boolean isPipe,
                                                final boolean isLocal) {
     setRemoteExecutorId(executorId);
-    final int transferIndex = transferIndexCounter.getAndIncrement();
     final ByteTransferContext.ContextId contextId = new ByteTransferContext.ContextId(localExecutorId, executorId, dataDirection, transferIndex, isPipe);
     final T context = contexts.compute(transferIndex, (index, existingContext) -> {
       if (existingContext != null) {
@@ -340,7 +366,13 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
    */
   @Override
   public ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
-    return newContext(inputContextsInitiatedByLocal, nextInputTransferIndex,
+    final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+    final Pair<String, Integer> key = Pair.of(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex());
+
+    final int transferIndex = nextInputTransferIndex.getAndIncrement();
+    taskTransferIndexMap.put(key, transferIndex);
+
+    return newContext(inputContextsInitiatedByLocal, transferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
         contextId -> new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor, this, ackScheduledService.ackService),
         executorId, isPipe, false);
@@ -355,10 +387,15 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
    */
   @Override
   public ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
+    final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+    final Pair<String, Integer> key = Pair.of(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex());
+
+    final int transferIndex = nextOutputTransferIndex.getAndIncrement();
+    taskTransferIndexMap.put(key, transferIndex);
+
     if (localExecutorId.equals(executorId)) {
-      // TODO: create local output context
       final Queue<Object> queue = new ConcurrentLinkedQueue<>();
-      return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
+      return newContext(outputContextsInitiatedByLocal, transferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
         contextId -> {
         final LocalByteOutputContext localByteOutputContext =
@@ -383,7 +420,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         executorId, isPipe, true);
 
     } else {
-      return newContext(outputContextsInitiatedByLocal, nextOutputTransferIndex,
+      return newContext(outputContextsInitiatedByLocal, transferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
         contextId -> new RemoteByteOutputContext(executorId, contextId,
           contextDescriptor, this, vmScalingClientTransport),

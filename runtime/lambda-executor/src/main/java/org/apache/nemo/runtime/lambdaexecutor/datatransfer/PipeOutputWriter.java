@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;

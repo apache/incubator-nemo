@@ -21,8 +21,10 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.socket.SocketChannel;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 /**
@@ -63,6 +65,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
   private final ChannelGroup channelGroup;
   private final VMScalingClientTransport clientTransport;
   private final AckScheduledService ackScheduledService;
+  private final Map<Pair<String, Integer>, Integer> taskTransferIndexMap;
 
   public LambdaByteTransportChannelInitializer(final ChannelGroup channelGroup,
                                                final ControlFrameEncoder controlFrameEncoder,
@@ -70,7 +73,8 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
                                                final ConcurrentMap<SocketChannel, Boolean> channels,
                                                final String localExecutorId,
                                                final VMScalingClientTransport clientTransport,
-                                               final AckScheduledService ackScheduledService) {
+                                               final AckScheduledService ackScheduledService,
+                                               final Map<Pair<String, Integer>, Integer> taskTransferIndexMap) {
     this.channelGroup = channelGroup;
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
@@ -78,13 +82,14 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
     this.channels = channels;
     this.clientTransport = clientTransport;
     this.ackScheduledService = ackScheduledService;
+    this.taskTransferIndexMap = taskTransferIndexMap;
   }
 
   @Override
   protected void initChannel(final SocketChannel ch) {
 
     final ContextManager contextManager = new LambdaContextManager(
-      channelGroup, localExecutorId, ch, clientTransport, ackScheduledService);
+      channelGroup, localExecutorId, ch, clientTransport, ackScheduledService, taskTransferIndexMap);
 
     channels.put(ch, true);
 

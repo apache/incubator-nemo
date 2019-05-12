@@ -23,6 +23,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.datatransfer.TaskTransferIndexMap;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -52,6 +53,7 @@ public final class ByteTransfer {
   private final InjectionFuture<VMScalingClientTransport> vmScalingClientTransport;
   private final InjectionFuture<AckScheduledService> ackScheduledService;
   private final String localExecutorId;
+  private TaskTransferIndexMap taskTransferIndexMap;
 
   /**
    * Creates a byte transfer.
@@ -64,7 +66,8 @@ public final class ByteTransfer {
                        final InjectionFuture<BlockManagerWorker> blockManagerWorker,
                        final InjectionFuture<ByteTransfer> byteTransfer,
                        final InjectionFuture<VMScalingClientTransport> vmScalingClientTransport,
-                       final InjectionFuture<AckScheduledService> ackScheduledService) {
+                       final InjectionFuture<AckScheduledService> ackScheduledService,
+                       final TaskTransferIndexMap taskTransferIndexMap) {
     this.byteTransport = byteTransport;
     this.localExecutorId = localExecutorId;
     this.pipeManagerWorker = pipeManagerWorker;
@@ -72,6 +75,7 @@ public final class ByteTransfer {
     this.byteTransfer = byteTransfer;
     this.vmScalingClientTransport = vmScalingClientTransport;
     this.ackScheduledService = ackScheduledService;
+    this.taskTransferIndexMap = taskTransferIndexMap;
   }
 
   /**
@@ -109,7 +113,9 @@ public final class ByteTransfer {
           localExecutorId,
           null,
           vmScalingClientTransport.get(),
-          ackScheduledService.get()));
+          ackScheduledService.get(),
+          taskTransferIndexMap.getMap()));
+
       final ContextManager contextManager = executorIdLocalContextManagerMap.get(executorId);
       return CompletableFuture.completedFuture(
         contextManager.newOutputContext(executorId, contextDescriptor, isPipe));
