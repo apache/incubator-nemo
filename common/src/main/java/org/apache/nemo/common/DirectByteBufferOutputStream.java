@@ -25,18 +25,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * This class is a customized output stream implementation backed by
  * {@link ByteBuffer}, which utilizes off heap memory when writing the data.
  * Memory is allocated when needed by the specified {@code pageSize}.
  */
 public final class DirectByteBufferOutputStream extends OutputStream {
-
-  private static final Logger LOG = LoggerFactory.getLogger(DirectByteBufferOutputStream.class.getName());
-
 
   private LinkedList<ByteBuffer> dataList = new LinkedList<>();
   private static final int DEFAULT_PAGE_SIZE = 32768; //32KB
@@ -78,7 +72,6 @@ public final class DirectByteBufferOutputStream extends OutputStream {
     for(final ByteBuffer buf: dataList) {
       buf.position(0);
       queue.add(buf);
-      LOG.info("finalized DirectByteBufferOutputStream");
     }
   }
   /**

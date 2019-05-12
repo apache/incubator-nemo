@@ -125,8 +125,6 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       wrappedStream.close();
       this.serializedData = bytesOutputStream.toByteArray();
       this.dataList = bytesOutputStream.getBufferList();
-      LOG.info("Just used ByteBufferOutputStream");
-
       this.length = bytesOutputStream.size();
       this.committed = true;
     }
