@@ -346,8 +346,12 @@ public final class OffloadingHandler {
           try {
             final Object data = decoder.decode(bis);
             System.out.println("Remaining size: " + nemoEvent.getByteBuf().readableBytes());
-            final int dataId = bis.readInt();
-            outputCollector.setDataId(dataId);
+            if (nemoEvent.getByteBuf().readableBytes() > 0) {
+              final int dataId = bis.readInt();
+              outputCollector.setDataId(dataId);
+            } else {
+              outputCollector.setDataId(1);
+            }
 
             //System.out.println("Read data " + dataId);
 
