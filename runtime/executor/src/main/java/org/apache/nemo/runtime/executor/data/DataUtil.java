@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -122,10 +123,11 @@ public final class DataUtil {
         wrappedStream.close();
         // Note that serializedBytes include invalid bytes.
         // So we have to use it with the actualLength by using size() whenever needed.
-        final byte[] serializedBytes = bytesOutputStream.toByteArray();
+        //final byte[] serializedBytes = bytesOutputStream.toByteArray();
+        final List<ByteBuffer> serializedBufList = bytesOutputStream.getBufferList();
         final int actualLength = bytesOutputStream.size();
         serializedPartitions.add(
-          new SerializedPartition<>(partitionToConvert.getKey(), serializedBytes, actualLength));
+          new SerializedPartition<>(partitionToConvert.getKey(), serializedBufList, actualLength));
       }
     }
     return serializedPartitions;
@@ -149,10 +151,10 @@ public final class DataUtil {
       final K key = partitionToConvert.getKey();
 
 
-      try (DirectByteBufferInputStream bytebufferInputStream =
+      try (DirectByteBufferInputStream byteBufferInputStream =
              new DirectByteBufferInputStream(partitionToConvert.getBuffer())) {
         final NonSerializedPartition<K> deserializePartition = deserializePartition(
-          partitionToConvert.getLength(), serializer, key, bytebufferInputStream);
+          partitionToConvert.getLength(), serializer, key, byteBufferInputStream);
         nonSerializedPartitions.add(deserializePartition);
       }
     }
