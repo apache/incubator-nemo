@@ -191,7 +191,9 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       case CONTROL: {
 
         if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
-          LOG.info("Receive transfer index : {}", transferIndex);
+          LOG.info("inputContextsInitiatedByRemote: {}", inputContextsInitiatedByRemote);
+
+          LOG.info("Input Receive transfer index : {}", transferIndex);
           if (inputContextsInitiatedByRemote.containsKey(transferIndex)) {
             LOG.warn("Duplicate ContextId: %s, transferIndex: %d due to the remote channel", contextId,
                 transferIndex);
@@ -213,7 +215,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
           }
 
         } else {
-          LOG.info("Receive transfer index : {}", transferIndex);
+          LOG.info("outputContextsInitiatedByRemote: {}", inputContextsInitiatedByRemote);
+          LOG.info("Output Receive transfer index : {}", transferIndex);
           if (outputContextsInitiatedByRemote.containsKey(transferIndex)) {
             LOG.warn("Duplicate ContextId: %s, transferIndex: %d due to the remote channel", contextId,
               transferIndex);
