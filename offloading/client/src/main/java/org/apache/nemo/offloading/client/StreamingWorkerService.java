@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  * @param <I>
  * @param <O>
  */
-public final class StreamingWorkerService<I, O> implements ServerlessExecutorService<I> {
+public final class StreamingWorkerService<I, O> implements ServerlessExecutorService<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingWorkerService.class.getName());
   private final OffloadingWorkerFactory workerFactory;
 
@@ -89,13 +89,13 @@ public final class StreamingWorkerService<I, O> implements ServerlessExecutorSer
   }
 
   @Override
-  public void execute(I data) {
+  public void execute(ByteBuf data) {
     throw new RuntimeException("Unsupported operation");
   }
 
   @Override
-  public void execute(ByteBuf data) {
-    throw new RuntimeException("Unsupported operation");
+  public void execute(String id, ByteBuf data, EventHandler eventHandler) {
+    throw new RuntimeException("no");
   }
 
   // we don't have to send data to streaming workers

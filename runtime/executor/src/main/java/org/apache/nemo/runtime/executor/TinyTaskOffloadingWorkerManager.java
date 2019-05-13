@@ -175,11 +175,6 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
   }
 
   @Override
-  public void execute(I data) {
-    throw new RuntimeException("Unsupported operation");
-  }
-
-  @Override
   public void execute(ByteBuf data) {
     throw new RuntimeException("Unsupported operation");
   }

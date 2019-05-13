@@ -236,7 +236,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     LOG.info("Start to offloading");
     final long st = System.currentTimeMillis();
 
-    final ServerlessExecutorService<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>> slsExecutor =
+    final ServerlessExecutorService<Pair<WindowedValue<SideInputElement>, List<WindowedValue<InputT>>>, WindowedValue<OutputT>> slsExecutor =
       slsProvider.newCachedPool(offloadingTransform, offloadingSerializer, eventHandler);
 
     // encode side input

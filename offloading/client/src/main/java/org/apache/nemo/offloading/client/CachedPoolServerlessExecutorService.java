@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * @param <I>
  * @param <O>
  */
-final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecutorService<I> {
+final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecutorService<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(CachedPoolServerlessExecutorService.class.getName());
   private final OffloadingWorkerFactory workerFactory;
 
@@ -455,13 +455,13 @@ final class CachedPoolServerlessExecutorService<I, O> implements ServerlessExecu
   }
 
   @Override
-  public void execute(I data) {
+  public void execute(ByteBuf data) {
     createNewWorker(data);
   }
 
   @Override
-  public void execute(ByteBuf data) {
-    createNewWorker(data);
+  public void execute(String id, ByteBuf data, EventHandler<O> eventHandler) {
+      throw new RuntimeException("No");
   }
 
   @Override

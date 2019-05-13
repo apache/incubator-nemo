@@ -15,7 +15,7 @@ public final class ServerlessExecutorProviderImpl implements ServerlessExecutorP
   }
 
   @Override
-  public <I, O> ServerlessExecutorService<I> newCachedPool(OffloadingTransform offloadingTransform,
+  public <I, O> ServerlessExecutorService<I, O> newCachedPool(OffloadingTransform offloadingTransform,
                                                            OffloadingSerializer<I, O> offloadingSerializer,
                                                            EventHandler<O> eventHandler) {
     return new CachedPoolServerlessExecutorService(
