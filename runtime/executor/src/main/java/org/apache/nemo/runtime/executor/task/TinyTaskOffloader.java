@@ -149,7 +149,10 @@ public final class TinyTaskOffloader implements Offloader {
     this.sourceVertexDataFetcher = sourceDataFetcher;
 
     if (sourceVertexDataFetcher != null) {
-      LOG.info("Prepare source ?? {}", sourceVertexDataFetcher.getDataSource());
+      final BeamUnboundedSourceVertex oSourceVertex = (BeamUnboundedSourceVertex) sourceVertexDataFetcher.getDataSource();
+      final UnboundedSource oSource = oSourceVertex.getUnboundedSource();
+
+      LOG.info("Prepare source !!! {}", oSource);
     }
 
     this.offloadingEventQueue = offloadingEventQueue;
