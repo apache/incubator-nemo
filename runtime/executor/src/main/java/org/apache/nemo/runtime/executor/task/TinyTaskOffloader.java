@@ -207,9 +207,6 @@ public final class TinyTaskOffloader implements Offloader {
 
   @Override
   public synchronized void handleEndOffloadingEvent() {
-    if (!checkSourceValidation()) {
-      return;
-    }
 
     //여기서 restart하기
     // sink restart

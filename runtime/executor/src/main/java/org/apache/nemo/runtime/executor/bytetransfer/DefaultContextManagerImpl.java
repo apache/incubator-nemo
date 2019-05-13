@@ -191,6 +191,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       case CONTROL: {
 
         if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
+          LOG.info("Receive transfer index : {}", transferIndex);
           final ByteInputContext context = inputContextsInitiatedByRemote.compute(transferIndex, (index, existing) -> {
             if (existing != null) {
               //throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,
@@ -216,6 +217,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
           });
 
         } else {
+          LOG.info("Receive transfer index : {}", transferIndex);
           final ByteOutputContext context = outputContextsInitiatedByRemote.compute(transferIndex, (idx, existing) -> {
             if (existing != null) {
               //throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,

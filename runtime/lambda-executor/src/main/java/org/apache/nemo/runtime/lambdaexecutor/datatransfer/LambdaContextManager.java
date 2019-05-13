@@ -66,6 +66,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     this.vmScalingClientTransport = vmScalingClientTransport;
     this.ackScheduledService = ackScheduledService;
     this.taskTransferIndexMap = taskTransferIndexMap;
+    LOG.info("Transfer index map: {}", taskTransferIndexMap);
   }
 
   @Override
@@ -160,6 +161,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
     final Pair<String, Integer> key = Pair.of(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex());
     final int transferIndex = taskTransferIndexMap.get(key);
+    LOG.info("Output context for {}/{}, index: {}", cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), transferIndex);
 
     return newContext(outputContextsInitiatedByLocal, transferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
