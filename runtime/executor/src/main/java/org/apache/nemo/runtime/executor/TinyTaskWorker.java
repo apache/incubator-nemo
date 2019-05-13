@@ -9,6 +9,8 @@ import org.apache.nemo.offloading.common.OffloadingWorker;
 import org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -16,6 +18,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public final class TinyTaskWorker {
+  private static final Logger LOG = LoggerFactory.getLogger(TinyTaskWorker.class.getName());
 
   private static final int SLOT = 5;
 
@@ -102,13 +105,19 @@ public final class TinyTaskWorker {
   }
 
   public synchronized void executePending() {
+    LOG.info("Execute pending!!");
+
     if (pendingTasks.isEmpty()) {
       return;
     }
 
+    LOG.info("Execute pending222 !!");
+
     for (final OffloadingTask pending : pendingTasks) {
       offloadingWorker.execute(pending.encode(coder), 1, false);
     }
+
+    LOG.info("Execute pending333 !!");
 
     offloadedTasks.addAll(pendingTasks);
     pendingTasks.clear();
