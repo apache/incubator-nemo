@@ -95,6 +95,8 @@ public final class OffloadingTask {
       dos.close();
       oos.close();
 
+      LOG.info("Encoded size: {}", byteBuf.readableBytes());
+
       return byteBuf;
     } catch (final IOException e) {
       e.printStackTrace();

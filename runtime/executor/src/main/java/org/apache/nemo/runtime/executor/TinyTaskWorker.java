@@ -108,7 +108,6 @@ private final OffloadingWorker offloadingWorker;
   }
 
   public synchronized void executePending() {
-    LOG.info("Execute pending!!");
 
     if (pendingTasks.isEmpty()) {
       return;

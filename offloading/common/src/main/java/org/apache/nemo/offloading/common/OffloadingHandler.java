@@ -339,6 +339,9 @@ public final class OffloadingHandler {
           Thread.currentThread().setContextClassLoader(classLoader);
           //System.out.println("Worker init -> data time: " + (st - workerFinishTime) +
           // " databytes: " + nemoEvent.getByteBuf().readableBytes());
+
+          System.out.println("Decodable size: " + nemoEvent.getByteBuf().readableBytes());
+
           final ByteBufInputStream bis = new ByteBufInputStream(nemoEvent.getByteBuf());
           try {
             final Object data = decoder.decode(bis);
