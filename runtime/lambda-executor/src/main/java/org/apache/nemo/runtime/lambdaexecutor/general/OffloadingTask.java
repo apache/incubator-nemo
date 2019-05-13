@@ -73,6 +73,9 @@ public final class OffloadingTask {
       final DataOutputStream dos = new DataOutputStream(bos);
       final ObjectOutputStream oos = new ObjectOutputStream(bos);
 
+      LOG.info("Before Task ordinal !!");
+      LOG.info(Arrays.toString(bos.toByteArray()));
+
       dos.writeInt(TASK_START.ordinal());
 
       LOG.info("Task ordinal !!");
