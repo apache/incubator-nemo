@@ -89,6 +89,7 @@ public class SourceVertexDataFetcher extends DataFetcher {
   public Object fetchDataElement() throws NoSuchElementException, IOException {
     if (!isStarted) {
       isStarted = true;
+      LOG.info("Readable: {}", readable);
       this.readable.prepare();
     }
 
