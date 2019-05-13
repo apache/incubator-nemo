@@ -148,7 +148,9 @@ public final class TinyTaskOffloader implements Offloader {
     this.serializerManager = serializerManager;
     this.sourceVertexDataFetcher = sourceDataFetcher;
 
-    LOG.info("Prepare source ?? {}", sourceVertexDataFetcher.getDataSource());
+    if (sourceVertexDataFetcher != null) {
+      LOG.info("Prepare source ?? {}", sourceVertexDataFetcher.getDataSource());
+    }
 
     this.offloadingEventQueue = offloadingEventQueue;
     this.sourceVertexDataFetchers = sourceVertexDataFetchers;
