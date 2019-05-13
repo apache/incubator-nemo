@@ -112,7 +112,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
         final Pair<String, Object> pair = (Pair<String, Object>) event;
         final Object msg = pair.right();
-        LOG.info("Receive data for {} / {}", pair.left(), pair.right());
+        //LOG.info("Receive data for {} / {}", pair.left(), pair.right());
 
         final TaskExecutor te = offloadedTaskMap.get(pair.left());
 
