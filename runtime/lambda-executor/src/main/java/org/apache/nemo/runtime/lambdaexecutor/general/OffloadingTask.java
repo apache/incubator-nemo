@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor.general;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.beam.sdk.coders.Coder;
@@ -89,10 +90,17 @@ public final class OffloadingTask {
       dos.writeInt(taskIndex);
 
       SerializationUtils.serialize((Serializable) samplingMap, dos);
+
+      LOG.info("samplingMap serialize: {}", bos.size());
       SerializationUtils.serialize((Serializable) irDag, dos);
+
+      LOG.info("irDag serialize: {}", bos.size());
       SerializationUtils.serialize((Serializable) taskOutgoingEdges, dos);
+      LOG.info("taskOutgoingEdges serialize: {}", bos.size());
       SerializationUtils.serialize((Serializable) outgoingEdges, dos);
+      LOG.info("outgoingEdges serialize: {}", bos.size());
       SerializationUtils.serialize((Serializable) incomingEdges, dos);
+      LOG.info("incomingEdges serialize: {}", bos.size());
 
       if (checkpointMark != null) {
         dos.writeBoolean(true);
