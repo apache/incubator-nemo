@@ -133,7 +133,7 @@ public final class OffloadingTask {
 
     try {
 
-      final DataInput dis = new DataInputStream(inputStream);
+      final DataInputStream dis = new DataInputStream(inputStream);
       final String executorId = dis.readUTF();
       final String taskId = dis.readUTF();
       final int taskIndex = dis.readInt();
@@ -155,6 +155,11 @@ public final class OffloadingTask {
         checkpointMark = null;
         unboundedSource = null;
       }
+
+      dis.close();
+      ois.close();
+
+      LOG.info("Offloading task created: {}", taskId);
 
       return new OffloadingTask(executorId,
         taskId,
