@@ -179,21 +179,19 @@ public final class TinyTaskOffloader implements Offloader {
 
     final int id = output.id;
     final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) output.checkpointMark;
-    final KafkaCheckpointMark mergedCheckpoint = createMergedCheckpointMarks(checkpointMark);
     LOG.info("Receive checkpoint mark for source {} in VM: {} at task {}, sourceVertices: {}"
       , id, checkpointMark, taskId, sourceVertexDataFetchers.size());
 
     final SourceVertexDataFetcher oSourceVertexDataFetcher = sourceVertexDataFetchers.get(0);
 
-    /*
     final BeamUnboundedSourceVertex oSourceVertex = (BeamUnboundedSourceVertex) oSourceVertexDataFetcher.getDataSource();
     final UnboundedSource oSource = oSourceVertex.getUnboundedSource();
 
     final UnboundedSourceReadable newReadable =
-      new UnboundedSourceReadable(oSource, null, mergedCheckpoint);
+      new UnboundedSourceReadable(oSource, null, checkpointMark);
 
     oSourceVertexDataFetcher.setReadable(newReadable);
-    */
+
     availableFetchers.add(oSourceVertexDataFetcher);
 
     kafkaOffloadingOutputs.clear();
