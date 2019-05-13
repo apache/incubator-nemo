@@ -67,6 +67,9 @@ public final class OffloadingTask {
 
       final ByteArrayOutputStream bos = new ByteArrayOutputStream(172476);
 
+      LOG.info("Before Task ordinal11 !!");
+      LOG.info(Arrays.toString(bos.toByteArray()));
+
       //final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
       //final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
 
