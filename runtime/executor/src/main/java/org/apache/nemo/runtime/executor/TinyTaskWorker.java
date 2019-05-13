@@ -24,8 +24,7 @@ public final class TinyTaskWorker {
 
   private final List<OffloadingTask> offloadedTasks = new LinkedList<>();
   private final List<OffloadingTask> pendingTasks = new LinkedList<>();
-
-  private final OffloadingWorker offloadingWorker;
+private final OffloadingWorker offloadingWorker;
   private final Coder<UnboundedSource.CheckpointMark> coder;
 
   public TinyTaskWorker(final OffloadingWorker offloadingWorker,
@@ -36,6 +35,10 @@ public final class TinyTaskWorker {
 
   public synchronized void addTask(final OffloadingTask task) {
     pendingTasks.add(task);
+  }
+
+  public boolean isReady() {
+    return offloadingWorker.isReady();
   }
 
   public synchronized boolean canHandleTask() {

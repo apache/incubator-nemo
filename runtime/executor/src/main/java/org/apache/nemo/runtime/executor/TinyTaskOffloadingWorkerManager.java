@@ -68,10 +68,14 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
         final Iterator<Pair<Long, TinyTaskWorker>> iterator = workers.iterator();
         while (iterator.hasNext()) {
           final Pair<Long, TinyTaskWorker> pair = iterator.next();
-          LOG.info("Worker {}, scheduled: {}, pending: {}",
-            pair.right(), pair.right().getNumScheduledTasks(), pair.right().getNumPendingTasks());
+          final TinyTaskWorker taskWorker = pair.right();
 
-          pair.right().executePending();
+          LOG.info("Worker {}, scheduled: {}, pending: {}",
+            taskWorker, taskWorker.getNumScheduledTasks(), taskWorker.getNumPendingTasks());
+
+          if (taskWorker.isReady()) {
+            taskWorker.executePending();
+          }
         }
       } catch (final Exception e) {
         e.printStackTrace();
