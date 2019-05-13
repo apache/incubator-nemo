@@ -65,24 +65,23 @@ public final class OffloadingTask {
   public ByteBuf encode(final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder) {
     try {
 
-      final ByteArrayOutputStream bos = new ByteArrayOutputStream(172476);
+      //final ByteArrayOutputStream bos = new ByteArrayOutputStream(172476);
 
-      LOG.info("Before Task ordinal11 !!");
-      LOG.info(Arrays.toString(bos.toByteArray()));
+      //LOG.info("Before Task ordinal11 !!");
+      //LOG.info(Arrays.toString(bos.toByteArray()));
 
-      //final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
-      //final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
-
+      final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
+      final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
 
       final DataOutputStream dos = new DataOutputStream(bos);
 
-      LOG.info("Before Task ordinal !!");
-      LOG.info(Arrays.toString(bos.toByteArray()));
+      //LOG.info("Before Task ordinal !!");
+      //LOG.info(Arrays.toString(bos.toByteArray()));
 
       dos.writeInt(TASK_START.ordinal());
 
-      LOG.info("Task ordinal !!");
-      LOG.info(Arrays.toString(bos.toByteArray()));
+      //LOG.info("Task ordinal !!");
+      //LOG.info(Arrays.toString(bos.toByteArray()));
 
       dos.writeUTF(executorId);
       dos.writeUTF(taskId);
@@ -105,19 +104,19 @@ public final class OffloadingTask {
       }
 
       dos.close();
-      bos.close();
       oos.close();
+      bos.close();
 
-      final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
-      final ByteBufOutputStream bbos = new ByteBufOutputStream(byteBuf);
-      final byte[] barray = bos.toByteArray();
-      bbos.write(barray);
+      //final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
+      //final ByteBufOutputStream bbos = new ByteBufOutputStream(byteBuf);
+      //final byte[] barray = bos.toByteArray();
+      //bbos.write(barray);
 
-      bbos.close();
+      //bbos.close();
 
       LOG.info("Encoded size: {}, taskOrdinal: {}", byteBuf.readableBytes(), TASK_START.ordinal());
-      LOG.info("Byte array logging");
-      LOG.info(Arrays.toString(barray));
+      //LOG.info("Byte array logging");
+      //LOG.info(Arrays.toString(barray));
 
       return byteBuf;
     } catch (final IOException e) {
@@ -139,14 +138,14 @@ public final class OffloadingTask {
 
       final ObjectInputStream ois = new ObjectInputStream(inputStream);
       final Map<String, Double> samplingMap = (Map<String, Double>) ois.readObject();
-      LOG.info("samplingMap: {}", samplingMap);
+      LOG.info("{}, samplingMap: {}", taskId, samplingMap);
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = (DAG<IRVertex, RuntimeEdge<IRVertex>> ) ois.readObject();
       final Map<String, List<String>> taskOutgoingEdges = (Map<String, List<String>>) ois.readObject();
-      LOG.info("taskOutgoingEdges: {}", taskOutgoingEdges);
+      LOG.info("{}, taskOutgoingEdges: {}", taskId, taskOutgoingEdges);
       final List<StageEdge> outgoingEdges = (List<StageEdge>) ois.readObject();
-      LOG.info("outgoingEdges: {}", outgoingEdges);
+      LOG.info("{}, outgoingEdges: {}", taskId, outgoingEdges);
       final List<StageEdge> incomingEdges = (List<StageEdge>) ois.readObject();
-      LOG.info("incomingEdges: {}", incomingEdges);
+      LOG.info("{}, incomingEdges: {}", taskId, incomingEdges);
 
       final UnboundedSource.CheckpointMark checkpointMark;
       final UnboundedSource unboundedSource;
@@ -158,8 +157,6 @@ public final class OffloadingTask {
         checkpointMark = null;
         unboundedSource = null;
       }
-
-      LOG.info("Offloading task created: {}", taskId);
 
       return new OffloadingTask(executorId,
         taskId,
