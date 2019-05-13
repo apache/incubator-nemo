@@ -52,12 +52,12 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   private final Channel channel;
   private volatile String remoteExecutorId = null;
 
-  private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByLocal = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByLocal = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote = new ConcurrentHashMap<>();
-  private final AtomicInteger nextInputTransferIndex = new AtomicInteger(0);
-  private final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
+  private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByLocal;
+  private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByLocal;
+  private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote;
+  private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote;
+  private final AtomicInteger nextInputTransferIndex;
+  private final AtomicInteger nextOutputTransferIndex;
 
   private final ScheduledExecutorService flusher;
   private final VMScalingClientTransport vmScalingClientTransport;
@@ -81,7 +81,13 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
                             final Channel channel,
                             final VMScalingClientTransport vmScalingClientTransport,
                             final AckScheduledService ackScheduledService,
-                            final Map<Pair<String, Integer>, Integer> taskTransferIndexMap) {
+                            final Map<Pair<String, Integer>, Integer> taskTransferIndexMap,
+                            final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByLocal,
+                            final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByLocal,
+                            final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote,
+                            final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote,
+                            final AtomicInteger nextInputTransferIndex,
+                            final AtomicInteger nextOutputTransferIndex) {
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
@@ -92,6 +98,12 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     this.taskTransferIndexMap = taskTransferIndexMap;
     this.channel = channel;
     this.flusher = Executors.newSingleThreadScheduledExecutor();
+    this.inputContextsInitiatedByRemote = inputContextsInitiatedByRemote;
+    this.inputContextsInitiatedByLocal = inputContextsInitiatedByLocal;
+    this.outputContextsInitiatedByRemote = outputContextsInitiatedByRemote;
+    this.outputContextsInitiatedByLocal = outputContextsInitiatedByLocal;
+    this.nextInputTransferIndex = nextInputTransferIndex;
+    this.nextOutputTransferIndex = nextOutputTransferIndex;
     flusher.scheduleAtFixedRate(() -> {
 
       if (channel.isOpen()) {

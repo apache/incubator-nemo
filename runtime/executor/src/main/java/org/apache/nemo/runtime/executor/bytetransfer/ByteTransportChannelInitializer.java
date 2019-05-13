@@ -29,6 +29,9 @@ import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Sets up {@link io.netty.channel.ChannelPipeline} for {@link ByteTransport}.
@@ -72,6 +75,15 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private final DataFrameEncoder dataFrameEncoder;
   private final String localExecutorId;
   private final TaskTransferIndexMap taskTransferIndexMap;
+
+
+  private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByLocal = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByLocal = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote = new ConcurrentHashMap<>();
+  private final AtomicInteger nextInputTransferIndex = new AtomicInteger(0);
+  private final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
+
 
   /**
    * Creates a netty channel initializer.
@@ -118,7 +130,14 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
       ch,
       vmScalingClientTransport.get(),
       ackScheduledService.get(),
-      taskTransferIndexMap.getMap());
+      taskTransferIndexMap.getMap(),
+      inputContextsInitiatedByLocal,
+      outputContextsInitiatedByLocal,
+      inputContextsInitiatedByRemote,
+      outputContextsInitiatedByRemote,
+      nextInputTransferIndex,
+      nextOutputTransferIndex);
+
     ch.pipeline()
         // inbound
         .addLast(new FrameDecoder(contextManager))
