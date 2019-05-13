@@ -26,21 +26,21 @@ public final class OffloadingExecutorInputDecoder implements OffloadingDecoder<O
 
   @Override
   public Object decode(InputStream inputStream) throws IOException {
-    final byte[] bb = new byte[172480];
-    inputStream.read(bb);
+    //final byte[] bb = new byte[172480];
+    //inputStream.read(bb);
 
 
-    System.out.println("--------BYTEARRAY-------");
-    System.out.println(Arrays.toString(bb));
+    //System.out.println("--------BYTEARRAY-------");
+    //System.out.println(Arrays.toString(bb));
 
 
-    final ByteArrayInputStream bis = new ByteArrayInputStream(bb);
-    final DataInputStream dis = new DataInputStream(bis);
+    //final ByteArrayInputStream bis = new ByteArrayInputStream(bb);
+    final DataInputStream dis = new DataInputStream(inputStream);
     final OffloadingExecutorEventType.EventType et =  OffloadingExecutorEventType.EventType.values()[dis.readInt()];
 
     switch (et) {
       case TASK_START: {
-        return OffloadingTask.decode(bis, checkpointMarkCoder);
+        return OffloadingTask.decode(inputStream, checkpointMarkCoder);
       }
       case TASK_END: {
         final String taskId = dis.readUTF();
