@@ -192,57 +192,47 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
 
         if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
           LOG.info("Receive transfer index : {}", transferIndex);
-          final ByteInputContext context = inputContextsInitiatedByRemote.compute(transferIndex, (index, existing) -> {
-            if (existing != null) {
-              //throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,
-              //  transferIndex));
-              LOG.warn("Duplicate ContextId: %s, transferIndex: %d due to the remote channel", contextId,
+          if (inputContextsInitiatedByRemote.containsKey(transferIndex)) {
+            LOG.warn("Duplicate ContextId: %s, transferIndex: %d due to the remote channel", contextId,
                 transferIndex);
-              return existing;
-            } else {
-              final ByteInputContext c = new StreamRemoteByteInputContext(
-                remoteExecutorId, contextId, contextDescriptor, this, ackScheduledService.ackService);
-              if (isPipe) {
-                try {
-                  pipeManagerWorker.onInputContext(c);
-                } catch (InvalidProtocolBufferException e) {
-                  e.printStackTrace();
-                  throw new RuntimeException(e);
-                }
-              } else {
-                blockManagerWorker.onInputContext(c);
-              }
-              return c;
-            }
-          });
-
-        } else {
-          LOG.info("Receive transfer index : {}", transferIndex);
-          final ByteOutputContext context = outputContextsInitiatedByRemote.compute(transferIndex, (idx, existing) -> {
-            if (existing != null) {
-              //throw new RuntimeException(String.format("Duplicate ContextId: %s, transferIndex: %d", contextId,
-              //  transferIndex));
-              LOG.warn("Duplicate ContextId: %s, transferIndex: %d due to the remote channel", contextId,
-                transferIndex);
-              return existing;
-            } else {
-              final ByteOutputContext c = new RemoteByteOutputContext(remoteExecutorId, contextId,
-                contextDescriptor, this, vmScalingClientTransport);
+            //return inputContextsInitiatedByRemote.get(transferIndex);
+          } else {
+            final ByteInputContext c = new StreamRemoteByteInputContext(
+              remoteExecutorId, contextId, contextDescriptor, this, ackScheduledService.ackService);
+            if (isPipe) {
               try {
-                if (isPipe) {
-                  pipeManagerWorker.onOutputContext(c);
-                } else {
-                  blockManagerWorker.onOutputContext(c);
-                }
-                return c;
-
+                pipeManagerWorker.onInputContext(c);
               } catch (InvalidProtocolBufferException e) {
                 e.printStackTrace();
                 throw new RuntimeException(e);
               }
+            } else {
+              blockManagerWorker.onInputContext(c);
             }
-          });
+            inputContextsInitiatedByRemote.putIfAbsent(transferIndex, c);
+          }
 
+        } else {
+          LOG.info("Receive transfer index : {}", transferIndex);
+          if (outputContextsInitiatedByRemote.containsKey(transferIndex)) {
+            LOG.warn("Duplicate ContextId: %s, transferIndex: %d due to the remote channel", contextId,
+              transferIndex);
+          } else {
+            final ByteOutputContext c = new RemoteByteOutputContext(remoteExecutorId, contextId,
+              contextDescriptor, this, vmScalingClientTransport);
+            try {
+              if (isPipe) {
+                pipeManagerWorker.onOutputContext(c);
+              } else {
+                blockManagerWorker.onOutputContext(c);
+              }
+            } catch (InvalidProtocolBufferException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+
+            outputContextsInitiatedByRemote.putIfAbsent(transferIndex, c);
+          }
         }
         break;
       }
