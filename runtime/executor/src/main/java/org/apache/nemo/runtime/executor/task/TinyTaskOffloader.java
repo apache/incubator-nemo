@@ -182,19 +182,17 @@ public final class TinyTaskOffloader implements Offloader {
     LOG.info("Receive checkpoint mark for source {} in VM: {} at task {}, sourceVertices: {}"
       , id, checkpointMark, taskId, sourceVertexDataFetchers.size());
 
-    final SourceVertexDataFetcher oSourceVertexDataFetcher = sourceVertexDataFetchers.get(0);
-
     LOG.info("Source vertex datafetchers: {}", sourceVertexDataFetchers);
 
-    final BeamUnboundedSourceVertex oSourceVertex = (BeamUnboundedSourceVertex) oSourceVertexDataFetcher.getDataSource();
+    final BeamUnboundedSourceVertex oSourceVertex = (BeamUnboundedSourceVertex) sourceVertexDataFetcher.getDataSource();
     final UnboundedSource oSource = oSourceVertex.getUnboundedSource();
 
     final UnboundedSourceReadable newReadable =
       new UnboundedSourceReadable(oSource, null, checkpointMark);
 
-    oSourceVertexDataFetcher.setReadable(newReadable);
+    sourceVertexDataFetcher.setReadable(newReadable);
 
-    availableFetchers.add(oSourceVertexDataFetcher);
+    availableFetchers.add(sourceVertexDataFetcher);
 
     kafkaOffloadingOutputs.clear();
 
@@ -332,6 +330,9 @@ public final class TinyTaskOffloader implements Offloader {
       final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
       final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();
       final KafkaUnboundedSource unboundedSource = (KafkaUnboundedSource) readable.getUnboundedSource();
+
+      LOG.info("Get unbounded source: {}", unboundedSource);
+
       final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = unboundedSource.getCheckpointMarkCoder();
 
 
