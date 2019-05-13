@@ -253,6 +253,8 @@ public final class FrameDecoder extends ByteToMessageDecoder {
    * Closes {@link ByteInputContext} if necessary and resets the internal states of the decoder.
    */
   private void onDataFrameEnd() {
+    // DO NOTHING
+    /*
     if (isLastFrame) {
       inputContext.onContextClose();
     }
@@ -261,5 +263,6 @@ public final class FrameDecoder extends ByteToMessageDecoder {
       inputContext.onContextStop();
     }
     inputContext = null;
+    */
   }
 }
