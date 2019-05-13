@@ -60,7 +60,7 @@ public final class ExecutorThread {
         }
 
         while (!deletedTasks.isEmpty()) {
-          final TaskExecutor deletedTask = newTasks.poll();
+          final TaskExecutor deletedTask = deletedTasks.poll();
 
           LOG.info("Deleting task {}", deletedTask.getId());
           availableTasks.remove(deletedTask);

@@ -93,11 +93,14 @@ public final class TinyTaskWorker {
 
   public synchronized boolean deleteTask(final String taskId) {
     int index = findTask(offloadedTasks, taskId);
+    LOG.info("Delete task !! {} , index: {}", taskId, index);
+
     if (index >= 0) {
       // SEND end message of the task!
       final TaskEndEvent endEvent = new TaskEndEvent(taskId);
       final ByteBuf byteBuf = endEvent.encode();
       offloadingWorker.execute(byteBuf, 1, false);
+      offloadedTasks.remove(index);
       return false;
     } else {
       index = findTask(pendingTasks, taskId);
