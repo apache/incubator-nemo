@@ -38,7 +38,6 @@ import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.conf.EvalConf;
-import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -67,6 +66,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -181,6 +181,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private long offloadedExecutionTime = 0;
   private final TinyTaskOffloadingWorkerManager tinyWorkerManager;
 
+
+  private final List<StageEdge> copyOutgoingEdges;
+  private final List<StageEdge> copyIncomingEdges;
+
   /**
    * Constructor.
    *
@@ -210,6 +214,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final EvalConf evalConf,
                                  final TaskInputContextMap taskInputContextMap) {
     // Essential information
+    final byte[] bytes = SerializationUtils.serialize((Serializable) task.getTaskOutgoingEdges());
+    this.copyOutgoingEdges = SerializationUtils.deserialize(bytes);
+    final byte[] bytes2 = SerializationUtils.serialize((Serializable) task.getTaskIncomingEdges());
+    this.copyIncomingEdges = SerializationUtils.deserialize(bytes2);
+
     this.threadId = threadId;
     this.executorId = executorId;
     this.byteTransport = byteTransport;
@@ -340,6 +349,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           byteTransport.getExecutorAddressMap(),
           pipeManagerWorker.getTaskExecutorIdMap(),
           serializedDag,
+          copyOutgoingEdges,
+          copyIncomingEdges,
           tinyWorkerManager,
           taskOutgoingEdges,
           serializerManager,

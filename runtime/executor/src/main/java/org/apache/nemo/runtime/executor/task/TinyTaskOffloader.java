@@ -14,6 +14,7 @@ import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.dag.Edge;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
@@ -48,6 +49,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.*;
@@ -99,6 +101,11 @@ public final class TinyTaskOffloader implements Offloader {
   private final SourceVertexDataFetcher sourceVertexDataFetcher;
    private final List<DataFetcher> availableFetchers;
   private final List<DataFetcher> pendingFetchers;
+  private final DAG<IRVertex, RuntimeEdge<IRVertex>> copyDag;
+
+  private final List<StageEdge> copyOutgoingEdges;
+  private final List<StageEdge> copyIncomingEdges;
+
 
   public TinyTaskOffloader(final String executorId,
                            final Task task,
@@ -107,6 +114,8 @@ public final class TinyTaskOffloader implements Offloader {
                            final Map<String, InetSocketAddress> executorAddressMap,
                            final Map<Pair<String, Integer>, String> taskExecutorIdMap,
                            final byte[] serializedDag,
+                           final List<StageEdge> copyOutgoingEdges,
+                           final List<StageEdge> copyIncomingEdges,
                            final TinyTaskOffloadingWorkerManager tinyWorkerManager,
                            final Map<String, List<String>> taskOutgoingEdges,
                            final SerializerManager serializerManager,
@@ -125,10 +134,13 @@ public final class TinyTaskOffloader implements Offloader {
     this.executorId = executorId;
     this.task = task;
     this.taskExecutor = taskExecutor;
+    this.copyOutgoingEdges = copyOutgoingEdges;
+    this.copyIncomingEdges = copyIncomingEdges;
     this.evalConf = evalConf;
     this.executorAddressMap = executorAddressMap;
     this.taskExecutorIdMap = taskExecutorIdMap;
     this.serializedDag = serializedDag;
+    this.copyDag = SerializationUtils.deserialize(serializedDag);
     this.tinyWorkerManager = tinyWorkerManager;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.availableFetchers = availableFetchers;
@@ -277,8 +289,6 @@ public final class TinyTaskOffloader implements Offloader {
       return;
     }
 
-    final DAG<IRVertex, RuntimeEdge<IRVertex>> copyDag = SerializationUtils.deserialize(serializedDag);
-
     final OffloadingTask offloadingTask;
 
     // TODO: 1) Remove available and pending fetchers!!
@@ -355,8 +365,8 @@ public final class TinyTaskOffloader implements Offloader {
         evalConf.samplingJson,
         copyDag,
         taskOutgoingEdges,
-        task.getTaskOutgoingEdges(),
-        task.getTaskIncomingEdges(),
+        copyOutgoingEdges,
+        copyIncomingEdges,
         checkpointMark,
         unboundedSource);
 
@@ -371,8 +381,8 @@ public final class TinyTaskOffloader implements Offloader {
         evalConf.samplingJson,
         copyDag,
         taskOutgoingEdges,
-        task.getTaskOutgoingEdges(),
-        task.getTaskIncomingEdges(),
+        copyOutgoingEdges,
+        copyIncomingEdges,
         null,
         null);
 
