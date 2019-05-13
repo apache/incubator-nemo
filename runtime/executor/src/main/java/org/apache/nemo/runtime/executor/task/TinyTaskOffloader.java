@@ -179,6 +179,7 @@ public final class TinyTaskOffloader implements Offloader {
 
     final int id = output.id;
     final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) output.checkpointMark;
+    final KafkaCheckpointMark mergedCheckpoint = createMergedCheckpointMarks(checkpointMark);
     LOG.info("Receive checkpoint mark for source {} in VM: {} at task {}, sourceVertices: {}"
       , id, checkpointMark, taskId, sourceVertexDataFetchers.size());
 
@@ -187,7 +188,7 @@ public final class TinyTaskOffloader implements Offloader {
     final UnboundedSource oSource = oSourceVertex.getUnboundedSource();
 
     final UnboundedSourceReadable newReadable =
-      new UnboundedSourceReadable(oSource, null, checkpointMark);
+      new UnboundedSourceReadable(oSource, null, mergedCheckpoint);
 
     oSourceVertexDataFetcher.setReadable(newReadable);
     availableFetchers.add(oSourceVertexDataFetcher);
@@ -195,6 +196,19 @@ public final class TinyTaskOffloader implements Offloader {
     kafkaOffloadingOutputs.clear();
 
     taskStatus.set(TaskExecutor.Status.RUNNING);
+  }
+
+
+  private KafkaCheckpointMark createMergedCheckpointMarks(
+    final UnboundedSource.CheckpointMark checkpointMark) {
+    final KafkaCheckpointMark cmark = (KafkaCheckpointMark) checkpointMark;
+    final List<KafkaCheckpointMark.PartitionMark> partitionMarks  = Arrays.asList(cmark.getPartitions().get(0));
+
+    partitionMarks.sort((o1, o2) -> {
+      return o1.getPartition() - o2.getPartition();
+    });
+
+    return new KafkaCheckpointMark(partitionMarks, Optional.empty());
   }
 
   @Override
