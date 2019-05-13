@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingTransform;
@@ -56,7 +57,6 @@ import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.common.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.common.NemoEventEncoderFactory;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.runtime.executor.datatransfer.TaskTransferIndexMap;
 import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
@@ -252,7 +252,7 @@ public final class Executor {
     LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     final byte[] bytes = SerializationUtils.serialize((Serializable) task.getTaskOutgoingEdges());
     final List<StageEdge> copyOutgoingEdges = SerializationUtils.deserialize(bytes);
-    LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges, bytes);
+    LOG.info("Copied outgoing edges {}, bytes: {}", copyOutgoingEdges, bytes.length);
     final byte[] bytes2 = SerializationUtils.serialize((Serializable) task.getTaskIncomingEdges());
     final List<StageEdge> copyIncomingEdges = SerializationUtils.deserialize(bytes2);
 
