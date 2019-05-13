@@ -18,6 +18,8 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.util.*;
 
+import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType.EventType.TASK_START;
+
 
 public final class OffloadingTask {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingTask.class.getName());
@@ -67,7 +69,7 @@ public final class OffloadingTask {
       final DataOutputStream dos = new DataOutputStream(bos);
       final ObjectOutputStream oos = new ObjectOutputStream(bos);
 
-      dos.writeInt(OffloadingExecutorEventType.EventType.TASK_START.ordinal());
+      dos.writeInt(TASK_START.ordinal());
 
       dos.writeUTF(executorId);
       dos.writeUTF(taskId);
@@ -95,7 +97,7 @@ public final class OffloadingTask {
       dos.close();
       oos.close();
 
-      LOG.info("Encoded size: {}", byteBuf.readableBytes());
+      LOG.info("Encoded size: {}, taskOrdinal: {}", byteBuf.readableBytes(), TASK_START.ordinal());
 
       return byteBuf;
     } catch (final IOException e) {
