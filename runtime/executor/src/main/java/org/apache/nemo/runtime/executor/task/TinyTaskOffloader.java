@@ -184,6 +184,8 @@ public final class TinyTaskOffloader implements Offloader {
       , id, checkpointMark, taskId, sourceVertexDataFetchers.size());
 
     final SourceVertexDataFetcher oSourceVertexDataFetcher = sourceVertexDataFetchers.get(0);
+
+    /*
     final BeamUnboundedSourceVertex oSourceVertex = (BeamUnboundedSourceVertex) oSourceVertexDataFetcher.getDataSource();
     final UnboundedSource oSource = oSourceVertex.getUnboundedSource();
 
@@ -191,6 +193,7 @@ public final class TinyTaskOffloader implements Offloader {
       new UnboundedSourceReadable(oSource, null, mergedCheckpoint);
 
     oSourceVertexDataFetcher.setReadable(newReadable);
+    */
     availableFetchers.add(oSourceVertexDataFetcher);
 
     kafkaOffloadingOutputs.clear();
