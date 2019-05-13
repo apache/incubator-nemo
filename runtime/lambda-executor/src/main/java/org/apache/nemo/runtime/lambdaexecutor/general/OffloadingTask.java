@@ -64,8 +64,12 @@ public final class OffloadingTask {
 
   public ByteBuf encode(final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder) {
     try {
-      final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
-      final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
+
+      final ByteArrayOutputStream bos = new ByteArrayOutputStream(172476);
+
+      //final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
+      //final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
+
       final DataOutputStream dos = new DataOutputStream(bos);
       final ObjectOutputStream oos = new ObjectOutputStream(bos);
 
@@ -97,7 +101,14 @@ public final class OffloadingTask {
       dos.close();
       oos.close();
 
+      final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
+      final ByteBufOutputStream bbos = new ByteBufOutputStream(byteBuf);
+      final byte[] barray = bos.toByteArray();
+      bbos.write(barray);
+
       LOG.info("Encoded size: {}, taskOrdinal: {}", byteBuf.readableBytes(), TASK_START.ordinal());
+      LOG.info("Byte array logging");
+      LOG.info(Arrays.toString(barray));
 
       return byteBuf;
     } catch (final IOException e) {
