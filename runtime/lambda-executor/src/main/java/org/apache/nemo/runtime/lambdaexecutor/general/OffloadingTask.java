@@ -65,7 +65,7 @@ public final class OffloadingTask {
   public ByteBuf encode(final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder) {
     try {
 
-      final ByteArrayOutputStream bos = new ByteArrayOutputStream(172476);
+      final ByteArrayOutputStream bos = new ByteArrayOutputStream(185290);
 
       LOG.info("Before Task ordinal11 !!");
       LOG.info(Arrays.toString(bos.toByteArray()));
