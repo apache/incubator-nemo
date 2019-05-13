@@ -93,6 +93,18 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     this.encoder = null;
   }
 
+  public SerializedPartition(final K key,
+                             final List<ByteBuffer> serializedBufList,
+                             final int length) {
+    this.key = key;
+    this.dataList = serializedBufList;
+    this.length = length;
+    this.committed = true;
+    this.bytesOutputStream = null;
+    this.wrappedStream = null;
+    this.encoder = null;
+  }
+
   /**
    * Writes an element to non-committed partition.
    *
