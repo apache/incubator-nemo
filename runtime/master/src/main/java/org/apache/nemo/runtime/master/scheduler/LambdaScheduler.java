@@ -18,18 +18,32 @@
  */
 package org.apache.nemo.runtime.master.scheduler;
 
-import org.apache.nemo.common.exception.UnknownExecutionStateException;
+import com.amazonaws.ClientConfiguration;
+import com.amazonaws.services.lambda.AWSLambda;
+import com.amazonaws.services.lambda.AWSLambdaAsync;
+import com.amazonaws.services.lambda.AWSLambdaAsyncClientBuilder;
+import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
+import com.amazonaws.services.lambda.model.InvokeRequest;
+import com.amazonaws.services.lambda.model.InvokeResult;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.ir.Readable;
-import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.offloading.client.NettyServerSideChannelHandler;
+import org.apache.nemo.offloading.client.NettyServerTransport;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.common.plan.Stage;
 import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.master.PipeManagerMaster;
 import org.apache.nemo.runtime.master.PlanStateManager;
 import org.apache.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.JavaConfigurationBuilder;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.wake.remote.ports.TcpPortProvider;
+import org.apache.reef.wake.remote.ports.parameters.TcpPortRangeBegin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +52,6 @@ import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * A simple scheduler for batch job with Nemo Lambda Executor.
@@ -46,18 +59,13 @@ import java.util.stream.Collectors;
  * - Schedules all tasks in the plan at once.
  * - Crashes the system upon any other events (should be fixed in the future)
  * - Never stops running.
- * Maintainer: Gao Zhiyuan<alapha23@gmail.com>.
  */
 @DriverSide
 @NotThreadSafe
-public final class LambdaScheduler implements Scheduler{
+public final class LambdaScheduler implements Scheduler {
   private static final Logger LOG = LoggerFactory.getLogger(StreamingScheduler.class.getName());
 
-  private final TaskDispatcher taskDispatcher;
-  private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
-  private final ExecutorRegistry executorRegistry;
   private final PlanStateManager planStateManager;
-  private final PipeManagerMaster pipeManagerMaster;
 
   @Inject
   private LambdaScheduler(final TaskDispatcher taskDispatcher,
@@ -65,57 +73,86 @@ public final class LambdaScheduler implements Scheduler{
                      final ExecutorRegistry executorRegistry,
                      final PlanStateManager planStateManager,
                      final PipeManagerMaster pipeManagerMaster) {
-    this.taskDispatcher = taskDispatcher;
-    this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
-    this.executorRegistry = executorRegistry;
     this.planStateManager = planStateManager;
-    this.pipeManagerMaster = pipeManagerMaster; // not in batchscheduler, only for streaming?
-    LOG.info("Using Lambda Scheduler!!!!!");
+    LOG.info("Using Lambda Scheduler");
   }
 
   @Override
   public void schedulePlan(final PhysicalPlan submittedPhysicalPlan,
                            final int maxScheduleAttempt) {
-    // Housekeeping stuff
-    taskDispatcher.run();
+
+    if (maxScheduleAttempt > 1) {
+      throw new UnsupportedOperationException();
+    }
+
     planStateManager.updatePlan(submittedPhysicalPlan, maxScheduleAttempt);
     planStateManager.storeJSON("submitted");
 
+    // We presume serverless function has been deployed and uploaded
+
     // Prepare tasks
     final List<Stage> allStages = submittedPhysicalPlan.getStageDAG().getTopologicalSort();
-    final List<Task> allTasks = allStages.stream().flatMap(stageToSchedule -> {
-      // Helper variables for this stage
+    allStages.stream().forEach(stageToSchedule -> {
+      LOG.info("Execute new stage");
       final List<StageEdge> stageIncomingEdges =
         submittedPhysicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
       final List<StageEdge> stageOutgoingEdges =
         submittedPhysicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
+
+      // the list of maps between vertex ID and readables.
       final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
       final List<String> taskIdsToSchedule = planStateManager.getTaskAttemptsToSchedule(stageToSchedule.getId());
 
+
       taskIdsToSchedule.forEach(taskId -> {
-        final int index = RuntimeIdManager.getIndexFromTaskId(taskId);
-        stageOutgoingEdges.forEach(outEdge -> pipeManagerMaster.onTaskScheduled(outEdge.getId(), index));
+        AWSLambda client = AWSLambdaClientBuilder.standard().build();
+        final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
+        jcb.bindNamedParameter(TcpPortRangeBegin.class, "5000");
+        LOG.info("Schedule task" + taskId + "Init Conf builder");
+
+        final Injector injector = Tang.Factory.getTang().newInjector(jcb.build());
+        try {
+          final TcpPortProvider tcpPortProvider = injector.getInstance(TcpPortProvider.class);
+          final ChannelGroup serverChannelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+          LOG.info("Get tcp port");
+
+          //final OffloadingEventHandler nemoEventHandler = null;
+          // assigning event handler is not assigned so we pass null
+
+          NettyServerTransport nettyServerTransport =  new NettyServerTransport(
+            tcpPortProvider, new NettyServerSideChannelHandler(serverChannelGroup, null));;
+
+          LOG.info("Init netty server");
+          AWSLambdaAsync awsLambda = AWSLambdaAsyncClientBuilder.standard().withClientConfiguration(
+            new ClientConfiguration().withMaxConnections(500)).build();
+
+          LOG.info("Create request");
+          InvokeRequest request = new InvokeRequest()
+            // hard coded for now, need receiving user info
+            .withFunctionName("LambdaExecutor")
+            .withInvocationType("Event").withLogType("Tail").withClientContext("Lambda Executor " + taskId)
+            .withPayload(String.format("{\"address\":\"%s\", \"port\": %d}",
+              nettyServerTransport.getPublicAddress(), nettyServerTransport.getPort()));
+
+          LOG.info("Invoke request");
+          awsLambda.invoke(request);
+          LOG.info("Request invoked!");
+
+          InvokeResult response = client.invoke(request);
+          LOG.info(response.toString());
+        } catch (Exception e) {
+          LOG.info("Exception: Tcp port not acquired! Stop requesting executor");
+        }
+
       });
 
-      // Create tasks of this stage
-      return taskIdsToSchedule.stream().map(taskId -> new Task(
-        submittedPhysicalPlan.getPlanId(),
-        taskId,
-        stageToSchedule.getExecutionProperties(),
-        stageToSchedule.getSerializedIRDAG(),
-        stageIncomingEdges,
-        stageOutgoingEdges,
-        vertexIdToReadables.get(RuntimeIdManager.getIndexFromTaskId(taskId))));
-    }).collect(Collectors.toList());
+    });
 
-    // Schedule everything at once
-    pendingTaskCollectionPointer.setToOverwrite(allTasks);
-    taskDispatcher.onNewPendingTaskCollectionAvailable();
   }
 
   @Override
   public void updatePlan(final PhysicalPlan newPhysicalPlan) {
-    // TODO #227: StreamingScheduler Dynamic Optimization
+    // LambdaScheduler Dynamic Optimization
     throw new UnsupportedOperationException();
   }
 
@@ -126,23 +163,9 @@ public final class LambdaScheduler implements Scheduler{
                                             final TaskState.State newState,
                                             @Nullable final String vertexPutOnHold,
                                             final TaskState.RecoverableTaskFailureCause failureCause) {
-    planStateManager.onTaskStateChanged(taskId, newState);
-
-    switch (newState) {
-      case COMPLETE:
-        // Do nothing.
-        break;
-      case ON_HOLD:
-      case FAILED:
-      case SHOULD_RETRY:
-        // TODO #226: StreamingScheduler Fault Tolerance
-        throw new UnsupportedOperationException();
-      case READY:
-      case EXECUTING:
-        throw new RuntimeException("The states READY/EXECUTING cannot occur at this point");
-      default:
-        throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + newState));
-    }
+    // LambdaScheduler
+    LOG.info("Not supported: onTaskStateReportFromExecutor");
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -153,9 +176,8 @@ public final class LambdaScheduler implements Scheduler{
 
   @Override
   public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
-    LOG.info("{} added (node: {})", executorRepresenter.getExecutorId(), executorRepresenter.getNodeName());
-    taskDispatcher.onExecutorSlotAvailable();
-    executorRegistry.registerExecutor(executorRepresenter);
+    LOG.info("Not supported: onExecutorAdded");
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -166,7 +188,6 @@ public final class LambdaScheduler implements Scheduler{
 
   @Override
   public void terminate() {
-    this.taskDispatcher.terminate();
-    this.executorRegistry.terminate();
+    LOG.info("terminate");
   }
 }
