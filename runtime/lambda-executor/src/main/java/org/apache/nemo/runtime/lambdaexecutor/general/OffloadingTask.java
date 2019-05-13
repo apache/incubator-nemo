@@ -159,9 +159,6 @@ public final class OffloadingTask {
         unboundedSource = null;
       }
 
-      dis.close();
-      ois.close();
-
       LOG.info("Offloading task created: {}", taskId);
 
       return new OffloadingTask(executorId,
