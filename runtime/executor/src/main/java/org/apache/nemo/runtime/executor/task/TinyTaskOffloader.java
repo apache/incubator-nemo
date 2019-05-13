@@ -184,6 +184,8 @@ public final class TinyTaskOffloader implements Offloader {
 
     final SourceVertexDataFetcher oSourceVertexDataFetcher = sourceVertexDataFetchers.get(0);
 
+    LOG.info("Source vertex datafetchers: {}", sourceVertexDataFetchers);
+
     final BeamUnboundedSourceVertex oSourceVertex = (BeamUnboundedSourceVertex) oSourceVertexDataFetcher.getDataSource();
     final UnboundedSource oSource = oSourceVertex.getUnboundedSource();
 

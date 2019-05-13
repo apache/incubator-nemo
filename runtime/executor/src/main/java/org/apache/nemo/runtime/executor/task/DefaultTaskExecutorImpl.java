@@ -270,6 +270,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     // Prepare data structures
     this.sortedHarnesses = prepare(task, irVertexDag, intermediateDataIOFactory);
     this.availableFetchers = new LinkedList<>(sourceVertexDataFetchers);
+
+    LOG.info("Source vertex data fetchers in defaultTaskExecutorimpl: {}", sourceVertexDataFetchers);
+
     availableFetchers.addAll(parentDataFetchers);
     this.pendingFetchers = new LinkedList<>();
 

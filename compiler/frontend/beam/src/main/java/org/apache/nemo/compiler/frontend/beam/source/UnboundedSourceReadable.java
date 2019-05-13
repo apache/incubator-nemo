@@ -57,7 +57,7 @@ public final class UnboundedSourceReadable<O, M extends UnboundedSource.Checkpoi
 
   @Override
   public void prepare() {
-    LOG.info("Prepare unbounded sources!! {}", unboundedSource);
+    LOG.info("Prepare unbounded sources!! {}, {}", unboundedSource, unboundedSource.toString());
     try {
       reader = unboundedSource.createReader(pipelineOptions, checkpointMark);
     } catch (final Exception e) {
