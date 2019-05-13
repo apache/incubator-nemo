@@ -13,6 +13,7 @@ import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
+import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +51,8 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
   private final ConcurrentMap<String, TaskExecutor> offloadedTaskMap = new ConcurrentHashMap<>();
   private final OffloadingTransform offloadingTransform;
+
+  private final ConcurrentMap<String, TinyTaskWorker> deletePendingWorkers = new ConcurrentHashMap<>();
 
   public TinyTaskOffloadingWorkerManager(
     final OffloadingWorkerFactory workerFactory,
@@ -125,7 +128,17 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
             //LOG.info("Result received: cnt {}", ((OffloadingResultEvent) msg).data.size());
             te.getOffloadingQueue().add(msg);
           }
+        } else if (msg instanceof KafkaOffloadingOutput) {
+          // End of the task!
+          LOG.info("Pending kafkaOffloadingOutputReceived: {}", te.getId());
+          final TinyTaskWorker taskWorker = deletePendingWorkers.get(te.getId());
+          if (taskWorker.hasNoTask() && taskWorker.getDeletePending().decrementAndGet() == 0) {
+            taskWorker.close();
+          }
+
+          te.getOffloadingQueue().add(msg);
         } else {
+
           te.getOffloadingQueue().add(msg);
         }
       });
@@ -173,15 +186,17 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     throw new RuntimeException("No worker that handles task " + taskId);
   }
 
-  public synchronized void deleteTask(final OffloadingTask task) {
-    final TinyTaskWorker worker = findWorkerThatHandleTask(task.taskId);
-    worker.deleteTask(task.taskId);
-
-    /*
-    if (worker.hasNoTask()) {
-      worker.close();
+  public synchronized void deleteTask(final String taskId) {
+    LOG.info("Delete task {}", taskId);
+    final TinyTaskWorker worker = findWorkerThatHandleTask(taskId);
+    if (!worker.deleteTask(taskId)) {
+      worker.getDeletePending().getAndIncrement();
+      deletePendingWorkers.put(taskId, worker);
+    } else {
+      if (worker.hasNoTask() && worker.getDeletePending().get() == 0) {
+        worker.close();
+      }
     }
-    */
   }
 
   @Override

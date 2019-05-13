@@ -167,24 +167,19 @@ public final class TinyTaskOffloader implements Offloader {
   @Override
   public synchronized void handleOffloadingOutput(final KafkaOffloadingOutput output) {
 
-
     //여기서 task offload 되엇다는 message handle하기
       // Sink redirect
 
     // Source redirect
     //  dataFetcher.redirectTo(...);
 
+    if (!taskStatus.get().equals(TaskExecutor.Status.DEOFFLOAD_PENDING)) {
+      throw new RuntimeException("Invalid status: " + taskStatus);
+    }
 
-    // handling checkpoint mark to resume the kafka source reading
-    // Serverless -> VM
-    // we start to read kafka events again
     final int id = output.id;
     final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) output.checkpointMark;
     LOG.info("Receive checkpoint mark for source {} in VM: {}", id, checkpointMark);
-
-    // Restart contexts
-    LOG.info("Restart output writers");
-    outputWriters.forEach(OutputWriter::restart);
 
     final SourceVertexDataFetcher oSourceVertexDataFetcher = sourceVertexDataFetchers.get(0);
     final BeamUnboundedSourceVertex oSourceVertex = (BeamUnboundedSourceVertex) oSourceVertexDataFetcher.getDataSource();
@@ -197,6 +192,8 @@ public final class TinyTaskOffloader implements Offloader {
     availableFetchers.add(oSourceVertexDataFetcher);
 
     kafkaOffloadingOutputs.clear();
+
+    taskStatus.set(TaskExecutor.Status.RUNNING);
   }
 
   @Override
@@ -208,49 +205,13 @@ public final class TinyTaskOffloader implements Offloader {
   @Override
   public synchronized void handleEndOffloadingEvent() {
 
-    //여기서 restart하기
-    // sink restart
-
-      // Source restart
-     // dataFetcher.restart();
-
-
     prevOffloadEndTime.set(System.currentTimeMillis());
 
     if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOADED, TaskExecutor.Status.DEOFFLOAD_PENDING)) {
-      // It means that all tasks are offloaded
-
-      // We will wait for the checkpoint mark of these workers
-      // and restart the workers
-      for (final OffloadingWorker runningWorker : runningWorkers) {
-        LOG.info("Closing running worker {} at {}", runningWorker.getId(), taskId);
-        runningWorker.forceClose();
-      }
-      runningWorkers.clear();
-
-    } else if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.RUNNING)) {
-      taskExecutor.getPrevOffloadEndTime().set(System.currentTimeMillis());
-      //taskTimeMap.clear();
-      LOG.info("Get end offloading kafka event: {}", taskStatus);
-      // It means that this is not initialized yet
-      // just finish this worker!
-      for (final KafkaOffloadingRequestEvent event : kafkaOffloadPendingEvents) {
-        event.offloadingWorker.forceClose();
-        // restart the workers
-        // * This is already running... we don't have to restart it
-        //LOG.info("Just restart source {} init workers at {}", event.id, taskId);
-        //restartDataFetcher(event.sourceVertexDataFetcher, event.checkpointMark, event.id);
-      }
-
-      kafkaOffloadPendingEvents.clear();
-
-
-      if (!runningWorkers.isEmpty()) {
-        throw new RuntimeException("Offload pending should not have running workers!: " + runningWorkers.size());
-      }
+      tinyWorkerManager.deleteTask(taskId);
 
     } else {
-      throw new RuntimeException("Invalid task status " + taskStatus);
+      throw new RuntimeException("Unsupported status: " + taskStatus);
     }
   }
 

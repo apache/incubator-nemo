@@ -16,6 +16,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class TinyTaskWorker {
   private static final Logger LOG = LoggerFactory.getLogger(TinyTaskWorker.class.getName());
@@ -24,8 +25,9 @@ public final class TinyTaskWorker {
 
   private final List<OffloadingTask> offloadedTasks = new LinkedList<>();
   private final List<OffloadingTask> pendingTasks = new LinkedList<>();
-private final OffloadingWorker offloadingWorker;
+  private final OffloadingWorker offloadingWorker;
   private final Coder<UnboundedSource.CheckpointMark> coder;
+  private final AtomicInteger deletePending = new AtomicInteger(0);
 
   public TinyTaskWorker(final OffloadingWorker offloadingWorker,
                         final Coder<UnboundedSource.CheckpointMark> coder) {
@@ -89,13 +91,14 @@ private final OffloadingWorker offloadingWorker;
     return pendingTasks.size() + offloadedTasks.size() == 0;
   }
 
-  public synchronized void deleteTask(final String taskId) {
+  public synchronized boolean deleteTask(final String taskId) {
     int index = findTask(offloadedTasks, taskId);
     if (index >= 0) {
       // SEND end message of the task!
       final TaskEndEvent endEvent = new TaskEndEvent(taskId);
       final ByteBuf byteBuf = endEvent.encode();
       offloadingWorker.execute(byteBuf, 1, false);
+      return false;
     } else {
       index = findTask(pendingTasks, taskId);
       if (index < 0) {
@@ -104,7 +107,12 @@ private final OffloadingWorker offloadingWorker;
 
       // just remove, because it is pending
       pendingTasks.remove(index);
+      return true;
     }
+  }
+
+  public AtomicInteger getDeletePending() {
+    return deletePending;
   }
 
   public synchronized void executePending() {
@@ -126,6 +134,7 @@ private final OffloadingWorker offloadingWorker;
   }
 
   public void close() {
+    LOG.info("Closing worker..!!");
     offloadingWorker.forceClose();
   }
 }

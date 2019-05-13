@@ -207,7 +207,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
 
           LOG.info("Input Receive transfer index : {}", transferIndex);
           if (inputContextsInitiatedByRemote.containsKey(transferIndex)) {
-            LOG.warn("Duplicate ContextId: %s, transferIndex: %d due to the remote channel", contextId,
+            LOG.warn("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
                 transferIndex);
             //return inputContextsInitiatedByRemote.get(transferIndex);
           } else {
@@ -230,7 +230,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
           LOG.info("outputContextsInitiatedByRemote: {}", inputContextsInitiatedByRemote);
           LOG.info("Output Receive transfer index : {}", transferIndex);
           if (outputContextsInitiatedByRemote.containsKey(transferIndex)) {
-            LOG.warn("Duplicate ContextId: %s, transferIndex: %d due to the remote channel", contextId,
+            LOG.warn("Duplicate output context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
               transferIndex);
           } else {
             final ByteOutputContext c = new RemoteByteOutputContext(remoteExecutorId, contextId,
