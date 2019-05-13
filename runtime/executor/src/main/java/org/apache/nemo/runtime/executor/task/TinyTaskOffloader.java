@@ -147,6 +147,9 @@ public final class TinyTaskOffloader implements Offloader {
     this.pendingFetchers = pendingFetchers;
     this.serializerManager = serializerManager;
     this.sourceVertexDataFetcher = sourceDataFetcher;
+
+    LOG.info("Prepare source ?? {}", sourceVertexDataFetcher.getDataSource());
+
     this.offloadingEventQueue = offloadingEventQueue;
     this.sourceVertexDataFetchers = sourceVertexDataFetchers;
     this.taskId = taskId;
@@ -186,6 +189,8 @@ public final class TinyTaskOffloader implements Offloader {
 
     final BeamUnboundedSourceVertex oSourceVertex = (BeamUnboundedSourceVertex) sourceVertexDataFetcher.getDataSource();
     final UnboundedSource oSource = oSourceVertex.getUnboundedSource();
+
+    LOG.info("Prepare source !!! {}", oSource);
 
     final UnboundedSourceReadable newReadable =
       new UnboundedSourceReadable(oSource, null, checkpointMark);
