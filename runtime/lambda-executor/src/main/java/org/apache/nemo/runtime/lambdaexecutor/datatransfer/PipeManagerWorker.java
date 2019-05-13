@@ -47,7 +47,7 @@ public final class PipeManagerWorker {
   private static final Logger LOG = LoggerFactory.getLogger(PipeManagerWorker.class.getName());
 
   private final String executorId;
-  private final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap;
+  private final Map<Pair<String, Integer>, String> taskExecutorIdMap;
 
   // To-Executor connections
   private final ByteTransfer byteTransfer;
@@ -56,7 +56,7 @@ public final class PipeManagerWorker {
 
   public PipeManagerWorker(final String executorId,
                            final ByteTransfer byteTransfer,
-                           final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap,
+                           final Map<Pair<String, Integer>, String> taskExecutorIdMap,
                            final Map<String, Serializer> serializerMap) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
@@ -75,7 +75,7 @@ public final class PipeManagerWorker {
                                                     final int dstTaskIndex) {
     final String runtimeEdgeId = runtimeEdge.getId();
     // TODO: check whether it is in SF or not
-    final String targetExecutorId = taskExecutorIdMap.get(Pair.of(runtimeEdge, dstTaskIndex));
+    final String targetExecutorId = taskExecutorIdMap.get(Pair.of(runtimeEdge.getId(), dstTaskIndex));
 
     if (isExecutorInSF(targetExecutorId)) {
       // Connect to the relay server!
@@ -103,7 +103,7 @@ public final class PipeManagerWorker {
                                                       final RuntimeEdge runtimeEdge,
                                                       final int dstTaskIndex) {
     final String runtimeEdgeId = runtimeEdge.getId();
-    final String srcExecutorId = taskExecutorIdMap.get(Pair.of(runtimeEdge, srcTaskIndex));
+    final String srcExecutorId = taskExecutorIdMap.get(Pair.of(runtimeEdge.getId(), srcTaskIndex));
 
     if (isExecutorInSF(srcExecutorId)) {
        // Connect to the relay server!

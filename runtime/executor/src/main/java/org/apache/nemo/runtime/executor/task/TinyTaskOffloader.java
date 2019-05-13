@@ -82,7 +82,7 @@ public final class TinyTaskOffloader implements Offloader {
   private final AtomicLong prevOffloadEndTime;
 
   private final Map<String, InetSocketAddress> executorAddressMap;
-  private final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap;
+  private final Map<Pair<String, Integer>, String> taskExecutorIdMap;
   private final String executorId;
   private final Task task;
 
@@ -105,7 +105,7 @@ public final class TinyTaskOffloader implements Offloader {
                            final TaskExecutor taskExecutor,
                            final EvalConf evalConf,
                            final Map<String, InetSocketAddress> executorAddressMap,
-                           final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap,
+                           final Map<Pair<String, Integer>, String> taskExecutorIdMap,
                            final byte[] serializedDag,
                            final TinyTaskOffloadingWorkerManager tinyWorkerManager,
                            final Map<String, List<String>> taskOutgoingEdges,

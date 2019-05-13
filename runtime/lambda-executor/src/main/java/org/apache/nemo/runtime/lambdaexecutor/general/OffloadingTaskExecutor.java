@@ -55,8 +55,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   private final Map<String, InetSocketAddress> executorAddressMap;
   private final Map<String, Serializer> serializerMap;
-  private final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap;
-
   private final Set<PipeOutputWriter> pipeOutputWriters;
 
   private final List<DataFetcher> availableFetchers;
@@ -72,7 +70,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
                                 final Map<String, InetSocketAddress> executorAddressMap,
                                 final Map<String, Serializer> serializerMap,
-                                final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap,
                                 final LambdaByteTransport byteTransport,
                                 final PipeManagerWorker pipeManagerWorker,
                                 final IntermediateDataIOFactory intermediateDataIOFactory,
@@ -80,7 +77,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
                                 final ScheduledExecutorService pollingTrigger) {
     this.offloadingTask = offloadingTask;
     this.serializerMap = serializerMap;
-    this.taskExecutorIdMap = taskExecutorIdMap;
     this.executorAddressMap = executorAddressMap;
     this.byteTransport = byteTransport;
     this.pipeManagerWorker = pipeManagerWorker;

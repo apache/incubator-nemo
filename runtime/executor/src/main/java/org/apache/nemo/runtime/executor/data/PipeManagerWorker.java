@@ -68,7 +68,7 @@ public final class PipeManagerWorker {
 
   private final PersistentConnectionToMasterMap toMaster;
 
-  private final ConcurrentMap<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Pair<String, Integer>, String> taskExecutorIdMap = new ConcurrentHashMap<>();
 
   @Inject
   private PipeManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -82,7 +82,7 @@ public final class PipeManagerWorker {
     this.toMaster = toMaster;
   }
 
-  public Map<Pair<RuntimeEdge, Integer>, String> getTaskExecutorIdMap() {
+  public Map<Pair<String, Integer>, String> getTaskExecutorIdMap() {
     return taskExecutorIdMap;
   }
 
@@ -126,7 +126,7 @@ public final class PipeManagerWorker {
         new PipeTransferContextDescriptor(runtimeEdgeId,
           srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
 
-      taskExecutorIdMap.put(Pair.of(runtimeEdge, dstTaskIndex), targetExecutorId);
+      taskExecutorIdMap.put(Pair.of(runtimeEdge.getId(), dstTaskIndex), targetExecutorId);
 
       LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
         runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
@@ -243,7 +243,7 @@ public final class PipeManagerWorker {
           PipeTransferContextDescriptor.decode(byteInputContext.getContextDescriptor());
 
         // ADD source task-executor id
-        taskExecutorIdMap.put(Pair.of(runtimeEdge, (int) descriptor.getSrcTaskIndex()),
+        taskExecutorIdMap.put(Pair.of(runtimeEdge.getId(), (int) descriptor.getSrcTaskIndex()),
           byteInputContext.getRemoteExecutorId());
 
         eventHandler.onNext(value);

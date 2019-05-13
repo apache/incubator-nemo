@@ -41,7 +41,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private final Map<String, InetSocketAddress> executorAddressMap;
   private final Map<String, Serializer> serializerMap;
-  private final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap;
+  private final Map<Pair<String, Integer>, String> taskExecutorIdMap;
 
 
   private transient LambdaByteTransport byteTransport;
@@ -57,7 +57,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   public OffloadingExecutor(final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
-                            final Map<Pair<RuntimeEdge, Integer>, String> taskExecutorIdMap,
+                            final Map<Pair<String, Integer>, String> taskExecutorIdMap,
                             final Map<Pair<String, Integer>, Integer> taskTransferIndexMap,
                             final boolean isInVm) {
     this.channels = new ConcurrentHashMap<>();
@@ -148,7 +148,6 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         task,
         executorAddressMap,
         serializerMap,
-        taskExecutorIdMap,
         byteTransport,
         pipeManagerWorker,
         intermediateDataIOFactory,
