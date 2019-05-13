@@ -276,6 +276,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   @Override
   public void onContextRestartLocal(
     final int transferIndex) {
+    // REMOVE!!!
+
     final ByteInputContext localInputContext = inputContextsInitiatedByRemote.get(transferIndex);
     LOG.info("local context restart!! {}", localInputContext.getContextId());
     final ByteInputContext localByteInputContext = new LocalByteInputContext(
@@ -393,6 +395,13 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     final int transferIndex = nextOutputTransferIndex.getAndIncrement();
     taskTransferIndexMap.put(key, transferIndex);
 
+     return newContext(outputContextsInitiatedByLocal, transferIndex,
+        ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
+        contextId -> new RemoteByteOutputContext(executorId, contextId,
+          contextDescriptor, this, vmScalingClientTransport),
+        executorId, isPipe, false);
+
+    /*
     if (localExecutorId.equals(executorId)) {
       final Queue<Object> queue = new ConcurrentLinkedQueue<>();
       return newContext(outputContextsInitiatedByLocal, transferIndex,
@@ -426,6 +435,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
           contextDescriptor, this, vmScalingClientTransport),
         executorId, isPipe, false);
     }
+    */
   }
 
   /**

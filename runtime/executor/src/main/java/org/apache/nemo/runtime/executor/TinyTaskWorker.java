@@ -71,6 +71,14 @@ public final class TinyTaskWorker {
     return -1;
   }
 
+  public synchronized int getNumScheduledTasks() {
+    return offloadedTasks.size();
+  }
+
+  public synchronized int getNumPendingTasks() {
+    return pendingTasks.size();
+  }
+
   public synchronized boolean hasNoTask() {
     return pendingTasks.size() + offloadedTasks.size() == 0;
   }

@@ -102,6 +102,11 @@ public final class ByteTransfer {
                                                                final byte[] contextDescriptor,
                                                                final boolean isPipe,
                                                                final boolean isLocal) {
+
+    LOG.info("New remote output context: {}", executorId);
+    return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
+
+    /*
     if (isLocal) {
       LOG.info("New local output context: {}", executorId);
       byteTransport.getAndPutInetAddress(executorId);
@@ -123,6 +128,7 @@ public final class ByteTransfer {
       LOG.info("New remote output context: {}", executorId);
       return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));
     }
+    */
   }
 
   /**

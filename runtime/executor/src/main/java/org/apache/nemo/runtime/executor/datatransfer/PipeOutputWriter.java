@@ -221,10 +221,14 @@ public final class PipeOutputWriter implements OutputWriter {
 
   @Override
   public void stop() {
+    // DO nothing
+
+    /*
     pipes.forEach(pipe -> {
       LOG.info("Pipe stop {}", pipe);
       pipe.stop();
     });
+    */
   }
 
   @Override

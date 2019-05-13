@@ -199,6 +199,11 @@ class OffloadingParentTaskDataFetcher extends DataFetcher {
     throw new NoSuchElementException();
   }
 
+  @Override
+  public Future<Integer> stop() {
+    throw new RuntimeException("not supported");
+  }
+
   private void fetchNonBlocking() { // 갯수 동적으로 받아야함. handler 같은거 등록하기
     inputWatermarkManager = new DynamicInputWatermarkManager(taskId, getDataSource(), new WatermarkCollector());
     final DynamicInputWatermarkManager watermarkManager = (DynamicInputWatermarkManager) inputWatermarkManager;

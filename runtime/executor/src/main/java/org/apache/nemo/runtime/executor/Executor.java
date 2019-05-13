@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.common.coder.BytesDecoderFactory;
@@ -56,7 +57,10 @@ import org.apache.nemo.runtime.executor.common.NemoEventDecoderFactory;
 import org.apache.nemo.runtime.executor.common.NemoEventEncoderFactory;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+import org.apache.nemo.runtime.executor.datatransfer.TaskTransferIndexMap;
 import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -118,6 +122,8 @@ public final class Executor {
   private final AtomicInteger numReceivedTasks = new AtomicInteger(0);
   private final TaskInputContextMap taskInputContextMap;
 
+  private final TinyTaskOffloadingWorkerManager tinyWorkerManager;
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
@@ -135,7 +141,8 @@ public final class Executor {
                    final SystemLoadProfiler profiler,
                    final PipeManagerWorker pipeManagerWorker,
                    final TaskExecutorMapWrapper taskExecutorMapWrapper,
-                   final TaskInputContextMap taskInputContextMap) {
+                   final TaskInputContextMap taskInputContextMap,
+                   final TaskTransferIndexMap taskTransferIndexMap) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
     this.executorId = executorId;
@@ -169,6 +176,18 @@ public final class Executor {
       executorThreads.add(new ExecutorThread(scheduledExecutorService, i, executorId));
       executorThreads.get(i).start();
     }
+
+
+    final OffloadingTransform lambdaExecutor = new OffloadingExecutor(
+      byteTransport.getExecutorAddressMap(),
+      serializerManager.runtimeEdgeIdToSerializer,
+      pipeManagerWorker.getTaskExecutorIdMap(),
+      taskTransferIndexMap.getMap(),
+      true);
+
+    this.tinyWorkerManager = new TinyTaskOffloadingWorkerManager(
+      offloadingWorkerFactory,
+      lambdaExecutor);
   }
 
   public String getExecutorId() {
@@ -251,7 +270,6 @@ public final class Executor {
             e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       });
 
-
       final TaskExecutor taskExecutor =
       new DefaultTaskExecutorImpl(
         Thread.currentThread().getId(),
@@ -268,7 +286,7 @@ public final class Executor {
         persistentConnectionToMasterMap,
         serializerManager,
         serverlessExecutorProvider,
-        offloadingWorkerFactory,
+        tinyWorkerManager,
         evalConf,
         taskInputContextMap);
 

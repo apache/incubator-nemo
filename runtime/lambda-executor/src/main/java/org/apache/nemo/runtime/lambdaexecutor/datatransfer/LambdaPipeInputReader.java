@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 /**
  * Represents the input data transfer to a task.
@@ -57,6 +58,11 @@ public final class LambdaPipeInputReader implements InputReader {
     this.pipeManagerWorker = pipeManagerWorker;
   }
 
+
+  @Override
+  public Future<Integer> stop() {
+    throw new RuntimeException("Unsupported");
+  }
 
   @Override
   public List<CompletableFuture<IteratorWithNumBytes>> read() {

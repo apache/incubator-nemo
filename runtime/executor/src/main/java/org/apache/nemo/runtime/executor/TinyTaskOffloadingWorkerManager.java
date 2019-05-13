@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.executor;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -34,9 +36,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
   private final List<Pair<Long, TinyTaskWorker>> workers;
 
   // buffer that contains bytes for initializing workers
-  private final ByteBuf workerInitBuffer;
 
-  private final OffloadingSerializer<I, O> offloadingSerializer;
 
   private final ConcurrentMap<String, EventHandler<Object>> eventHandlerMap;
 
@@ -47,27 +47,38 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
   private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-  private final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
-
   private final ConcurrentMap<String, TaskExecutor> offloadedTaskMap = new ConcurrentHashMap<>();
+  private final OffloadingTransform offloadingTransform;
 
   public TinyTaskOffloadingWorkerManager(
     final OffloadingWorkerFactory workerFactory,
-    final OffloadingTransform offloadingTransform,
-    final OffloadingSerializer<I, O> offloadingSerializer,
-    final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder) {
+    final OffloadingTransform offloadingTransform) {
 
     LOG.info("Start cached pool serverless executor service");
 
+    this.offloadingTransform = offloadingTransform;
     this.eventHandlerMap = new ConcurrentHashMap<>();
-    this.checkpointMarkCoder = checkpointMarkCoder;
 
     this.workerFactory = workerFactory;
     this.workers = new LinkedList<>();
 
-    this.workerInitBuffer = Unpooled.directBuffer();
-    this.offloadingSerializer = offloadingSerializer;
+    scheduler.scheduleAtFixedRate(() -> {
+      // scheduling
+      final Iterator<Pair<Long, TinyTaskWorker>> iterator = workers.iterator();
+      while (iterator.hasNext()) {
+        final Pair<Long, TinyTaskWorker> pair = iterator.next();
+        LOG.info("Worker {}, scheduled: {}, pending: {}",
+          pair.right(), pair.right().getNumScheduledTasks(), pair.right().getNumPendingTasks());
 
+        pair.right().executePending();
+      }
+    }, 1, 1, TimeUnit.SECONDS);
+  }
+
+  private StreamingLambdaWorkerProxy createNewWorker(
+    final OffloadingSerializer<I, O> offloadingSerializer) {
+
+    final ByteBuf workerInitBuffer = PooledByteBufAllocator.DEFAULT.buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(workerInitBuffer);
     ObjectOutputStream oos = null;
     try {
@@ -82,60 +93,62 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
       throw new RuntimeException(e);
     }
 
+    // create new worker
+    LOG.info("Creating new worker... current num: {}", workers.size());
 
-    scheduler.scheduleAtFixedRate(() -> {
-      // scheduling
-      for (final Pair<Long, TinyTaskWorker> pair : workers) {
-        pair.right().executePending();
-      }
+    final StreamingLambdaWorkerProxy worker = (StreamingLambdaWorkerProxy)
+      workerFactory.createStreamingWorker(workerInitBuffer, offloadingSerializer, (event) -> {
+        // TODO: We should retrieve states (checkpointmark, operator states, and so on)
 
-    }, 1, 1, TimeUnit.SECONDS);
+        final Pair<String, Object> pair = (Pair<String, Object>) event;
+        final Object msg = pair.right();
+        LOG.info("Receive data for {} / {}", pair.left(), pair.right());
+
+        final TaskExecutor te = offloadedTaskMap.get(pair.left());
+
+        if (msg instanceof OffloadingHeartbeatEvent) {
+          final OffloadingHeartbeatEvent heartbeatEvent = (OffloadingHeartbeatEvent) msg;
+          te.setOffloadedTaskTime(heartbeatEvent.time);
+
+        } else if (msg instanceof OffloadingResultEvent) {
+          if (((OffloadingResultEvent) msg).data.size() > 0) {
+            //LOG.info("Result received: cnt {}", ((OffloadingResultEvent) msg).data.size());
+            te.getOffloadingQueue().add(msg);
+          }
+        } else {
+          te.getOffloadingQueue().add(msg);
+        }
+      });
+
+    return worker;
   }
 
   public synchronized void sendTask(final OffloadingTask offloadingTask,
-                                    final TaskExecutor taskExecutor) {
+                                    final TaskExecutor taskExecutor,
+                                    final OffloadingSerializer<I, O> offloadingSerializer,
+                                    final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder) {
+
     //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
     offloadedTaskMap.put(offloadingTask.taskId, taskExecutor);
 
     // find worker
     if (workers.size() == 0) {
-      // create new worker
-      final ByteBuf copiedBuf;
-      synchronized (workerInitBuffer) {
-        copiedBuf = workerInitBuffer.retainedDuplicate();
-      }
-
-      final StreamingLambdaWorkerProxy worker = (StreamingLambdaWorkerProxy)
-        workerFactory.createStreamingWorker(copiedBuf, offloadingSerializer, (event) -> {
-          // TODO: We should retrieve states (checkpointmark, operator states, and so on)
-
-          final Pair<String, Object> pair = (Pair<String, Object>) event;
-          final Object msg = pair.right();
-          LOG.info("Receive data for {} / {}", pair.left(), pair.right());
-
-          final TaskExecutor te = offloadedTaskMap.get(pair.left());
-
-          if (msg instanceof OffloadingHeartbeatEvent) {
-            final OffloadingHeartbeatEvent heartbeatEvent = (OffloadingHeartbeatEvent) msg;
-            te.setOffloadedTaskTime(heartbeatEvent.time);
-
-          } else if (msg instanceof OffloadingResultEvent) {
-            if (((OffloadingResultEvent) msg).data.size() > 0) {
-              //LOG.info("Result received: cnt {}", ((OffloadingResultEvent) msg).data.size());
-              te.getOffloadingQueue().add(msg);
-            }
-          } else {
-            te.getOffloadingQueue().add(msg);
-          }
-        });
-
-        workers.add(Pair.of(System.currentTimeMillis(), new TinyTaskWorker(worker, checkpointMarkCoder)));
+      workers.add(Pair.of(System.currentTimeMillis(), new TinyTaskWorker(
+        createNewWorker(offloadingSerializer), checkpointMarkCoder)));
     }
 
     final int index = workers.size() - 1;
     final TinyTaskWorker worker = workers.get(index).right();
 
-    if (worker.canHandleTask()) {
+    if (!worker.canHandleTask()) {
+      final TinyTaskWorker newWorker =  new TinyTaskWorker(
+        createNewWorker(offloadingSerializer), checkpointMarkCoder);
+
+      workers.add(Pair.of(System.currentTimeMillis(), newWorker));
+
+      newWorker.addTask(offloadingTask);
+
+    } else {
       worker.addTask(offloadingTask);
     }
   }

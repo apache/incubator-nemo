@@ -149,6 +149,11 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
     throw new NoSuchElementException();
   }
 
+  @Override
+  public Future<Integer> stop() {
+    throw new UnsupportedOperationException();
+  }
+
   private List<IteratorWithNumBytes> fetchBlocking() {
     // 갯수 동적으로 받아야함. handler 같은거 등록하기
     final List<IteratorWithNumBytes> inputs = readersForParentTask.read()

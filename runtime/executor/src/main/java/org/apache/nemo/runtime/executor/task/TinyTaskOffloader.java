@@ -22,6 +22,7 @@ import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKPartialTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.StreamingWorkerService;
+import org.apache.nemo.offloading.common.OffloadingSerializer;
 import org.apache.nemo.offloading.common.OffloadingWorker;
 import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -38,6 +39,7 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
+import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingSerializer;
@@ -150,36 +152,15 @@ public final class TinyTaskOffloader implements Offloader {
     }, 2, 2, TimeUnit.SECONDS);
   }
 
-  public static KafkaCheckpointMark createCheckpointMarkForSource(
-    final KafkaUnboundedSource kafkaUnboundedSource,
-    final KafkaCheckpointMark checkpointMark) {
-
-    if (kafkaUnboundedSource.getTopicPartitions().size() > 1) {
-      throw new RuntimeException("Kafka has > 1 partitions...");
-    }
-
-    final TopicPartition topicPartition = (TopicPartition)
-      kafkaUnboundedSource.getTopicPartitions().get(0);
-
-    for (final KafkaCheckpointMark.PartitionMark partitionMark : checkpointMark.getPartitions()) {
-      if (partitionMark.getPartition() == topicPartition.partition()) {
-        return new KafkaCheckpointMark(Collections.singletonList(
-          partitionMark), Optional.empty());
-      }
-    }
-
-    throw new RuntimeException("Cannot find partitionMark " + topicPartition);
-  }
-
   @Override
   public synchronized void handleOffloadingOutput(final KafkaOffloadingOutput output) {
 
 
-    여기서 task offload 되엇다는 message handle하기
+    //여기서 task offload 되엇다는 message handle하기
       // Sink redirect
 
     // Source redirect
-      dataFetcher.redirectTo(...);
+    //  dataFetcher.redirectTo(...);
 
 
     // handling checkpoint mark to resume the kafka source reading
@@ -189,45 +170,21 @@ public final class TinyTaskOffloader implements Offloader {
     final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) output.checkpointMark;
     LOG.info("Receive checkpoint mark for source {} in VM: {}", id, checkpointMark);
 
-    if (!offloadedDataFetcherMap.containsKey(id)) {
-      throw new RuntimeException("Source " + id + " is not offloaded yet!");
-    }
+    // Restart contexts
+    LOG.info("Restart output writers");
+    outputWriters.forEach(OutputWriter::restart);
 
-    kafkaOffloadingOutputs.add(output);
+    final SourceVertexDataFetcher oSourceVertexDataFetcher = sourceVertexDataFetchers.get(0);
+    final BeamUnboundedSourceVertex oSourceVertex = (BeamUnboundedSourceVertex) oSourceVertexDataFetcher.getDataSource();
+    final UnboundedSource oSource = oSourceVertex.getUnboundedSource();
 
-    offloadedDataFetcherMap.remove(id);
+    final UnboundedSourceReadable newReadable =
+      new UnboundedSourceReadable(oSource, null, checkpointMark);
 
-    if (offloadedDataFetcherMap.isEmpty()) {
-      // It means that offloading finished
-      taskExecutor.getPrevOffloadEndTime().set(System.currentTimeMillis());
+    oSourceVertexDataFetcher.setReadable(newReadable);
+    availableFetchers.add(oSourceVertexDataFetcher);
 
-      if (!taskStatus.compareAndSet(TaskExecutor.Status.DEOFFLOAD_PENDING, TaskExecutor.Status.RUNNING)) {
-        throw new RuntimeException("Invalid task status: " + taskStatus);
-      }
-
-      taskTimeMap.clear();
-
-
-      // Restart contexts
-      LOG.info("Restart output writers");
-      outputWriters.forEach(OutputWriter::restart);
-
-      LOG.info("Merge {} sources into one", kafkaOffloadingOutputs.size());
-      // TODO: merge sources!!
-      // 1) merge all of them into one!
-      final UnboundedSource.CheckpointMark mergedCheckpoint = createMergedCheckpointMarks(kafkaOffloadingOutputs);
-      final SourceVertexDataFetcher oSourceVertexDataFetcher = sourceVertexDataFetchers.get(0);
-      final BeamUnboundedSourceVertex oSourceVertex = (BeamUnboundedSourceVertex) oSourceVertexDataFetcher.getDataSource();
-      final UnboundedSource oSource = oSourceVertex.getUnboundedSource();
-
-      final UnboundedSourceReadable newReadable =
-        new UnboundedSourceReadable(oSource, null, mergedCheckpoint);
-
-      oSourceVertexDataFetcher.setReadable(newReadable);
-      availableFetchers.add(oSourceVertexDataFetcher);
-
-      kafkaOffloadingOutputs.clear();
-    }
+    kafkaOffloadingOutputs.clear();
   }
 
   @Override
@@ -242,11 +199,11 @@ public final class TinyTaskOffloader implements Offloader {
       return;
     }
 
-    여기서 restart하기
+    //여기서 restart하기
     // sink restart
 
       // Source restart
-      dataFetcher.restart();
+     // dataFetcher.restart();
 
 
     prevOffloadEndTime.set(System.currentTimeMillis());
@@ -264,7 +221,7 @@ public final class TinyTaskOffloader implements Offloader {
 
     } else if (taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.RUNNING)) {
       taskExecutor.getPrevOffloadEndTime().set(System.currentTimeMillis());
-      taskTimeMap.clear();
+      //taskTimeMap.clear();
       LOG.info("Get end offloading kafka event: {}", taskStatus);
       // It means that this is not initialized yet
       // just finish this worker!
@@ -345,6 +302,7 @@ public final class TinyTaskOffloader implements Offloader {
 
 
     // Waiting for source stop
+    LOG.info("Waiting for source stop futures...");
     for (final Future future : futures) {
       try {
         future.get(100, TimeUnit.SECONDS);
@@ -353,6 +311,7 @@ public final class TinyTaskOffloader implements Offloader {
         throw new RuntimeException(e);
       }
     }
+    LOG.info("End of waiting source stop futures...");
 
     // Sink stop!!
     // Sink stop!!
@@ -400,6 +359,10 @@ public final class TinyTaskOffloader implements Offloader {
         task.getTaskIncomingEdges(),
         checkpointMark,
         unboundedSource);
+
+      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(checkpointMarkCoder);
+
+      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, checkpointMarkCoder);
     } else {
       offloadingTask = new OffloadingTask(
         executorId,
@@ -412,9 +375,11 @@ public final class TinyTaskOffloader implements Offloader {
         task.getTaskIncomingEdges(),
         null,
         null);
-    }
 
-    tinyWorkerManager.sendTask(offloadingTask, taskExecutor);
+
+      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(null);
+      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, null);
+    }
 
     prevOffloadStartTime.set(System.currentTimeMillis());
 

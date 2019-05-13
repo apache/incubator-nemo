@@ -33,6 +33,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -101,6 +102,11 @@ class ParentTaskDataFetcher extends DataFetcher {
     }
 
     return Finishmark.getInstance();
+  }
+
+  @Override
+  public Future<Integer> stop() {
+    return null;
   }
 
   private void advanceIterator() throws IOException {

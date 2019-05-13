@@ -29,9 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * Fetches data from a data source.
@@ -105,8 +103,34 @@ public class SourceVertexDataFetcher extends DataFetcher {
   }
 
   @Override
-  public void stop() {
+  public Future<Integer> stop() {
     // do nothing
+    return new Future<Integer>() {
+      @Override
+      public boolean cancel(boolean mayInterruptIfRunning) {
+        return false;
+      }
+
+      @Override
+      public boolean isCancelled() {
+        return false;
+      }
+
+      @Override
+      public boolean isDone() {
+        return true;
+      }
+
+      @Override
+      public Integer get() throws InterruptedException, ExecutionException {
+        return 1;
+      }
+
+      @Override
+      public Integer get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        return 1;
+      }
+    };
   }
 
   public final long getBoundedSourceReadTime() {

@@ -35,6 +35,7 @@ import org.apache.reef.wake.EventHandler;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 /**
  * Represents the input data transfer to a task.
@@ -58,6 +59,11 @@ public final class BlockInputReader implements InputReader {
     this.srcVertex = srcVertex;
     this.runtimeEdge = runtimeEdge;
     this.blockManagerWorker = blockManagerWorker;
+  }
+
+  @Override
+  public Future<Integer> stop() {
+    throw new RuntimeException("unsupported");
   }
 
   @Override

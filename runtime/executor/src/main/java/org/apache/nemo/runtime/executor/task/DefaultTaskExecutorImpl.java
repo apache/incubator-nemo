@@ -48,6 +48,7 @@ import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.TaskStateManager;
+import org.apache.nemo.runtime.executor.TinyTaskOffloadingWorkerManager;
 import org.apache.nemo.runtime.executor.TransformContextImpl;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
 import org.apache.nemo.runtime.executor.common.*;
@@ -152,7 +153,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
   private boolean pollingTime = false;
   private boolean kafkaOffloading = false;
-  private final OffloadingWorkerFactory offloadingWorkerFactory;
+  //private final OffloadingWorkerFactory offloadingWorkerFactory;
 
   private final AtomicInteger processedCnt = new AtomicInteger(0);
   private final AtomicLong prevOffloadStartTime = new AtomicLong(System.currentTimeMillis());
@@ -178,6 +179,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   public final AtomicLong taskExecutionTime = new AtomicLong(0);
 
   private long offloadedExecutionTime = 0;
+  private final TinyTaskOffloadingWorkerManager tinyWorkerManager;
 
   /**
    * Constructor.
@@ -204,7 +206,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                                  final SerializerManager serializerManager,
                                  final ServerlessExecutorProvider serverlessExecutorProvider,
-                                 final OffloadingWorkerFactory offloadingWorkerFactory,
+                                 final TinyTaskOffloadingWorkerManager tinyWorkerManager,
                                  final EvalConf evalConf,
                                  final TaskInputContextMap taskInputContextMap) {
     // Essential information
@@ -221,7 +223,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
-    this.offloadingWorkerFactory = offloadingWorkerFactory;
+    this.tinyWorkerManager = tinyWorkerManager;
     this.vertexIdAndCollectorMap = new HashMap<>();
     this.outputWriterMap = new HashSet<>();
     this.taskOutgoingEdges = new HashMap<>();
@@ -330,10 +332,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
     if (evalConf.enableOffloading || evalConf.offloadingdebug) {
 
-
-
-      if (sourceVertexDataFetchers.size() == 1 && sourceVertexDataFetchers.get(0) instanceof SourceVertexDataFetcher) {
-        offloader = Optional.of(new KafkaOffloader(
+      offloader = Optional.of(new TinyTaskOffloader(
           executorId,
           task,
           this,
@@ -341,7 +340,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           byteTransport.getExecutorAddressMap(),
           pipeManagerWorker.getTaskExecutorIdMap(),
           serializedDag,
-          offloadingWorkerFactory,
+          tinyWorkerManager,
           taskOutgoingEdges,
           serializerManager,
           offloadingEventQueue,
@@ -349,13 +348,39 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           taskId,
           availableFetchers,
           pendingFetchers,
+          sourceVertexDataFetchers.size() > 0 ? sourceVertexDataFetchers.get(0) : null,
           status,
           prevOffloadStartTime,
           prevOffloadEndTime,
           toMaster,
           outputWriterMap,
-          irVertexDag,
-          null));
+          irVertexDag));
+
+      /*
+      if (sourceVertexDataFetchers.size() == 1 && sourceVertexDataFetchers.get(0) instanceof SourceVertexDataFetcher) {
+        offloader = Optional.of(new TinyTaskOffloader(
+          executorId,
+          task,
+          this,
+          evalConf,
+          byteTransport.getExecutorAddressMap(),
+          pipeManagerWorker.getTaskExecutorIdMap(),
+          serializedDag,
+          tinyWorkerManager,
+          taskOutgoingEdges,
+          serializerManager,
+          offloadingEventQueue,
+          sourceVertexDataFetchers,
+          taskId,
+          availableFetchers,
+          pendingFetchers,
+          sourceVertexDataFetchers.get(0),
+          status,
+          prevOffloadStartTime,
+          prevOffloadEndTime,
+          toMaster,
+          outputWriterMap,
+          irVertexDag));
       } else {
         offloader = Optional.of(new DownstreamTaskOffloader(
           executorId,
@@ -381,6 +406,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           irVertexDag,
           null,
           taskInputContextMap));
+          */
 
         /*
         if (evalConf.middleParallelism > 0) {
@@ -410,8 +436,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
         } else {
           offloader = Optional.empty();
         }
-        */
       }
+        */
     } else {
       offloader = Optional.empty();
     }

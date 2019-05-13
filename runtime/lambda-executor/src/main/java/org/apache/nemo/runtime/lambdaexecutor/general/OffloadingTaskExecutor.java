@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -559,6 +560,16 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         return outputWriter;
       })
       .collect(Collectors.toList());
+  }
+
+  @Override
+  public void setOffloadedTaskTime(long t) {
+
+  }
+
+  @Override
+  public ConcurrentLinkedQueue<Object> getOffloadingQueue() {
+    return null;
   }
 
   @Override

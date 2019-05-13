@@ -53,6 +53,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private final boolean isInVm;
   private final ConcurrentMap<TaskExecutor, ExecutorThread> taskAssignedMap;
+  private final Map<Pair<String, Integer>, Integer> taskTransferIndexMap;
 
   public OffloadingExecutor(final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
@@ -65,6 +66,7 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
     this.serializerMap = serializerMap;
     this.taskExecutorIdMap = taskExecutorIdMap;
     this.isInVm = isInVm;
+    this.taskTransferIndexMap = taskTransferIndexMap;
     this.taskAssignedMap = new ConcurrentHashMap<>();
   }
   /**
