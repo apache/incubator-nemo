@@ -64,13 +64,18 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
     scheduler.scheduleAtFixedRate(() -> {
       // scheduling
-      final Iterator<Pair<Long, TinyTaskWorker>> iterator = workers.iterator();
-      while (iterator.hasNext()) {
-        final Pair<Long, TinyTaskWorker> pair = iterator.next();
-        LOG.info("Worker {}, scheduled: {}, pending: {}",
-          pair.right(), pair.right().getNumScheduledTasks(), pair.right().getNumPendingTasks());
+      try {
+        final Iterator<Pair<Long, TinyTaskWorker>> iterator = workers.iterator();
+        while (iterator.hasNext()) {
+          final Pair<Long, TinyTaskWorker> pair = iterator.next();
+          LOG.info("Worker {}, scheduled: {}, pending: {}",
+            pair.right(), pair.right().getNumScheduledTasks(), pair.right().getNumPendingTasks());
 
-        pair.right().executePending();
+          pair.right().executePending();
+        }
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
     }, 1, 1, TimeUnit.SECONDS);
   }
