@@ -1,7 +1,6 @@
 package org.apache.nemo.runtime.lambdaexecutor.general;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.beam.sdk.coders.Coder;
@@ -66,7 +65,7 @@ public final class OffloadingTask {
   public ByteBuf encode(final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder) {
     try {
 
-      final ByteArrayOutputStream bos = new ByteArrayOutputStream(185290);
+      final ByteArrayOutputStream bos = new ByteArrayOutputStream(172476);
 
       LOG.info("Before Task ordinal11 !!");
       LOG.info(Arrays.toString(bos.toByteArray()));
@@ -89,29 +88,25 @@ public final class OffloadingTask {
       dos.writeUTF(taskId);
       dos.writeInt(taskIndex);
 
-      SerializationUtils.serialize((Serializable) samplingMap, dos);
+      final ObjectOutputStream oos = new ObjectOutputStream(bos);
 
-      LOG.info("samplingMap serialize: {}", bos.size());
-      SerializationUtils.serialize((Serializable) irDag, dos);
-
-      LOG.info("irDag serialize: {}", bos.size());
-      SerializationUtils.serialize((Serializable) taskOutgoingEdges, dos);
-      LOG.info("taskOutgoingEdges serialize: {}", bos.size());
-      SerializationUtils.serialize((Serializable) outgoingEdges, dos);
-      LOG.info("outgoingEdges serialize: {}", bos.size());
-      SerializationUtils.serialize((Serializable) incomingEdges, dos);
-      LOG.info("incomingEdges serialize: {}", bos.size());
+      oos.writeObject(samplingMap);
+      oos.writeObject(irDag);
+      oos.writeObject(taskOutgoingEdges);
+      oos.writeObject(outgoingEdges);
+      oos.writeObject(incomingEdges);
 
       if (checkpointMark != null) {
         dos.writeBoolean(true);
-        checkpointMarkCoder.encode(checkpointMark, dos);
-        SerializationUtils.serialize(unboundedSource, dos);
+        checkpointMarkCoder.encode(checkpointMark, bos);
+        SerializationUtils.serialize(unboundedSource, bos);
       } else {
         dos.writeBoolean(false);
       }
 
       dos.close();
       bos.close();
+      oos.close();
 
       final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
       final ByteBufOutputStream bbos = new ByteBufOutputStream(byteBuf);
@@ -142,11 +137,16 @@ public final class OffloadingTask {
       final String taskId = dis.readUTF();
       final int taskIndex = dis.readInt();
 
-      final Map<String, Double> samplingMap = SerializationUtils.deserialize(dis);
-      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = SerializationUtils.deserialize(dis);
-      final Map<String, List<String>> taskOutgoingEdges = SerializationUtils.deserialize(dis);
-      final List<StageEdge> outgoingEdges = SerializationUtils.deserialize(dis);
-      final List<StageEdge> incomingEdges = SerializationUtils.deserialize(dis);
+      final ObjectInputStream ois = new ObjectInputStream(inputStream);
+      final Map<String, Double> samplingMap = (Map<String, Double>) ois.readObject();
+      LOG.info("samplingMap: {}", samplingMap);
+      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = (DAG<IRVertex, RuntimeEdge<IRVertex>> ) ois.readObject();
+      final Map<String, List<String>> taskOutgoingEdges = (Map<String, List<String>>) ois.readObject();
+      LOG.info("taskOutgoingEdges: {}", taskOutgoingEdges);
+      final List<StageEdge> outgoingEdges = (List<StageEdge>) ois.readObject();
+      LOG.info("outgoingEdges: {}", outgoingEdges);
+      final List<StageEdge> incomingEdges = (List<StageEdge>) ois.readObject();
+      LOG.info("incomingEdges: {}", incomingEdges);
 
       final UnboundedSource.CheckpointMark checkpointMark;
       final UnboundedSource unboundedSource;
@@ -160,6 +160,7 @@ public final class OffloadingTask {
       }
 
       dis.close();
+      ois.close();
 
       LOG.info("Offloading task created: {}", taskId);
 
@@ -174,7 +175,7 @@ public final class OffloadingTask {
         checkpointMark,
         unboundedSource);
 
-    } catch (IOException e) {
+    } catch (IOException | ClassNotFoundException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
