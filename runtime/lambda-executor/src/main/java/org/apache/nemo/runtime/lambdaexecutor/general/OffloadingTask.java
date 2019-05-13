@@ -74,19 +74,22 @@ public final class OffloadingTask {
       //final ByteBufOutputStream bos = new ByteBufOutputStream(byteBuf);
 
 
-      final ObjectOutputStream oos = new ObjectOutputStream(bos);
+      final DataOutputStream dos = new DataOutputStream(bos);
 
       LOG.info("Before Task ordinal !!");
       LOG.info(Arrays.toString(bos.toByteArray()));
 
-      oos.writeInt(TASK_START.ordinal());
+      dos.writeInt(TASK_START.ordinal());
 
       LOG.info("Task ordinal !!");
       LOG.info(Arrays.toString(bos.toByteArray()));
 
-      oos.writeUTF(executorId);
-      oos.writeUTF(taskId);
-      oos.writeInt(taskIndex);
+      dos.writeUTF(executorId);
+      dos.writeUTF(taskId);
+      dos.writeInt(taskIndex);
+
+
+      final ObjectOutputStream oos = new ObjectOutputStream(bos);
 
       oos.writeObject(samplingMap);
       oos.writeObject(irDag);
@@ -95,13 +98,14 @@ public final class OffloadingTask {
       oos.writeObject(incomingEdges);
 
       if (checkpointMark != null) {
-        oos.writeBoolean(true);
+        dos.writeBoolean(true);
         checkpointMarkCoder.encode(checkpointMark, bos);
         SerializationUtils.serialize(unboundedSource, bos);
       } else {
-        oos.writeBoolean(false);
+        dos.writeBoolean(false);
       }
 
+      dos.close();
       bos.close();
       oos.close();
 
@@ -129,13 +133,12 @@ public final class OffloadingTask {
 
     try {
 
+      final DataInput dis = new DataInputStream(inputStream);
+      final String executorId = dis.readUTF();
+      final String taskId = dis.readUTF();
+      final int taskIndex = dis.readInt();
+
       final ObjectInputStream ois = new ObjectInputStream(inputStream);
-
-      final String executorId = ois.readUTF();
-      final String taskId = ois.readUTF();
-      final int taskIndex = ois.readInt();
-
-
       final Map<String, Double> samplingMap = (Map<String, Double>) ois.readObject();
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = (DAG<IRVertex, RuntimeEdge<IRVertex>> ) ois.readObject();
       final Map<String, List<String>> taskOutgoingEdges = (Map<String, List<String>>) ois.readObject();
@@ -144,7 +147,7 @@ public final class OffloadingTask {
 
       final UnboundedSource.CheckpointMark checkpointMark;
       final UnboundedSource unboundedSource;
-      final boolean hasCheckpoint = ois.readBoolean();
+      final boolean hasCheckpoint = dis.readBoolean();
       if (hasCheckpoint) {
         checkpointMark = checkpointMarkCoder.decode(inputStream);
         unboundedSource = SerializationUtils.deserialize(inputStream);
