@@ -75,6 +75,9 @@ public final class OffloadingTask {
 
       dos.writeInt(TASK_START.ordinal());
 
+      LOG.info("Task ordinal !!");
+      LOG.info(Arrays.toString(bos.toByteArray()));
+
       dos.writeUTF(executorId);
       dos.writeUTF(taskId);
       dos.writeInt(taskIndex);
@@ -105,6 +108,8 @@ public final class OffloadingTask {
       final ByteBufOutputStream bbos = new ByteBufOutputStream(byteBuf);
       final byte[] barray = bos.toByteArray();
       bbos.write(barray);
+
+      bbos.close();
 
       LOG.info("Encoded size: {}, taskOrdinal: {}", byteBuf.readableBytes(), TASK_START.ordinal());
       LOG.info("Byte array logging");
