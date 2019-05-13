@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.offloading.common.OffloadingWorkerFactory;
@@ -248,6 +249,13 @@ public final class Executor {
                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
     LOG.info("Launch task: {}", task.getTaskId());
 
+    LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
+    final byte[] bytes = SerializationUtils.serialize((Serializable) task.getTaskOutgoingEdges());
+    final List<StageEdge> copyOutgoingEdges = SerializationUtils.deserialize(bytes);
+    LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges, bytes);
+    final byte[] bytes2 = SerializationUtils.serialize((Serializable) task.getTaskIncomingEdges());
+    final List<StageEdge> copyIncomingEdges = SerializationUtils.deserialize(bytes2);
+
     try {
       final TaskStateManager taskStateManager =
           new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
@@ -279,6 +287,8 @@ public final class Executor {
         pipeManagerWorker,
         task,
         irDag,
+        copyOutgoingEdges,
+        copyIncomingEdges,
         taskStateManager,
         intermediateDataIOFactory,
         broadcastManagerWorker,

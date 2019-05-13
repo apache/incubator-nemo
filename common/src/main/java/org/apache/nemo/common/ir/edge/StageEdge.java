@@ -44,8 +44,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   private static final Logger LOG = LoggerFactory.getLogger(StageEdge.class.getName());
 
   /**
-   * The source {@link IRVertex}.
-   * This belongs to the srcStage.
+   * The source {@link IRVertex}. * This belongs to the srcStage.
    */
   private final IRVertex srcVertex;
 

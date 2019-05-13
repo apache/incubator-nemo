@@ -203,6 +203,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final PipeManagerWorker pipeManagerWorker,
                                  final Task task,
                                  final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+                                 final List<StageEdge> copyOutgoingEdges,
+                                 final List<StageEdge> copyIncomingEdges,
                                  final TaskStateManager taskStateManager,
                                  final IntermediateDataIOFactory intermediateDataIOFactory,
                                  final BroadcastManagerWorker broadcastManagerWorker,
@@ -214,10 +216,10 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final EvalConf evalConf,
                                  final TaskInputContextMap taskInputContextMap) {
     // Essential information
-    final byte[] bytes = SerializationUtils.serialize((Serializable) task.getTaskOutgoingEdges());
-    this.copyOutgoingEdges = SerializationUtils.deserialize(bytes);
-    final byte[] bytes2 = SerializationUtils.serialize((Serializable) task.getTaskIncomingEdges());
-    this.copyIncomingEdges = SerializationUtils.deserialize(bytes2);
+    LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
+    this.copyOutgoingEdges = copyOutgoingEdges;
+    LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
+    this.copyIncomingEdges = copyIncomingEdges;
 
     this.threadId = threadId;
     this.executorId = executorId;
