@@ -1,6 +1,9 @@
 package org.apache.nemo.runtime.lambdaexecutor.general;
 
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
@@ -117,13 +120,15 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
       }
     }, 1, 1, TimeUnit.SECONDS);
 
+    final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+
     final LambdaByteTransportChannelInitializer initializer =
-      new LambdaByteTransportChannelInitializer(byteTransport.getChannelGroup(),
+      new LambdaByteTransportChannelInitializer(channelGroup,
         controlFrameEncoder, dataFrameEncoder, channels, executorId, clientTransport, ackScheduledService,
         taskTransferIndexMap);
 
     byteTransport = new LambdaByteTransport(
-      executorId, selector, initializer, executorAddressMap);
+      executorId, selector, initializer, executorAddressMap, channelGroup);
 
     final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
 

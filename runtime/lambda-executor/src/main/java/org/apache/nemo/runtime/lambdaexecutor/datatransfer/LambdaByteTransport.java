@@ -42,18 +42,21 @@ public final class LambdaByteTransport {//implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(LambdaByteTransport.class);
   private static final String CLIENT = "byte:client";
 
-  private final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
   private final EventLoopGroup clientGroup;
   private final Bootstrap clientBootstrap;
   private final Map<String, InetSocketAddress> executorAddressMap;
+  private final ChannelGroup channelGroup;
 
   public LambdaByteTransport(
       final String localExecutorId,
       final NativeChannelImplementationSelector channelImplSelector,
       final LambdaByteTransportChannelInitializer channelInitializer,
-      final Map<String, InetSocketAddress> executorAddressMap) {
+      final Map<String, InetSocketAddress> executorAddressMap,
+      final ChannelGroup channelGroup) {
 
     this.executorAddressMap = executorAddressMap;
+    this.channelGroup = channelGroup;
+
     clientGroup = channelImplSelector.newEventLoopGroup(2, new DefaultThreadFactory(CLIENT));
 
     clientBootstrap = new Bootstrap()
