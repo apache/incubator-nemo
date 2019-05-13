@@ -88,26 +88,22 @@ public final class OffloadingTask {
       dos.writeUTF(taskId);
       dos.writeInt(taskIndex);
 
-
-      final ObjectOutputStream oos = new ObjectOutputStream(bos);
-
-      oos.writeObject(samplingMap);
-      oos.writeObject(irDag);
-      oos.writeObject(taskOutgoingEdges);
-      oos.writeObject(outgoingEdges);
-      oos.writeObject(incomingEdges);
+      SerializationUtils.serialize((Serializable) samplingMap, dos);
+      SerializationUtils.serialize((Serializable) irDag, dos);
+      SerializationUtils.serialize((Serializable) taskOutgoingEdges, dos);
+      SerializationUtils.serialize((Serializable) outgoingEdges, dos);
+      SerializationUtils.serialize((Serializable) incomingEdges, dos);
 
       if (checkpointMark != null) {
         dos.writeBoolean(true);
-        checkpointMarkCoder.encode(checkpointMark, bos);
-        SerializationUtils.serialize(unboundedSource, bos);
+        checkpointMarkCoder.encode(checkpointMark, dos);
+        SerializationUtils.serialize(unboundedSource, dos);
       } else {
         dos.writeBoolean(false);
       }
 
       dos.close();
       bos.close();
-      oos.close();
 
       final ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
       final ByteBufOutputStream bbos = new ByteBufOutputStream(byteBuf);
@@ -138,12 +134,11 @@ public final class OffloadingTask {
       final String taskId = dis.readUTF();
       final int taskIndex = dis.readInt();
 
-      final ObjectInputStream ois = new ObjectInputStream(inputStream);
-      final Map<String, Double> samplingMap = (Map<String, Double>) ois.readObject();
-      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = (DAG<IRVertex, RuntimeEdge<IRVertex>> ) ois.readObject();
-      final Map<String, List<String>> taskOutgoingEdges = (Map<String, List<String>>) ois.readObject();
-      final List<StageEdge> outgoingEdges = (List<StageEdge>) ois.readObject();
-      final List<StageEdge> incomingEdges = (List<StageEdge>) ois.readObject();
+      final Map<String, Double> samplingMap = SerializationUtils.deserialize(dis);
+      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag = SerializationUtils.deserialize(dis);
+      final Map<String, List<String>> taskOutgoingEdges = SerializationUtils.deserialize(dis);
+      final List<StageEdge> outgoingEdges = SerializationUtils.deserialize(dis);
+      final List<StageEdge> incomingEdges = SerializationUtils.deserialize(dis);
 
       final UnboundedSource.CheckpointMark checkpointMark;
       final UnboundedSource unboundedSource;
@@ -157,7 +152,6 @@ public final class OffloadingTask {
       }
 
       dis.close();
-      ois.close();
 
       LOG.info("Offloading task created: {}", taskId);
 
@@ -172,7 +166,7 @@ public final class OffloadingTask {
         checkpointMark,
         unboundedSource);
 
-    } catch (IOException | ClassNotFoundException e) {
+    } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
