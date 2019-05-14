@@ -88,12 +88,8 @@ public final class PipeManagerWorker {
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
 
-        LOG.info("receive ack!!");
         final int d = atomicInteger.decrementAndGet();
-
-        if (d == 0) {
-          // close conneciton
-        }
+        LOG.info("receive ack!! {} / {}", d, byteInputContexts.size());
 
         //byteInputContext.sendMessage();
         //throw new RuntimeException("TODO");
