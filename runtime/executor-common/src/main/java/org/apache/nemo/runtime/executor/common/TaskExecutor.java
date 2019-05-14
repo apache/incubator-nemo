@@ -38,6 +38,8 @@ public interface TaskExecutor extends AutoCloseable {
     DEOFFLOAD_PENDING
   }
 
+  boolean isFinished();
+
   public void setOffloadedTaskTime(final long t);
 
   ConcurrentLinkedQueue<Object> getOffloadingQueue();

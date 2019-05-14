@@ -49,7 +49,7 @@ public final class ExecutorThread {
 
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       isPollingTime.set(true);
-      LOG.info("Available tasks: {}, pending: {}", availableTasks, pendingTasks);
+      //LOG.info("Available tasks: {}, pending: {}", availableTasks, pendingTasks);
     }, 500, 500, TimeUnit.MILLISECONDS);
 
     executorService.execute(() -> {
@@ -65,8 +65,8 @@ public final class ExecutorThread {
             final TaskExecutor deletedTask = deletedTasks.poll();
 
             LOG.info("Deleting task {}", deletedTask.getId());
-            availableTasks.remove(deletedTask);
-            pendingTasks.remove(deletedTask);
+            //availableTasks.remove(deletedTask);
+            //pendingTasks.remove(deletedTask);
 
             try {
               deletedTask.close();
@@ -107,7 +107,11 @@ public final class ExecutorThread {
           if (isPollingTime.get()) {
             isPollingTime.set(false);
             // how to check whether the task is ready or not?
-            availableTasks.addAll(pendingTasks);
+            for (final TaskExecutor pendingTask : pendingTasks) {
+              if (!pendingTask.isFinished()) {
+                availableTasks.add(pendingTask);
+              }
+            }
             pendingTasks.clear();
           }
         }

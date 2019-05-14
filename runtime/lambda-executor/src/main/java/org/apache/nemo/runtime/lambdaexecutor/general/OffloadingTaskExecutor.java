@@ -64,6 +64,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   private final ScheduledExecutorService pollingTrigger;
   public final AtomicLong taskExecutionTime = new AtomicLong(0);
 
+  private boolean finished = false;
+
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
                                 final Map<String, InetSocketAddress> executorAddressMap,
@@ -457,6 +459,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
       Thread.sleep(3000);
 
+      finished = true;
+
       // TODO: we send checkpoint mark to vm
     } catch (Exception e) {
       e.printStackTrace();
@@ -578,6 +582,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         return outputWriter;
       })
       .collect(Collectors.toList());
+  }
+
+  @Override
+  public boolean isFinished() {
+    return finished;
   }
 
   @Override
