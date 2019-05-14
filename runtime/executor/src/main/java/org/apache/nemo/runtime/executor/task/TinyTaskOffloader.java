@@ -286,7 +286,7 @@ public final class TinyTaskOffloader implements Offloader {
 
   @Override
   public boolean hasPendingStraemingWorkers() {
-    return !pendingFutures.isEmpty();
+    return !pendingFutures.isEmpty() && checkIsAllPendingReady() && availableFetchers.isEmpty();
   }
 
   private boolean checkIsAllPendingReady() {
@@ -302,17 +302,6 @@ public final class TinyTaskOffloader implements Offloader {
   public synchronized void handlePendingStreamingWorkers() {
 
     LOG.info("Available: {}, Pending: {}, task {}", availableFetchers, pendingFetchers, taskId);
-
-    if (!checkIsAllPendingReady()) {
-      return;
-    }
-
-    LOG.info("All ready {}", taskId);
-
-    if (!availableFetchers.isEmpty()) {
-      LOG.info("Still available fetchers... {}", availableFetchers.size());
-      return;
-    }
 
     availableFetchers.clear();
     pendingFetchers.clear();
