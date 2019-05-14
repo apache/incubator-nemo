@@ -104,7 +104,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   @Override
   public void onContextExpired(final ByteTransferContext context) {
     // TODO: Send end message!
-    throw new UnsupportedOperationException("unsupported");
+    LOG.warn("Do nothing in context expired");
+    //throw new UnsupportedOperationException("unsupported");
   }
 
   @Override
