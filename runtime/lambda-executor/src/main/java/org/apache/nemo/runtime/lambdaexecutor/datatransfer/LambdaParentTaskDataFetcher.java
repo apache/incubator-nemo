@@ -154,7 +154,12 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
 
   @Override
   public Future<Integer> stop() {
-    throw new UnsupportedOperationException();
+    return readersForParentTask.stop();
+  }
+
+  @Override
+  public void restart() {
+    readersForParentTask.restart();
   }
 
   private List<IteratorWithNumBytes> fetchBlocking() {

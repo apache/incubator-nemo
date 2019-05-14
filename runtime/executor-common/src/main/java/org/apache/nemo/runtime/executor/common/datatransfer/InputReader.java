@@ -34,6 +34,8 @@ public interface InputReader {
 
   Future<Integer> stop();
 
+  void restart();
+
   /**
    * Reads input data depending on the communication pattern of the srcVertex.
    *

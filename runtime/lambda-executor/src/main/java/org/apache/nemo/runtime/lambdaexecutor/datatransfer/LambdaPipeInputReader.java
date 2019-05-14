@@ -61,6 +61,11 @@ public final class LambdaPipeInputReader implements InputReader {
 
   @Override
   public Future<Integer> stop() {
+    return pipeManagerWorker.stop();
+  }
+
+  @Override
+  public void restart() {
     throw new RuntimeException("Unsupported");
   }
 

@@ -33,6 +33,7 @@ import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingTransform;
@@ -51,6 +52,8 @@ import java.util.stream.Collectors;
 public interface Offloader {
 
   public void handleOffloadingOutput(final KafkaOffloadingOutput output);
+
+  void handleStateOutput(final StateOutput output);
 
   void offloadingData(final Object event,
                       final List<String> nextOperatorIds,

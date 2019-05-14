@@ -109,6 +109,11 @@ class ParentTaskDataFetcher extends DataFetcher {
     return null;
   }
 
+  @Override
+  public void restart() {
+    throw new RuntimeException("Unsupported");
+  }
+
   private void advanceIterator() throws IOException {
     // Take from iteratorQueue
     final Object iteratorOrThrowable;

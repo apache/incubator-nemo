@@ -40,6 +40,7 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
+import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingTask;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
@@ -203,17 +204,27 @@ public final class TinyTaskOffloader implements Offloader {
     taskStatus.set(TaskExecutor.Status.RUNNING);
   }
 
+  @Override
+  public void handleStateOutput(StateOutput output) {
+    if (!taskStatus.get().equals(TaskExecutor.Status.DEOFFLOAD_PENDING)) {
+      throw new RuntimeException("Invalid status: " + taskStatus);
+    }
 
-  private KafkaCheckpointMark createMergedCheckpointMarks(
-    final UnboundedSource.CheckpointMark checkpointMark) {
-    final KafkaCheckpointMark cmark = (KafkaCheckpointMark) checkpointMark;
-    final List<KafkaCheckpointMark.PartitionMark> partitionMarks  = Arrays.asList(cmark.getPartitions().get(0));
+    // restart input context!
+    LOG.info("Restart input context  at {}!!!", output.taskId);
 
-    partitionMarks.sort((o1, o2) -> {
-      return o1.getPartition() - o2.getPartition();
-    });
+    final List<DataFetcher> allFetchers = new ArrayList<>(availableFetchers.size() + pendingFetchers.size());
+    allFetchers.addAll(availableFetchers);
+    allFetchers.addAll(pendingFetchers);
 
-    return new KafkaCheckpointMark(partitionMarks, Optional.empty());
+    // Source stop!!
+    // Source stop!!
+    // Source stop!!
+    for (final DataFetcher dataFetcher : allFetchers) {
+      dataFetcher.restart();
+    }
+
+    taskStatus.set(TaskExecutor.Status.RUNNING);
   }
 
   @Override
@@ -233,18 +244,6 @@ public final class TinyTaskOffloader implements Offloader {
     } else {
       throw new RuntimeException("Unsupported status: " + taskStatus);
     }
-  }
-
-  private boolean checkSourceValidation(){
-    if (sourceVertexDataFetchers.size() > 1) {
-      return false;
-    }
-
-    if (!(sourceVertexDataFetchers.get(0) instanceof SourceVertexDataFetcher)) {
-      return false;
-    }
-
-    return true;
   }
 
   private CompletableFuture<ControlMessage.Message> requestTaskIndex() {

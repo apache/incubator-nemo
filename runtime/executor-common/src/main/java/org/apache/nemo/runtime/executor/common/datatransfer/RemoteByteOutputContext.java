@@ -144,6 +144,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   @Override
   public void scaleInToVm() {
+    LOG.info("Scaling in to VM");
     isPending = false;
   }
 
@@ -315,11 +316,10 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
                 getContextDescriptor(),
                 getContextId().isPipe(),
                 ByteTransferContextSetupMessage.MessageType.ACK_PENDING);
-            channel.writeAndFlush(message).addListener(getChannelWriteListener());
             LOG.info("Ack VM scaling pending {}", message);
-
-            LOG.info("Closing vm channel {}", message);
-            vmScalingClientTransport.disconnect(remoteAddress, Constants.VM_WORKER_PORT);
+            vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
+            //LOG.info("Closing vm channel {}", message);
+            //vmScalingClientTransport.disconnect(remoteAddress, Constants.VM_WORKER_PORT);
           }
 
           pendingByteBufs.add(byteBuf);

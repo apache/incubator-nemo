@@ -99,7 +99,25 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       throws Exception {
     // TODO: handle scaleout messages!
     setRemoteExecutorId(message.getInitiatorExecutorId());
-    throw new RuntimeException("message? " + message);
+    final ByteTransferContextSetupMessage.ByteTransferDataDirection
+      dataDirection = message.getDataDirection();
+    final int transferIndex = message.getTransferIndex();
+    final boolean isPipe = message.getIsPipe();
+    final ByteTransferContext.ContextId contextId =
+      new ByteTransferContext.ContextId(remoteExecutorId, localExecutorId, dataDirection, transferIndex, isPipe);
+    final byte[] contextDescriptor = message.getContextDescriptor();
+
+    switch (message.getMessageType()) {
+      case ACK_PENDING: {
+        final ByteInputContext context = inputContextsInitiatedByLocal.get(transferIndex);
+        LOG.info("ACK_PENDING: {}, {}", transferIndex, inputContextsInitiatedByLocal);
+        context.receivePendingAck();
+        break;
+      }
+      default: {
+        throw new RuntimeException("Unsupported type: " + message.getMessageType());
+      }
+    }
   }
 
   @Override

@@ -25,16 +25,16 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
-import org.apache.nemo.runtime.executor.common.datatransfer.IteratorWithNumBytes;
-import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
-import org.apache.nemo.runtime.executor.common.datatransfer.StreamRemoteByteInputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.Set;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Two threads use this class
@@ -54,6 +54,8 @@ public final class PipeManagerWorker {
 
   private final Map<String, Serializer> serializerMap;
 
+  private final Set<ByteInputContext> byteInputContexts = new HashSet<>();
+
   public PipeManagerWorker(final String executorId,
                            final ByteTransfer byteTransfer,
                            final Map<Pair<String, Integer>, String> taskExecutorIdMap,
@@ -68,6 +70,71 @@ public final class PipeManagerWorker {
   private boolean isExecutorInSF(final String targetExecutorId) {
     // TODO..
     return false;
+  }
+
+  public Future<Integer> stop() {
+    final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
+
+    for (final ByteInputContext byteInputContext : byteInputContexts) {
+      final ByteTransferContextSetupMessage pendingMsg =
+        new ByteTransferContextSetupMessage(executorId,
+          byteInputContext.getContextId().getTransferIndex(),
+          byteInputContext.getContextId().getDataDirection(),
+          byteInputContext.getContextDescriptor(),
+          byteInputContext.getContextId().isPipe(),
+          ByteTransferContextSetupMessage.MessageType.PENDING_FOR_SCALEIN_VM);
+
+      LOG.info("Send message {}", pendingMsg);
+
+      byteInputContext.sendMessage(pendingMsg, (m) -> {
+
+        LOG.info("receive ack!!");
+        final int d = atomicInteger.decrementAndGet();
+
+        if (d == 0) {
+          // close conneciton
+        }
+
+        //byteInputContext.sendMessage();
+        //throw new RuntimeException("TODO");
+      });
+    }
+
+    return new Future<Integer>() {
+      @Override
+      public boolean cancel(boolean mayInterruptIfRunning) {
+        return false;
+      }
+
+      @Override
+      public boolean isCancelled() {
+        return false;
+      }
+
+      @Override
+      public boolean isDone() {
+        return atomicInteger.get() == 0;
+      }
+
+      @Override
+      public Integer get() throws InterruptedException, ExecutionException {
+        return byteInputContexts.size();
+      }
+
+      @Override
+      public Integer get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        final long st = System.currentTimeMillis();
+        while (System.currentTimeMillis() - st < unit.toMillis(timeout)) {
+          if (isDone()) {
+            return get();
+          } else {
+            Thread.sleep(200);
+          }
+        }
+
+        throw new TimeoutException();
+      }
+    };
   }
 
   public CompletableFuture<ByteOutputContext> write(final int srcTaskIndex,
@@ -120,8 +187,11 @@ public final class PipeManagerWorker {
 
       // Connect to the executor
       return byteTransfer.newInputContext(srcExecutorId, descriptor.encode(), true)
-        .thenApply(context -> ((StreamRemoteByteInputContext) context).getInputIterator(
-          serializerMap.get(runtimeEdgeId)));
+        .thenApply(context -> {
+          byteInputContexts.add(context);
+          return ((StreamRemoteByteInputContext) context).getInputIterator(
+            serializerMap.get(runtimeEdgeId));
+        });
     }
   }
 

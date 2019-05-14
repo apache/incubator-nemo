@@ -141,6 +141,33 @@ public final class PipeInputReader implements InputReader {
   }
 
   @Override
+  public void restart() {
+    final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
+
+    for (final ByteInputContext byteInputContext : byteInputContexts) {
+      final ByteTransferContextSetupMessage pendingMsg =
+        new ByteTransferContextSetupMessage(executorId,
+          byteInputContext.getContextId().getTransferIndex(),
+          byteInputContext.getContextId().getDataDirection(),
+          byteInputContext.getContextDescriptor(),
+          byteInputContext.getContextId().isPipe(),
+          ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_VM);
+
+      LOG.info("Send resume message {}", pendingMsg);
+
+      byteInputContext.sendMessage(pendingMsg, (m) -> {
+
+        LOG.info("receive ack!!");
+        atomicInteger.decrementAndGet();
+
+        //byteInputContext.sendMessage();
+        //throw new RuntimeException("TODO");
+      });
+
+    }
+  }
+
+  @Override
   public List<CompletableFuture<IteratorWithNumBytes>> read() {
     final Optional<CommunicationPatternProperty.Value> comValue =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);

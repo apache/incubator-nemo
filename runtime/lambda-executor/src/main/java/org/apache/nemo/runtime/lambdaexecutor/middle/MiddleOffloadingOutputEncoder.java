@@ -5,6 +5,7 @@ import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.offloading.common.OffloadingEncoder;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
+import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,9 +14,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutputEncoder.HEARTBEAT;
-import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutputEncoder.KAFKA_CHECKPOINT;
-import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutputEncoder.OFFLOADING_RESULT;
+import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutputEncoder.*;
 
 public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Object> {
   private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloadingOutputEncoder.class.getName());
@@ -52,6 +51,11 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       dos.writeUTF(output.taskId);
       dos.writeInt(output.id);
       checkpointMarkCoder.encode(output.checkpointMark, outputStream);
+    } else if (data instanceof StateOutput) {
+      final DataOutputStream dos = new DataOutputStream(outputStream);
+      dos.writeChar(STATE_OUTPUT);
+      final StateOutput output = (StateOutput) data;
+      dos.writeUTF(output.taskId);
     }
   }
 }

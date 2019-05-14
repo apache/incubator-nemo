@@ -35,6 +35,7 @@ import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingTransform;
@@ -274,6 +275,11 @@ public final class KafkaOffloader implements Offloader {
 
       kafkaOffloadingOutputs.clear();
     }
+  }
+
+  @Override
+  public void handleStateOutput(StateOutput output) {
+    throw new UnsupportedOperationException();
   }
 
   @Override

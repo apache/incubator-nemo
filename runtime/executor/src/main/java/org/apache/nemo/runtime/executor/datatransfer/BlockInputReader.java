@@ -67,6 +67,11 @@ public final class BlockInputReader implements InputReader {
   }
 
   @Override
+  public void restart() {
+    throw new RuntimeException("unsupported");
+  }
+
+  @Override
   public List<CompletableFuture<IteratorWithNumBytes>> read() {
     final Optional<CommunicationPatternProperty.Value> comValue =
       runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);

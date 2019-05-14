@@ -207,6 +207,11 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     return readersForParentTask.stop();
   }
 
+  @Override
+  public void restart() {
+    readersForParentTask.restart();
+  }
+
   private void fetchNonBlocking() { // 갯수 동적으로 받아야함. handler 같은거 등록하기
     inputWatermarkManager = new DynamicInputWatermarkManager(taskId, getDataSource(), new WatermarkCollector());
     final DynamicInputWatermarkManager watermarkManager = (DynamicInputWatermarkManager) inputWatermarkManager;

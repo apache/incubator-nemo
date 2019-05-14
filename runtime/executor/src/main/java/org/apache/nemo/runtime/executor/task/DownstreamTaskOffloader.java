@@ -24,6 +24,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextS
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
 import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
+import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.DownstreamOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.DownstreamOffloadingTransform;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
@@ -188,6 +189,11 @@ public final class DownstreamTaskOffloader implements Offloader {
   @Override
   public void handleOffloadingOutput(KafkaOffloadingOutput output) {
     throw new RuntimeException("Unsupported op: " + output);
+  }
+
+  @Override
+  public void handleStateOutput(StateOutput output) {
+    throw new UnsupportedOperationException();
   }
 
   @Override

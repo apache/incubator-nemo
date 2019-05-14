@@ -32,9 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -386,6 +384,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     allFetchers.addAll(availableFetchers);
     allFetchers.addAll(pendingFetchers);
 
+    final List<Future<Integer>> pendingFutures = new ArrayList<>();
+
     for (final DataFetcher dataFetcher : allFetchers) {
 
       if (dataFetcher instanceof SourceVertexDataFetcher) {
@@ -403,21 +403,37 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
             offloadingTask.taskId, 1, offloadingTask.checkpointMark));
         }
       } else if (dataFetcher instanceof LambdaParentTaskDataFetcher) {
-        // TODO: fix ..
-        throw new RuntimeException("Not supported yet");
+        pendingFutures.add(dataFetcher.stop());
       }
     }
 
+    LOG.info("Waiting pending futures...");
+    for (final Future<Integer> pendingFuture : pendingFutures) {
+      try {
+        pendingFuture.get(100, TimeUnit.SECONDS);
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
 
-      // Close all data fetchers
+    if (!pendingFutures.isEmpty()) {
+      // send states to vm !!
+      LOG.info("Send checkpointmark of task {}  / {} to vm",
+        offloadingTask.taskId, offloadingTask.checkpointMark);
+      resultCollector.collector.emit(new KafkaOffloadingOutput(
+        offloadingTask.taskId, 1, offloadingTask.checkpointMark));
+    }
+
+    // Close all data fetchers
 
 
-      // flush transforms
-      offloadingTask.irDag.getTopologicalSort().stream().forEach(irVertex -> {
-        if (irVertex instanceof OperatorVertex) {
-          final Transform transform = ((OperatorVertex) irVertex).getTransform();
-          transform.flush();
-        }
+    // flush transforms
+    offloadingTask.irDag.getTopologicalSort().stream().forEach(irVertex -> {
+      if (irVertex instanceof OperatorVertex) {
+        final Transform transform = ((OperatorVertex) irVertex).getTransform();
+        transform.flush();
+      }
       });
 
     // TODO: close upstream data fetchers

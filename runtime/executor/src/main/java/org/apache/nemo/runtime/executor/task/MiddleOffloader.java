@@ -28,6 +28,7 @@ import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingTransform;
@@ -177,6 +178,11 @@ public final class MiddleOffloader implements Offloader {
   @Override
   public void handleOffloadingOutput(KafkaOffloadingOutput output) {
     throw new RuntimeException("Unsupported op: " + output);
+  }
+
+  @Override
+  public void handleStateOutput(StateOutput output) {
+    throw new UnsupportedOperationException();
   }
 
   @Override

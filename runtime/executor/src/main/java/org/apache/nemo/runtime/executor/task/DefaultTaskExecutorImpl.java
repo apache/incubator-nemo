@@ -59,6 +59,7 @@ import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
+import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.Triple;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.slf4j.Logger;
@@ -1028,6 +1029,12 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
 
           if (offloader.isPresent()) {
             offloader.get().handleOffloadingOutput((KafkaOffloadingOutput) data);
+          }
+
+        } else if (data instanceof StateOutput) {
+
+          if (offloader.isPresent()) {
+            offloader.get().handleStateOutput((StateOutput) data);
           }
 
         } else if (data instanceof EndOffloadingKafkaEvent) {

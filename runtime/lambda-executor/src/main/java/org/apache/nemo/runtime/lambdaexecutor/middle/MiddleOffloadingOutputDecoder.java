@@ -5,10 +5,7 @@ import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
-import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
-import org.apache.nemo.runtime.lambdaexecutor.Triple;
+import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOperatorVertexOutputCollector;
 import org.slf4j.Logger;
@@ -21,9 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutputEncoder.HEARTBEAT;
-import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutputEncoder.KAFKA_CHECKPOINT;
-import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutputEncoder.OFFLOADING_RESULT;
+import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutputEncoder.*;
 
 public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Object> {
   private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloadingOutputDecoder.class.getName());
@@ -63,6 +58,10 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
           final UnboundedSource.CheckpointMark checkpointMark = coder.decode(inputStream);
           return Pair.of(taskId,
             new KafkaOffloadingOutput(taskId, id, checkpointMark));
+        }
+        case STATE_OUTPUT: {
+          final String  taskId = dis.readUTF();
+          return new StateOutput(taskId);
         }
         default:
           throw new RuntimeException("Unsupported type: " + type);
