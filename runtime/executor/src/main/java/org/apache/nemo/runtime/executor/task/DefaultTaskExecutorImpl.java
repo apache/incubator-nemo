@@ -1431,4 +1431,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   public void close() throws Exception {
 
   }
+
+  @Override
+  public String toString() {
+    return taskId;
+  }
 }
