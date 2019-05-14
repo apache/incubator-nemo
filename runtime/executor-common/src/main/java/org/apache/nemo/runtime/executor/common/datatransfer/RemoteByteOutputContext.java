@@ -330,6 +330,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
           if (!pendingByteBufs.isEmpty()) {
             for (final ByteBuf pendingByteBuf : pendingByteBufs) {
+              LOG.info("[Send pending event]");
               writeByteBuf(pendingByteBuf);
             }
             pendingByteBufs.clear();
