@@ -411,7 +411,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     }
 
     LOG.info("Waiting pending futures...");
-
+    finished = true;
   }
 
   @Override
@@ -454,8 +454,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       }
 
       Thread.sleep(3000);
-
-      finished = true;
 
       // TODO: we send checkpoint mark to vm
     } catch (Exception e) {
@@ -591,6 +589,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public boolean isFinished() {
+    LOG.info("Isfinished: {}, pendingDone: {}", allPendingDone());
     return finished && allPendingDone();
   }
 
