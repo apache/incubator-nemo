@@ -87,15 +87,14 @@ public final class ExecutorThread {
               while (availableTask.handleData() && processedCnt < batchSize) {
                 processedCnt += 1;
               }
-              iterator.remove();
 
               final long et = System.nanoTime();
               availableTask.getTaskExecutionTime().addAndGet(et - st);
 
               if (processedCnt < batchSize) {
+                iterator.remove();
                 pendingTasks.add(availableTask);
               }
-
             }
           }
 
