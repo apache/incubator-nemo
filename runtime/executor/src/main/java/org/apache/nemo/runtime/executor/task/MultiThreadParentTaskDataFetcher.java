@@ -158,10 +158,6 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
     }
 
 
-    if (!watermarkQueue.isEmpty()) {
-      return watermarkQueue.poll();
-    }
-
     int cnt = 0;
     while (cnt < iterators.size()) {
       final IteratorWithNumBytes iterator = iterators.get(iteratorIndex);
@@ -187,15 +183,19 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
           final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
           inputWatermarkManager.trackAndEmitWatermarks(
             watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
+
+
+          if (!watermarkQueue.isEmpty()) {
+            return watermarkQueue.poll();
+          }
         } else {
           // data element
           return element;
         }
       } else {
         iteratorIndex = (iteratorIndex + 1) % iterators.size();
+        cnt += 1;
       }
-
-      cnt += 1;
     }
 
 

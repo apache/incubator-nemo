@@ -112,9 +112,6 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
       firstFetch = false;
     }
 
-    if (!watermarkQueue.isEmpty()) {
-      return watermarkQueue.poll();
-    }
 
     int cnt = 0;
     while (cnt < iterators.size()) {
@@ -135,6 +132,11 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
           final WatermarkWithIndex watermarkWithIndex = (WatermarkWithIndex) element;
           inputWatermarkManager.trackAndEmitWatermarks(
             watermarkWithIndex.getIndex(), watermarkWithIndex.getWatermark());
+
+          if (!watermarkQueue.isEmpty()) {
+            return watermarkQueue.poll();
+          }
+
         } else {
           // data element
           return element;
@@ -142,9 +144,9 @@ public final class LambdaParentTaskDataFetcher extends DataFetcher {
       } else {
         LOG.info("No next element in iterator {}, cnt: {}, size: {}", iteratorIndex, cnt, iterators.size());
         iteratorIndex = (iteratorIndex + 1) % iterators.size();
-      }
 
-      cnt += 1;
+        cnt += 1;
+      }
     }
 
     throw new NoSuchElementException();
