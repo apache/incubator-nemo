@@ -109,6 +109,8 @@ public final class TinyTaskOffloader implements Offloader {
 
   private final List<Future> pendingFutures = new ArrayList<>();
 
+  private final List<DataFetcher> allFetchers = new ArrayList<>();
+
   public TinyTaskOffloader(final String executorId,
                            final Task task,
                            final TaskExecutor taskExecutor,
@@ -147,6 +149,8 @@ public final class TinyTaskOffloader implements Offloader {
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.availableFetchers = availableFetchers;
     this.pendingFetchers = pendingFetchers;
+    this.allFetchers.addAll(availableFetchers);
+    this.allFetchers.addAll(pendingFetchers);
     this.serializerManager = serializerManager;
     this.sourceVertexDataFetcher = sourceDataFetcher;
 
@@ -213,16 +217,14 @@ public final class TinyTaskOffloader implements Offloader {
     // restart input context!
     LOG.info("Restart input context  at {}!!!", output.taskId);
 
-    final List<DataFetcher> allFetchers = new ArrayList<>(availableFetchers.size() + pendingFetchers.size());
-    allFetchers.addAll(availableFetchers);
-    allFetchers.addAll(pendingFetchers);
-
     // Source stop!!
     // Source stop!!
     // Source stop!!
     for (final DataFetcher dataFetcher : allFetchers) {
       dataFetcher.restart();
     }
+
+    availableFetchers.addAll(allFetchers);
 
     taskStatus.set(TaskExecutor.Status.RUNNING);
   }
@@ -265,10 +267,6 @@ public final class TinyTaskOffloader implements Offloader {
 
     // TODO: 1) Remove available and pending fetchers!!
     // Stop sources and output emission!!
-    final List<DataFetcher> allFetchers = new ArrayList<>(availableFetchers.size() + pendingFetchers.size());
-    allFetchers.addAll(availableFetchers);
-    allFetchers.addAll(pendingFetchers);
-
 
     // Source stop!!
     // Source stop!!
