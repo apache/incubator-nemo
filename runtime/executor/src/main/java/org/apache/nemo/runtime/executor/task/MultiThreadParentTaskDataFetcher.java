@@ -112,7 +112,7 @@ public final class MultiThreadParentTaskDataFetcher extends DataFetcher {
       firstFetch = false;
     }
 
-    LOG.info("Fetch data for {}", taskId);
+    //LOG.info("Fetch data for {}", taskId);
 
     while (!taskAddPairQueue.isEmpty()) {
       final Pair<IteratorWithNumBytes, Integer> pair = taskAddPairQueue.poll();
