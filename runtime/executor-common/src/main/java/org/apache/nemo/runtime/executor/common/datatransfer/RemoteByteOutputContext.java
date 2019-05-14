@@ -278,8 +278,6 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
                              final String edgeId,
                              final String opId) {
 
-      LOG.info("Write element {}", element);
-
       final ByteBuf byteBuf = channel.alloc().ioBuffer();
       final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
 
@@ -324,6 +322,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
             vmScalingClientTransport.disconnect(remoteAddress, Constants.VM_WORKER_PORT);
           }
 
+          LOG.info("[Add pending event {}]", element);
           pendingByteBufs.add(byteBuf);
 
         } else {
