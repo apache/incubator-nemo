@@ -333,6 +333,16 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
             pendingByteBufs.clear();
           }
           writeByteBuf(byteBuf);
+
+          switch (sendDataTo) {
+            case VM: {
+              channel.flush();
+              break;
+            } case SCALE_VM: {
+              vmChannel.flush();
+              break;
+            }
+          }
         }
 
       } catch (final IOException e) {
