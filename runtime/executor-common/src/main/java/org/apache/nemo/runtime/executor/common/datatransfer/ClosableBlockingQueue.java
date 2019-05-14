@@ -45,7 +45,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
     queue = new ArrayDeque<>();
   }
 
-  public boolean isEmpty() {
+  public synchronized boolean isEmpty() {
     return queue.isEmpty();
   }
 
