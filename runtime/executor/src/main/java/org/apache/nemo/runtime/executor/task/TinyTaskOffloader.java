@@ -270,8 +270,6 @@ public final class TinyTaskOffloader implements Offloader {
     allFetchers.addAll(availableFetchers);
     allFetchers.addAll(pendingFetchers);
 
-    availableFetchers.clear();
-    pendingFetchers.clear();
 
     // Source stop!!
     // Source stop!!
@@ -306,6 +304,15 @@ public final class TinyTaskOffloader implements Offloader {
     if (!checkIsAllPendingReady()) {
       return;
     }
+
+    if (!availableFetchers.isEmpty()) {
+      LOG.info("Still available fetchers... {}", availableFetchers.size());
+      return;
+    }
+
+    availableFetchers.clear();
+    pendingFetchers.clear();
+
 
     pendingFutures.clear();
     LOG.info("End of waiting source stop futures...");

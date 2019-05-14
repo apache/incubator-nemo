@@ -162,14 +162,14 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     switch (message.getMessageType()) {
       case ACK_PENDING: {
         final ByteInputContext context = inputContexts.get(transferIndex);
-        LOG.info("ACK_PENDING: {}", transferIndex);
+        LOG.info("ACK_PENDING: {}, {}", transferIndex, inputContexts);
         context.receivePendingAck();
         break;
       }
       case PENDING_FOR_SCALEOUT_VM: {
         // this means that the downstream task will be moved to another machine
         // so we should stop sending data to the downstream task
-        LOG.info("SCALEOUT pending {}", transferIndex);
+        LOG.info("SCALEOUT pending {}, {}", transferIndex, outputContexts);
         final ByteOutputContext outputContext = outputContexts.get(transferIndex);
         outputContext.pending(true);
         break;

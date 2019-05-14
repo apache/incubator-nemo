@@ -105,6 +105,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
 
   @Override
   public void receivePendingAck() {
+    LOG.info("Receive pending in byteInputContext {}", getContextId().getTransferIndex());
     if (currentByteBufInputStream.byteBufQueue.isEmpty()) {
       ackHandler.onNext(1);
     } else {
