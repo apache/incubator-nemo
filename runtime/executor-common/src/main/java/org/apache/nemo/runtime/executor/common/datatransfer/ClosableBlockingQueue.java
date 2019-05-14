@@ -18,6 +18,9 @@
  */
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayDeque;
@@ -30,7 +33,7 @@ import java.util.Queue;
  */
 @ThreadSafe
 public final class ClosableBlockingQueue<T> implements AutoCloseable {
-
+  private static final Logger LOG = LoggerFactory.getLogger(ClosableBlockingQueue.class.getName());
   private final Queue<T> queue;
   private volatile boolean closed = false;
   private volatile Throwable throwable = null;
@@ -69,6 +72,9 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
     if (closed) {
       throw new IllegalStateException("This queue has been closed");
     }
+
+    LOG.info("BlockingQueue add");
+
     queue.add(element);
     notifyAll();
   }
@@ -107,6 +113,8 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
     if (throwable != null) {
       throw new RuntimeException(throwable);
     }
+
+    LOG.info("Remaining byteBuf: {}", queue.size());
 
     // retrieves and removes the head of the underlying collection, or return null if the queue is empty
     return queue.poll();
