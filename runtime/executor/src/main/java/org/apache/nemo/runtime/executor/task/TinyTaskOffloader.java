@@ -301,11 +301,13 @@ public final class TinyTaskOffloader implements Offloader {
   @Override
   public synchronized void handlePendingStreamingWorkers() {
 
-    LOG.info("Available: {}, Pending: {}", taskId);
+    LOG.info("Available: {}, Pending: {}, task {}", availableFetchers, pendingFetchers, taskId);
 
     if (!checkIsAllPendingReady()) {
       return;
     }
+
+    LOG.info("All ready {}", taskId);
 
     if (!availableFetchers.isEmpty()) {
       LOG.info("Still available fetchers... {}", availableFetchers.size());

@@ -52,63 +52,68 @@ public final class ExecutorThread {
     }, 500, 500, TimeUnit.MILLISECONDS);
 
     executorService.execute(() -> {
-      while (!finished) {
+      try {
+        while (!finished) {
 
-        while (!newTasks.isEmpty()) {
-          final TaskExecutor newTask = newTasks.poll();
-          availableTasks.add(newTask);
-        }
+          while (!newTasks.isEmpty()) {
+            final TaskExecutor newTask = newTasks.poll();
+            availableTasks.add(newTask);
+          }
 
-        while (!deletedTasks.isEmpty()) {
-          final TaskExecutor deletedTask = deletedTasks.poll();
+          while (!deletedTasks.isEmpty()) {
+            final TaskExecutor deletedTask = deletedTasks.poll();
 
-          LOG.info("Deleting task {}", deletedTask.getId());
-          availableTasks.remove(deletedTask);
-          pendingTasks.remove(deletedTask);
+            LOG.info("Deleting task {}", deletedTask.getId());
+            availableTasks.remove(deletedTask);
+            pendingTasks.remove(deletedTask);
+
+            try {
+              deletedTask.close();
+            } catch (Exception e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+          }
+
+          while (!availableTasks.isEmpty()) {
+            final Iterator<TaskExecutor> iterator = availableTasks.iterator();
+            while (iterator.hasNext()) {
+              final TaskExecutor availableTask = iterator.next();
+              int processedCnt = 0;
+
+              final long st = System.nanoTime();
+
+              while (availableTask.handleData() && processedCnt < batchSize) {
+                processedCnt += 1;
+              }
+              iterator.remove();
+
+              final long et = System.nanoTime();
+              availableTask.getTaskExecutionTime().addAndGet(et - st);
+
+              if (processedCnt < batchSize) {
+                pendingTasks.add(availableTask);
+              }
+
+            }
+          }
 
           try {
-            deletedTask.close();
-          } catch (Exception e) {
+            Thread.sleep(300);
+          } catch (InterruptedException e) {
             e.printStackTrace();
-            throw new RuntimeException(e);
+          }
+
+          if (isPollingTime.get()) {
+            isPollingTime.set(false);
+            // how to check whether the task is ready or not?
+            availableTasks.addAll(pendingTasks);
+            pendingTasks.clear();
           }
         }
-
-        while (!availableTasks.isEmpty()) {
-          final Iterator<TaskExecutor> iterator = availableTasks.iterator();
-          while (iterator.hasNext()) {
-            final TaskExecutor availableTask = iterator.next();
-            int processedCnt = 0;
-
-            final long st = System.nanoTime();
-
-            while (availableTask.handleData() && processedCnt < batchSize) {
-              processedCnt += 1;
-            }
-            iterator.remove();
-
-            final long et = System.nanoTime();
-            availableTask.getTaskExecutionTime().addAndGet(et - st);
-
-            if (processedCnt < batchSize) {
-              pendingTasks.add(availableTask);
-            }
-
-          }
-        }
-
-        try {
-          Thread.sleep(300);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-
-        if (isPollingTime.get()) {
-          isPollingTime.set(false);
-          // how to check whether the task is ready or not?
-          availableTasks.addAll(pendingTasks);
-          pendingTasks.clear();
-        }
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
     });
   }
