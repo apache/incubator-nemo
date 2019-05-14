@@ -278,6 +278,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
                              final String edgeId,
                              final String opId) {
 
+      LOG.info("Write element {}", element);
+
       final ByteBuf byteBuf = channel.alloc().ioBuffer();
       final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
 
@@ -331,18 +333,18 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
               writeByteBuf(pendingByteBuf);
             }
             pendingByteBufs.clear();
+            switch (sendDataTo) {
+              case VM: {
+                channel.flush();
+                break;
+              } case SCALE_VM: {
+                vmChannel.flush();
+                break;
+              }
+            }
           }
           writeByteBuf(byteBuf);
 
-          switch (sendDataTo) {
-            case VM: {
-              channel.flush();
-              break;
-            } case SCALE_VM: {
-              vmChannel.flush();
-              break;
-            }
-          }
         }
 
       } catch (final IOException e) {

@@ -354,6 +354,9 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
    * Process a data element down the DAG dependency.
    */
   private void processElement(final OutputCollector outputCollector, final TimestampAndValue dataElement) {
+
+    LOG.info("Process element {}", dataElement.value);
+
     outputCollector.setInputTimestamp(dataElement.timestamp);
     outputCollector.emit(dataElement.value);
   }
