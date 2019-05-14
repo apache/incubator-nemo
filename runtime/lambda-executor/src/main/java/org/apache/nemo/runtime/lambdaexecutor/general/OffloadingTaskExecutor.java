@@ -299,6 +299,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           availableIterator.remove();
         }
       } catch (final NoSuchElementException e) {
+        LOG.info("No such element...");
         // No element in current data fetcher, fetch data from next fetcher
         // move current data fetcher to pending.
         availableIterator.remove();
@@ -332,6 +333,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           if (!(element instanceof Finishmark)) {
             availableFetchers.add(dataFetcher);
           }
+
+          dataProcessed = true;
 
         } catch (final NoSuchElementException e) {
           // The current data fetcher is still pending.. try next data fetcher
