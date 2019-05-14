@@ -23,6 +23,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.DataFetcherOutputCol
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultCollector;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingTransformContextImpl;
+import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOperatorVertexOutputCollector;
@@ -65,6 +66,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   public final AtomicLong taskExecutionTime = new AtomicLong(0);
 
   private boolean finished = false;
+
+  private final List<Future<Integer>> pendingFutures = new ArrayList<>();
 
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTaskExecutor(final OffloadingTask offloadingTask,
@@ -386,8 +389,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     allFetchers.addAll(availableFetchers);
     allFetchers.addAll(pendingFetchers);
 
-    final List<Future<Integer>> pendingFutures = new ArrayList<>();
-
     for (final DataFetcher dataFetcher : allFetchers) {
 
       if (dataFetcher instanceof SourceVertexDataFetcher) {
@@ -410,23 +411,18 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     }
 
     LOG.info("Waiting pending futures...");
-    for (final Future<Integer> pendingFuture : pendingFutures) {
-      try {
-        pendingFuture.get(100, TimeUnit.SECONDS);
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
-    }
 
+  }
+
+  @Override
+  public void finish() {
     if (!pendingFutures.isEmpty()) {
       // send states to vm !!
-      LOG.info("Send checkpointmark of task {}  / {} to vm",
-        offloadingTask.taskId, offloadingTask.checkpointMark);
-      resultCollector.collector.emit(new KafkaOffloadingOutput(
-        offloadingTask.taskId, 1, offloadingTask.checkpointMark));
+      LOG.info("Send  stateoutput for task {}", offloadingTask.taskId);
+      resultCollector.collector.emit(new StateOutput(offloadingTask.taskId));
     }
 
+    pendingFutures.clear();
     // Close all data fetchers
 
 
@@ -436,7 +432,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         final Transform transform = ((OperatorVertex) irVertex).getTransform();
         transform.flush();
       }
-      });
+    });
 
     // TODO: close upstream data fetchers
     /*
@@ -584,9 +580,18 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       .collect(Collectors.toList());
   }
 
+  private boolean allPendingDone() {
+    for (final Future<Integer> pendingFuture : pendingFutures) {
+      if (!pendingFuture.isDone()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   @Override
   public boolean isFinished() {
-    return finished;
+    return finished && allPendingDone();
   }
 
   @Override

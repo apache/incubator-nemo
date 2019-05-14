@@ -315,6 +315,11 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   }
 
   @Override
+  public void finish() {
+    // do nothing
+  }
+
+  @Override
   public void setOffloadedTaskTime(long t) {
     offloadedExecutionTime = t;
   }

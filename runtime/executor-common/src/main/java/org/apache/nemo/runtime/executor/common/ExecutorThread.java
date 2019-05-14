@@ -110,6 +110,8 @@ public final class ExecutorThread {
             for (final TaskExecutor pendingTask : pendingTasks) {
               if (!pendingTask.isFinished()) {
                 availableTasks.add(pendingTask);
+              } else {
+                pendingTask.finish();
               }
             }
             pendingTasks.clear();
