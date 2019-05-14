@@ -322,14 +322,13 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
             vmScalingClientTransport.disconnect(remoteAddress, Constants.VM_WORKER_PORT);
           }
 
-          LOG.info("[Add pending event {}]", element);
           pendingByteBufs.add(byteBuf);
 
         } else {
 
           if (!pendingByteBufs.isEmpty()) {
+            LOG.info("[Send pending events: {}]", pendingByteBufs.size());
             for (final ByteBuf pendingByteBuf : pendingByteBufs) {
-              LOG.info("[Send pending event]");
               writeByteBuf(pendingByteBuf);
             }
             pendingByteBufs.clear();

@@ -73,7 +73,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
       throw new IllegalStateException("This queue has been closed");
     }
 
-    LOG.info("BlockingQueue add");
+    //LOG.info("BlockingQueue add");
 
     queue.add(element);
     notifyAll();
@@ -114,7 +114,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
       throw new RuntimeException(throwable);
     }
 
-    LOG.info("Remaining byteBuf: {}", queue.size());
+    //LOG.info("Remaining byteBuf: {}", queue.size());
 
     // retrieves and removes the head of the underlying collection, or return null if the queue is empty
     return queue.poll();

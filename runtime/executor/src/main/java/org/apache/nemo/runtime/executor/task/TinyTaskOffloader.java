@@ -301,7 +301,7 @@ public final class TinyTaskOffloader implements Offloader {
   @Override
   public synchronized void handlePendingStreamingWorkers() {
 
-    LOG.info("Available: {}, Pending: {}, task {}", availableFetchers, pendingFetchers, taskId);
+    //LOG.info("Available: {}, Pending: {}, task {}", availableFetchers, pendingFetchers, taskId);
 
     availableFetchers.clear();
     pendingFetchers.clear();

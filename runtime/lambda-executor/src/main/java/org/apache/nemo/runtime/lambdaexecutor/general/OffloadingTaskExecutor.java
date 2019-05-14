@@ -358,7 +358,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
    */
   private void processElement(final OutputCollector outputCollector, final TimestampAndValue dataElement) {
 
-    LOG.info("Process element {}", dataElement.value);
+    //LOG.info("Process element {}", dataElement.value);
 
     outputCollector.setInputTimestamp(dataElement.timestamp);
     outputCollector.emit(dataElement.value);

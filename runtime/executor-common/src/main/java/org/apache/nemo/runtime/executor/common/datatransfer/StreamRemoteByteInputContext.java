@@ -122,7 +122,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
    */
   @Override
   public void onByteBuf(final ByteBuf byteBuf) {
-    LOG.info("On byteBuf {}", getContextId().getTransferIndex());
+    //LOG.info("On byteBuf {}", getContextId().getTransferIndex());
     if (byteBuf.readableBytes() > 0) {
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
     } else {
@@ -340,7 +340,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
 
     @Override
     public void run() {
-      LOG.info("Bytebuf: {}", currentByteBufInputStream.byteBufQueue.isEmpty());
+      //LOG.info("Bytebuf: {}", currentByteBufInputStream.byteBufQueue.isEmpty());
       if (currentByteBufInputStream.byteBufQueue.isEmpty()) {
         ackHandler.onNext(1);
       } else {

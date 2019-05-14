@@ -1064,7 +1064,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     final Iterator<DataFetcher> availableIterator = availableFetchers.iterator();
     while (availableIterator.hasNext()) {
 
-      LOG.info("Available data fetcher fetchDataElement: {}", taskId);
+      //LOG.info("Available data fetcher fetchDataElement: {}", taskId);
 
       final DataFetcher dataFetcher = availableIterator.next();
       try {
