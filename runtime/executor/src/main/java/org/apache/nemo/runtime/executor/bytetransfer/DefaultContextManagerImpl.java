@@ -131,7 +131,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   @Override
   public ByteInputContext getInputContext(final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
                                    final int transferIndex) {
-    LOG.info("Get input context: {} / {}", transferIndex, inputContextsInitiatedByRemote);
+    //LOG.info("Get input context: {} / {}", transferIndex, inputContextsInitiatedByRemote);
     final ConcurrentMap<Integer, ByteInputContext> contexts =
         dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA
             ? inputContextsInitiatedByRemote : inputContextsInitiatedByLocal;

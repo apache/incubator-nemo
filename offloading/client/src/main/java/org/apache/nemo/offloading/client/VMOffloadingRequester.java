@@ -72,7 +72,7 @@ public final class VMOffloadingRequester {
   private final AtomicInteger pendingRequests = new AtomicInteger(0);
   private final int slotPerTask = 8;
   private int totalRequest = 0;
-  private final DescribeInstancesResult response;
+
 
   private int handledRequestNum = 0;
 
@@ -100,9 +100,7 @@ public final class VMOffloadingRequester {
     final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d}",
       serverAddress, serverPort).getBytes();
     this.requestEvent = new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length);
-    DescribeInstancesRequest request = new DescribeInstancesRequest();
-    request.setInstanceIds(instanceIds);
-    this.response = ec2.describeInstances(request);
+
 
     createChannelExecutor.execute(() -> {
       while (true) {
@@ -191,6 +189,10 @@ public final class VMOffloadingRequester {
 
   private void stopVM(final String instanceId) {
     while (true) {
+      final DescribeInstancesRequest request = new DescribeInstancesRequest();
+      request.setInstanceIds(Arrays.asList(instanceId));
+      final DescribeInstancesResult response = ec2.describeInstances(request);
+
       for (final Reservation reservation : response.getReservations()) {
         for (final Instance instance : reservation.getInstances()) {
           if (instance.getInstanceId().equals(instanceId)) {
@@ -220,6 +222,10 @@ public final class VMOffloadingRequester {
 
   private void startVM(final String instanceId) {
     while (true) {
+      final DescribeInstancesRequest request = new DescribeInstancesRequest();
+      request.setInstanceIds(Arrays.asList(instanceId));
+      final DescribeInstancesResult response = ec2.describeInstances(request);
+
       for(final Reservation reservation : response.getReservations()) {
         for(final Instance instance : reservation.getInstances()) {
           if (instance.getInstanceId().equals(instanceId)) {
