@@ -65,7 +65,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
   private final ChannelGroup channelGroup;
   private final VMScalingClientTransport clientTransport;
   private final AckScheduledService ackScheduledService;
-  private final Map<Pair<String, Integer>, Integer> taskTransferIndexMap;
+  private final Map<Pair<String, Pair<Integer, Boolean>>, Integer> taskTransferIndexMap;
 
   public LambdaByteTransportChannelInitializer(final ChannelGroup channelGroup,
                                                final ControlFrameEncoder controlFrameEncoder,
@@ -74,7 +74,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
                                                final String localExecutorId,
                                                final VMScalingClientTransport clientTransport,
                                                final AckScheduledService ackScheduledService,
-                                               final Map<Pair<String, Integer>, Integer> taskTransferIndexMap) {
+                                               final Map<Pair<String, Pair<Integer, Boolean>>, Integer> taskTransferIndexMap) {
     this.channelGroup = channelGroup;
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;

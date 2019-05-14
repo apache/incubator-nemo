@@ -51,14 +51,14 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   private final VMScalingClientTransport vmScalingClientTransport;
   private final AckScheduledService ackScheduledService;
 
-  private final Map<Pair<String, Integer>, Integer> taskTransferIndexMap;
+  private final Map<Pair<String, Pair<Integer, Boolean>>, Integer> taskTransferIndexMap;
 
   public LambdaContextManager(final ChannelGroup channelGroup,
                        final String localExecutorId,
                        final Channel channel,
                        final VMScalingClientTransport vmScalingClientTransport,
                        final AckScheduledService ackScheduledService,
-                       final Map<Pair<String, Integer>, Integer> taskTransferIndexMap) {
+                       final Map<Pair<String, Pair<Integer, Boolean>>, Integer> taskTransferIndexMap) {
     LOG.info("New lambda context manager: {} / {}", localExecutorId, channel);
     this.channelGroup = channelGroup;
     this.localExecutorId = localExecutorId;
@@ -81,10 +81,11 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
   @Override
   public ByteInputContext newInputContext(String executorId, byte[] contextDescriptor, boolean isPipe) {
-    // TODO: fix
     final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-    final Pair<String, Integer> key = Pair.of(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex());
+    final Pair<String, Pair<Integer, Boolean>> key = Pair.of(cd.getRuntimeEdgeId(),
+      Pair.of((int) cd.getSrcTaskIndex(), false));
     final int transferIndex = taskTransferIndexMap.get(key);
+    LOG.info("Input context for {}/{}, index: {}", cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), transferIndex);
 
     return newContext(inputContextsInitiatedByLocal, transferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
@@ -160,7 +161,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   public ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
     LOG.info("LambdaContextManager: {}", executorId);
     final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-    final Pair<String, Integer> key = Pair.of(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex());
+    final Pair<String, Pair<Integer, Boolean>> key = Pair.of(cd.getRuntimeEdgeId(),
+      Pair.of((int) cd.getDstTaskIndex(), true));
     final int transferIndex = taskTransferIndexMap.get(key);
     LOG.info("Output context for {}/{}, index: {}", cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), transferIndex);
 

@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import org.apache.nemo.runtime.executor.common.Serializer;
 
 import javax.annotation.Nullable;
@@ -41,7 +42,12 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
   void pending(final boolean scaleout);
 
   // resume after moving downstream tasks
+  // This should be initiated when the byteOutputContext is in SF
   void scaleoutToVm(final String address, final String taskId);
+
+  // This should be initiated when the byteOutputContext is in VM
+  void scaleoutToVm(final Channel channel);
+
   void scaleInToVm();
 
   void stop();

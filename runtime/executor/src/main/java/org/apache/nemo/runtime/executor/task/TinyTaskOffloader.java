@@ -106,6 +106,7 @@ public final class TinyTaskOffloader implements Offloader {
   private final List<StageEdge> copyOutgoingEdges;
   private final List<StageEdge> copyIncomingEdges;
 
+  private final List<Future> pendingFutures = new ArrayList<>();
 
   public TinyTaskOffloader(final String executorId,
                            final Task task,
@@ -262,11 +263,6 @@ public final class TinyTaskOffloader implements Offloader {
 
   @Override
   public synchronized void handleStartOffloadingEvent() {
-    if (!checkSourceValidation()) {
-      return;
-    }
-
-    final OffloadingTask offloadingTask;
 
     // TODO: 1) Remove available and pending fetchers!!
     // Stop sources and output emission!!
@@ -280,24 +276,38 @@ public final class TinyTaskOffloader implements Offloader {
     // Source stop!!
     // Source stop!!
     // Source stop!!
-    final List<Future> futures = new ArrayList<>(allFetchers.size());
     for (final DataFetcher dataFetcher : allFetchers) {
-      futures.add(dataFetcher.stop());
+      pendingFutures.add(dataFetcher.stop());
     }
     // Source stop!!
     // Source stop!!
+    taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING);
 
-
-    // Waiting for source stop
     LOG.info("Waiting for source stop futures...");
-    for (final Future future : futures) {
-      try {
-        future.get(100, TimeUnit.SECONDS);
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
+  }
+
+  @Override
+  public boolean hasPendingStraemingWorkers() {
+    return !pendingFutures.isEmpty();
+  }
+
+  private boolean checkIsAllPendingReady() {
+    for (final Future future : pendingFutures) {
+      if (!future.isDone()) {
+        return false;
       }
     }
+    return true;
+  }
+
+  @Override
+  public synchronized void handlePendingStreamingWorkers() {
+
+    if (!checkIsAllPendingReady()) {
+      return;
+    }
+
+    pendingFutures.clear();
     LOG.info("End of waiting source stop futures...");
 
     // Sink stop!!
@@ -328,6 +338,7 @@ public final class TinyTaskOffloader implements Offloader {
     // Sink stop!!
     // Sink stop!!
     // Sink stop!!
+    final OffloadingTask offloadingTask;
 
     if (sourceVertexDataFetcher != null) {
       final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
@@ -376,28 +387,9 @@ public final class TinyTaskOffloader implements Offloader {
 
     prevOffloadStartTime.set(System.currentTimeMillis());
 
-    if (!taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOADED)) {
+    if (!taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.OFFLOADED)) {
       LOG.warn("Multiple start request ... just ignore it");
       throw new RuntimeException("Invalid task status: " + taskStatus);
     }
-  }
-
-  @Override
-  public boolean hasPendingStraemingWorkers() {
-    return !kafkaOffloadPendingEvents.isEmpty();
-  }
-
-  private boolean checkIsAllPendingReady() {
-    for (final KafkaOffloadingRequestEvent requestEvent : kafkaOffloadPendingEvents) {
-      if (!requestEvent.offloadingWorker.isReady()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  @Override
-  public synchronized void handlePendingStreamingWorkers() {
-    throw new RuntimeException("Cannot have pending worker!");
   }
 }

@@ -110,6 +110,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   @Override
   public void scaleoutToVm(String address, String taskId) {
+    throw new RuntimeException("no supported");
+    /*
     final String[] split = address.split(":");
     final ChannelFuture channelFuture =
       vmScalingClientTransport.connectTo(split[0], Constants.VM_WORKER_PORT);
@@ -130,6 +132,14 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
         }
       });
     }
+    */
+  }
+
+  @Override
+  public void scaleoutToVm(Channel channel) {
+    LOG.info("Scale out to channel {}", channel);
+    vmChannel = channel;
+    isPending = false;
   }
 
   @Override
@@ -233,44 +243,6 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
       writeByteBuf(byteBuf);
     }
 
-    /**
-     * Writes {@link SerializedPartition}.
-     * @param serializedPartition {@link SerializedPartition} to write.
-     * @return {@code this}
-     * @throws IOException when an exception has been set or this stream was closed
-     */
-    /*
-    public ByteOutputStream writeSerializedPartition(final SerializedPartition serializedPartition)
-      throws IOException {
-      write(serializedPartition.getData(), 0, serializedPartition.getLength());
-      return this;
-    }
-    */
-
-    /**
-     *
-     * @return {@code this}
-     * @throws IOException when failed to open the file, an exception has been set, or this stream was closed
-     */
-    /*
-    @Override
-    public ByteOutputStream writeFileArea(final FileArea fileArea) throws IOException {
-      final Path path = Paths.get(fileArea.getPath());
-      long cursor = fileArea.getPosition();
-      long bytesToSend = fileArea.getCount();
-      boolean init = true;
-      while (bytesToSend > 0) {
-        final long size = Math.min(bytesToSend, DataFrameEncoder.LENGTH_MAX);
-        final FileRegion fileRegion = new DefaultFileRegion(FileChannel.open(path), cursor, size);
-        writeDataFrame(fileRegion, size, init);
-        cursor += size;
-        bytesToSend -= size;
-        init = false;
-      }
-      return this;
-    }
-    */
-
     @Override
     public void close() throws IOException {
       if (closed) {
@@ -308,17 +280,6 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
       final ByteBuf byteBuf = channel.alloc().ioBuffer();
       final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
-
-      if (sendDataTo.equals(SCALE_VM)) {
-        try {
-          byteBufOutputStream.writeBoolean(false);
-          byteBufOutputStream.writeUTF(edgeId);
-          byteBufOutputStream.writeUTF(opId);
-        } catch (IOException e) {
-          e.printStackTrace();
-          throw new RuntimeException(e);
-        }
-      }
 
       try {
         final OutputStream wrapped = byteBufOutputStream;
@@ -359,7 +320,6 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
             LOG.info("Closing vm channel {}", message);
             vmScalingClientTransport.disconnect(remoteAddress, Constants.VM_WORKER_PORT);
-
           }
 
           pendingByteBufs.add(byteBuf);
@@ -404,6 +364,10 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
             .addListener(getChannelWriteListener());
           break;
         case SCALE_VM:
+          vmChannel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
+            .addListener(getChannelWriteListener());
+
+          /*
           LOG.info("Scaling: Send to {}", vmTaskId);
 
           final ByteBuf buf = vmChannel.alloc().buffer();
@@ -418,6 +382,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
             vmChannel.alloc().compositeBuffer(2).addComponents(
               true, buf, (ByteBuf) body);
           vmChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, compositeByteBuf));
+          */
 
           break;
         default:

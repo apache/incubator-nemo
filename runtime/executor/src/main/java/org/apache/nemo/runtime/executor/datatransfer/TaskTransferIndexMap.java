@@ -11,14 +11,14 @@ import java.util.concurrent.ConcurrentMap;
 
 public final class TaskTransferIndexMap {
   // key: (runtimeEdgeId, dstTaskIndex), value: input contexts of this task
-  private final ConcurrentMap<Pair<String, Integer>, Integer> map;
+  private final ConcurrentMap<Pair<String, Pair<Integer, Boolean>>, Integer> map;
 
   @Inject
   private TaskTransferIndexMap() {
     this.map = new ConcurrentHashMap<>();
   }
 
-  public ConcurrentMap<Pair<String, Integer>, Integer> getMap() {
+  public ConcurrentMap<Pair<String, Pair<Integer, Boolean>>, Integer> getMap() {
     return map;
   }
 }

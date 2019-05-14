@@ -77,10 +77,10 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private final TaskTransferIndexMap taskTransferIndexMap;
 
 
-  private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByLocal = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByLocal = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, ByteInputContext> inputContexts = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, ByteOutputContext> outputContexts = new ConcurrentHashMap<>();
+  //private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote = new ConcurrentHashMap<>();
+  //private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote = new ConcurrentHashMap<>();
   private final AtomicInteger nextInputTransferIndex = new AtomicInteger(0);
   private final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
 
@@ -131,10 +131,8 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
       vmScalingClientTransport.get(),
       ackScheduledService.get(),
       taskTransferIndexMap.getMap(),
-      inputContextsInitiatedByLocal,
-      outputContextsInitiatedByLocal,
-      inputContextsInitiatedByRemote,
-      outputContextsInitiatedByRemote,
+      inputContexts,
+      outputContexts,
       nextInputTransferIndex,
       nextOutputTransferIndex);
 

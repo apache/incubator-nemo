@@ -56,12 +56,12 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private final boolean isInVm;
   private final ConcurrentMap<TaskExecutor, ExecutorThread> taskAssignedMap;
-  private final Map<Pair<String, Integer>, Integer> taskTransferIndexMap;
+  private final Map<Pair<String, Pair<Integer, Boolean>>, Integer> taskTransferIndexMap;
 
   public OffloadingExecutor(final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
                             final Map<Pair<String, Integer>, String> taskExecutorIdMap,
-                            final Map<Pair<String, Integer>, Integer> taskTransferIndexMap,
+                            final Map<Pair<String, Pair<Integer, Boolean>>, Integer> taskTransferIndexMap,
                             final boolean isInVm) {
     this.channels = new ConcurrentHashMap<>();
     this.executorId = "lambdaExecutor";
