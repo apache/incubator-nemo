@@ -191,6 +191,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
     }
 
     finished = true;
+    offloadingWorkerFactory.deleteOffloadingWorker(this);
   }
 
   @Override

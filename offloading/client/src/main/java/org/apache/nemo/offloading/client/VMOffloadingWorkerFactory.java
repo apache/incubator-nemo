@@ -181,6 +181,14 @@ public final class VMOffloadingWorkerFactory implements OffloadingWorkerFactory 
 
   @Override
   public void deleteOffloadingWorker(OffloadingWorker worker) {
+
+    LOG.info("Delete offloading worker: {}", worker.getChannel().remoteAddress());
+
+    final Channel channel = worker.getChannel();
+    requestor.destroyChannel(channel);
+
+
+
     // work stealing here!
     // extra request for pending job
 

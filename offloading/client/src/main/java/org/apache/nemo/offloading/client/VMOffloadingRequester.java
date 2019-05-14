@@ -15,10 +15,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.nemo.offloading.common.EventHandler;
-import org.apache.nemo.offloading.common.NettyChannelInitializer;
-import org.apache.nemo.offloading.common.NettyLambdaInboundHandler;
-import org.apache.nemo.offloading.common.OffloadingEvent;
+import org.apache.nemo.offloading.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,6 +76,10 @@ public final class VMOffloadingRequester {
 
   private int handledRequestNum = 0;
 
+  // value: (instanceId, address)
+  // key: remoteAddress, value: instanceId
+  private final Map<String, String> vmChannelMap = new ConcurrentHashMap<>();
+
 
   public VMOffloadingRequester(final OffloadingEventHandler nemoEventHandler,
                                final String serverAddress,
@@ -110,7 +111,8 @@ public final class VMOffloadingRequester {
             if (!readyVMs.isEmpty()) {
               final Integer offloadingRequest = offloadingRequests.take();
               if (handledRequestNum / slotPerTask < readyVMs.size()) {
-                final int vmIndex = handledRequestNum / slotPerTask;
+                //final int vmIndex = handledRequestNum / slotPerTask;
+                final int vmIndex = handledRequestNum;
                 handledRequestNum += 1;
                 pendingRequests.getAndDecrement();
                 final Channel openChannel = readyVMs.get(vmIndex);
@@ -135,6 +137,14 @@ public final class VMOffloadingRequester {
 
   }
 
+  public synchronized void destroyChannel(final Channel channel) {
+    final String addr = channel.remoteAddress().toString().split(":")[0];
+    final String instanceId = vmChannelMap.remove(addr);
+    LOG.info("Stopping instance {}, channel: {}", instanceId, addr);
+    stopVM(instanceId);
+
+  }
+
   public synchronized void createChannelRequest() {
     LOG.info("Create request at VMOffloadingREquestor");
 
@@ -144,7 +154,21 @@ public final class VMOffloadingRequester {
     final int requestNum = totalRequest;
     totalRequest += 1;
 
+    final int index = requestNum;
+    LOG.info("Request VM!! {}/{}", requestNum, index);
+    executorService.execute(() -> {
+      try {
+        startInstance(instanceIds.get(index), vmAddresses.get(index));
+      } catch (final Exception e) {
+        e.printStackTrace();;
+        throw new RuntimeException(e);
+      }
+    });
+
+    /*
     final int index = requestNum / slotPerTask;
+    LOG.info("Request VM!! {}/{}", requestNum, index);
+
     if (requestNum % slotPerTask == 0 && index < instanceIds.size()) {
       // request another vm!
       LOG.info("Request VM!! {}/{}", requestNum, index);
@@ -162,15 +186,43 @@ public final class VMOffloadingRequester {
         readyVMs.add(readyVMs.get(index % instanceIds.size()));
       }
     }
+    */
   }
 
-  private Channel startInstance(final String instanceId, final String vmAddress) {
-    final long waitingTime = 2000;
+  private void stopVM(final String instanceId) {
+    while (true) {
+      for (final Reservation reservation : response.getReservations()) {
+        for (final Instance instance : reservation.getInstances()) {
+          if (instance.getInstanceId().equals(instanceId)) {
+            if (instance.getState().getName().equals("running")) {
+              // ready to stop
+              final StopInstancesRequest stopRequest = new StopInstancesRequest()
+                .withInstanceIds(instanceId);
+              LOG.info("Stopping ec2 instances {}/{}", instanceId, System.currentTimeMillis());
+              ec2.stopInstances(stopRequest);
+              LOG.info("End of Stop ec2 instances {}/{}", instanceId, System.currentTimeMillis());
+              return;
+            } else if (instance.getState().getName().equals("pending")) {
+              // waiting...
+              try {
+                Thread.sleep(2000);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
+            } else {
+              throw new RuntimeException("Unsupported state type: " + instance.getState().getName());
+            }
+          }
+        }
+      }
+    }
+  }
 
-    for(final Reservation reservation : response.getReservations()) {
-      for(final Instance instance : reservation.getInstances()) {
-        if (instance.getInstanceId().equals(instanceId)) {
-          while (true) {
+  private void startVM(final String instanceId) {
+    while (true) {
+      for(final Reservation reservation : response.getReservations()) {
+        for(final Instance instance : reservation.getInstances()) {
+          if (instance.getInstanceId().equals(instanceId)) {
             if (instance.getState().getName().equals("stopped")) {
               // ready to start
               final StartInstancesRequest startRequest = new StartInstancesRequest()
@@ -178,7 +230,7 @@ public final class VMOffloadingRequester {
               LOG.info("Starting ec2 instances {}/{}", instanceId, System.currentTimeMillis());
               ec2.startInstances(startRequest);
               LOG.info("End of Starting ec2 instances {}/{}", instanceId, System.currentTimeMillis());
-              break;
+              return;
             } else if (instance.getState().getName().equals("stopping")) {
               // waiting...
               try {
@@ -193,6 +245,12 @@ public final class VMOffloadingRequester {
         }
       }
     }
+  }
+
+  private Channel startInstance(final String instanceId, final String vmAddress) {
+    final long waitingTime = 2000;
+
+    startVM(instanceId);
 
     ChannelFuture channelFuture;
     while (true) {
@@ -218,7 +276,10 @@ public final class VMOffloadingRequester {
     synchronized (readyVMs) {
       readyVMs.add(openChannel);
     }
-    LOG.info("Add channel: {}", openChannel);
+    LOG.info("Add channel: {}, address: {}", openChannel, openChannel.remoteAddress());
+
+    vmChannelMap.put(openChannel.remoteAddress().toString().split(":")[0], instanceId);
+
     return openChannel;
   }
 
