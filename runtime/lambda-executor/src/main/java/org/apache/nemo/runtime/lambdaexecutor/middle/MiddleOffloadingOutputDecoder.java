@@ -61,7 +61,7 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
         }
         case STATE_OUTPUT: {
           final String  taskId = dis.readUTF();
-          return new StateOutput(taskId);
+          return Pair.of(taskId, new StateOutput(taskId));
         }
         default:
           throw new RuntimeException("Unsupported type: " + type);
