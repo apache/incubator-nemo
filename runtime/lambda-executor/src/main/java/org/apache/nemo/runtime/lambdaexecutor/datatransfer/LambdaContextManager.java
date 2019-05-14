@@ -76,7 +76,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
   @Override
   public ByteInputContext getInputContext(ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection, int transferIndex) {
-    throw new UnsupportedOperationException("unsupported");
+    return inputContextsInitiatedByLocal.get(transferIndex);
   }
 
   @Override
