@@ -161,7 +161,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     //LOG.info("Operator " + irVertex.getId() + " emit to ");
 
     for (final NextIntraTaskOperatorInfo internalVertex : nextOperators) {
-      //LOG.info(internalVertex.getNextOperator().getId() + ", ");
+      LOG.info("Set timestamp {} to {}", inputTimestamp, internalVertex.getNextOperator().getId());
       final KafkaOperatorVertexOutputCollector oc =
         outputCollectorMap.get(internalVertex.getNextOperator().getId());
       oc.inputTimestamp = inputTimestamp;
