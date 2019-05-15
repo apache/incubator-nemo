@@ -135,6 +135,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
           final TinyTaskWorker taskWorker = deletePendingWorkers.get(te.getId());
           if (taskWorker.hasNoTask() && taskWorker.getDeletePending().decrementAndGet() == 0) {
             taskWorker.close();
+            removeRunningWorker(taskWorker);
           }
 
           te.getOffloadingQueue().add(msg);
@@ -145,6 +146,18 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
       });
 
     return worker;
+  }
+
+  private void removeRunningWorker(final TinyTaskWorker worker) {
+    LOG.info("Remove worker {} from workers", worker);
+    final Iterator<Pair<Long, TinyTaskWorker>> iterator = workers.iterator();
+    while (iterator.hasNext()) {
+      final Pair<Long, TinyTaskWorker> pair = iterator.next();
+      if (pair.right().equals(worker)) {
+        iterator.remove();
+        break;
+      }
+    }
   }
 
   public synchronized void sendTask(final OffloadingTask offloadingTask,
@@ -196,6 +209,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     } else {
       if (worker.hasNoTask() && worker.getDeletePending().get() == 0) {
         worker.close();
+        removeRunningWorker(worker);
       }
     }
   }
