@@ -168,7 +168,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     }
 
     for (final PipeOutputWriter outputWriter : externalMainOutputs) {
-      //LOG.info("Emit to output writer at {}", irVertex.getId());
+      LOG.info("Emit to output writer at {}, ts: {}, val: {}", irVertex.getId(), inputTimestamp, output);
       outputWriter.write(new TimestampAndValue<>(inputTimestamp, output));
     }
   }
