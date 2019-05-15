@@ -194,7 +194,7 @@ public final class TaskOffloader {
   public void startDownstreamDebugging() {
     // For offloading debugging
     se.schedule(() -> {
-      LOG.info("Start offloading kafka (only stage1)");
+      LOG.info("Start offloading kafka (only stage0)");
       int cnt = 0;
 
       //final int offloadCnt = taskExecutorMap.keySet().stream()
@@ -202,7 +202,7 @@ public final class TaskOffloader {
       final int offloadCnt = taskExecutorMap.size();
 
       for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (taskExecutor.getId().contains("Stage1")) {
+        if (taskExecutor.getId().contains("Stage0")) {
           LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
           offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
           taskExecutor.startOffloading(System.currentTimeMillis());
@@ -212,7 +212,7 @@ public final class TaskOffloader {
     }, 20, TimeUnit.SECONDS);
 
     se.schedule(() -> {
-      LOG.info("Start Deoffloading kafka (only stage1)");
+      LOG.info("Start Deoffloading kafka (only stage0)");
       int cnt = 0;
 
       //final int offloadCnt = taskExecutorMap.keySet().stream()
