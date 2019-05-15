@@ -63,6 +63,9 @@ public final class GBKFinalTransform<K, InputT>
 
   int numProcessedData = 0;
   private boolean dataReceived = false;
+
+  private OutputCollector originOc;
+
   /**
    * GroupByKey constructor.
    */
@@ -116,6 +119,7 @@ public final class GBKFinalTransform<K, InputT>
 
   @Override
   OutputCollector wrapOutputCollector(final OutputCollector oc) {
+    originOc = oc;
     return new GBKWOutputCollector(oc);
   }
 
@@ -528,6 +532,7 @@ public final class GBKFinalTransform<K, InputT>
           new Watermark(output.getTimestamp().getMillis() + 1));
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
+      originOc.setInputTimestamp(output.getTimestamp().getMillis());
       outputCollector.emit(output);
     }
 

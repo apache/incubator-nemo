@@ -65,6 +65,8 @@ public final class GBKPartialTransform<K, InputT>
 
   private boolean dataReceived = false;
 
+  private OutputCollector originOc;
+
   /**
    * GroupByKey constructor.
    */
@@ -118,6 +120,7 @@ public final class GBKPartialTransform<K, InputT>
 
   @Override
   OutputCollector wrapOutputCollector(final OutputCollector oc) {
+    originOc = oc;
     return new GBKWOutputCollector(oc);
   }
 
@@ -132,25 +135,25 @@ public final class GBKPartialTransform<K, InputT>
 
     // drop late data
     if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
-    // We can call Beam's DoFnRunner#processElement here,
-    // but it may generate some overheads if we call the method for each data.
-    // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
-    // TODO #250: But, this approach can delay the event processing in streaming,
-    // TODO #250: if the watermark is not triggered for a long time.
+      // We can call Beam's DoFnRunner#processElement here,
+      // but it may generate some overheads if we call the method for each data.
+      // The `processElement` requires a `Iterator` of data, so we emit the buffered data every watermark.
+      // TODO #250: But, this approach can delay the event processing in streaming,
+      // TODO #250: if the watermark is not triggered for a long time.
 
-    final KV<K, InputT> kv = element.getValue();
+      final KV<K, InputT> kv = element.getValue();
 
-    LOG.info("Handle element {}", element);
+      LOG.info("Handle element {}", element);
 
-    checkAndInvokeBundle();
-    final KeyedWorkItem<K, InputT> keyedWorkItem =
-      KeyedWorkItems.elementsWorkItem(kv.getKey(),
-        Collections.singletonList(element.withValue(kv.getValue())));
-    numProcessedData += 1;
-    // The DoFnRunner interface requires WindowedValue,
-    // but this windowed value is actually not used in the ReduceFnRunner internal.
-    getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
-    checkAndFinishBundle();
+      checkAndInvokeBundle();
+      final KeyedWorkItem<K, InputT> keyedWorkItem =
+        KeyedWorkItems.elementsWorkItem(kv.getKey(),
+          Collections.singletonList(element.withValue(kv.getValue())));
+      numProcessedData += 1;
+      // The DoFnRunner interface requires WindowedValue,
+      // but this windowed value is actually not used in the ReduceFnRunner internal.
+      getDoFnRunner().processElement(WindowedValue.valueInGlobalWindow(keyedWorkItem));
+      checkAndFinishBundle();
     }
   }
 
@@ -543,6 +546,8 @@ public final class GBKPartialTransform<K, InputT>
           new Watermark(output.getTimestamp().getMillis() + 1));
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
+      LOG.info("Set input timsestamp: {}", output.getTimestamp().getMillis());
+      originOc.setInputTimestamp(output.getTimestamp().getMillis());
       outputCollector.emit(output);
     }
 
