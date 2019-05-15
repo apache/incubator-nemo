@@ -146,7 +146,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
       if (nextOpIds != null) {
         //LOG.info("Emit sampling data at {}", irVertex.getId());
         for (final String nextOpId : nextOpIds){
-          LOG.info("Emit to output writer at {}, ts: {}, val: {}", irVertex.getId(), inputTimestamp, output);
+          LOG.info("Emit to VM at {}, ts: {}, val: {}", irVertex.getId(), inputTimestamp, output);
           offloadingOutputCollector.emit(new OffloadingResultTimestampEvent(taskId, nextOpId, inputTimestamp, 0));
         }
         /*
@@ -169,6 +169,7 @@ public final class KafkaOperatorVertexOutputCollector<O> extends AbstractOutputC
     }
 
     for (final PipeOutputWriter outputWriter : externalMainOutputs) {
+      LOG.info("Emit to output vertex at {}, ts: {}, val: {}", irVertex.getId(), inputTimestamp, output);
       outputWriter.write(new TimestampAndValue<>(inputTimestamp, output));
     }
   }
