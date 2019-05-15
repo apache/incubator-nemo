@@ -140,6 +140,8 @@ public final class GBKPartialTransform<K, InputT>
 
     final KV<K, InputT> kv = element.getValue();
 
+    LOG.info("Handle element {}", element);
+
     checkAndInvokeBundle();
     final KeyedWorkItem<K, InputT> keyedWorkItem =
       KeyedWorkItems.elementsWorkItem(kv.getKey(),
