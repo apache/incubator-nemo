@@ -101,11 +101,9 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
 
     // TODO:remove
       // QUERY0 test!!!
-    /*
     if (edge.getDst().getId().equals("vertex6")) {
       return false;
     }
-    */
 
     // If the destination vertex has multiple inEdges, return false
     if (dag.getIncomingEdgesOf(edge.getDst()).size() > 1) {
