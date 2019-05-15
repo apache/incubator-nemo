@@ -147,6 +147,20 @@ public final class VMOffloadingRequester {
   public synchronized void createChannelRequest() {
     LOG.info("Create request at VMOffloadingREquestor");
 
+    final int index = vmChannelMap.size();
+     LOG.info("Request VM!! {}", index);
+
+    executorService.execute(() -> {
+      try {
+        startInstance(instanceIds.get(index), vmAddresses.get(index));
+      } catch (final Exception e) {
+        e.printStackTrace();;
+        throw new RuntimeException(e);
+      }
+    });
+
+
+    /*
     pendingRequests.getAndIncrement();
     offloadingRequests.add(1);
 
@@ -164,7 +178,6 @@ public final class VMOffloadingRequester {
       }
     });
 
-    /*
     final int index = requestNum / slotPerTask;
     LOG.info("Request VM!! {}/{}", requestNum, index);
 
