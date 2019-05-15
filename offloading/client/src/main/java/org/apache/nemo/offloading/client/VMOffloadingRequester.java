@@ -45,7 +45,7 @@ public final class VMOffloadingRequester {
   private final String serverAddress;
   private final int serverPort;
 
-  private final List<Channel> readyVMs = new LinkedList<>();
+  //private final List<Channel> readyVMs = new LinkedList<>();
 
   private EventLoopGroup clientWorkerGroup;
 
@@ -102,6 +102,7 @@ public final class VMOffloadingRequester {
     this.requestEvent = new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length);
 
 
+    /*
     createChannelExecutor.execute(() -> {
       while (true) {
         try {
@@ -110,7 +111,7 @@ public final class VMOffloadingRequester {
               final Integer offloadingRequest = offloadingRequests.take();
               if (handledRequestNum / slotPerTask < readyVMs.size()) {
                 //final int vmIndex = handledRequestNum / slotPerTask;
-                final int vmIndex = handledRequestNum;
+                final int vmIndex = handledRequestNum % readyVMs.size();
                 handledRequestNum += 1;
                 pendingRequests.getAndDecrement();
                 final Channel openChannel = readyVMs.get(vmIndex);
@@ -128,6 +129,7 @@ public final class VMOffloadingRequester {
         }
       }
     });
+    */
   }
 
   public void start() {
@@ -140,7 +142,6 @@ public final class VMOffloadingRequester {
     final String instanceId = vmChannelMap.remove(addr);
     LOG.info("Stopping instance {}, channel: {}", instanceId, addr);
     stopVM(instanceId);
-
   }
 
   public synchronized void createChannelRequest() {
@@ -279,9 +280,18 @@ public final class VMOffloadingRequester {
 
     final Channel openChannel = channelFuture.channel();
     LOG.info("Open channel for VM: {}", openChannel);
+
+    // send handshake
+    final byte[] bytes = String.format("{\"address\":\"%s\", \"port\": %d}",
+      serverAddress, serverPort).getBytes();
+    openChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CLIENT_HANDSHAKE, bytes, bytes.length));
+
+    /*
     synchronized (readyVMs) {
       readyVMs.add(openChannel);
     }
+    */
+
     LOG.info("Add channel: {}, address: {}", openChannel, openChannel.remoteAddress());
 
     vmChannelMap.put(openChannel.remoteAddress().toString().split(":")[0], instanceId);
@@ -290,9 +300,11 @@ public final class VMOffloadingRequester {
   }
 
   public void destroy() {
+    /*
     synchronized (readyVMs) {
       readyVMs.clear();
     }
+    */
     LOG.info("Stopping instances {}", instanceIds);
     final StopInstancesRequest request = new StopInstancesRequest()
       .withInstanceIds(instanceIds);
