@@ -1033,7 +1033,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           final OffloadingResultTimestampEvent event = (OffloadingResultTimestampEvent) data;
           final long currTime = System.currentTimeMillis();
           final long latency = currTime - event.timestamp;
-          LOG.info("Event Latency {} from lambda {} in {}", latency, event.vertexId, taskId);
+          LOG.info("Event Latency {} from lambda {} in {}, ts: {}", latency, event.vertexId, taskId, event.timestamp);
 
         } else if (data instanceof KafkaOffloadingOutput) {
 
