@@ -193,7 +193,7 @@ public final class TaskOffloader {
 
   public void startDownstreamDebugging() {
     // For offloading debugging
-    se.schedule(() -> {
+    se.scheduleAtFixedRate(() -> {
       LOG.info("Start offloading kafka (only stage0)");
       int cnt = 0;
 
@@ -209,9 +209,9 @@ public final class TaskOffloader {
           cnt += 1;
         }
       }
-    }, 20, TimeUnit.SECONDS);
+    }, 20, 100, TimeUnit.SECONDS);
 
-    se.schedule(() -> {
+    se.scheduleAtFixedRate(() -> {
       LOG.info("Start Deoffloading kafka (only stage0)");
       int cnt = 0;
 
@@ -225,7 +225,7 @@ public final class TaskOffloader {
       }
 
       offloadedExecutors.clear();
-    }, 70, TimeUnit.SECONDS);
+    }, 70, 100, TimeUnit.SECONDS);
   }
 
   public void startDebugging() {
