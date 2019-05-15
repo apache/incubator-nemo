@@ -11,10 +11,7 @@ import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.runtime.executor.common.datatransfer.AckScheduledService;
-import org.apache.nemo.runtime.executor.common.datatransfer.ControlFrameEncoder;
-import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
-import org.apache.nemo.runtime.executor.common.datatransfer.VMScalingClientTransport;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
@@ -56,12 +53,12 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
   private final boolean isInVm;
   private final ConcurrentMap<TaskExecutor, ExecutorThread> taskAssignedMap;
-  private final Map<Pair<String, Pair<Integer, Boolean>>, Integer> taskTransferIndexMap;
+  private final Map<TransferKey, Integer> taskTransferIndexMap;
 
   public OffloadingExecutor(final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
                             final Map<Pair<String, Integer>, String> taskExecutorIdMap,
-                            final Map<Pair<String, Pair<Integer, Boolean>>, Integer> taskTransferIndexMap,
+                            final Map<TransferKey, Integer> taskTransferIndexMap,
                             final boolean isInVm) {
     this.channels = new ConcurrentHashMap<>();
     this.executorId = "lambdaExecutor";

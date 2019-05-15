@@ -28,6 +28,7 @@ import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.VMScalingClientTransport;
+import org.apache.nemo.runtime.executor.datatransfer.TaskTransferIndexMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +65,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   private final AckScheduledService ackScheduledService;
 
   // key: runtimeId, taskIndex, outputStream , value: transferIndex
-  private final Map<Pair<String, Pair<Integer, Boolean>>, Integer> taskTransferIndexMap;
+  private final Map<TransferKey, Integer> taskTransferIndexMap;
 
   /**
    * Creates context manager for this channel.
@@ -83,7 +84,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
                             final Channel channel,
                             final VMScalingClientTransport vmScalingClientTransport,
                             final AckScheduledService ackScheduledService,
-                            final Map<Pair<String, Pair<Integer, Boolean>>, Integer> taskTransferIndexMap,
+                            final Map<TransferKey, Integer> taskTransferIndexMap,
                             final ConcurrentMap<Integer, ByteInputContext> inputContexts,
                             final ConcurrentMap<Integer, ByteOutputContext> outputContexts,
                             //final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote,
@@ -222,8 +223,9 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
 
             // ADD Task Transfer Index !!
             final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-            final Pair<String, Pair<Integer, Boolean>> key = Pair.of(cd.getRuntimeEdgeId(),
-              Pair.of((int) cd.getSrcTaskIndex(), false));
+            final TransferKey key =
+              new TransferKey(cd.getRuntimeEdgeId(),
+                (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), false);
 
             taskTransferIndexMap.put(key, transferIndex);
 
@@ -394,8 +396,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   @Override
   public ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
     final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-    final Pair<String, Pair<Integer, Boolean>> key = Pair.of(cd.getRuntimeEdgeId(),
-      Pair.of((int) cd.getSrcTaskIndex(), false));
+    final TransferKey key = new TransferKey(cd.getRuntimeEdgeId(),
+      (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), false);
 
     final int transferIndex = nextInputTransferIndex.getAndIncrement();
     taskTransferIndexMap.put(key, transferIndex);
@@ -416,8 +418,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   @Override
   public ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
     final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-    final Pair<String, Pair<Integer, Boolean>> key = Pair.of(cd.getRuntimeEdgeId(),
-      Pair.of((int) cd.getDstTaskIndex(), true));
+    final TransferKey key = new TransferKey(cd.getRuntimeEdgeId(),
+      (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), true);
 
     final int transferIndex = nextOutputTransferIndex.getAndIncrement();
     taskTransferIndexMap.put(key, transferIndex);
