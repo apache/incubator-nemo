@@ -54,7 +54,8 @@ public final class PipeManagerWorker {
 
   private final Map<String, Serializer> serializerMap;
 
-  private final Set<ByteInputContext> byteInputContexts = new HashSet<>();
+  // key: edgeid, dstIndex
+  private final ConcurrentMap<Pair<String, Integer>, Set<ByteInputContext>> byteInputContextMap = new ConcurrentHashMap<>();
 
   public PipeManagerWorker(final String executorId,
                            final ByteTransfer byteTransfer,
@@ -72,7 +73,9 @@ public final class PipeManagerWorker {
     return false;
   }
 
-  public Future<Integer> stop() {
+  public Future<Integer> stop(final RuntimeEdge runtimeEdge, final int dstIndex) {
+    final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstIndex);
+    final Set<ByteInputContext> byteInputContexts = byteInputContextMap.get(key);
     final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
 
     for (final ByteInputContext byteInputContext : byteInputContexts) {
@@ -84,12 +87,12 @@ public final class PipeManagerWorker {
           byteInputContext.getContextId().isPipe(),
           ByteTransferContextSetupMessage.MessageType.PENDING_FOR_SCALEIN_VM);
 
-      LOG.info("Send message {}", pendingMsg);
+      LOG.info("Send message for {} {}", key, pendingMsg);
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
 
         final int d = atomicInteger.decrementAndGet();
-        LOG.info("receive ack!! {} / {}", d, byteInputContexts.size());
+        LOG.info("receive ack for {}!! {} / {}", key, d, byteInputContextMap.size());
 
         //byteInputContext.sendMessage();
         //throw new RuntimeException("TODO");
@@ -114,7 +117,7 @@ public final class PipeManagerWorker {
 
       @Override
       public Integer get() throws InterruptedException, ExecutionException {
-        return byteInputContexts.size();
+        return byteInputContextMap.size();
       }
 
       @Override
@@ -184,7 +187,12 @@ public final class PipeManagerWorker {
       // Connect to the executor
       return byteTransfer.newInputContext(srcExecutorId, descriptor.encode(), true)
         .thenApply(context -> {
-          byteInputContexts.add(context);
+          final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstTaskIndex);
+          byteInputContextMap.putIfAbsent(key, new HashSet<>());
+          final Set<ByteInputContext> contexts = byteInputContextMap.get(key);
+          synchronized (contexts) {
+            contexts.add(context);
+          }
           return ((StreamRemoteByteInputContext) context).getInputIterator(
             serializerMap.get(runtimeEdgeId));
         });
