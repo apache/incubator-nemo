@@ -64,7 +64,7 @@ public final class GBKFinalTransform<K, InputT>
   int numProcessedData = 0;
   private boolean dataReceived = false;
 
-  private OutputCollector originOc;
+  private transient OutputCollector originOc;
 
   /**
    * GroupByKey constructor.

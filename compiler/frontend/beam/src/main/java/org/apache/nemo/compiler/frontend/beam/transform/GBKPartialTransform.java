@@ -65,7 +65,7 @@ public final class GBKPartialTransform<K, InputT>
 
   private boolean dataReceived = false;
 
-  private OutputCollector originOc;
+  private transient OutputCollector originOc;
 
   /**
    * GroupByKey constructor.
