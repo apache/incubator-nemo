@@ -394,7 +394,18 @@ final class PipelineTranslator {
       beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
 
       // (Stage 2) final combine
-      final Combine.CombineFn finalCombineFn = new FinalCombineFn((Combine.CombineFn) combineFn);
+      final Coder accumCoder;
+      try {
+        accumCoder = combineFn.getAccumulatorCoder(ctx.getPipeline().getCoderRegistry(), inputCoder);
+      } catch (CannotProvideCoderException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+
+      LOG.info("Accum coder: {}", accumCoder);
+
+      final Combine.CombineFn finalCombineFn = new FinalCombineFn((Combine.CombineFn) combineFn, accumCoder);
+
       final SystemReduceFn finalSystemReduceFn =
         SystemReduceFn.combining(
           inputCoder.getKeyCoder(),

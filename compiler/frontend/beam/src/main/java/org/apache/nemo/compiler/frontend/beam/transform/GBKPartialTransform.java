@@ -382,13 +382,9 @@ public final class GBKPartialTransform<K, InputT>
           new Watermark(output.getTimestamp().getMillis() + 1));
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
-      LOG.info("Partial output: {}", output);
+      //LOG.info("Set input timsestamp: {}", output.getTimestamp().getMillis());
       originOc.setInputTimestamp(output.getTimestamp().getMillis());
-      output.getValue().getValue().forEach(val -> {
-        final WindowedValue<KV<K, InputT>> eachVal = output.withValue(KV.of(output.getValue().getKey(), val));
-        LOG.info("Partial output each val: {}", eachVal);
-        outputCollector.emit(output);
-      });
+      outputCollector.emit(output);
     }
 
     @Override
