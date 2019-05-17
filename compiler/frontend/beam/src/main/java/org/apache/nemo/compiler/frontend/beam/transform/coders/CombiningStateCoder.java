@@ -5,7 +5,10 @@ import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.state.CombiningState;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryStateInternals;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,7 +16,7 @@ import java.io.OutputStream;
 import java.util.List;
 
 public final class CombiningStateCoder<InputT, AccumT, OutputT> extends Coder<CombiningState<InputT, AccumT, OutputT>> {
-
+  private static final Logger LOG = LoggerFactory.getLogger(CombiningStateCoder.class.getName());
   private final Coder<AccumT> coder;
   private final Combine.CombineFn<InputT, AccumT, OutputT> combineFn;
 
@@ -26,6 +29,8 @@ public final class CombiningStateCoder<InputT, AccumT, OutputT> extends Coder<Co
   @Override
   public void encode(CombiningState<InputT, AccumT, OutputT> value, OutputStream outStream) throws CoderException, IOException {
     final AccumT state = value.getAccum();
+    LOG.info("Combining state: {}", state);
+
     coder.encode(state, outStream);
     SerializationUtils.serialize(combineFn, outStream);
   }

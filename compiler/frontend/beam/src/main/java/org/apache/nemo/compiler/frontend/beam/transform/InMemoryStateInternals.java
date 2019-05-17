@@ -19,13 +19,15 @@ import org.apache.beam.sdk.util.CombineFnUtil;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.compiler.frontend.beam.transform.coders.*;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class InMemoryStateInternals<K> implements StateInternals {
-
+  private static final Logger LOG = LoggerFactory.getLogger(InMemoryStateInternals.class.getName());
   public static <K> InMemoryStateInternals<K> forKey(@Nullable K key,
                                                      final NemoStateBackend nemoStateBackend) {
     return new InMemoryStateInternals<>(key, nemoStateBackend);
@@ -153,8 +155,10 @@ public class InMemoryStateInternals<K> implements StateInternals {
         Coder<AccumT> accumCoder,
         final Combine.CombineFn<InputT, AccumT, OutputT> combineFn) {
       if (stateCoderMap.containsKey(address)) {
+        LOG.info("Bind combining value multiple: {}", address);
         return (CombiningState<InputT, AccumT, OutputT>) stateCoderMap.get(address).left();
       } else {
+        LOG.info("Bind combining value first: {}", address);
         final CombiningState<InputT, AccumT, OutputT> state = new InMemoryCombiningState<>(combineFn, accumCoder);
         stateCoderMap.put(address, Pair.of(state, new CombiningStateCoder<>(accumCoder, combineFn)));
         return state;
