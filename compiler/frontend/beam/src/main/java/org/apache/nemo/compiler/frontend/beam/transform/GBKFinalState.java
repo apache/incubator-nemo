@@ -23,4 +23,13 @@ public final class GBKFinalState<K> {
     this.keyAndWatermarkHoldMap = keyAndWatermarkHoldMap;
     this.inputWatermark = inputWatermark;
   }
+
+  @Override
+  public String toString() {
+    return "TimerInternalsFactory: " + timerInternalsFactory + "\n"
+      + "StateInternalsFactory: " + stateInternalsFactory + "\n"
+      + "PrevOutputWatermark: " + prevOutputWatermark + "\n"
+      + "KeyAndWatermarkHoldMap: " + keyAndWatermarkHoldMap + "\n"
+      + "InputWatermark: " + inputWatermark;
+  }
 }

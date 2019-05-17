@@ -23,4 +23,9 @@ public final class NemoStateBackend {
   public void clear() {
     map.clear();
   }
+
+  @Override
+  public String toString() {
+    return map.toString();
+  }
 }

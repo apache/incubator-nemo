@@ -27,6 +27,11 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
   }
 
   @Override
+  public String toString() {
+    return "StateBackend: " + stateBackendMap;
+  }
+
+  @Override
   public StateInternals stateInternalsForKey(final K key) {
     stateBackendMap.putIfAbsent(key, new NemoStateBackend());
 

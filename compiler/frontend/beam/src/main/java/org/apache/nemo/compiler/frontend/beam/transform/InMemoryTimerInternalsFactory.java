@@ -36,6 +36,16 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
 
     public final Map<K, NemoTimerInternals> timerInternalsMap;
 
+    @Override
+    public String toString() {
+      return "WatermarkTimers: " + watermarkTimers + "\n"
+      + "ProcessingTimers: " + processingTime + "\n"
+      + "SyncTimers: " + synchronizedProcessingTime + "\n"
+      + "InputWatermarkTime: " + inputWatermarkTime + "\n"
+        + "ProcessingTime: " + processingTime +"\n"
+        + "SyncProcessingTime: " + synchronizedProcessingTime;
+    }
+
     private final Comparator<Pair<K, TimerInternals.TimerData>> comparator = (o1, o2) -> {
       final int comp = o1.right().compareTo(o2.right());
       if (comp == 0) {
