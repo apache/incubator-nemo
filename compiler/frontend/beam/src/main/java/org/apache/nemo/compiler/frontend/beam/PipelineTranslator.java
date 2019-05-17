@@ -396,7 +396,7 @@ final class PipelineTranslator {
       // (Stage 2) final combine
       final Coder accumCoder;
       try {
-        accumCoder = combineFn.getAccumulatorCoder(ctx.getPipeline().getCoderRegistry(), inputCoder);
+        accumCoder = combineFn.getAccumulatorCoder(ctx.getPipeline().getCoderRegistry(), inputCoder.getValueCoder());
       } catch (CannotProvideCoderException e) {
         e.printStackTrace();
         throw new RuntimeException(e);
