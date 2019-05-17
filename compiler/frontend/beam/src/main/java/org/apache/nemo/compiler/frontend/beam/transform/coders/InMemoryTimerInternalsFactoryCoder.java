@@ -12,11 +12,14 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.compiler.frontend.beam.transform.InMemoryTimerInternalsFactory;
 import org.apache.nemo.compiler.frontend.beam.transform.NemoTimerInternals;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
 
 public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryTimerInternalsFactory<K>> {
+  private static final Logger LOG = LoggerFactory.getLogger(InMemoryTimerInternalsFactoryCoder.class.getName());
 
   private final Coder<K> keyCoder;
   private final Coder windowCoder;
@@ -32,9 +35,12 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
   @Override
   public void encode(InMemoryTimerInternalsFactory<K> value, OutputStream outStream) throws CoderException, IOException {
     final DataOutputStream dos = new DataOutputStream(outStream);
+
     encodeNavigableSet(value.watermarkTimers, dos);
     encodeNavigableSet(value.processingTimers, dos);
     encodeNavigableSet(value.synchronizedProcessingTimers, dos);
+
+    LOG.info("Encoded navigable sets");
 
     SerializationUtils.serialize(value.inputWatermarkTime, dos);
     SerializationUtils.serialize(value.processingTime, dos);
@@ -74,8 +80,10 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
     for (final Pair<K, TimerInternals.TimerData> data : set) {
       keyCoder.encode(data.left(), dos);
+      LOG.info("Encode key");
       final TimerInternals.TimerData timerData = data.right();
       timerCoder.encode(timerData, dos);
+      LOG.info("Encode timer");
     }
   }
 
@@ -113,6 +121,8 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
       SerializationUtils.serialize(processingTime, dos);
       SerializationUtils.serialize(synchronizedProcessingTime, dos);
       SerializationUtils.serialize(outputWatermarkTime, dos);
+
+      LOG.info("Serialize instances");
     }
   }
 
@@ -147,11 +157,15 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
                            final DataOutputStream dos) throws IOException {
     dos.writeInt(existingTimers.size());
 
+    LOG.info("Start encode table");
+
     for (final Table.Cell<StateNamespace, String, TimerInternals.TimerData> cell : existingTimers.cellSet()) {
       dos.writeUTF(cell.getRowKey().stringKey());
       dos.writeUTF(cell.getColumnKey());
       timerCoder.encode(cell.getValue(), dos);
     }
+
+    LOG.info("End encode table");
   }
 
   private Table<StateNamespace, String, TimerInternals.TimerData> decodeTable(final DataInputStream dis) throws IOException {
