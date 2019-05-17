@@ -156,7 +156,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
         return (CombiningState<InputT, AccumT, OutputT>) stateCoderMap.get(address).left();
       } else {
         final CombiningState<InputT, AccumT, OutputT> state = new InMemoryCombiningState<>(combineFn, accumCoder);
-        stateCoderMap.put(address, Pair.of(state, accumCoder));
+        stateCoderMap.put(address, Pair.of(state, new CombiningStateCoder<>(accumCoder, combineFn)));
         return state;
       }
     }
