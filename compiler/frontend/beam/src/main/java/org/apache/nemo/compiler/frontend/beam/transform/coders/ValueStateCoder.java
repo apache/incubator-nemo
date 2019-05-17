@@ -20,14 +20,29 @@ public final class ValueStateCoder<T> extends Coder<ValueState<T>> {
 
   @Override
   public void encode(ValueState<T> value, OutputStream outStream) throws CoderException, IOException {
-    coder.encode(value.read(), outStream);
+    final T val = value.read();
+
+    if (val == null) {
+      // if null, set 1
+      outStream.write(1);
+    } else {
+      outStream.write(0);
+      coder.encode(val, outStream);
+    }
   }
 
   @Override
   public ValueState<T> decode(InputStream inStream) throws CoderException, IOException {
+
     final ValueState<T> valueState = new InMemoryStateInternals.InMemoryValue<>(coder);
-    final T value = coder.decode(inStream);
-    valueState.write(value);
+
+    final int b = inStream.read();
+
+    if (b == 0) {
+      final T value = coder.decode(inStream);
+      valueState.write(value);
+    }
+
     return valueState;
   }
 

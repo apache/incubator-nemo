@@ -21,26 +21,38 @@ public final class SetStateCoder<T> extends Coder<SetState<T>> {
   @Override
   public void encode(SetState<T> value, OutputStream outStream) throws CoderException, IOException {
     final Iterable<T> iterable = value.read();
-    final List<T> list = new ArrayList<>();
-    iterable.forEach(elem -> list.add(elem));
 
-    final DataOutputStream dos = new DataOutputStream(outStream);
-    dos.writeInt(list.size());
-    for (final T elem : list) {
-      coder.encode(elem, outStream);
+    if (iterable == null) {
+      outStream.write(1);
+    } else {
+      outStream.write(0);
+      final List<T> list = new ArrayList<>();
+      iterable.forEach(elem -> list.add(elem));
+
+      final DataOutputStream dos = new DataOutputStream(outStream);
+      dos.writeInt(list.size());
+      for (final T elem : list) {
+        coder.encode(elem, outStream);
+      }
     }
   }
 
   @Override
   public SetState<T> decode(InputStream inStream) throws CoderException, IOException {
-    final DataInputStream dis = new DataInputStream(inStream);
-    final int size = dis.readInt();
+
+    final int b = inStream.read();
     final SetState<T> state = new InMemoryStateInternals.InMemorySet<>(coder);
-    for (int i = 0; i < size; i++) {
-      state.add(coder.decode(inStream));
+
+    if (b == 0) {
+      final DataInputStream dis = new DataInputStream(inStream);
+      final int size = dis.readInt();
+      for (int i = 0; i < size; i++) {
+        state.add(coder.decode(inStream));
+      }
     }
 
     return state;
+
   }
 
   @Override

@@ -24,31 +24,41 @@ public final class MapStateCoder<KeyT, ValueT> extends Coder<MapState<KeyT, Valu
   @Override
   public void encode(MapState<KeyT, ValueT> value, OutputStream outStream) throws CoderException, IOException {
     final Iterable<Map.Entry<KeyT, ValueT>> iterable = value.entries().read();
-    final List<Map.Entry<KeyT, ValueT>> l = new ArrayList<>();
-    for (final Map.Entry<KeyT, ValueT> val : iterable) {
-      l.add(val);
-    }
 
-    final DataOutputStream dos = new DataOutputStream(outStream);
-    dos.writeInt(l.size());
+    if (iterable == null) {
+      outStream.write(1);
+    } else {
+      outStream.write(0);
 
-    for (final Map.Entry<KeyT, ValueT> val : l) {
-      keyCoder.encode(val.getKey(), outStream);
-      valueCoder.encode(val.getValue(), outStream);
+      final List<Map.Entry<KeyT, ValueT>> l = new ArrayList<>();
+      for (final Map.Entry<KeyT, ValueT> val : iterable) {
+        l.add(val);
+      }
+
+      final DataOutputStream dos = new DataOutputStream(outStream);
+      dos.writeInt(l.size());
+
+      for (final Map.Entry<KeyT, ValueT> val : l) {
+        keyCoder.encode(val.getKey(), outStream);
+        valueCoder.encode(val.getValue(), outStream);
+      }
     }
   }
 
   @Override
   public MapState<KeyT, ValueT> decode(InputStream inStream) throws CoderException, IOException {
-    final DataInputStream dis = new DataInputStream(inStream);
-    final int size = dis.readInt();
-
+    final int b = inStream.read();
     final MapState<KeyT, ValueT> state = new InMemoryStateInternals.InMemoryMap<>(keyCoder, valueCoder);
 
-    for (int i = 0; i < size; i++) {
-      final KeyT key = keyCoder.decode(inStream);
-      final ValueT value = valueCoder.decode(inStream);
-      state.put(key, value);
+    if (b == 0) {
+      final DataInputStream dis = new DataInputStream(inStream);
+      final int size = dis.readInt();
+
+      for (int i = 0; i < size; i++) {
+        final KeyT key = keyCoder.decode(inStream);
+        final ValueT value = valueCoder.decode(inStream);
+        state.put(key, value);
+      }
     }
 
     return state;

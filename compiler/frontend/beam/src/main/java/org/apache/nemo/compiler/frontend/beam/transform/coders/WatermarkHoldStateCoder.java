@@ -22,19 +22,36 @@ public final class WatermarkHoldStateCoder extends Coder<WatermarkHoldState> {
   @Override
   public void encode(WatermarkHoldState value, OutputStream outStream) throws CoderException, IOException {
     final Instant instant = value.read();
-    final TimestampCombiner timestampCombiner = value.getTimestampCombiner();
 
-    SerializationUtils.serialize(instant, outStream);
+    if (instant == null) {
+      outStream.write(1);
+    } else {
+      outStream.write(0);
+      SerializationUtils.serialize(instant, outStream);
+    }
+
+    final TimestampCombiner timestampCombiner = value.getTimestampCombiner();
     SerializationUtils.serialize(timestampCombiner, outStream);
   }
 
   @Override
   public WatermarkHoldState decode(InputStream inStream) throws CoderException, IOException {
-    final Instant instant = SerializationUtils.deserialize(inStream);
-    final TimestampCombiner timestampCombiner = SerializationUtils.deserialize(inStream);
+    final int b = inStream.read();
 
+    final Instant instant;
+    if (b == 0) {
+      instant = SerializationUtils.deserialize(inStream);
+    } else {
+      instant = null;
+    }
+
+    final TimestampCombiner timestampCombiner = SerializationUtils.deserialize(inStream);
     final WatermarkHoldState watermarkHoldState = new InMemoryStateInternals.InMemoryWatermarkHold<>(timestampCombiner);
-    watermarkHoldState.add(instant);
+
+    if (instant != null) {
+      watermarkHoldState.add(instant);
+    }
+
     return watermarkHoldState;
   }
 
