@@ -67,7 +67,7 @@ public class InMemoryStateInternals<K> implements StateInternals {
 
           final Map<StateTag, Pair<State, Coder>> m = nemoStateBackend.map.get(namespace);
 
-          return new InMemoryStateBinder(m, c);
+          return new InMemoryStateBinder(namespace, m, c);
         }
       };
 
@@ -94,10 +94,13 @@ public class InMemoryStateInternals<K> implements StateInternals {
   public static class InMemoryStateBinder implements StateTag.StateBinder {
     private final StateContext<?> c;
     private final Map<StateTag, Pair<State, Coder>> stateCoderMap;
+    private final StateNamespace namespace;
 
 
-    public InMemoryStateBinder(final Map<StateTag, Pair<State, Coder>> stateCoderMap,
+    public InMemoryStateBinder(final StateNamespace namespace,
+                               final Map<StateTag, Pair<State, Coder>> stateCoderMap,
                                StateContext<?> c) {
+      this.namespace = namespace;
       this.stateCoderMap = stateCoderMap;
       this.c = c;
     }
@@ -155,10 +158,10 @@ public class InMemoryStateInternals<K> implements StateInternals {
         Coder<AccumT> accumCoder,
         final Combine.CombineFn<InputT, AccumT, OutputT> combineFn) {
       if (stateCoderMap.containsKey(address)) {
-        LOG.info("Bind combining value multiple: {}", address);
+        LOG.info("Bind combining value multiple: {}/{}", namespace, address);
         return (CombiningState<InputT, AccumT, OutputT>) stateCoderMap.get(address).left();
       } else {
-        LOG.info("Bind combining value first: {}", address);
+        LOG.info("Bind combining value first: {}/{}", namespace, address);
         final CombiningState<InputT, AccumT, OutputT> state = new InMemoryCombiningState<>(combineFn, accumCoder);
         stateCoderMap.put(address, Pair.of(state, new CombiningStateCoder<>(accumCoder, combineFn)));
         return state;

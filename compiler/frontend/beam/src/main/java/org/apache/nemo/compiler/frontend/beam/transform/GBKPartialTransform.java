@@ -143,7 +143,7 @@ public final class GBKPartialTransform<K, InputT>
 
       final KV<K, InputT> kv = element.getValue();
 
-      LOG.info("Handle element {}", element);
+      //LOG.info("Handle element {}", element);
 
       checkAndInvokeBundle();
       final KeyedWorkItem<K, InputT> keyedWorkItem =
@@ -382,9 +382,13 @@ public final class GBKPartialTransform<K, InputT>
           new Watermark(output.getTimestamp().getMillis() + 1));
         timerInternals.setCurrentOutputWatermarkTime(new Instant(output.getTimestamp().getMillis() + 1));
       }
-      LOG.info("Set input timsestamp: {}", output.getTimestamp().getMillis());
+      LOG.info("Partial output: {}", output);
       originOc.setInputTimestamp(output.getTimestamp().getMillis());
-      outputCollector.emit(output);
+      output.getValue().getValue().forEach(val -> {
+        final WindowedValue<KV<K, InputT>> eachVal = output.withValue(KV.of(output.getValue().getKey(), val));
+        LOG.info("Partial output each val: {}", eachVal);
+        outputCollector.emit(output);
+      });
     }
 
     @Override
