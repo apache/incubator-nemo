@@ -364,6 +364,8 @@ public final class TinyTaskOffloader implements Offloader {
       stateCoder = stateAndCoder.right();
     }
 
+    LOG.info("Sending state {} in stage {}", state, taskId);
+
     if (sourceVertexDataFetcher != null) {
       final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
       final KafkaCheckpointMark checkpointMark = (KafkaCheckpointMark) readable.getReader().getCheckpointMark();

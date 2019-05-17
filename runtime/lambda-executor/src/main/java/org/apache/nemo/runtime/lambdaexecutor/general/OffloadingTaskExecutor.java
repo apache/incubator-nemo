@@ -274,7 +274,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       if (irVertex instanceof OperatorVertex) {
         transform = ((OperatorVertex) irVertex).getTransform();
         if (transform instanceof StatefulTransform) {
-          LOG.info("Set state for {}", transform);
+          LOG.info("Set state for {}, state: {}", transform, offloadingTask.state);
           final StatefulTransform statefulTransform = (StatefulTransform) transform;
           statefulTransform.setState(offloadingTask.state);
         }
