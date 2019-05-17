@@ -177,6 +177,8 @@ public final class OffloadingTask {
         state = null;
       }
 
+      LOG.info("Decoded state: {}", state);
+
       return new OffloadingTask(executorId,
         taskId,
         taskIndex,

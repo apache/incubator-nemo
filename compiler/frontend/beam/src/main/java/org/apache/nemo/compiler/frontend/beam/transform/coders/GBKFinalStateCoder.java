@@ -5,6 +5,9 @@ import org.apache.beam.sdk.coders.CoderException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
+import org.apache.nemo.compiler.frontend.beam.transform.InMemoryStateInternalsFactory;
+import org.apache.nemo.compiler.frontend.beam.transform.InMemoryTimerInternalsFactory;
+import org.joda.time.Instant;
 
 import java.io.*;
 import java.util.HashMap;
@@ -41,7 +44,24 @@ public final class GBKFinalStateCoder<K> extends Coder<GBKFinalState<K>> {
 
   @Override
   public GBKFinalState<K> decode(InputStream inStream) throws CoderException, IOException {
-    return null;
+
+    final InMemoryTimerInternalsFactory timerInternalsFactory = timerCoder.decode(inStream);
+    final InMemoryStateInternalsFactory stateInternalsFactory = stateCoder.decode(inStream);
+
+    final Watermark prevOutputWatermark = SerializationUtils.deserialize(inStream);
+    final Watermark inputWatermark = SerializationUtils.deserialize(inStream);
+
+    final DataInputStream dis = new DataInputStream(inStream);
+    final Map<K, Watermark> keyAndWatermarkMap = decodeKeyAndWatermarkMap(dis);
+
+    final GBKFinalState finalState = new GBKFinalState(
+      timerInternalsFactory,
+      stateInternalsFactory,
+      prevOutputWatermark,
+      keyAndWatermarkMap,
+      inputWatermark);
+
+    return finalState;
   }
 
   private void encodeKeyAndWatermarkMap(final Map<K, Watermark> map,
