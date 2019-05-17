@@ -51,11 +51,25 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
   @Override
   public InMemoryTimerInternalsFactory<K> decode(InputStream inStream) throws CoderException, IOException {
+
+    final Comparator<Pair<K, TimerInternals.TimerData>> comparator = (o1, o2) -> {
+      final int comp = o1.right().compareTo(o2.right());
+      if (comp == 0) {
+        if (o1.left() == null) {
+          return 0;
+        } else {
+          return o1.left().toString().compareTo(o2.left().toString());
+        }
+      } else {
+        return comp;
+      }
+    };
+
     final DataInputStream dis = new DataInputStream(inStream);
 
-    final NavigableSet<Pair<K, TimerInternals.TimerData>> watermarkTimers = decodeNavigableSet(dis);
-    final NavigableSet<Pair<K, TimerInternals.TimerData>> processingTimers = decodeNavigableSet(dis);
-    final NavigableSet<Pair<K, TimerInternals.TimerData>> synchronizedProcessingTimers = decodeNavigableSet(dis);
+    final NavigableSet<Pair<K, TimerInternals.TimerData>> watermarkTimers = decodeNavigableSet(dis, comparator);
+    final NavigableSet<Pair<K, TimerInternals.TimerData>> processingTimers = decodeNavigableSet(dis, comparator);
+    final NavigableSet<Pair<K, TimerInternals.TimerData>> synchronizedProcessingTimers = decodeNavigableSet(dis, comparator);
 
     final Instant inputWatermarkTime = SerializationUtils.deserialize(dis);
     final Instant processingTime = SerializationUtils.deserialize(dis);
@@ -87,7 +101,9 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
     }
   }
 
-  private NavigableSet<Pair<K, TimerInternals.TimerData>> decodeNavigableSet(final DataInputStream is) throws IOException {
+  private NavigableSet<Pair<K, TimerInternals.TimerData>> decodeNavigableSet(
+    final DataInputStream is,
+    final Comparator<Pair<K, TimerInternals.TimerData>> comparator) throws IOException {
     final int size = is.readInt();
     final NavigableSet<Pair<K, TimerInternals.TimerData>> set = new TreeSet<>(comparator);
 
@@ -194,16 +210,4 @@ public final class InMemoryTimerInternalsFactoryCoder<K> extends Coder<InMemoryT
 
   }
 
-  private final Comparator<Pair<K, TimerInternals.TimerData>> comparator = (o1, o2) -> {
-    final int comp = o1.right().compareTo(o2.right());
-    if (comp == 0) {
-      if (o1.left() == null) {
-        return 0;
-      } else {
-        return o1.left().toString().compareTo(o2.left().toString());
-      }
-    } else {
-      return comp;
-    }
-  };
 }
