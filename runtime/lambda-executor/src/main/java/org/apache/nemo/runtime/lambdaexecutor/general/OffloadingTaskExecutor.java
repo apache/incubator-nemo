@@ -17,6 +17,7 @@ import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
+import org.apache.nemo.compiler.frontend.beam.transform.StatefulTransform;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFetcherOutputCollector;
@@ -272,6 +273,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       final Transform transform;
       if (irVertex instanceof OperatorVertex) {
         transform = ((OperatorVertex) irVertex).getTransform();
+        if (transform instanceof StatefulTransform) {
+          LOG.info("Set state for {}", transform);
+          final StatefulTransform statefulTransform = (StatefulTransform) transform;
+          statefulTransform.setState(offloadingTask.state);
+        }
         transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
       }
     });

@@ -362,12 +362,15 @@ public final class GroupByKeyAndWindowDoFnTransform<K, InputT>
 
     @Override
     public StateInternals stateInternalsForKey(final K key) {
+      throw new UnsupportedOperationException("Not supported due to refactoring");
+      /*
       map.putIfAbsent(key, new StateAndTimerForKey(InMemoryStateInternals.forKey(key), null));
       final StateAndTimerForKey stateAndTimerForKey = map.get(key);
       if (stateAndTimerForKey.stateInternals == null) {
         stateAndTimerForKey.stateInternals = InMemoryStateInternals.forKey(key);
       }
       return stateAndTimerForKey.stateInternals;
+      */
     }
   }
 

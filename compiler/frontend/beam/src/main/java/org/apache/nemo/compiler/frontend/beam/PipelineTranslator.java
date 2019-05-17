@@ -402,6 +402,7 @@ final class PipelineTranslator {
 
       final GBKFinalTransform gbkFinalTransform =
         new GBKFinalTransform(
+          inputCoder.getKeyCoder(),
           getOutputCoders(pTransform),
           mainOutputTag,
           mainInput.getWindowingStrategy(),

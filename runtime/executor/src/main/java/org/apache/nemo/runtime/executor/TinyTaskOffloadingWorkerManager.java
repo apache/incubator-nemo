@@ -7,6 +7,7 @@ import io.netty.buffer.Unpooled;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.offloading.client.StreamingLambdaWorkerProxy;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
@@ -163,7 +164,8 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
   public synchronized void sendTask(final OffloadingTask offloadingTask,
                                     final TaskExecutor taskExecutor,
                                     final OffloadingSerializer<I, O> offloadingSerializer,
-                                    final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder) {
+                                    final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
+                                    final Coder<GBKFinalState> stateCoder) {
 
     //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
     offloadedTaskMap.put(offloadingTask.taskId, taskExecutor);
@@ -171,7 +173,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     // find worker
     if (workers.size() == 0) {
       workers.add(Pair.of(System.currentTimeMillis(), new TinyTaskWorker(
-        createNewWorker(offloadingSerializer), checkpointMarkCoder)));
+        createNewWorker(offloadingSerializer), checkpointMarkCoder, stateCoder)));
     }
 
     final int index = workers.size() - 1;
@@ -179,7 +181,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
     if (!worker.canHandleTask()) {
       final TinyTaskWorker newWorker =  new TinyTaskWorker(
-        createNewWorker(offloadingSerializer), checkpointMarkCoder);
+        createNewWorker(offloadingSerializer), checkpointMarkCoder, stateCoder);
 
       workers.add(Pair.of(System.currentTimeMillis(), newWorker));
 

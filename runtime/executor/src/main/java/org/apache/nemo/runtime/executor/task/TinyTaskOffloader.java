@@ -20,6 +20,8 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKPartialTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.StreamingWorkerService;
@@ -295,6 +297,20 @@ public final class TinyTaskOffloader implements Offloader {
     return true;
   }
 
+  private Pair<GBKFinalState, Coder<GBKFinalState>> getStateAndCoder() {
+    for (final IRVertex vertex : irVertexDag.getVertices()) {
+      if (vertex instanceof OperatorVertex) {
+        final Transform transform = ((OperatorVertex) vertex).getTransform();
+        if (transform instanceof GBKFinalTransform) {
+          final GBKFinalTransform finalTransform = (GBKFinalTransform) transform;
+          return Pair.of(finalTransform.getState(), finalTransform.getStateCoder());
+        }
+      }
+    }
+
+    return null;
+  }
+
   @Override
   public synchronized void handlePendingStreamingWorkers() {
 
@@ -310,6 +326,7 @@ public final class TinyTaskOffloader implements Offloader {
     // Sink stop!!
     // Sink stop!!
     // Sink stop!!
+
     irVertexDag.getTopologicalSort().stream().forEach(irVertex -> {
       if (irVertex instanceof OperatorVertex) {
         final Transform transform = ((OperatorVertex) irVertex).getTransform();
@@ -336,6 +353,16 @@ public final class TinyTaskOffloader implements Offloader {
     // Sink stop!!
     // Sink stop!!
     final OffloadingTask offloadingTask;
+    final Pair<GBKFinalState, Coder<GBKFinalState>> stateAndCoder = getStateAndCoder();
+    final GBKFinalState state;
+    final Coder<GBKFinalState> stateCoder;
+    if (stateAndCoder == null) {
+      state = null;
+      stateCoder = null;
+    } else {
+      state = stateAndCoder.left();
+      stateCoder = stateAndCoder.right();
+    }
 
     if (sourceVertexDataFetcher != null) {
       final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
@@ -345,7 +372,6 @@ public final class TinyTaskOffloader implements Offloader {
       LOG.info("Get unbounded source: {}", unboundedSource);
 
       final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = unboundedSource.getCheckpointMarkCoder();
-
 
       LOG.info("Send checkpoint mark at task {}: {}", taskId, checkpointMark);
 
@@ -359,11 +385,12 @@ public final class TinyTaskOffloader implements Offloader {
         copyOutgoingEdges,
         copyIncomingEdges,
         checkpointMark,
-        unboundedSource);
+        unboundedSource,
+        state);
 
-      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(checkpointMarkCoder);
+      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(checkpointMarkCoder, stateCoder);
 
-      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, checkpointMarkCoder);
+      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, checkpointMarkCoder, stateCoder);
     } else {
       offloadingTask = new OffloadingTask(
         executorId,
@@ -375,11 +402,12 @@ public final class TinyTaskOffloader implements Offloader {
         copyOutgoingEdges,
         copyIncomingEdges,
         null,
-        null);
+        null,
+        state);
 
 
-      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(null);
-      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, null);
+      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(null, stateCoder);
+      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, null, stateCoder);
     }
 
     prevOffloadStartTime.set(System.currentTimeMillis());

@@ -21,6 +21,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 import org.apache.beam.runners.core.*;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.state.State;
 import org.apache.beam.sdk.state.TimeDomain;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.display.DisplayData;
@@ -35,12 +36,14 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.AbstractOutputCollector;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Watermark;
+import org.apache.nemo.compiler.frontend.beam.transform.coders.GBKFinalStateCoder;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Groups elements according to key and window.
@@ -48,28 +51,29 @@ import java.util.*;
  * @param <InputT> input type.
  */
 public final class GBKFinalTransform<K, InputT>
-  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> {
+  extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, Iterable<InputT>>> implements StatefulTransform<GBKFinalState<K>> {
   private static final Logger LOG = LoggerFactory.getLogger(GBKFinalTransform.class.getName());
 
   private final SystemReduceFn reduceFn; //private final Map<K, List<WindowedValue<InputT>>> keyToValues;
-  private transient InMemoryTimerInternalsFactory inMemoryTimerInternalsFactory;
-  private transient InMemoryStateInternalsFactory inMemoryStateInternalsFactory;
+  private transient InMemoryTimerInternalsFactory<K> inMemoryTimerInternalsFactory;
+  private transient InMemoryStateInternalsFactory<K> inMemoryStateInternalsFactory;
   private Watermark prevOutputWatermark;
   private final Map<K, Watermark> keyAndWatermarkHoldMap;
-  private final WindowingStrategy windowingStrategy;
   private Watermark inputWatermark;
-
-  private final Map<K, List<WindowedValue<InputT>>> keyToValues;
 
   int numProcessedData = 0;
   private boolean dataReceived = false;
 
   private transient OutputCollector originOc;
 
+  private final Coder<K> keyCoder;
+  private final Coder windowCoder;
+
   /**
    * GroupByKey constructor.
    */
-  public GBKFinalTransform(final Map<TupleTag<?>, Coder<?>> outputCoders,
+  public GBKFinalTransform(final Coder<K> keyCoder,
+                           final Map<TupleTag<?>, Coder<?>> outputCoders,
                            final TupleTag<KV<K, Iterable<InputT>>> mainOutputTag,
                            final WindowingStrategy<?, ?> windowingStrategy,
                            final PipelineOptions options,
@@ -84,13 +88,13 @@ public final class GBKFinalTransform<K, InputT>
       Collections.emptyMap(), /*  GBK does not have additional side inputs */
       options,
       displayData);
+    this.windowCoder = windowingStrategy.getWindowFn().windowCoder();
     //this.keyToValues = new HashMap<>();
+    this.keyCoder = keyCoder;
     this.reduceFn = reduceFn;
     this.prevOutputWatermark = new Watermark(Long.MIN_VALUE);
     this.inputWatermark = new Watermark(Long.MIN_VALUE);
     this.keyAndWatermarkHoldMap = new HashMap<>();
-    this.windowingStrategy = windowingStrategy;
-    this.keyToValues = new HashMap<>();
   }
 
   /**
@@ -100,9 +104,19 @@ public final class GBKFinalTransform<K, InputT>
    */
   @Override
   protected DoFn wrapDoFn(final DoFn doFn) {
-    final Map<K, StateAndTimerForKey> map = new HashMap<>();
-    this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory(map);
-    this.inMemoryTimerInternalsFactory = new InMemoryTimerInternalsFactory();
+    final Map<StateTag, Pair<State, Coder>> map = new ConcurrentHashMap<>();
+
+    if (inMemoryStateInternalsFactory == null) {
+      this.inMemoryStateInternalsFactory = new InMemoryStateInternalsFactory<>();
+    } else {
+      LOG.info("InMemoryStateInternalFactroy is already set");
+    }
+
+    if (inMemoryTimerInternalsFactory == null) {
+      this.inMemoryTimerInternalsFactory = new InMemoryTimerInternalsFactory<>();
+    } else {
+      LOG.info("InMemoryTimerInternalsFactory is already set");
+    }
 
 
     // This function performs group by key and window operation
@@ -344,170 +358,30 @@ public final class GBKFinalTransform<K, InputT>
     return timerData;
   }
 
-  /**
-   * State and timer internal.
-   */
-  final class StateAndTimerForKey {
-    private StateInternals stateInternals;
-    private TimerInternals timerInternals;
-
-    StateAndTimerForKey(final StateInternals stateInternals,
-                        final TimerInternals timerInternals) {
-      this.stateInternals = stateInternals;
-      this.timerInternals = timerInternals;
-    }
+  @Override
+  public Coder<GBKFinalState<K>> getStateCoder() {
+    return new GBKFinalStateCoder<>(keyCoder, windowCoder);
   }
 
-  /**
-   * InMemoryStateInternalsFactory.
-   */
-  final class InMemoryStateInternalsFactory implements StateInternalsFactory<K> {
-    private final Map<K, StateAndTimerForKey> map;
-
-    InMemoryStateInternalsFactory(final Map<K, StateAndTimerForKey> map) {
-      this.map = map;
-    }
-
-    @Override
-    public StateInternals stateInternalsForKey(final K key) {
-      map.putIfAbsent(key, new StateAndTimerForKey(InMemoryStateInternals.forKey(key), null));
-      final StateAndTimerForKey stateAndTimerForKey = map.get(key);
-      if (stateAndTimerForKey.stateInternals == null) {
-        stateAndTimerForKey.stateInternals = InMemoryStateInternals.forKey(key);
-      }
-      return stateAndTimerForKey.stateInternals;
-    }
+  @Override
+  public GBKFinalState<K> getState() {
+    return new GBKFinalState<>(inMemoryTimerInternalsFactory,
+      inMemoryStateInternalsFactory,
+      prevOutputWatermark,
+      keyAndWatermarkHoldMap,
+      inputWatermark);
   }
 
-  /**
-   * InMemoryTimerInternalsFactory.
-   */
-  final class InMemoryTimerInternalsFactory implements TimerInternalsFactory<K> {
-
-    /** Pending input watermark timers, in timestamp order. */
-    private final NavigableSet<Pair<K, TimerInternals.TimerData>> watermarkTimers;
-    /** Pending processing time timers, in timestamp order. */
-    private final NavigableSet<Pair<K, TimerInternals.TimerData>> processingTimers;
-    /** Pending synchronized processing time timers, in timestamp order. */
-    private final NavigableSet<Pair<K, TimerInternals.TimerData>> synchronizedProcessingTimers;
-
-    /** Current input watermark. */
-    private Instant inputWatermarkTime = BoundedWindow.TIMESTAMP_MIN_VALUE;
-
-
-    /** Current processing time. */
-    private Instant processingTime = BoundedWindow.TIMESTAMP_MIN_VALUE;
-
-    /** Current synchronized processing time. */
-    private Instant synchronizedProcessingTime = BoundedWindow.TIMESTAMP_MIN_VALUE;
-
-    private final Map<K, NemoTimerInternals> timerInternalsMap = new HashMap<>();
-
-    private final Comparator<Pair<K, TimerInternals.TimerData>> comparator = (o1, o2) -> {
-      final int comp = o1.right().compareTo(o2.right());
-      if (comp == 0) {
-        if (o1.left() == null) {
-          return 0;
-        } else {
-          return o1.left().toString().compareTo(o2.left().toString());
-        }
-      } else {
-        return comp;
-      }
-    };
-
-    InMemoryTimerInternalsFactory() {
-      this.watermarkTimers = new TreeSet<>(comparator);
-      this.processingTimers = new TreeSet<>(comparator);
-      this.synchronizedProcessingTimers = new TreeSet<>(comparator);
-    }
-
-    @Override
-    public TimerInternals timerInternalsForKey(final K key) {
-      if (timerInternalsMap.get(key) != null) {
-        return timerInternalsMap.get(key);
-      } else {
-        final NemoTimerInternals internal =  new NemoTimerInternals<>(key,
-          watermarkTimers,
-          processingTimers,
-          synchronizedProcessingTimers);
-        timerInternalsMap.put(key, internal);
-        return internal;
-      }
-    }
-
-
-    /** Returns the next eligible event time timer, if none returns null. */
-    @Nullable
-    public Pair<K, TimerInternals.TimerData> removeNextEventTimer() {
-      Pair<K, TimerInternals.TimerData> timer = removeNextTimer(inputWatermarkTime, TimeDomain.EVENT_TIME);
-      if (timer != null) {
-        WindowTracing.trace(
-          "{}.removeNextEventTimer: firing {} at {}",
-          getClass().getSimpleName(),
-          timer,
-          inputWatermarkTime);
-      }
-      return timer;
-    }
-
-    /** Returns the next eligible processing time timer, if none returns null. */
-    @Nullable
-    public Pair<K, TimerInternals.TimerData> removeNextProcessingTimer() {
-      Pair<K, TimerInternals.TimerData> timer = removeNextTimer(processingTime, TimeDomain.PROCESSING_TIME);
-      if (timer != null) {
-        WindowTracing.trace(
-          "{}.removeNextProcessingTimer: firing {} at {}",
-          getClass().getSimpleName(),
-          timer,
-          processingTime);
-      }
-      return timer;
-    }
-
-    /** Returns the next eligible synchronized processing time timer, if none returns null. */
-    @Nullable
-    public Pair<K, TimerInternals.TimerData> removeNextSynchronizedProcessingTimer() {
-      Pair<K, TimerInternals.TimerData> timer =
-        removeNextTimer(synchronizedProcessingTime, TimeDomain.SYNCHRONIZED_PROCESSING_TIME);
-      if (timer != null) {
-        WindowTracing.trace(
-          "{}.removeNextSynchronizedProcessingTimer: firing {} at {}",
-          getClass().getSimpleName(),
-          timer,
-          synchronizedProcessingTime);
-      }
-      return timer;
-    }
-
-
-    @Nullable
-    private Pair<K, TimerInternals.TimerData> removeNextTimer(Instant currentTime, TimeDomain domain) {
-      NavigableSet<Pair<K, TimerInternals.TimerData>> timers = timersForDomain(domain);
-
-      if (!timers.isEmpty() && currentTime.isAfter(timers.first().right().getTimestamp())) {
-        Pair<K, TimerInternals.TimerData> timer = timers.pollFirst();
-        timerInternalsMap.get(timer.left()).deleteTimer(timer.right());
-        return timer;
-      } else {
-        return null;
-      }
-    }
-
-    private NavigableSet<Pair<K, TimerInternals.TimerData>> timersForDomain(TimeDomain domain) {
-      switch (domain) {
-        case EVENT_TIME:
-          return watermarkTimers;
-        case PROCESSING_TIME:
-          return processingTimers;
-        case SYNCHRONIZED_PROCESSING_TIME:
-          return synchronizedProcessingTimers;
-        default:
-          throw new IllegalArgumentException("Unexpected time domain: " + domain);
-      }
-    }
-
+  @Override
+  public void setState(GBKFinalState<K> state) {
+    LOG.info("Set state at {}", this);
+    inMemoryTimerInternalsFactory = state.timerInternalsFactory;
+    inMemoryStateInternalsFactory = state.stateInternalsFactory;
+    inputWatermark = state.inputWatermark;
+    prevOutputWatermark = state.prevOutputWatermark;
+    keyAndWatermarkHoldMap.putAll(state.keyAndWatermarkHoldMap);
   }
+
 
   /**
    * This class wraps the output collector to track the watermark hold of each key.

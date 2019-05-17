@@ -1,0 +1,67 @@
+package org.apache.nemo.compiler.frontend.beam.transform.coders;
+
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.CoderException;
+import org.apache.beam.sdk.state.MapState;
+import org.apache.nemo.compiler.frontend.beam.transform.InMemoryStateInternals;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+public final class MapStateCoder<KeyT, ValueT> extends Coder<MapState<KeyT, ValueT>> {
+
+  private final Coder<KeyT> keyCoder;
+  private final Coder<ValueT> valueCoder;
+
+  public MapStateCoder(final Coder<KeyT> keyCoder,
+                       final Coder<ValueT> valueCoder) {
+    this.keyCoder = keyCoder;
+    this.valueCoder = valueCoder;
+  }
+
+  @Override
+  public void encode(MapState<KeyT, ValueT> value, OutputStream outStream) throws CoderException, IOException {
+    final Iterable<Map.Entry<KeyT, ValueT>> iterable = value.entries().read();
+    final List<Map.Entry<KeyT, ValueT>> l = new ArrayList<>();
+    for (final Map.Entry<KeyT, ValueT> val : iterable) {
+      l.add(val);
+    }
+
+    final DataOutputStream dos = new DataOutputStream(outStream);
+    dos.writeInt(l.size());
+
+    for (final Map.Entry<KeyT, ValueT> val : l) {
+      keyCoder.encode(val.getKey(), outStream);
+      valueCoder.encode(val.getValue(), outStream);
+    }
+  }
+
+  @Override
+  public MapState<KeyT, ValueT> decode(InputStream inStream) throws CoderException, IOException {
+    final DataInputStream dis = new DataInputStream(inStream);
+    final int size = dis.readInt();
+
+    final MapState<KeyT, ValueT> state = new InMemoryStateInternals.InMemoryMap<>(keyCoder, valueCoder);
+
+    for (int i = 0; i < size; i++) {
+      final KeyT key = keyCoder.decode(inStream);
+      final ValueT value = valueCoder.decode(inStream);
+      state.put(key, value);
+    }
+
+    return state;
+  }
+
+  @Override
+  public List<? extends Coder<?>> getCoderArguments() {
+    return keyCoder.getCoderArguments();
+  }
+
+  @Override
+  public void verifyDeterministic() throws Coder.NonDeterministicException {
+    keyCoder.verifyDeterministic();
+    valueCoder.verifyDeterministic();
+  }
+}

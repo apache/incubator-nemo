@@ -2,6 +2,8 @@ package org.apache.nemo.runtime.lambdaexecutor.general;
 
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
+import org.apache.nemo.compiler.frontend.beam.transform.coders.GBKFinalStateCoder;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
@@ -18,10 +20,13 @@ public final class OffloadingExecutorInputDecoder implements OffloadingDecoder<O
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingExecutorInputDecoder.class.getName());
 
   private final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
+  private final Coder<GBKFinalState> stateCoder;
 
   public OffloadingExecutorInputDecoder(
-    final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder) {
+    final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
+    final Coder<GBKFinalState> stateCoder) {
     this.checkpointMarkCoder = checkpointMarkCoder;
+    this.stateCoder = stateCoder;
   }
 
   @Override
@@ -40,7 +45,7 @@ public final class OffloadingExecutorInputDecoder implements OffloadingDecoder<O
 
     switch (et) {
       case TASK_START: {
-        return OffloadingTask.decode(inputStream, checkpointMarkCoder);
+        return OffloadingTask.decode(inputStream, checkpointMarkCoder, stateCoder);
       }
       case TASK_END: {
         final String taskId = dis.readUTF();

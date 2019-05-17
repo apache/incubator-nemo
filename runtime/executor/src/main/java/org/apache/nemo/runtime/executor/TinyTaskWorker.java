@@ -5,6 +5,7 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.offloading.common.OffloadingWorker;
 import org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
@@ -27,12 +28,15 @@ public final class TinyTaskWorker {
   private final List<OffloadingTask> pendingTasks = new LinkedList<>();
   private final OffloadingWorker offloadingWorker;
   private final Coder<UnboundedSource.CheckpointMark> coder;
+  private final Coder<GBKFinalState> stateCoder;
   private final AtomicInteger deletePending = new AtomicInteger(0);
 
   public TinyTaskWorker(final OffloadingWorker offloadingWorker,
-                        final Coder<UnboundedSource.CheckpointMark> coder) {
+                        final Coder<UnboundedSource.CheckpointMark> coder,
+                        final Coder<GBKFinalState> stateCoder) {
     this.offloadingWorker = offloadingWorker;
     this.coder = coder;
+    this.stateCoder = stateCoder;
   }
 
   public synchronized void addTask(final OffloadingTask task) {
@@ -127,7 +131,7 @@ public final class TinyTaskWorker {
     LOG.info("Execute pending222 !!");
 
     for (final OffloadingTask pending : pendingTasks) {
-      offloadingWorker.execute(pending.encode(coder), 1, false);
+      offloadingWorker.execute(pending.encode(coder, stateCoder), 1, false);
     }
 
     LOG.info("Execute pending333 !!");

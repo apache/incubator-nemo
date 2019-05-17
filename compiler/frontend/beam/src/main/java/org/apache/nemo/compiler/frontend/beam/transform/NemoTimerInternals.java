@@ -1,8 +1,8 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
-import org.apache.beam.repackaged.beam_runners_core_construction_java.com.google.common.base.MoreObjects;
-import org.apache.beam.repackaged.beam_runners_core_construction_java.com.google.common.collect.HashBasedTable;
-import org.apache.beam.repackaged.beam_runners_core_construction_java.com.google.common.collect.Table;
+import com.google.common.base.MoreObjects;
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 import org.apache.beam.runners.core.*;
 import org.apache.beam.sdk.state.*;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
@@ -17,7 +17,7 @@ import java.util.*;
 public class NemoTimerInternals<K> implements TimerInternals {
 
   /** The current set timers by namespace and ID. */
-  Table<StateNamespace, String, TimerData> existingTimers = HashBasedTable.create();
+  public Table<StateNamespace, String, TimerData> existingTimers;
 
   /** Pending input watermark timers, in timestamp order. */
   private final NavigableSet<Pair<K, TimerData>> watermarkTimers;
@@ -42,8 +42,6 @@ public class NemoTimerInternals<K> implements TimerInternals {
 
   private final K key;
 
-  private int registeredTimers = 0;
-
   public NemoTimerInternals(final K key,
                             final NavigableSet<Pair<K, TimerData>> watermarkTimers,
                             final NavigableSet<Pair<K, TimerData>> processingTimers,
@@ -52,6 +50,27 @@ public class NemoTimerInternals<K> implements TimerInternals {
     this.watermarkTimers = watermarkTimers;
     this.processingTimers = processingTimers;
     this.synchronizedProcessingTimers = synchronizedProcessingTimers;
+    this.existingTimers = HashBasedTable.create();
+  }
+
+  public NemoTimerInternals(final K key,
+                            final NavigableSet<Pair<K, TimerData>> watermarkTimers,
+                            final NavigableSet<Pair<K, TimerData>> processingTimers,
+                            final NavigableSet<Pair<K, TimerData>> synchronizedProcessingTimers,
+                            final Table<StateNamespace, String, TimerData> existingTimers,
+                            final Instant inputWatermarkTime,
+                            final Instant processingTime,
+                            final Instant synchronizedProcessingTime,
+                            final Instant outputWatermarkTime) {
+    this.key = key;
+    this.watermarkTimers = watermarkTimers;
+    this.processingTimers = processingTimers;
+    this.synchronizedProcessingTimers = synchronizedProcessingTimers;
+    this.existingTimers = existingTimers;
+    this.inputWatermarkTime = inputWatermarkTime;
+    this.processingTime = processingTime;
+    this.synchronizedProcessingTime = synchronizedProcessingTime;
+    this.outputWatermarkTime = outputWatermarkTime;
   }
 
   @Override
@@ -101,7 +120,6 @@ public class NemoTimerInternals<K> implements TimerInternals {
 
     @Nullable
     TimerInternals.TimerData existing = existingTimers.get(timerData.getNamespace(), timerData.getTimerId());
-    registeredTimers += 1;
     if (existing == null) {
       existingTimers.put(timerData.getNamespace(), timerData.getTimerId(), timerData);
       timersForDomain(timerData.getDomain()).add(Pair.of(key, timerData));
