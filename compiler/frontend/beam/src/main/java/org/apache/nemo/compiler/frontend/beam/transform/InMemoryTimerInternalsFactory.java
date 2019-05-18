@@ -8,6 +8,8 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowTracing;
 import org.apache.nemo.common.Pair;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -84,10 +86,15 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
       this.timerInternalsMap = timerInternalsMap;
     }
 
+  private static final Logger LOG = LoggerFactory.getLogger(InMemoryTimerInternalsFactory.class.getName());
+
   public void setState(final InMemoryTimerInternalsFactory<K> timerInternalsFactory) {
 
+    LOG.info("Set State 111 ... watermarkTimers hashcode!! {}", watermarkTimers.hashCode());
     this.watermarkTimers.clear();
+    LOG.info("Set State 222 ... watermarkTimers hashcode!! {}", watermarkTimers.hashCode());
     this.watermarkTimers.addAll(timerInternalsFactory.watermarkTimers);
+    LOG.info("Set State 333 ... watermarkTimers hashcode!! {}", watermarkTimers.hashCode());
 
     this.processingTimers.clear();
     this.processingTimers.addAll(timerInternalsFactory.processingTimers);

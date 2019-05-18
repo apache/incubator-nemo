@@ -378,7 +378,7 @@ public final class GBKFinalTransform<K, InputT>
 
   @Override
   public void setState(GBKFinalState<K> state) {
-    LOG.info("Set state {} at {}", state, this);
+    //LOG.info("Set state {} at {}", state, this);
 
     if (inMemoryStateInternalsFactory == null) {
       inMemoryStateInternalsFactory = state.stateInternalsFactory;
