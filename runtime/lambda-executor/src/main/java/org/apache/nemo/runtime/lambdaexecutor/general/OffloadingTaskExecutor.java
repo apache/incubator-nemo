@@ -1,6 +1,7 @@
 package org.apache.nemo.runtime.lambdaexecutor.general;
 
 import avro.shaded.com.google.common.collect.Lists;
+import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
@@ -17,6 +18,8 @@ import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.source.BeamUnboundedSourceVertex;
 import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.compiler.frontend.beam.transform.StatefulTransform;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.runtime.executor.common.*;
@@ -420,12 +423,33 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     finished = true;
   }
 
+  private Pair<GBKFinalState, Coder<GBKFinalState>> getStateAndCoder() {
+    for (final IRVertex vertex : offloadingTask.irDag.getVertices()) {
+      if (vertex instanceof OperatorVertex) {
+        final Transform transform = ((OperatorVertex) vertex).getTransform();
+        if (transform instanceof GBKFinalTransform) {
+          final GBKFinalTransform finalTransform = (GBKFinalTransform) transform;
+          return Pair.of(finalTransform.getState(), finalTransform.getStateCoder());
+        }
+      }
+    }
+
+    return null;
+  }
+
   @Override
   public void finish() {
     if (!pendingFutures.isEmpty()) {
       // send states to vm !!
       LOG.info("Send  stateoutput for task {}", offloadingTask.taskId);
-      resultCollector.collector.emit(new StateOutput(offloadingTask.taskId));
+      final Pair<GBKFinalState, Coder<GBKFinalState>> stateAndCoder = getStateAndCoder();
+
+      if (stateAndCoder != null) {
+        LOG.info("Send state {}", stateAndCoder.left());
+        resultCollector.collector.emit(new StateOutput(offloadingTask.taskId, stateAndCoder.left()));
+      } else {
+        resultCollector.collector.emit(new StateOutput(offloadingTask.taskId, null));
+      }
     }
 
     pendingFutures.clear();
@@ -466,6 +490,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+
   }
 
   // Get all of the intra-task edges

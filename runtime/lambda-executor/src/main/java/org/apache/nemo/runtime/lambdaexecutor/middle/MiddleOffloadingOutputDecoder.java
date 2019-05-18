@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.lambdaexecutor.middle;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.lambdaexecutor.*;
@@ -24,9 +25,12 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
   private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloadingOutputDecoder.class.getName());
 
   private final Coder<UnboundedSource.CheckpointMark> coder;
+  private final Coder<GBKFinalState> stateCoder;
 
-  public MiddleOffloadingOutputDecoder(final Coder<UnboundedSource.CheckpointMark> coder) {
+  public MiddleOffloadingOutputDecoder(final Coder<UnboundedSource.CheckpointMark> coder,
+                                       final Coder<GBKFinalState> stateCoder) {
     this.coder = coder;
+    this.stateCoder = stateCoder;
   }
 
     @Override
@@ -61,7 +65,15 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
         }
         case STATE_OUTPUT: {
           final String  taskId = dis.readUTF();
-          return Pair.of(taskId, new StateOutput(taskId));
+          final GBKFinalState state;
+
+          if (stateCoder != null) {
+            state = stateCoder.decode(dis);
+          } else {
+            state = null;
+          }
+
+          return Pair.of(taskId, new StateOutput(taskId, state));
         }
         default:
           throw new RuntimeException("Unsupported type: " + type);

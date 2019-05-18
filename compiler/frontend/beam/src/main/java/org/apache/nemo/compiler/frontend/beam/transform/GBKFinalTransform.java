@@ -375,10 +375,19 @@ public final class GBKFinalTransform<K, InputT>
   @Override
   public void setState(GBKFinalState<K> state) {
     LOG.info("Set state {} at {}", state, this);
-    inMemoryTimerInternalsFactory = state.timerInternalsFactory;
-    inMemoryStateInternalsFactory = state.stateInternalsFactory;
+
+    if (inMemoryStateInternalsFactory == null) {
+      inMemoryStateInternalsFactory = state.stateInternalsFactory;
+      inMemoryTimerInternalsFactory = state.timerInternalsFactory;
+    } else {
+      inMemoryStateInternalsFactory.setState(state.stateInternalsFactory);
+      inMemoryTimerInternalsFactory.setState(state.timerInternalsFactory);
+    }
+
     inputWatermark = state.inputWatermark;
     prevOutputWatermark = state.prevOutputWatermark;
+
+    keyAndWatermarkHoldMap.clear();
     keyAndWatermarkHoldMap.putAll(state.keyAndWatermarkHoldMap);
   }
 

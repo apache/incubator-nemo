@@ -83,8 +83,27 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
       this.timerInternalsMap = timerInternalsMap;
     }
 
-    @Override
-    public TimerInternals timerInternalsForKey(final K key) {
+  public void setState(final InMemoryTimerInternalsFactory<K> timerInternalsFactory) {
+
+    this.watermarkTimers.clear();
+    this.watermarkTimers.addAll(timerInternalsFactory.watermarkTimers);
+
+    this.processingTimers.clear();
+    this.processingTimers.addAll(timerInternalsFactory.processingTimers);
+
+    this.synchronizedProcessingTimers.clear();
+    this.synchronizedProcessingTimers.addAll(timerInternalsFactory.synchronizedProcessingTimers);
+
+    this.inputWatermarkTime = timerInternalsFactory.inputWatermarkTime;
+    this.processingTime = timerInternalsFactory.processingTime;
+    this.synchronizedProcessingTime = timerInternalsFactory.synchronizedProcessingTime;
+
+    this.timerInternalsMap.clear();
+    this.timerInternalsMap.putAll(timerInternalsFactory.timerInternalsMap);
+  }
+
+  @Override
+  public TimerInternals timerInternalsForKey(final K key) {
       if (timerInternalsMap.get(key) != null) {
         return timerInternalsMap.get(key);
       } else {

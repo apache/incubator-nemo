@@ -23,6 +23,7 @@ import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKPartialTransform;
+import org.apache.nemo.compiler.frontend.beam.transform.StatefulTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.client.StreamingWorkerService;
 import org.apache.nemo.offloading.common.OffloadingSerializer;
@@ -216,6 +217,13 @@ public final class TinyTaskOffloader implements Offloader {
       throw new RuntimeException("Invalid status: " + taskStatus);
     }
 
+    if (output.state != null) {
+      LOG.info("Set state {}", output.state);
+      final OperatorVertex statefulOp = getStateTransformVertex();
+      final StatefulTransform transform = (StatefulTransform) statefulOp.getTransform();
+      transform.setState(output.state);
+    }
+
     // restart input context!
     LOG.info("Restart input context  at {}!!!", output.taskId);
 
@@ -295,6 +303,19 @@ public final class TinyTaskOffloader implements Offloader {
       }
     }
     return true;
+  }
+
+  private OperatorVertex getStateTransformVertex() {
+    for (final IRVertex vertex : irVertexDag.getVertices()) {
+      if (vertex instanceof OperatorVertex) {
+        final Transform transform = ((OperatorVertex) vertex).getTransform();
+        if (transform instanceof GBKFinalTransform) {
+          return (OperatorVertex) vertex;
+        }
+      }
+    }
+
+    throw new RuntimeException("Cannot find stateful transform");
   }
 
   private Pair<GBKFinalState, Coder<GBKFinalState>> getStateAndCoder() {

@@ -19,8 +19,8 @@ public class OffloadingExecutorSerializer implements OffloadingSerializer {
   public OffloadingExecutorSerializer(final Coder<UnboundedSource.CheckpointMark> coder,
                                       final Coder<GBKFinalState> stateCoder) {
     this.inputDecoder = new OffloadingExecutorInputDecoder(coder, stateCoder);
-    this.outputEncoder = new MiddleOffloadingOutputEncoder(coder);
-    this.outputDecoder = new MiddleOffloadingOutputDecoder(coder);
+    this.outputEncoder = new MiddleOffloadingOutputEncoder(coder, stateCoder);
+    this.outputDecoder = new MiddleOffloadingOutputDecoder(coder, stateCoder);
   }
 
   @Override

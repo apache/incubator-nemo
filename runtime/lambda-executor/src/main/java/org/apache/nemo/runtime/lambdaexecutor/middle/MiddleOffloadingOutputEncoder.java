@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.lambdaexecutor.middle;
 
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.offloading.common.OffloadingEncoder;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
@@ -20,9 +21,12 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
   private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloadingOutputEncoder.class.getName());
 
   private final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
+  private final Coder<GBKFinalState> stateCoder;
 
-  public MiddleOffloadingOutputEncoder(final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder) {
+  public MiddleOffloadingOutputEncoder(final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
+                                       final Coder<GBKFinalState> stateCoder) {
     this.checkpointMarkCoder = checkpointMarkCoder;
+    this.stateCoder = stateCoder;
   }
 
   @Override
@@ -56,6 +60,10 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       dos.writeChar(STATE_OUTPUT);
       final StateOutput output = (StateOutput) data;
       dos.writeUTF(output.taskId);
+
+      if (stateCoder != null) {
+        stateCoder.encode(output.state, outputStream);
+      }
     }
   }
 }
