@@ -38,9 +38,10 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
 
     @Override
     public String toString() {
-      return "WatermarkTimers: " + watermarkTimers + "\n"
-      + "ProcessingTimers: " + processingTime + "\n"
-      + "SyncTimers: " + synchronizedProcessingTime + "\n"
+      return "TimerInternalsMap: " + timerInternalsMap + "\n"
+      + "WatermarkTimers: " + watermarkTimers + "\n"
+      + "ProcessingTimers: " + processingTimers + "\n"
+      + "SyncTimers: " + synchronizedProcessingTimers + "\n"
       + "InputWatermarkTime: " + inputWatermarkTime + "\n"
         + "ProcessingTime: " + processingTime +"\n"
         + "SyncProcessingTime: " + synchronizedProcessingTime;
