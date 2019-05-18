@@ -197,6 +197,7 @@ public class NemoTimerInternals<K> implements TimerInternals {
   public String toString() {
     return MoreObjects.toStringHelper(getClass())
       .add("watermarkTimers", watermarkTimers)
+      .add("watermarkTimersHashCode", watermarkTimers.hashCode())
       .add("processingTimers", processingTimers)
       .add("synchronizedProcessingTimers", synchronizedProcessingTimers)
       .add("inputWatermarkTime", inputWatermarkTime)
