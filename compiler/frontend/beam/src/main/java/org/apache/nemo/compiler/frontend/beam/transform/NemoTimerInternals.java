@@ -113,7 +113,7 @@ public class NemoTimerInternals<K> implements TimerInternals {
   @Override
   public void setTimer(
     StateNamespace namespace, String timerId, Instant target, TimeDomain timeDomain) {
-    LOG.info("Setting timer {}/{}, {}/{}", namespace, timerId, target, timeDomain);
+    //LOG.info("Setting timer {}/{}, {}/{}", namespace, timerId, target, timeDomain);
     setTimer(TimerInternals.TimerData.of(timerId, namespace, target, timeDomain));
   }
 
@@ -121,7 +121,7 @@ public class NemoTimerInternals<K> implements TimerInternals {
   @Deprecated
   @Override
   public void setTimer(TimerInternals.TimerData timerData) {
-    LOG.info("Setting timer {}", timerData);
+    //LOG.info("Setting timer {}", timerData);
     WindowTracing.trace("{}.setTimer: {}", getClass().getSimpleName(), timerData);
 
     @Nullable

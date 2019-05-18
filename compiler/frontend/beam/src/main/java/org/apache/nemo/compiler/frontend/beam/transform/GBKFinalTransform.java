@@ -272,8 +272,11 @@ public final class GBKFinalTransform<K, InputT>
     inMemoryTimerInternalsFactory.processingTime = processingTime;
     inMemoryTimerInternalsFactory.synchronizedProcessingTime = synchronizedTime;
 
+    LOG.info("Triggering timers... {}", inMemoryTimerInternalsFactory);
+
     final long st = System.currentTimeMillis();
     final List<Pair<K, TimerInternals.TimerData>> timers = getEligibleTimers();
+
 
 //    LOG.info("{}/{} GetEligibleTimer time: {}", getContext().getIRVertex().getId(),
 //      Thread.currentThread().getId(), (System.currentTimeMillis() - st));
@@ -332,6 +335,7 @@ public final class GBKFinalTransform<K, InputT>
    */
   private List<Pair<K, TimerInternals.TimerData>> getEligibleTimers() {
     final List<Pair<K, TimerInternals.TimerData>> timerData = new LinkedList<>();
+
 
     while (true) {
       Pair<K, TimerInternals.TimerData> timer;
