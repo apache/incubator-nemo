@@ -90,7 +90,7 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
 
   public void setState(final InMemoryTimerInternalsFactory<K> timerInternalsFactory) {
 
-    LOG.info("Set State 111 ... watermarkTimers hashcode!! {}", watermarkTimers.hashCode());
+    LOG.info("Set State 111 ... watermarkTimers hashcode!! {} / {}", watermarkTimers.hashCode(), processingTimers.hashCode());
     this.watermarkTimers.clear();
     LOG.info("Set State 222 ... watermarkTimers hashcode!! {}", watermarkTimers.hashCode());
     this.watermarkTimers.addAll(timerInternalsFactory.watermarkTimers);

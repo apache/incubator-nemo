@@ -272,7 +272,8 @@ public final class GBKFinalTransform<K, InputT>
     inMemoryTimerInternalsFactory.processingTime = processingTime;
     inMemoryTimerInternalsFactory.synchronizedProcessingTime = synchronizedTime;
 
-    LOG.info("Triggering timers... {}", inMemoryTimerInternalsFactory);
+    LOG.info("Triggering timers... {}/{}", inMemoryTimerInternalsFactory.hashCode(),
+      inMemoryTimerInternalsFactory);
 
     final long st = System.currentTimeMillis();
     final List<Pair<K, TimerInternals.TimerData>> timers = getEligibleTimers();
