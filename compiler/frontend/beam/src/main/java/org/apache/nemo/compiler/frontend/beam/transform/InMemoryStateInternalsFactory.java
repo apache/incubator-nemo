@@ -11,8 +11,8 @@ import java.util.Map;
  */
 public final class InMemoryStateInternalsFactory<K> implements StateInternalsFactory<K> {
 
-  public final Map<K, StateInternals> stateInternalMap;
-  public final Map<K, NemoStateBackend> stateBackendMap;
+  public Map<K, StateInternals> stateInternalMap;
+  public Map<K, NemoStateBackend> stateBackendMap;
 
   public InMemoryStateInternalsFactory() {
     this.stateInternalMap = new HashMap<>();
@@ -27,11 +27,17 @@ public final class InMemoryStateInternalsFactory<K> implements StateInternalsFac
   }
 
   public void setState(final InMemoryStateInternalsFactory<K> stateFactorty) {
+
+    /*
     this.stateInternalMap.clear();
     this.stateInternalMap.putAll(stateFactorty.stateInternalMap);
 
     this.stateBackendMap.clear();
     this.stateBackendMap.putAll(stateFactorty.stateBackendMap);
+    */
+
+    this.stateInternalMap = stateFactorty.stateInternalMap;
+    this.stateBackendMap = stateFactorty.stateBackendMap;
   }
 
   @Override

@@ -20,11 +20,11 @@ import java.util.*;
 public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFactory<K> {
 
     /** Pending input watermark timers, in timestamp order. */
-    public final NavigableSet<Pair<K, TimerInternals.TimerData>> watermarkTimers;
+    public NavigableSet<Pair<K, TimerInternals.TimerData>> watermarkTimers;
     /** Pending processing time timers, in timestamp order. */
-    public final NavigableSet<Pair<K, TimerInternals.TimerData>> processingTimers;
+    public NavigableSet<Pair<K, TimerInternals.TimerData>> processingTimers;
     /** Pending synchronized processing time timers, in timestamp order. */
-    public final NavigableSet<Pair<K, TimerInternals.TimerData>> synchronizedProcessingTimers;
+    public NavigableSet<Pair<K, TimerInternals.TimerData>> synchronizedProcessingTimers;
 
     /** Current input watermark. */
     public Instant inputWatermarkTime = BoundedWindow.TIMESTAMP_MIN_VALUE;
@@ -36,7 +36,7 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
     /** Current synchronized processing time. */
     public Instant synchronizedProcessingTime = BoundedWindow.TIMESTAMP_MIN_VALUE;
 
-    public final Map<K, NemoTimerInternals> timerInternalsMap;
+    public Map<K, NemoTimerInternals> timerInternalsMap;
 
     @Override
     public String toString() {
@@ -90,6 +90,7 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
 
   public void setState(final InMemoryTimerInternalsFactory<K> timerInternalsFactory) {
 
+    /*
     LOG.info("Set State 111 ... watermarkTimers hashcode!! {} / {}", watermarkTimers.hashCode(), processingTimers.hashCode());
     this.watermarkTimers.clear();
     LOG.info("Set State 222 ... watermarkTimers hashcode!! {}", watermarkTimers.hashCode());
@@ -101,13 +102,17 @@ public final class InMemoryTimerInternalsFactory<K> implements TimerInternalsFac
 
     this.synchronizedProcessingTimers.clear();
     this.synchronizedProcessingTimers.addAll(timerInternalsFactory.synchronizedProcessingTimers);
+    */
+
+    this.watermarkTimers = timerInternalsFactory.watermarkTimers;
+    this.processingTimers = timerInternalsFactory.processingTimers;
+    this.synchronizedProcessingTimers = timerInternalsFactory.synchronizedProcessingTimers;
 
     this.inputWatermarkTime = timerInternalsFactory.inputWatermarkTime;
     this.processingTime = timerInternalsFactory.processingTime;
     this.synchronizedProcessingTime = timerInternalsFactory.synchronizedProcessingTime;
 
-    this.timerInternalsMap.clear();
-    this.timerInternalsMap.putAll(timerInternalsFactory.timerInternalsMap);
+    this.timerInternalsMap = timerInternalsFactory.timerInternalsMap;
   }
 
   @Override
