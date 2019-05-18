@@ -9,6 +9,8 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowTracing;
 import org.apache.nemo.common.Pair;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -106,9 +108,12 @@ public class NemoTimerInternals<K> implements TimerInternals {
     }
   }
 
+  private static final Logger LOG = LoggerFactory.getLogger(NemoTimerInternals.class.getName());
+
   @Override
   public void setTimer(
     StateNamespace namespace, String timerId, Instant target, TimeDomain timeDomain) {
+    LOG.info("Setting timer {}/{}, {}/{}", namespace, timerId, target, timeDomain);
     setTimer(TimerInternals.TimerData.of(timerId, namespace, target, timeDomain));
   }
 
@@ -116,6 +121,7 @@ public class NemoTimerInternals<K> implements TimerInternals {
   @Deprecated
   @Override
   public void setTimer(TimerInternals.TimerData timerData) {
+    LOG.info("Setting timer {}", timerData);
     WindowTracing.trace("{}.setTimer: {}", getClass().getSimpleName(), timerData);
 
     @Nullable

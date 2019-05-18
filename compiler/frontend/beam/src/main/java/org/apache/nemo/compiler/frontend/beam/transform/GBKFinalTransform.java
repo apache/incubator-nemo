@@ -228,8 +228,8 @@ public final class GBKFinalTransform<K, InputT>
   @Override
   public void onWatermark(final Watermark watermark) {
 
-    //LOG.info("Final watermark receive: {}", new Instant(watermark.getTimestamp()));
-    //LOG.info("Watermark at GBKW: {}", watermark);
+    LOG.info("Final watermark receive: {}", new Instant(watermark.getTimestamp()));
+    LOG.info("Watermark at GBKW: {}", watermark);
     checkAndInvokeBundle();
     inputWatermark = watermark;
 
