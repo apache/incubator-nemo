@@ -110,7 +110,7 @@ public final class OffloadingTask {
       if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
         for (final Map.Entry<String, GBKFinalState> vertexIdAndState : stateMap.entrySet()) {
           LOG.info("Encoding state for {}...", vertexIdAndState.getKey());
-          dos.writeUTF(vertexIdAndState.getKey());
+          //dos.writeUTF(vertexIdAndState.getKey());
           stateCoderMap.get(vertexIdAndState.getKey()).encode(vertexIdAndState.getValue(), bos);
         }
       }
