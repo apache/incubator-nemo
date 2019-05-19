@@ -373,27 +373,7 @@ final class PipelineTranslator {
         TransformInputs.nonAdditionalInputs(beamNode.toAppliedPTransform(ctx.getPipeline())));
       final KvCoder inputCoder = (KvCoder) inputs.getCoder();
 
-      final Combine.CombineFn partialCombineFn  = new PartialCombineFn((Combine.CombineFn) combineFn);
-      final SystemReduceFn partialSystemReduceFn =
-        SystemReduceFn.combining(
-          inputCoder.getKeyCoder(),
-          AppliedCombineFn.withInputCoder(partialCombineFn, ctx.getPipeline().getCoderRegistry(), inputCoder));
 
-      // (stage 1) partial combine
-      final GBKPartialTransform gbkPartial =
-        new GBKPartialTransform<>(
-        getOutputCoders(pTransform),
-        mainOutputTag,
-        mainInput.getWindowingStrategy(),
-        ctx.getPipelineOptions(),
-          partialSystemReduceFn,
-        DisplayData.from(beamNode.getTransform()));
-
-      final IRVertex partialCombine = new OperatorVertex(gbkPartial);
-      ctx.addVertex(partialCombine);
-      beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
-
-      // (Stage 2) final combine
       final Coder accumCoder;
       try {
         accumCoder = combineFn.getAccumulatorCoder(ctx.getPipeline().getCoderRegistry(), inputCoder.getValueCoder());
@@ -401,6 +381,30 @@ final class PipelineTranslator {
         e.printStackTrace();
         throw new RuntimeException(e);
       }
+
+      final Combine.CombineFn partialCombineFn  = new PartialCombineFn((Combine.CombineFn) combineFn, accumCoder);
+      final SystemReduceFn partialSystemReduceFn =
+        SystemReduceFn.combining(
+          inputCoder.getKeyCoder(),
+          AppliedCombineFn.withInputCoder(partialCombineFn, ctx.getPipeline().getCoderRegistry(), inputCoder));
+
+      // (stage 1) partial combine
+      final GBKPartialTransform gbkPartial =
+        new GBKPartialTransform(
+          inputCoder.getKeyCoder(),
+          getOutputCoders(pTransform),
+          mainOutputTag,
+          mainInput.getWindowingStrategy(),
+          ctx.getPipelineOptions(),
+          partialSystemReduceFn,
+          DisplayData.from(beamNode.getTransform()));
+
+      final IRVertex partialCombine = new OperatorVertex(gbkPartial);
+      ctx.addVertex(partialCombine);
+      beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(partialCombine, input));
+
+      // (Stage 2) final combine
+
 
       LOG.info("Accum coder: {}", accumCoder);
 

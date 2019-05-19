@@ -12,9 +12,12 @@ import java.util.Arrays;
 public final class PartialCombineFn<InputT, AccumT> extends Combine.CombineFn<InputT, AccumT, AccumT> {
   private static final Logger LOG = LoggerFactory.getLogger(PartialCombineFn.class.getName());
   private final Combine.CombineFn<InputT, AccumT, ?> originFn;
+  private final Coder<AccumT> accumCoder;
 
-  public PartialCombineFn(Combine.CombineFn<InputT, AccumT, ?> originFn) {
+  public PartialCombineFn(Combine.CombineFn<InputT, AccumT, ?> originFn,
+                          final Coder<AccumT> accumCoder) {
     this.originFn = originFn;
+    this.accumCoder = accumCoder;
   }
 
   @Override
@@ -42,6 +45,7 @@ public final class PartialCombineFn<InputT, AccumT> extends Combine.CombineFn<In
 
   @Override
   public Coder<AccumT> getAccumulatorCoder(CoderRegistry registry, Coder<InputT> inputCoder) throws CannotProvideCoderException {
-    return originFn.getAccumulatorCoder(registry, inputCoder);
+    return accumCoder;
+    //return originFn.getAccumulatorCoder(registry, inputCoder);
   }
 }
