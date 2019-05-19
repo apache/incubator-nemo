@@ -277,9 +277,10 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       if (irVertex instanceof OperatorVertex) {
         transform = ((OperatorVertex) irVertex).getTransform();
         if (transform instanceof StatefulTransform) {
-          LOG.info("Set state for {}, state: {}", transform, offloadingTask.state);
+          final GBKFinalState state = offloadingTask.stateMap.get(irVertex.getId());
+          LOG.info("Set state for operator {}", irVertex.getId());
           final StatefulTransform statefulTransform = (StatefulTransform) transform;
-          statefulTransform.setState(offloadingTask.state);
+          statefulTransform.setState(state);
         }
         transform.prepare(new OffloadingTransformContextImpl(irVertex), outputCollector);
       }
@@ -423,18 +424,22 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     finished = true;
   }
 
-  private Pair<GBKFinalState, Coder<GBKFinalState>> getStateAndCoder() {
+
+  private Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>> getStateAndCoderMap() {
+    final Map<String, GBKFinalState> stateMap = new HashMap<>();
+    final Map<String, Coder<GBKFinalState>> coderMap = new HashMap<>();
     for (final IRVertex vertex : offloadingTask.irDag.getVertices()) {
       if (vertex instanceof OperatorVertex) {
         final Transform transform = ((OperatorVertex) vertex).getTransform();
-        if (transform instanceof GBKFinalTransform) {
-          final GBKFinalTransform finalTransform = (GBKFinalTransform) transform;
-          return Pair.of(finalTransform.getState(), finalTransform.getStateCoder());
+        if (transform instanceof StatefulTransform) {
+          final StatefulTransform finalTransform = (StatefulTransform) transform;
+          stateMap.put(vertex.getId(), (GBKFinalState) finalTransform.getState());
+          coderMap.put(vertex.getId(), finalTransform.getStateCoder());
         }
       }
     }
 
-    return null;
+    return Pair.of(stateMap, coderMap);
   }
 
   @Override
@@ -442,14 +447,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     if (!pendingFutures.isEmpty()) {
       // send states to vm !!
       LOG.info("Send  stateoutput for task {}", offloadingTask.taskId);
-      final Pair<GBKFinalState, Coder<GBKFinalState>> stateAndCoder = getStateAndCoder();
+      final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
+        stateAndCoderMap = getStateAndCoderMap();
 
-      if (stateAndCoder != null) {
-        LOG.info("Send state {}", stateAndCoder.left());
-        resultCollector.collector.emit(new StateOutput(offloadingTask.taskId, stateAndCoder.left()));
-      } else {
-        resultCollector.collector.emit(new StateOutput(offloadingTask.taskId, null));
-      }
+      final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
+      resultCollector.collector.emit(new StateOutput(offloadingTask.taskId, stateMap));
     }
 
     pendingFutures.clear();

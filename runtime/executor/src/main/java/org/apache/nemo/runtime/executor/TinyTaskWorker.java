@@ -17,6 +17,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class TinyTaskWorker {
@@ -28,15 +29,15 @@ public final class TinyTaskWorker {
   private final List<OffloadingTask> pendingTasks = new LinkedList<>();
   private final OffloadingWorker offloadingWorker;
   private final Coder<UnboundedSource.CheckpointMark> coder;
-  private final Coder<GBKFinalState> stateCoder;
+  private final Map<String, Coder<GBKFinalState>> stateCoderMap;
   private final AtomicInteger deletePending = new AtomicInteger(0);
 
   public TinyTaskWorker(final OffloadingWorker offloadingWorker,
                         final Coder<UnboundedSource.CheckpointMark> coder,
-                        final Coder<GBKFinalState> stateCoder) {
+                        final Map<String, Coder<GBKFinalState>> stateCoderMap) {
     this.offloadingWorker = offloadingWorker;
     this.coder = coder;
-    this.stateCoder = stateCoder;
+    this.stateCoderMap = stateCoderMap;
   }
 
   public synchronized void addTask(final OffloadingTask task) {
@@ -131,7 +132,7 @@ public final class TinyTaskWorker {
     LOG.info("Execute pending222 !!");
 
     for (final OffloadingTask pending : pendingTasks) {
-      offloadingWorker.execute(pending.encode(coder, stateCoder), 1, false);
+      offloadingWorker.execute(pending.encode(coder, stateCoderMap), 1, false);
     }
 
     LOG.info("Execute pending333 !!");

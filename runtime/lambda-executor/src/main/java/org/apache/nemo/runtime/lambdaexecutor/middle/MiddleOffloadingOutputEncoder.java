@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Map;
 
 import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutputEncoder.*;
 
@@ -21,12 +22,12 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
   private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloadingOutputEncoder.class.getName());
 
   private final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
-  private final Coder<GBKFinalState> stateCoder;
+  private final Map<String, Coder<GBKFinalState>> stateCoderMap;
 
   public MiddleOffloadingOutputEncoder(final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
-                                       final Coder<GBKFinalState> stateCoder) {
+                                       final Map<String, Coder<GBKFinalState>> stateCoderMap) {
     this.checkpointMarkCoder = checkpointMarkCoder;
-    this.stateCoder = stateCoder;
+    this.stateCoderMap = stateCoderMap;
   }
 
   @Override
@@ -61,8 +62,11 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       final StateOutput output = (StateOutput) data;
       dos.writeUTF(output.taskId);
 
-      if (stateCoder != null) {
-        stateCoder.encode(output.state, outputStream);
+      if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
+        for (final Map.Entry<String, GBKFinalState> entry : output.stateMap.entrySet()) {
+          final Coder<GBKFinalState> stateCoder = stateCoderMap.get(entry.getKey());
+          stateCoder.encode(entry.getValue(), outputStream);
+        }
       }
     }
   }

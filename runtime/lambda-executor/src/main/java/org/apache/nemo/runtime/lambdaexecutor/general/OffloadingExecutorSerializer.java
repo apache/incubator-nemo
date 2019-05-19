@@ -10,6 +10,8 @@ import org.apache.nemo.offloading.common.OffloadingSerializer;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingOutputDecoder;
 import org.apache.nemo.runtime.lambdaexecutor.middle.MiddleOffloadingOutputEncoder;
 
+import java.util.Map;
+
 public class OffloadingExecutorSerializer implements OffloadingSerializer {
 
   private final OffloadingDecoder inputDecoder;
@@ -17,10 +19,10 @@ public class OffloadingExecutorSerializer implements OffloadingSerializer {
   private final OffloadingDecoder outputDecoder;
 
   public OffloadingExecutorSerializer(final Coder<UnboundedSource.CheckpointMark> coder,
-                                      final Coder<GBKFinalState> stateCoder) {
-    this.inputDecoder = new OffloadingExecutorInputDecoder(coder, stateCoder);
-    this.outputEncoder = new MiddleOffloadingOutputEncoder(coder, stateCoder);
-    this.outputDecoder = new MiddleOffloadingOutputDecoder(coder, stateCoder);
+                                      final Map<String, Coder<GBKFinalState>> coderMap) {
+    this.inputDecoder = new OffloadingExecutorInputDecoder(coder, coderMap);
+    this.outputEncoder = new MiddleOffloadingOutputEncoder(coder, coderMap);
+    this.outputDecoder = new MiddleOffloadingOutputDecoder(coder, coderMap);
   }
 
   @Override

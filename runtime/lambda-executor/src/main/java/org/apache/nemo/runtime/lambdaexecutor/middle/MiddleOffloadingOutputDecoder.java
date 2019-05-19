@@ -16,6 +16,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,12 +26,12 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
   private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloadingOutputDecoder.class.getName());
 
   private final Coder<UnboundedSource.CheckpointMark> coder;
-  private final Coder<GBKFinalState> stateCoder;
+  private final Map<String, Coder<GBKFinalState>> stateCoderMap;
 
   public MiddleOffloadingOutputDecoder(final Coder<UnboundedSource.CheckpointMark> coder,
-                                       final Coder<GBKFinalState> stateCoder) {
+                                       final Map<String, Coder<GBKFinalState>> stateCoderMap) {
     this.coder = coder;
-    this.stateCoder = stateCoder;
+    this.stateCoderMap = stateCoderMap;
   }
 
     @Override
@@ -65,15 +66,16 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
         }
         case STATE_OUTPUT: {
           final String  taskId = dis.readUTF();
-          final GBKFinalState state;
+          final Map<String, GBKFinalState> stateMap = new HashMap<>();
 
-          if (stateCoder != null) {
-            state = stateCoder.decode(dis);
-          } else {
-            state = null;
+          if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
+            for (final String key : stateCoderMap.keySet()) {
+              final GBKFinalState state = stateCoderMap.get(key).decode(dis);
+              stateMap.put(key, state);
+            }
           }
 
-          return Pair.of(taskId, new StateOutput(taskId, state));
+          return Pair.of(taskId, new StateOutput(taskId, stateMap));
         }
         default:
           throw new RuntimeException("Unsupported type: " + type);

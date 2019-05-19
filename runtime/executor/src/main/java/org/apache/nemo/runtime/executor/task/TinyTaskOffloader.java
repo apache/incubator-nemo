@@ -217,11 +217,13 @@ public final class TinyTaskOffloader implements Offloader {
       throw new RuntimeException("Invalid status: " + taskStatus);
     }
 
-    if (output.state != null) {
-      LOG.info("Set state {}", output.state);
-      final OperatorVertex statefulOp = getStateTransformVertex();
-      final StatefulTransform transform = (StatefulTransform) statefulOp.getTransform();
-      transform.setState(output.state);
+    if (output.stateMap != null) {
+      for (final String key : output.stateMap.keySet()) {
+        LOG.info("Set state for operator {}", key);
+        final OperatorVertex statefulOp = getStateTransformVertex(key);
+        final StatefulTransform transform = (StatefulTransform) statefulOp.getTransform();
+        transform.setState(output.stateMap.get(key));
+      }
     }
 
     // restart input context!
@@ -305,31 +307,31 @@ public final class TinyTaskOffloader implements Offloader {
     return true;
   }
 
-  private OperatorVertex getStateTransformVertex() {
+  private OperatorVertex getStateTransformVertex(final String opId) {
     for (final IRVertex vertex : irVertexDag.getVertices()) {
-      if (vertex instanceof OperatorVertex) {
-        final Transform transform = ((OperatorVertex) vertex).getTransform();
-        if (transform instanceof GBKFinalTransform) {
-          return (OperatorVertex) vertex;
-        }
+      if (vertex.getId().equals(opId)) {
+        return (OperatorVertex) vertex;
       }
     }
 
     throw new RuntimeException("Cannot find stateful transform");
   }
 
-  private Pair<GBKFinalState, Coder<GBKFinalState>> getStateAndCoder() {
+  private Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>> getStateAndCoderMap() {
+    final Map<String, GBKFinalState> stateMap = new HashMap<>();
+        final Map<String, Coder<GBKFinalState>> coderMap = new HashMap<>();
     for (final IRVertex vertex : irVertexDag.getVertices()) {
       if (vertex instanceof OperatorVertex) {
         final Transform transform = ((OperatorVertex) vertex).getTransform();
-        if (transform instanceof GBKFinalTransform) {
-          final GBKFinalTransform finalTransform = (GBKFinalTransform) transform;
-          return Pair.of(finalTransform.getState(), finalTransform.getStateCoder());
+        if (transform instanceof StatefulTransform) {
+          final StatefulTransform finalTransform = (StatefulTransform) transform;
+          stateMap.put(vertex.getId(), (GBKFinalState) finalTransform.getState());
+          coderMap.put(vertex.getId(), finalTransform.getStateCoder());
         }
       }
     }
 
-    return null;
+    return Pair.of(stateMap, coderMap);
   }
 
   @Override
@@ -374,18 +376,12 @@ public final class TinyTaskOffloader implements Offloader {
     // Sink stop!!
     // Sink stop!!
     final OffloadingTask offloadingTask;
-    final Pair<GBKFinalState, Coder<GBKFinalState>> stateAndCoder = getStateAndCoder();
-    final GBKFinalState state;
-    final Coder<GBKFinalState> stateCoder;
-    if (stateAndCoder == null) {
-      state = null;
-      stateCoder = null;
-    } else {
-      state = stateAndCoder.left();
-      stateCoder = stateAndCoder.right();
-    }
+    final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
+      stateAndCoderMap = getStateAndCoderMap();
 
-    LOG.info("Sending state {} in stage {}", state, taskId);
+    final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
+    final Map<String, Coder<GBKFinalState>> coderMap = stateAndCoderMap.right();
+
 
     if (sourceVertexDataFetcher != null) {
       final UnboundedSourceReadable readable = (UnboundedSourceReadable) sourceVertexDataFetcher.getReadable();
@@ -409,11 +405,11 @@ public final class TinyTaskOffloader implements Offloader {
         copyIncomingEdges,
         checkpointMark,
         unboundedSource,
-        state);
+        stateMap);
 
-      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(checkpointMarkCoder, stateCoder);
+      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(checkpointMarkCoder, coderMap);
 
-      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, checkpointMarkCoder, stateCoder);
+      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, checkpointMarkCoder, coderMap);
     } else {
       offloadingTask = new OffloadingTask(
         executorId,
@@ -426,11 +422,11 @@ public final class TinyTaskOffloader implements Offloader {
         copyIncomingEdges,
         null,
         null,
-        state);
+        stateMap);
 
 
-      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(null, stateCoder);
-      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, null, stateCoder);
+      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(null, coderMap);
+      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, null, coderMap);
     }
 
     prevOffloadStartTime.set(System.currentTimeMillis());

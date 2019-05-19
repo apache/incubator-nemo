@@ -15,18 +15,19 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.Map;
 
 public final class OffloadingExecutorInputDecoder implements OffloadingDecoder<Object> {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingExecutorInputDecoder.class.getName());
 
   private final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
-  private final Coder<GBKFinalState> stateCoder;
+  private final Map<String, Coder<GBKFinalState>> stateCoderMap;
 
   public OffloadingExecutorInputDecoder(
     final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
-    final Coder<GBKFinalState> stateCoder) {
+    final Map<String, Coder<GBKFinalState>> stateCoderMap) {
     this.checkpointMarkCoder = checkpointMarkCoder;
-    this.stateCoder = stateCoder;
+    this.stateCoderMap = stateCoderMap;
   }
 
   @Override
@@ -45,7 +46,7 @@ public final class OffloadingExecutorInputDecoder implements OffloadingDecoder<O
 
     switch (et) {
       case TASK_START: {
-        return OffloadingTask.decode(inputStream, checkpointMarkCoder, stateCoder);
+        return OffloadingTask.decode(inputStream, checkpointMarkCoder, stateCoderMap);
       }
       case TASK_END: {
         final String taskId = dis.readUTF();

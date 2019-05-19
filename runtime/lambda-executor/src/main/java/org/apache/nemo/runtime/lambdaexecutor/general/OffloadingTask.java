@@ -12,8 +12,6 @@ import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
-import org.apache.nemo.compiler.frontend.beam.transform.coders.GBKFinalStateCoder;
-import org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +38,7 @@ public final class OffloadingTask {
   public String taskId;
   public final UnboundedSource.CheckpointMark checkpointMark;
   public final UnboundedSource unboundedSource;
-  public final GBKFinalState state;
+  public final Map<String, GBKFinalState> stateMap;
 
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTask(final String executorId,
@@ -53,7 +51,7 @@ public final class OffloadingTask {
                         final List<StageEdge> incomingEdges,
                         final UnboundedSource.CheckpointMark checkpointMark,
                         final UnboundedSource unboundedSource,
-                        final GBKFinalState state) {
+                        final Map<String, GBKFinalState>  stateMap) {
     this.executorId = executorId;
     this.taskId = taskId;
     this.taskIndex = taskIndex;
@@ -64,11 +62,11 @@ public final class OffloadingTask {
     this.incomingEdges = incomingEdges;
     this.checkpointMark = checkpointMark;
     this.unboundedSource = unboundedSource;
-    this.state = state;
+    this.stateMap = stateMap;
   }
 
   public ByteBuf encode(final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
-                        final Coder<GBKFinalState> stateCoder) {
+                        final Map<String, Coder<GBKFinalState>> stateCoderMap) {
     try {
 
       //final ByteArrayOutputStream bos = new ByteArrayOutputStream(172476);
@@ -109,9 +107,12 @@ public final class OffloadingTask {
         dos.writeBoolean(false);
       }
 
-      if (stateCoder != null) {
-        LOG.info("Encoding state...");
-        stateCoder.encode(state, bos);
+      if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
+        for (final Map.Entry<String, GBKFinalState> vertexIdAndState : stateMap.entrySet()) {
+          LOG.info("Encoding state for {}...", vertexIdAndState.getKey());
+          dos.writeUTF(vertexIdAndState.getKey());
+          stateCoderMap.get(vertexIdAndState.getKey()).encode(vertexIdAndState.getValue(), bos);
+        }
       }
 
       dos.close();
@@ -139,7 +140,7 @@ public final class OffloadingTask {
   public static OffloadingTask decode(
     final InputStream inputStream,
     final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
-    final Coder<GBKFinalState> stateCoder) {
+    final Map<String, Coder<GBKFinalState>> stateCoderMap) {
 
     try {
 
@@ -170,14 +171,14 @@ public final class OffloadingTask {
         unboundedSource = null;
       }
 
-      final GBKFinalState state;
-      if (stateCoder != null) {
-        state = stateCoder.decode(inputStream);
-      } else {
-        state = null;
+      final Map<String, GBKFinalState> stateMap = new HashMap<>();
+      if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
+        for (final String key : stateCoderMap.keySet()) {
+          LOG.info("Decoding state key {}", key);
+          final GBKFinalState state = stateCoderMap.get(key).decode(inputStream);
+          stateMap.put(key, state);
+        }
       }
-
-      LOG.info("Decoded state: {}", state);
 
       return new OffloadingTask(executorId,
         taskId,
@@ -189,7 +190,7 @@ public final class OffloadingTask {
         incomingEdges,
         checkpointMark,
         unboundedSource,
-        state);
+        stateMap);
 
     } catch (IOException | ClassNotFoundException e) {
       e.printStackTrace();

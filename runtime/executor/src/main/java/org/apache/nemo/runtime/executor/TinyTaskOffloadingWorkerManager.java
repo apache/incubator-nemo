@@ -24,6 +24,7 @@ import java.io.ObjectOutputStream;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -165,7 +166,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
                                     final TaskExecutor taskExecutor,
                                     final OffloadingSerializer<I, O> offloadingSerializer,
                                     final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
-                                    final Coder<GBKFinalState> stateCoder) {
+                                    final Map<String, Coder<GBKFinalState>> stateCoderMap) {
 
     //eventHandlerMap.put(offloadingTask.taskId, taskResultHandler);
     offloadedTaskMap.put(offloadingTask.taskId, taskExecutor);
@@ -173,7 +174,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     // find worker
     if (workers.size() == 0) {
       workers.add(Pair.of(System.currentTimeMillis(), new TinyTaskWorker(
-        createNewWorker(offloadingSerializer), checkpointMarkCoder, stateCoder)));
+        createNewWorker(offloadingSerializer), checkpointMarkCoder, stateCoderMap)));
     }
 
     final int index = workers.size() - 1;
@@ -181,7 +182,7 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
 
     if (!worker.canHandleTask()) {
       final TinyTaskWorker newWorker =  new TinyTaskWorker(
-        createNewWorker(offloadingSerializer), checkpointMarkCoder, stateCoder);
+        createNewWorker(offloadingSerializer), checkpointMarkCoder, stateCoderMap);
 
       workers.add(Pair.of(System.currentTimeMillis(), newWorker));
 
