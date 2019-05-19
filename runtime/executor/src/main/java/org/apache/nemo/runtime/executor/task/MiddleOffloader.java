@@ -379,6 +379,7 @@ public final class MiddleOffloader implements Offloader {
         throw new RuntimeException("Invalid task status: " + taskStatus);
       } else {
         // we should emit end message
+        /*
         irVertexDag.getTopologicalSort().stream().forEach(irVertex -> {
           if (irVertex instanceof OperatorVertex) {
             final Transform transform = ((OperatorVertex) irVertex).getTransform();
@@ -395,6 +396,7 @@ public final class MiddleOffloader implements Offloader {
             }
           }
         });
+        */
         LOG.info("Close current output contexts");
 
         outputWriters.forEach(writer -> {

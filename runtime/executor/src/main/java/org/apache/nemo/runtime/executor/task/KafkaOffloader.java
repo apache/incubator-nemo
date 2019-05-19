@@ -529,6 +529,8 @@ public final class KafkaOffloader implements Offloader {
       if (!taskStatus.compareAndSet(TaskExecutor.Status.OFFLOAD_PENDING, TaskExecutor.Status.OFFLOADED)) {
         throw new RuntimeException("Invalid task status: " + taskStatus);
       } else {
+
+        /*
         // we should emit end message
         irVertexDag.getTopologicalSort().stream().forEach(irVertex -> {
           if (irVertex instanceof OperatorVertex) {
@@ -546,6 +548,7 @@ public final class KafkaOffloader implements Offloader {
             }
           }
         });
+        */
         LOG.info("Close current output contexts");
 
         outputWriters.forEach(writer -> {

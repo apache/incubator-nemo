@@ -45,10 +45,6 @@ public final class FlattenTransform<T> implements Transform<T, T> {
     outputCollector.emit(element);
   }
 
-  @Override
-  public void flush() {
-
-  }
 
   @Override
   public void onWatermark(final Watermark watermark) {

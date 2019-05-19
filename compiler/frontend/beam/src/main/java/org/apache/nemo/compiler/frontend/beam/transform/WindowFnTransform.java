@@ -99,11 +99,6 @@ public final class WindowFnTransform<T, W extends BoundedWindow>
   }
 
   @Override
-  public void flush() {
-
-  }
-
-  @Override
   public void onWatermark(final Watermark watermark) {
     outputCollector.emitWatermark(watermark);
   }

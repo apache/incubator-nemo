@@ -350,23 +350,6 @@ public final class TinyTaskOffloader implements Offloader {
     // Sink stop!!
     // Sink stop!!
 
-    irVertexDag.getTopologicalSort().stream().forEach(irVertex -> {
-      if (irVertex instanceof OperatorVertex) {
-        final Transform transform = ((OperatorVertex) irVertex).getTransform();
-        if (transform instanceof GBKPartialTransform) {
-          final OutputCollector outputCollector = taskExecutor.getVertexOutputCollector(irVertex.getId());
-          final byte[] snapshot = SerializationUtils.serialize(transform);
-          transform.flush();
-          final Transform des = SerializationUtils.deserialize(snapshot);
-          des.prepare(
-            new TransformContextImpl(null, null, null), outputCollector);
-          ((OperatorVertex)irVertex).setTransform(des);
-        } else {
-          transform.flush();
-        }
-      }
-    });
-
     LOG.info("Close current output contexts");
     outputWriters.forEach(writer -> {
       LOG.info("Stopping writer {}", writer);
