@@ -146,12 +146,12 @@ public final class GBKPartialTransform<K, InputT>
   @Override
   public void onData(final WindowedValue<KV<K, InputT>> element) {
     dataReceived = true;
-    LOG.info("Final input receive: {}, timestamp: {}, inputWatermark: {}", element,
-      element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
+    //LOG.info("Final input receive: {}, timestamp: {}, inputWatermark: {}", element,
+    //  element.getTimestamp(), new Instant(inputWatermark.getTimestamp()));
 
     // drop late data
     if (element.getTimestamp().isAfter(inputWatermark.getTimestamp())) {
-      LOG.info("Final input process: {}", element);
+      //LOG.info("Final input process: {}", element);
 
       //LOG.info("Final input!!: {}", element);
       // We can call Beam's DoFnRunner#processElement here,
@@ -229,8 +229,8 @@ public final class GBKPartialTransform<K, InputT>
   @Override
   public void onWatermark(final Watermark watermark) {
 
-    LOG.info("Final watermark receive: {}", new Instant(watermark.getTimestamp()));
-    LOG.info("Watermark at GBKW: {}", watermark);
+    //LOG.info("Final watermark receive: {}", new Instant(watermark.getTimestamp()));
+    //LOG.info("Watermark at GBKW: {}", watermark);
     checkAndInvokeBundle();
     inputWatermark = watermark;
 
@@ -273,7 +273,7 @@ public final class GBKPartialTransform<K, InputT>
     inMemoryTimerInternalsFactory.processingTime = processingTime;
     inMemoryTimerInternalsFactory.synchronizedProcessingTime = synchronizedTime;
 
-    LOG.info("Triggering timers... {}/{}", inMemoryTimerInternalsFactory.hashCode(),
+    LOG.info("Triggering partial timers... {}/{}", inMemoryTimerInternalsFactory.hashCode(),
       inMemoryTimerInternalsFactory);
 
     final long st = System.currentTimeMillis();
