@@ -316,8 +316,6 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
             vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
             //LOG.info("Closing vm channel {}", message);
             //vmScalingClientTransport.disconnect(remoteAddress, Constants.VM_WORKER_PORT);
-          } else {
-            throw new RuntimeException("SCALE_SF is not supported in VM");
           }
 
           pendingByteBufs.add(byteBuf);
