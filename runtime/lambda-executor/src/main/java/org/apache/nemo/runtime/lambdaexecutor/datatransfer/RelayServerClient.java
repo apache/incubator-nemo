@@ -86,7 +86,7 @@ public final class RelayServerClient {
                             final int taskIndex,
                             final boolean src) {
     // todo
-    LOG.info("Registering task {}/{}/{} to {}", edgeId, taskIndex, src);
+    LOG.info("Registering task {}/{}/{} to {}", edgeId, taskIndex, src, relayServerChannel);
     final RelayControlMessage message = new RelayControlMessage(
       edgeId, taskIndex, src, RelayControlMessage.Type.REGISTER);
     relayServerChannel.writeAndFlush(message);

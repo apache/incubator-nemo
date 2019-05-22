@@ -37,6 +37,8 @@ public final class RelayControlMessageEncoder extends MessageToMessageEncoder<Re
       throw new RuntimeException(e);
     }
 
+    out.add(header);
+
     // DO sth
     throw new RuntimeException("Not implemented yet");
 
