@@ -24,6 +24,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,7 +108,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
       contextId -> new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor, this,
         ackScheduledService.ackService),
-      executorId, isPipe);
+      executorId, isPipe, null);
   }
 
   @Override
@@ -233,7 +234,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                                                final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
                                                final Function<ByteTransferContext.ContextId, T> contextGenerator,
                                                final String executorId,
-                                               final boolean isPipe) {
+                                               final boolean isPipe,
+                                               final String relayDst) {
     setRemoteExecutorId(executorId);
     LOG.info("Output context: srcExecutor: {}, remoteExecutor: {}, transferIndex: {}",
       localExecutorId, executorId, transferIndex);
@@ -252,7 +254,11 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         context.getContextDescriptor(),
         context.getContextId().isPipe());
 
-    channel.writeAndFlush(message).addListener(context.getChannelWriteListener());
+    if (isRelayServerChannel) {
+      channel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(context.getChannelWriteListener());
+    } else {
+      channel.writeAndFlush(message).addListener(context.getChannelWriteListener());
+    }
     return context;
   }
 
@@ -273,12 +279,12 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       return newContext(outputContexts, transferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
         contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, relayDst),
-        executorId, isPipe);
+        executorId, isPipe, relayDst);
     } else {
       return newContext(outputContexts, transferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
         contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, null),
-        executorId, isPipe);
+        executorId, isPipe, null);
     }
   }
 
