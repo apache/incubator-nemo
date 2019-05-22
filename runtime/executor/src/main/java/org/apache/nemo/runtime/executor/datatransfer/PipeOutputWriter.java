@@ -354,7 +354,9 @@ public final class PipeOutputWriter implements OutputWriter {
     } else if (comm.equals(CommunicationPatternProperty.Value.BroadCast)) {
       return pipes;
     } else {
-      return Collections.singletonList(pipes.get((int) partitioner.partition(element.value)));
+      final int partitionKey = (int) partitioner.partition(element.value);
+      LOG.info("Partition key {} in {} for {}", partitionKey, runtimeEdge.getId(), element);
+      return Collections.singletonList(pipes.get(partitionKey));
     }
   }
 }
