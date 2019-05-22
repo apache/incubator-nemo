@@ -111,10 +111,13 @@ public final class RelayServerClient {
       }
     }
 
+    LOG.info("Getting relay server channel!!");
+
     final Channel channel = channelFuture.channel();
     registerTask(channel, descriptor.getRuntimeEdgeId(), (int) descriptor.getSrcTaskIndex(), false);
 
     final ContextManager manager = channel.pipeline().get(ContextManager.class);
+    LOG.info("Getting context manager!!!");
     completableFuture.complete(manager.newOutputContext(executorId, descriptor, true));
     return completableFuture;
   }
