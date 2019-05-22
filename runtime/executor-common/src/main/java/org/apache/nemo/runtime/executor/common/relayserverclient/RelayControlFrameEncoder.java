@@ -28,7 +28,7 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
   @Override
   protected void encode(final ChannelHandlerContext ctx, final RelayControlFrame in, final List out) {
     // encode header
-    LOG.info("Encoding relayDataFrame");
+    LOG.info("Encoding relayControlFrame: {}", in.controlMsg);
 
 
     final String id = in.dstId;
