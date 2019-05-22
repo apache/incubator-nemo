@@ -5,11 +5,15 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
+import org.apache.nemo.runtime.executor.common.datatransfer.RemoteByteOutputContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
 
 public final class RelayDataFrameEncoder extends MessageToMessageEncoder<RelayDataFrame> {
+  private static final Logger LOG = LoggerFactory.getLogger(RelayDataFrameEncoder.class.getName());
 
   private static final int TRANSFER_INDEX_LENGTH = Integer.BYTES;
   private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
@@ -39,6 +43,8 @@ public final class RelayDataFrameEncoder extends MessageToMessageEncoder<RelayDa
       e.printStackTrace();
       throw new RuntimeException(e);
     }
+
+    LOG.info("Encoding relayDataFrame");
 
     out.add(header);
     dataFrameEncoder.encode(ctx, in.dataFrame, out);

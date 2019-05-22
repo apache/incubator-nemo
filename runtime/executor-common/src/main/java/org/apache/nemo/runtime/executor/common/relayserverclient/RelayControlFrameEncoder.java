@@ -6,12 +6,15 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.ControlFrameEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
 
 public final class RelayControlFrameEncoder extends MessageToMessageEncoder<RelayControlFrame> {
 
+  private static final Logger LOG = LoggerFactory.getLogger(RelayControlFrameEncoder.class.getName());
 
 
   public static final int ZEROS_LENGTH = 5;
@@ -25,6 +28,7 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
   @Override
   protected void encode(final ChannelHandlerContext ctx, final RelayControlFrame in, final List out) {
     // encode header
+    LOG.info("Encoding relayDataFrame");
 
 
     final String id = in.dstId;
