@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -228,6 +229,8 @@ public final class PipeOutputWriter implements OutputWriter {
   public void stop() {
     // send stop message!
 
+    final CountDownLatch count = new CountDownLatch(pipes.size());
+
     for (final ByteOutputContext byteOutputContext : pipes) {
       final ByteTransferContextSetupMessage pendingMsg =
         new ByteTransferContextSetupMessage(
@@ -243,11 +246,18 @@ public final class PipeOutputWriter implements OutputWriter {
       LOG.info("Send message {}", pendingMsg);
 
       byteOutputContext.sendMessage(pendingMsg, (m) -> {
-
-        LOG.info("receive ack!!");
+        LOG.info("receive ack from downstream!!");
+        count.countDown();
       });
     }
 
+    try {
+      LOG.info("Waiting for ack...");
+      count.await();
+      LOG.info("End of Waiting for ack...");
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
 
     // DO nothing
 

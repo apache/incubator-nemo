@@ -74,6 +74,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
 
   private final TaskLocationMap taskLocationMap;
 
+  private final ExecutorService channelExecutorService;
   /**
    * Creates context manager for this channel.
    * @param pipeManagerWorker   provides handler for new contexts by remote executors
@@ -83,7 +84,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
    * @param localExecutorId     local executor id
    * @param channel             the {@link Channel} to manage
    */
-  DefaultContextManagerImpl(final PipeManagerWorker pipeManagerWorker,
+  DefaultContextManagerImpl(final ExecutorService channelExecutorService,
+                            final PipeManagerWorker pipeManagerWorker,
                             final BlockManagerWorker blockManagerWorker,
                             final ByteTransfer byteTransfer,
                             final ChannelGroup channelGroup,
@@ -99,6 +101,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
                             final AtomicInteger nextInputTransferIndex,
                             final AtomicInteger nextOutputTransferIndex,
                             final TaskLocationMap taskLocationMap) {
+    this.channelExecutorService = channelExecutorService;
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
@@ -208,6 +211,17 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
         LOG.info("Scaling out input context {} to SF", Pair.of(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex()));
         taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), SF);
+        channelExecutorService.execute(() -> {
+          LOG.info("Sending ack to the input context");
+          final ByteTransferContextSetupMessage ackMessage =
+            new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
+              contextId.getTransferIndex(),
+              contextId.getDataDirection(),
+              contextDescriptor,
+              contextId.isPipe(),
+              ByteTransferContextSetupMessage.MessageType.ACK_PENDING);
+          channel.writeAndFlush(ackMessage);
+        });
         break;
       }
       case STOP_INPUT_FOR_SCALEIN: {

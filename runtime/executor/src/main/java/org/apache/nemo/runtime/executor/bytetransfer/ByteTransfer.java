@@ -99,7 +99,7 @@ public final class ByteTransfer {
    * @return a {@link ByteOutputContext} to which data can be written
    */
   public CompletableFuture<ByteOutputContext> newOutputContext(final String executorId,
-                                                               final byte[] contextDescriptor,
+                                                               final PipeTransferContextDescriptor contextDescriptor,
                                                                final boolean isPipe,
                                                                final boolean isLocal) {
 

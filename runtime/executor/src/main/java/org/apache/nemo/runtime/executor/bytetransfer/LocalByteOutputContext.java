@@ -32,6 +32,7 @@ import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,8 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 
-import static org.apache.nemo.runtime.executor.bytetransfer.LocalByteOutputContext.SendDataTo.SCALE_VM;
-import static org.apache.nemo.runtime.executor.bytetransfer.LocalByteOutputContext.SendDataTo.VM;
+import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext.SendDataTo.VM;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -62,12 +62,6 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
   private final Queue<Object> objectQueue;
 
     private volatile boolean isPending = false;
-
-  public enum SendDataTo {
-    VM,
-    SCALE_VM,
-    SCALE_SF
-  }
 
   private SendDataTo sendDataTo = VM;
   private final VMScalingClientTransport vmScalingClientTransport;
@@ -113,9 +107,9 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
   }
 
   @Override
-  public void pending(final boolean scaleout) {
+  public void pending(final SendDataTo dt, final String addr, final int port) {
     LOG.info("LocalByteOutputContext pending: {}", getContextId().getTransferIndex());
-    sendDataTo = scaleout ? SCALE_VM : VM;
+    sendDataTo = dt;
     isPending = true;
   }
 
@@ -169,6 +163,11 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
   public void restart() {
     LOG.info("Restart local context {}", getContextId());
     getContextManager().onContextRestartLocal(getContextId().getTransferIndex());
+  }
+
+  @Override
+  public void sendMessage(ByteTransferContextSetupMessage msg, EventHandler<Integer> ackHandler) {
+    throw new RuntimeException("Unsupported exception");
   }
 
   /**
@@ -260,7 +259,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
         // buffer data..
         // because currently the data processing is pending
         switch (sendDataTo) {
-          case SCALE_VM:
+          case SF:
             final boolean isEmpty = pendingData.isEmpty();
 
             if (isEmpty) {
@@ -299,7 +298,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
         }
 
         switch (sendDataTo) {
-          case SCALE_VM:
+          case SF:
             sendByteBufToRemote(serializeElement(element, serializer, edgeId, opId));
             break;
           case VM:

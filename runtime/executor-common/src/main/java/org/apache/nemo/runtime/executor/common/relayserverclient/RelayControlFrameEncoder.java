@@ -27,7 +27,7 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
     // encode header
 
 
-    final String id = RelayUtils.createId(in.edgeId, in.taskIndex, in.inContext);
+    final String id = in.dstId;
 
     final ByteBuf header = ctx.alloc().buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(header);

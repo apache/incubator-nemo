@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.ChannelInitializer;
@@ -31,6 +32,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -83,6 +86,8 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   //private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote = new ConcurrentHashMap<>();
   private final AtomicInteger nextInputTransferIndex = new AtomicInteger(0);
   private final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
+  private final TaskLocationMap taskLocationMap;
+  private final ExecutorService channelServiceExecutor;
 
 
   /**
@@ -106,7 +111,8 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
                                           final ControlFrameEncoder controlFrameEncoder,
                                           final DataFrameEncoder dataFrameEncoder,
                                           final TaskTransferIndexMap taskTransferIndexMap,
-                                          @Parameter(JobConf.ExecutorId.class) final String localExecutorId) {
+                                          @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
+                                          final TaskLocationMap taskLocationMap) {
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
@@ -117,11 +123,14 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
     this.vmScalingClientTransport = vmScalingClientTransport;
     this.ackScheduledService = ackScheduledService;
     this.taskTransferIndexMap = taskTransferIndexMap;
+    this.taskLocationMap = taskLocationMap;
+    this.channelServiceExecutor = Executors.newCachedThreadPool();
   }
 
   @Override
   protected void initChannel(final SocketChannel ch) {
     final ContextManager contextManager = new DefaultContextManagerImpl(
+      channelServiceExecutor,
       pipeManagerWorker.get(),
       blockManagerWorker.get(),
       byteTransfer.get(),
@@ -134,7 +143,8 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
       inputContexts,
       outputContexts,
       nextInputTransferIndex,
-      nextOutputTransferIndex);
+      nextOutputTransferIndex,
+      taskLocationMap);
 
     ch.pipeline()
         // inbound

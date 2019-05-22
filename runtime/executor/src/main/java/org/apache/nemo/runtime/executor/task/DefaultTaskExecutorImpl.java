@@ -188,6 +188,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final List<StageEdge> copyIncomingEdges;
 
   private final RelayServer relayServer;
+  private final TaskLocationMap taskLocationMap;
 
   /**
    * Constructor.
@@ -219,7 +220,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final TinyTaskOffloadingWorkerManager tinyWorkerManager,
                                  final EvalConf evalConf,
                                  final TaskInputContextMap taskInputContextMap,
-                                 final RelayServer relayServer) {
+                                 final RelayServer relayServer,
+                                 final TaskLocationMap taskLocationMap) {
     // Essential information
     LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.copyOutgoingEdges = copyOutgoingEdges;
@@ -227,6 +229,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     this.copyIncomingEdges = copyIncomingEdges;
 
     this.relayServer = relayServer;
+    this.taskLocationMap = taskLocationMap;
 
     this.threadId = threadId;
     this.executorId = executorId;
@@ -388,7 +391,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           toMaster,
           outputWriterMap,
           irVertexDag,
-          relayServer));
+          relayServer,
+        taskLocationMap));
 
       /*
       if (sourceVertexDataFetchers.size() == 1 && sourceVertexDataFetchers.get(0) instanceof SourceVertexDataFetcher) {

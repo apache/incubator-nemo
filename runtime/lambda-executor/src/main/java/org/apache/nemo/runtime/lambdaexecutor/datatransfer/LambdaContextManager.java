@@ -180,6 +180,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
           relayServerClient.registerTask(relayServerChannel,
             cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true);
 
+          LOG.info("Sending ack to the input context");
           // ACK to the original channel
           final ByteTransferContextSetupMessage ackMessage =
             new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),

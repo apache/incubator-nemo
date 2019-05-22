@@ -27,7 +27,7 @@ public final class RelayDataFrameEncoder extends MessageToMessageEncoder<RelayDa
   @Override
   protected void encode(final ChannelHandlerContext ctx, final RelayDataFrame in, final List out) {
     // encode header
-    final String id = RelayUtils.createId(in.edgeId, in.taskIndex, in.inContext);
+    final String id = in.dstId;
     final ByteBuf header = ctx.alloc().buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(header);
     try {

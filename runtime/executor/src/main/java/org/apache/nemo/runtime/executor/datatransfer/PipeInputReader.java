@@ -103,7 +103,6 @@ public final class PipeInputReader implements InputReader {
       LOG.info("Send message {}", pendingMsg);
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
-        TODO: receive relay server channel address..
 
         LOG.info("receive ack!!");
         atomicInteger.decrementAndGet();

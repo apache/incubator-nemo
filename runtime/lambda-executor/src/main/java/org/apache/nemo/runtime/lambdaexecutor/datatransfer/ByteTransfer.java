@@ -20,10 +20,7 @@ package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.channel.ChannelFuture;
 import io.netty.util.concurrent.Future;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
-import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
-import org.apache.nemo.runtime.executor.common.datatransfer.ContextManager;
-import org.apache.nemo.runtime.executor.common.datatransfer.VMScalingClientTransport;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,7 +76,7 @@ public final class ByteTransfer {
    * @return a {@link } to which data can be written
    */
   public CompletableFuture<ByteOutputContext> newOutputContext(final String executorId,
-                                                               final byte[] contextDescriptor,
+                                                               final PipeTransferContextDescriptor contextDescriptor,
                                                                final boolean isPipe) {
     LOG.info("New output context: {}", executorId);
     return connectTo(executorId).thenApply(manager -> manager.newOutputContext(executorId, contextDescriptor, isPipe));

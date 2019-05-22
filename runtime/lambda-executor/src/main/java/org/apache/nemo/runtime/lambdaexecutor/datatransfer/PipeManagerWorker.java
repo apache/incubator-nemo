@@ -153,6 +153,8 @@ public final class PipeManagerWorker {
     final String targetExecutorId = taskExecutorIdMap.get(Pair.of(runtimeEdge.getId(), dstTaskIndex));
     final TaskLocationMap.LOC loc = taskLocationMap.get(new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true));
 
+    LOG.info("Locatoin of {}: {}", new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true), loc);
+
     // Descriptor
     final PipeTransferContextDescriptor descriptor =
       new PipeTransferContextDescriptor(
@@ -164,7 +166,7 @@ public final class PipeManagerWorker {
     switch (loc) {
       case SF: {
         // Connect to the relay server!
-        return relayServerClient.newOutputContext(targetExecutorId, runtimeEdgeId, dstTaskIndex, true, descriptor)
+        return relayServerClient.newOutputContext(targetExecutorId, descriptor)
           .thenApply(context -> context);
       }
       case VM: {
@@ -172,7 +174,7 @@ public final class PipeManagerWorker {
         LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
           runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
         // Connect to the executor
-        return byteTransfer.newOutputContext(targetExecutorId, descriptor.encode(), true)
+        return byteTransfer.newOutputContext(targetExecutorId, descriptor, true)
           .thenApply(context -> context);
       }
       default: {

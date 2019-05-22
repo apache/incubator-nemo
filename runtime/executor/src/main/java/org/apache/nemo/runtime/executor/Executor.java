@@ -191,7 +191,8 @@ public final class Executor {
       serializerManager.runtimeEdgeIdToSerializer,
       pipeManagerWorker.getTaskExecutorIdMap(),
       taskTransferIndexMap.getMap(),
-      true);
+      relayServer.getPublicAddress(),
+      relayServer.getPort());
 
     this.tinyWorkerManager = new TinyTaskOffloadingWorkerManager(
       offloadingWorkerFactory,
@@ -322,7 +323,8 @@ public final class Executor {
         tinyWorkerManager,
         evalConf,
         taskInputContextMap,
-        relayServer);
+        relayServer,
+        taskLocationMap);
 
       taskExecutorMap.put(taskExecutor, true);
       final int numTask = numReceivedTasks.getAndIncrement();

@@ -419,7 +419,7 @@ public final class DownstreamTaskOffloader implements Offloader {
             byteInputContext.getContextDescriptor(),
             byteInputContext.getContextId().isPipe(),
             ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEOUT_VM,
-            vmAddress, taskId);
+            "", 1);
           byteInputContext.sendMessage(scaleoutMsg, (n) -> {});
 
           LOG.info("Send scaleout message");

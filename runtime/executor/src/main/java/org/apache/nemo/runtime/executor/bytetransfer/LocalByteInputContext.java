@@ -33,6 +33,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext.SendDataTo.SF;
+import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext.SendDataTo.VM;
+
 /**
  * Container for multiple input streams. Represents a transfer context on receiver-side.
  *
@@ -121,7 +124,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
 
     switch (message.getMessageType()) {
       case PENDING_FOR_SCALEOUT_VM: {
-        localByteOutputContext.pending(true);
+        localByteOutputContext.pending(SF, "", 1);
         break;
       }
       case RESUME_AFTER_SCALEOUT_VM: {
@@ -129,7 +132,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
         //localByteOutputContext.scaleoutToVm(message.getMovedAddress(), message.getTaskId());
       }
       case PENDING_FOR_SCALEIN_VM: {
-        localByteOutputContext.pending(false);
+        localByteOutputContext.pending(VM, "", 1);
         break;
       }
       case RESUME_AFTER_SCALEIN_VM: {

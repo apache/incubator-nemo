@@ -25,9 +25,11 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -43,16 +45,22 @@ public final class IntermediateDataIOFactory {
   private final BlockManagerWorker blockManagerWorker;
   private final TaskInputContextMap taskInputContextMap;
   private final String executorId;
+  private final RelayServer relayServer;
+  private final TaskLocationMap taskLocationMap;
 
   @Inject
   private IntermediateDataIOFactory(final BlockManagerWorker blockManagerWorker,
                                     @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
                                     final PipeManagerWorker pipeManagerWorker,
-                                    final TaskInputContextMap taskInputContextMap) {
+                                    final TaskInputContextMap taskInputContextMap,
+                                    final TaskLocationMap taskLocationMap,
+                                    final RelayServer relayServer) {
     this.blockManagerWorker = blockManagerWorker;
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskInputContextMap = taskInputContextMap;
     this.executorId = localExecutorId;
+    this.relayServer = relayServer;
+    this.taskLocationMap = taskLocationMap;
   }
 
   /**
@@ -75,7 +83,7 @@ public final class IntermediateDataIOFactory {
     final Map<Long, Long> prevWatermarkMap,
     final Map<Long, Integer> watermarkCounterMap) {
     return new PipeOutputWriter(srcTaskId, runtimeEdge, pipeManagerWorker,
-      expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap);
+      expectedWatermarkMap, prevWatermarkMap, watermarkCounterMap, relayServer);
   }
 
   /**
@@ -90,7 +98,8 @@ public final class IntermediateDataIOFactory {
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge) {
     if (isPipe(runtimeEdge)) {
-      return new PipeInputReader(executorId, dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker, taskInputContextMap);
+      return new PipeInputReader(executorId, dstTaskIdx, srcIRVertex, runtimeEdge, pipeManagerWorker, taskInputContextMap,
+        relayServer, taskLocationMap);
     } else {
       return new BlockInputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
     }
