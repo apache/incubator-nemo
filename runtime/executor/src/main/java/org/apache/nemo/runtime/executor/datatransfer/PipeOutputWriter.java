@@ -28,6 +28,7 @@ import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -101,6 +102,8 @@ public final class PipeOutputWriter implements OutputWriter {
   private void writeData(final Object element,
                          final List<ByteOutputContext> pipeList, final boolean flush) {
     pipeList.forEach(pipe -> {
+      final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(pipe.getContextDescriptor());
+      LOG.info("Send data from {} to {} in edge {}", cd.getSrcTaskIndex(), cd.getDstTaskIndex(), cd.getRuntimeEdgeId());
       final ByteOutputContext.ByteOutputStream stream = pipeAndStreamMap.get(pipe);
       //LOG.info("Write element at {}/{}", srcTaskId, runtimeEdge.getSrc().getId());
       stream.writeElement(element,
