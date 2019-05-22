@@ -65,6 +65,7 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
       .addLast(new RelayControlFrameEncoder())
       .addLast(new RelayDataFrameEncoder())
       .addLast(new RelayControlMessageEncoder())
+      .addLast(new RelayDebuggingEncoder())
 
       // inbound
       .addLast(new FrameDecoder(contextManager))
