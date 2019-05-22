@@ -18,11 +18,10 @@ public class OffloadingExecutorSerializer implements OffloadingSerializer {
   private final OffloadingEncoder outputEncoder;
   private final OffloadingDecoder outputDecoder;
 
-  public OffloadingExecutorSerializer(final Coder<UnboundedSource.CheckpointMark> coder,
-                                      final Map<String, Coder<GBKFinalState>> coderMap) {
-    this.inputDecoder = new OffloadingExecutorInputDecoder(coder, coderMap);
-    this.outputEncoder = new MiddleOffloadingOutputEncoder(coder, coderMap);
-    this.outputDecoder = new MiddleOffloadingOutputDecoder(coder, coderMap);
+  public OffloadingExecutorSerializer(final Map<String, Coder<GBKFinalState>> coderMap) {
+    this.inputDecoder = new OffloadingExecutorInputDecoder(coderMap);
+    this.outputEncoder = new MiddleOffloadingOutputEncoder(coderMap);
+    this.outputDecoder = new MiddleOffloadingOutputDecoder(coderMap);
   }
 
   @Override

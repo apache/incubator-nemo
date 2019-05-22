@@ -205,11 +205,14 @@ public final class HandleDataFetcher {
       if (dataFetcher.isStarted()) {
         final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
         final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
+        final Coder<UnboundedSource.CheckpointMark> coder = readable.getUnboundedSource().getCheckpointMarkCoder();
         LOG.info("Send checkpointmark {} to vm: {}", checkpointMark, id);
-        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, checkpointMark, null));
+        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, checkpointMark, coder, null));
       } else {
+        final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
+        final Coder<UnboundedSource.CheckpointMark> coder = readable.getUnboundedSource().getCheckpointMarkCoder();
         LOG.info("Send checkpointmark {} to vm: {}", startCheckpointMark, id);
-        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, startCheckpointMark, null));
+        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, startCheckpointMark, coder, null));
       }
 
 

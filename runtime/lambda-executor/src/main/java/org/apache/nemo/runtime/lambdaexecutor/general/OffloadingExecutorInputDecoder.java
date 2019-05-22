@@ -20,13 +20,10 @@ import java.util.Map;
 public final class OffloadingExecutorInputDecoder implements OffloadingDecoder<Object> {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingExecutorInputDecoder.class.getName());
 
-  private final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
   private final Map<String, Coder<GBKFinalState>> stateCoderMap;
 
   public OffloadingExecutorInputDecoder(
-    final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
     final Map<String, Coder<GBKFinalState>> stateCoderMap) {
-    this.checkpointMarkCoder = checkpointMarkCoder;
     this.stateCoderMap = stateCoderMap;
   }
 
@@ -46,7 +43,7 @@ public final class OffloadingExecutorInputDecoder implements OffloadingDecoder<O
 
     switch (et) {
       case TASK_START: {
-        return OffloadingTask.decode(inputStream, checkpointMarkCoder, stateCoderMap);
+        return OffloadingTask.decode(inputStream, stateCoderMap);
       }
       case TASK_END: {
         final String taskId = dis.readUTF();

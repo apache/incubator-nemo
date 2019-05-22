@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.lambdaexecutor.middle;
 
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
@@ -25,12 +26,9 @@ import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput
 public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Object> {
   private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloadingOutputDecoder.class.getName());
 
-  private final Coder<UnboundedSource.CheckpointMark> coder;
   private final Map<String, Coder<GBKFinalState>> stateCoderMap;
 
-  public MiddleOffloadingOutputDecoder(final Coder<UnboundedSource.CheckpointMark> coder,
-                                       final Map<String, Coder<GBKFinalState>> stateCoderMap) {
-    this.coder = coder;
+  public MiddleOffloadingOutputDecoder(final Map<String, Coder<GBKFinalState>> stateCoderMap) {
     this.stateCoderMap = stateCoderMap;
   }
 
@@ -59,7 +57,8 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
         case KAFKA_CHECKPOINT: {
           final String taskId = dis.readUTF();
           final int id = dis.readInt();
-          final UnboundedSource.CheckpointMark checkpointMark = coder.decode(inputStream);
+          final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = SerializationUtils.deserialize(inputStream);
+          final UnboundedSource.CheckpointMark checkpointMark = checkpointMarkCoder.decode(inputStream);
 
           final int mapSize = dis.readInt();
           final Map<String, GBKFinalState> stateMap = new HashMap<>();
@@ -70,7 +69,7 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
           }
 
           return Pair.of(taskId,
-            new KafkaOffloadingOutput(taskId, id, checkpointMark, stateMap));
+            new KafkaOffloadingOutput(taskId, id, checkpointMark, checkpointMarkCoder, stateMap));
         }
         case STATE_OUTPUT: {
           final String  taskId = dis.readUTF();

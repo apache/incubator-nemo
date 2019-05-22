@@ -1,5 +1,6 @@
 package org.apache.nemo.runtime.lambdaexecutor.kafka;
 
+import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 
@@ -11,15 +12,18 @@ public final class KafkaOffloadingOutput {
   public final int id;
   public final UnboundedSource.CheckpointMark checkpointMark;
   public final Map<String, GBKFinalState> stateMap;
+  public final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
 
   public KafkaOffloadingOutput(
     final String taskId,
     final int id,
     final UnboundedSource.CheckpointMark checkpointMark,
+    final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
     final Map<String, GBKFinalState> stateMap) {
     this.taskId = taskId;
     this.id = id;
     this.checkpointMark = checkpointMark;
+    this.checkpointMarkCoder = checkpointMarkCoder;
     this.stateMap = stateMap;
   }
 }

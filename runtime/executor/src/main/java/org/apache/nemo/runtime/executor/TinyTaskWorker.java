@@ -28,15 +28,12 @@ public final class TinyTaskWorker {
   private final List<OffloadingTask> offloadedTasks = new LinkedList<>();
   private final List<OffloadingTask> pendingTasks = new LinkedList<>();
   private final OffloadingWorker offloadingWorker;
-  private final Coder<UnboundedSource.CheckpointMark> coder;
   private final Map<String, Coder<GBKFinalState>> stateCoderMap;
   private final AtomicInteger deletePending = new AtomicInteger(0);
 
   public TinyTaskWorker(final OffloadingWorker offloadingWorker,
-                        final Coder<UnboundedSource.CheckpointMark> coder,
                         final Map<String, Coder<GBKFinalState>> stateCoderMap) {
     this.offloadingWorker = offloadingWorker;
-    this.coder = coder;
     this.stateCoderMap = stateCoderMap;
   }
 
@@ -132,7 +129,7 @@ public final class TinyTaskWorker {
     LOG.info("Execute pending222 !!");
 
     for (final OffloadingTask pending : pendingTasks) {
-      offloadingWorker.execute(pending.encode(coder, stateCoderMap), 1, false);
+      offloadingWorker.execute(pending.encode(stateCoderMap), 1, false);
     }
 
     LOG.info("Execute pending333 !!");

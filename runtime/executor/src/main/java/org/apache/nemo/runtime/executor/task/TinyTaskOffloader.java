@@ -406,13 +406,14 @@ public final class TinyTaskOffloader implements Offloader {
         copyOutgoingEdges,
         copyIncomingEdges,
         checkpointMark,
+        checkpointMarkCoder,
         unboundedSource,
         stateMap,
         taskLocationMap.locationMap);
 
-      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(checkpointMarkCoder, coderMap);
+      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(coderMap);
 
-      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, checkpointMarkCoder, coderMap);
+      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, coderMap);
     } else {
       offloadingTask = new OffloadingTask(
         executorId,
@@ -425,12 +426,13 @@ public final class TinyTaskOffloader implements Offloader {
         copyIncomingEdges,
         null,
         null,
+        null,
         stateMap,
         taskLocationMap.locationMap);
 
 
-      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(null, coderMap);
-      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, null, coderMap);
+      final OffloadingSerializer serializer = new OffloadingExecutorSerializer(coderMap);
+      tinyWorkerManager.sendTask(offloadingTask, taskExecutor, serializer, coderMap);
     }
 
     prevOffloadStartTime.set(System.currentTimeMillis());

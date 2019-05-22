@@ -41,6 +41,7 @@ public final class OffloadingTask {
 
   public String taskId;
   public final UnboundedSource.CheckpointMark checkpointMark;
+  public final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
   public final UnboundedSource unboundedSource;
   public final Map<String, GBKFinalState> stateMap;
   final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap;
@@ -55,6 +56,7 @@ public final class OffloadingTask {
                         final List<StageEdge> outgoingEdges,
                         final List<StageEdge> incomingEdges,
                         final UnboundedSource.CheckpointMark checkpointMark,
+                        final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
                         final UnboundedSource unboundedSource,
                         final Map<String, GBKFinalState>  stateMap,
                         final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap) {
@@ -67,13 +69,13 @@ public final class OffloadingTask {
     this.outgoingEdges = outgoingEdges;
     this.incomingEdges = incomingEdges;
     this.checkpointMark = checkpointMark;
+    this.checkpointMarkCoder = checkpointMarkCoder;
     this.unboundedSource = unboundedSource;
     this.stateMap = stateMap;
     this.taskLocationMap = taskLocationMap;
   }
 
-  public ByteBuf encode(final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
-                        final Map<String, Coder<GBKFinalState>> stateCoderMap) {
+  public ByteBuf encode(final Map<String, Coder<GBKFinalState>> stateCoderMap) {
     try {
 
       //final ByteArrayOutputStream bos = new ByteArrayOutputStream(172476);
@@ -108,6 +110,7 @@ public final class OffloadingTask {
 
       if (checkpointMark != null) {
         dos.writeBoolean(true);
+        SerializationUtils.serialize(checkpointMarkCoder, bos);
         checkpointMarkCoder.encode(checkpointMark, bos);
         SerializationUtils.serialize(unboundedSource, bos);
       } else {
@@ -148,7 +151,6 @@ public final class OffloadingTask {
 
   public static OffloadingTask decode(
     final InputStream inputStream,
-    final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
     final Map<String, Coder<GBKFinalState>> stateCoderMap) {
 
     try {
@@ -170,14 +172,17 @@ public final class OffloadingTask {
       LOG.info("{}, incomingEdges: {}", taskId, incomingEdges);
 
       final UnboundedSource.CheckpointMark checkpointMark;
+      final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
       final UnboundedSource unboundedSource;
       final boolean hasCheckpoint = dis.readBoolean();
       if (hasCheckpoint) {
+        checkpointMarkCoder = SerializationUtils.deserialize(inputStream);
         checkpointMark = checkpointMarkCoder.decode(inputStream);
         unboundedSource = SerializationUtils.deserialize(inputStream);
       } else {
         checkpointMark = null;
         unboundedSource = null;
+        checkpointMarkCoder = null;
       }
 
       final Map<String, GBKFinalState> stateMap = new HashMap<>();
@@ -201,6 +206,7 @@ public final class OffloadingTask {
         outgoingEdges,
         incomingEdges,
         checkpointMark,
+        checkpointMarkCoder,
         unboundedSource,
         stateMap,
         taskLocationMap);

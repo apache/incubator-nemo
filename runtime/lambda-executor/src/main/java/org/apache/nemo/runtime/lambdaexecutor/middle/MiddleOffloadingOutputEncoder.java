@@ -2,6 +2,7 @@ package org.apache.nemo.runtime.lambdaexecutor.middle;
 
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.offloading.common.OffloadingEncoder;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
@@ -21,12 +22,10 @@ import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput
 public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Object> {
   private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloadingOutputEncoder.class.getName());
 
-  private final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder;
   private final Map<String, Coder<GBKFinalState>> stateCoderMap;
 
-  public MiddleOffloadingOutputEncoder(final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
+  public MiddleOffloadingOutputEncoder(
                                        final Map<String, Coder<GBKFinalState>> stateCoderMap) {
-    this.checkpointMarkCoder = checkpointMarkCoder;
     this.stateCoderMap = stateCoderMap;
   }
 
@@ -55,7 +54,8 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       final KafkaOffloadingOutput output = (KafkaOffloadingOutput) data;
       dos.writeUTF(output.taskId);
       dos.writeInt(output.id);
-      checkpointMarkCoder.encode(output.checkpointMark, outputStream);
+      SerializationUtils.serialize(output.checkpointMarkCoder, dos);
+      output.checkpointMarkCoder.encode(output.checkpointMark, outputStream);
 
       if (output.stateMap != null && !output.stateMap.isEmpty()) {
         dos.writeInt(output.stateMap.size());
