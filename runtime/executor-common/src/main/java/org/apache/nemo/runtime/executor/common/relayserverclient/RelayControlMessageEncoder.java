@@ -23,7 +23,7 @@ public final class RelayControlMessageEncoder extends MessageToMessageEncoder<Re
   @Override
   protected void encode(final ChannelHandlerContext ctx, final RelayControlMessage in, final List out) {
     // encode header
-    LOG.info("Encoding controlmessage");
+    LOG.info("Encoding controlmessage {}", in.edgeId, in.taskIndex, in.inContext);
 
     final String id = RelayUtils.createId(in.edgeId, in.taskIndex, in.inContext);
     final ByteBuf header = ctx.alloc().buffer();
