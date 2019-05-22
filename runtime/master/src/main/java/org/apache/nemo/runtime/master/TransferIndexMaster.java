@@ -42,8 +42,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class TransferIndexMaster {
   private static final Logger LOG = LoggerFactory.getLogger(TransferIndexMaster.class.getName());
 
-  private final AtomicInteger inputContextIndex;
-  private final AtomicInteger outputContextIndex;
+  private final AtomicInteger contextIndex;
+  //private final AtomicInteger outputContextIndex;
 
   /**
    * Constructor.
@@ -54,8 +54,8 @@ public final class TransferIndexMaster {
     masterMessageEnvironment.setupListener(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID,
       new TransferIndexReceiver());
 
-    this.inputContextIndex = new AtomicInteger();
-    this.outputContextIndex = new AtomicInteger();
+    this.contextIndex = new AtomicInteger();
+    //this.outputContextIndex = new AtomicInteger();
   }
 
   /**
@@ -74,7 +74,8 @@ public final class TransferIndexMaster {
           final ControlMessage.RequestTransferIndexMessage requestIndexMessage = message.getRequestTransferIndexMsg();
           final int isInputContext = (int) requestIndexMessage.getIsInputContext();
 
-          final int index = isInputContext == 1 ? inputContextIndex.getAndIncrement() : outputContextIndex.getAndIncrement();
+          //final int index = isInputContext == 1 ? inputContextIndex.getAndIncrement() : outputContextIndex.getAndIncrement();
+          final int index = contextIndex.get();
 
           LOG.info("Send input/output ({}) context index {}", isInputContext, index);
 
