@@ -397,12 +397,12 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
       switch (sendDataTo) {
         case VM:
-          currChannel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
+          currChannel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
             .addListener(getChannelWriteListener());
           break;
         case SF:
           LOG.info("Write data to SF channel {}", currChannel);
-          currChannel.write(new RelayDataFrame(relayDst,
+          currChannel.writeAndFlush(new RelayDataFrame(relayDst,
             DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream)))
             .addListener(getChannelWriteListener());
           /*
