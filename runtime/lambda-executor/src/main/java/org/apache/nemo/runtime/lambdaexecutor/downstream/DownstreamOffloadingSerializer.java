@@ -19,8 +19,8 @@ public class DownstreamOffloadingSerializer implements OffloadingSerializer {
 
   public DownstreamOffloadingSerializer(final Map<String, Serializer> serializerMap) {
     this.inputDecoder = new DownstreamOffloadingInputDecoder(serializerMap);
-    this.outputEncoder = new MiddleOffloadingOutputEncoder(null);
-    this.outputDecoder = new MiddleOffloadingOutputDecoder(null);
+    this.outputEncoder = new MiddleOffloadingOutputEncoder();
+    this.outputDecoder = new MiddleOffloadingOutputDecoder();
   }
 
   @Override

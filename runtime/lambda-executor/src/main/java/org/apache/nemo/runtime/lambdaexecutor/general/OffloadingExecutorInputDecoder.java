@@ -20,11 +20,8 @@ import java.util.Map;
 public final class OffloadingExecutorInputDecoder implements OffloadingDecoder<Object> {
   private static final Logger LOG = LoggerFactory.getLogger(OffloadingExecutorInputDecoder.class.getName());
 
-  private final Map<String, Coder<GBKFinalState>> stateCoderMap;
 
-  public OffloadingExecutorInputDecoder(
-    final Map<String, Coder<GBKFinalState>> stateCoderMap) {
-    this.stateCoderMap = stateCoderMap;
+  public OffloadingExecutorInputDecoder() {
   }
 
   @Override
@@ -43,7 +40,7 @@ public final class OffloadingExecutorInputDecoder implements OffloadingDecoder<O
 
     switch (et) {
       case TASK_START: {
-        return OffloadingTask.decode(inputStream, stateCoderMap);
+        return OffloadingTask.decode(inputStream);
       }
       case TASK_END: {
         final String taskId = dis.readUTF();

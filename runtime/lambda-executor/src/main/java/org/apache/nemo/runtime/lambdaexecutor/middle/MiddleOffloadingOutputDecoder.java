@@ -26,10 +26,8 @@ import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput
 public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Object> {
   private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloadingOutputDecoder.class.getName());
 
-  private final Map<String, Coder<GBKFinalState>> stateCoderMap;
 
-  public MiddleOffloadingOutputDecoder(final Map<String, Coder<GBKFinalState>> stateCoderMap) {
-    this.stateCoderMap = stateCoderMap;
+  public MiddleOffloadingOutputDecoder() {
   }
 
     @Override
@@ -62,27 +60,33 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
 
           final int mapSize = dis.readInt();
           final Map<String, GBKFinalState> stateMap = new HashMap<>();
+          final Map<String, Coder<GBKFinalState>> stateCoderMap = new HashMap<>();
           for (int i = 0; i < mapSize; i++) {
             final String key = dis.readUTF();
-            final GBKFinalState state = stateCoderMap.get(key).decode(dis);
+            final Coder<GBKFinalState> coder = SerializationUtils.deserialize(dis);
+            final GBKFinalState state = coder.decode(dis);
             stateMap.put(key, state);
+            stateCoderMap.put(key, coder);
           }
 
           return Pair.of(taskId,
-            new KafkaOffloadingOutput(taskId, id, checkpointMark, checkpointMarkCoder, stateMap));
+            new KafkaOffloadingOutput(taskId, id, checkpointMark, checkpointMarkCoder, stateMap, stateCoderMap));
         }
         case STATE_OUTPUT: {
           final String  taskId = dis.readUTF();
 
           final int mapSize = dis.readInt();
           final Map<String, GBKFinalState> stateMap = new HashMap<>();
+          final Map<String, Coder<GBKFinalState>> stateCoderMap = new HashMap<>();
           for (int i = 0; i < mapSize; i++) {
             final String key = dis.readUTF();
-            final GBKFinalState state = stateCoderMap.get(key).decode(dis);
+            final Coder<GBKFinalState> coder = SerializationUtils.deserialize(dis);
+            final GBKFinalState state = coder.decode(dis);
             stateMap.put(key, state);
+            stateCoderMap.put(key, coder);
           }
 
-          return Pair.of(taskId, new StateOutput(taskId, stateMap));
+          return Pair.of(taskId, new StateOutput(taskId, stateMap, stateCoderMap));
         }
         default:
           throw new RuntimeException("Unsupported type: " + type);

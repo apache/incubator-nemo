@@ -207,12 +207,12 @@ public final class HandleDataFetcher {
         final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
         final Coder<UnboundedSource.CheckpointMark> coder = readable.getUnboundedSource().getCheckpointMarkCoder();
         LOG.info("Send checkpointmark {} to vm: {}", checkpointMark, id);
-        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, checkpointMark, coder, null));
+        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, checkpointMark, coder, null, null));
       } else {
         final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
         final Coder<UnboundedSource.CheckpointMark> coder = readable.getUnboundedSource().getCheckpointMarkCoder();
         LOG.info("Send checkpointmark {} to vm: {}", startCheckpointMark, id);
-        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, startCheckpointMark, coder, null));
+        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, startCheckpointMark, coder, null, null));
       }
 
 

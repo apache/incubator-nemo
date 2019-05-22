@@ -22,11 +22,8 @@ import static org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput
 public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Object> {
   private static final Logger LOG = LoggerFactory.getLogger(MiddleOffloadingOutputEncoder.class.getName());
 
-  private final Map<String, Coder<GBKFinalState>> stateCoderMap;
 
-  public MiddleOffloadingOutputEncoder(
-                                       final Map<String, Coder<GBKFinalState>> stateCoderMap) {
-    this.stateCoderMap = stateCoderMap;
+  public MiddleOffloadingOutputEncoder() {
   }
 
   @Override
@@ -59,9 +56,10 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
 
       if (output.stateMap != null && !output.stateMap.isEmpty()) {
         dos.writeInt(output.stateMap.size());
-         for (final Map.Entry<String, GBKFinalState> entry : output.stateMap.entrySet()) {
-          final Coder<GBKFinalState> stateCoder = stateCoderMap.get(entry.getKey());
+        for (final Map.Entry<String, GBKFinalState> entry : output.stateMap.entrySet()) {
+          final Coder<GBKFinalState> stateCoder = output.stateCoderMap.get(entry.getKey());
           dos.writeUTF(entry.getKey());
+          SerializationUtils.serialize(stateCoder);
           stateCoder.encode(entry.getValue(), outputStream);
         }
       } else {
@@ -77,10 +75,11 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       if (output.stateMap != null && !output.stateMap.isEmpty()) {
         dos.writeInt(output.stateMap.size());
          for (final Map.Entry<String, GBKFinalState> entry : output.stateMap.entrySet()) {
-          final Coder<GBKFinalState> stateCoder = stateCoderMap.get(entry.getKey());
-          dos.writeUTF(entry.getKey());
-          stateCoder.encode(entry.getValue(), outputStream);
-        }
+           final Coder<GBKFinalState> stateCoder = output.stateCoderMap.get(entry.getKey());
+           dos.writeUTF(entry.getKey());
+           SerializationUtils.serialize(stateCoder);
+           stateCoder.encode(entry.getValue(), outputStream);
+         }
       } else {
         dos.writeInt(0);
       }

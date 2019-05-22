@@ -71,7 +71,7 @@ public final class KafkaOffloadingOutputDecoder implements OffloadingDecoder<Obj
           final String task = dd.readUTF();
           final int id = dd.readInt();
           final UnboundedSource.CheckpointMark checkpointMark = coder.decode(inputStream);
-          return new KafkaOffloadingOutput(task, id, checkpointMark, coder, null);
+          return new KafkaOffloadingOutput(task, id, checkpointMark, coder, null, null);
         }
         default: {
           throw new RuntimeException("Unsupported type: " + type);

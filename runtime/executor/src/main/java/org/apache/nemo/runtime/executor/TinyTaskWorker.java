@@ -28,13 +28,10 @@ public final class TinyTaskWorker {
   private final List<OffloadingTask> offloadedTasks = new LinkedList<>();
   private final List<OffloadingTask> pendingTasks = new LinkedList<>();
   private final OffloadingWorker offloadingWorker;
-  private final Map<String, Coder<GBKFinalState>> stateCoderMap;
   private final AtomicInteger deletePending = new AtomicInteger(0);
 
-  public TinyTaskWorker(final OffloadingWorker offloadingWorker,
-                        final Map<String, Coder<GBKFinalState>> stateCoderMap) {
+  public TinyTaskWorker(final OffloadingWorker offloadingWorker) {
     this.offloadingWorker = offloadingWorker;
-    this.stateCoderMap = stateCoderMap;
   }
 
   public synchronized void addTask(final OffloadingTask task) {
@@ -129,7 +126,7 @@ public final class TinyTaskWorker {
     LOG.info("Execute pending222 !!");
 
     for (final OffloadingTask pending : pendingTasks) {
-      offloadingWorker.execute(pending.encode(stateCoderMap), 1, false);
+      offloadingWorker.execute(pending.encode(), 1, false);
     }
 
     LOG.info("Execute pending333 !!");

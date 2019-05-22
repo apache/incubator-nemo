@@ -416,7 +416,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
           LOG.info("Send checkpointmark of task {} / {}",  offloadingTask.taskId, checkpointMark);
           resultCollector.collector.emit(new KafkaOffloadingOutput(offloadingTask.taskId, 1, checkpointMark,
-            checkpointMarkCoder, stateMap));
+            checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
         } else {
           final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
           final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
@@ -424,7 +424,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
           LOG.info("Send checkpointmark of task {}  / {} to vm",
             offloadingTask.taskId, offloadingTask.checkpointMark);
           resultCollector.collector.emit(new KafkaOffloadingOutput(
-            offloadingTask.taskId, 1, offloadingTask.checkpointMark, checkpointMarkCoder, stateMap));
+            offloadingTask.taskId, 1, offloadingTask.checkpointMark, checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
         }
       } else if (dataFetcher instanceof LambdaParentTaskDataFetcher) {
         pendingFutures.add(dataFetcher.stop());
@@ -462,7 +462,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
         stateAndCoderMap = getStateAndCoderMap();
 
       final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
-      resultCollector.collector.emit(new StateOutput(offloadingTask.taskId, stateMap));
+      resultCollector.collector.emit(new StateOutput(offloadingTask.taskId, stateMap, stateAndCoderMap.right()));
     }
 
     pendingFutures.clear();

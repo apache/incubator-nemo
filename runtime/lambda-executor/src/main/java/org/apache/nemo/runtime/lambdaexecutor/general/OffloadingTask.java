@@ -45,6 +45,7 @@ public final class OffloadingTask {
   public final UnboundedSource unboundedSource;
   public final Map<String, GBKFinalState> stateMap;
   final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap;
+  public final Map<String, Coder<GBKFinalState>> stateCoderMap;
 
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTask(final String executorId,
@@ -59,6 +60,7 @@ public final class OffloadingTask {
                         final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
                         final UnboundedSource unboundedSource,
                         final Map<String, GBKFinalState>  stateMap,
+                        final Map<String, Coder<GBKFinalState>> stateCoderMap,
                         final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap) {
     this.executorId = executorId;
     this.taskId = taskId;
@@ -72,10 +74,11 @@ public final class OffloadingTask {
     this.checkpointMarkCoder = checkpointMarkCoder;
     this.unboundedSource = unboundedSource;
     this.stateMap = stateMap;
+    this.stateCoderMap = stateCoderMap;
     this.taskLocationMap = taskLocationMap;
   }
 
-  public ByteBuf encode(final Map<String, Coder<GBKFinalState>> stateCoderMap) {
+  public ByteBuf encode() {
     try {
 
       //final ByteArrayOutputStream bos = new ByteArrayOutputStream(172476);
@@ -118,11 +121,15 @@ public final class OffloadingTask {
       }
 
       if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
+        dos.writeInt(stateMap.size());
         for (final Map.Entry<String, GBKFinalState> vertexIdAndState : stateMap.entrySet()) {
           LOG.info("Encoding state for {}...", vertexIdAndState.getKey());
-          //dos.writeUTF(vertexIdAndState.getKey());
+          dos.writeUTF(vertexIdAndState.getKey());
+          SerializationUtils.serialize(stateCoderMap.get(vertexIdAndState.getKey()));
           stateCoderMap.get(vertexIdAndState.getKey()).encode(vertexIdAndState.getValue(), bos);
         }
+      } else {
+        dos.writeInt(0);
       }
 
       SerializationUtils.serialize((ConcurrentHashMap) taskLocationMap, bos);
@@ -150,8 +157,7 @@ public final class OffloadingTask {
   }
 
   public static OffloadingTask decode(
-    final InputStream inputStream,
-    final Map<String, Coder<GBKFinalState>> stateCoderMap) {
+    final InputStream inputStream) {
 
     try {
 
@@ -186,12 +192,15 @@ public final class OffloadingTask {
       }
 
       final Map<String, GBKFinalState> stateMap = new HashMap<>();
-      if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
-        for (final String key : stateCoderMap.keySet()) {
-          LOG.info("Decoding state key {}", key);
-          final GBKFinalState state = stateCoderMap.get(key).decode(inputStream);
-          stateMap.put(key, state);
-        }
+      final Map<String, Coder<GBKFinalState>> stateCoderMap = new HashMap<>();
+      final int size = dis.readInt();
+      for (int i = 0; i < size; i++) {
+        final String key = dis.readUTF();
+        LOG.info("Decoding state key {}", key);
+        final Coder<GBKFinalState> stateCoder = SerializationUtils.deserialize(dis);
+        final GBKFinalState state = stateCoder.decode(inputStream);
+        stateMap.put(key, state);
+        stateCoderMap.put(key, stateCoder);
       }
 
       final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap =
@@ -209,6 +218,7 @@ public final class OffloadingTask {
         checkpointMarkCoder,
         unboundedSource,
         stateMap,
+        stateCoderMap,
         taskLocationMap);
 
     } catch (IOException | ClassNotFoundException e) {
