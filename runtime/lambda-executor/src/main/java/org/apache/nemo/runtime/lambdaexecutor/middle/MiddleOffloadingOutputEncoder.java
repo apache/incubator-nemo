@@ -59,7 +59,7 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
         for (final Map.Entry<String, GBKFinalState> entry : output.stateMap.entrySet()) {
           final Coder<GBKFinalState> stateCoder = output.stateCoderMap.get(entry.getKey());
           dos.writeUTF(entry.getKey());
-          SerializationUtils.serialize(stateCoder);
+          SerializationUtils.serialize(stateCoder, outputStream);
           stateCoder.encode(entry.getValue(), outputStream);
         }
       } else {
@@ -77,7 +77,7 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
          for (final Map.Entry<String, GBKFinalState> entry : output.stateMap.entrySet()) {
            final Coder<GBKFinalState> stateCoder = output.stateCoderMap.get(entry.getKey());
            dos.writeUTF(entry.getKey());
-           SerializationUtils.serialize(stateCoder);
+           SerializationUtils.serialize(stateCoder, outputStream);
            stateCoder.encode(entry.getValue(), outputStream);
          }
       } else {
