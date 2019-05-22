@@ -103,7 +103,7 @@ public final class PipeOutputWriter implements OutputWriter {
                          final List<ByteOutputContext> pipeList, final boolean flush) {
     pipeList.forEach(pipe -> {
       final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(pipe.getContextDescriptor());
-      LOG.info("Send data from {} to {} in edge {}", cd.getSrcTaskIndex(), cd.getDstTaskIndex(), cd.getRuntimeEdgeId());
+      //LOG.info("Send data from {} to {} in edge {}", cd.getSrcTaskIndex(), cd.getDstTaskIndex(), cd.getRuntimeEdgeId());
       final ByteOutputContext.ByteOutputStream stream = pipeAndStreamMap.get(pipe);
       //LOG.info("Write element at {}/{}", srcTaskId, runtimeEdge.getSrc().getId());
       stream.writeElement(element,
@@ -355,7 +355,7 @@ public final class PipeOutputWriter implements OutputWriter {
       return pipes;
     } else {
       final int partitionKey = (int) partitioner.partition(element.value);
-      LOG.info("Partition key {} in {} for {}", partitionKey, runtimeEdge.getId(), element);
+      //LOG.info("Partition key {} in {} for {}", partitionKey, runtimeEdge.getId(), element);
       return Collections.singletonList(pipes.get(partitionKey));
     }
   }

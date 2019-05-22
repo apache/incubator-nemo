@@ -71,6 +71,7 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
         LOG.info("Forward data to dst {}", dst);
         dstChannel.writeAndFlush(byteBuf);
       } else {
+        LOG.info("More bytes.... slice");
         remainingBytes = 0;
         final ByteBuf bb = byteBuf.retainedSlice(byteBuf.readerIndex(), byteBuf.readerIndex() + remainingBytes);
         dstChannel.writeAndFlush(bb);
