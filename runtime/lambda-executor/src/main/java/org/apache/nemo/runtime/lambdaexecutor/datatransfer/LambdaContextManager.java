@@ -146,15 +146,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         break;
       }
       case PENDING_FOR_SCALEIN_VM: {
-
         throw new RuntimeException("Not supported yet");
-
-        /*
-        LOG.info("SCALEIN pending {}", transferIndex);
-        final ByteOutputContext outputContext = outputContexts.get(transferIndex);
-        outputContext.pending(ByteOutputContext.SendDataTo.VM, null, 1);
-        break;
-        */
       }
       case STOP_INPUT_FOR_SCALEOUT: {
         // connect to relay server
@@ -255,7 +247,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         context.getContextId().isPipe());
 
     if (isRelayServerChannel) {
-      channel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(context.getChannelWriteListener());
+      LOG.info("Skip... because the remote is already connected with relayServer");
+      //channel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(context.getChannelWriteListener());
     } else {
       channel.writeAndFlush(message).addListener(context.getChannelWriteListener());
     }
