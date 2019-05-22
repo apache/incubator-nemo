@@ -164,9 +164,6 @@ public final class ByteTransferContextSetupMessage {
       final MessageType type = MessageType.values()[ordinal];
       final String relayServerAddress = dis.readUTF();
       final int relayServerPort = dis.readInt();
-      final String remoteTaskId = dis.readUTF();
-      //final String moveAddrss = dis.readUTF();
-      //final String taskId = dis.readUTF();
 
       return new ByteTransferContextSetupMessage(
         localExecutorId, transferIndex, direction, contextDescriptor,
