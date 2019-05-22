@@ -105,6 +105,11 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
     }
   }
 
+  @Override
+  public void receivePendingAck() {
+    throw new RuntimeException("Not supported yet");
+  }
+
   /**
    * Closes existing sub-stream (if any) and create a new sub-stream.
    * @return new {@link ByteOutputStream}
@@ -343,7 +348,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
               getContextId().getDataDirection(),
               getContextDescriptor(),
               getContextId().isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_PENDING);
+              ByteTransferContextSetupMessage.MessageType.ACK_FROM_UPSTREAM);
 
           if (pendingByteBufs.isEmpty() && sendDataTo.equals(VM)) {
             LOG.info("Ack pending to relay {}", message);

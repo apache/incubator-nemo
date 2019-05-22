@@ -24,7 +24,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -126,9 +124,9 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final byte[] contextDescriptor = message.getContextDescriptor();
 
     switch (message.getMessageType()) {
-      case ACK_PENDING: {
+      case ACK_FROM_UPSTREAM: {
         final ByteInputContext context = inputContexts.get(transferIndex);
-        LOG.info("ACK_PENDING: {}, {}", transferIndex, inputContexts);
+        LOG.info("ACK_FROM_UPSTREAM: {}, {}", transferIndex, inputContexts);
         context.receivePendingAck();
         break;
       }
@@ -188,7 +186,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
               contextId.getDataDirection(),
               contextDescriptor,
               contextId.isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_PENDING);
+              ByteTransferContextSetupMessage.MessageType.ACK_FROM_UPSTREAM);
           channel.writeAndFlush(ackMessage);
 
         });

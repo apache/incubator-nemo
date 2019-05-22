@@ -96,6 +96,11 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
     localByteInputContext = byteInputContext;
   }
 
+  @Override
+  public void receivePendingAck() {
+      throw new RuntimeException("Not supporteD");
+  }
+
   /**
    * Closes existing sub-stream (if any) and create a new sub-stream.
    * @return new {@link ByteOutputStream}

@@ -23,6 +23,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
+import org.apache.beam.vendor.protobuf.v3.com.google.protobuf.ByteOutput;
 import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.runtime.executor.common.TaskLocationMap;
@@ -30,12 +31,10 @@ import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.VMScalingClientTransport;
-import org.apache.nemo.runtime.executor.datatransfer.TaskTransferIndexMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -178,9 +177,15 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     final byte[] contextDescriptor = message.getContextDescriptor();
 
     switch (message.getMessageType()) {
-      case ACK_PENDING: {
+      case ACK_FROM_UPSTREAM: {
         final ByteInputContext context = inputContexts.get(transferIndex);
-        LOG.info("ACK_PENDING: {}, {}", transferIndex, inputContexts);
+        LOG.info("ACK_FROM_UPSTREAM: {}, {}", transferIndex, inputContexts);
+        context.receivePendingAck();
+        break;
+      }
+      case ACK_FROM_DOWNSTREAM: {
+        final ByteOutputContext context = outputContexts.get(transferIndex);
+        LOG.info("ACK_FROM_DOWNSTREAM: {}, {}", transferIndex, context);
         context.receivePendingAck();
         break;
       }
@@ -219,7 +224,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
               contextId.getDataDirection(),
               contextDescriptor,
               contextId.isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_PENDING);
+              ByteTransferContextSetupMessage.MessageType.ACK_FROM_DOWNSTREAM);
           channel.writeAndFlush(ackMessage);
         });
         break;

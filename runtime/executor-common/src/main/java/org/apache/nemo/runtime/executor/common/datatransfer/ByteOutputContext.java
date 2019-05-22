@@ -40,6 +40,7 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
     VM,
     SF
   }
+  public void receivePendingAck();
 
   ByteOutputStream newOutputStream() throws IOException;
 
