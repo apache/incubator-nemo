@@ -16,32 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.common.datatransfer;
+package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.offloading.common.Constants;
-import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
+import org.apache.nemo.runtime.executor.common.relayserverclient.RelayDataFrame;
 import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext.SendDataTo.SF;
-import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext.SendDataTo.VM;
+import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext.SendDataTo.*;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -49,21 +44,26 @@ import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputCon
  * <p>Public methods are thread safe,
  * although the execution order may not be linearized if they were called from different threads.</p>
  */
-public final class RemoteByteOutputContext extends AbstractByteTransferContext implements ByteOutputContext {
-  private static final Logger LOG = LoggerFactory.getLogger(RemoteByteOutputContext.class.getName());
+public final class LambdaRemoteByteOutputContext extends AbstractByteTransferContext implements ByteOutputContext {
+  private static final Logger LOG = LoggerFactory.getLogger(LambdaRemoteByteOutputContext.class.getName());
 
-  private final Channel channel;
+  private Channel relayChannel;
   private Channel vmChannel;
+  private Channel currChannel;
   private String vmTaskId;
 
   private volatile boolean closed = false;
   private volatile boolean isPending = false;
+  private volatile String relayServerAddress;
+  private volatile int relayServerPort;
 
-
-  private SendDataTo sendDataTo = VM;
+  private SendDataTo sendDataTo;
 
   private String remoteAddress;
   private EventHandler<Integer> ackHandler;
+
+  // if it is null, send to vm
+  private String relayDst;
 
   /**
    * Creates a output context.
@@ -73,12 +73,21 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
    * @param contextDescriptor   user-provided context descriptor
    * @param contextManager      {@link ContextManager} for the channel
    */
-  public RemoteByteOutputContext(final String remoteExecutorId,
-                                 final ContextId contextId,
-                                 final byte[] contextDescriptor,
-                                 final ContextManager contextManager) {
+  public LambdaRemoteByteOutputContext(final String remoteExecutorId,
+                                       final ContextId contextId,
+                                       final byte[] contextDescriptor,
+                                       final ContextManager contextManager,
+                                       final String relayDst) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
-    this.channel = contextManager.getChannel();
+    this.sendDataTo = relayDst == null ? VM : SF;
+    if (sendDataTo.equals(VM)) {
+      this.vmChannel = contextManager.getChannel();
+      this.currChannel = vmChannel;
+    } else {
+      this.relayChannel = contextManager.getChannel();
+      this.currChannel = relayChannel;
+    }
+    this.relayDst = relayDst;
   }
 
   @Override
@@ -87,7 +96,13 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
     LOG.info("Send message to remote: {}", message);
     ackHandler = handler;
     // send message to the upstream task!
-    getContextManager().getChannel().writeAndFlush(message);
+
+    if (sendDataTo.equals(SF)) {
+      relayChannel.writeAndFlush(
+        new RelayControlFrame(relayDst, message));
+    } else {
+      vmChannel.writeAndFlush(message);
+    }
   }
 
   /**
@@ -109,6 +124,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   public void pending(final SendDataTo sdt, final String rsAddress, final int rsPort) {
     sendDataTo = sdt;
     isPending = true;
+    relayServerAddress = rsAddress;
+    relayServerPort = rsPort;
   }
 
   @Override
@@ -140,20 +157,26 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
   @Override
   public void scaleoutToVm(Channel channel) {
+    throw new RuntimeException("Unsupported");
+    /*
     LOG.info("Scale out to channel {}", channel);
     vmChannel = channel;
     isPending = false;
+    */
   }
 
   @Override
   public void scaleInToVm() {
+    throw new RuntimeException("Unsupported");
+    /*
     LOG.info("Scaling in to VM");
     isPending = false;
+    */
   }
 
 
   public Channel getChannel() {
-    return channel;
+    return currChannel;
   }
 
   @Override
@@ -162,8 +185,13 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
     LOG.info("Stop context {}", getContextId());
 
-    channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstanceForStop(getContextId()))
-      .addListener(getChannelWriteListener());
+    if (sendDataTo.equals(SF)) {
+      relayChannel.writeAndFlush(new RelayDataFrame(relayDst, DataFrameEncoder.DataFrame.newInstanceForStop(getContextId())))
+        .addListener(getChannelWriteListener());
+    } else {
+      vmChannel.writeAndFlush(DataFrameEncoder.DataFrame.newInstanceForStop(getContextId()))
+        .addListener(getChannelWriteListener());
+    }
   }
 
   @Override
@@ -177,7 +205,11 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
     LOG.info("Restart context {}", message);
 
-    channel.writeAndFlush(message).addListener(getChannelWriteListener());
+    if (sendDataTo.equals(SF)) {
+      relayChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(getChannelWriteListener());
+    } else {
+      vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
+    }
   }
 
   /**
@@ -191,8 +223,14 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
     if (closed) {
       return;
     }
-    channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId()))
-      .addListener(getChannelWriteListener());
+
+    if (sendDataTo.equals(SF)) {
+      relayChannel.writeAndFlush(new RelayDataFrame(relayDst, DataFrameEncoder.DataFrame.newInstance(getContextId())))
+        .addListener(getChannelWriteListener());
+    } else {
+      vmChannel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(getContextId()))
+        .addListener(getChannelWriteListener());
+    }
     deregister();
     closed = true;
   }
@@ -200,7 +238,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   @Override
   public void onChannelError(@Nullable final Throwable cause) {
     setChannelError(cause);
-    channel.close();
+    //channel.close();
   }
 
   /**
@@ -229,19 +267,19 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
     private final List<ByteBuf> pendingByteBufs = new ArrayList<>();
 
     public Channel getChannel() {
-      return channel;
+      return currChannel;
     }
 
     @Override
     public void write(final int i) throws IOException {
-      final ByteBuf byteBuf = channel.alloc().ioBuffer(1, 1);
+      final ByteBuf byteBuf = currChannel.alloc().ioBuffer(1, 1);
       byteBuf.writeByte(i);
       writeByteBuf(byteBuf);
     }
 
     @Override
     public void write(final byte[] bytes, final int offset, final int length) throws IOException {
-      final ByteBuf byteBuf = channel.alloc().ioBuffer(length, length);
+      final ByteBuf byteBuf = currChannel.alloc().ioBuffer(length, length);
       byteBuf.writeBytes(bytes, offset, length);
       writeByteBuf(byteBuf);
     }
@@ -256,7 +294,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
         writeDataFrame(null, 0, true);
       }
 
-      channel.flush();
+      currChannel.flush();
       closed = true;
     }
 
@@ -281,7 +319,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
                              final String edgeId,
                              final String opId) {
 
-      final ByteBuf byteBuf = channel.alloc().ioBuffer();
+      final ByteBuf byteBuf = currChannel.alloc().ioBuffer();
       final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
 
       try {
@@ -307,19 +345,13 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
               getContextId().isPipe(),
               ByteTransferContextSetupMessage.MessageType.ACK_PENDING);
 
-          if (pendingByteBufs.isEmpty() && sendDataTo.equals(SF)) {
+          if (pendingByteBufs.isEmpty() && sendDataTo.equals(VM)) {
+            LOG.info("Ack pending to relay {}", message);
+            currChannel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(getChannelWriteListener());
+          } else if (pendingByteBufs.isEmpty() && sendDataTo.equals(SF)) {
             LOG.info("Ack pending {}", message);
-            channel.writeAndFlush(message).addListener(getChannelWriteListener());
-          } else if (pendingByteBufs.isEmpty() && sendDataTo.equals(VM)) {
-            // close channel
-            LOG.info("Ack VM scaling pending {}", message);
-            vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
-            //LOG.info("Closing vm channel {}", message);
-            //vmScalingClientTransport.disconnect(remoteAddress, Constants.VM_WORKER_PORT);
-          } else {
-            throw new RuntimeException("SCALE_SF is not supported in VM");
+            currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
           }
-
           pendingByteBufs.add(byteBuf);
 
         } else {
@@ -330,19 +362,9 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
               writeByteBuf(pendingByteBuf);
             }
             pendingByteBufs.clear();
-            switch (sendDataTo) {
-              case VM: {
-                channel.flush();
-                break;
-              }
-              case SF: {
-                vmChannel.flush();
-                break;
-              }
-            }
+            currChannel.flush();
           }
           writeByteBuf(byteBuf);
-
         }
 
       } catch (final IOException e) {
@@ -370,11 +392,12 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
 
       switch (sendDataTo) {
         case VM:
-          channel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
+          currChannel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
             .addListener(getChannelWriteListener());
           break;
         case SF:
-          vmChannel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
+          currChannel.write(new RelayDataFrame(relayDst,
+            DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream)))
             .addListener(getChannelWriteListener());
           /*
           LOG.info("Scaling: Send to {}", vmTaskId);

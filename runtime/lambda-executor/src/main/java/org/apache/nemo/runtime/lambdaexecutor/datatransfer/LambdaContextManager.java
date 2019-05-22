@@ -19,17 +19,21 @@
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
-import org.apache.nemo.common.Pair;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
+import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -43,29 +47,37 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   private final Channel channel;
   private volatile String remoteExecutorId = null;
 
-  private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByLocal = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByLocal = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, ByteInputContext> inputContexts = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, ByteOutputContext> outputContexts = new ConcurrentHashMap<>();
   private final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
   private final AtomicInteger nextInputTransferIndex = new AtomicInteger(0);
 
-  private final VMScalingClientTransport vmScalingClientTransport;
   private final AckScheduledService ackScheduledService;
 
   private final Map<TransferKey, Integer> taskTransferIndexMap;
+  private final boolean isRelayServerChannel;
+  private final ExecutorService channelExecutorService;
+  private final RelayServerClient relayServerClient;
 
-  public LambdaContextManager(final ChannelGroup channelGroup,
-                       final String localExecutorId,
-                       final Channel channel,
-                       final VMScalingClientTransport vmScalingClientTransport,
-                       final AckScheduledService ackScheduledService,
-                       final Map<TransferKey, Integer> taskTransferIndexMap) {
+  public LambdaContextManager(
+    final ExecutorService channelExecutorService,
+    final ChannelGroup channelGroup,
+    final String localExecutorId,
+    final Channel channel,
+    final AckScheduledService ackScheduledService,
+    final Map<TransferKey, Integer> taskTransferIndexMap,
+    final boolean isRelayServerChannel,
+    final RelayServerClient relayServerClient) {
     LOG.info("New lambda context manager: {} / {}", localExecutorId, channel);
+    this.channelExecutorService = channelExecutorService;
     this.channelGroup = channelGroup;
     this.localExecutorId = localExecutorId;
     this.channel = channel;
-    this.vmScalingClientTransport = vmScalingClientTransport;
     this.ackScheduledService = ackScheduledService;
     this.taskTransferIndexMap = taskTransferIndexMap;
+    this.isRelayServerChannel = isRelayServerChannel;
+    this.relayServerClient = relayServerClient;
+
     LOG.info("Transfer index map: {}", taskTransferIndexMap);
   }
 
@@ -75,8 +87,13 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   }
 
   @Override
+  public boolean isRelayServerContext() {
+    return isRelayServerChannel;
+  }
+
+  @Override
   public ByteInputContext getInputContext(ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection, int transferIndex) {
-    return inputContextsInitiatedByLocal.get(transferIndex);
+    return inputContexts.get(transferIndex);
   }
 
   @Override
@@ -88,7 +105,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final int transferIndex = taskTransferIndexMap.get(key);
     LOG.info("Input context for {}/{}, index: {}", cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), transferIndex);
 
-    return newContext(inputContextsInitiatedByLocal, transferIndex,
+    return newContext(inputContexts, transferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
       contextId -> new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor, this,
         ackScheduledService.ackService),
@@ -110,9 +127,73 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
     switch (message.getMessageType()) {
       case ACK_PENDING: {
-        final ByteInputContext context = inputContextsInitiatedByLocal.get(transferIndex);
-        LOG.info("ACK_PENDING: {}, {}", transferIndex, inputContextsInitiatedByLocal);
+        final ByteInputContext context = inputContexts.get(transferIndex);
+        LOG.info("ACK_PENDING: {}, {}", transferIndex, inputContexts);
         context.receivePendingAck();
+        break;
+      }
+      case PENDING_FOR_SCALEOUT_VM: {
+        // send channel request
+        final String relayServerAddress = message.getRelayServerAddress();
+        final int relayServerPort = message.getRelayServerPort();
+
+        // THIS means that the up/downstream operator are going to sf/vm
+        // We should connect to the relay server!
+        LOG.info("SCALEOUT pending to {}/{} relay server... {}, {}",
+          relayServerAddress, relayServerPort, transferIndex, outputContexts);
+
+        final ByteOutputContext outputContext = outputContexts.get(transferIndex);
+        outputContext.pending(ByteOutputContext.SendDataTo.SF, relayServerAddress, relayServerPort);
+        break;
+      }
+      case PENDING_FOR_SCALEIN_VM: {
+
+        throw new RuntimeException("Not supported yet");
+
+        /*
+        LOG.info("SCALEIN pending {}", transferIndex);
+        final ByteOutputContext outputContext = outputContexts.get(transferIndex);
+        outputContext.pending(ByteOutputContext.SendDataTo.VM, null, 1);
+        break;
+        */
+      }
+      case STOP_INPUT_FOR_SCALEOUT: {
+        // connect to relay server
+        final String relayServerAddress = message.getRelayServerAddress();
+        final int relayServerPort = message.getRelayServerPort();
+        LOG.info("Connecting to relay server for input {}/{}", relayServerAddress, relayServerPort);
+
+        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+
+        channelExecutorService.execute(() -> {
+          final ChannelFuture channelFuture = relayServerClient.connectToRelayServer(relayServerAddress, relayServerPort);
+          while (!channelFuture.isDone()) {
+            try {
+              Thread.sleep(500);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+
+          final Channel relayServerChannel = channelFuture.channel();
+
+          relayServerClient.registerTask(relayServerChannel,
+            cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true);
+
+          // ACK to the original channel
+          final ByteTransferContextSetupMessage ackMessage =
+            new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
+              contextId.getTransferIndex(),
+              contextId.getDataDirection(),
+              contextDescriptor,
+              contextId.isPipe(),
+              ByteTransferContextSetupMessage.MessageType.ACK_PENDING);
+          channel.writeAndFlush(ackMessage);
+
+        });
+        break;
+      }
+      case STOP_INPUT_FOR_SCALEIN: {
         break;
       }
       default: {
@@ -177,19 +258,29 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   }
 
   @Override
-  public ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
+  public ByteOutputContext newOutputContext(final String executorId,
+                                            final PipeTransferContextDescriptor descriptor,
+                                            final boolean isPipe) {
     LOG.info("LambdaContextManager: {}", executorId);
-    final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-    final TransferKey key =  new TransferKey(cd.getRuntimeEdgeId(),
-      (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), true);
-   ;
-    final int transferIndex = taskTransferIndexMap.get(key);
-    LOG.info("Output context for {}/{}, index: {}", cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), transferIndex);
+    final TransferKey key =  new TransferKey(descriptor.getRuntimeEdgeId(),
+      (int) descriptor.getSrcTaskIndex(), (int) descriptor.getDstTaskIndex(), true);
 
-    return newContext(outputContextsInitiatedByLocal, transferIndex,
+    final int transferIndex = taskTransferIndexMap.get(key);
+    LOG.info("Output context for {}/{}, index: {}", descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), transferIndex);
+
+    final byte[] encodedDescriptor = descriptor.encode();
+    if (isRelayServerChannel) {
+      final String relayDst = RelayUtils.createId(descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), false);
+      return newContext(outputContexts, transferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
-        contextId -> new RemoteByteOutputContext(executorId, contextId, contextDescriptor, this, vmScalingClientTransport),
+        contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, relayDst),
         executorId, isPipe);
+    } else {
+      return newContext(outputContexts, transferIndex,
+        ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
+        contextId -> new LambdaRemoteByteOutputContext(executorId, contextId, encodedDescriptor, this, null),
+        executorId, isPipe);
+    }
   }
 
   private void setRemoteExecutorId(final String executorId) {
@@ -209,7 +300,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   public void channelInactive(final ChannelHandlerContext ctx) {
     channelGroup.remove(ctx.channel());
     final Throwable cause = new Exception("Channel closed");
-    throwChannelErrorOnContexts(outputContextsInitiatedByLocal, cause);
+    throwChannelErrorOnContexts(outputContexts, cause);
   }
 
   private <T extends ByteTransferContext> void throwChannelErrorOnContexts(final ConcurrentMap<Integer, T> contexts,

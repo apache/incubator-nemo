@@ -44,6 +44,7 @@ public class PipeTransferContextDescriptor {
       final long srcTaskIndex = dis.readLong();
       final long dstTaskIndex = dis.readLong();
       final long numPipe = dis.readLong();
+      final boolean isInVm = dis.readBoolean();
       return new PipeTransferContextDescriptor(runtimeEdgeId, srcTaskIndex, dstTaskIndex, numPipe);
     } catch (IOException e) {
       e.printStackTrace();

@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
+import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -25,6 +26,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,14 +59,21 @@ public final class PipeManagerWorker {
   // key: edgeid, dstIndex
   private final ConcurrentMap<Pair<String, Integer>, Set<ByteInputContext>> byteInputContextMap = new ConcurrentHashMap<>();
 
+  private final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap;
+  private final RelayServerClient relayServerClient;
+
   public PipeManagerWorker(final String executorId,
                            final ByteTransfer byteTransfer,
                            final Map<Pair<String, Integer>, String> taskExecutorIdMap,
-                           final Map<String, Serializer> serializerMap) {
+                           final Map<String, Serializer> serializerMap,
+                           final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap,
+                           final RelayServerClient relayServerClient) {
     this.executorId = executorId;
     this.byteTransfer = byteTransfer;
     this.taskExecutorIdMap = taskExecutorIdMap;
     this.serializerMap = serializerMap;
+    this.taskLocationMap = taskLocationMap;
+    this.relayServerClient = relayServerClient;
   }
 
 
@@ -142,26 +151,33 @@ public final class PipeManagerWorker {
     final String runtimeEdgeId = runtimeEdge.getId();
     // TODO: check whether it is in SF or not
     final String targetExecutorId = taskExecutorIdMap.get(Pair.of(runtimeEdge.getId(), dstTaskIndex));
+    final TaskLocationMap.LOC loc = taskLocationMap.get(new NemoTriple<>(runtimeEdge.getId(), dstTaskIndex, true));
 
-    if (isExecutorInSF(targetExecutorId)) {
-      // Connect to the relay server!
-      // TODO
-      throw new UnsupportedOperationException("Not supported yet");
-    } else {
-      // The executor is in VM, just connects to the VM server
-      // Descriptor
-      final PipeTransferContextDescriptor descriptor =
-        new PipeTransferContextDescriptor(
-          runtimeEdgeId,
-          srcTaskIndex,
-          dstTaskIndex,
-          getNumOfInputPipeToWait(runtimeEdge));
+    // Descriptor
+    final PipeTransferContextDescriptor descriptor =
+      new PipeTransferContextDescriptor(
+        runtimeEdgeId,
+        srcTaskIndex,
+        dstTaskIndex,
+        getNumOfInputPipeToWait(runtimeEdge));
 
-      LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
-        runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
-      // Connect to the executor
-      return byteTransfer.newOutputContext(targetExecutorId, descriptor.encode(), true)
-        .thenApply(context -> context);
+    switch (loc) {
+      case SF: {
+        // Connect to the relay server!
+        return relayServerClient.newOutputContext(targetExecutorId, runtimeEdgeId, dstTaskIndex, true, descriptor)
+          .thenApply(context -> context);
+      }
+      case VM: {
+        // The executor is in VM, just connects to the VM server
+        LOG.info("Writer descriptor: runtimeEdgeId: {}, srcTaskIndex: {}, dstTaskIndex: {}, getNumOfInputPipe:{} ",
+          runtimeEdgeId, srcTaskIndex, dstTaskIndex, getNumOfInputPipeToWait(runtimeEdge));
+        // Connect to the executor
+        return byteTransfer.newOutputContext(targetExecutorId, descriptor.encode(), true)
+          .thenApply(context -> context);
+      }
+      default: {
+        throw new RuntimeException("Unsupported loc: " + loc);
+      }
     }
   }
 
@@ -171,31 +187,38 @@ public final class PipeManagerWorker {
     final String runtimeEdgeId = runtimeEdge.getId();
     final String srcExecutorId = taskExecutorIdMap.get(Pair.of(runtimeEdge.getId(), srcTaskIndex));
 
-    if (isExecutorInSF(srcExecutorId)) {
-       // Connect to the relay server!
-      // TODO
-      throw new UnsupportedOperationException("Not supported yet");
-    } else {
-      // Descriptor
-      final PipeTransferContextDescriptor descriptor =
-        new PipeTransferContextDescriptor(
-          runtimeEdgeId,
-          srcTaskIndex,
-          dstTaskIndex,
-          getNumOfOutputPipeToWait(runtimeEdge));
+    final TaskLocationMap.LOC loc = taskLocationMap.get(new NemoTriple<>(runtimeEdge.getId(), (int) srcTaskIndex, false));
 
-      // Connect to the executor
-      return byteTransfer.newInputContext(srcExecutorId, descriptor.encode(), true)
-        .thenApply(context -> {
-          final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstTaskIndex);
-          byteInputContextMap.putIfAbsent(key, new HashSet<>());
-          final Set<ByteInputContext> contexts = byteInputContextMap.get(key);
-          synchronized (contexts) {
-            contexts.add(context);
-          }
-          return ((StreamRemoteByteInputContext) context).getInputIterator(
-            serializerMap.get(runtimeEdgeId));
-        });
+    switch (loc) {
+      case SF: {
+        // Connect to the relay server!
+        throw new RuntimeException("Not supported yet: " + loc);
+      }
+      case VM: {
+        // Descriptor
+        final PipeTransferContextDescriptor descriptor =
+          new PipeTransferContextDescriptor(
+            runtimeEdgeId,
+            srcTaskIndex,
+            dstTaskIndex,
+            getNumOfOutputPipeToWait(runtimeEdge));
+
+        // Connect to the executor
+        return byteTransfer.newInputContext(srcExecutorId, descriptor.encode(), true)
+          .thenApply(context -> {
+            final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstTaskIndex);
+            byteInputContextMap.putIfAbsent(key, new HashSet<>());
+            final Set<ByteInputContext> contexts = byteInputContextMap.get(key);
+            synchronized (contexts) {
+              contexts.add(context);
+            }
+            return ((StreamRemoteByteInputContext) context).getInputIterator(
+              serializerMap.get(runtimeEdgeId));
+          });
+      }
+      default: {
+        throw new RuntimeException("Unsupported loc: " + loc);
+      }
     }
   }
 

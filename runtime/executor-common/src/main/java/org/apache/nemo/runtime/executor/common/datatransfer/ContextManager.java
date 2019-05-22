@@ -27,6 +27,8 @@ public interface ContextManager extends ChannelInboundHandler {
 
   Channel getChannel();
 
+  boolean isRelayServerContext();
+
   ByteInputContext getInputContext(
     final ByteTransferContextSetupMessage.ByteTransferDataDirection dataDirection,
     final int transferIndex);
@@ -40,7 +42,7 @@ public interface ContextManager extends ChannelInboundHandler {
    */
   ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe);
 
-  ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe);
+  ByteOutputContext newOutputContext(final String executorId, final PipeTransferContextDescriptor contextDescriptor, final boolean isPipe);
 
   void onContextExpired(final ByteTransferContext context);
 

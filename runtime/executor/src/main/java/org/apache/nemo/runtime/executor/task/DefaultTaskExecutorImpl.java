@@ -57,6 +57,7 @@ import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.*;
+import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
@@ -186,6 +187,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   private final List<StageEdge> copyOutgoingEdges;
   private final List<StageEdge> copyIncomingEdges;
 
+  private final RelayServer relayServer;
+
   /**
    * Constructor.
    *
@@ -215,12 +218,15 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
                                  final ServerlessExecutorProvider serverlessExecutorProvider,
                                  final TinyTaskOffloadingWorkerManager tinyWorkerManager,
                                  final EvalConf evalConf,
-                                 final TaskInputContextMap taskInputContextMap) {
+                                 final TaskInputContextMap taskInputContextMap,
+                                 final RelayServer relayServer) {
     // Essential information
     LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
     this.copyOutgoingEdges = copyOutgoingEdges;
     LOG.info("Copied outgoing edges: {}, bytes: {}", copyOutgoingEdges);
     this.copyIncomingEdges = copyIncomingEdges;
+
+    this.relayServer = relayServer;
 
     this.threadId = threadId;
     this.executorId = executorId;
@@ -381,7 +387,8 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
           prevOffloadEndTime,
           toMaster,
           outputWriterMap,
-          irVertexDag));
+          irVertexDag,
+          relayServer));
 
       /*
       if (sourceVertexDataFetchers.size() == 1 && sourceVertexDataFetchers.get(0) instanceof SourceVertexDataFetcher) {

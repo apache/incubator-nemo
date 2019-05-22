@@ -6,17 +6,21 @@ import io.netty.buffer.PooledByteBufAllocator;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.NemoTriple;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.dag.DAG;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.nemo.runtime.executor.common.OffloadingExecutorEventType.EventType.TASK_START;
 
@@ -39,6 +43,7 @@ public final class OffloadingTask {
   public final UnboundedSource.CheckpointMark checkpointMark;
   public final UnboundedSource unboundedSource;
   public final Map<String, GBKFinalState> stateMap;
+  final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap;
 
   // TODO: we should get checkpoint mark in constructor!
   public OffloadingTask(final String executorId,
@@ -51,7 +56,8 @@ public final class OffloadingTask {
                         final List<StageEdge> incomingEdges,
                         final UnboundedSource.CheckpointMark checkpointMark,
                         final UnboundedSource unboundedSource,
-                        final Map<String, GBKFinalState>  stateMap) {
+                        final Map<String, GBKFinalState>  stateMap,
+                        final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap) {
     this.executorId = executorId;
     this.taskId = taskId;
     this.taskIndex = taskIndex;
@@ -63,6 +69,7 @@ public final class OffloadingTask {
     this.checkpointMark = checkpointMark;
     this.unboundedSource = unboundedSource;
     this.stateMap = stateMap;
+    this.taskLocationMap = taskLocationMap;
   }
 
   public ByteBuf encode(final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder,
@@ -114,6 +121,8 @@ public final class OffloadingTask {
           stateCoderMap.get(vertexIdAndState.getKey()).encode(vertexIdAndState.getValue(), bos);
         }
       }
+
+      SerializationUtils.serialize((ConcurrentHashMap) taskLocationMap, bos);
 
       dos.close();
       oos.close();
@@ -180,6 +189,9 @@ public final class OffloadingTask {
         }
       }
 
+      final Map<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocationMap =
+        SerializationUtils.deserialize(inputStream);
+
       return new OffloadingTask(executorId,
         taskId,
         taskIndex,
@@ -190,7 +202,8 @@ public final class OffloadingTask {
         incomingEdges,
         checkpointMark,
         unboundedSource,
-        stateMap);
+        stateMap,
+        taskLocationMap);
 
     } catch (IOException | ClassNotFoundException e) {
       e.printStackTrace();

@@ -34,9 +34,9 @@ import java.util.List;
 @ChannelHandler.Sharable
 public final class ControlFrameEncoder extends MessageToMessageEncoder<ByteTransferContextSetupMessage> {
 
-  private static final int ZEROS_LENGTH = 5;
-  private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
-  private static final ByteBuf ZEROS = Unpooled.directBuffer(ZEROS_LENGTH, ZEROS_LENGTH).writeZero(ZEROS_LENGTH);
+  public static final int ZEROS_LENGTH = 5;
+  public static final int BODY_LENGTH_LENGTH = Integer.BYTES;
+  public static final ByteBuf ZEROS = Unpooled.directBuffer(ZEROS_LENGTH, ZEROS_LENGTH).writeZero(ZEROS_LENGTH);
 
 
   /**
@@ -47,9 +47,9 @@ public final class ControlFrameEncoder extends MessageToMessageEncoder<ByteTrans
   }
 
   @Override
-  protected void encode(final ChannelHandlerContext ctx,
-                        final ByteTransferContextSetupMessage message,
-                        final List out) {
+  public void encode(final ChannelHandlerContext ctx,
+                     final ByteTransferContextSetupMessage message,
+                     final List out) {
 
     out.add(ZEROS.retain());
 

@@ -1,17 +1,27 @@
 package org.apache.nemo.runtime.lambdaexecutor.general;
 
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RelayServerClient;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.downstream.TaskEndEvent;
@@ -20,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -51,23 +60,32 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   private transient VMScalingClientTransport clientTransport;
   private transient AckScheduledService ackScheduledService;
 
-  private final boolean isInVm;
   private final ConcurrentMap<TaskExecutor, ExecutorThread> taskAssignedMap;
   private final Map<TransferKey, Integer> taskTransferIndexMap;
+
+  private final String relayServerAddress;
+  private final int relayServerPort;
+
+  private transient RelayServerClient relayServerClient;
+  private final ConcurrentMap<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> taskLocMap;
 
   public OffloadingExecutor(final Map<String, InetSocketAddress> executorAddressMap,
                             final Map<String, Serializer> serializerMap,
                             final Map<Pair<String, Integer>, String> taskExecutorIdMap,
                             final Map<TransferKey, Integer> taskTransferIndexMap,
-                            final boolean isInVm) {
+                            final String relayServerAddress,
+                            final int relayServerPort) {
     this.channels = new ConcurrentHashMap<>();
     this.executorId = "lambdaExecutor";
     this.executorAddressMap = executorAddressMap;
     this.serializerMap = serializerMap;
     this.taskExecutorIdMap = taskExecutorIdMap;
-    this.isInVm = isInVm;
     this.taskTransferIndexMap = taskTransferIndexMap;
     this.taskAssignedMap = new ConcurrentHashMap<>();
+    this.relayServerAddress = relayServerAddress;
+    this.relayServerPort = relayServerPort;
+    this.taskLocMap = new ConcurrentHashMap<>();
+
   }
   /**
    * Extracts task index from a task ID.
@@ -121,16 +139,34 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     final LambdaByteTransportChannelInitializer initializer =
       new LambdaByteTransportChannelInitializer(channelGroup,
-        controlFrameEncoder, dataFrameEncoder, channels, executorId, clientTransport, ackScheduledService,
+        controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
         taskTransferIndexMap);
 
+    // Relay server channel initializer
+    final RelayServerClientChannelInitializer relayServerClientChannelInitializer =
+      new RelayServerClientChannelInitializer(channelGroup,
+        controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
+        taskTransferIndexMap);
+
+    final EventLoopGroup clientGroup = new NioEventLoopGroup(2, new DefaultThreadFactory("relayClient"));
+    final Bootstrap clientBootstrap = new Bootstrap()
+      .group(clientGroup)
+      .channel(NioSocketChannel.class)
+      .handler(relayServerClientChannelInitializer)
+      .option(ChannelOption.SO_REUSEADDR, true);
+
+    this.relayServerClient = new RelayServerClient(clientGroup, clientBootstrap, relayServerAddress, relayServerPort);
+
+    initializer.setRelayServerClient(relayServerClient);
+    relayServerClientChannelInitializer.setRelayServerClient(relayServerClient);
+
     byteTransport = new LambdaByteTransport(
-      executorId, selector, initializer, executorAddressMap, channelGroup);
+      executorId, selector, initializer, executorAddressMap, channelGroup, relayServerAddress, relayServerPort);
 
     final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
 
     pipeManagerWorker =
-      new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap);
+      new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap, taskLocMap, relayServerClient);
 
     intermediateDataIOFactory =
       new IntermediateDataIOFactory(pipeManagerWorker);
@@ -140,11 +176,15 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
   public void onData(Object event) {
 
     if (event instanceof OffloadingTask) {
-      // TODO: receive tasks
+
       final int executorIndex = receivedTasks.getAndIncrement() % executorThreadNum;
       final ExecutorThread executorThread = executorThreads.get(executorIndex);
 
       final OffloadingTask task = (OffloadingTask) event;
+      for (final Map.Entry<NemoTriple<String, Integer, Boolean>, TaskLocationMap.LOC> entry
+        : task.taskLocationMap.entrySet()) {
+        taskLocMap.put(entry.getKey(), entry.getValue());
+      }
 
       final OffloadingTaskExecutor taskExecutor = new OffloadingTaskExecutor(
         task,

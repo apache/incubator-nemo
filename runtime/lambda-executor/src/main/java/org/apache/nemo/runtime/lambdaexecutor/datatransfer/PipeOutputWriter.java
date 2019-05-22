@@ -29,6 +29,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,6 +111,25 @@ public final class PipeOutputWriter {
   }
 
   public void close() {
+    // send stop message!
+
+    for (final ByteOutputContext byteOutputContext : pipes) {
+
+      final ByteTransferContextSetupMessage pendingMsg =
+        new ByteTransferContextSetupMessage(byteOutputContext.getContextId().getInitiatorExecutorId(),
+          byteOutputContext.getContextId().getTransferIndex(),
+          byteOutputContext.getContextId().getDataDirection(),
+          byteOutputContext.getContextDescriptor(),
+          byteOutputContext.getContextId().isPipe(),
+          ByteTransferContextSetupMessage.MessageType.STOP_INPUT_FOR_SCALEIN);
+
+      LOG.info("Send finish message {}", pendingMsg);
+
+      byteOutputContext.sendMessage(pendingMsg, (m) -> {
+
+        LOG.info("receive ack!!");
+      });
+    }
 
     pipes.forEach(pipe -> {
       try {

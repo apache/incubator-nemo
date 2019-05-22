@@ -18,14 +18,17 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.exception.UnsupportedCommPatternException;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.bytetransfer.LocalByteInputContext;
-import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RemoteByteInputContext;
+import org.apache.nemo.runtime.executor.relayserver.RelayServer;
+import org.apache.nemo.runtime.lambdaexecutor.datatransfer.LambdaRemoteByteInputContext;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.reef.wake.EventHandler;
@@ -35,7 +38,6 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -59,13 +61,17 @@ public final class PipeInputReader implements InputReader {
   private final Set<ByteInputContext> byteInputContexts;
 
   private final String executorId;
+  private final RelayServer relayServer;
+  private final TaskLocationMap taskLocationMap;
 
   PipeInputReader(final String executorId,
                   final int dstTaskIdx,
                   final IRVertex srcIRVertex,
                   final RuntimeEdge runtimeEdge,
                   final PipeManagerWorker pipeManagerWorker,
-                  final TaskInputContextMap taskInputContextMap) {
+                  final TaskInputContextMap taskInputContextMap,
+                  final RelayServer relayServer,
+                  final TaskLocationMap taskLocationMap) {
     this.executorId = executorId;
     this.dstTaskIndex = dstTaskIdx;
     this.srcVertex = srcIRVertex;
@@ -73,6 +79,8 @@ public final class PipeInputReader implements InputReader {
     this.runtimeEdge = runtimeEdge;
     this.pipeManagerWorker = pipeManagerWorker;
     this.byteInputContexts = new HashSet<>();
+    this.relayServer = relayServer;
+    this.taskLocationMap = taskLocationMap;
     this.pipeManagerWorker.notifyMaster(runtimeEdge.getId(), dstTaskIdx);
   }
 
@@ -88,11 +96,14 @@ public final class PipeInputReader implements InputReader {
           byteInputContext.getContextId().getDataDirection(),
           byteInputContext.getContextDescriptor(),
           byteInputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.PENDING_FOR_SCALEOUT_VM);
+          ByteTransferContextSetupMessage.MessageType.PENDING_FOR_SCALEOUT_VM,
+          relayServer.getPublicAddress(),
+          relayServer.getPort());
 
       LOG.info("Send message {}", pendingMsg);
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
+        TODO: receive relay server channel address..
 
         LOG.info("receive ack!!");
         atomicInteger.decrementAndGet();
@@ -198,10 +209,14 @@ public final class PipeInputReader implements InputReader {
         byteInputContexts.add(context);
 
         final int srcTaskIndex = pair.right();
+
+        taskLocationMap.locationMap
+          .put(new NemoTriple<>(runtimeEdge.getId(), srcTaskIndex, false), TaskLocationMap.LOC.VM);
+
         if (context instanceof LocalByteInputContext) {
           final LocalByteInputContext localByteInputContext = (LocalByteInputContext) context;
           handler.onNext(Pair.of(localByteInputContext.getIteratorWithNumBytes(), srcTaskIndex));
-        } else if (context instanceof RemoteByteInputContext) {
+        } else if (context instanceof LambdaRemoteByteInputContext) {
           handler.onNext(Pair.of(new DataUtil.InputStreamIterator(context.getInputStreams(),
             pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())), srcTaskIndex));
         } else if (context instanceof StreamRemoteByteInputContext) {

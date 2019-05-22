@@ -23,7 +23,9 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
+import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
@@ -37,6 +39,9 @@ import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
 
 /**
  * Manages multiple transport contexts for one channel.
@@ -67,6 +72,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   // key: runtimeId, taskIndex, outputStream , value: transferIndex
   private final Map<TransferKey, Integer> taskTransferIndexMap;
 
+  private final TaskLocationMap taskLocationMap;
+
   /**
    * Creates context manager for this channel.
    * @param pipeManagerWorker   provides handler for new contexts by remote executors
@@ -90,7 +97,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
                             //final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote,
                             //final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote,
                             final AtomicInteger nextInputTransferIndex,
-                            final AtomicInteger nextOutputTransferIndex) {
+                            final AtomicInteger nextOutputTransferIndex,
+                            final TaskLocationMap taskLocationMap) {
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
@@ -107,6 +115,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     //this.outputContextsInitiatedByLocal = outputContextsInitiatedByLocal;
     this.nextInputTransferIndex = nextInputTransferIndex;
     this.nextOutputTransferIndex = nextOutputTransferIndex;
+    this.taskLocationMap = taskLocationMap;
     flusher.scheduleAtFixedRate(() -> {
 
       if (channel.isOpen()) {
@@ -123,6 +132,11 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   @Override
   public Channel getChannel() {
     return channel;
+  }
+
+  @Override
+  public boolean isRelayServerContext() {
+    return false;
   }
 
   /**
@@ -170,9 +184,36 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       case PENDING_FOR_SCALEOUT_VM: {
         // this means that the downstream task will be moved to another machine
         // so we should stop sending data to the downstream task
+        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+
+        // It means that the remote dst task is moved to SF (or new VM)
+        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), SF);
+
         LOG.info("SCALEOUT pending {}, {}", transferIndex, outputContexts);
         final ByteOutputContext outputContext = outputContexts.get(transferIndex);
-        outputContext.pending(true);
+        outputContext.pending(ByteOutputContext.SendDataTo.SF, null, 1);
+        break;
+      }
+      case PENDING_FOR_SCALEIN_VM: {
+        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+        // It means that the remote dst task is moved to the origin VM
+        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), VM);
+
+        LOG.info("SCALEIN pending {}", transferIndex);
+        final ByteOutputContext outputContext = outputContexts.get(transferIndex);
+        outputContext.pending(ByteOutputContext.SendDataTo.VM, null, 1);
+        break;
+      }
+      case STOP_INPUT_FOR_SCALEOUT: {
+        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+        LOG.info("Scaling out input context {} to SF", Pair.of(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex()));
+        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), SF);
+        break;
+      }
+      case STOP_INPUT_FOR_SCALEIN: {
+        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+        LOG.info("Scaling in input context {} to VM", Pair.of(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex()));
+        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), VM);
         break;
       }
       case RESUME_AFTER_SCALEOUT_VM: {
@@ -185,12 +226,6 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         outputContext.scaleoutToVm(address, taskId);
         break;
         */
-      }
-      case PENDING_FOR_SCALEIN_VM: {
-        LOG.info("SCALEIN pending {}", transferIndex);
-        final ByteOutputContext outputContext = outputContexts.get(transferIndex);
-        outputContext.pending(false);
-        break;
       }
       case RESUME_AFTER_SCALEIN_VM: {
         LOG.info("Resume scaling {}", transferIndex);
@@ -216,6 +251,12 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
           if (inputContexts.containsKey(transferIndex)) {
             LOG.warn("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
                 transferIndex);
+            final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+
+            // THIS always should be in SF
+            taskLocationMap.locationMap.put(
+              new NemoTriple<>(cd.getRuntimeEdgeId(), (int)cd.getSrcTaskIndex(), false), TaskLocationMap.LOC.SF);
+
             //return inputContextsInitiatedByRemote.get(transferIndex);
           } else {
             final ByteInputContext c = new StreamRemoteByteInputContext(
@@ -226,6 +267,11 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
             final TransferKey key =
               new TransferKey(cd.getRuntimeEdgeId(),
                 (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), false);
+
+            // This always should be VM
+            taskLocationMap.locationMap.put(
+              new NemoTriple<>(cd.getRuntimeEdgeId(), (int)cd.getSrcTaskIndex(), false), VM);
+
 
             taskTransferIndexMap.put(key, transferIndex);
 
@@ -254,7 +300,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
             outputContext.scaleoutToVm(channel);
           } else {
             final ByteOutputContext c = new RemoteByteOutputContext(remoteExecutorId, contextId,
-              contextDescriptor, this, vmScalingClientTransport);
+              contextDescriptor, this);
             try {
               if (isPipe) {
                 pipeManagerWorker.onOutputContext(c);
@@ -411,23 +457,27 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   /**
    * Create a new {@link ByteOutputContext}.
    * @param executorId target executor id
-   * @param contextDescriptor the context descriptor
    * @param isPipe            is pipe
    * @return new {@link ByteOutputContext}
    */
   @Override
-  public ByteOutputContext newOutputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
-    final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-    final TransferKey key = new TransferKey(cd.getRuntimeEdgeId(),
-      (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), true);
+  public ByteOutputContext newOutputContext(final String executorId,
+                                            final PipeTransferContextDescriptor descriptor,
+                                            final boolean isPipe) {
+    final TransferKey key = new TransferKey(descriptor.getRuntimeEdgeId(),
+      (int) descriptor.getSrcTaskIndex(), (int) descriptor.getDstTaskIndex(), true);
 
     final int transferIndex = nextOutputTransferIndex.getAndIncrement();
     taskTransferIndexMap.put(key, transferIndex);
 
+    // FIRST initiation should be in VM
+    taskLocationMap.locationMap.put(new NemoTriple<>(descriptor.getRuntimeEdgeId(),
+      (int) descriptor.getDstTaskIndex(), true), VM);
+
      return newContext(outputContexts, transferIndex,
         ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA,
         contextId -> new RemoteByteOutputContext(executorId, contextId,
-          contextDescriptor, this, vmScalingClientTransport),
+          descriptor.encode(), this),
         executorId, isPipe, false);
 
     /*

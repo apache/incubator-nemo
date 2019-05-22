@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
@@ -28,6 +29,7 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import org.apache.nemo.common.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,13 +48,16 @@ public final class LambdaByteTransport {//implements AutoCloseable {
   private final Bootstrap clientBootstrap;
   private final Map<String, InetSocketAddress> executorAddressMap;
   private final ChannelGroup channelGroup;
+  private final Channel relayServerChannel;
 
   public LambdaByteTransport(
       final String localExecutorId,
       final NativeChannelImplementationSelector channelImplSelector,
       final LambdaByteTransportChannelInitializer channelInitializer,
       final Map<String, InetSocketAddress> executorAddressMap,
-      final ChannelGroup channelGroup) {
+      final ChannelGroup channelGroup,
+      final String relayServerAddres,
+      final int relayServerPort) {
 
     this.executorAddressMap = executorAddressMap;
     this.channelGroup = channelGroup;
@@ -64,6 +69,17 @@ public final class LambdaByteTransport {//implements AutoCloseable {
         .channel(channelImplSelector.getChannelClass())
         .handler(channelInitializer)
         .option(ChannelOption.SO_REUSEADDR, true);
+
+    final ChannelFuture channelFuture = connectToRelayServer(relayServerAddres, relayServerPort);
+    this.relayServerChannel = channelFuture.channel();
+  }
+
+  public Channel getRelayServerChannel() {
+    return relayServerChannel;
+  }
+
+  public void registerTask(final Pair<String, Integer> edgeIndex, final boolean in) {
+    // todo
   }
 
   public void close() {
@@ -71,6 +87,22 @@ public final class LambdaByteTransport {//implements AutoCloseable {
     final Future clientGroupCloseFuture = clientGroup.shutdownGracefully();
     channelGroupCloseFuture.awaitUninterruptibly();
     clientGroupCloseFuture.awaitUninterruptibly();
+  }
+
+  public ChannelFuture connectToRelayServer(final String address, final int port) {
+
+    final InetSocketAddress socketAddress = new InetSocketAddress(address, port);
+    final ChannelFuture connectFuture = clientBootstrap.connect(socketAddress);
+    connectFuture.addListener(future -> {
+      if (future.isSuccess()) {
+        // Succeed to connect
+        LOG.info("Connected to relay server {}:{}", address, port);
+        return;
+      }
+      // Failed to connect (Not logging the cause here, which is not very useful)
+      LOG.error("Failed to connect to relay server {}:{}", address, port);
+    });
+    return connectFuture;
   }
 
   ChannelFuture connectTo(final String remoteExecutorId) {

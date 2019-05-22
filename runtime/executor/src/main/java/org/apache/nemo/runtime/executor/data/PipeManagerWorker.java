@@ -119,6 +119,7 @@ public final class PipeManagerWorker {
       if (!pipeLocInfo.hasExecutorId()) {
         throw new IllegalStateException();
       }
+
       final String targetExecutorId = responseFromMaster.getPipeLocInfoMsg().getExecutorId();
 
       // Descriptor

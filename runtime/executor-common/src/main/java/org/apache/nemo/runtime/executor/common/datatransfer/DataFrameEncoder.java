@@ -37,7 +37,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
 
   private static final int TRANSFER_INDEX_LENGTH = Integer.BYTES;
   private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
-  private static final int HEADER_LENGTH = Byte.BYTES + TRANSFER_INDEX_LENGTH + BODY_LENGTH_LENGTH;
+  public static final int HEADER_LENGTH = Byte.BYTES + TRANSFER_INDEX_LENGTH + BODY_LENGTH_LENGTH;
 
   // the maximum length of a frame body. 2**32 - 1
   static final long LENGTH_MAX = 4294967295L;
@@ -47,7 +47,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
   }
 
   @Override
-  protected void encode(final ChannelHandlerContext ctx, final DataFrame in, final List out) {
+  public void encode(final ChannelHandlerContext ctx, final DataFrame in, final List out) {
     // encode header
     final ByteBuf header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
     byte flags = (byte) 0;
@@ -106,14 +106,14 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
       this.handle = handle;
     }
 
-    private final Recycler.Handle handle;
-    private ByteTransferContext.ContextId contextId;
+    public final Recycler.Handle handle;
+    public ByteTransferContext.ContextId contextId;
     @Nullable
-    private Object body;
-    private long length;
-    private boolean opensSubStream;
-    private boolean closesContext;
-    private boolean stopContext;
+    public Object body;
+    public long length;
+    public boolean opensSubStream;
+    public boolean closesContext;
+    public boolean stopContext;
 
     /**
      * Creates a {@link DataFrame} to supply content to sub-stream.
@@ -167,7 +167,7 @@ public final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEnc
     /**
      * Recycles this object.
      */
-    void recycle() {
+    public void recycle() {
       body = null;
       handle.recycle(this);
     }

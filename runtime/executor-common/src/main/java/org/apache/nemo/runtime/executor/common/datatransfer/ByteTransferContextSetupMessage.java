@@ -19,6 +19,8 @@ public final class ByteTransferContextSetupMessage {
     CONTROL,
     RESTART,
     PENDING_FOR_SCALEOUT_VM,
+    STOP_INPUT_FOR_SCALEOUT,
+    STOP_INPUT_FOR_SCALEIN,
     PENDING_FOR_SCALEIN_VM,
     ACK_PENDING,
     RESUME_AFTER_SCALEOUT_VM,
@@ -30,9 +32,11 @@ public final class ByteTransferContextSetupMessage {
   private final ByteTransferDataDirection dataDirection;
   private final byte[] contextDescriptor;
   private final boolean isPipe;
-  private final String address;
-  private final String taskId;
+  //private final String address;
+  //private final String taskId;
   private final MessageType messageType;
+  private final String relayServerAddress;
+  private final int relayServerPort;
 
   public ByteTransferContextSetupMessage(
     final String initiatorExecutorId,
@@ -50,7 +54,7 @@ public final class ByteTransferContextSetupMessage {
     final byte[] contextDescriptor,
     final boolean isPipe,
     final MessageType messageType) {
-    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, messageType, "", "");
+    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, messageType, "", 0);
   }
 
   public ByteTransferContextSetupMessage(
@@ -60,16 +64,16 @@ public final class ByteTransferContextSetupMessage {
     final byte[] contextDescriptor,
     final boolean isPipe,
     final MessageType messageType,
-    final String address,
-    final String taskId) {
+    final String relayServerAddress,
+    final int relayServerPort) {
     this.initiatorExecutorId = initiatorExecutorId;
     this.transferIndex = transferIndex;
     this.dataDirection = dataDirection;
     this.contextDescriptor = contextDescriptor;
     this.isPipe = isPipe;
     this.messageType = messageType;
-    this.address = address;
-    this.taskId = taskId;
+    this.relayServerAddress = relayServerAddress;
+    this.relayServerPort = relayServerPort;
   }
 
   public String getInitiatorExecutorId() {
@@ -88,6 +92,15 @@ public final class ByteTransferContextSetupMessage {
     return messageType;
   }
 
+  public String getRelayServerAddress() {
+    return relayServerAddress;
+  }
+
+  public int getRelayServerPort() {
+    return relayServerPort;
+  }
+
+  /*
   public String getMovedAddress() {
     return address;
   }
@@ -95,6 +108,7 @@ public final class ByteTransferContextSetupMessage {
   public String getTaskId() {
     return taskId;
   }
+  */
 
   public boolean getIsPipe() {
     return isPipe;
@@ -116,8 +130,9 @@ public final class ByteTransferContextSetupMessage {
       dos.write(contextDescriptor);
       dos.writeBoolean(isPipe);
       dos.writeInt(messageType.ordinal());
-      dos.writeUTF(address);
-      dos.writeUTF(taskId);
+      dos.writeUTF(relayServerAddress);
+      dos.writeInt(relayServerPort);
+      //dos.writeUTF(address); //dos.writeUTF(taskId);
 
       dos.close();
       bos.close();
@@ -147,11 +162,15 @@ public final class ByteTransferContextSetupMessage {
       final boolean isPipe = dis.readBoolean();
       final int ordinal = dis.readInt();
       final MessageType type = MessageType.values()[ordinal];
-      final String moveAddrss = dis.readUTF();
-      final String taskId = dis.readUTF();
+      final String relayServerAddress = dis.readUTF();
+      final int relayServerPort = dis.readInt();
+      final String remoteTaskId = dis.readUTF();
+      //final String moveAddrss = dis.readUTF();
+      //final String taskId = dis.readUTF();
 
       return new ByteTransferContextSetupMessage(
-        localExecutorId, transferIndex, direction, contextDescriptor, isPipe, type, moveAddrss, taskId);
+        localExecutorId, transferIndex, direction, contextDescriptor,
+        isPipe, type, relayServerAddress, relayServerPort);
 
     } catch (IOException e) {
       e.printStackTrace();
@@ -163,6 +182,7 @@ public final class ByteTransferContextSetupMessage {
   @Override
   public String toString() {
     return "InitExecutor: " + initiatorExecutorId + ", TransferIndex: " + transferIndex
-      + ", " + "Direction: " + dataDirection + ", " + ", Type: " + messageType;
+      + ", " + "Direction: " + dataDirection + ", " + ", Type: "
+      + messageType + "Addr: " + relayServerAddress + ", port: "+  relayServerPort;
   }
 }

@@ -27,10 +27,12 @@ import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.partitioner.Partitioner;
+import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +63,7 @@ public final class PipeOutputWriter implements OutputWriter {
   final Map<Long, Long> prevWatermarkMap;
   final Map<Long, Integer> watermarkCounterMap;
   private final StageEdge stageEdge;
+  private final RelayServer relayServer;
 
   /**
    * Constructor.
@@ -74,7 +77,8 @@ public final class PipeOutputWriter implements OutputWriter {
                    final PipeManagerWorker pipeManagerWorker,
                    final Map<String, Pair<PriorityQueue<Watermark>, PriorityQueue<Watermark>>> expectedWatermarkMap,
                    final Map<Long, Long> prevWatermarkMap,
-                   final Map<Long, Integer> watermarkCounterMap) {
+                   final Map<Long, Integer> watermarkCounterMap,
+                   final RelayServer relayServer) {
     this.stageEdge = (StageEdge) runtimeEdge;
     this.initialized = false;
     this.srcTaskId = srcTaskId;
@@ -88,6 +92,7 @@ public final class PipeOutputWriter implements OutputWriter {
     this.expectedWatermarkMap = expectedWatermarkMap;
     this.prevWatermarkMap = prevWatermarkMap;
     this.watermarkCounterMap = watermarkCounterMap;
+    this.relayServer = relayServer;
     this.serializer = pipeManagerWorker.getSerializer(runtimeEdge.getId());
     this.pipes = doInitialize();
   }
@@ -221,6 +226,29 @@ public final class PipeOutputWriter implements OutputWriter {
 
   @Override
   public void stop() {
+    // send stop message!
+
+    for (final ByteOutputContext byteOutputContext : pipes) {
+      final ByteTransferContextSetupMessage pendingMsg =
+        new ByteTransferContextSetupMessage(
+          byteOutputContext.getContextId().getInitiatorExecutorId(),
+          byteOutputContext.getContextId().getTransferIndex(),
+          byteOutputContext.getContextId().getDataDirection(),
+          byteOutputContext.getContextDescriptor(),
+          byteOutputContext.getContextId().isPipe(),
+          ByteTransferContextSetupMessage.MessageType.STOP_INPUT_FOR_SCALEOUT,
+          relayServer.getPublicAddress(),
+          relayServer.getPort());
+
+      LOG.info("Send message {}", pendingMsg);
+
+      byteOutputContext.sendMessage(pendingMsg, (m) -> {
+
+        LOG.info("receive ack!!");
+      });
+    }
+
+
     // DO nothing
 
     /*

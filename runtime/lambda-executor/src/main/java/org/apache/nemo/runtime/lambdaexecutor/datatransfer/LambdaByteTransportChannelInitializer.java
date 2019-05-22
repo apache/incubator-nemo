@@ -26,6 +26,8 @@ import org.apache.nemo.runtime.executor.common.datatransfer.*;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  *
@@ -63,16 +65,16 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
   private final String localExecutorId;
   private final ConcurrentMap<SocketChannel, Boolean> channels;
   private final ChannelGroup channelGroup;
-  private final VMScalingClientTransport clientTransport;
   private final AckScheduledService ackScheduledService;
   private final Map<TransferKey, Integer> taskTransferIndexMap;
+  private final ExecutorService channelExecutorService;
+  private RelayServerClient relayServerClient;
 
   public LambdaByteTransportChannelInitializer(final ChannelGroup channelGroup,
                                                final ControlFrameEncoder controlFrameEncoder,
                                                final DataFrameEncoder dataFrameEncoder,
                                                final ConcurrentMap<SocketChannel, Boolean> channels,
                                                final String localExecutorId,
-                                               final VMScalingClientTransport clientTransport,
                                                final AckScheduledService ackScheduledService,
                                                final Map<TransferKey, Integer> taskTransferIndexMap) {
     this.channelGroup = channelGroup;
@@ -80,16 +82,22 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
     this.dataFrameEncoder = dataFrameEncoder;
     this.localExecutorId = localExecutorId;
     this.channels = channels;
-    this.clientTransport = clientTransport;
     this.ackScheduledService = ackScheduledService;
     this.taskTransferIndexMap = taskTransferIndexMap;
+    this.channelExecutorService = Executors.newCachedThreadPool();
+  }
+
+  public void setRelayServerClient(final RelayServerClient client) {
+    relayServerClient = client;
   }
 
   @Override
   protected void initChannel(final SocketChannel ch) {
 
     final ContextManager contextManager = new LambdaContextManager(
-      channelGroup, localExecutorId, ch, clientTransport, ackScheduledService, taskTransferIndexMap);
+      channelExecutorService,
+      channelGroup, localExecutorId, ch, ackScheduledService, taskTransferIndexMap,
+      false, relayServerClient);
 
     channels.put(ch, true);
 

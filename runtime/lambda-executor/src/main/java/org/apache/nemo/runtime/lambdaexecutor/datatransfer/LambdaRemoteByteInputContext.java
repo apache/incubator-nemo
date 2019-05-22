@@ -40,9 +40,9 @@ import java.util.concurrent.CompletableFuture;
  * <p>Public methods are thread safe,
  * although the execution order may not be linearized if they were called from different threads.</p>
  */
-public final class RemoteByteInputContext extends AbstractByteTransferContext implements ByteInputContext {
+public final class LambdaRemoteByteInputContext extends AbstractByteTransferContext implements ByteInputContext {
 
-  private static final Logger LOG = LoggerFactory.getLogger(RemoteByteInputContext.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(LambdaRemoteByteInputContext.class.getName());
 
   private final CompletableFuture<Iterator<InputStream>> completedFuture = new CompletableFuture<>();
   private final ClosableBlockingQueue<ByteBufInputStream> byteBufInputStreams = new ClosableBlockingQueue<>();
@@ -78,10 +78,10 @@ public final class RemoteByteInputContext extends AbstractByteTransferContext im
    * @param contextDescriptor   user-provided context descriptor
    * @param contextManager      {@link ContextManager} for the channel
    */
-  RemoteByteInputContext(final String remoteExecutorId,
-                         final ContextId contextId,
-                         final byte[] contextDescriptor,
-                         final ContextManager contextManager) {
+  LambdaRemoteByteInputContext(final String remoteExecutorId,
+                               final ContextId contextId,
+                               final byte[] contextDescriptor,
+                               final ContextManager contextManager) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
   }
 

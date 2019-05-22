@@ -20,6 +20,8 @@ package org.apache.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.nemo.common.NemoTriple;
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.OffloadingTransform;
@@ -48,17 +50,15 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.Task;
 import org.apache.nemo.runtime.common.state.TaskState;
 import org.apache.nemo.runtime.executor.bytetransfer.ByteTransport;
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
+import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.datatransfer.TaskInputContextMap;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
-import org.apache.nemo.runtime.executor.common.NemoEventDecoderFactory;
-import org.apache.nemo.runtime.executor.common.NemoEventEncoderFactory;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.nemo.runtime.executor.datatransfer.TaskTransferIndexMap;
+import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.executor.task.DefaultTaskExecutorImpl;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;
@@ -75,6 +75,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
 
 /**
  * Executor.
@@ -124,6 +126,8 @@ public final class Executor {
   private final TaskInputContextMap taskInputContextMap;
 
   private final TinyTaskOffloadingWorkerManager tinyWorkerManager;
+  private final RelayServer relayServer;
+  private final TaskLocationMap taskLocationMap;
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -143,14 +147,18 @@ public final class Executor {
                    final PipeManagerWorker pipeManagerWorker,
                    final TaskExecutorMapWrapper taskExecutorMapWrapper,
                    final TaskInputContextMap taskInputContextMap,
-                   final TaskTransferIndexMap taskTransferIndexMap) {
+                   final TaskTransferIndexMap taskTransferIndexMap,
+                   final RelayServer relayServer,
+                   final TaskLocationMap taskLocationMap) {
                    //@Parameter(EvalConf.BottleneckDetectionCpuThreshold.class) final double threshold,
                    //final CpuEventModel cpuEventModel) {
+    this.relayServer = relayServer;
     this.executorId = executorId;
     this.byteTransport = byteTransport;
     this.pipeManagerWorker = pipeManagerWorker;
     this.taskEventExecutorService = Executors.newSingleThreadExecutor();
     this.taskInputContextMap = taskInputContextMap;
+    this.taskLocationMap = taskLocationMap;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
               .namingPattern("TaskExecutor thread-%d")
               .build());
@@ -177,7 +185,6 @@ public final class Executor {
       executorThreads.add(new ExecutorThread(scheduledExecutorService, i, executorId));
       executorThreads.get(i).start();
     }
-
 
     final OffloadingTransform lambdaExecutor = new OffloadingExecutor(
       byteTransport.getExecutorAddressMap(),
@@ -247,6 +254,22 @@ public final class Executor {
    */
   private void launchTask(final Task task,
                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag) {
+
+    for (final StageEdge stageEdge : task.getTaskIncomingEdges()) {
+      final RuntimeEdge runtimeEdge = (RuntimeEdge) stageEdge;
+      final String edgeId = runtimeEdge.getId();
+      final Integer taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
+      taskLocationMap.locationMap.put(new NemoTriple<>(edgeId, taskIndex, false), VM);
+    }
+
+
+    for (final StageEdge stageEdge : task.getTaskOutgoingEdges()) {
+      final RuntimeEdge runtimeEdge = (RuntimeEdge) stageEdge;
+      final String edgeId = runtimeEdge.getId();
+      final Integer taskIndex = RuntimeIdManager.getIndexFromTaskId(task.getTaskId());
+      taskLocationMap.locationMap.put(new NemoTriple<>(edgeId, taskIndex, true), VM);
+    }
+
     LOG.info("Launch task: {}", task.getTaskId());
 
     LOG.info("Non-copied outgoing edges: {}", task.getTaskOutgoingEdges());
@@ -298,7 +321,8 @@ public final class Executor {
         serverlessExecutorProvider,
         tinyWorkerManager,
         evalConf,
-        taskInputContextMap);
+        taskInputContextMap,
+        relayServer);
 
       taskExecutorMap.put(taskExecutor, true);
       final int numTask = numReceivedTasks.getAndIncrement();

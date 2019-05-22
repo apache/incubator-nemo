@@ -39,8 +39,10 @@ import org.apache.nemo.runtime.executor.TransformContextImpl;
 import org.apache.nemo.runtime.executor.common.DataFetcher;
 import org.apache.nemo.runtime.executor.common.SourceVertexDataFetcher;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.data.SerializerManager;
 import org.apache.nemo.runtime.executor.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.executor.relayserver.RelayServer;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultEvent;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
@@ -114,6 +116,8 @@ public final class TinyTaskOffloader implements Offloader {
 
   private final List<DataFetcher> allFetchers = new ArrayList<>();
 
+  private final TaskLocationMap taskLocationMap;
+
   public TinyTaskOffloader(final String executorId,
                            final Task task,
                            final TaskExecutor taskExecutor,
@@ -137,7 +141,9 @@ public final class TinyTaskOffloader implements Offloader {
                            final AtomicLong prevOffloadEndTime,
                            final PersistentConnectionToMasterMap toMaster,
                            final Collection<OutputWriter> outputWriters,
-                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
+                           final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+                           final RelayServer relayServer,
+                           final TaskLocationMap taskLocationMap) {
     this.executorId = executorId;
     this.task = task;
     this.taskExecutor = taskExecutor;
@@ -166,6 +172,8 @@ public final class TinyTaskOffloader implements Offloader {
     this.toMaster = toMaster;
     this.outputWriters = outputWriters;
     this.irVertexDag = irVertexDag;
+
+    this.taskLocationMap = taskLocationMap;
 
     logger.scheduleAtFixedRate(() -> {
 
@@ -388,7 +396,8 @@ public final class TinyTaskOffloader implements Offloader {
         copyIncomingEdges,
         checkpointMark,
         unboundedSource,
-        stateMap);
+        stateMap,
+        taskLocationMap.locationMap);
 
       final OffloadingSerializer serializer = new OffloadingExecutorSerializer(checkpointMarkCoder, coderMap);
 
@@ -405,7 +414,8 @@ public final class TinyTaskOffloader implements Offloader {
         copyIncomingEdges,
         null,
         null,
-        stateMap);
+        stateMap,
+        taskLocationMap.locationMap);
 
 
       final OffloadingSerializer serializer = new OffloadingExecutorSerializer(null, coderMap);
