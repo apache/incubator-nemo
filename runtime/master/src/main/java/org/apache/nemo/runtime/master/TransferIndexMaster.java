@@ -75,7 +75,7 @@ public final class TransferIndexMaster {
           final int isInputContext = (int) requestIndexMessage.getIsInputContext();
 
           //final int index = isInputContext == 1 ? inputContextIndex.getAndIncrement() : outputContextIndex.getAndIncrement();
-          final int index = contextIndex.get();
+          final int index = contextIndex.getAndIncrement();
 
           LOG.info("Send input/output ({}) context index {}", isInputContext, index);
 
