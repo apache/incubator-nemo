@@ -57,22 +57,30 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
             new OffloadingHeartbeatEvent(taskId, taskIndex, time));
         }
         case KAFKA_CHECKPOINT: {
-          final DataInputStream dd = new DataInputStream(inputStream);
-          final String taskId = dd.readUTF();
-          final int id = dd.readInt();
+          final String taskId = dis.readUTF();
+          final int id = dis.readInt();
           final UnboundedSource.CheckpointMark checkpointMark = coder.decode(inputStream);
+
+          final int mapSize = dis.readInt();
+          final Map<String, GBKFinalState> stateMap = new HashMap<>();
+          for (int i = 0; i < mapSize; i++) {
+            final String key = dis.readUTF();
+            final GBKFinalState state = stateCoderMap.get(key).decode(dis);
+            stateMap.put(key, state);
+          }
+
           return Pair.of(taskId,
-            new KafkaOffloadingOutput(taskId, id, checkpointMark));
+            new KafkaOffloadingOutput(taskId, id, checkpointMark, stateMap));
         }
         case STATE_OUTPUT: {
           final String  taskId = dis.readUTF();
-          final Map<String, GBKFinalState> stateMap = new HashMap<>();
 
-          if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
-            for (final String key : stateCoderMap.keySet()) {
-              final GBKFinalState state = stateCoderMap.get(key).decode(dis);
-              stateMap.put(key, state);
-            }
+          final int mapSize = dis.readInt();
+          final Map<String, GBKFinalState> stateMap = new HashMap<>();
+          for (int i = 0; i < mapSize; i++) {
+            final String key = dis.readUTF();
+            final GBKFinalState state = stateCoderMap.get(key).decode(dis);
+            stateMap.put(key, state);
           }
 
           return Pair.of(taskId, new StateOutput(taskId, stateMap));

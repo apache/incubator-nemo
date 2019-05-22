@@ -56,17 +56,33 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       dos.writeUTF(output.taskId);
       dos.writeInt(output.id);
       checkpointMarkCoder.encode(output.checkpointMark, outputStream);
+
+      if (output.stateMap != null && !output.stateMap.isEmpty()) {
+        dos.writeInt(output.stateMap.size());
+         for (final Map.Entry<String, GBKFinalState> entry : output.stateMap.entrySet()) {
+          final Coder<GBKFinalState> stateCoder = stateCoderMap.get(entry.getKey());
+          dos.writeUTF(entry.getKey());
+          stateCoder.encode(entry.getValue(), outputStream);
+        }
+      } else {
+        dos.writeInt(0);
+      }
+
     } else if (data instanceof StateOutput) {
       final DataOutputStream dos = new DataOutputStream(outputStream);
       dos.writeChar(STATE_OUTPUT);
       final StateOutput output = (StateOutput) data;
       dos.writeUTF(output.taskId);
 
-      if (stateCoderMap != null && !stateCoderMap.isEmpty()) {
-        for (final Map.Entry<String, GBKFinalState> entry : output.stateMap.entrySet()) {
+      if (output.stateMap != null && !output.stateMap.isEmpty()) {
+        dos.writeInt(output.stateMap.size());
+         for (final Map.Entry<String, GBKFinalState> entry : output.stateMap.entrySet()) {
           final Coder<GBKFinalState> stateCoder = stateCoderMap.get(entry.getKey());
+          dos.writeUTF(entry.getKey());
           stateCoder.encode(entry.getValue(), outputStream);
         }
+      } else {
+        dos.writeInt(0);
       }
     }
   }

@@ -212,6 +212,16 @@ public final class TinyTaskOffloader implements Offloader {
 
     sourceVertexDataFetcher.setReadable(newReadable);
 
+    // set state
+     if (output.stateMap != null) {
+      for (final String key : output.stateMap.keySet()) {
+        LOG.info("Reset state for operator {}", key);
+        final OperatorVertex statefulOp = getStateTransformVertex(key);
+        final StatefulTransform transform = (StatefulTransform) statefulOp.getTransform();
+        transform.setState(output.stateMap.get(key));
+      }
+    }
+
     availableFetchers.add(sourceVertexDataFetcher);
 
     kafkaOffloadingOutputs.clear();

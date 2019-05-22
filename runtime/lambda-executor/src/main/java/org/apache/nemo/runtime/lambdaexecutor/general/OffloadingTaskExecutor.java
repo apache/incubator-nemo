@@ -403,17 +403,25 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
       if (dataFetcher instanceof SourceVertexDataFetcher) {
         // send checkpoint mark to the VM!!
+        final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
+            stateAndCoderMap = getStateAndCoderMap();
+
+          final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
+
         final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
         if (srcDataFetcher.isStarted()) {
           final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
           final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
+
+
           LOG.info("Send checkpointmark of task {} / {}",  offloadingTask.taskId, checkpointMark);
-          resultCollector.collector.emit(new KafkaOffloadingOutput(offloadingTask.taskId, 1, checkpointMark));
+          resultCollector.collector.emit(new KafkaOffloadingOutput(offloadingTask.taskId, 1, checkpointMark,
+            stateMap));
         } else {
           LOG.info("Send checkpointmark of task {}  / {} to vm",
             offloadingTask.taskId, offloadingTask.checkpointMark);
           resultCollector.collector.emit(new KafkaOffloadingOutput(
-            offloadingTask.taskId, 1, offloadingTask.checkpointMark));
+            offloadingTask.taskId, 1, offloadingTask.checkpointMark, stateMap));
         }
       } else if (dataFetcher instanceof LambdaParentTaskDataFetcher) {
         pendingFutures.add(dataFetcher.stop());
@@ -456,15 +464,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
     pendingFutures.clear();
     // Close all data fetchers
-
-
-    // flush transforms
-    offloadingTask.irDag.getTopologicalSort().stream().forEach(irVertex -> {
-      if (irVertex instanceof OperatorVertex) {
-        final Transform transform = ((OperatorVertex) irVertex).getTransform();
-        transform.flush();
-      }
-    });
 
     // TODO: close upstream data fetchers
     /*

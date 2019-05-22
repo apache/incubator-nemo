@@ -206,10 +206,10 @@ public final class HandleDataFetcher {
         final UnboundedSourceReadable readable = (UnboundedSourceReadable) dataFetcher.getReadable();
         final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
         LOG.info("Send checkpointmark {} to vm: {}", checkpointMark, id);
-        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, checkpointMark));
+        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, checkpointMark, null));
       } else {
         LOG.info("Send checkpointmark {} to vm: {}", startCheckpointMark, id);
-        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, startCheckpointMark));
+        resultCollector.collector.emit(new KafkaOffloadingOutput("no", id, startCheckpointMark, null));
       }
 
 
@@ -217,12 +217,14 @@ public final class HandleDataFetcher {
 
 
       // flush transforms
+      /*
       irDag.getTopologicalSort().stream().forEach(irVertex -> {
         if (irVertex instanceof OperatorVertex) {
           final Transform transform = ((OperatorVertex) irVertex).getTransform();
           transform.flush();
         }
       });
+      */
 
       fetchers.forEach(fetcher -> {
         try {
