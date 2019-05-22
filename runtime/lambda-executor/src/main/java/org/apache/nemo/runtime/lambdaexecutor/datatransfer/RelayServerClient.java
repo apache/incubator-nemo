@@ -133,7 +133,7 @@ public final class RelayServerClient {
       connectFuture.addListener(future -> {
         if (future.isSuccess()) {
           // Succeed to connect
-          LOG.info("Connected to relay server {}:{}", address, port);
+          LOG.info("Connected to relay server {}:{}, {}", address, port, connectFuture.channel());
           return;
         }
         // Failed to connect (Not logging the cause here, which is not very useful)

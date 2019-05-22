@@ -30,10 +30,15 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
   }
 
   public void startToRelay(final ByteBuf byteBuf, final ChannelHandlerContext ctx) throws Exception {
+
+    LOG.info("Remaining bytes: {}", remainingBytes);
+
     if (remainingBytes == 0) {
       final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
       final char type = bis.readChar();
       dst = bis.readUTF();
+
+      LOG.info("Dst: {}", dst);
 
       if (type == 0 || type == 1) {
         // data frame and control frame
