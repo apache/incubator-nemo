@@ -57,6 +57,7 @@ public final class StreamingScheduler implements Scheduler {
   private final PlanStateManager planStateManager;
   private final PipeManagerMaster pipeManagerMaster;
   private final TaskIndexMaster taskIndexMaster;
+  private final TransferIndexMaster transferIndexMaster;
 
   @Inject
   StreamingScheduler(final TaskDispatcher taskDispatcher,
@@ -64,13 +65,15 @@ public final class StreamingScheduler implements Scheduler {
                      final ExecutorRegistry executorRegistry,
                      final PlanStateManager planStateManager,
                      final PipeManagerMaster pipeManagerMaster,
-                     final TaskIndexMaster taskIndexMaster) {
+                     final TaskIndexMaster taskIndexMaster,
+                     final TransferIndexMaster transferIndexMaster) {
     this.taskDispatcher = taskDispatcher;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.executorRegistry = executorRegistry;
     this.planStateManager = planStateManager;
     this.pipeManagerMaster = pipeManagerMaster;
     this.taskIndexMaster = taskIndexMaster;
+    this.transferIndexMaster = transferIndexMaster;
   }
 
   @Override

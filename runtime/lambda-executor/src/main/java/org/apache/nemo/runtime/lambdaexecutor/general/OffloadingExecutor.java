@@ -137,16 +137,19 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
+    final ConcurrentMap<Integer, ByteInputContext> inputContexts = new ConcurrentHashMap<>();
+    final ConcurrentMap<Integer, ByteOutputContext> outputContexts = new ConcurrentHashMap<>();
+
     final LambdaByteTransportChannelInitializer initializer =
       new LambdaByteTransportChannelInitializer(channelGroup,
         controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
-        taskTransferIndexMap);
+        taskTransferIndexMap, inputContexts, outputContexts);
 
     // Relay server channel initializer
     final RelayServerClientChannelInitializer relayServerClientChannelInitializer =
       new RelayServerClientChannelInitializer(channelGroup,
         controlFrameEncoder, dataFrameEncoder, channels, executorId, ackScheduledService,
-        taskTransferIndexMap);
+        taskTransferIndexMap, inputContexts, outputContexts);
 
     final EventLoopGroup clientGroup = new NioEventLoopGroup(2, new DefaultThreadFactory("relayClient"));
     final Bootstrap clientBootstrap = new Bootstrap()

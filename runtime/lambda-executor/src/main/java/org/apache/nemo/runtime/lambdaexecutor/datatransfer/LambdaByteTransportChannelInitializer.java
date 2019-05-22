@@ -69,6 +69,8 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
   private final Map<TransferKey, Integer> taskTransferIndexMap;
   private final ExecutorService channelExecutorService;
   private RelayServerClient relayServerClient;
+  final ConcurrentMap<Integer, ByteInputContext> inputContextMap;
+  final ConcurrentMap<Integer, ByteOutputContext> outputContextMap;
 
   public LambdaByteTransportChannelInitializer(final ChannelGroup channelGroup,
                                                final ControlFrameEncoder controlFrameEncoder,
@@ -76,7 +78,9 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
                                                final ConcurrentMap<SocketChannel, Boolean> channels,
                                                final String localExecutorId,
                                                final AckScheduledService ackScheduledService,
-                                               final Map<TransferKey, Integer> taskTransferIndexMap) {
+                                               final Map<TransferKey, Integer> taskTransferIndexMap,
+                                               final ConcurrentMap<Integer, ByteInputContext> inputContextMap,
+                                               final ConcurrentMap<Integer, ByteOutputContext> outputContextMap) {
     this.channelGroup = channelGroup;
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
@@ -85,6 +89,8 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
     this.ackScheduledService = ackScheduledService;
     this.taskTransferIndexMap = taskTransferIndexMap;
     this.channelExecutorService = Executors.newCachedThreadPool();
+    this.inputContextMap = inputContextMap;
+    this.outputContextMap = outputContextMap;
   }
 
   public void setRelayServerClient(final RelayServerClient client) {
@@ -96,6 +102,8 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
 
     final ContextManager contextManager = new LambdaContextManager(
       channelExecutorService,
+      inputContextMap,
+      outputContextMap,
       channelGroup, localExecutorId, ch, ackScheduledService, taskTransferIndexMap,
       false, relayServerClient);
 

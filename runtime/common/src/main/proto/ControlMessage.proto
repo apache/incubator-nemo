@@ -3,8 +3,7 @@
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
 // regarding copyright ownership.  The ASF licenses this file
-// to you under the Apache License, Version 2.0 (the
-// "License"); you may not use this file except in compliance
+// to you under the Apache License, Version 2.0 (the // "License"); you may not use this file except in compliance
 // with the License.  You may obtain a copy of the License at
 //
 //   http://www.apache.org/licenses/LICENSE-2.0
@@ -73,6 +72,8 @@ enum MessageType {
     PipeLocInfo = 15;
     RequestTaskIndex = 16;
     TaskIndexInfo = 17;
+    RequestTransferIndex = 18;
+    TransferIndexInfo = 19;
 }
 
 message Message {
@@ -96,6 +97,8 @@ message Message {
     optional PipeLocationInfoMessage pipeLocInfoMsg = 18;
     optional RequestTaskIndexMessage requestTaskIndexMsg = 19;
     optional TaskIndexInfoMessage taskIndexInfoMsg = 20;
+    optional RequestTransferIndexMessage requestTransferIndexMsg = 21;
+    optional TransferIndexInfoMessage transferIndexInfoMsg = 22;
 }
 
 // Messages from Master to Executors
@@ -262,4 +265,14 @@ message RequestTaskIndexMessage {
 message TaskIndexInfoMessage {
   required int64 requestId = 1; // To find the matching request msg
   required int64 taskIndex = 2;
+}
+
+message RequestTransferIndexMessage {
+  required string executorId = 1;
+  required int64 isInputContext = 2;
+}
+
+message TransferIndexInfoMessage {
+  required int64 requestId = 1; // To find the matching request msg
+  required int64 index = 2;
 }

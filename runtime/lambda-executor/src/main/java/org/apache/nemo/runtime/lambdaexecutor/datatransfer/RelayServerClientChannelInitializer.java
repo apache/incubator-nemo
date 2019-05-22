@@ -28,6 +28,8 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
   private final Map<TransferKey, Integer> taskTransferIndexMap;
   private final ExecutorService channelExecutorService;
   private RelayServerClient relayServerClient;
+  final ConcurrentMap<Integer, ByteInputContext> inputContextMap;
+  final ConcurrentMap<Integer, ByteOutputContext> outputContextMap;;
 
 
   public RelayServerClientChannelInitializer(final ChannelGroup channelGroup,
@@ -36,7 +38,9 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
                                              final ConcurrentMap<SocketChannel, Boolean> channels,
                                              final String localExecutorId,
                                              final AckScheduledService ackScheduledService,
-                                             final Map<TransferKey, Integer> taskTransferIndexMap) {
+                                             final Map<TransferKey, Integer> taskTransferIndexMap,
+                                             final ConcurrentMap<Integer, ByteInputContext> inputContextMap,
+                                             final ConcurrentMap<Integer, ByteOutputContext> outputContextMap) {
     this.channelGroup = channelGroup;
     this.controlFrameEncoder = controlFrameEncoder;
     this.dataFrameEncoder = dataFrameEncoder;
@@ -45,6 +49,8 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
     this.ackScheduledService = ackScheduledService;
     this.taskTransferIndexMap = taskTransferIndexMap;
     this.channelExecutorService = Executors.newCachedThreadPool();
+    this.inputContextMap = inputContextMap;
+    this.outputContextMap = outputContextMap;
   }
 
   public void setRelayServerClient(final RelayServerClient client) {
@@ -57,6 +63,8 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
 
     final ContextManager contextManager = new LambdaContextManager(
       channelExecutorService,
+      inputContextMap,
+      outputContextMap,
       channelGroup, localExecutorId, ch, ackScheduledService, taskTransferIndexMap, true,
       relayServerClient);
 

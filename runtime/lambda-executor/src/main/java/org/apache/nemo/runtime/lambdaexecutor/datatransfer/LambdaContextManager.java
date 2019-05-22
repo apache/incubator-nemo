@@ -46,10 +46,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
   private final Channel channel;
   private volatile String remoteExecutorId = null;
 
-  private final ConcurrentMap<Integer, ByteInputContext> inputContexts = new ConcurrentHashMap<>();
-  private final ConcurrentMap<Integer, ByteOutputContext> outputContexts = new ConcurrentHashMap<>();
-  private final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
-  private final AtomicInteger nextInputTransferIndex = new AtomicInteger(0);
+  private final ConcurrentMap<Integer, ByteInputContext> inputContexts;
+  private final ConcurrentMap<Integer, ByteOutputContext> outputContexts;
 
   private final AckScheduledService ackScheduledService;
 
@@ -60,6 +58,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
 
   public LambdaContextManager(
     final ExecutorService channelExecutorService,
+    final ConcurrentMap<Integer, ByteInputContext> inputContexts,
+    final ConcurrentMap<Integer, ByteOutputContext> outputContexts,
     final ChannelGroup channelGroup,
     final String localExecutorId,
     final Channel channel,
@@ -69,6 +69,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final RelayServerClient relayServerClient) {
     LOG.info("New lambda context manager: {} / {}", localExecutorId, channel);
     this.channelExecutorService = channelExecutorService;
+    this.inputContexts = inputContexts;
+    this.outputContexts = outputContexts;
     this.channelGroup = channelGroup;
     this.localExecutorId = localExecutorId;
     this.channel = channel;

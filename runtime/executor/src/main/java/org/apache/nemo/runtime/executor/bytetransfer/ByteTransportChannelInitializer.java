@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
@@ -88,6 +89,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
   private final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
   private final TaskLocationMap taskLocationMap;
   private final ExecutorService channelServiceExecutor;
+  private final PersistentConnectionToMasterMap toMaster;
 
 
   /**
@@ -112,7 +114,8 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
                                           final DataFrameEncoder dataFrameEncoder,
                                           final TaskTransferIndexMap taskTransferIndexMap,
                                           @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
-                                          final TaskLocationMap taskLocationMap) {
+                                          final TaskLocationMap taskLocationMap,
+                                          final PersistentConnectionToMasterMap toMaster) {
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
     this.byteTransfer = byteTransfer;
@@ -125,6 +128,7 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
     this.taskTransferIndexMap = taskTransferIndexMap;
     this.taskLocationMap = taskLocationMap;
     this.channelServiceExecutor = Executors.newCachedThreadPool();
+    this.toMaster = toMaster;
   }
 
   @Override
@@ -144,7 +148,8 @@ public final class ByteTransportChannelInitializer extends ChannelInitializer<So
       outputContexts,
       nextInputTransferIndex,
       nextOutputTransferIndex,
-      taskLocationMap);
+      taskLocationMap,
+      toMaster);
 
     ch.pipeline()
         // inbound

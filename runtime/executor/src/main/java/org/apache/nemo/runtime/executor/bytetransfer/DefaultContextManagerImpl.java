@@ -26,6 +26,10 @@ import io.netty.channel.group.ChannelGroup;
 import org.apache.beam.vendor.protobuf.v3.com.google.protobuf.ByteOutput;
 import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
@@ -61,8 +65,9 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   private final ConcurrentMap<Integer, ByteOutputContext> outputContexts;
   //private final ConcurrentMap<Integer, ByteInputContext> inputContextsInitiatedByRemote;
   //private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote;
-  private final AtomicInteger nextInputTransferIndex;
-  private final AtomicInteger nextOutputTransferIndex;
+
+  //private final AtomicInteger nextInputTransferIndex;
+  //private final AtomicInteger nextOutputTransferIndex;
 
   private final ScheduledExecutorService flusher;
   private final VMScalingClientTransport vmScalingClientTransport;
@@ -74,6 +79,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
   private final TaskLocationMap taskLocationMap;
 
   private final ExecutorService channelExecutorService;
+  private final PersistentConnectionToMasterMap toMaster;
+
   /**
    * Creates context manager for this channel.
    * @param pipeManagerWorker   provides handler for new contexts by remote executors
@@ -99,7 +106,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
                             //final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote,
                             final AtomicInteger nextInputTransferIndex,
                             final AtomicInteger nextOutputTransferIndex,
-                            final TaskLocationMap taskLocationMap) {
+                            final TaskLocationMap taskLocationMap,
+                            final PersistentConnectionToMasterMap toMaster) {
     this.channelExecutorService = channelExecutorService;
     this.pipeManagerWorker = pipeManagerWorker;
     this.blockManagerWorker = blockManagerWorker;
@@ -115,9 +123,10 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     //this.inputContextsInitiatedByLocal = inputContextsInitiatedByLocal;
     this.outputContexts = outputContexts;
     //this.outputContextsInitiatedByLocal = outputContextsInitiatedByLocal;
-    this.nextInputTransferIndex = nextInputTransferIndex;
-    this.nextOutputTransferIndex = nextOutputTransferIndex;
+    //this.nextInputTransferIndex = nextInputTransferIndex;
+    //this.nextOutputTransferIndex = nextOutputTransferIndex;
     this.taskLocationMap = taskLocationMap;
+    this.toMaster = toMaster;
     flusher.scheduleAtFixedRate(() -> {
 
       if (channel.isOpen()) {
@@ -125,6 +134,29 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       }
 
     }, 2, 2, TimeUnit.SECONDS);
+  }
+
+
+  private int requestTransferIndex(final boolean isInputContext) {
+    final CompletableFuture<ControlMessage.Message> msgFuture = toMaster
+      .getMessageSender(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID).request(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.TRANSFER_INDEX_LISTENER_ID)
+          .setType(ControlMessage.MessageType.RequestTransferIndex)
+          .setRequestTransferIndexMsg(ControlMessage.RequestTransferIndexMessage.newBuilder()
+            .setExecutorId(localExecutorId)
+            .setIsInputContext(isInputContext ? 1 : 0)
+            .build())
+          .build());
+
+    try {
+      final ControlMessage.Message msg = msgFuture.get();
+      return (int) msg.getTransferIndexInfoMsg().getIndex();
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
   }
 
 
@@ -464,7 +496,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     final TransferKey key = new TransferKey(cd.getRuntimeEdgeId(),
       (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), false);
 
-    final int transferIndex = nextInputTransferIndex.getAndIncrement();
+    final int transferIndex = requestTransferIndex(true);
+    LOG.info("Requesting input transferIndex: {}", transferIndex);
     taskTransferIndexMap.put(key, transferIndex);
 
     return newContext(inputContexts, transferIndex,
@@ -486,7 +519,8 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     final TransferKey key = new TransferKey(descriptor.getRuntimeEdgeId(),
       (int) descriptor.getSrcTaskIndex(), (int) descriptor.getDstTaskIndex(), true);
 
-    final int transferIndex = nextOutputTransferIndex.getAndIncrement();
+    final int transferIndex = requestTransferIndex(false);
+    LOG.info("Requesting output transferIndex: {}", transferIndex);
     taskTransferIndexMap.put(key, transferIndex);
 
     // FIRST initiation should be in VM

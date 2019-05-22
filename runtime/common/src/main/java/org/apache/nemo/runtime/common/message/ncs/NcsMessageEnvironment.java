@@ -212,11 +212,13 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case RequestBroadcastVariable:
       case RequestPipeLoc:
       case RequestTaskIndex:
+      case RequestTransferIndex:
         return MessageType.Request;
       case BlockLocationInfo:
       case InMasterBroadcastVariable:
       case PipeLocInfo:
       case TaskIndexInfo:
+      case TransferIndexInfo:
         return MessageType.Reply;
       default:
         throw new IllegalArgumentException(controlMessage.toString());
@@ -233,6 +235,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
         return controlMessage.getRequestPipeLocMsg().getExecutorId();
       case RequestTaskIndex:
         return controlMessage.getRequestTaskIndexMsg().getExecutorId();
+      case RequestTransferIndex:
+        return controlMessage.getRequestTransferIndexMsg().getExecutorId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }
@@ -248,6 +252,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
         return controlMessage.getPipeLocInfoMsg().getRequestId();
       case TaskIndexInfo:
         return controlMessage.getTaskIndexInfoMsg().getRequestId();
+      case TransferIndexInfo:
+        return controlMessage.getTransferIndexInfoMsg().getRequestId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }
