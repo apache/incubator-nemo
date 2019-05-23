@@ -194,7 +194,16 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         // DO NOTHING!!
         LOG.info("Receive stop input for scalein: {}", message);
         channelExecutorService.execute(() -> {
-
+          LOG.info("Sending ack to the input context for scalein");
+          // ACK to the original channel
+          final ByteTransferContextSetupMessage ackMessage =
+            new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
+              contextId.getTransferIndex(),
+              contextId.getDataDirection(),
+              contextDescriptor,
+              contextId.isPipe(),
+              ByteTransferContextSetupMessage.MessageType.ACK_FROM_DOWNSTREAM);
+          channel.writeAndFlush(ackMessage);
         });
 
         break;

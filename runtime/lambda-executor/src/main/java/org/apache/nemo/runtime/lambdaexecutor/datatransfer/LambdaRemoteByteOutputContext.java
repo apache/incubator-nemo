@@ -187,7 +187,6 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   @Override
   public void stop() {
     // just send stop message
-
     LOG.info("Stop context {}", getContextId());
 
     if (sendDataTo.equals(SF)) {

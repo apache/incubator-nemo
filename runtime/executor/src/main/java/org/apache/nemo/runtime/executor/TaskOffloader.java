@@ -227,7 +227,25 @@ public final class TaskOffloader {
           cnt += 1;
         }
       }
-    }, 70, TimeUnit.SECONDS);
+    }, 60, TimeUnit.SECONDS);
+
+    se.schedule(() -> {
+      LOG.info("Start Deoffloading kafka (only stage0)");
+      int cnt = 0;
+
+      //final int offloadCnt = taskExecutorMap.keySet().stream()
+      //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
+      final int offloadCnt = taskExecutorMap.size();
+
+      for (final Pair<TaskExecutor, Long> pair : offloadedExecutors) {
+        if (pair.left().getId().contains("Stage0")) {
+          LOG.info("Deoffloading {}", pair.left().getId());
+          pair.left().endOffloading();
+        }
+      }
+
+      offloadedExecutors.clear();
+    }, 90, TimeUnit.SECONDS);
 
     /*
     se.scheduleAtFixedRate(() -> {
