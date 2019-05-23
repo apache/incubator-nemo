@@ -249,7 +249,7 @@ public final class PipeOutputWriter implements OutputWriter {
       LOG.info("Send message {}", pendingMsg);
 
       byteOutputContext.sendMessage(pendingMsg, (m) -> {
-        LOG.info("receive ack from downstream!!");
+        LOG.info("receive ack from downstream!! {}/{}", runtimeEdge.getId(), runtimeEdge.getSrc());
         count.countDown();
       });
     }
