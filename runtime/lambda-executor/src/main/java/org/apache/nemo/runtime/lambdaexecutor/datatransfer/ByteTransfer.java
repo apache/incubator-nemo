@@ -85,7 +85,7 @@ public final class ByteTransfer {
   /**
    * @param remoteExecutorId id of the remote executor
    */
-  private CompletableFuture<ContextManager> connectTo(final String remoteExecutorId) {
+  public CompletableFuture<ContextManager> connectTo(final String remoteExecutorId) {
     final CompletableFuture<ContextManager> completableFuture = new CompletableFuture<>();
     final ChannelFuture channelFuture;
     try {

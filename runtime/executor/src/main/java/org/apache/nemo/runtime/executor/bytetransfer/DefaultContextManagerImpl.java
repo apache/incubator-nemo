@@ -281,7 +281,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
       case RESUME_AFTER_SCALEIN_VM: {
         LOG.info("Resume scaling {}", transferIndex);
         final ByteOutputContext outputContext = outputContexts.get(transferIndex);
-        outputContext.scaleInToVm();
+        outputContext.scaleInToVm(channel);
         break;
       }
       case RESTART: {

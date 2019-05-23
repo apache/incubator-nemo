@@ -230,7 +230,7 @@ public final class TaskOffloader {
     }, 60, TimeUnit.SECONDS);
 
     se.schedule(() -> {
-      LOG.info("Start Deoffloading kafka (only stage0)");
+      LOG.info("Start Deoffloading kafka (only stage2)");
       int cnt = 0;
 
       //final int offloadCnt = taskExecutorMap.keySet().stream()
@@ -238,7 +238,7 @@ public final class TaskOffloader {
       final int offloadCnt = taskExecutorMap.size();
 
       for (final Pair<TaskExecutor, Long> pair : offloadedExecutors) {
-        if (pair.left().getId().contains("Stage0")) {
+        if (pair.left().getId().contains("Stage2")) {
           LOG.info("Deoffloading {}", pair.left().getId());
           pair.left().endOffloading();
         }
@@ -248,7 +248,7 @@ public final class TaskOffloader {
     }, 90, TimeUnit.SECONDS);
 
     se.schedule(() -> {
-      LOG.info("Start offloading kafka (only stage0)");
+      LOG.info("Start offloading kafka (only stage2)");
       int cnt = 0;
 
       //final int offloadCnt = taskExecutorMap.keySet().stream()
@@ -256,7 +256,7 @@ public final class TaskOffloader {
       final int offloadCnt = taskExecutorMap.size();
 
       for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (taskExecutor.getId().contains("Stage0")) {
+        if (taskExecutor.getId().contains("Stage2")) {
           LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
           offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
           taskExecutor.startOffloading(System.currentTimeMillis());

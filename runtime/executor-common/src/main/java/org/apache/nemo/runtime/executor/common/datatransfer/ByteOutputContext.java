@@ -54,7 +54,7 @@ public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
   // This should be initiated when the byteOutputContext is in VM
   void scaleoutToVm(final Channel channel);
 
-  void scaleInToVm();
+  void scaleInToVm(Channel channel);
 
   void stop();
 

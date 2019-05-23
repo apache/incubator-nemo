@@ -150,10 +150,9 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
   }
 
   @Override
-  public void scaleInToVm() {
-    isPending = false;
+  public void scaleInToVm(Channel channel) {
+    throw new RuntimeException("Not supported");
   }
-
 
   public Channel getChannel() {
     return channel;

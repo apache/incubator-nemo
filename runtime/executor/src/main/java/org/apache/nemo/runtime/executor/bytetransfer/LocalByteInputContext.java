@@ -136,7 +136,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
         break;
       }
       case RESUME_AFTER_SCALEIN_VM: {
-        localByteOutputContext.scaleInToVm();
+        //localByteOutputContext.scaleInToVm();
         break;
       }
       default: {

@@ -30,7 +30,7 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
   private RelayServerClient relayServerClient;
   final ConcurrentMap<Integer, ByteInputContext> inputContextMap;
   final ConcurrentMap<Integer, ByteOutputContext> outputContextMap;;
-
+  private ByteTransfer byteTransfer;
 
   public RelayServerClientChannelInitializer(final ChannelGroup channelGroup,
                                              final ControlFrameEncoder controlFrameEncoder,
@@ -57,6 +57,10 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
     relayServerClient = client;
   }
 
+  public void setByteTransfer(final ByteTransfer bt) {
+    byteTransfer = bt;
+  }
+
   @Override
   protected void initChannel(SocketChannel ch) throws Exception {
     LOG.info("Registering channel {}", ch.remoteAddress());
@@ -66,7 +70,7 @@ public final class RelayServerClientChannelInitializer extends ChannelInitialize
       inputContextMap,
       outputContextMap,
       channelGroup, localExecutorId, ch, ackScheduledService, taskTransferIndexMap, true,
-      relayServerClient);
+      relayServerClient, byteTransfer);
 
     ch.pipeline()
       // outbound

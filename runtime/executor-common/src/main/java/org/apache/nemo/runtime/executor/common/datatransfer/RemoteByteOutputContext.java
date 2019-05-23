@@ -144,11 +144,10 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   }
 
   @Override
-  public void scaleInToVm() {
+  public void scaleInToVm(Channel channel) {
     LOG.info("Scaling in to VM");
     isPending = false;
   }
-
 
   public Channel getChannel() {
     return channel;

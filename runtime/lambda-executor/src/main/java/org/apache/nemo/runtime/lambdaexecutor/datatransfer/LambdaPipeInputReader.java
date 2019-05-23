@@ -53,8 +53,7 @@ public final class LambdaPipeInputReader implements InputReader {
                         final RuntimeEdge runtimeEdge,
                         final PipeManagerWorker pipeManagerWorker) {
     this.dstTaskIndex = dstTaskIdx;
-    this.srcVertex = srcIRVertex;
-    this.runtimeEdge = runtimeEdge;
+    this.srcVertex = srcIRVertex; this.runtimeEdge = runtimeEdge;
     this.pipeManagerWorker = pipeManagerWorker;
   }
 

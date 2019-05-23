@@ -171,14 +171,12 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   }
 
   @Override
-  public void scaleInToVm() {
-    throw new RuntimeException("Unsupported");
-    /*
-    LOG.info("Scaling in to VM");
+  public void scaleInToVm(Channel channel) {
+    LOG.info("Scale in to channel {}", channel);
+    vmChannel = channel;
+    currChannel = vmChannel;
     isPending = false;
-    */
   }
-
 
   public Channel getChannel() {
     return currChannel;

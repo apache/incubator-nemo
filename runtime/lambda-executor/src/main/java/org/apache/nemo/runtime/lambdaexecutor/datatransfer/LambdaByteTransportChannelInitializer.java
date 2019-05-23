@@ -71,6 +71,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
   private RelayServerClient relayServerClient;
   final ConcurrentMap<Integer, ByteInputContext> inputContextMap;
   final ConcurrentMap<Integer, ByteOutputContext> outputContextMap;
+  private ByteTransfer byteTransfer;
 
   public LambdaByteTransportChannelInitializer(final ChannelGroup channelGroup,
                                                final ControlFrameEncoder controlFrameEncoder,
@@ -93,6 +94,10 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
     this.outputContextMap = outputContextMap;
   }
 
+  public void setByteTransfer(final ByteTransfer bt) {
+    byteTransfer = bt;
+  }
+
   public void setRelayServerClient(final RelayServerClient client) {
     relayServerClient = client;
   }
@@ -105,7 +110,7 @@ public final class LambdaByteTransportChannelInitializer extends ChannelInitiali
       inputContextMap,
       outputContextMap,
       channelGroup, localExecutorId, ch, ackScheduledService, taskTransferIndexMap,
-      false, relayServerClient);
+      false, relayServerClient, byteTransfer);
 
     channels.put(ch, true);
 

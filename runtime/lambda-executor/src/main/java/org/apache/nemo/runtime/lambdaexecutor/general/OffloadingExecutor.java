@@ -168,6 +168,9 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
 
     final ByteTransfer byteTransfer = new ByteTransfer(byteTransport, executorId);
 
+    initializer.setByteTransfer(byteTransfer);
+    relayServerClientChannelInitializer.setByteTransfer(byteTransfer);
+
     pipeManagerWorker =
       new PipeManagerWorker(executorId, byteTransfer, taskExecutorIdMap, serializerMap, taskLocMap, relayServerClient);
 
