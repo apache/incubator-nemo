@@ -45,81 +45,81 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
 
     LOG.info("Remaining bytes: {} readable: {}", remainingBytes, byteBuf.readableBytes());
 
-    switch (status) {
-      case WAITING_HEADER1: {
-        if (byteBuf.readableBytes() < 5) {
-          LOG.info("Waiting for 5 more bytes... {}", byteBuf.readableBytes());
-          return;
-        } else {
-          bis = new ByteBufInputStream(byteBuf);
-          type = bis.readChar();
-          idLength = bis.readInt();
-          status = Status.WAITING_HEADER2;
-        }
-      }
-      case WAITING_HEADER2: {
-        if (byteBuf.readableBytes() < idLength + 4) {
-          LOG.info("Waiting for {} bytes... {}", idLength + 4, byteBuf.readableBytes());
-          return;
-        } else {
-          final byte[] idBytes = new byte[idLength];
-          bis.read(idBytes);
-          dst = new String(idBytes);
-
-          LOG.info("Dst: {}", dst);
-
-          if (type == 0 || type == 1) {
-            // data frame and control frame
-            remainingBytes = bis.readInt();
-            status = Status.WAITING_DATA;
-          } else if (type == 2) {
-            // control message
-            status = Status.WAITING_HEADER1;
-
-            final RelayControlMessage.Type controlMsgType = RelayControlMessage.Type.values()[bis.readInt()];
-            switch (controlMsgType) {
-              case REGISTER: {
-                LOG.info("Registering {} / {}", dst, ctx.channel());
-                taskChannelMap.put(dst, ctx.channel());
-                break;
-              }
-              case DEREGISTER: {
-                LOG.info("Deregistering {} / {}", dst, ctx.channel());
-                taskChannelMap.remove(dst);
-                break;
-              }
-            }
-
-            break;
+    while (byteBuf.readableBytes() > 0) {
+      switch (status) {
+        case WAITING_HEADER1: {
+          if (byteBuf.readableBytes() < 5) {
+            LOG.info("Waiting for 5 more bytes... {}", byteBuf.readableBytes());
+            return;
           } else {
-            throw new RuntimeException("Unsupported type " + type);
+            bis = new ByteBufInputStream(byteBuf);
+            type = bis.readChar();
+            idLength = bis.readInt();
+            status = Status.WAITING_HEADER2;
           }
         }
-      }
-      case WAITING_DATA: {
-        if (remainingBytes > 0) {
-          final Channel dstChannel = taskChannelMap.get(dst);
+        case WAITING_HEADER2: {
+          if (byteBuf.readableBytes() < idLength + 4) {
+            LOG.info("Waiting for {} bytes... {}", idLength + 4, byteBuf.readableBytes());
+            return;
+          } else {
+            final byte[] idBytes = new byte[idLength];
+            bis.read(idBytes);
+            dst = new String(idBytes);
 
-          if (remainingBytes - byteBuf.readableBytes() >= 0) {
-            remainingBytes -= byteBuf.readableBytes();
-            LOG.info("Forward data to dst {}... remaining: {}", dst, remainingBytes);
-            dstChannel.writeAndFlush(byteBuf);
+            LOG.info("Dst: {}", dst);
 
-            if (remainingBytes == 0) {
+            if (type == 0 || type == 1) {
+              // data frame and control frame
+              remainingBytes = bis.readInt();
+              status = Status.WAITING_DATA;
+            } else if (type == 2) {
+              // control message
               status = Status.WAITING_HEADER1;
+
+              final RelayControlMessage.Type controlMsgType = RelayControlMessage.Type.values()[bis.readInt()];
+              switch (controlMsgType) {
+                case REGISTER: {
+                  LOG.info("Registering {} / {}", dst, ctx.channel());
+                  taskChannelMap.put(dst, ctx.channel());
+                  break;
+                }
+                case DEREGISTER: {
+                  LOG.info("Deregistering {} / {}", dst, ctx.channel());
+                  taskChannelMap.remove(dst);
+                  break;
+                }
+              }
+
+              break;
+            } else {
+              throw new RuntimeException("Unsupported type " + type);
             }
-          } else {
-            LOG.info("More bytes.... slice {} / {}", remainingBytes, byteBuf.readableBytes());
-            status = Status.WAITING_HEADER1;
-            LOG.info("Writing from {} to {}", byteBuf.readerIndex(), byteBuf.readerIndex() + remainingBytes);
-            final ByteBuf bb = byteBuf.readRetainedSlice(remainingBytes);
-            dstChannel.writeAndFlush(bb);
-            remainingBytes = 0;
-            startToRelay(
-              byteBuf, ctx);
           }
         }
-        break;
+        case WAITING_DATA: {
+          if (remainingBytes > 0) {
+            final Channel dstChannel = taskChannelMap.get(dst);
+
+            if (remainingBytes - byteBuf.readableBytes() >= 0) {
+              remainingBytes -= byteBuf.readableBytes();
+              LOG.info("Forward data to dst {}... remaining: {}", dst, remainingBytes);
+              dstChannel.writeAndFlush(byteBuf);
+
+              if (remainingBytes == 0) {
+                status = Status.WAITING_HEADER1;
+              }
+            } else {
+              LOG.info("More bytes.... slice {} / {}", remainingBytes, byteBuf.readableBytes());
+              status = Status.WAITING_HEADER1;
+              LOG.info("Writing from {} to {}", byteBuf.readerIndex(), byteBuf.readerIndex() + remainingBytes);
+              final ByteBuf bb = byteBuf.readRetainedSlice(remainingBytes);
+              dstChannel.writeAndFlush(bb);
+              remainingBytes = 0;
+            }
+          }
+          break;
+        }
       }
     }
   }
