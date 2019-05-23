@@ -18,11 +18,14 @@
  */
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
+import org.apache.nemo.common.NemoTriple;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
@@ -34,6 +37,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
 import static org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA;
 
 /**
@@ -274,6 +278,25 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         outputContext.scaleInToVm(channel);
         break;
       }
+      case CONTROL: {
+        if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
+          LOG.info("inputContextsInitiatedByRemote: {}", inputContexts);
+        }
+
+        LOG.info("Input Receive transfer index : {}", transferIndex);
+        if (inputContexts.containsKey(transferIndex)) {
+          LOG.warn("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
+            transferIndex);
+          LOG.info("Resetting channel to this context manager {}", transferIndex);
+          final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
+          // reset the channel!
+          inputContext.setContextManager(this);
+
+        } else {
+          throw new RuntimeException("Unknown transfer index " + transferIndex);
+        }
+        break;
+      }
       default: {
         throw new RuntimeException("Unsupported type: " + message.getMessageType());
       }
@@ -333,8 +356,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         context.getContextId().isPipe());
 
     if (isRelayServerChannel) {
-      LOG.info("Skip... because the remote is already connected with relayServer");
-      //channel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(context.getChannelWriteListener());
+      LOG.info("No Skip... because the remote is already connected with relayServer");
+      channel.writeAndFlush(new RelayControlFrame(relayDst, message)).addListener(context.getChannelWriteListener());
     } else {
       channel.writeAndFlush(message).addListener(context.getChannelWriteListener());
     }

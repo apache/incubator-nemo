@@ -36,7 +36,7 @@ public abstract class AbstractByteTransferContext implements ByteTransferContext
   private final ContextId contextId;
   private final byte[] contextDescriptor;
   private final ChannelWriteFutureListener channelWriteFutureListener = new ChannelWriteFutureListener();
-  private final ContextManager contextManager;
+  private ContextManager contextManager;
 
   private volatile boolean hasException = false;
   private volatile Throwable exception = null;
@@ -56,6 +56,10 @@ public abstract class AbstractByteTransferContext implements ByteTransferContext
     this.contextId = contextId;
     this.contextDescriptor = contextDescriptor;
     this.contextManager = contextManager;
+  }
+
+  public void setContextManager(ContextManager cm) {
+    contextManager = cm;
   }
 
   public ContextManager getContextManager() {

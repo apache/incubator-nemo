@@ -308,6 +308,10 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
             taskLocationMap.locationMap.put(
               new NemoTriple<>(cd.getRuntimeEdgeId(), (int)cd.getSrcTaskIndex(), false), TaskLocationMap.LOC.SF);
 
+            final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
+            // reset the channel!
+            inputContext.setContextManager(this);
+
             //return inputContextsInitiatedByRemote.get(transferIndex);
           } else {
             final ByteInputContext c = new StreamRemoteByteInputContext(
