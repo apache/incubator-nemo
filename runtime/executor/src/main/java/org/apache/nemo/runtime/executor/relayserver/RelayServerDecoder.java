@@ -117,7 +117,7 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
             final ByteBuf bb = byteBuf.readRetainedSlice(maxRead);
 
             if (!taskChannelMap.containsKey(dst)) {
-              LOG.info("Pending for dst {}... readable: {}", dst);
+              LOG.info("Pending for dst {}... readable: {}", dst, byteBuf.readableBytes());
               pendingBytes.putIfAbsent(dst, new ArrayList<>());
               pendingBytes.get(dst).add(bb);
             } else {

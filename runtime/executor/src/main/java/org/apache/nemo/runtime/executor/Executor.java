@@ -192,7 +192,8 @@ public final class Executor {
       pipeManagerWorker.getTaskExecutorIdMap(),
       taskTransferIndexMap.getMap(),
       relayServer.getPublicAddress(),
-      relayServer.getPort());
+      relayServer.getPort(),
+      executorId);
 
     this.tinyWorkerManager = new TinyTaskOffloadingWorkerManager(
       offloadingWorkerFactory,

@@ -74,9 +74,10 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
                             final Map<Pair<String, Integer>, String> taskExecutorIdMap,
                             final Map<TransferKey, Integer> taskTransferIndexMap,
                             final String relayServerAddress,
-                            final int relayServerPort) {
+                            final int relayServerPort,
+                            final String executorId) {
     this.channels = new ConcurrentHashMap<>();
-    this.executorId = "lambdaExecutor";
+    this.executorId = executorId;
     this.executorAddressMap = executorAddressMap;
     this.serializerMap = serializerMap;
     this.taskExecutorIdMap = taskExecutorIdMap;
