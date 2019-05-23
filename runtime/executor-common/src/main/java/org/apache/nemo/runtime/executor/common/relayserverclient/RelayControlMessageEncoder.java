@@ -9,6 +9,8 @@ import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
 
@@ -28,9 +30,12 @@ public final class RelayControlMessageEncoder extends MessageToMessageEncoder<Re
     final String id = RelayUtils.createId(in.edgeId, in.taskIndex, in.inContext);
     final ByteBuf header = ctx.alloc().buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(header);
+
+    final byte[] idBytes = id.getBytes();
     try {
       bos.writeChar(2); // 2 means control message
-      bos.writeUTF(id);
+      bos.writeInt(idBytes.length);
+      bos.write(idBytes);
       bos.writeInt(in.type.ordinal());
     } catch (IOException e) {
       e.printStackTrace();

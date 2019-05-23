@@ -4,11 +4,13 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
 import org.apache.nemo.runtime.executor.common.datatransfer.RemoteByteOutputContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
@@ -34,11 +36,14 @@ public final class RelayDataFrameEncoder extends MessageToMessageEncoder<RelayDa
     LOG.info("Encoding relayDataFrame {}", in.dataFrame);
 
     final String id = in.dstId;
+    final byte[] idBytes = id.getBytes();
+
     final ByteBuf header = ctx.alloc().buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(header);
     try {
       bos.writeChar(0); // 0 means data frame
-      bos.writeUTF(id);
+      bos.writeInt(idBytes.length);
+      bos.write(idBytes);
       bos.writeInt(DataFrameEncoder.HEADER_LENGTH + (int) in.dataFrame.length);
       bos.close();
     } catch (IOException e) {

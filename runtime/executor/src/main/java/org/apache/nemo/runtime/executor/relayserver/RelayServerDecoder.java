@@ -19,6 +19,18 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
   private int remainingBytes = 0;
   private String dst;
 
+  public enum Status {
+    WAITING_HEADER1,
+    WAITING_HEADER2,
+    WAITING_DATA
+  }
+
+  private Status status = Status.WAITING_HEADER1;
+
+  private char type;
+  private int idLength;
+  private ByteBufInputStream bis;
+
   public RelayServerDecoder(final ConcurrentMap<String, Channel> taskChannelMap) {
     this.taskChannelMap = taskChannelMap;
   }
@@ -33,50 +45,80 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
 
     LOG.info("Remaining bytes: {} readable: {}", remainingBytes, byteBuf.readableBytes());
 
-    if (remainingBytes == 0) {
-      final ByteBufInputStream bis = new ByteBufInputStream(byteBuf);
-      final char type = bis.readChar();
-      dst = bis.readUTF();
+    switch (status) {
+      case WAITING_HEADER1: {
+        if (byteBuf.readableBytes() < 5) {
+          LOG.info("Waiting for 5 more bytes... {}", byteBuf.readableBytes());
+          return;
+        } else {
+          bis = new ByteBufInputStream(byteBuf);
+          type = bis.readChar();
+          idLength = bis.readInt();
+          status = Status.WAITING_HEADER2;
+        }
+      }
+      case WAITING_HEADER2: {
+        if (byteBuf.readableBytes() < idLength + 4) {
+          LOG.info("Waiting for {} bytes... {}", idLength + 4, byteBuf.readableBytes());
+          return;
+        } else {
+          final byte[] idBytes = new byte[idLength];
+          bis.read(idBytes);
+          dst = new String(idBytes);
 
-      LOG.info("Dst: {}", dst);
+          LOG.info("Dst: {}", dst);
 
-      if (type == 0 || type == 1) {
-        // data frame and control frame
-        remainingBytes = bis.readInt();
-      } else if (type == 2) {
-        final RelayControlMessage.Type controlMsgType = RelayControlMessage.Type.values()[bis.readInt()];
-        switch (controlMsgType) {
-          case REGISTER: {
-            LOG.info("Registering {} / {}", dst, ctx.channel());
-            taskChannelMap.put(dst, ctx.channel());
+          if (type == 0 || type == 1) {
+            // data frame and control frame
+            remainingBytes = bis.readInt();
+            status = Status.WAITING_DATA;
+          } else if (type == 2) {
+            // control message
+            status = Status.WAITING_HEADER1;
+
+            final RelayControlMessage.Type controlMsgType = RelayControlMessage.Type.values()[bis.readInt()];
+            switch (controlMsgType) {
+              case REGISTER: {
+                LOG.info("Registering {} / {}", dst, ctx.channel());
+                taskChannelMap.put(dst, ctx.channel());
+                break;
+              }
+              case DEREGISTER: {
+                LOG.info("Deregistering {} / {}", dst, ctx.channel());
+                taskChannelMap.remove(dst);
+                break;
+              }
+            }
+
             break;
-          }
-          case DEREGISTER: {
-            LOG.info("Deregistering {} / {}", dst, ctx.channel());
-            taskChannelMap.remove(dst);
-            break;
+          } else {
+            throw new RuntimeException("Unsupported type " + type);
           }
         }
-
-      } else {
-        throw new RuntimeException("Unsupported type " + type);
       }
-    }
+      case WAITING_DATA: {
+        if (remainingBytes > 0) {
+          final Channel dstChannel = taskChannelMap.get(dst);
 
-    if (remainingBytes > 0) {
-      final Channel dstChannel = taskChannelMap.get(dst);
+          if (remainingBytes - byteBuf.readableBytes() >= 0) {
+            remainingBytes -= byteBuf.readableBytes();
+            LOG.info("Forward data to dst {}", dst);
+            dstChannel.writeAndFlush(byteBuf);
 
-      if (remainingBytes - byteBuf.readableBytes() >= 0) {
-        remainingBytes -= byteBuf.readableBytes();
-        LOG.info("Forward data to dst {}", dst);
-        dstChannel.writeAndFlush(byteBuf);
-      } else {
-        LOG.info("More bytes.... slice");
-        remainingBytes = 0;
-        final ByteBuf bb = byteBuf.retainedSlice(byteBuf.readerIndex(), byteBuf.readerIndex() + remainingBytes);
-        dstChannel.writeAndFlush(bb);
-        startToRelay(
-          byteBuf.retainedSlice(byteBuf.readerIndex() + remainingBytes, byteBuf.readableBytes()), ctx);
+            if (remainingBytes == 0) {
+              status = Status.WAITING_HEADER1;
+            }
+          } else {
+            LOG.info("More bytes.... slice {} / {}", remainingBytes, byteBuf.readableBytes());
+            status = Status.WAITING_HEADER1;
+            remainingBytes = 0;
+            final ByteBuf bb = byteBuf.retainedSlice(byteBuf.readerIndex(), byteBuf.readerIndex() + remainingBytes);
+            dstChannel.writeAndFlush(bb);
+            startToRelay(
+              byteBuf.retainedSlice(byteBuf.readerIndex() + remainingBytes, byteBuf.readableBytes()), ctx);
+          }
+        }
+        break;
       }
     }
   }
