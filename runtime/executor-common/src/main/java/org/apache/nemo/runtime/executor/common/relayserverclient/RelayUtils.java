@@ -10,7 +10,7 @@ public class RelayUtils {
       .append("#")
       .append(taskIndex)
       .append("#")
-      .append(inContext ? "0" : "1")
+      .append(inContext ? "1" : "0")
       .toString();
   }
 }
