@@ -101,22 +101,17 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
         case WAITING_DATA: {
           if (remainingBytes > 0) {
             final Channel dstChannel = taskChannelMap.get(dst);
+            final int maxRead = Math.min(remainingBytes, byteBuf.readableBytes());
+            final ByteBuf bb = byteBuf.readRetainedSlice(maxRead);
+            dstChannel.writeAndFlush(bb);
 
-            if (remainingBytes - byteBuf.readableBytes() >= 0) {
-              remainingBytes -= byteBuf.readableBytes();
-              LOG.info("Forward data to dst {}... remaining: {}", dst, remainingBytes);
-              dstChannel.writeAndFlush(byteBuf);
+            LOG.info("Forward data to dst {}... read: {}, readable: {}, remaining: {}", dst, maxRead,
+              byteBuf.readableBytes(), remainingBytes);
 
-              if (remainingBytes == 0) {
-                status = Status.WAITING_HEADER1;
-              }
-            } else {
-              LOG.info("More bytes.... slice {} / {}", remainingBytes, byteBuf.readableBytes());
+            remainingBytes -= maxRead;
+
+            if (remainingBytes == 0) {
               status = Status.WAITING_HEADER1;
-              LOG.info("Writing from {} to {}", byteBuf.readerIndex(), byteBuf.readerIndex() + remainingBytes);
-              final ByteBuf bb = byteBuf.readRetainedSlice(remainingBytes);
-              dstChannel.writeAndFlush(bb);
-              remainingBytes = 0;
             }
           }
           break;
