@@ -114,7 +114,6 @@ public final class PipeOutputWriter {
     // send stop message!
 
     for (final ByteOutputContext byteOutputContext : pipes) {
-
       final ByteTransferContextSetupMessage pendingMsg =
         new ByteTransferContextSetupMessage(byteOutputContext.getContextId().getInitiatorExecutorId(),
           byteOutputContext.getContextId().getTransferIndex(),
@@ -126,7 +125,6 @@ public final class PipeOutputWriter {
       LOG.info("Send finish message {}", pendingMsg);
 
       byteOutputContext.sendMessage(pendingMsg, (m) -> {
-
         LOG.info("receive ack!!");
       });
     }

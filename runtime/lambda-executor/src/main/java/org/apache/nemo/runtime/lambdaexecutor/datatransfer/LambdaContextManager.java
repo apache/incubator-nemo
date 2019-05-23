@@ -182,13 +182,21 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
               contextId.getDataDirection(),
               contextDescriptor,
               contextId.isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_FROM_UPSTREAM);
+              ByteTransferContextSetupMessage.MessageType.ACK_FROM_DOWNSTREAM);
           channel.writeAndFlush(ackMessage);
 
         });
         break;
       }
       case STOP_INPUT_FOR_SCALEIN: {
+        // input context: SF -> VM
+        // disconnect from the relay server
+        // DO NOTHING!!
+        LOG.info("Receive stop input for scalein: {}", message);
+        channelExecutorService.execute(() -> {
+
+        });
+
         break;
       }
       default: {

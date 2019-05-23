@@ -43,7 +43,6 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
 
   public void startToRelay(final ByteBuf byteBuf, final ChannelHandlerContext ctx) throws Exception {
 
-
     while (byteBuf.readableBytes() > 0) {
       LOG.info("Remaining bytes: {} readable: {}", remainingBytes, byteBuf.readableBytes());
 
