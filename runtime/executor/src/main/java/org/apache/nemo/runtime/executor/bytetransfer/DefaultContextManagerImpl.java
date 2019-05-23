@@ -318,7 +318,6 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
               remoteExecutorId, contextId, contextDescriptor, this, ackScheduledService.ackService);
 
             // ADD Task Transfer Index !!
-            final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
             final TransferKey key =
               new TransferKey(cd.getRuntimeEdgeId(),
                 (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), false);
