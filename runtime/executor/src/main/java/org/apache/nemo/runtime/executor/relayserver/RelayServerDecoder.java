@@ -102,7 +102,7 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
 
           if (remainingBytes - byteBuf.readableBytes() >= 0) {
             remainingBytes -= byteBuf.readableBytes();
-            LOG.info("Forward data to dst {}", dst);
+            LOG.info("Forward data to dst {}... remaining: {}", dst, remainingBytes);
             dstChannel.writeAndFlush(byteBuf);
 
             if (remainingBytes == 0) {
@@ -112,10 +112,11 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
             LOG.info("More bytes.... slice {} / {}", remainingBytes, byteBuf.readableBytes());
             status = Status.WAITING_HEADER1;
             remainingBytes = 0;
-            final ByteBuf bb = byteBuf.retainedSlice(byteBuf.readerIndex(), byteBuf.readerIndex() + remainingBytes);
+            LOG.info("Writing from {} to {}", byteBuf.readerIndex(), byteBuf.readerIndex() + remainingBytes);
+            final ByteBuf bb = byteBuf.readRetainedSlice(remainingBytes);
             dstChannel.writeAndFlush(bb);
             startToRelay(
-              byteBuf.retainedSlice(byteBuf.readerIndex() + remainingBytes, byteBuf.readableBytes()), ctx);
+              byteBuf, ctx);
           }
         }
         break;
