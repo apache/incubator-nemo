@@ -582,7 +582,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     if (remoteExecutorId == null) {
       remoteExecutorId = executorId;
     } else if (!executorId.equals(remoteExecutorId)) {
-      throw new RuntimeException(String.format("Wrong ContextManager: (%s != %s)", executorId, remoteExecutorId));
+      LOG.info(String.format("Wrong ContextManager: (%s != %s)", executorId, remoteExecutorId));
     }
   }
 
