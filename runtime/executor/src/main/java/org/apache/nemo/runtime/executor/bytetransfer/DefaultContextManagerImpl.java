@@ -298,11 +298,11 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
           LOG.info("inputContextsInitiatedByRemote: {}", inputContexts);
 
-          LOG.info("Input Receive transfer index : {}", transferIndex);
+          final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+          LOG.info("Input Receive transfer index : {}/{} {}->{}", transferIndex, cd.getRuntimeEdgeId(), cd.getSrcTaskIndex(), cd.getDstTaskIndex());
           if (inputContexts.containsKey(transferIndex)) {
             LOG.warn("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
                 transferIndex);
-            final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
 
             // THIS always should be in SF
             taskLocationMap.locationMap.put(
