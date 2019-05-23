@@ -254,7 +254,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
     final ByteTransferContext.ContextId contextId = new ByteTransferContext.ContextId(localExecutorId, executorId, dataDirection, transferIndex, isPipe);
     final T context = contexts.compute(transferIndex, (index, existingContext) -> {
       if (existingContext != null) {
-        throw new RuntimeException(String.format("Duplicate ContextId: %s", contextId));
+        LOG.info(String.format("Duplicate ContextId: %s", contextId));
       }
       return contextGenerator.apply(contextId);
     });
