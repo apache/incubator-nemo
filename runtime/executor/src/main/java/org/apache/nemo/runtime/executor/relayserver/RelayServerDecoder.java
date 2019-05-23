@@ -9,6 +9,10 @@ import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlMes
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
@@ -30,6 +34,8 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
   private char type;
   private int idLength;
   private ByteBufInputStream bis;
+
+  private final Map<String, List<ByteBuf>> pendingBytes = new HashMap<>();
 
   public RelayServerDecoder(final ConcurrentMap<String, Channel> taskChannelMap) {
     this.taskChannelMap = taskChannelMap;
@@ -82,6 +88,14 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
                 case REGISTER: {
                   LOG.info("Registering {} / {}", dst, ctx.channel());
                   taskChannelMap.put(dst, ctx.channel());
+                  if (pendingBytes.get(dst) != null) {
+                    LOG.info("Flushing pending byte {} / {}", dst, ctx.channel());
+                    for (final ByteBuf pendingByte : pendingBytes.get(dst)) {
+                      ctx.channel().write(pendingByte);
+                    }
+                    ctx.channel().flush();
+                    pendingBytes.remove(dst);
+                  }
                   break;
                 }
                 case DEREGISTER: {
@@ -99,13 +113,21 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
         }
         case WAITING_DATA: {
           if (remainingBytes > 0) {
-            final Channel dstChannel = taskChannelMap.get(dst);
             final int maxRead = Math.min(remainingBytes, byteBuf.readableBytes());
             final ByteBuf bb = byteBuf.readRetainedSlice(maxRead);
-            dstChannel.writeAndFlush(bb);
 
-            LOG.info("Forward data to dst {}... read: {}, readable: {}, remaining: {}", dst, maxRead,
-              byteBuf.readableBytes(), remainingBytes);
+            if (!taskChannelMap.containsKey(dst)) {
+              LOG.info("Pending for dst {}... readable: {}", dst);
+              pendingBytes.putIfAbsent(dst, new ArrayList<>());
+              pendingBytes.get(dst).add(bb);
+            } else {
+              final Channel dstChannel = taskChannelMap.get(dst);
+
+              dstChannel.writeAndFlush(bb);
+
+              LOG.info("Forward data to dst {}... read: {}, readable: {}, remaining: {}", dst, maxRead,
+                byteBuf.readableBytes(), remainingBytes);
+            }
 
             remainingBytes -= maxRead;
 
