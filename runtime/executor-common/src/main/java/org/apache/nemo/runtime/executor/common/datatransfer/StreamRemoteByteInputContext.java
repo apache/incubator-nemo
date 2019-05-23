@@ -22,6 +22,8 @@ import io.netty.buffer.ByteBuf;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
+import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +69,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
                                final ScheduledExecutorService ackService) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     this.ackService = ackService;
+    setIsRelayServer(false);
   }
 
   public <T> IteratorWithNumBytes<T> getInputIterator(
@@ -97,10 +100,17 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
   @Override
   public void sendMessage(final ByteTransferContextSetupMessage message,
                           final EventHandler<Integer> handler) {
-    LOG.info("Send message to remote: {}", message);
     ackHandler = handler;
     // send message to the upstream task!
-    getContextManager().getChannel().writeAndFlush(message);
+    if (getIsRelayServer()) {
+      LOG.info("Send message to relay: {}", message);
+      final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(message.getContextDescriptor());
+      final String dst = RelayUtils.createId(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
+      getContextManager().getChannel().writeAndFlush(new RelayControlFrame(dst, message));
+    } else {
+      LOG.info("Send message to remote: {}", message);
+      getContextManager().getChannel().writeAndFlush(message);
+    }
   }
 
   @Override

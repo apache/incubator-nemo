@@ -281,19 +281,21 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       case CONTROL: {
         if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
           LOG.info("inputContextsInitiatedByRemote: {}", inputContexts);
-        }
 
-        LOG.info("Input Receive transfer index : {}", transferIndex);
-        if (inputContexts.containsKey(transferIndex)) {
-          LOG.warn("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
-            transferIndex);
-          LOG.info("Resetting channel to this context manager {}", transferIndex);
-          final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-          // reset the channel!
-          inputContext.setContextManager(this);
+          LOG.info("Input Receive transfer index : {}", transferIndex);
+          if (inputContexts.containsKey(transferIndex)) {
+            LOG.warn("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
+              transferIndex);
+            LOG.info("Resetting channel to this context manager {}", transferIndex);
+            final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
 
-        } else {
-          throw new RuntimeException("Unknown transfer index " + transferIndex);
+            // reset the channel!
+            inputContext.setContextManager(this);
+            inputContext.setIsRelayServer(isRelayServerChannel);
+
+          } else {
+            throw new RuntimeException("Unknown transfer index " + transferIndex);
+          }
         }
         break;
       }
