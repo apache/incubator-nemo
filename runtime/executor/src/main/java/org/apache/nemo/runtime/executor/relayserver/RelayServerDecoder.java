@@ -111,10 +111,10 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
           } else {
             LOG.info("More bytes.... slice {} / {}", remainingBytes, byteBuf.readableBytes());
             status = Status.WAITING_HEADER1;
-            remainingBytes = 0;
             LOG.info("Writing from {} to {}", byteBuf.readerIndex(), byteBuf.readerIndex() + remainingBytes);
             final ByteBuf bb = byteBuf.readRetainedSlice(remainingBytes);
             dstChannel.writeAndFlush(bb);
+            remainingBytes = 0;
             startToRelay(
               byteBuf, ctx);
           }
