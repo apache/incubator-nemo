@@ -80,7 +80,16 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
     LOG.info("Send message to remote: {}", message);
     ackHandler = handler;
     // send message to the upstream task!
-    getContextManager().getChannel().writeAndFlush(message);
+    switch (sendDataTo) {
+      case VM: {
+        channel.writeAndFlush(message);
+        break;
+      }
+      case SF: {
+        vmChannel.writeAndFlush(message);
+        break;
+      }
+    }
   }
 
   @Override
