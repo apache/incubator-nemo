@@ -107,7 +107,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
   @Override
   public void receivePendingAck() {
-    throw new RuntimeException("Not supported yet");
+    ackHandler.onNext(1);
   }
 
   /**
