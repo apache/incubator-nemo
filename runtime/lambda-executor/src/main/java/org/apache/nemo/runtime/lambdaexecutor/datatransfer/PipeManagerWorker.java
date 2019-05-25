@@ -87,6 +87,8 @@ public final class PipeManagerWorker {
     final Set<ByteInputContext> byteInputContexts = byteInputContextMap.get(key);
     final AtomicInteger atomicInteger = new AtomicInteger(byteInputContexts.size());
 
+    final CountDownLatch countDownLatch = new CountDownLatch(byteInputContexts.size());
+
     for (final ByteInputContext byteInputContext : byteInputContexts) {
       final ByteTransferContextSetupMessage pendingMsg =
         new ByteTransferContextSetupMessage(executorId,
@@ -97,16 +99,24 @@ public final class PipeManagerWorker {
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
           TaskLocationMap.LOC.VM);
 
-      LOG.info("Send message for {} {}", key, pendingMsg);
+      LOG.info("Send message for input context {}, {} {}",
+        byteInputContext.getContextId().getTransferIndex(), key, pendingMsg);
 
       byteInputContext.sendMessage(pendingMsg, (m) -> {
 
-        final int d = atomicInteger.decrementAndGet();
-        LOG.info("receive ack for {}!! {} / {}", key, d, byteInputContextMap.size());
-
+        countDownLatch.countDown();
+        LOG.info("receive ack for {}!!", key);
         //byteInputContext.sendMessage();
         //throw new RuntimeException("TODO");
       });
+
+      try {
+        LOG.info("Start of Waiting for acks for signal from child for stop outputs");
+        countDownLatch.await();
+        LOG.info("End of Waiting for acks for signal from child for stop outputs");
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
     }
 
     return new Future<Integer>() {

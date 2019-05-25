@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.function.Function;
 
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
 import static org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA;
 
 /**
@@ -210,7 +211,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   contextDescriptor,
                   contextId.isPipe(),
                   ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
-                  TaskLocationMap.LOC.SF);
+                  SF);
 
               LOG.info("Send init message for the connected VM for scaling in...");
               vmContextManager.getChannel().write(ackMessage);
@@ -256,7 +257,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   contextDescriptor,
                   contextId.isPipe(),
                   ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
-                  TaskLocationMap.LOC.SF);
+                  SF);
               channel.writeAndFlush(ackMessage);
             });
 
@@ -272,7 +273,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   contextDescriptor,
                   contextId.isPipe(),
                   ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
-                  TaskLocationMap.LOC.SF);
+                  SF);
 
               LOG.info("Send ack message for the connected VM for scaling in...");
               vmContextManager.getChannel().write(ackMessage);
@@ -294,7 +295,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         LOG.info("Signal from parent restarting output {} / {}", sendDataTo, transferIndex);
         final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
         // reset the channel!
-        inputContext.setIsRelayServer(false);
+        inputContext.setIsRelayServer(isRelayServerChannel);
         inputContext.setContextManager(this);
         break;
       }
@@ -411,7 +412,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
         context.getContextDescriptor(),
         context.getContextId().isPipe(),
         messageType,
-        TaskLocationMap.LOC.SF);
+        SF);
 
     if (isRelayServerChannel) {
       LOG.info("No Skip... because the remote is already connected with relayServer");
