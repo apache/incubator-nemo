@@ -242,7 +242,7 @@ public final class PipeOutputWriter implements OutputWriter {
           byteOutputContext.getContextId().getDataDirection(),
           byteOutputContext.getContextDescriptor(),
           byteOutputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.STOP_INPUT_FOR_SCALEOUT,
+          ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
           relayServer.getPublicAddress(),
           relayServer.getPort());
 

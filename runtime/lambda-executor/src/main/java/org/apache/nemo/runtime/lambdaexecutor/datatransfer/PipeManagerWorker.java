@@ -94,7 +94,7 @@ public final class PipeManagerWorker {
           byteInputContext.getContextId().getDataDirection(),
           byteInputContext.getContextDescriptor(),
           byteInputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.PENDING_FOR_SCALEIN_VM);
+          ByteTransferContextSetupMessage.MessageType.STOP_OUTPUT_FOR_SCALEIN);
 
       LOG.info("Send message for {} {}", key, pendingMsg);
 
@@ -191,19 +191,31 @@ public final class PipeManagerWorker {
 
     final TaskLocationMap.LOC loc = taskLocationMap.get(new NemoTriple<>(runtimeEdge.getId(), (int) srcTaskIndex, false));
 
+    // Descriptor
+    final PipeTransferContextDescriptor descriptor =
+      new PipeTransferContextDescriptor(
+        runtimeEdgeId,
+        srcTaskIndex,
+        dstTaskIndex,
+        getNumOfOutputPipeToWait(runtimeEdge));
+
+
     switch (loc) {
       case SF: {
         // Connect to the relay server!
-        throw new RuntimeException("Not supported yet: " + loc);
+        return relayServerClient.newInputContext(srcExecutorId, descriptor)
+          .thenApply(context -> {
+            final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstTaskIndex);
+            byteInputContextMap.putIfAbsent(key, new HashSet<>());
+            final Set<ByteInputContext> contexts = byteInputContextMap.get(key);
+            synchronized (contexts) {
+              contexts.add(context);
+            }
+            return ((StreamRemoteByteInputContext) context).getInputIterator(
+              serializerMap.get(runtimeEdgeId));
+          });
       }
       case VM: {
-        // Descriptor
-        final PipeTransferContextDescriptor descriptor =
-          new PipeTransferContextDescriptor(
-            runtimeEdgeId,
-            srcTaskIndex,
-            dstTaskIndex,
-            getNumOfOutputPipeToWait(runtimeEdge));
 
         // Connect to the executor
         return byteTransfer.newInputContext(srcExecutorId, descriptor.encode(), true)

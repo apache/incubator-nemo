@@ -230,7 +230,7 @@ public final class DownstreamTaskOffloader implements Offloader {
             byteInputContext.getContextId().getDataDirection(),
             byteInputContext.getContextDescriptor(),
             byteInputContext.getContextId().isPipe(),
-            ByteTransferContextSetupMessage.MessageType.PENDING_FOR_SCALEIN_VM);
+            ByteTransferContextSetupMessage.MessageType.STOP_OUTPUT_FOR_SCALEIN);
 
         LOG.info("Send message {}", pendingMsg);
 
@@ -251,7 +251,7 @@ public final class DownstreamTaskOffloader implements Offloader {
                 byteInputContext.getContextId().getDataDirection(),
                 byteInputContext.getContextDescriptor(),
                 byteInputContext.getContextId().isPipe(),
-                ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_VM);
+                ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_DOWNSTREAM_VM);
             byteInputContext.sendMessage(scaleInMsg, (n) -> {});
 
             LOG.info("Send scalein message");
@@ -379,7 +379,7 @@ public final class DownstreamTaskOffloader implements Offloader {
             byteInputContext.getContextId().getDataDirection(),
             byteInputContext.getContextDescriptor(),
             byteInputContext.getContextId().isPipe(),
-            ByteTransferContextSetupMessage.MessageType.PENDING_FOR_SCALEOUT_VM);
+            ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT);
 
         LOG.info("Send message {}", pendingMsg);
 

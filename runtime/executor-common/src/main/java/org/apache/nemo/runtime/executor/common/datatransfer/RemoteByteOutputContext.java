@@ -179,7 +179,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
         getContextId().getTransferIndex(),
         getContextId().getDataDirection(), getContextDescriptor(),
         getContextId().isPipe(),
-        ByteTransferContextSetupMessage.MessageType.RESTART);
+        ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_UPSTREAM_VM);
 
     LOG.info("Restart context {}", message);
 
@@ -311,7 +311,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
               getContextId().getDataDirection(),
               getContextDescriptor(),
               getContextId().isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_FROM_UPSTREAM);
+              ByteTransferContextSetupMessage.MessageType.ACK_FOR_STOP_OUTPUT);
 
           if (pendingByteBufs.isEmpty() && sendDataTo.equals(SF)) {
             LOG.info("Ack pending {}", message);

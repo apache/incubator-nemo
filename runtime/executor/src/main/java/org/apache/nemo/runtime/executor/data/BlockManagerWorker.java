@@ -207,7 +207,7 @@ public final class BlockManagerWorker {
             .build();
         final CompletableFuture<ByteInputContext> contextFuture = blockTransferThrottler
             .requestTransferPermission(runtimeEdgeId)
-            .thenCompose(obj -> byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray(), false));
+            .thenCompose(obj -> byteTransfer.newInputContext(targetExecutorId, null, false));
 
         // whenComplete() ensures that blockTransferThrottler.onTransferFinished() is always called,
         // even on failures. Actual failure handling and Task retry will be done by DataFetcher.

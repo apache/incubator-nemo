@@ -96,7 +96,7 @@ public final class PipeInputReader implements InputReader {
           byteInputContext.getContextId().getDataDirection(),
           byteInputContext.getContextDescriptor(),
           byteInputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.PENDING_FOR_SCALEOUT_VM,
+          ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
           relayServer.getPublicAddress(),
           relayServer.getPort());
 
@@ -161,7 +161,7 @@ public final class PipeInputReader implements InputReader {
           byteInputContext.getContextId().getDataDirection(),
           byteInputContext.getContextDescriptor(),
           byteInputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_VM);
+          ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_DOWNSTREAM_VM);
 
       LOG.info("Send resume message {}", pendingMsg);
 

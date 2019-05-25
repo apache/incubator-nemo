@@ -86,7 +86,7 @@ public final class ByteTransfer {
    * @return a {@link ByteInputContext} from which the received data can be read
    */
   public CompletableFuture<ByteInputContext> newInputContext(final String executorId,
-                                                             final byte[] contextDescriptor,
+                                                             final PipeTransferContextDescriptor contextDescriptor,
                                                              final boolean isPipe) {
     return connectTo(executorId).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));
   }

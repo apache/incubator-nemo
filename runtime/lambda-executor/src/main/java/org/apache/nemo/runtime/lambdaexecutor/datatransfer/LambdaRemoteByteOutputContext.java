@@ -162,7 +162,10 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
   @Override
   public void scaleoutToVm(Channel channel) {
-    throw new RuntimeException("Unsupported");
+    LOG.info("Scale out to relay channel {}", channel);
+    relayChannel = channel;
+    currChannel = relayChannel;
+    isPending = false;
     /*
     LOG.info("Scale out to channel {}", channel);
     vmChannel = channel;
@@ -203,7 +206,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
         getContextId().getTransferIndex(),
         getContextId().getDataDirection(), getContextDescriptor(),
         getContextId().isPipe(),
-        ByteTransferContextSetupMessage.MessageType.RESTART);
+        ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_UPSTREAM_VM);
 
     LOG.info("Restart context {}", message);
 
@@ -345,7 +348,7 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
               getContextId().getDataDirection(),
               getContextDescriptor(),
               getContextId().isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_FROM_UPSTREAM);
+              ByteTransferContextSetupMessage.MessageType.ACK_FOR_STOP_OUTPUT);
 
           if (pendingByteBufs.isEmpty() && sendDataTo.equals(VM)) {
             LOG.info("Ack pending to relay {}", message);
@@ -364,7 +367,6 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
               writeByteBuf(pendingByteBuf);
             }
             pendingByteBufs.clear();
-            currChannel.flush();
           }
           writeByteBuf(byteBuf);
         }

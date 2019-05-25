@@ -21,7 +21,6 @@ package org.apache.nemo.runtime.executor.bytetransfer;
 import io.netty.buffer.ByteBuf;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
-import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,7 +122,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
       getContextId().getTransferIndex());
 
     switch (message.getMessageType()) {
-      case PENDING_FOR_SCALEOUT_VM: {
+      case SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT: {
         localByteOutputContext.pending(SF, "", 1);
         break;
       }
@@ -131,11 +130,11 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
         throw new RuntimeException("Unsupported");
         //localByteOutputContext.scaleoutToVm(message.getMovedAddress(), message.getTaskId());
       }
-      case PENDING_FOR_SCALEIN_VM: {
+      case STOP_OUTPUT_FOR_SCALEIN: {
         localByteOutputContext.pending(VM, "", 1);
         break;
       }
-      case RESUME_AFTER_SCALEIN_VM: {
+      case RESUME_AFTER_SCALEIN_DOWNSTREAM_VM: {
         //localByteOutputContext.scaleInToVm();
         break;
       }

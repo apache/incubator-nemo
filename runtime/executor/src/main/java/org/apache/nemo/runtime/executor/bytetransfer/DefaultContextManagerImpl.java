@@ -23,7 +23,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
-import org.apache.beam.vendor.protobuf.v3.com.google.protobuf.ByteOutput;
 import org.apache.nemo.common.NemoTriple;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -209,19 +208,19 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     final byte[] contextDescriptor = message.getContextDescriptor();
 
     switch (message.getMessageType()) {
-      case ACK_FROM_UPSTREAM: {
+      case ACK_FOR_STOP_OUTPUT: {
         final ByteInputContext context = inputContexts.get(transferIndex);
-        LOG.info("ACK_FROM_UPSTREAM: {}, {}", transferIndex, inputContexts);
+        LOG.info("ACK_FOR_STOP_OUTPUT: {}, {}", transferIndex, inputContexts);
         context.receivePendingAck();
         break;
       }
-      case ACK_FROM_DOWNSTREAM: {
+      case ACK_FOR_STOP_INPUT: {
         final ByteOutputContext context = outputContexts.get(transferIndex);
-        LOG.info("ACK_FROM_DOWNSTREAM: {}, {}", transferIndex, context);
+        LOG.info("ACK_FOR_STOP_INPUT: {}, {}", transferIndex, context);
         context.receivePendingAck();
         break;
       }
-      case PENDING_FOR_SCALEOUT_VM: {
+      case SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT: {
         // this means that the downstream task will be moved to another machine
         // so we should stop sending data to the downstream task
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
@@ -234,7 +233,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         outputContext.pending(ByteOutputContext.SendDataTo.SF, null, 1);
         break;
       }
-      case PENDING_FOR_SCALEIN_VM: {
+      case STOP_OUTPUT_FOR_SCALEIN: {
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
         // It means that the remote dst task is moved to the origin VM
         taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), VM);
@@ -244,7 +243,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         outputContext.pending(ByteOutputContext.SendDataTo.VM, null, 1);
         break;
       }
-      case STOP_INPUT_FOR_SCALEOUT: {
+      case SIGNAL_FROM_PARENT_STOPPING_OUTPUT: {
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
         LOG.info("Scaling out input context {} to SF", Pair.of(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex()));
         taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), SF);
@@ -256,7 +255,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
               contextId.getDataDirection(),
               contextDescriptor,
               contextId.isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_FROM_DOWNSTREAM);
+              ByteTransferContextSetupMessage.MessageType.ACK_FOR_STOP_INPUT);
           channel.writeAndFlush(ackMessage);
         });
         break;
@@ -278,7 +277,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         break;
         */
       }
-      case RESUME_AFTER_SCALEIN_VM: {
+      case RESUME_AFTER_SCALEIN_DOWNSTREAM_VM: {
         LOG.info("Resume scaling {}", transferIndex);
         final ByteOutputContext outputContext = outputContexts.get(transferIndex);
         outputContext.scaleInToVm(channel);
@@ -494,10 +493,9 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
    * @return new {@link ByteInputContext}
    */
   @Override
-  public ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe) {
-    final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-    final TransferKey key = new TransferKey(cd.getRuntimeEdgeId(),
-      (int) cd.getSrcTaskIndex(), (int) cd.getDstTaskIndex(), false);
+  public ByteInputContext newInputContext(final String executorId, final PipeTransferContextDescriptor contextDescriptor, final boolean isPipe) {
+    final TransferKey key = new TransferKey(contextDescriptor.getRuntimeEdgeId(),
+      (int) contextDescriptor.getSrcTaskIndex(), (int) contextDescriptor.getDstTaskIndex(), false);
 
     final int transferIndex = requestTransferIndex(true);
     LOG.info("Requesting input transferIndex: {}", transferIndex);
@@ -505,7 +503,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
 
     return newContext(inputContexts, transferIndex,
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
-        contextId -> new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor, this, ackScheduledService.ackService),
+        contextId -> new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor.encode(), this, ackScheduledService.ackService),
         executorId, isPipe, false);
   }
 

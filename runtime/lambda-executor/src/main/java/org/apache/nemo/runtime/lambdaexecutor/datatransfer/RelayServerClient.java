@@ -28,6 +28,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import org.apache.nemo.common.Pair;
+import org.apache.nemo.runtime.executor.common.datatransfer.ByteInputContext;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.common.datatransfer.ContextManager;
 import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
@@ -101,18 +102,18 @@ public final class RelayServerClient {
     final String executorId,
     final PipeTransferContextDescriptor descriptor) {
 
-    final CompletableFuture<ByteOutputContext> completableFuture = new CompletableFuture<>();
+      final CompletableFuture<ByteOutputContext> completableFuture = new CompletableFuture<>();
 
-    final ChannelFuture channelFuture = connectToRelayServer(myRelayServerAddress, myRelayServerPort);
-    while (!channelFuture.isSuccess()) {
-      try {
-        Thread.sleep(200);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      final ChannelFuture channelFuture = connectToRelayServer(myRelayServerAddress, myRelayServerPort);
+      while (!channelFuture.isSuccess()) {
+        try {
+          Thread.sleep(200);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
       }
-    }
 
-    LOG.info("Getting relay server channel!!");
+    LOG.info("Getting relay server channel for output context {}!!", descriptor);
 
     final Channel channel = channelFuture.channel();
     registerTask(channel, descriptor.getRuntimeEdgeId(), (int) descriptor.getSrcTaskIndex(), false);
@@ -122,6 +123,36 @@ public final class RelayServerClient {
     completableFuture.complete(manager.newOutputContext(executorId, descriptor, true));
     return completableFuture;
   }
+
+  public CompletableFuture<ByteInputContext> newInputContext(
+    final String executorId,
+    final PipeTransferContextDescriptor descriptor) {
+
+      final CompletableFuture<ByteInputContext> completableFuture = new CompletableFuture<>();
+
+      // 누구 relay server로 접근해야 하는지?
+      // 내껄로 접근해야함
+      final ChannelFuture channelFuture = connectToRelayServer(myRelayServerAddress, myRelayServerPort);
+      while (!channelFuture.isSuccess()) {
+        try {
+          Thread.sleep(200);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+    LOG.info("Getting relay server channel for input context {}!!", descriptor);
+
+    final Channel channel = channelFuture.channel();
+    registerTask(channel, descriptor.getRuntimeEdgeId(), (int) descriptor.getDstTaskIndex(), true);
+
+    final ContextManager manager = channel.pipeline().get(ContextManager.class);
+    LOG.info("Getting context manager!!!");
+    completableFuture.complete(manager.newInputContext(executorId, descriptor, true));
+    return completableFuture;
+  }
+
+
 
   public ChannelFuture connectToRelayServer(final String address, final int port) {
 

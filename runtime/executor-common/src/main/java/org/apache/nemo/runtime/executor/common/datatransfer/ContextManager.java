@@ -40,7 +40,7 @@ public interface ContextManager extends ChannelInboundHandler {
    * @param isPipe            is pipe
    * @return new {@link ByteInputContext}
    */
-  ByteInputContext newInputContext(final String executorId, final byte[] contextDescriptor, final boolean isPipe);
+  ByteInputContext newInputContext(final String executorId, final PipeTransferContextDescriptor contextDescriptor, final boolean isPipe);
 
   ByteOutputContext newOutputContext(final String executorId, final PipeTransferContextDescriptor contextDescriptor, final boolean isPipe);
 

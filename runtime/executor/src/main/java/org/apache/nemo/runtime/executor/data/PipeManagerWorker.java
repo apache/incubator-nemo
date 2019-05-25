@@ -178,7 +178,7 @@ public final class PipeManagerWorker {
           getNumOfPipeToWait(runtimeEdge));
 
       // Connect to the executor
-      return byteTransfer.newInputContext(targetExecutorId, descriptor.encode(), true)
+      return byteTransfer.newInputContext(targetExecutorId, descriptor, true)
         .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
           serializerManager.getSerializer(runtimeEdgeId)));
     });
