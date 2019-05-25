@@ -106,6 +106,7 @@ public final class PipeManagerWorker {
 
         countDownLatch.countDown();
         LOG.info("receive ack for {}!!", key);
+        atomicInteger.decrementAndGet();
         //byteInputContext.sendMessage();
         //throw new RuntimeException("TODO");
       });
