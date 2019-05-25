@@ -40,6 +40,9 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
+
 /**
  * Represents the input data transfer to a task.
  */
@@ -97,6 +100,7 @@ public final class PipeInputReader implements InputReader {
           byteInputContext.getContextDescriptor(),
           byteInputContext.getContextId().isPipe(),
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
+          SF,
           relayServer.getPublicAddress(),
           relayServer.getPort());
 
@@ -161,7 +165,8 @@ public final class PipeInputReader implements InputReader {
           byteInputContext.getContextId().getDataDirection(),
           byteInputContext.getContextDescriptor(),
           byteInputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_DOWNSTREAM_VM);
+          ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
+          VM);
 
       LOG.info("Send resume message {}", pendingMsg);
 
@@ -210,7 +215,7 @@ public final class PipeInputReader implements InputReader {
         final int srcTaskIndex = pair.right();
 
         taskLocationMap.locationMap
-          .put(new NemoTriple<>(runtimeEdge.getId(), srcTaskIndex, false), TaskLocationMap.LOC.VM);
+          .put(new NemoTriple<>(runtimeEdge.getId(), srcTaskIndex, false), VM);
 
         if (context instanceof LocalByteInputContext) {
           final LocalByteInputContext localByteInputContext = (LocalByteInputContext) context;

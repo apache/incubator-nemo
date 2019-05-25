@@ -27,6 +27,7 @@ import org.apache.nemo.common.partitioner.Partitioner;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.WatermarkWithIndex;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext;
 import org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage;
@@ -120,7 +121,8 @@ public final class PipeOutputWriter {
           byteOutputContext.getContextId().getDataDirection(),
           byteOutputContext.getContextDescriptor(),
           byteOutputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.STOP_INPUT_FOR_SCALEIN);
+          ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
+          TaskLocationMap.LOC.VM);
 
       LOG.info("Send finish message {}", pendingMsg);
 

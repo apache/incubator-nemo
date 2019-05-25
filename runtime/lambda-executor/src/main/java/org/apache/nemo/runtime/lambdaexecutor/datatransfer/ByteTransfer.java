@@ -62,7 +62,7 @@ public final class ByteTransfer {
    * @param isPipe            is pipe
    */
   public CompletableFuture<ByteInputContext> newInputContext(final String executorId,
-                                                             final byte[] contextDescriptor,
+                                                             final PipeTransferContextDescriptor contextDescriptor,
                                                              final boolean isPipe) {
     LOG.info("New remote input context: {}", executorId);
     return connectTo(executorId).thenApply(manager -> manager.newInputContext(executorId, contextDescriptor, isPipe));

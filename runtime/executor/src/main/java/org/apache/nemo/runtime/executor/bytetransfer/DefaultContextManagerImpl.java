@@ -42,7 +42,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
 import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
 
 /**
@@ -206,47 +205,43 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
     final ByteTransferContext.ContextId contextId =
       new ByteTransferContext.ContextId(remoteExecutorId, localExecutorId, dataDirection, transferIndex, isPipe);
     final byte[] contextDescriptor = message.getContextDescriptor();
+    final TaskLocationMap.LOC sendDataTo = message.getLocation();
 
     switch (message.getMessageType()) {
-      case ACK_FOR_STOP_OUTPUT: {
-        final ByteInputContext context = inputContexts.get(transferIndex);
-        LOG.info("ACK_FOR_STOP_OUTPUT: {}, {}", transferIndex, inputContexts);
-        context.receivePendingAck();
-        break;
-      }
-      case ACK_FOR_STOP_INPUT: {
-        final ByteOutputContext context = outputContexts.get(transferIndex);
-        LOG.info("ACK_FOR_STOP_INPUT: {}, {}", transferIndex, context);
-        context.receivePendingAck();
-        break;
-      }
       case SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT: {
         // this means that the downstream task will be moved to another machine
         // so we should stop sending data to the downstream task
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
 
-        // It means that the remote dst task is moved to SF (or new VM)
-        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), SF);
+        // It means that the remote dst task is moved to SF (or VM)
+        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), sendDataTo);
 
-        LOG.info("SCALEOUT pending {}, {}", transferIndex, outputContexts);
+        LOG.info("STOP_OUTPUT for moving {} pending {}, {}", sendDataTo, transferIndex, outputContexts);
         final ByteOutputContext outputContext = outputContexts.get(transferIndex);
-        outputContext.pending(ByteOutputContext.SendDataTo.SF, null, 1);
+        outputContext.pending(sendDataTo);
         break;
       }
-      case STOP_OUTPUT_FOR_SCALEIN: {
-        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-        // It means that the remote dst task is moved to the origin VM
-        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), VM);
+      case ACK_FROM_PARENT_STOP_OUTPUT: {
+        final StreamRemoteByteInputContext context =
+          (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
+        LOG.info("ACK_FOR_STOP_OUTPUT: {}, {}", transferIndex, inputContexts);
 
-        LOG.info("SCALEIN pending {}", transferIndex);
-        final ByteOutputContext outputContext = outputContexts.get(transferIndex);
-        outputContext.pending(ByteOutputContext.SendDataTo.VM, null, 1);
+        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+
+        // why we do this? when the downstream move from SF -> VM,
+        // the upstream should connect with the VM channel
+        // we set the channel here between SF <=> VM
+        context.setIsRelayServer(false);
+        context.setContextManager(this);
+        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), sendDataTo);
+
+        context.receivePendingAck();
         break;
       }
       case SIGNAL_FROM_PARENT_STOPPING_OUTPUT: {
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-        LOG.info("Scaling out input context {} to SF", Pair.of(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex()));
-        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), SF);
+        LOG.info("Scaling out input context {} to {}", Pair.of(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex()), sendDataTo);
+        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), sendDataTo);
         channelExecutorService.execute(() -> {
           LOG.info("Sending ack to the input context");
           final ByteTransferContextSetupMessage ackMessage =
@@ -255,54 +250,74 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
               contextId.getDataDirection(),
               contextDescriptor,
               contextId.isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_FOR_STOP_INPUT);
+              ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
+              VM);
           channel.writeAndFlush(ackMessage);
         });
         break;
       }
-      case STOP_INPUT_FOR_SCALEIN: {
-        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-        LOG.info("Scaling in input context {} to VM", Pair.of(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex()));
-        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), VM);
-        break;
-      }
-      case RESUME_AFTER_SCALEOUT_VM: {
-        throw new RuntimeException("Not supported!!");
-        /*
-        final String address = message.getMovedAddress();
-        final String taskId = message.getTaskId();
-        LOG.info("Resume {} to {}/{}", transferIndex, address, taskId);
-        final ByteOutputContext outputContext = outputContexts.get(transferIndex);
-        outputContext.scaleoutToVm(address, taskId);
-        break;
-        */
-      }
-      case RESUME_AFTER_SCALEIN_DOWNSTREAM_VM: {
-        LOG.info("Resume scaling {}", transferIndex);
-        final ByteOutputContext outputContext = outputContexts.get(transferIndex);
-        outputContext.scaleInToVm(channel);
-        break;
-      }
-      case RESTART: {
-        final ByteInputContext context = inputContexts.get(transferIndex);
-        LOG.info("Context restart !! {}, {}", contextId, context);
+      case ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {
+        final ByteOutputContext context = outputContexts.get(transferIndex);
+        LOG.info("ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {}, {}", transferIndex, context);
 
-        if (isPipe) {
-          pipeManagerWorker.onInputContext(context);
+        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), sendDataTo);
+
+        switch (sendDataTo) {
+          case SF: {
+            context.scaleoutToVm(channel);
+            break;
+          }
+          case VM: {
+            context.scaleInToVm(channel);
+            break;
+          }
+        }
+
+        context.receivePendingAck();
+        break;
+      }
+      case SIGNAL_FROM_PARENT_RESTARTING_OUTPUT: {
+
+        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+
+        LOG.info("Signal from parent restarting output {} / {}", sendDataTo, transferIndex);
+
+        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), sendDataTo);
+        final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
+        // reset the channel!
+        inputContext.setIsRelayServer(false);
+        inputContext.setContextManager(this);
+        break;
+      }
+      case SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT: {
+        final ByteOutputContext outputContext = outputContexts.get(transferIndex);
+        final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
+
+        LOG.info("Signal from child for restart output {} / {}", sendDataTo, transferIndex);
+
+        switch (sendDataTo) {
+          case SF: {
+            outputContext.scaleoutToVm(channel);
+            break;
+          }
+          case VM: {
+            outputContext.scaleInToVm(channel);
+            break;
+          }
         }
         break;
       }
       case CONTROL: {
-
         if (dataDirection == ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA) {
           LOG.info("inputContextsInitiatedByRemote: {}", inputContexts);
 
           final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
           LOG.info("Input Receive transfer index : {}/{} {}->{}", transferIndex, cd.getRuntimeEdgeId(), cd.getSrcTaskIndex(), cd.getDstTaskIndex());
           if (inputContexts.containsKey(transferIndex)) {
-            LOG.warn("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
-                transferIndex);
-
+            throw new RuntimeException(String.format("Duplicate input context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
+                transferIndex));
+            /*
             // THIS always should be in SF
             taskLocationMap.locationMap.put(
               new NemoTriple<>(cd.getRuntimeEdgeId(), (int)cd.getSrcTaskIndex(), false), TaskLocationMap.LOC.SF);
@@ -310,6 +325,7 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
             final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
             // reset the channel!
             inputContext.setContextManager(this);
+            */
 
             //return inputContextsInitiatedByRemote.get(transferIndex);
           } else {
@@ -345,12 +361,15 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
           LOG.info("outputContextsInitiatedByRemote: {}", outputContexts);
           LOG.info("Output Receive transfer index : {}", transferIndex);
           if (outputContexts.containsKey(transferIndex)) {
-            LOG.warn("Duplicate output context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
-              transferIndex);
+            throw new RuntimeException(String.format("Duplicate output context ContextId: {}, transferIndex: {} due to the remote channel", contextId,
+              transferIndex));
+
+            /*
             final String addr = ctx.channel().remoteAddress().toString().split(":")[0];
             LOG.info("Remote byte output address: {} ", addr);
             final ByteOutputContext outputContext = outputContexts.get(transferIndex);
             outputContext.scaleoutToVm(channel);
+            */
           } else {
             final ByteOutputContext c = new RemoteByteOutputContext(remoteExecutorId, contextId,
               contextDescriptor, this);

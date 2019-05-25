@@ -3,6 +3,7 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.PooledByteBufAllocator;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 
 import java.io.*;
 
@@ -17,18 +18,25 @@ public final class ByteTransferContextSetupMessage {
 
   public enum MessageType {
     CONTROL,
-    RESTART,
+    //RESTART,
+
     SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
+    ACK_FROM_PARENT_STOP_OUTPUT,
+
     SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
+
     SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
+    ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
+
     SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
-    STOP_INPUT_FOR_SCALEIN,
-    STOP_OUTPUT_FOR_SCALEIN,
-    ACK_FOR_STOP_OUTPUT,
-    ACK_FOR_STOP_INPUT,
-    RESUME_AFTER_SCALEOUT_VM,
-    RESUME_AFTER_SCALEIN_DOWNSTREAM_VM,
-    RESUME_AFTER_SCALEIN_UPSTREAM_VM,
+
+    //STOP_INPUT_FOR_SCALEIN,
+    //STOP_OUTPUT_FOR_SCALEIN,
+    //ACK_FOR_STOP_OUTPUT,
+    //ACK_FOR_STOP_INPUT,
+    //RESUME_AFTER_SCALEOUT_VM,
+    //RESUME_AFTER_SCALEIN_DOWNSTREAM_VM,
+    //RESUME_AFTER_SCALEIN_UPSTREAM_VM,
   }
 
   private final String initiatorExecutorId;
@@ -41,6 +49,7 @@ public final class ByteTransferContextSetupMessage {
   private final MessageType messageType;
   private final String relayServerAddress;
   private final int relayServerPort;
+  private final TaskLocationMap.LOC location;
 
   public ByteTransferContextSetupMessage(
     final String initiatorExecutorId,
@@ -48,17 +57,7 @@ public final class ByteTransferContextSetupMessage {
     final ByteTransferDataDirection dataDirection,
     final byte[] contextDescriptor,
     final boolean isPipe) {
-    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, CONTROL);
-  }
-
-  public ByteTransferContextSetupMessage(
-    final String initiatorExecutorId,
-    final int transferIndex,
-    final ByteTransferDataDirection dataDirection,
-    final byte[] contextDescriptor,
-    final boolean isPipe,
-    final MessageType messageType) {
-    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, messageType, "", 0);
+    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, CONTROL, TaskLocationMap.LOC.VM);
   }
 
   public ByteTransferContextSetupMessage(
@@ -68,6 +67,18 @@ public final class ByteTransferContextSetupMessage {
     final byte[] contextDescriptor,
     final boolean isPipe,
     final MessageType messageType,
+    final TaskLocationMap.LOC location) {
+    this(initiatorExecutorId, transferIndex, dataDirection, contextDescriptor, isPipe, messageType, location, "", 0);
+  }
+
+  public ByteTransferContextSetupMessage(
+    final String initiatorExecutorId,
+    final int transferIndex,
+    final ByteTransferDataDirection dataDirection,
+    final byte[] contextDescriptor,
+    final boolean isPipe,
+    final MessageType messageType,
+    final TaskLocationMap.LOC location,
     final String relayServerAddress,
     final int relayServerPort) {
     this.initiatorExecutorId = initiatorExecutorId;
@@ -75,6 +86,7 @@ public final class ByteTransferContextSetupMessage {
     this.dataDirection = dataDirection;
     this.contextDescriptor = contextDescriptor;
     this.isPipe = isPipe;
+    this.location = location;
     this.messageType = messageType;
     this.relayServerAddress = relayServerAddress;
     this.relayServerPort = relayServerPort;
@@ -102,6 +114,10 @@ public final class ByteTransferContextSetupMessage {
 
   public int getRelayServerPort() {
     return relayServerPort;
+  }
+
+  public TaskLocationMap.LOC getLocation() {
+    return location;
   }
 
   /*
@@ -134,6 +150,7 @@ public final class ByteTransferContextSetupMessage {
       dos.write(contextDescriptor);
       dos.writeBoolean(isPipe);
       dos.writeInt(messageType.ordinal());
+      dos.writeInt(location.ordinal());
       dos.writeUTF(relayServerAddress);
       dos.writeInt(relayServerPort);
       //dos.writeUTF(address); //dos.writeUTF(taskId);
@@ -166,12 +183,13 @@ public final class ByteTransferContextSetupMessage {
       final boolean isPipe = dis.readBoolean();
       final int ordinal = dis.readInt();
       final MessageType type = MessageType.values()[ordinal];
+      final TaskLocationMap.LOC loc = TaskLocationMap.LOC.values()[dis.readInt()];
       final String relayServerAddress = dis.readUTF();
       final int relayServerPort = dis.readInt();
 
       return new ByteTransferContextSetupMessage(
         localExecutorId, transferIndex, direction, contextDescriptor,
-        isPipe, type, relayServerAddress, relayServerPort);
+        isPipe, type, loc, relayServerAddress, relayServerPort);
 
     } catch (IOException e) {
       e.printStackTrace();

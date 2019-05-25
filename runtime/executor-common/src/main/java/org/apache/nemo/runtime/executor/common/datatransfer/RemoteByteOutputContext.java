@@ -23,6 +23,7 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,8 +34,9 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext.SendDataTo.SF;
-import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext.SendDataTo.VM;
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
+
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -45,17 +47,17 @@ import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputCon
 public final class RemoteByteOutputContext extends AbstractByteTransferContext implements ByteOutputContext {
   private static final Logger LOG = LoggerFactory.getLogger(RemoteByteOutputContext.class.getName());
 
-  private final Channel channel;
+  private Channel channel;
   private Channel vmChannel;
+  private Channel currChannel;
   private String vmTaskId;
 
   private volatile boolean closed = false;
   private volatile boolean isPending = false;
 
 
-  private SendDataTo sendDataTo = VM;
+  private TaskLocationMap.LOC sendDataTo = VM;
 
-  private String remoteAddress;
   private EventHandler<Integer> ackHandler;
 
   /**
@@ -72,6 +74,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
                                  final ContextManager contextManager) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     this.channel = contextManager.getChannel();
+    currChannel = channel;
   }
 
   @Override
@@ -113,7 +116,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   }
 
   @Override
-  public void pending(final SendDataTo sdt, final String rsAddress, final int rsPort) {
+  public void pending(final TaskLocationMap.LOC sdt) {
     sendDataTo = sdt;
     isPending = true;
   }
@@ -149,12 +152,17 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   public void scaleoutToVm(Channel channel) {
     LOG.info("Scale out to channel {}", channel);
     vmChannel = channel;
+    currChannel = vmChannel;
+    sendDataTo = SF;
     isPending = false;
   }
 
   @Override
-  public void scaleInToVm(Channel channel) {
+  public void scaleInToVm(Channel c) {
     LOG.info("Scaling in to VM");
+    channel = c;
+    currChannel = channel;
+    sendDataTo = VM;
     isPending = false;
   }
 
@@ -166,10 +174,10 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
   public void stop() {
     // just send stop message
 
-    LOG.info("Stop context {}", getContextId());
+    LOG.info("Stop context {} to {}", getContextId(), sendDataTo);
 
-    channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstanceForStop(getContextId()))
-      .addListener(getChannelWriteListener());
+    currChannel.writeAndFlush(DataFrameEncoder.DataFrame.newInstanceForStop(getContextId()))
+          .addListener(getChannelWriteListener());
   }
 
   @Override
@@ -179,11 +187,12 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
         getContextId().getTransferIndex(),
         getContextId().getDataDirection(), getContextDescriptor(),
         getContextId().isPipe(),
-        ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_UPSTREAM_VM);
+        ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
+        VM);
 
-    LOG.info("Restart context {}", message);
+    LOG.info("Restart context to {} {}", sendDataTo, message);
 
-    channel.writeAndFlush(message).addListener(getChannelWriteListener());
+    currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
   }
 
   /**
@@ -262,7 +271,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
         writeDataFrame(null, 0, true);
       }
 
-      channel.flush();
+      currChannel.flush();
       closed = true;
     }
 
@@ -287,7 +296,7 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
                              final String edgeId,
                              final String opId) {
 
-      final ByteBuf byteBuf = channel.alloc().ioBuffer();
+      final ByteBuf byteBuf = currChannel.alloc().ioBuffer();
       final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream(byteBuf);
 
       try {
@@ -311,17 +320,12 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
               getContextId().getDataDirection(),
               getContextDescriptor(),
               getContextId().isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_FOR_STOP_OUTPUT);
+              ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
+              VM);
 
-          if (pendingByteBufs.isEmpty() && sendDataTo.equals(SF)) {
-            LOG.info("Ack pending {}", message);
-            channel.writeAndFlush(message).addListener(getChannelWriteListener());
-          } else if (pendingByteBufs.isEmpty() && sendDataTo.equals(VM)) {
-            // close channel
-            LOG.info("Ack VM scaling pending {}", message);
-            vmChannel.writeAndFlush(message).addListener(getChannelWriteListener());
-            //LOG.info("Closing vm channel {}", message);
-            //vmScalingClientTransport.disconnect(remoteAddress, Constants.VM_WORKER_PORT);
+          if (pendingByteBufs.isEmpty()) {
+            LOG.info("Ack pending to {} {}",sendDataTo, message);
+            currChannel.writeAndFlush(message).addListener(getChannelWriteListener());
           }
 
           pendingByteBufs.add(byteBuf);
@@ -334,19 +338,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
               writeByteBuf(pendingByteBuf);
             }
             pendingByteBufs.clear();
-            switch (sendDataTo) {
-              case VM: {
-                channel.flush();
-                break;
-              }
-              case SF: {
-                vmChannel.flush();
-                break;
-              }
-            }
           }
           writeByteBuf(byteBuf);
-
         }
 
       } catch (final IOException e) {
@@ -372,36 +365,8 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
         throw new IOException("Stream already closed.");
       }
 
-      switch (sendDataTo) {
-        case VM:
-          channel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
-            .addListener(getChannelWriteListener());
-          break;
-        case SF:
-          vmChannel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
-            .addListener(getChannelWriteListener());
-          /*
-          LOG.info("Scaling: Send to {}", vmTaskId);
-
-          final ByteBuf buf = vmChannel.alloc().buffer();
-          final ByteBufOutputStream bos = new ByteBufOutputStream(buf);
-          final DataOutputStream dos = new DataOutputStream(bos);
-          dos.writeUTF(vmTaskId);
-          final ByteBuf bb = (ByteBuf) body;
-          // DATA ID
-          bb.writeInt(0);
-
-          final CompositeByteBuf compositeByteBuf =
-            vmChannel.alloc().compositeBuffer(2).addComponents(
-              true, buf, (ByteBuf) body);
-          vmChannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.DATA, compositeByteBuf));
-          */
-
-          break;
-        default:
-          throw new RuntimeException("Unsupported type: " + sendDataTo);
-      }
-
+      currChannel.write(DataFrameEncoder.DataFrame.newInstance(getContextId(), body, length, openSubStream))
+        .addListener(getChannelWriteListener());
     }
   }
 }

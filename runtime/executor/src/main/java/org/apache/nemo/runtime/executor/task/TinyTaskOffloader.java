@@ -222,6 +222,11 @@ public final class TinyTaskOffloader implements Offloader {
       }
     }
 
+    outputWriters.forEach(writer -> {
+      LOG.info("Restarting writer {}", writer);
+      writer.restart();
+    });
+
     availableFetchers.add(sourceVertexDataFetcher);
 
     kafkaOffloadingOutputs.clear();
@@ -246,6 +251,11 @@ public final class TinyTaskOffloader implements Offloader {
 
     // restart input context!
     LOG.info("Restart input context  at {}!!!", output.taskId);
+
+    outputWriters.forEach(writer -> {
+      LOG.info("Restarting writer {}", writer);
+      writer.restart();
+    });
 
     // Source stop!!
     // Source stop!!
@@ -369,6 +379,7 @@ public final class TinyTaskOffloader implements Offloader {
     // Sink stop!!
 
     LOG.info("Close current output contexts");
+
     outputWriters.forEach(writer -> {
       LOG.info("Stopping writer {}", writer);
       writer.stop();

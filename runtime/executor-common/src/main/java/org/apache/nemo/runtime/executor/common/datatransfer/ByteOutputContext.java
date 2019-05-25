@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.common.datatransfer;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.reef.wake.EventHandler;
 
 import javax.annotation.Nullable;
@@ -36,16 +37,12 @@ import java.io.OutputStream;
  */
 public interface ByteOutputContext extends ByteTransferContext, AutoCloseable {
 
-  public enum SendDataTo {
-    VM,
-    SF
-  }
   public void receivePendingAck();
 
   ByteOutputStream newOutputStream() throws IOException;
 
   // pending for moving downstream tasks
-  void pending(RemoteByteOutputContext.SendDataTo sendDataTo, String rsAddress, int rsPort);
+  void pending(TaskLocationMap.LOC sendDataTo);
 
   // resume after moving downstream tasks
   // This should be initiated when the byteOutputContext is in SF

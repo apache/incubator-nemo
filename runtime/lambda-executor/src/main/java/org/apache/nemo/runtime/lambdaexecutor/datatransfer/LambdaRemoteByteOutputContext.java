@@ -23,6 +23,7 @@ import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayDataFrame;
@@ -36,7 +37,8 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext.SendDataTo.*;
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -54,10 +56,8 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
 
   private volatile boolean closed = false;
   private volatile boolean isPending = false;
-  private volatile String relayServerAddress;
-  private volatile int relayServerPort;
 
-  private SendDataTo sendDataTo;
+  private TaskLocationMap.LOC sendDataTo;
 
   private String remoteAddress;
   private EventHandler<Integer> ackHandler;
@@ -126,11 +126,9 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
   }
 
   @Override
-  public void pending(final SendDataTo sdt, final String rsAddress, final int rsPort) {
+  public void pending(final TaskLocationMap.LOC sdt) {
     sendDataTo = sdt;
     isPending = true;
-    relayServerAddress = rsAddress;
-    relayServerPort = rsPort;
   }
 
   @Override
@@ -206,7 +204,8 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
         getContextId().getTransferIndex(),
         getContextId().getDataDirection(), getContextDescriptor(),
         getContextId().isPipe(),
-        ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_UPSTREAM_VM);
+        ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_RESTARTING_OUTPUT,
+        SF);
 
     LOG.info("Restart context {}", message);
 
@@ -348,7 +347,8 @@ public final class LambdaRemoteByteOutputContext extends AbstractByteTransferCon
               getContextId().getDataDirection(),
               getContextDescriptor(),
               getContextId().isPipe(),
-              ByteTransferContextSetupMessage.MessageType.ACK_FOR_STOP_OUTPUT);
+              ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
+              SF);
 
           if (pendingByteBufs.isEmpty() && sendDataTo.equals(VM)) {
             LOG.info("Ack pending to relay {}", message);

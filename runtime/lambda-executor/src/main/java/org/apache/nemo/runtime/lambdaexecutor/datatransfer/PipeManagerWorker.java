@@ -94,7 +94,8 @@ public final class PipeManagerWorker {
           byteInputContext.getContextId().getDataDirection(),
           byteInputContext.getContextDescriptor(),
           byteInputContext.getContextId().isPipe(),
-          ByteTransferContextSetupMessage.MessageType.STOP_OUTPUT_FOR_SCALEIN);
+          ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
+          TaskLocationMap.LOC.VM);
 
       LOG.info("Send message for {} {}", key, pendingMsg);
 
@@ -218,7 +219,7 @@ public final class PipeManagerWorker {
       case VM: {
 
         // Connect to the executor
-        return byteTransfer.newInputContext(srcExecutorId, descriptor.encode(), true)
+        return byteTransfer.newInputContext(srcExecutorId, descriptor, true)
           .thenApply(context -> {
             final Pair<String, Integer> key = Pair.of(runtimeEdge.getId(), dstTaskIndex);
             byteInputContextMap.putIfAbsent(key, new HashSet<>());

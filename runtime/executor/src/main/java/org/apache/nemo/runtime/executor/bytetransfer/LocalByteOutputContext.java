@@ -30,6 +30,7 @@ import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.offloading.common.Constants;
 import org.apache.nemo.offloading.common.OffloadingEvent;
 import org.apache.nemo.runtime.executor.common.Serializer;
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.reef.wake.EventHandler;
@@ -44,7 +45,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 
-import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext.SendDataTo.VM;
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
+
 
 /**
  * Container for multiple output streams. Represents a transfer context on sender-side.
@@ -63,7 +65,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
 
     private volatile boolean isPending = false;
 
-  private SendDataTo sendDataTo = VM;
+  private TaskLocationMap.LOC sendDataTo = VM;
   private final VMScalingClientTransport vmScalingClientTransport;
   private Channel vmChannel;
   private String vmTaskId;
@@ -112,7 +114,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
   }
 
   @Override
-  public void pending(final SendDataTo dt, final String addr, final int port) {
+  public void pending(final TaskLocationMap.LOC dt) {
     LOG.info("LocalByteOutputContext pending: {}", getContextId().getTransferIndex());
     sendDataTo = dt;
     isPending = true;

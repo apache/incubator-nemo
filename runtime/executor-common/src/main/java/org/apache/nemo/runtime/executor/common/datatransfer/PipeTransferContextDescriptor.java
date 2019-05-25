@@ -1,5 +1,7 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
+import org.apache.nemo.runtime.executor.common.TaskLocationMap;
+
 import java.io.*;
 
 public class PipeTransferContextDescriptor {
@@ -8,19 +10,16 @@ public class PipeTransferContextDescriptor {
   private final long srcTaskIndex;
   private final long dstTaskIndex;
   private final long numPipe;
-  private final ByteOutputContext.SendDataTo sendDataTo;
 
   public PipeTransferContextDescriptor(
     final String runtimeEdgeId,
     final long srcTaskIndex,
     final long dstTaskIndex,
-    final long numPipe,
-    final ByteOutputContext.SendDataTo sendDataTo) {
+    final long numPipe) {
     this.runtimeEdgeId = runtimeEdgeId;
     this.srcTaskIndex = srcTaskIndex;
     this.dstTaskIndex = dstTaskIndex;
     this.numPipe = numPipe;
-    this.sendDataTo = sendDataTo;
   }
 
   public String getRuntimeEdgeId() {
@@ -39,10 +38,6 @@ public class PipeTransferContextDescriptor {
     return numPipe;
   }
 
-  public ByteOutputContext.SendDataTo getSendDataTo() {
-    return sendDataTo;
-  }
-
   public static PipeTransferContextDescriptor decode(final byte[] arr) {
     final ByteArrayInputStream bis = new ByteArrayInputStream(arr);
     final DataInputStream dis = new DataInputStream(bis);
@@ -51,8 +46,7 @@ public class PipeTransferContextDescriptor {
       final long srcTaskIndex = dis.readLong();
       final long dstTaskIndex = dis.readLong();
       final long numPipe = dis.readLong();
-      final ByteOutputContext.SendDataTo sdt = ByteOutputContext.SendDataTo.values()[dis.readInt()];
-      return new PipeTransferContextDescriptor(runtimeEdgeId, srcTaskIndex, dstTaskIndex, numPipe, sdt);
+      return new PipeTransferContextDescriptor(runtimeEdgeId, srcTaskIndex, dstTaskIndex, numPipe);
     } catch (IOException e) {
       e.printStackTrace();
       throw new RuntimeException(e);
@@ -69,7 +63,6 @@ public class PipeTransferContextDescriptor {
       dos.writeLong(srcTaskIndex);
       dos.writeLong(dstTaskIndex);
       dos.writeLong(numPipe);
-      dos.writeInt(sendDataTo.ordinal());
       dos.close();
       return bos.toByteArray();
     } catch (IOException e) {

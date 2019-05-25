@@ -38,6 +38,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
+
 // It receives data from upstream parents
 // and emits results to downstream tasks
 public final class DownstreamTaskOffloader implements Offloader {
@@ -230,7 +232,8 @@ public final class DownstreamTaskOffloader implements Offloader {
             byteInputContext.getContextId().getDataDirection(),
             byteInputContext.getContextDescriptor(),
             byteInputContext.getContextId().isPipe(),
-            ByteTransferContextSetupMessage.MessageType.STOP_OUTPUT_FOR_SCALEIN);
+            ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
+            SF);
 
         LOG.info("Send message {}", pendingMsg);
 
@@ -245,6 +248,7 @@ public final class DownstreamTaskOffloader implements Offloader {
             // TODO: move states !!
             runningWorker.forceClose();
 
+            /*
             final ByteTransferContextSetupMessage scaleInMsg =
               new ByteTransferContextSetupMessage(executorId,
                 byteInputContext.getContextId().getTransferIndex(),
@@ -253,6 +257,7 @@ public final class DownstreamTaskOffloader implements Offloader {
                 byteInputContext.getContextId().isPipe(),
                 ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEIN_DOWNSTREAM_VM);
             byteInputContext.sendMessage(scaleInMsg, (n) -> {});
+            */
 
             LOG.info("Send scalein message");
           }
@@ -373,13 +378,15 @@ public final class DownstreamTaskOffloader implements Offloader {
 
       for (final ByteInputContext byteInputContext : byteInputContexts) {
 
+
         final ByteTransferContextSetupMessage pendingMsg =
           new ByteTransferContextSetupMessage(executorId,
             byteInputContext.getContextId().getTransferIndex(),
             byteInputContext.getContextId().getDataDirection(),
             byteInputContext.getContextDescriptor(),
             byteInputContext.getContextId().isPipe(),
-            ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT);
+            ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT,
+            SF);
 
         LOG.info("Send message {}", pendingMsg);
 
@@ -412,6 +419,7 @@ public final class DownstreamTaskOffloader implements Offloader {
 
           LOG.info("VM Address: {}", vmAddress);
 
+          /*
           final ByteTransferContextSetupMessage scaleoutMsg =
           new ByteTransferContextSetupMessage(executorId,
             byteInputContext.getContextId().getTransferIndex(),
@@ -421,6 +429,7 @@ public final class DownstreamTaskOffloader implements Offloader {
             ByteTransferContextSetupMessage.MessageType.RESUME_AFTER_SCALEOUT_VM,
             "", 1);
           byteInputContext.sendMessage(scaleoutMsg, (n) -> {});
+          */
 
           LOG.info("Send scaleout message");
 

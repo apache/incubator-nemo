@@ -44,6 +44,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
+
 /**
  * Represents the output data transfer from a task.
  */
@@ -243,6 +245,7 @@ public final class PipeOutputWriter implements OutputWriter {
           byteOutputContext.getContextDescriptor(),
           byteOutputContext.getContextId().isPipe(),
           ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_PARENT_STOPPING_OUTPUT,
+          SF,
           relayServer.getPublicAddress(),
           relayServer.getPort());
 

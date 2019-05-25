@@ -32,9 +32,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext.SendDataTo.SF;
-import static org.apache.nemo.runtime.executor.common.datatransfer.ByteOutputContext.SendDataTo.VM;
-
 /**
  * Container for multiple input streams. Represents a transfer context on receiver-side.
  *
@@ -121,6 +118,10 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
     LOG.info("Send message: {} at {}", message.getMessageType(),
       getContextId().getTransferIndex());
 
+
+    throw new UnsupportedOperationException("Not supported");
+
+    /*
     switch (message.getMessageType()) {
       case SIGNAL_FROM_CHILD_FOR_STOP_OUTPUT: {
         localByteOutputContext.pending(SF, "", 1);
@@ -142,6 +143,7 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
         throw new UnsupportedOperationException("Not supported type: " + message.getMessageType());
       }
     }
+    */
   }
 
   @Override
