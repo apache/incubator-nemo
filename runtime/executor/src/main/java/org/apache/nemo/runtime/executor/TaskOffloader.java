@@ -237,14 +237,16 @@ public final class TaskOffloader {
       //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
       final int offloadCnt = taskExecutorMap.size();
 
-      for (final Pair<TaskExecutor, Long> pair : offloadedExecutors) {
+      final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
+      while (iterator.hasNext()) {
+        final Pair<TaskExecutor, Long> pair = iterator.next();
         if (pair.left().getId().contains("Stage0")) {
           LOG.info("Deoffloading {}", pair.left().getId());
           pair.left().endOffloading();
+
+          iterator.remove();
         }
       }
-
-      offloadedExecutors.clear();
     }, 90, TimeUnit.SECONDS);
 
     se.schedule(() -> {
@@ -274,14 +276,16 @@ public final class TaskOffloader {
       //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
       final int offloadCnt = taskExecutorMap.size();
 
-      for (final Pair<TaskExecutor, Long> pair : offloadedExecutors) {
+      final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
+      while (iterator.hasNext()) {
+        final Pair<TaskExecutor, Long> pair = iterator.next();
         if (pair.left().getId().contains("Stage2")) {
           LOG.info("Deoffloading {}", pair.left().getId());
           pair.left().endOffloading();
+
+          iterator.remove();
         }
       }
-
-      offloadedExecutors.clear();
     }, 130, TimeUnit.SECONDS);
 
 
@@ -312,14 +316,16 @@ public final class TaskOffloader {
       //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
       final int offloadCnt = taskExecutorMap.size();
 
-      for (final Pair<TaskExecutor, Long> pair : offloadedExecutors) {
+      final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
+      while (iterator.hasNext()) {
+        final Pair<TaskExecutor, Long> pair = iterator.next();
         if (pair.left().getId().contains("Stage2")) {
           LOG.info("Deoffloading {}", pair.left().getId());
           pair.left().endOffloading();
+
+          iterator.remove();
         }
       }
-
-      offloadedExecutors.clear();
     }, 170, TimeUnit.SECONDS);
 
 
@@ -331,14 +337,16 @@ public final class TaskOffloader {
       //  .filter(taskExecutor -> taskExecutor.getId().startsWith("Stage0")).toArray().length - evalConf.minVmTask;
       final int offloadCnt = taskExecutorMap.size();
 
-      for (final Pair<TaskExecutor, Long> pair : offloadedExecutors) {
+      final Iterator<Pair<TaskExecutor, Long>> iterator = offloadedExecutors.iterator();
+      while (iterator.hasNext()) {
+        final Pair<TaskExecutor, Long> pair = iterator.next();
         if (pair.left().getId().contains("Stage0")) {
           LOG.info("Deoffloading {}", pair.left().getId());
           pair.left().endOffloading();
+
+          iterator.remove();
         }
       }
-
-      offloadedExecutors.clear();
     }, 190, TimeUnit.SECONDS);
 
     /*
