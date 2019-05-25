@@ -258,7 +258,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   contextId.isPipe(),
                   ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
                   SF);
-              channel.writeAndFlush(ackMessage);
+
+              inputContext.sendMessage(ackMessage, (m) -> {});
             });
 
             break;
@@ -278,7 +279,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
               LOG.info("Send ack message for the connected VM for scaling in...");
               vmContextManager.getChannel().write(ackMessage);
 
-              channel.writeAndFlush(ackMessage);
+              inputContext.sendMessage(ackMessage, (m) -> {});
             });
             break;
           }
