@@ -436,6 +436,22 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     availableFetchers.clear();
     pendingFetchers.clear();
 
+
+    // close output writer!!
+    try {
+      // TODO: fix
+      for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
+        outputWriter.close();
+      }
+
+      Thread.sleep(3000);
+
+      // TODO: we send checkpoint mark to vm
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
     boolean hasSource = false;
     for (final DataFetcher dataFetcher : allFetchers) {
 
@@ -493,20 +509,6 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       });
     */
 
-    try {
-
-      // TODO: fix
-      for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
-        outputWriter.close();
-      }
-
-      Thread.sleep(3000);
-
-      // TODO: we send checkpoint mark to vm
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new RuntimeException(e);
-    }
 
   }
 

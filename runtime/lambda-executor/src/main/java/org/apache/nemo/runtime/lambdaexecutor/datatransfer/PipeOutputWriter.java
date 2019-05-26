@@ -143,6 +143,7 @@ public final class PipeOutputWriter {
       e.printStackTrace();
     }
 
+    /*
     pipes.forEach(pipe -> {
       try {
         pipeAndStreamMap.get(pipe).close();
@@ -154,6 +155,7 @@ public final class PipeOutputWriter {
         throw new RuntimeException(e);
       }
     });
+    */
   }
 
   private List<ByteOutputContext> doInitialize() {
