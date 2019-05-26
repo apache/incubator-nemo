@@ -86,7 +86,7 @@ public final class PipeManagerMaster {
         case PipeInit:
           final ControlMessage.PipeInitMessage pipeInitMessage = message.getPipeInitMsg();
           final Pair<String, Long> keyPair = getPair(pipeInitMessage);
-          LOG.info("Receive pipeInit: {}, key: {}", pipeInitMessage, keyPair);
+          LOG.info("Receive pipeInit key: {}, executorId: {}", keyPair, pipeInitMessage.getExecutorId());
 
           // Allow to put at most once
           final Lock lock = runtimeEdgeIndexToLock.get(keyPair);
@@ -143,7 +143,9 @@ public final class PipeManagerMaster {
             lock.lock();
             try {
               if (!runtimeEdgeIndexToExecutor.containsKey(keyPair)) {
+                LOG.info("Waiting for executorLocation of key {}", keyPair);
                 runtimeEdgeIndexToCondition.get(keyPair).await();
+                LOG.info("End of Waiting for executorLocation of key {}", keyPair);
               }
 
               final String location = runtimeEdgeIndexToExecutor.get(keyPair);
