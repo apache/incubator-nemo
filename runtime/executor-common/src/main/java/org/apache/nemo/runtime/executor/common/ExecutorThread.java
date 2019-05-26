@@ -106,15 +106,20 @@ public final class ExecutorThread {
 
           if (isPollingTime.get()) {
             isPollingTime.set(false);
+            boolean pendingSet = false;
             // how to check whether the task is ready or not?
             for (final TaskExecutor pendingTask : pendingTasks) {
               if (!pendingTask.isFinished()) {
                 availableTasks.add(pendingTask);
               } else {
                 pendingTask.finish();
+                pendingSet = true;
               }
             }
             pendingTasks.clear();
+            if (pendingSet) {
+              LOG.info("After finishign task: availables: {}, pending: {}", availableTasks, pendingTasks);
+            }
           }
         }
       } catch (final Exception e) {
