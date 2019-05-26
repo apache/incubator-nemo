@@ -312,10 +312,9 @@ public final class TinyTaskOffloader implements Offloader {
     // Source stop!!
     // Source stop!!
     for (final DataFetcher dataFetcher : allFetchers) {
-      if (dataFetcher instanceof MultiThreadParentTaskDataFetcher) {
-        pendingFutures.add(dataFetcher.stop());
-      }
+      pendingFutures.add(dataFetcher.stop());
     }
+
     // Source stop!!
     // Source stop!!
     taskStatus.compareAndSet(TaskExecutor.Status.RUNNING, TaskExecutor.Status.OFFLOAD_PENDING);
