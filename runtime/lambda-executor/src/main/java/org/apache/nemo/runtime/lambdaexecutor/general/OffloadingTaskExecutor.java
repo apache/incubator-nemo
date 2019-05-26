@@ -400,10 +400,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     allFetchers.addAll(pendingFetchers);
 
     for (final DataFetcher dataFetcher : allFetchers) {
-      if (dataFetcher instanceof LambdaParentTaskDataFetcher) {
-        LOG.info("Stopping data fetcher {}", dataFetcher);
-        pendingFutures.add(dataFetcher.stop());
-      }
+      LOG.info("Stopping data fetcher {}", dataFetcher);
+      pendingFutures.add(dataFetcher.stop());
     }
 
     LOG.info("Waiting pending futures...");
@@ -434,6 +432,9 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     final List<DataFetcher> allFetchers = new ArrayList<>();
     allFetchers.addAll(availableFetchers);
     allFetchers.addAll(pendingFetchers);
+
+    availableFetchers.clear();
+    pendingFetchers.clear();
 
     for (final DataFetcher dataFetcher : allFetchers) {
 
