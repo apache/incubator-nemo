@@ -227,6 +227,10 @@ public final class TinyTaskOffloader implements Offloader {
       writer.restart();
     });
 
+    for (final DataFetcher dataFetcher : allFetchers) {
+      dataFetcher.restart();
+    }
+
     availableFetchers.add(sourceVertexDataFetcher);
 
     kafkaOffloadingOutputs.clear();
