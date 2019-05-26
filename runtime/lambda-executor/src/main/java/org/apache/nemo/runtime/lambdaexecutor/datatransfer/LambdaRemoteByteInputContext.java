@@ -19,8 +19,13 @@
 package org.apache.nemo.runtime.lambdaexecutor.datatransfer;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
+import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.offloading.common.EventHandler;
+import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
+import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
+import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,8 +33,9 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Container for multiple input streams. Represents a transfer context on receiver-side.
@@ -45,31 +51,17 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
   private static final Logger LOG = LoggerFactory.getLogger(LambdaRemoteByteInputContext.class.getName());
 
   private final CompletableFuture<Iterator<InputStream>> completedFuture = new CompletableFuture<>();
-  private final ClosableBlockingQueue<ByteBufInputStream> byteBufInputStreams = new ClosableBlockingQueue<>();
-  private volatile ByteBufInputStream currentByteBufInputStream = null;
+  //private final Queue<ByteBufInputStream> byteBufInputStreams = new LinkedList<>();
+  private final ByteBufInputStream currentByteBufInputStream = new ByteBufInputStream();
+  private volatile boolean isFinished = false;
 
-  private final Iterator<InputStream> inputStreams = new Iterator<InputStream>() {
-    @Override
-    public boolean hasNext() {
-      try {
-        return byteBufInputStreams.peek() != null;
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new RuntimeException(e);
-      }
-    }
+  private EventHandler<Integer> ackHandler;
+  private final ScheduledExecutorService ackService;
 
-    @Override
-    public InputStream next() {
-      try {
-        return byteBufInputStreams.take();
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOG.error("Interrupted while taking byte buf.", e);
-        throw new NoSuchElementException();
-      }
-    }
-  };
+
+  private Channel currChannel;
+  private Channel vmChannel;
+  private Channel sfChannel;
 
   /**
    * Creates an input context.
@@ -78,28 +70,50 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
    * @param contextDescriptor   user-provided context descriptor
    * @param contextManager      {@link ContextManager} for the channel
    */
-  LambdaRemoteByteInputContext(final String remoteExecutorId,
-                               final ContextId contextId,
-                               final byte[] contextDescriptor,
-                               final ContextManager contextManager) {
+  public LambdaRemoteByteInputContext(final String remoteExecutorId,
+                                      final ContextId contextId,
+                                      final byte[] contextDescriptor,
+                                      final ContextManager contextManager,
+                                      final ScheduledExecutorService ackService,
+                                      final boolean isSfChannel) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
+    this.ackService = ackService;
+
+    if (isSfChannel) {
+      this.sfChannel = contextManager.getChannel();
+      this.currChannel = sfChannel;
+    } else {
+      this.vmChannel = contextManager.getChannel();
+      this.currChannel = vmChannel;
+    }
   }
 
-  /**
-   * Returns {@link Iterator} of {@link InputStream}s.
-   * This method always returns the same {@link Iterator} instance.
-   * @return {@link Iterator} of {@link InputStream}s.
-   */
+  public <T> IteratorWithNumBytes<T> getInputIterator(
+    final Serializer<?, T> serializer) {
+    return new InputStreamIterator<>(serializer);
+  }
+
+
+  @Override
   public Iterator<InputStream> getInputStreams() {
-    return inputStreams;
+    throw new UnsupportedOperationException();
   }
 
-  /**
-   * Returns a future, which is completed when the corresponding transfer for this context gets done.
-   * @return a {@link CompletableFuture} for the same value that {@link #getInputStreams()} returns
-   */
+  @Override
+  public void receiveFromSF(Channel channel) {
+    sfChannel = channel;
+    currChannel = sfChannel;
+  }
+
+  @Override
+  public void receiveFromVM(Channel channel) {
+    vmChannel = channel;
+    currChannel = vmChannel;
+  }
+
+  @Override
   public CompletableFuture<Iterator<InputStream>> getCompletedFuture() {
-    return completedFuture;
+    throw new UnsupportedOperationException();
   }
 
   /**
@@ -107,21 +121,40 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
    */
   @Override
   public void onNewStream() {
-    if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.close();
-    }
-    currentByteBufInputStream = new ByteBufInputStream();
-    byteBufInputStreams.put(currentByteBufInputStream);
+    //currentByteBufInputStream = new ByteBufInputStream();
+    //byteBufInputStreams.add(currentByteBufInputStream);
   }
 
   @Override
-  public void sendMessage(ByteTransferContextSetupMessage message, EventHandler<Integer> pendingAckHandler) {
-    throw new RuntimeException("This should not be used");
+  public void sendMessage(final ByteTransferContextSetupMessage message,
+                          final EventHandler<Integer> handler) {
+    ackHandler = handler;
+    // send message to the upstream task!
+    LOG.info("Send message to remote: {}", message);
+    currChannel.writeAndFlush(message);
+
+    if (currChannel == sfChannel) {
+      LOG.info("Send message to relay: {}", message);
+      final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(message.getContextDescriptor());
+      final String dst = RelayUtils.createId(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false);
+      currChannel.writeAndFlush(new RelayControlFrame(dst, message));
+    } else {
+      LOG.info("Send message to remote: {}", message);
+      currChannel.writeAndFlush(message);
+    }
   }
 
   @Override
   public void receivePendingAck() {
-    throw new RuntimeException("This should not be used");
+    LOG.info("Receive pending in byteInputContext {}", getContextId().getTransferIndex());
+    if (currentByteBufInputStream.byteBufQueue.isEmpty()) {
+      LOG.info("ackHandler.onNext {}", getContextId().getTransferIndex());
+      ackHandler.onNext(1);
+    } else {
+      LOG.info("ackHandler.schedule {}", getContextId().getTransferIndex());
+      // check ack
+      ackService.schedule(new AckRunner(), 500, TimeUnit.MILLISECONDS);
+    }
   }
 
   /**
@@ -130,9 +163,7 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
    */
   @Override
   public void onByteBuf(final ByteBuf byteBuf) {
-    if (currentByteBufInputStream == null) {
-      throw new RuntimeException("Cannot accept ByteBuf: No sub-stream is opened.");
-    }
+    //LOG.info("On byteBuf {}", getContextId().getTransferIndex());
     if (byteBuf.readableBytes() > 0) {
       currentByteBufInputStream.byteBufQueue.put(byteBuf);
     } else {
@@ -143,7 +174,7 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
 
   @Override
   public boolean isFinished() {
-    return false;
+    return isFinished;
   }
 
   /**
@@ -151,28 +182,20 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
    */
   @Override
   public void onContextClose() {
-    if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.close();
-    }
-    byteBufInputStreams.close();
-    completedFuture.complete(inputStreams);
+    isFinished = true;
     deregister();
   }
 
   @Override
   public void onContextStop() {
-    if (currentByteBufInputStream != null) {
-      currentByteBufInputStream.byteBufQueue.close();
-    }
-    byteBufInputStreams.close();
-    completedFuture.complete(inputStreams);
-    getContextManager().onContextStop(this);
+    isFinished = true;
   }
 
   @Override
   public void onContextRestart() {
     throw new UnsupportedOperationException();
   }
+
 
   @Override
   public void onChannelError(@Nullable final Throwable cause) {
@@ -300,6 +323,69 @@ public final class LambdaRemoteByteInputContext extends AbstractByteTransferCont
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new IOException(e);
+      }
+    }
+  }
+
+  public final class InputStreamIterator<T> implements IteratorWithNumBytes<T> {
+
+    private final Serializer<?, T> serializer;
+    private volatile T next;
+    private final DecoderFactory.Decoder<T> decoder;
+
+    public InputStreamIterator(final Serializer<?, T> serializer) {
+      this.serializer = serializer;
+      try {
+        this.decoder = serializer.getDecoderFactory().create(currentByteBufInputStream);
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    public boolean isFinished() {
+      return isFinished;
+    }
+
+    @Override
+    public long getNumSerializedBytes() throws NumBytesNotSupportedException {
+      return 0;
+    }
+
+    @Override
+    public long getNumEncodedBytes() throws NumBytesNotSupportedException {
+      return 0;
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (currentByteBufInputStream.byteBufQueue.isEmpty() || isFinished) {
+        return false;
+      }
+      return true;
+    }
+
+    @Override
+    public T next() {
+      try {
+        return decoder.decode();
+      } catch (IOException e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  final class AckRunner implements Runnable {
+
+    @Override
+    public void run() {
+      LOG.info("Bytebuf: {}", currentByteBufInputStream.byteBufQueue.isEmpty());
+      if (currentByteBufInputStream.byteBufQueue.isEmpty()) {
+        ackHandler.onNext(1);
+      } else {
+        ackService.schedule(new AckRunner(), 500, TimeUnit.MILLISECONDS);
       }
     }
   }

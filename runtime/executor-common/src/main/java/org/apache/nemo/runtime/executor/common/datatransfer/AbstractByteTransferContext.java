@@ -41,8 +41,6 @@ public abstract class AbstractByteTransferContext implements ByteTransferContext
   private volatile boolean hasException = false;
   private volatile Throwable exception = null;
 
-  private boolean isRelayServer;
-
   /**
    * Creates a transfer context.
    * @param remoteExecutorId    id of the remote executor
@@ -58,22 +56,6 @@ public abstract class AbstractByteTransferContext implements ByteTransferContext
     this.contextId = contextId;
     this.contextDescriptor = contextDescriptor;
     this.contextManager = contextManager;
-  }
-
-  public void setIsRelayServer(boolean t) {
-    isRelayServer = t;
-  }
-
-  public boolean getIsRelayServer() {
-    return isRelayServer;
-  }
-
-  public void setContextManager(ContextManager cm) {
-    contextManager = cm;
-  }
-
-  public ContextManager getContextManager() {
-    return contextManager;
   }
 
   /**

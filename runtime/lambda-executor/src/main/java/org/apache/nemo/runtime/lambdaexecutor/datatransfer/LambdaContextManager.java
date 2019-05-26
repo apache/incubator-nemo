@@ -36,6 +36,7 @@ import java.util.concurrent.*;
 import java.util.function.Function;
 
 import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.SF;
+import static org.apache.nemo.runtime.executor.common.TaskLocationMap.LOC.VM;
 import static org.apache.nemo.runtime.executor.common.datatransfer.ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_SENDS_DATA;
 
 /**
@@ -117,9 +118,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       ByteTransferContextSetupMessage.ByteTransferDataDirection.INITIATOR_RECEIVES_DATA,
       ByteTransferContextSetupMessage.MessageType.SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT,
       contextId -> {
-        final StreamRemoteByteInputContext ic = new StreamRemoteByteInputContext(executorId, contextId, contextDescriptor.encode(), this,
-          ackScheduledService.ackService);
-        ic.setIsRelayServer(isRelayServerChannel);
+        final LambdaRemoteByteInputContext ic = new LambdaRemoteByteInputContext(executorId, contextId, contextDescriptor.encode(), this,
+          ackScheduledService.ackService, isRelayServerChannel);
         return ic;
       },
       executorId, isPipe, relayDst);
@@ -210,8 +210,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   contextId.getDataDirection(),
                   contextDescriptor,
                   contextId.isPipe(),
-                  ByteTransferContextSetupMessage.MessageType.ACK_FROM_PARENT_STOP_OUTPUT,
-                  SF);
+                  ByteTransferContextSetupMessage.MessageType.SETTING_INPUT_CONTEXT,
+                  VM);
 
               LOG.info("Send init message for the connected VM for scaling in...");
               vmContextManager.getChannel().write(ackMessage);
@@ -234,8 +234,8 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       case SIGNAL_FROM_PARENT_STOPPING_OUTPUT: {
 
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
-        final StreamRemoteByteInputContext inputContext =
-          (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
+        final LambdaRemoteByteInputContext inputContext =
+          (LambdaRemoteByteInputContext) inputContexts.get(transferIndex);
 
         switch (sendDataTo) {
           case SF: {
@@ -267,6 +267,18 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
           case VM: {
             connectToVm(message.getInitiatorExecutorId(), (vmContextManager) -> {
               // We send ack to the vm channel to initialize it !!!
+              final ByteTransferContextSetupMessage settingMsg =
+                new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
+                  contextId.getTransferIndex(),
+                  contextId.getDataDirection(),
+                  contextDescriptor,
+                  contextId.isPipe(),
+                  ByteTransferContextSetupMessage.MessageType.SETTING_OUTPUT_CONTEXT,
+                  VM);
+
+              LOG.info("Send setting message for the connected VM for scaling in... {}", settingMsg);
+              vmContextManager.getChannel().write(settingMsg);
+
               final ByteTransferContextSetupMessage ackMessage =
                 new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
                   contextId.getTransferIndex(),
@@ -275,10 +287,6 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   contextId.isPipe(),
                   ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
                   SF);
-
-              LOG.info("Send ack message for the connected VM for scaling in...");
-              vmContextManager.getChannel().write(ackMessage);
-
               inputContext.sendMessage(ackMessage, (m) -> {});
             });
             break;
@@ -294,10 +302,13 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
       }
       case SIGNAL_FROM_PARENT_RESTARTING_OUTPUT: {
         LOG.info("Signal from parent restarting output {} / {}", sendDataTo, transferIndex);
-        final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
+        final LambdaRemoteByteInputContext inputContext = (LambdaRemoteByteInputContext) inputContexts.get(transferIndex);
         // reset the channel!
-        inputContext.setIsRelayServer(isRelayServerChannel);
-        inputContext.setContextManager(this);
+        if (isRelayServerChannel) {
+          inputContext.receiveFromSF(channel);
+        } else {
+          inputContext.receiveFromVM(channel);
+        }
         break;
       }
       case SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT: {

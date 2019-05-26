@@ -27,7 +27,7 @@ import java.util.Objects;
  */
 public interface ByteTransferContext {
 
-  ContextManager getContextManager();
+  //ContextManager getContextManager();
 
   String getRemoteExecutorId();
 

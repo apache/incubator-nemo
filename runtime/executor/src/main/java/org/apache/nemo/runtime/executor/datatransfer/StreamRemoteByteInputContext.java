@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.common.datatransfer;
+package org.apache.nemo.runtime.executor.datatransfer;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import org.apache.nemo.common.coder.DecoderFactory;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlFrame;
-import org.apache.nemo.runtime.executor.common.relayserverclient.RelayUtils;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +55,10 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
   private final ScheduledExecutorService ackService;
 
 
+  private Channel currChannel;
+  private Channel vmChannel;
+  private Channel sfChannel;
+
   /**
    * Creates an input context.
    * @param remoteExecutorId    id of the remote executor
@@ -69,7 +73,8 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
                                final ScheduledExecutorService ackService) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     this.ackService = ackService;
-    setIsRelayServer(false);
+    this.vmChannel = contextManager.getChannel();
+    this.currChannel = vmChannel;
   }
 
   public <T> IteratorWithNumBytes<T> getInputIterator(
@@ -81,6 +86,20 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
   @Override
   public Iterator<InputStream> getInputStreams() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void receiveFromSF(Channel channel) {
+    LOG.info("Receive from SF!!");
+    sfChannel = channel;
+    currChannel = sfChannel;
+  }
+
+  @Override
+  public void receiveFromVM(Channel channel) {
+    LOG.info("Receive from VM!!");
+    vmChannel = channel;
+    currChannel = vmChannel;
   }
 
   @Override
@@ -97,11 +116,23 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
     //byteBufInputStreams.add(currentByteBufInputStream);
   }
 
+  public void sendMessageToVM(final ByteTransferContextSetupMessage message,
+                              final EventHandler<Integer> handler) {
+    ackHandler = handler;
+    // send message to the upstream task!
+    LOG.info("Send message to remote: {}", message);
+    vmChannel.writeAndFlush(message);
+  }
+
   @Override
   public void sendMessage(final ByteTransferContextSetupMessage message,
                           final EventHandler<Integer> handler) {
     ackHandler = handler;
     // send message to the upstream task!
+    LOG.info("Send message to remote: {}", message);
+    currChannel.writeAndFlush(message);
+
+    /*
     if (getIsRelayServer()) {
       LOG.info("Send message to relay: {}", message);
       final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(message.getContextDescriptor());
@@ -111,6 +142,7 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
       LOG.info("Send message to remote: {}", message);
       getContextManager().getChannel().writeAndFlush(message);
     }
+    */
   }
 
   @Override
@@ -158,7 +190,6 @@ public final class StreamRemoteByteInputContext extends AbstractByteTransferCont
   @Override
   public void onContextStop() {
     isFinished = true;
-    getContextManager().onContextStop(this);
   }
 
   @Override

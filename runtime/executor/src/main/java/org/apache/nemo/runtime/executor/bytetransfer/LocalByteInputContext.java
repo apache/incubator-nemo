@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.bytetransfer;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.slf4j.Logger;
@@ -83,6 +84,16 @@ public final class LocalByteInputContext extends AbstractByteTransferContext imp
    * @return {@link Iterator} of {@link InputStream}s.
    */
   public Iterator<InputStream> getInputStreams() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void receiveFromSF(Channel channel) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void receiveFromVM(Channel channel) {
     throw new UnsupportedOperationException();
   }
 

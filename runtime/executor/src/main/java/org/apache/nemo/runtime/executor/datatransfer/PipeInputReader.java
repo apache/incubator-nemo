@@ -28,7 +28,6 @@ import org.apache.nemo.runtime.executor.common.TaskLocationMap;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.bytetransfer.LocalByteInputContext;
 import org.apache.nemo.runtime.executor.relayserver.RelayServer;
-import org.apache.nemo.runtime.lambdaexecutor.datatransfer.LambdaRemoteByteInputContext;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.reef.wake.EventHandler;
@@ -220,13 +219,12 @@ public final class PipeInputReader implements InputReader {
         if (context instanceof LocalByteInputContext) {
           final LocalByteInputContext localByteInputContext = (LocalByteInputContext) context;
           handler.onNext(Pair.of(localByteInputContext.getIteratorWithNumBytes(), srcTaskIndex));
-        } else if (context instanceof LambdaRemoteByteInputContext) {
-          handler.onNext(Pair.of(new DataUtil.InputStreamIterator(context.getInputStreams(),
-            pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())), srcTaskIndex));
         } else if (context instanceof StreamRemoteByteInputContext) {
           handler.onNext(Pair.of(((StreamRemoteByteInputContext) context).getInputIterator(
             pipeManagerWorker.getSerializerManager().getSerializer(runtimeEdge.getId())),
             srcTaskIndex));
+        } else {
+          throw new RuntimeException("Unsupported type " + context);
         }
       });
   }

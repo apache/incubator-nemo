@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -43,6 +44,10 @@ public interface ByteInputContext extends ByteTransferContext {
    * @return {@link Iterator} of {@link InputStream}s.
    */
   Iterator<InputStream> getInputStreams();
+
+  void receiveFromSF(Channel channel);
+
+  void receiveFromVM(Channel channel);
 
   /**
    * Returns a future, which is completed when the corresponding transfer for this context gets done.

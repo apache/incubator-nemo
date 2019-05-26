@@ -1,7 +1,5 @@
 package org.apache.nemo.runtime.executor.common.datatransfer;
 
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
-
 import java.io.*;
 
 public class PipeTransferContextDescriptor {

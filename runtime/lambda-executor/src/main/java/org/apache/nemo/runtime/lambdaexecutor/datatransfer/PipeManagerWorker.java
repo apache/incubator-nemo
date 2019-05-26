@@ -212,7 +212,7 @@ public final class PipeManagerWorker {
             synchronized (contexts) {
               contexts.add(context);
             }
-            return ((StreamRemoteByteInputContext) context).getInputIterator(
+            return ((LambdaRemoteByteInputContext) context).getInputIterator(
               serializerMap.get(runtimeEdgeId));
           });
       }
@@ -227,7 +227,7 @@ public final class PipeManagerWorker {
             synchronized (contexts) {
               contexts.add(context);
             }
-            return ((StreamRemoteByteInputContext) context).getInputIterator(
+            return ((LambdaRemoteByteInputContext) context).getInputIterator(
               serializerMap.get(runtimeEdgeId));
           });
       }

@@ -4,13 +4,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFrameEncoder;
-import org.apache.nemo.runtime.executor.common.datatransfer.RemoteByteOutputContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 

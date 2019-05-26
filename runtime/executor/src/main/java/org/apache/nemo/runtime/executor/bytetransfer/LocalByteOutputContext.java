@@ -163,12 +163,12 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
   public void stop() {
     // just send stop message
     LOG.info("Stop local context {}", getContextId());
-    getContextManager().onContextStopLocal(getContextId().getTransferIndex());
+    //getContextManager().onContextStopLocal(getContextId().getTransferIndex());
   }
 
   public void restart() {
     LOG.info("Restart local context {}", getContextId());
-    getContextManager().onContextRestartLocal(getContextId().getTransferIndex());
+    //getContextManager().onContextRestartLocal(getContextId().getTransferIndex());
   }
 
   @Override
@@ -183,7 +183,7 @@ public final class LocalByteOutputContext extends AbstractByteTransferContext im
    */
   @Override
   public void close() throws IOException {
-    getContextManager().onContextCloseLocal(getContextId().getTransferIndex());
+    //getContextManager().onContextCloseLocal(getContextId().getTransferIndex());
   }
 
   @Override

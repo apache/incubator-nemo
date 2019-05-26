@@ -34,6 +34,9 @@ import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.VMScalingClientTransport;
+import org.apache.nemo.runtime.executor.common.datatransfer.PipeTransferContextDescriptor;
+import org.apache.nemo.runtime.executor.datatransfer.RemoteByteOutputContext;
+import org.apache.nemo.runtime.executor.datatransfer.StreamRemoteByteInputContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -217,24 +220,48 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), sendDataTo);
 
         LOG.info("STOP_OUTPUT for moving {} pending {}, {}", sendDataTo, transferIndex, outputContexts);
-        final ByteOutputContext outputContext = outputContexts.get(transferIndex);
+        final RemoteByteOutputContext outputContext =  (RemoteByteOutputContext) outputContexts.get(transferIndex);
+
+        if (sendDataTo.equals(VM)) {
+          // send ack to the vm channel
+          LOG.info("Sending ack from parent stop output to ");
+          final ByteTransferContextSetupMessage ackMessage =
+            new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
+              contextId.getTransferIndex(),
+              contextId.getDataDirection(),
+              contextDescriptor,
+              contextId.isPipe(),
+              ByteTransferContextSetupMessage.MessageType.SETTING_INPUT_CONTEXT,
+              VM);
+          outputContext.sendMessageToVM(ackMessage, (m) -> {});
+        }
+
         outputContext.pending(sendDataTo);
         break;
       }
-      case ACK_FROM_PARENT_STOP_OUTPUT: {
+      case SETTING_INPUT_CONTEXT: {
         final StreamRemoteByteInputContext context =
           (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
-        LOG.info("ACK_FOR_STOP_OUTPUT: {}, {}", transferIndex, inputContexts);
+        LOG.info("SETTING_INPUT_CONTEXT {}, {}", transferIndex, inputContexts);
 
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
 
         // why we do this? when the downstream move from SF -> VM,
         // the upstream should connect with the VM channel
         // we set the channel here between SF <=> VM
-        context.setIsRelayServer(false);
-        context.setContextManager(this);
-        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), sendDataTo);
+        if (sendDataTo.equals(VM)) {
+          context.receiveFromVM(channel);
+        } else {
+          context.receiveFromSF(channel);
+        }
 
+        taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), sendDataTo);
+        break;
+      }
+      case ACK_FROM_PARENT_STOP_OUTPUT: {
+        final StreamRemoteByteInputContext context =
+          (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
+        LOG.info("ACK_FOR_STOP_OUTPUT: {}, {}", transferIndex, inputContexts);
         context.receivePendingAck();
         break;
       }
@@ -242,8 +269,25 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
         LOG.info("Scaling out input context {} to {}", Pair.of(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex()), sendDataTo);
         taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), sendDataTo);
+
+        final StreamRemoteByteInputContext context = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
+
         channelExecutorService.execute(() -> {
           LOG.info("Sending ack to the input context");
+
+          if (sendDataTo.equals(VM)) {
+
+            final ByteTransferContextSetupMessage settingMsg =
+              new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
+                contextId.getTransferIndex(),
+                contextId.getDataDirection(),
+                contextDescriptor,
+                contextId.isPipe(),
+                ByteTransferContextSetupMessage.MessageType.SETTING_OUTPUT_CONTEXT,
+                VM);
+            context.sendMessageToVM(settingMsg, (m) -> {});
+          }
+
           final ByteTransferContextSetupMessage ackMessage =
             new ByteTransferContextSetupMessage(contextId.getInitiatorExecutorId(),
               contextId.getTransferIndex(),
@@ -252,13 +296,14 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
               contextId.isPipe(),
               ByteTransferContextSetupMessage.MessageType.ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT,
               VM);
+
           channel.writeAndFlush(ackMessage);
         });
         break;
       }
-      case ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {
+      case SETTING_OUTPUT_CONTEXT: {
         final ByteOutputContext context = outputContexts.get(transferIndex);
-        LOG.info("ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {}, {}", transferIndex, context);
+        LOG.info("SETTING OUTPUT CONTEXT: {}, {}", transferIndex, context);
 
         final PipeTransferContextDescriptor cd = PipeTransferContextDescriptor.decode(contextDescriptor);
         taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getDstTaskIndex(), true), sendDataTo);
@@ -273,7 +318,11 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
             break;
           }
         }
-
+        break;
+      }
+      case ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {
+        final ByteOutputContext context = outputContexts.get(transferIndex);
+        LOG.info("ACK_FROM_CHILD_RECEIVE_PARENT_STOP_OUTPUT: {}, {}", transferIndex, context);
         context.receivePendingAck();
         break;
       }
@@ -285,9 +334,14 @@ final class DefaultContextManagerImpl extends SimpleChannelInboundHandler<ByteTr
 
         taskLocationMap.locationMap.put(new NemoTriple<>(cd.getRuntimeEdgeId(), (int) cd.getSrcTaskIndex(), false), sendDataTo);
         final StreamRemoteByteInputContext inputContext = (StreamRemoteByteInputContext) inputContexts.get(transferIndex);
+
         // reset the channel!
-        inputContext.setIsRelayServer(false);
-        inputContext.setContextManager(this);
+        if (sendDataTo.equals(VM)) {
+          inputContext.receiveFromVM(channel);
+        } else {
+          inputContext.receiveFromSF(channel);
+        }
+
         break;
       }
       case SIGNAL_FROM_CHILD_FOR_RESTART_OUTPUT: {

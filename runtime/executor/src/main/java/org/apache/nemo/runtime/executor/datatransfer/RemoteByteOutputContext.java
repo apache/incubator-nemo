@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.common.datatransfer;
+package org.apache.nemo.runtime.executor.datatransfer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
@@ -24,6 +24,7 @@ import io.netty.channel.Channel;
 import org.apache.nemo.common.coder.EncoderFactory;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.executor.common.TaskLocationMap;
+import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,6 +94,13 @@ public final class RemoteByteOutputContext extends AbstractByteTransferContext i
         break;
       }
     }
+  }
+
+  public void sendMessageToVM(final ByteTransferContextSetupMessage message,
+                              final EventHandler<Integer> handler) {
+    LOG.info("Send message to VM channel {} / {}", getContextId().getTransferIndex(), message);
+    ackHandler = handler;
+    channel.writeAndFlush(message);
   }
 
   @Override
