@@ -211,7 +211,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   contextDescriptor,
                   contextId.isPipe(),
                   ByteTransferContextSetupMessage.MessageType.SETTING_INPUT_CONTEXT,
-                  VM);
+                  SF);
 
               LOG.info("Send init message for the connected VM for scaling in...");
               vmContextManager.getChannel().write(ackMessage);
@@ -274,7 +274,7 @@ final class LambdaContextManager extends SimpleChannelInboundHandler<ByteTransfe
                   contextDescriptor,
                   contextId.isPipe(),
                   ByteTransferContextSetupMessage.MessageType.SETTING_OUTPUT_CONTEXT,
-                  VM);
+                  SF);
 
               LOG.info("Send setting message for the connected VM for scaling in... {}", settingMsg);
               vmContextManager.getChannel().write(settingMsg);
