@@ -138,7 +138,9 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
           LOG.info("Pending Output: {}, pendingWorkers: {}, hasNoTask: {}, deletePending: {}",
             te.getId(), deletePendingWorkers, taskWorker.hasNoTask(), taskWorker.getDeletePending());
 
-          if (taskWorker.hasNoTask() && taskWorker.getDeletePending().decrementAndGet() == 0) {
+          final int pendingCnt = taskWorker.getDeletePending().decrementAndGet();
+
+          if (taskWorker.hasNoTask() && pendingCnt == 0) {
             taskWorker.close();
             removeRunningWorker(taskWorker);
           }
