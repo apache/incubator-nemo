@@ -438,6 +438,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
 
     // close output writer!!
+    // we should first close output writer
+    // the code after this should not emit outputs to downstream operators
     try {
       // TODO: fix
       for (final PipeOutputWriter outputWriter : pipeOutputWriters) {
