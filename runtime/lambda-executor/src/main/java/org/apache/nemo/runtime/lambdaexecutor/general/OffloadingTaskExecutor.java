@@ -468,7 +468,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       }
     }
 
-    if (hasSource) {
+    if (!hasSource) {
       // send states to vm !!
       LOG.info("Send  stateoutput for task {}", offloadingTask.taskId);
       final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
