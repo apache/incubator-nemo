@@ -5,6 +5,7 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.handler.codec.ByteToMessageDecoder;
 import org.apache.nemo.runtime.executor.common.relayserverclient.RelayControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
-public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
+public final class RelayServerDecoder extends ByteToMessageDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(RelayServerDecoder.class);
 
   private final ConcurrentMap<String, Channel> taskChannelMap;
@@ -41,12 +42,6 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
     this.taskChannelMap = taskChannelMap;
   }
 
-  @Override
-  public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-    final ByteBuf byteBuf = (ByteBuf) msg;
-    startToRelay(byteBuf, ctx);
-  }
-
   public void startToRelay(final ByteBuf byteBuf, final ChannelHandlerContext ctx) throws Exception {
 
     while (byteBuf.readableBytes() > 0) {
@@ -54,8 +49,8 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
 
       switch (status) {
         case WAITING_HEADER1: {
-          if (byteBuf.readableBytes() < 5) {
-            LOG.info("Waiting for 5 more bytes... {}", byteBuf.readableBytes());
+          if (byteBuf.readableBytes() < 6) {
+            LOG.info("Waiting for 6 more bytes... {}", byteBuf.readableBytes());
             return;
           } else {
             bis = new ByteBufInputStream(byteBuf);
@@ -145,5 +140,10 @@ public final class RelayServerDecoder extends ChannelInboundHandlerAdapter {
   @Override
   public void channelInactive(ChannelHandlerContext ctx) throws Exception {
     LOG.info("Removing channel inactive {}", ctx.channel().remoteAddress().toString());
+  }
+
+  @Override
+  protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+    startToRelay(in, ctx);
   }
 }
