@@ -87,6 +87,7 @@ public final class TinyTaskWorker {
   }
 
   public synchronized boolean hasNoTask() {
+    LOG.info("pendingTasks: {}, offloadedTasks: {}", pendingTasks.size(), offloadedTasks.size());
     return pendingTasks.size() + offloadedTasks.size() == 0;
   }
 

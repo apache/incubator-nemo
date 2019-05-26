@@ -133,8 +133,11 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
           }
         } else if (msg instanceof KafkaOffloadingOutput || msg instanceof StateOutput) {
           // End of the task!
-          LOG.info("Pending Output: {}", te.getId());
+
           final TinyTaskWorker taskWorker = deletePendingWorkers.get(te.getId());
+          LOG.info("Pending Output: {}, pendingWorkers: {}, hasNoTask: {}, deletePending: {}",
+            te.getId(), deletePendingWorkers, taskWorker.hasNoTask(), taskWorker.getDeletePending());
+
           if (taskWorker.hasNoTask() && taskWorker.getDeletePending().decrementAndGet() == 0) {
             taskWorker.close();
             removeRunningWorker(taskWorker);
@@ -207,8 +210,11 @@ public final class TinyTaskOffloadingWorkerManager<I, O> implements ServerlessEx
     if (!worker.deleteTask(taskId)) {
       worker.getDeletePending().getAndIncrement();
       deletePendingWorkers.put(taskId, worker);
+      LOG.info("Put task {} to pending ... size: {}, deletePending: {}",
+        taskId, deletePendingWorkers.size(), worker.getDeletePending());
     } else {
       if (worker.hasNoTask() && worker.getDeletePending().get() == 0) {
+        LOG.info("Closing worker...");
         worker.close();
         removeRunningWorker(worker);
       }
