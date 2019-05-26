@@ -436,9 +436,11 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     availableFetchers.clear();
     pendingFetchers.clear();
 
+    boolean hasSource = false;
     for (final DataFetcher dataFetcher : allFetchers) {
 
       if (dataFetcher instanceof SourceVertexDataFetcher) {
+        hasSource = true;
         // send checkpoint mark to the VM!!
         final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
             stateAndCoderMap = getStateAndCoderMap();
@@ -466,7 +468,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
       }
     }
 
-    if (!pendingFutures.isEmpty()) {
+    if (hasSource) {
       // send states to vm !!
       LOG.info("Send  stateoutput for task {}", offloadingTask.taskId);
       final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
