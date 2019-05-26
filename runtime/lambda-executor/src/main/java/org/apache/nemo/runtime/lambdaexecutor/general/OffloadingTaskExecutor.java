@@ -400,33 +400,8 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
     allFetchers.addAll(pendingFetchers);
 
     for (final DataFetcher dataFetcher : allFetchers) {
-
-      if (dataFetcher instanceof SourceVertexDataFetcher) {
-        // send checkpoint mark to the VM!!
-        final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
-            stateAndCoderMap = getStateAndCoderMap();
-
-          final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
-
-        final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
-        if (srcDataFetcher.isStarted()) {
-          final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
-          final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
-          final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
-
-          LOG.info("Send checkpointmark of task {} / {}",  offloadingTask.taskId, checkpointMark);
-          resultCollector.collector.emit(new KafkaOffloadingOutput(offloadingTask.taskId, 1, checkpointMark,
-            checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
-        } else {
-          final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
-          final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
-
-          LOG.info("Send checkpointmark of task {}  / {} to vm",
-            offloadingTask.taskId, offloadingTask.checkpointMark);
-          resultCollector.collector.emit(new KafkaOffloadingOutput(
-            offloadingTask.taskId, 1, offloadingTask.checkpointMark, checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
-        }
-      } else if (dataFetcher instanceof LambdaParentTaskDataFetcher) {
+      if (dataFetcher instanceof LambdaParentTaskDataFetcher) {
+        LOG.info("Stopping data fetcher {}", dataFetcher);
         pendingFutures.add(dataFetcher.stop());
       }
     }
@@ -455,6 +430,41 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
 
   @Override
   public void finish() {
+
+    final List<DataFetcher> allFetchers = new ArrayList<>();
+    allFetchers.addAll(availableFetchers);
+    allFetchers.addAll(pendingFetchers);
+
+    for (final DataFetcher dataFetcher : allFetchers) {
+
+      if (dataFetcher instanceof SourceVertexDataFetcher) {
+        // send checkpoint mark to the VM!!
+        final Pair<Map<String, GBKFinalState>, Map<String, Coder<GBKFinalState>>>
+            stateAndCoderMap = getStateAndCoderMap();
+
+          final Map<String, GBKFinalState> stateMap = stateAndCoderMap.left();
+
+        final SourceVertexDataFetcher srcDataFetcher = (SourceVertexDataFetcher) dataFetcher;
+        if (srcDataFetcher.isStarted()) {
+          final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
+          final UnboundedSource.CheckpointMark checkpointMark = readable.getReader().getCheckpointMark();
+          final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
+
+          LOG.info("Send checkpointmark of task {} / {}",  offloadingTask.taskId, checkpointMark);
+          resultCollector.collector.emit(new KafkaOffloadingOutput(offloadingTask.taskId, 1, checkpointMark,
+            checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
+        } else {
+          final UnboundedSourceReadable readable = (UnboundedSourceReadable) srcDataFetcher.getReadable();
+          final Coder<UnboundedSource.CheckpointMark> checkpointMarkCoder = readable.getUnboundedSource().getCheckpointMarkCoder();
+
+          LOG.info("Send checkpointmark of task {}  / {} to vm",
+            offloadingTask.taskId, offloadingTask.checkpointMark);
+          resultCollector.collector.emit(new KafkaOffloadingOutput(
+            offloadingTask.taskId, 1, offloadingTask.checkpointMark, checkpointMarkCoder, stateMap, stateAndCoderMap.right()));
+        }
+      }
+    }
+
     if (!pendingFutures.isEmpty()) {
       // send states to vm !!
       LOG.info("Send  stateoutput for task {}", offloadingTask.taskId);
