@@ -206,7 +206,7 @@ public final class TaskOffloader {
 
   public void startDownstreamDebugging() {
     // For offloading debugging
-    /*
+
     se.schedule(() -> {
       LOG.info("Start offloading kafka (only stage1)");
       int cnt = 0;
@@ -226,7 +226,6 @@ public final class TaskOffloader {
         }
       }
     }, 20, TimeUnit.SECONDS);
-    */
 
     se.schedule(() -> {
       LOG.info("Start offloading kafka (only stage0)");
