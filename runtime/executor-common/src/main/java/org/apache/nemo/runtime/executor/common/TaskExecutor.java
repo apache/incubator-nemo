@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.common;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.*;
+import org.apache.nemo.offloading.common.EventHandler;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -72,7 +73,7 @@ public interface TaskExecutor extends AutoCloseable {
 
   AtomicLong getPrevOffloadEndTime();
 
-  void startOffloading(final long baseTime);
+  void startOffloading(final long baseTime, EventHandler<Integer> offloadingDoneHandler);
 
   void endOffloading();
 

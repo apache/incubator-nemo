@@ -5,6 +5,7 @@ import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.offloading.common.OffloadingEncoder;
+import org.apache.nemo.runtime.executor.common.OffloadingDoneEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingResultTimestampEvent;
 import org.apache.nemo.runtime.lambdaexecutor.StateOutput;
@@ -83,6 +84,11 @@ public final class MiddleOffloadingOutputEncoder implements OffloadingEncoder<Ob
       } else {
         dos.writeInt(0);
       }
+    } else if (data instanceof OffloadingDoneEvent) {
+      final DataOutputStream dos = new DataOutputStream(outputStream);
+      dos.writeChar(OFFLOADING_DONE);
+      final OffloadingDoneEvent output = (OffloadingDoneEvent) data;
+      dos.writeUTF(output.taskId);
     }
   }
 }

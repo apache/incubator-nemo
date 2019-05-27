@@ -16,10 +16,7 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.offloading.common.OffloadingTransform;
-import org.apache.nemo.runtime.executor.common.ExecutorThread;
-import org.apache.nemo.runtime.executor.common.Serializer;
-import org.apache.nemo.runtime.executor.common.TaskExecutor;
-import org.apache.nemo.runtime.executor.common.TaskLocationMap;
+import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.*;
 import org.apache.nemo.runtime.lambdaexecutor.datatransfer.RelayServerClient;
 import org.apache.nemo.runtime.lambdaexecutor.OffloadingHeartbeatEvent;
@@ -202,6 +199,10 @@ public final class OffloadingExecutor implements OffloadingTransform<Object, Obj
         intermediateDataIOFactory,
         oc,
         scheduledExecutorService);
+
+      // Emit offloading done
+      oc.emit(new OffloadingDoneEvent(
+        taskExecutor.getId()));
 
       executorThread.addNewTask(taskExecutor);
 

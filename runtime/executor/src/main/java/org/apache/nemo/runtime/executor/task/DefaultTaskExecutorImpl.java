@@ -38,6 +38,7 @@ import org.apache.nemo.common.punctuation.Finishmark;
 import org.apache.nemo.common.punctuation.TimestampAndValue;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -68,7 +69,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -175,6 +175,7 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
   final List<DataFetcher> pendingFetchers;
   final Optional<Offloader> offloader;
 
+  private EventHandler<Integer> offloadingDoneHandler;
 
   private final TaskInputContextMap taskInputContextMap;
 
@@ -556,7 +557,9 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
     }
   }
   @Override
-  public void startOffloading(final long baseTime) {
+  public void startOffloading(final long baseTime,
+                              final EventHandler<Integer> doneHandler) {
+    offloadingDoneHandler = doneHandler;
     offloadingRequestQueue.add(new OffloadingRequestEvent(true, baseTime));
   }
   @Override
@@ -1073,10 +1076,14 @@ public final class DefaultTaskExecutorImpl implements TaskExecutor {
             offloader.get().handleStartOffloadingEvent();
             LOG.info("End -- handle start offloading kafka event {}", taskId);
           }
+        } else if (data instanceof OffloadingDoneEvent) {
+          final OffloadingDoneEvent e = (OffloadingDoneEvent) data;
+          LOG.info("Offloading done of {}", e.taskId);
+          offloadingDoneHandler.onNext(1);
+
         } else {
           throw new RuntimeException("Unsupported type: " + data);
         }
-
       }
     }
 

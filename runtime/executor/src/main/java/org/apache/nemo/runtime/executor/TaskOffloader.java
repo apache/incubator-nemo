@@ -3,6 +3,11 @@ package org.apache.nemo.runtime.executor;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.conf.EvalConf;
+import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.common.TaskExecutor;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -57,9 +62,13 @@ public final class TaskOffloader {
 
 
   private long prevDeOffloadingTime = System.currentTimeMillis();
+  final PersistentConnectionToMasterMap toMaster;
+
+  private final String executorId;
 
   @Inject
   private TaskOffloader(
+    @Parameter(JobConf.ExecutorId.class) String executorId,
     final SystemLoadProfiler profiler,
     @Parameter(EvalConf.BottleneckDetectionPeriod.class) final long r,
     @Parameter(EvalConf.BottleneckDetectionConsecutive.class) final int k,
@@ -68,7 +77,9 @@ public final class TaskOffloader {
     final TaskExecutorMapWrapper taskExecutorMapWrapper,
     final CpuEventModel cpuEventModel,
     final PolynomialCpuTimeModel cpuTimeModel,
-    final EvalConf evalConf) {
+    final EvalConf evalConf,
+    final PersistentConnectionToMasterMap toMaster) {
+    this.executorId = executorId;
     this.evalConf = evalConf;
     this.r = r;
     this.k = k;
@@ -88,6 +99,8 @@ public final class TaskOffloader {
     this.taskExecutorMap = taskExecutorMapWrapper.taskExecutorMap;
     this.cpuEventModel = cpuEventModel;
     this.offloadedExecutors = new LinkedList<>();
+
+    this.toMaster = toMaster;
   }
 
 
@@ -202,10 +215,12 @@ public final class TaskOffloader {
       final int offloadCnt = taskExecutorMap.size();
 
       for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (taskExecutor.getId().contains("Stage2")) {
+        if (taskExecutor.getId().contains("Stage2") && isTaskOffloadable(taskExecutor.getId())) {
           LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
           offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis());
+          taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
+            sendOffloadingDoneEvent(taskExecutor.getId());
+          });
           cnt += 1;
         }
       }
@@ -220,10 +235,13 @@ public final class TaskOffloader {
       final int offloadCnt = taskExecutorMap.size();
 
       for (final TaskExecutor taskExecutor : taskExecutorMap.keySet()) {
-        if (taskExecutor.getId().contains("Stage0")) {
+        if (taskExecutor.getId().contains("Stage0") &&
+          isTaskOffloadable(taskExecutor.getId())) {
           LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
           offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis());
+          taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
+            sendOffloadingDoneEvent(taskExecutor.getId());
+          });
           cnt += 1;
         }
       }
@@ -446,7 +464,9 @@ public final class TaskOffloader {
         if (cnt < offloadCnt) {
           LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
           offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis());
+          taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {
+            sendOffloadingDoneEvent(taskExecutor.getId());
+          });
           cnt += 1;
         }
       }
@@ -462,6 +482,42 @@ public final class TaskOffloader {
     }, 40, 50, TimeUnit.SECONDS);
   }
 
+  private void sendOffloadingDoneEvent(final String taskId) {
+    LOG.info("Send offloading done for {}", taskId);
+    final CompletableFuture<ControlMessage.Message> msgFuture = toMaster
+      .getMessageSender(MessageEnvironment.TASK_OFFLOADING_LISTENER_ID).request(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.TASK_OFFLOADING_LISTENER_ID)
+          .setType(ControlMessage.MessageType.RequestTaskOffloadingDone)
+          .setRequestTaskOffloadingDoneMsg(ControlMessage.RequestTaskOffloadingDoneMessage.newBuilder()
+            .setExecutorId(executorId)
+            .setTaskId(taskId)
+            .build())
+          .build());
+  }
+
+  private boolean isTaskOffloadable(final String taskId) {
+    final CompletableFuture<ControlMessage.Message> msgFuture = toMaster
+      .getMessageSender(MessageEnvironment.TASK_OFFLOADING_LISTENER_ID).request(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.TASK_OFFLOADING_LISTENER_ID)
+          .setType(ControlMessage.MessageType.RequestTaskOffloading)
+          .setRequestTaskOffloadingMsg(ControlMessage.RequestTaskOffloadingMessage.newBuilder()
+            .setExecutorId(executorId)
+            .setTaskId(taskId)
+            .build())
+          .build());
+
+    try {
+      final ControlMessage.Message msg = msgFuture.get();
+      return msg.getTaskOffloadingInfoMsg().getCanOffloading();
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+  }
 
   private Map<TaskExecutor, Long> calculateCpuTimeDelta(
     final Map<TaskExecutor, Long> prevMap,
@@ -617,7 +673,10 @@ public final class TaskOffloader {
 
               // offload this task!
               LOG.info("Offloading task {}", runningTask.getId());
-              runningTask.startOffloading(currTime);
+              runningTask.startOffloading(System.currentTimeMillis(), (m) -> {
+                sendOffloadingDoneEvent(runningTask.getId());
+              });
+
               offloadedExecutors.add(Pair.of(runningTask, currTime));
               currCpuTimeSum -= currTaskCpuTime;
 

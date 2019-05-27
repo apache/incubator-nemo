@@ -192,7 +192,7 @@ public final class SeepTaskOffloader {
         if (taskExecutor.getId().startsWith("Stage0") && cnt < offloadCnt) {
           LOG.info("Offload task {}, cnt: {}, offloadCnt: {}", taskExecutor.getId(), cnt, offloadCnt);
           offloadedExecutors.add(Pair.of(taskExecutor, System.currentTimeMillis()));
-          taskExecutor.startOffloading(System.currentTimeMillis());
+          taskExecutor.startOffloading(System.currentTimeMillis(), (m) -> {});
           cnt += 1;
         }
       }
@@ -309,7 +309,7 @@ public final class SeepTaskOffloader {
                 if (currCpuTimeSum - avgCpuTimePerTask >= targetCpuTime) {
                   // offload this task!
                   LOG.info("Offloading task {}", runningTask.getId());
-                  runningTask.startOffloading(currTime);
+                  runningTask.startOffloading(currTime, (m) -> {});
                   offloadedExecutors.add(Pair.of(runningTask, currTime));
                   currCpuTimeSum -= avgCpuTimePerTask;
 

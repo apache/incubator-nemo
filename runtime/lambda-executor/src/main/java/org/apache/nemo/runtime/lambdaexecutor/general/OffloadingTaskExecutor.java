@@ -21,6 +21,7 @@ import org.apache.nemo.compiler.frontend.beam.source.UnboundedSourceReadable;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalTransform;
 import org.apache.nemo.compiler.frontend.beam.transform.StatefulTransform;
+import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingOutputCollector;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.DataFetcherOutputCollector;
@@ -721,7 +722,7 @@ public final class OffloadingTaskExecutor implements TaskExecutor {
   }
 
   @Override
-  public void startOffloading(long baseTime) {
+  public void startOffloading(long baseTime, EventHandler<Integer> doneHandler) {
     throw new UnsupportedOperationException();
   }
 

@@ -6,6 +6,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.compiler.frontend.beam.transform.GBKFinalState;
 import org.apache.nemo.offloading.common.OffloadingDecoder;
+import org.apache.nemo.runtime.executor.common.OffloadingDoneEvent;
 import org.apache.nemo.runtime.executor.common.Serializer;
 import org.apache.nemo.runtime.lambdaexecutor.*;
 import org.apache.nemo.runtime.lambdaexecutor.kafka.KafkaOffloadingOutput;
@@ -87,6 +88,10 @@ public final class MiddleOffloadingOutputDecoder implements OffloadingDecoder<Ob
           }
 
           return Pair.of(taskId, new StateOutput(taskId, stateMap, stateCoderMap));
+        }
+        case OFFLOADING_DONE: {
+          final String taskId = dis.readUTF();
+          return Pair.of(taskId, new OffloadingDoneEvent(taskId));
         }
         default:
           throw new RuntimeException("Unsupported type: " + type);
