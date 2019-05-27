@@ -95,14 +95,16 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
               switch (controlMsgType) {
                 case REGISTER: {
                   LOG.info("Registering {} / {}", dst, ctx.channel());
-                  taskChannelMap.put(dst, ctx.channel());
-                  if (pendingBytes.get(dst) != null) {
-                    LOG.info("Flushing pending byte {} / {}", dst, ctx.channel());
-                    for (final ByteBuf pendingByte : pendingBytes.get(dst)) {
-                      ctx.channel().write(pendingByte);
+                  taskChannelMap.putIfAbsent(dst, ctx.channel());
+                  synchronized (pendingBytes) {
+                    if (pendingBytes.get(dst) != null) {
+                      LOG.info("Flushing pending byte {} / {}", dst, ctx.channel());
+                      for (final ByteBuf pendingByte : pendingBytes.get(dst)) {
+                        ctx.channel().write(pendingByte);
+                      }
+                      ctx.channel().flush();
+                      pendingBytes.remove(dst);
                     }
-                    ctx.channel().flush();
-                    pendingBytes.remove(dst);
                   }
                   break;
                 }
@@ -126,8 +128,10 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
             if (!taskChannelMap.containsKey(dst)) {
               LOG.info("Pending for dst {}... readable: {}", dst, byteBuf.readableBytes());
-              pendingBytes.putIfAbsent(dst, new ArrayList<>());
-              pendingBytes.get(dst).add(bb);
+              synchronized (pendingBytes) {
+                pendingBytes.putIfAbsent(dst, new ArrayList<>());
+                pendingBytes.get(dst).add(bb);
+              }
             } else {
               final Channel dstChannel = taskChannelMap.get(dst);
 
