@@ -43,7 +43,10 @@ public final class TinyTaskWorker {
   }
 
   public synchronized boolean canHandleTask() {
-    if (offloadedTasks.size() + pendingTasks.size() >= SLOT) {
+    if (offloadedTasks.size() + pendingTasks.size() >= SLOT || offloadingWorker.getLoad() > 0.8) {
+      LOG.info("Worker load: {}, offloadedTask: {}", offloadingWorker.getLoad(),
+        offloadedTasks.size() + pendingTasks.size());
+
       return false;
     } else {
       return true;

@@ -16,7 +16,8 @@ public final class OffloadingEvent implements Serializable {
     GBK,
     RESULT,
     WARMUP_END,
-    END
+    END,
+    CPU_LOAD
   }
 
   private final Type type;

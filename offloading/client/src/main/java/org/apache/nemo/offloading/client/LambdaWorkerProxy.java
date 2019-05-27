@@ -248,6 +248,11 @@ public final class LambdaWorkerProxy<I, O> implements OffloadingWorker<I, O> {
   }
 
   @Override
+  public double getLoad() {
+    return 0;
+  }
+
+  @Override
   public String getId() {
     return workerId;
   }

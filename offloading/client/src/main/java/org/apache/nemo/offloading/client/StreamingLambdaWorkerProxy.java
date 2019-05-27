@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.offloading.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +44,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
 
   private final ExecutorService closeThread = Executors.newSingleThreadExecutor();
 
+  private final DescriptiveStatistics cpuAverage;
+
   public StreamingLambdaWorkerProxy(final int workerId,
                                     final Future<Pair<Channel, OffloadingEvent>> channelFuture,
                                     final OffloadingWorkerFactory offloadingWorkerFactory,
@@ -54,6 +57,8 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
     this.channelFuture = channelFuture;
     this.offloadingWorkerFactory = offloadingWorkerFactory;
     this.eventHandler = eventHandler;
+    this.cpuAverage = new DescriptiveStatistics();
+    cpuAverage.setWindowSize(3);
 
     this.channelEventHandlerMap = channelEventHandlerMap;
     this.endQueue = new LinkedBlockingQueue<>();
@@ -78,7 +83,7 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
           @Override
           public void onNext(OffloadingEvent msg) {
             switch (msg.getType()) {
-              case RESULT:
+              case RESULT: {
                 final ByteBufInputStream bis = new ByteBufInputStream(msg.getByteBuf());
                 try {
                   final int hasInstance = bis.readByte();
@@ -92,6 +97,13 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
                   throw new RuntimeException();
                 }
                 break;
+              }
+              case CPU_LOAD: {
+                final double load = msg.getByteBuf().readDouble();
+                LOG.info("Receive cpu load {}", load);
+                cpuAverage.addValue(load);
+                break;
+              }
               case END:
                 if (Constants.enableLambdaLogging) {
                   LOG.info("Receive end");
@@ -137,6 +149,11 @@ public final class StreamingLambdaWorkerProxy<I, O> implements OffloadingWorker<
   @Override
   public int getDataProcessingCnt() {
     return dataProcessingCnt;
+  }
+
+  @Override
+  public double getLoad() {
+    return cpuAverage.getMean();
   }
 
   @Override

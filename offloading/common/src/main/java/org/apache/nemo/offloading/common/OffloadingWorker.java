@@ -9,6 +9,8 @@ import java.util.concurrent.Future;
 
 public interface OffloadingWorker<I, O> {
 
+  public double getLoad();
+
   String getId();
 
   Future<Optional<O>> execute(ByteBuf input, int dataId, boolean speculative);

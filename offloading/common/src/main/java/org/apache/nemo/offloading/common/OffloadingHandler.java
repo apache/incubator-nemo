@@ -1,5 +1,6 @@
 package org.apache.nemo.offloading.common;
 
+import com.sun.management.OperatingSystemMXBean;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
@@ -15,6 +16,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import java.io.*;
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
@@ -58,10 +60,17 @@ public final class OffloadingHandler {
 
   private final Map<String, LambdaEventHandler> lambdaEventHandlerMap;
 
+  private final ScheduledExecutorService workerHeartbeatExecutor;
+
+  private final OperatingSystemMXBean operatingSystemMXBean;
+
 	public OffloadingHandler(final Map<String, LambdaEventHandler> lambdaEventHandlerMap) {
     Logger.getRootLogger().setLevel(Level.INFO);
     this.lambdaEventHandlerMap = lambdaEventHandlerMap;
+    this.workerHeartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
 
+    this.operatingSystemMXBean =
+      (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
 
 		LOG.info("Handler is created!");
           this.clientWorkerGroup = new NioEventLoopGroup(1,
@@ -160,6 +169,16 @@ public final class OffloadingHandler {
     map.put(opendChannel, new LambdaEventHandler(opendChannel, result));
 
     System.out.println("Open channel: " + opendChannel);
+
+    // cpu heartbeat
+    final Channel ochannel = opendChannel;
+    workerHeartbeatExecutor.scheduleAtFixedRate(() -> {
+      final double cpuLoad = operatingSystemMXBean.getProcessCpuLoad();
+      System.out.println("CPU Load: " + cpuLoad);
+      final ByteBuf bb = ochannel.alloc().buffer();
+      bb.writeDouble(cpuLoad);
+      ochannel.writeAndFlush(new OffloadingEvent(OffloadingEvent.Type.CPU_LOAD, bb));
+    }, 1, 1, TimeUnit.MILLISECONDS);
 
     // load class loader
 
