@@ -30,11 +30,11 @@ public final class RelayDataFrameEncoder extends MessageToMessageEncoder<RelayDa
   @Override
   protected void encode(final ChannelHandlerContext ctx, final RelayDataFrame in, final List out) {
     // encode header
-    LOG.info("Encoding relayDataFrame {}", in.dataFrame);
+    //LOG.info("Encoding relayDataFrame {}", in.dataFrame);
 
     final String id = in.dstId;
     final byte[] idBytes = id.getBytes();
-    LOG.info("ID bytes: {}", idBytes);
+    //LOG.info("ID bytes: {}", idBytes);
 
     final ByteBuf header = ctx.alloc().buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(header);
@@ -52,7 +52,7 @@ public final class RelayDataFrameEncoder extends MessageToMessageEncoder<RelayDa
     final byte[] loggingBytes = new byte[header.readableBytes()];
     header.getBytes(header.readableBytes(), loggingBytes);
 
-    LOG.info("Loging bytes in dataFrameEncoder {}", loggingBytes);
+    //LOG.info("Loging bytes in dataFrameEncoder {}", loggingBytes);
 
 
     out.add(header);

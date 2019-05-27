@@ -46,12 +46,12 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
   private void startToRelay(final ByteBuf byteBuf, final ChannelHandlerContext ctx) throws Exception {
 
     while (byteBuf.readableBytes() > 0) {
-      LOG.info("Remaining bytes: {} readable: {}", remainingBytes, byteBuf.readableBytes());
+      //LOG.info("Remaining bytes: {} readable: {}", remainingBytes, byteBuf.readableBytes());
 
       switch (status) {
         case WAITING_HEADER1: {
           if (byteBuf.readableBytes() < 6) {
-            LOG.info("Waiting for 6 more bytes... {}", byteBuf.readableBytes());
+            //LOG.info("Waiting for 6 more bytes... {}", byteBuf.readableBytes());
             return;
           } else {
             bis = new ByteBufInputStream(byteBuf);
@@ -62,23 +62,26 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
         }
         case WAITING_HEADER2: {
           if (byteBuf.readableBytes() < idLength + 4) {
-            LOG.info("Waiting for {} bytes... {}", idLength + 4, byteBuf.readableBytes());
+            //LOG.info("Waiting for {} bytes... {}", idLength + 4, byteBuf.readableBytes());
             waitingStr = true;
             return;
           } else {
             final byte[] idBytes = new byte[idLength];
             bis.read(idBytes);
-            LOG.info("ID bytes: {}", idBytes);
+            //LOG.info("ID bytes: {}", idBytes);
 
+            /*
             if (waitingStr) {
               final int readableBytes = byteBuf.readableBytes();
               final byte[] logginBytes = new byte[readableBytes];
               byteBuf.getBytes(readableBytes, logginBytes);
               LOG.info("logging bytes: {}", logginBytes);
             }
+            */
+
             dst = new String(idBytes);
 
-            LOG.info("Dst: {}", dst);
+            //LOG.info("Dst: {}", dst);
 
             if (type == 0 || type == 1) {
               // data frame and control frame
@@ -130,8 +133,8 @@ public final class RelayServerDecoder extends ByteToMessageDecoder {
 
               dstChannel.writeAndFlush(bb);
 
-              LOG.info("Forward data to dst {}... read: {}, readable: {}, remaining: {}", dst, maxRead,
-                byteBuf.readableBytes(), remainingBytes);
+              //LOG.info("Forward data to dst {}... read: {}, readable: {}, remaining: {}", dst, maxRead,
+              //  byteBuf.readableBytes(), remainingBytes);
             }
 
             remainingBytes -= maxRead;

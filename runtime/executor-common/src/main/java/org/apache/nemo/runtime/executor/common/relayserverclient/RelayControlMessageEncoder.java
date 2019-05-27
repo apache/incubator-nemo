@@ -25,14 +25,14 @@ public final class RelayControlMessageEncoder extends MessageToMessageEncoder<Re
   @Override
   protected void encode(final ChannelHandlerContext ctx, final RelayControlMessage in, final List out) {
     // encode header
-    LOG.info("Encoding controlmessage {}", in.edgeId, in.taskIndex, in.inContext);
+    //LOG.info("Encoding controlmessage {}", in.edgeId, in.taskIndex, in.inContext);
 
     final String id = RelayUtils.createId(in.edgeId, in.taskIndex, in.inContext);
     final ByteBuf header = ctx.alloc().buffer();
     final ByteBufOutputStream bos = new ByteBufOutputStream(header);
 
     final byte[] idBytes = id.getBytes();
-    LOG.info("ID bytes: {}", idBytes);
+    //LOG.info("ID bytes: {}", idBytes);
     try {
       bos.writeChar(2); // 2 means control message
       bos.writeInt(idBytes.length);
@@ -46,7 +46,7 @@ public final class RelayControlMessageEncoder extends MessageToMessageEncoder<Re
     final byte[] loggingBytes = new byte[header.readableBytes()];
     header.getBytes(header.readableBytes(), loggingBytes);
 
-    LOG.info("Loging bytes in controlMessageEncoder {}", loggingBytes);
+    //LOG.info("Loging bytes in controlMessageEncoder {}", loggingBytes);
 
     out.add(header);
   }

@@ -28,7 +28,7 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
   @Override
   protected void encode(final ChannelHandlerContext ctx, final RelayControlFrame in, final List out) {
     // encode header
-    LOG.info("Encoding relayControlFrame: {}", in.controlMsg);
+    //LOG.info("Encoding relayControlFrame: {}", in.controlMsg);
 
 
     final String id = in.dstId;
@@ -38,7 +38,7 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
 
     final ByteBuf data = in.controlMsg.encode();
     final byte[] idBytes = id.getBytes();
-    LOG.info("ID bytes: {}", idBytes);
+    //LOG.info("ID bytes: {}", idBytes);
 
     try {
       bos.writeChar(1);
@@ -55,7 +55,7 @@ public final class RelayControlFrameEncoder extends MessageToMessageEncoder<Rela
     final byte[] loggingBytes = new byte[header.readableBytes()];
     header.getBytes(header.readableBytes(), loggingBytes);
 
-    LOG.info("Loging bytes in controlFrameEncoder {}", loggingBytes);
+    //LOG.info("Loging bytes in controlFrameEncoder {}", loggingBytes);
 
     out.add(header);
 
