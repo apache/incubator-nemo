@@ -85,7 +85,18 @@ public final class TaskOffloadingManager {
   public final class TaskOffloadingReceiver implements MessageListener<ControlMessage.Message> {
     @Override
     public void onMessage(final ControlMessage.Message message) {
-      throw new RuntimeException("Exception " + message);
+      switch (message.getType()) {
+        case RequestTaskOffloadingDone: {
+          final ControlMessage.RequestTaskOffloadingDoneMessage offloadingMessage =
+            message.getRequestTaskOffloadingDoneMsg();
+          final String taskId = offloadingMessage.getTaskId();
+          stageStatusMap.put(taskId, Status.RUNNING);
+          LOG.info("Receive TaskOffloadingDone {}, map: {}", taskId, stageStatusMap);
+          break;
+        }
+        default:
+          throw new IllegalMessageException(new Exception(message.toString()));
+      }
     }
 
     @Override
@@ -128,17 +139,9 @@ public final class TaskOffloadingManager {
                   .build())
                 .build());
           }
+          break;
+        }
 
-          break;
-        }
-        case RequestTaskOffloadingDone: {
-          final ControlMessage.RequestTaskOffloadingDoneMessage offloadingMessage =
-            message.getRequestTaskOffloadingDoneMsg();
-          final String taskId = offloadingMessage.getTaskId();
-          stageStatusMap.put(taskId, Status.RUNNING);
-          LOG.info("Receive TaskOffloadingDone {}, map: {}", taskId, stageStatusMap);
-          break;
-        }
         default:
           throw new IllegalMessageException(new Exception(message.toString()));
       }
